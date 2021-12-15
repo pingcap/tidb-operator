@@ -282,7 +282,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster, expectNonExistedTc *v1alpha1.TidbCluster) error {
 	clusterCli.Get(context.TODO(), types.NamespacedName{Namespace: tc.Namespace, Name: tc.Name}, tc)
 
-	if tc.Status.PD.Phase != v1alpha1.NormalPhase || tc.Status.TiKV.Phase != v1alpha1.NormalPhase || tc.Status.TiDB.Phase != v1alpha1.NormalPhase || tc.Status.TiFlash.Phase != v1alpha1.NormalPhase {
+	if tc.Status.PD.Phase != v1alpha1.NormalPhase || tc.Status.TiKV.Phase != v1alpha1.NormalPhase || tc.Status.TiDB.Phase != v1alpha1.NormalPhase || tc.Status.TiFlash.Phase != v1alpha1.NormalPhase || tc.Status.Pump.Phase != v1alpha1.NormalPhase || tc.Status.TiCDC.Phase != v1alpha1.NormalPhase {
 		return fmt.Errorf("the tc %s is not healthy", tc.Name)
 	}
 
@@ -291,9 +291,16 @@ func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.Ti
 			return fmt.Errorf("the PD peer members contain the member belonging to the deleted tc")
 		}
 	}
+
 	for _, peerStore := range tc.Status.TiKV.PeerStores {
 		if strings.Contains(peerStore.PodName, expectNonExistedTc.Name) {
 			return fmt.Errorf("the TiKV peer stores contain the store belonging to the deleted tc")
+		}
+	}
+
+	for _, peerStore := range tc.Status.TiFlash.PeerStores {
+		if strings.Contains(peerStore.PodName, expectNonExistedTc.Name) {
+			return fmt.Errorf("the TiFlash peer stores contain the store belonging to the deleted tc")
 		}
 	}
 	return nil
