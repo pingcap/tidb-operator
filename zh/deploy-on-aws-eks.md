@@ -266,18 +266,22 @@ mountOptions:
         eksctl create nodegroups -f cluster.yaml
         ```
 
-        若 `tikv` 组已存在，为避免名字冲突，可先删除再创建，或者修改名字。
+        若 TiKV 的节点组已存在，为避免名字冲突，可先删除再创建，或者修改节点组的名字。
 
 2. 部署 local volume provisioner。
 
     1. 为了更方便地发现并管理本地存储，你需要安装 [local-volume-provisioner](https://sigs.k8s.io/sig-storage-local-static-provisioner) 程序。
 
-    2. 部署并创建一个 `local-storage` 的 Storage Class：
+    2. 通过[普通挂载方式](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md#use-a-whole-disk-as-a-filesystem-pv)将本地存储挂载到 `/mnt/ssd` 目录。
+
+    3. 根据本地存储的挂载情况，修改 [local-volume-provisioner.yaml](https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/eks/local-volume-provisioner.yaml) 文件。
+
+    4. 使用修改后的 `local-volume-provisioner.yaml`，部署并创建一个 `local-storage` 的 Storage Class：
 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/eks/local-volume-provisioner.yaml
+        kubectl apply -f <local-volume-provisioner.yaml>
         ```
 
 3. 使用本地存储。
