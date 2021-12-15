@@ -22,7 +22,7 @@ import (
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type masterUpgrader struct {

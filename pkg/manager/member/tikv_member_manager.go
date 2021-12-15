@@ -39,7 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 

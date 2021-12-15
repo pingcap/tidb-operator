@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // PVCResizerInterface represents the interface of PVC Resizer.

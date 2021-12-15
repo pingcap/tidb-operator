@@ -25,7 +25,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	restclient "k8s.io/client-go/rest"
 )

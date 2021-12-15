@@ -22,7 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/scheduler"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	schedulerapi "k8s.io/kube-scheduler/extender/v1"
 )
 

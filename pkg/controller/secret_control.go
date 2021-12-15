@@ -21,7 +21,7 @@ import (
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	v1 "k8s.io/api/core/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // SecretControlInterface manages certificates used by TiDB clusters

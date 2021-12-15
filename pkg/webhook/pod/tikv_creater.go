@@ -22,7 +22,7 @@ import (
 	admission "k8s.io/api/admission/v1beta1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient) *admission.AdmissionResponse {
