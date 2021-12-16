@@ -147,16 +147,13 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			tc3 := GetTCForAcrossKubernetes(ns3, "basic-3", version, cluster3Domain, tc1)
 
 			ginkgo.By("Deploy the basic cluster-1")
-			// To support scale in tc2, tc3
-			tc1.Spec.TiKV.Replicas = 3
-			tc1.Spec.PD.Replicas = 3
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Deploy the basic cluster-2")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Deploy the basic cluster-3")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Check status of all clusters")
 			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
@@ -166,9 +163,9 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			_, err = utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
 			framework.ExpectNoError(err, "tc1 are not connectable")
 			_, err = utiltidb.TiDBIsConnectable(fw, tc2.Namespace, tc2.Name, "root", "")()
-			framework.ExpectNoError(err, "tc1 are not connectable")
+			framework.ExpectNoError(err, "tc2 are not connectable")
 			_, err = utiltidb.TiDBIsConnectable(fw, tc3.Namespace, tc3.Name, "root", "")()
-			framework.ExpectNoError(err, "tc1 are not connectable")
+			framework.ExpectNoError(err, "tc3 are not connectable")
 
 			ginkgo.By("Scale in cluster-3, and delete the cluster-3")
 
