@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package member
+package utils
 
 import (
 	"fmt"
@@ -28,7 +28,12 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	dataEqual := true
 
 	// check config
-	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml" /*tiflash*/, "proxy_templ.toml" /*tiflash*/}
+	tomlField := []string{
+		"config-file",       // pd,tikv,tidb,ng-monitoring
+		"pump-config",       // pump
+		"config_templ.toml", // tiflash
+		"proxy_templ.toml",  // tiflash
+	}
 	for _, k := range tomlField {
 		oldData, oldOK := old.Data[k]
 		newData, newOK := new.Data[k]
@@ -68,8 +73,8 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	return dataEqual, nil
 }
 
-// updateConfigMap set the toml field as the old one if they are logically equal.
-func updateConfigMapIfNeed(
+// UpdateConfigMapIfNeed set the toml field as the old one if they are logically equal.
+func UpdateConfigMapIfNeed(
 	cmLister corelisters.ConfigMapLister,
 	configUpdateStrategy v1alpha1.ConfigUpdateStrategy,
 	inUseName string,

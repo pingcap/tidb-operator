@@ -21,10 +21,12 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
@@ -77,7 +79,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	if *oldSet.Spec.Replicas < 2 {
 		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for tc %s/%s", ns, tcName)
 		status.Phase = v1alpha1.UpgradePhase
-		setUpgradePartition(newSet, 0)
+		mngerutils.SetUpgradePartition(newSet, 0)
 		return nil
 	}
 
@@ -106,13 +108,13 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return nil
 	}
 
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		store := getStoreByOrdinal(meta.GetName(), *status, i)
 		if store == nil {
-			setUpgradePartition(newSet, i)
+			mngerutils.SetUpgradePartition(newSet, i)
 			continue
 		}
 		podName := TikvPodName(tcName, i)
@@ -149,7 +151,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		}
 
 		if u.deps.CLIConfig.PodWebhookEnabled {
-			setUpgradePartition(newSet, i)
+			mngerutils.SetUpgradePartition(newSet, i)
 			return nil
 		}
 
@@ -182,7 +184,7 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 	}
 
 	if u.readyToUpgrade(upgradePod, tc) {
-		setUpgradePartition(newSet, ordinal)
+		mngerutils.SetUpgradePartition(newSet, ordinal)
 		return nil
 	}
 
