@@ -933,6 +933,14 @@ spec:
   #   #   limits:
   #   #     cpu: 2000m
   #   #     memory: 2Gi
+  #   # configures init container resource requirements
+  #   initializer:
+  #     requests:
+  #       cpu: 1000m
+  #       memory: 1Gi
+  #     limits:
+  #       cpu: 2000m
+  #       memory: 2Gi
 
   #   # TOML format configuration
   #   # Ref: https://docs.pingcap.com/tidb/dev/tiflash-configuration
