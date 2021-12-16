@@ -281,14 +281,14 @@ func TestNewNGMonitorManager(t *testing.T) {
 			})
 			defer populateStatusPatch.Reset()
 			// mock result of configmap update
-			syncConfigMapPatch = gomonkey.ApplyPrivateMethod(reflect.TypeOf(manager), "syncConfigMap", func(_ *ngMonitoringManager, _ *v1alpha1.TidbNGMonitoring, _ *apps.StatefulSet) (*corev1.ConfigMap, error) {
+			syncConfigMapPatch := gomonkey.ApplyPrivateMethod(reflect.TypeOf(manager), "syncConfigMap", func(_ *ngMonitoringManager, _ *v1alpha1.TidbNGMonitoring, _ *apps.StatefulSet) (*corev1.ConfigMap, error) {
 				return nil, testcase.syncConfigMapErr
 			})
 			defer syncConfigMapPatch.Reset()
 			// mock result of sts creation
 			deps.StatefulSetControl.(*controller.FakeStatefulSetControl).SetCreateStatefulSetError(testcase.createStatefulSetErr, 0)
 			// mock result of sts update
-			updateStsPatch = gomonkey.ApplyFunc(mngerutils.UpdateStatefulSet, func(_ controller.StatefulSetControlInterface, _ runtime.Object, _, _ *apps.StatefulSet) error {
+			updateStsPatch := gomonkey.ApplyFunc(mngerutils.UpdateStatefulSet, func(_ controller.StatefulSetControlInterface, _ runtime.Object, _, _ *apps.StatefulSet) error {
 				return testcase.updateStatefulSetErr
 			})
 			defer updateStsPatch.Reset()
