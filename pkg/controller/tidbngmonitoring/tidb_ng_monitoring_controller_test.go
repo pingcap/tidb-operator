@@ -52,7 +52,7 @@ func TestControllerSync(t *testing.T) {
 				return fmt.Errorf("shouldn't arrive")
 			},
 			expectErrFn: func(err error) {
-				g.Expect(err).Should(Succeed()) // return nil if it isn't found
+				g.Expect(err).Should(Succeed()) // should return nil when tngm isn't found
 			},
 		},
 		{
@@ -62,7 +62,7 @@ func TestControllerSync(t *testing.T) {
 			},
 			addTNGMToIndexer: true,
 			expectErrFn: func(err error) {
-				g.Expect(err).Should(HaveOccurred()) // return nil if it isn't found
+				g.Expect(err).Should(HaveOccurred())
 				g.Expect(err).Should(MatchError("reconcile failed"))
 			},
 		},

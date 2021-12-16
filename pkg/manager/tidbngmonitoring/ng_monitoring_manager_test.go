@@ -276,22 +276,22 @@ func TestNewNGMonitorManager(t *testing.T) {
 				}
 			}
 			// mock result of status update
-			patch := gomonkey.ApplyPrivateMethod(reflect.TypeOf(manager), "populateStatus", func(_ *ngMonitoringManager, _ *v1alpha1.TidbNGMonitoring, _ *apps.StatefulSet) error {
+			populateStatusPatch := gomonkey.ApplyPrivateMethod(reflect.TypeOf(manager), "populateStatus", func(_ *ngMonitoringManager, _ *v1alpha1.TidbNGMonitoring, _ *apps.StatefulSet) error {
 				return testcase.populateStatusErr
 			})
-			defer patch.Reset()
+			defer populateStatusPatch.Reset()
 			// mock result of configmap update
-			patch = gomonkey.ApplyPrivateMethod(reflect.TypeOf(manager), "syncConfigMap", func(_ *ngMonitoringManager, _ *v1alpha1.TidbNGMonitoring, _ *apps.StatefulSet) (*corev1.ConfigMap, error) {
+			syncConfigMapPatch = gomonkey.ApplyPrivateMethod(reflect.TypeOf(manager), "syncConfigMap", func(_ *ngMonitoringManager, _ *v1alpha1.TidbNGMonitoring, _ *apps.StatefulSet) (*corev1.ConfigMap, error) {
 				return nil, testcase.syncConfigMapErr
 			})
-			defer patch.Reset()
+			defer syncConfigMapPatch.Reset()
 			// mock result of sts creation
 			deps.StatefulSetControl.(*controller.FakeStatefulSetControl).SetCreateStatefulSetError(testcase.createStatefulSetErr, 0)
 			// mock result of sts update
-			patch = gomonkey.ApplyFunc(mngerutils.UpdateStatefulSet, func(_ controller.StatefulSetControlInterface, _ runtime.Object, _, _ *apps.StatefulSet) error {
+			updateStsPatch = gomonkey.ApplyFunc(mngerutils.UpdateStatefulSet, func(_ controller.StatefulSetControlInterface, _ runtime.Object, _, _ *apps.StatefulSet) error {
 				return testcase.updateStatefulSetErr
 			})
-			defer patch.Reset()
+			defer updateStsPatch.Reset()
 
 			err := manager.syncCore(tngm)
 			testcase.expectFn(tngm, err)
@@ -319,8 +319,8 @@ func TestNewNGMonitorManager(t *testing.T) {
 				},
 				hasPod: false,
 				setPod: nil,
-				expectFn: func(is bool, err error) {
-					g.Expect(is).Should(BeTrue())
+				expectFn: func(upgrading bool, err error) {
+					g.Expect(upgrading).Should(BeTrue())
 					g.Expect(err).Should(Succeed())
 				},
 			},
@@ -329,8 +329,8 @@ func TestNewNGMonitorManager(t *testing.T) {
 				setSts: nil,
 				hasPod: false,
 				setPod: nil,
-				expectFn: func(is bool, err error) {
-					g.Expect(is).Should(BeFalse())
+				expectFn: func(upgrading bool, err error) {
+					g.Expect(upgrading).Should(BeFalse())
 					g.Expect(err).Should(Succeed())
 				},
 			},
@@ -341,8 +341,8 @@ func TestNewNGMonitorManager(t *testing.T) {
 				setPod: func(pod *corev1.Pod) {
 					pod.Labels[apps.ControllerRevisionHashLabelKey] = "v2"
 				},
-				expectFn: func(is bool, err error) {
-					g.Expect(is).Should(BeTrue())
+				expectFn: func(upgrading bool, err error) {
+					g.Expect(upgrading).Should(BeTrue())
 					g.Expect(err).Should(Succeed())
 				},
 			},
@@ -353,8 +353,8 @@ func TestNewNGMonitorManager(t *testing.T) {
 				setPod: func(pod *corev1.Pod) {
 					pod.Labels[apps.ControllerRevisionHashLabelKey] = "v3"
 				},
-				expectFn: func(is bool, err error) {
-					g.Expect(is).Should(BeFalse())
+				expectFn: func(upgrading bool, err error) {
+					g.Expect(upgrading).Should(BeFalse())
 					g.Expect(err).Should(Succeed())
 				},
 			},
@@ -398,8 +398,8 @@ func TestNewNGMonitorManager(t *testing.T) {
 				}
 				podIndexer.Add(pod)
 			}
-			is, err := manager.confirmStatefulSetIsUpgrading(tngm, sts)
-			testcase.expectFn(is, err)
+			upgrading, err := manager.confirmStatefulSetIsUpgrading(tngm, sts)
+			testcase.expectFn(upgrading, err)
 		}
 	})
 }

@@ -65,7 +65,7 @@ func TestReconcile(t *testing.T) {
 			name:        "validate failed",
 			validateErr: fmt.Errorf("validate error"),
 			errExpectFn: func(err error) {
-				g.Expect(err).Should(Succeed()) // return nil if validation is failed
+				g.Expect(err).Should(Succeed()) // should return nil when validation is failed
 			},
 		},
 		{
