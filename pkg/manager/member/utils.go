@@ -257,7 +257,15 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 	return m
 }
 
-<<<<<<< HEAD
+// MapInitContainers index init containers of Pod by container name in favor of looking up
+func MapInitContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
+	m := map[string]corev1.Container{}
+	for _, c := range podSpec.InitContainers {
+		m[c.Name] = c
+	}
+	return m
+}
+
 // UpdateStatefulSet is a template function to update the statefulset of components
 func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object runtime.Object, newSet, oldSet *apps.StatefulSet) error {
 	isOrphan := metav1.GetControllerOf(oldSet) == nil
@@ -310,15 +318,6 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	// commit to k8s
 	_, err = setCtl.UpdateStatefulSet(object, &set)
 	return err
-=======
-// MapInitContainers index init containers of Pod by container name in favor of looking up
-func MapInitContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
-	m := map[string]corev1.Container{}
-	for _, c := range podSpec.InitContainers {
-		m[c.Name] = c
-	}
-	return m
->>>>>>> 18c864ad... Support to configure init container resource for TiFlash (#4304)
 }
 
 // findContainerByName finds targetContainer by containerName, If not find, then return nil
