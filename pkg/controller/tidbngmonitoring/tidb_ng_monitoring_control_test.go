@@ -22,7 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/manager/tidbngmonitoring"
 
@@ -203,7 +203,7 @@ func TestUpdate(t *testing.T) {
 		control := newTiDBNGMonitoringControlForTest()
 		tngm := newTidbNGMonitoringForTest()
 
-		control.cli.(*fake.Clientset).PrependReactor("update", v1alpha1.TiDBNGMonitoringName, func(action clitesting.Action) (bool, runtime.Object, error) {
+		control.deps.Clientset.(*fake.Clientset).PrependReactor("update", v1alpha1.TiDBNGMonitoringName, func(action clitesting.Action) (bool, runtime.Object, error) {
 			if testcase.updateFn != nil {
 				tngm, err := testcase.updateFn(action)
 				return true, tngm, err
@@ -217,16 +217,14 @@ func TestUpdate(t *testing.T) {
 }
 
 func newTiDBNGMonitoringControlForTest() *defaultTiDBNGMonitoringControl {
-	cli := fake.NewSimpleClientset()
-	tngmInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbNGMonitorings()
+	deps := controller.NewFakeDependencies()
 	recorder := record.NewFakeRecorder(10)
 
 	ngmManager := tidbngmonitoring.NewFakeNGMonitoringManager()
 	reclaimPolicyManager := meta.NewFakeReclaimPolicyManager()
 
 	control := NewDefaultTiDBNGMonitoringControl(
-		cli,
-		tngmInformer.Lister(),
+		deps,
 		ngmManager,
 		reclaimPolicyManager,
 		recorder,

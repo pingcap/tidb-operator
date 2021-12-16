@@ -19,8 +19,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 
 	v1 "k8s.io/api/core/v1"
@@ -47,16 +46,14 @@ type ControlInterface interface {
 }
 
 func NewDefaultTiDBNGMonitoringControl(
-	cli versioned.Interface,
-	lister listers.TidbNGMonitoringLister,
+	deps *controller.Dependencies,
 	ngmMnger manager.TiDBNGMonitoringManager,
 	reclaimPolicyManager ReclaimPolicyManager,
 	recorder record.EventRecorder,
 ) *defaultTiDBNGMonitoringControl {
 
 	return &defaultTiDBNGMonitoringControl{
-		cli:                  cli,
-		lister:               lister,
+		deps:                 deps,
 		recorder:             recorder,
 		ngmMnger:             ngmMnger,
 		reclaimPolicyManager: reclaimPolicyManager,
@@ -64,8 +61,7 @@ func NewDefaultTiDBNGMonitoringControl(
 }
 
 type defaultTiDBNGMonitoringControl struct {
-	cli      versioned.Interface
-	lister   listers.TidbNGMonitoringLister
+	deps     *controller.Dependencies
 	recorder record.EventRecorder
 
 	ngmMnger             manager.TiDBNGMonitoringManager
@@ -132,7 +128,7 @@ func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring)
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
 
-		update, updateErr = c.cli.PingcapV1alpha1().TidbNGMonitorings(ns).UpdateStatus(context.TODO(), tngm, metav1.UpdateOptions{})
+		update, updateErr = c.deps.Clientset.PingcapV1alpha1().TidbNGMonitorings(ns).UpdateStatus(context.TODO(), tngm, metav1.UpdateOptions{})
 		if updateErr == nil {
 			klog.Infof("TidbNGMonitoring: [%s/%s] updated successfully", ns, name)
 			return nil
@@ -140,7 +136,7 @@ func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring)
 
 		klog.V(4).Infof("failed to update TidbNGMonitoring: [%s/%s], error: %v", ns, name, updateErr)
 
-		if updated, err := c.lister.TidbNGMonitorings(ns).Get(name); err == nil {
+		if updated, err := c.deps.TiDBNGMonitoringLister.TidbNGMonitorings(ns).Get(name); err == nil {
 			// make a copy so we don't mutate the shared cache
 			tngm = updated.DeepCopy()
 			tngm.Status = *status

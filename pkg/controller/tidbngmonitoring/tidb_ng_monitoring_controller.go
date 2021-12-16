@@ -40,8 +40,7 @@ type Controller struct {
 
 func NewController(deps *controller.Dependencies) *Controller {
 	control := NewDefaultTiDBNGMonitoringControl(
-		deps.Clientset,
-		deps.TiDBNGMonitoringLister,
+		deps,
 		tidbngmonitoring.NewNGMonitorManager(deps),
 		meta.NewReclaimPolicyManager(deps),
 		deps.Recorder,
