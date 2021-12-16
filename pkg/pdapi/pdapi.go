@@ -29,7 +29,7 @@ import (
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/tikv/pd/pkg/typeutil"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (

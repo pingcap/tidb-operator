@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const groupLabelKey = "group"
