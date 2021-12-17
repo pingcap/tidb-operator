@@ -10716,6 +10716,13 @@ spec:
                     - name
                     type: object
                   type: array
+                initializer:
+                  properties:
+                    limits:
+                      type: object
+                    requests:
+                      type: object
+                  type: object
                 labels:
                   type: object
                 limits:

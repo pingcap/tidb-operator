@@ -538,6 +538,11 @@ type TiFlashSpec struct {
 	// +optional
 	Config *TiFlashConfigWraper `json:"config,omitempty"`
 
+	// Initializer is the configurations of the init container for TiFlash
+	//
+	// +optional
+	Initializer *InitContainerSpec `json:"initializer,omitempty"`
+
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
@@ -612,6 +617,13 @@ type TiCDCConfig struct {
 // LogTailerSpec represents an optional log tailer sidecar container
 // +k8s:openapi-gen=true
 type LogTailerSpec struct {
+	corev1.ResourceRequirements `json:",inline"`
+}
+
+// InitContainerSpec contains basic spec about a init container
+//
+// +k8s:openapi-gen=true
+type InitContainerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
 }
 
