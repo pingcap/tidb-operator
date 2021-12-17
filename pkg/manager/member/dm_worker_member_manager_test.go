@@ -1111,6 +1111,48 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 			},
 			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
 		},
+		{
+			name: "dm-worker without component spec fields",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					ImagePullSecrets: []corev1.LocalObjectReference{{Name: "image-pull-secret"}},
+					Master:           v1alpha1.MasterSpec{},
+					Worker:           &v1alpha1.WorkerSpec{},
+				},
+			},
+			testSts: func(sts *appsv1.StatefulSet) {
+				g := NewGomegaWithT(t)
+				podSpec := sts.Spec.Template.Spec
+				g.Expect(podSpec.ImagePullSecrets).To(Equal([]corev1.LocalObjectReference{{Name: "image-pull-secret"}}))
+			},
+		},
+		{
+			name: "dm-worker with component spec fields",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					ImagePullSecrets: []corev1.LocalObjectReference{{Name: "cluster-level-secret"}},
+					Master:           v1alpha1.MasterSpec{},
+					Worker: &v1alpha1.WorkerSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ImagePullSecrets: []corev1.LocalObjectReference{{Name: "component-level-secret"}},
+						},
+					},
+				},
+			},
+			testSts: func(sts *appsv1.StatefulSet) {
+				g := NewGomegaWithT(t)
+				podSpec := sts.Spec.Template.Spec
+				g.Expect(podSpec.ImagePullSecrets).To(Equal([]corev1.LocalObjectReference{{Name: "component-level-secret"}}))
+			},
+		},
 		// TODO add more tests
 	}
 
