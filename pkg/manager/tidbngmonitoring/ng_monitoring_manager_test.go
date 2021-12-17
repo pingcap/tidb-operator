@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func TestNewNGMonitorManager(t *testing.T) {
+func TestNGMonitorManager(t *testing.T) {
 
 	t.Run("syncService", func(t *testing.T) {
 		g := NewGomegaWithT(t)
