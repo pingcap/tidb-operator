@@ -409,7 +409,7 @@ func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *
 		clusterLabels:             spec.Labels,
 		clusterAnnotations:        spec.Annotations,
 		tolerations:               spec.Tolerations,
-		configUpdateStrategy:      ConfigUpdateStrategyRollingUpdate,
+		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		podSecurityContext:        spec.PodSecurityContext,
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
 
