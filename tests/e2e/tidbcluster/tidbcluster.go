@@ -1160,6 +1160,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Ensure confisg of all components are not changed")
 			newTC, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{})
+			tc.Spec.TiDB.Config.Set("log.file.max-backups", int64(3))
 			framework.ExpectNoError(err, "failed to get TidbCluster: %s", tc.Name)
 			framework.ExpectEqual(newTC.Spec.PD.Config, tc.Spec.PD.Config, "pd config isn't equal of TidbCluster: %s", tc.Name)
 			framework.ExpectEqual(newTC.Spec.TiKV.Config, tc.Spec.TiKV.Config, "tikv config isn't equal of TidbCluster: %s", tc.Name)
