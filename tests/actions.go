@@ -3799,3 +3799,72 @@ func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContex
 func blockWriterPodName(info *TidbClusterConfig) string {
 	return fmt.Sprintf("%s-blockwriter", info.ClusterName)
 }
+
+// WaitForTidbComponentsReady will wait for tidbcluster components to be ready except those specified in componentsFilter.
+func (oa *OperatorActions) WaitForTidbComponentsReady(tc *v1alpha1.TidbCluster, componentsFilter map[v1alpha1.MemberType]struct{}, timeout, pollInterval time.Duration) error {
+	if tc == nil {
+		return fmt.Errorf("tidbcluster is nil")
+	}
+	var checkErr error
+	err := wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var local *v1alpha1.TidbCluster
+		var err error
+		tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
+
+		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{}); err != nil {
+			checkErr = fmt.Errorf("failed to get TidbCluster: %q, %v", tcID, err)
+			return false, nil
+		}
+
+		if _, ok := componentsFilter[v1alpha1.PDMemberType]; !ok {
+			if b, err := oa.pdMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("pd members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		if _, ok := componentsFilter[v1alpha1.TiKVMemberType]; !ok {
+			if b, err := oa.tikvMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("tikv members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		if _, ok := componentsFilter[v1alpha1.TiDBMemberType]; !ok {
+			if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("tidb members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		if _, ok := componentsFilter[v1alpha1.TiFlashMemberType]; !ok {
+			if b, err := oa.tiflashMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("tiflash members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		if _, ok := componentsFilter[v1alpha1.PumpMemberType]; !ok {
+			if b, err := oa.pumpMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("pump members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		if _, ok := componentsFilter[v1alpha1.TiCDCMemberType]; !ok {
+			if b, err := oa.cdcMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("cdc members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		log.Logf("Components in %q are ready", tcID)
+		return true, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = checkErr
+	}
+
+	return err
+}
