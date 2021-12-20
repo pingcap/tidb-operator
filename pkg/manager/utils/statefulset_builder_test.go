@@ -131,7 +131,7 @@ func TestPodTemplateSpecBuilder(t *testing.T) {
 		builder := NewPodTemplateSpecBuilder(src)
 
 		ctrBuilder := builder.ContainerBuilder("container")
-		tesContainerBuilderBasicFn(t, ctrBuilder)
+		testContainerBuilderBasicFn(t, ctrBuilder)
 		g.Expect(&builder.prototype.Spec.Containers[0] == ctrBuilder.prototype).Should(BeTrue())
 	})
 }
@@ -143,7 +143,7 @@ func TestContainerBuilderBuilder(t *testing.T) {
 		src := tmpl.DeepCopy()
 		builder := NewContainerBuilder(src)
 
-		tesContainerBuilderBasicFn(t, builder)
+		testContainerBuilderBasicFn(t, builder)
 	})
 
 	t.Run("Get", func(t *testing.T) {
@@ -204,7 +204,7 @@ func testPodTemplateSpecBuilderBasicFn(t *testing.T, builder *PodTemplateSpecBui
 	g.Expect(builder.prototype.Spec.DNSPolicy).Should(Equal(corev1.DNSClusterFirstWithHostNet))
 }
 
-func tesContainerBuilderBasicFn(t *testing.T, builder *ContainerBuilder) {
+func testContainerBuilderBasicFn(t *testing.T, builder *ContainerBuilder) {
 	g := NewGomegaWithT(t)
 
 	// AddVolumeMounts
