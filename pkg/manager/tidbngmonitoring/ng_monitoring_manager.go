@@ -501,20 +501,20 @@ func GenerateNGMonitoringStartScript(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 }
 
 type FakeNGMonitoringManager struct {
-	sync func(tngm *v1alpha1.TidbNGMonitoring) error
+	sync func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error
 }
 
 func NewFakeNGMonitoringManager() *FakeNGMonitoringManager {
 	return &FakeNGMonitoringManager{}
 }
 
-func (m *FakeNGMonitoringManager) MockSync(sync func(tngm *v1alpha1.TidbNGMonitoring) error) {
+func (m *FakeNGMonitoringManager) MockSync(sync func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error) {
 	m.sync = sync
 }
 
-func (m *FakeNGMonitoringManager) Sync(tngm *v1alpha1.TidbNGMonitoring) error {
+func (m *FakeNGMonitoringManager) Sync(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error {
 	if m.sync == nil {
 		return nil
 	}
-	return m.sync(tngm)
+	return m.sync(tngm, tc)
 }
