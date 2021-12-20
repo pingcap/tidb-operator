@@ -47,6 +47,7 @@ import (
 
 const (
 	defaultClusterDomain = "cluster.local"
+	inexistentBaseImage  = "pingcap/inexist"
 )
 
 var _ = ginkgo.Describe("[Across Kubernetes]", func() {
@@ -319,7 +320,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Fail PD in cluster-1 by setting a wrong image")
 			local, err := cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
-			local.Spec.PD.BaseImage = ns1
+			local.Spec.PD.BaseImage = inexistentBaseImage
 			err = genericCli.Update(context.TODO(), local)
 			framework.ExpectNoError(err, "updating pd with an inexistent image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
 
@@ -352,7 +353,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Fail TiKV in cluster-1 by setting a wrong image")
 			local, err = cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
-			local.Spec.TiKV.BaseImage = ns1
+			local.Spec.TiKV.BaseImage = inexistentBaseImage
 			err = genericCli.Update(context.TODO(), local)
 			framework.ExpectNoError(err, "updating tikv with an inexistent image %q for %q", tc1.Spec.TiKV.BaseImage, tcName1)
 			// force operator to trigger a pd upgrade when pd is down.
@@ -530,7 +531,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			local, err := cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
 			baseImage := local.Spec.PD.BaseImage
-			local.Spec.PD.BaseImage = ns1
+			local.Spec.PD.BaseImage = inexistentBaseImage
 			err = genericCli.Update(context.TODO(), local)
 			framework.ExpectNoError(err, "updating pd with an inexistent image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
 
