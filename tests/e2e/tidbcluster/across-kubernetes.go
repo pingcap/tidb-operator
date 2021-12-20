@@ -276,6 +276,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			caSecret.Namespace = ns2
 			err = genericCli.Create(context.TODO(), caSecret)
 			framework.ExpectNoError(err, "error installing CA secert into cluster %q", tcName2)
+			caSecret.ObjectMeta.ResourceVersion = ""
 			caSecret.Namespace = ns3
 			err = genericCli.Create(context.TODO(), caSecret)
 			framework.ExpectNoError(err, "error installing CA secert into cluster %q", tcName3)
@@ -405,6 +406,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			caSecret.Namespace = ns2
 			err = genericCli.Create(context.TODO(), caSecret)
 			framework.ExpectNoError(err, "error installing CA secert into cluster %q", tcName2)
+			caSecret.ObjectMeta.ResourceVersion = ""
 			caSecret.Namespace = ns3
 			err = genericCli.Create(context.TODO(), caSecret)
 			framework.ExpectNoError(err, "error installing CA secert into cluster %q", tcName3)
