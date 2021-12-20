@@ -433,7 +433,7 @@ spec:
       logLevel: info
 ```
 
-For all configurable start parameters of TiCDC, see [TiCDC configuration](https://github.com/pingcap/ticdc/blob/master/cmd/ticdc.toml).
+For all configurable start parameters of TiCDC, see [TiCDC configuration](https://github.com/pingcap/tiflow/blob/bf29e42c75ae08ce74fbba102fe78a0018c9d2ea/pkg/cmd/util/ticdc.toml).
 
 #### Configure automatic failover thresholds of PD, TiDB, TiKV, and TiFlash
 

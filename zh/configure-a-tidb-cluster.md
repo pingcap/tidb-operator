@@ -418,7 +418,7 @@ spec:
       logLevel: info
 ```
 
-获取所有可以配置的 TiCDC 启动参数，请参考 [TiCDC 启动参数文档](https://github.com/pingcap/ticdc/blob/master/cmd/ticdc.toml)。
+获取所有可以配置的 TiCDC 启动参数，请参考 [TiCDC 启动参数文档](https://github.com/pingcap/tiflow/blob/bf29e42c75ae08ce74fbba102fe78a0018c9d2ea/pkg/cmd/util/ticdc.toml)。
 
 #### 配置 PD、TiDB、TiKV、TiFlash 故障自动转移阈值
 
