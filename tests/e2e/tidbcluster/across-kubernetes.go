@@ -317,9 +317,11 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 30*time.Second)
 
 			ginkgo.By("Fail PD in cluster-1 by setting a wrong image")
-			tc1.Spec.PD.BaseImage = ns1
-			err = genericCli.Update(context.TODO(), tc1)
-			framework.ExpectNoError(err, "updating pd with a inexist image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
+			local, err := cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
+			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
+			local.Spec.PD.BaseImage = ns1
+			err = genericCli.Update(context.TODO(), local)
+			framework.ExpectNoError(err, "updating pd with an inexistent image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
 			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
@@ -348,9 +350,11 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "restarting components when pd failed")
 
 			ginkgo.By("Fail TiKV in cluster-1 by setting a wrong image")
-			tc1.Spec.TiKV.BaseImage = ns1
-			err = genericCli.Update(context.TODO(), tc1)
-			framework.ExpectNoError(err, "updating tikv with a inexist image %q for %q", tc1.Spec.TiKV.BaseImage, tcName1)
+			local, err = cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
+			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
+			local.Spec.TiKV.BaseImage = ns1
+			err = genericCli.Update(context.TODO(), local)
+			framework.ExpectNoError(err, "updating tikv with an inexistent image %q for %q", tc1.Spec.TiKV.BaseImage, tcName1)
 			// force operator to trigger a pd upgrade when pd is down.
 			err = c.AppsV1().StatefulSets(ns1).Delete(context.TODO(), fmt.Sprintf("%s-tikv", tcName1), metav1.DeleteOptions{})
 			framework.ExpectNoError(err, "deleting sts of tikv for %q", tcName1)
@@ -454,6 +458,15 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			err = c.CoreV1().Namespaces().Delete(context.TODO(), ns2, opts)
 			framework.ExpectNoError(err, "deleting namespsace %q", ns2)
 
+			ginkgo.By("Waiting for namespace to be deleted")
+			wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
+				_, err = c.CoreV1().Namespaces().Get(context.TODO(), ns2, metav1.GetOptions{})
+				if err != nil {
+					return true, nil
+				}
+				return false, nil
+			})
+
 			ginkgo.By("Check status of other clusters")
 			err = oa.WaitForTidbClusterReady(tc1, 10*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "%q cluster not healthy after cluster %q fail", tcName1, tcName2)
@@ -514,10 +527,12 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 30*time.Second)
 
 			ginkgo.By("Fail PD in cluster-1 by setting a wrong image")
-			baseImage := tc1.Spec.PD.BaseImage
-			tc1.Spec.PD.BaseImage = ns1
-			err = genericCli.Update(context.TODO(), tc1)
-			framework.ExpectNoError(err, "updating pd with a inexist image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
+			local, err := cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
+			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
+			baseImage := local.Spec.PD.BaseImage
+			local.Spec.PD.BaseImage = ns1
+			err = genericCli.Update(context.TODO(), local)
+			framework.ExpectNoError(err, "updating pd with an inexistent image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
 			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
