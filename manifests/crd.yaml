@@ -3107,6 +3107,12 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              configUpdateStrategy:
+                default: InPlace
+                enum:
+                - InPlace
+                - RollingUpdate
+                type: string
               discovery:
                 properties:
                   additionalContainers:

@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
-	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -1451,7 +1450,6 @@ ssl-key = "/var/lib/dm-master-tls/tls.key"
 			g.Expect(err).To(Succeed())
 			// startup-script is better to be tested in e2e
 			tt.expected.Data["startup-script"] = cm.Data["startup-script"]
-			g.Expect(mngerutils.AddConfigMapDigestSuffix(tt.expected)).To(Succeed())
 			if diff := cmp.Diff(*tt.expected, *cm); diff != "" {
 				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}

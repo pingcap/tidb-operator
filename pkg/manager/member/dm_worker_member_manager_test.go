@@ -92,7 +92,9 @@ func TestWorkerMemberManagerSyncCreate(t *testing.T) {
 			cmGen, err := getWorkerConfigMap(dc)
 			g.Expect(err).To(Succeed())
 			cmName = cmGen.Name
-			g.Expect(strings.HasPrefix(cmName, controller.DMWorkerMemberName(dcName))).To(BeTrue())
+			g.Expect(cmName).To(Equal(controller.DMWorkerMemberName(dcName))) // name not changed
+			g.Expect(mngerutils.AddConfigMapDigestSuffix(cmGen)).To(Succeed())
+			cmName = cmGen.Name
 		}
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: cmName}}
 		key := client.ObjectKeyFromObject(cm)
@@ -233,6 +235,7 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 
 		oldCm, err := getWorkerConfigMap(dc)
 		g.Expect(err).To(Succeed())
+		g.Expect(mngerutils.AddConfigMapDigestSuffix(oldCm)).To(Succeed())
 		oldSvc := getNewWorkerHeadlessServiceForDMCluster(dc)
 		oldSvc.Spec.Ports[0].Port = 8888
 		oldSet, err := getNewWorkerSetForDMCluster(dc, oldCm)
@@ -256,7 +259,9 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 			cmGen, err := getWorkerConfigMap(dc)
 			g.Expect(err).To(Succeed())
 			cmName = cmGen.Name
-			g.Expect(strings.HasPrefix(cmName, controller.DMWorkerMemberName(dcName))).To(BeTrue())
+			g.Expect(cmName).To(Equal(controller.DMWorkerMemberName(dcName))) // name not changed
+			g.Expect(mngerutils.AddConfigMapDigestSuffix(cmGen)).To(Succeed())
+			cmName = cmGen.Name
 		}
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: cmName}}
 		key := client.ObjectKeyFromObject(cm)
@@ -618,6 +623,7 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 
 		oldCm, err := getWorkerConfigMap(dc)
 		g.Expect(err).To(Succeed())
+		g.Expect(mngerutils.AddConfigMapDigestSuffix(oldCm)).To(Succeed())
 		oldSvc := getNewWorkerHeadlessServiceForDMCluster(dc)
 		oldSvc.Spec.Ports[0].Port = 8888
 		oldSet, err := getNewWorkerSetForDMCluster(dc, oldCm)
@@ -1342,8 +1348,7 @@ keepalive-ttl = 25
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getWorkerConfigMap(&tt.dc)
 			g.Expect(err).To(Succeed())
-			g.Expect(strings.HasPrefix(cm.Name, "foo-dm-worker")).To(BeTrue())
-			tt.expected.Name = cm.Name
+			g.Expect(cm.Name).To(Equal("foo-dm-worker"))
 			// startup-script is better to be validated in e2e test
 			cm.Data["startup-script"] = ""
 			if diff := cmp.Diff(tt.expected, *cm); diff != "" {

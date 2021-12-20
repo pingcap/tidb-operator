@@ -372,6 +372,18 @@ func (m *masterMemberManager) syncMasterConfigMap(dc *v1alpha1.DMCluster, set *a
 	if err != nil {
 		return nil, err
 	}
+
+	var inUseName string
+	if set != nil {
+		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+			return strings.HasPrefix(name, controller.DMMasterMemberName(dc.Name))
+		})
+	}
+
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, dc.BaseMasterSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
 	return m.deps.TypedControl.CreateOrUpdateConfigMap(dc, newCm)
 }
 
@@ -748,10 +760,6 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 			"config-file":    string(confText),
 			"startup-script": startScript,
 		},
-	}
-
-	if err := mngerutils.AddConfigMapDigestSuffix(cm); err != nil {
-		return nil, err
 	}
 	return cm, nil
 }

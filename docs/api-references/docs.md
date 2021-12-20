@@ -733,6 +733,23 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>configUpdateStrategy</code></br>
+<em>
+<a href="#configupdatestrategy">
+ConfigUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+cluster component is needed to reload the configuration change.
+UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>enablePVReclaim</code></br>
 <em>
 bool
@@ -4547,6 +4564,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#componentspec">ComponentSpec</a>, 
+<a href="#dmclusterspec">DMClusterSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -5051,6 +5069,23 @@ Kubernetes core/v1.PullPolicy
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>configUpdateStrategy</code></br>
+<em>
+<a href="#configupdatestrategy">
+ConfigUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+cluster component is needed to reload the configuration change.
+UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
 </td>
 </tr>
 <tr>
