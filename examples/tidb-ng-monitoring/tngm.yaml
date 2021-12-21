@@ -1,0 +1,133 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbNGMonitoring
+metadata:
+  name: main-cluster-monitoring
+spec:
+
+  ## tidb cluster to be monitored
+  ## ** now only support one TidbCluster **
+  clusters:
+  - name: main-cluster
+    namespace: default
+    ## ClusterDomain is the domain of TidbCluster object
+    # clusterDomain: cluster.local
+
+  ## ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+  ## Valid values are `InPlace` and `RollingUpdate`
+  ##   UpdateStrategy `InPlace` will update the ConfigMap of configuration in-place and an extra rolling update of the
+  ##   cluster component is needed to reload the configuration change.
+  ##   UpdateStrategy `RollingUpdate` will create a new ConfigMap with the new configuration and rolling update the
+  ##   related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
+  configUpdateStrategy: RollingUpdate
+
+  ## Persistent volume reclaim policy applied to the PV consumed by the TiDB cluster, default to `Retain`.
+  ## Note that the reclaim policy Recycle may not be supported by some storage types, e.g. local.
+  ## Ref: https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
+  pvReclaimPolicy: Retain
+
+  ## ImagePullPolicy of TiDB cluster Pods
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/overview/#container-images
+  # imagePullPolicy: IfNotPresent
+
+  ## If private registry is used, imagePullSecrets may be set
+  ## You can also set this in service account
+  ## Ref: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
+  # imagePullSecrets:
+  # - name: secretName
+
+  ## Annotations of TiDB cluster pods, will be merged with component annotation settings.
+  # annotations:
+  #   node.kubernetes.io/instance-type: some-vm-type
+  #   topology.kubernetes.io/region: some-region
+
+  ## NodeSelector of TiDB cluster pods, will be merged with component nodeSelector settings.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  # nodeSelector:
+  #   node-role.kubernetes.io/tidb: true
+
+  ## Tolerations are applied to TiDB cluster pods, allowing (but do not require) pods to be scheduled onto nodes with matching taints.
+  ## This cluster-level `tolerations` only takes effect when no component-level `tolerations` are set.
+  ## e.g. if `pd.tolerations` is not empty, `tolerations` here will be ignored.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  # tolerations:
+  #   - effect: NoSchedule
+  #     key: dedicated
+  #     operator: Equal
+  #     value: tidb
+
+  ## Affinity for pod scheduling, will be overwritten by each cluster component's specific affinity setting
+  ## Can refer to PD/TiDB/TiKV affinity settings, and ensure only cluster-scope general settings here
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  # affinity: {}
+
+  ## Specify pod priorities of pods in TidbCluster, default to empty.
+  ## Can be overwritten by component settings.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  # priorityClassName: system-cluster-critical
+
+  ## TopologySpreadConstraints for pod scheduling, will be overwritten by each cluster component's specific spread constraints setting
+  ## Can refer to PD/TiDB/TiKV/TiCDC/TiFlash/Pump topologySpreadConstraints settings, and ensure only cluster-scope general settings here
+  ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
+  # topologySpreadConstraints:
+  # - topologyKey: topology.kubernetes.io/zone
+
+  ## Use the node network namespace, default to false
+  ## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#host-namespaces
+  # hostNetwork: false
+
+  ## if true, this tidb cluster is paused and will not be synced by the controller
+  # paused: false
+
+  ## SchedulerName of TiDB cluster pods.
+  ## If specified, the pods will be scheduled by the specified scheduler.
+  ## Can be overwritten by component settings.
+  # schedulerName: default-scheduler
+
+  ## The identifier of the Pod will be `$(podName).$(serviceName).$(namespace).svc.$(clusterDomain)` when `clusterDomain` is set.
+  ## Set this in the case where a TiDB cluster is deployed across multiple Kubernetes clusters. default to empty.
+  # clusterDomain: cluster.local
+
+  ###########################
+  # Components              #
+  ###########################
+
+  ngMonitoring:
+    ## describes the compute resource requirements and limits.
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    requests:
+    #   cpu: 1000m
+    #   memory: 1Gi
+      storage: 10Gi
+    # limits:
+    #   cpu: 2000m
+    #   memory: 2Gi
+
+    ## version of ng-monitoring
+    version: test-1
+    
+    ## Base image of the component
+    baseImage: pingcap/ng-monitoring
+
+    ## The storageClassName of the persistent volume for data storage.
+    # storageClassName: standard
+
+    ## ng-monitoring configuration
+    # config: |
+    #   [log]
+    #     level = "DEBUG"
+
+    #   nodeSelector:
+    #     app.kubernetes.io/component: pump
+    #   annotations:
+    #     node.kubernetes.io/instance-type: some-vm-type
+    #   tolerations: {}
+    #   configUpdateStrategy: RollingUpdate
+    #   statefulSetUpdateStrategy: RollingUpdate
+    #   podSecurityContext: {}
+    #   env: []
+    #   additionalContainers: []
+    #   additionalVolumes: []
+    #   additionalVolumeMounts: []
+    #   terminationGracePeriodSeconds: 30
+    #   topologySpreadConstraints:
+    #   - topologyKey: topology.kubernetes.io/zone
