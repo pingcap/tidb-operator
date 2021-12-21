@@ -194,6 +194,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			})
 			framework.ExpectNoError(err, "tc2 are not all healthy")
 		})
+	})
 })
 
 func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster, expectNonExistedTc *v1alpha1.TidbCluster) error {
