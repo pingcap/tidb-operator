@@ -17,12 +17,23 @@ This document describes how to upgrade TiDB Operator and Kubernetes.
 
 1. Update CustomResourceDefinition (CRD) for Kubernetes. For more information about CRD, see [CustomResourceDefinition](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/).
 
-    {{< copyable "shell-regular" >}}
+    * For Kubernetes versions >= 1.16:
 
-    ```shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.2.4/manifests/crd.yaml && \
-    kubectl get crd tidbclusters.pingcap.com
-    ```
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        kubectl replace -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
+        kubectl get crd tidbclusters.pingcap.com
+        ```
+
+    * For Kubernetes versions < 1.16:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        kubectl replace -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd_v1beta1.yaml && \
+        kubectl get crd tidbclusters.pingcap.com
+        ```
 
 2. Get the `values.yaml` file of the `tidb-operator` chart for the new TiDB Operator version. 
 
@@ -70,11 +81,21 @@ If your server cannot access the Internet, you can take the following steps to u
 
     1. Download the `crd.yaml` file for the new TiDB Operator version. For more information about CRD, see [CustomResourceDefinition](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/).
 
-        {{< copyable "shell-regular" >}}
+       * For Kubernetes versions >= 1.16:
 
-        ```shell
-        wget https://raw.githubusercontent.com/pingcap/tidb-operator/v1.2.4/manifests/crd.yaml
-        ```
+           {{< copyable "shell-regular" >}}
+
+           ```shell
+           wget -O crd.yaml https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
+           ```
+
+       * For Kubernetes versions < 1.16:
+
+           {{< copyable "shell-regular" >}}
+
+           ```shell
+           wget -O crd.yaml https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd_v1beta1.yaml
+           ```
 
     2. Download the `tidb-operator` chart package file.
 
@@ -103,7 +124,7 @@ If your server cannot access the Internet, you can take the following steps to u
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl apply -f . /crd.yaml
+        kubectl replace -f ./crd.yaml
         ```
 
     2. Unpack the `tidb-operator` chart package file, and then copy the `values.yaml` file:

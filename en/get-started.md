@@ -252,7 +252,7 @@ Execute this command to install the CRDs into your cluster:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
+kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
 ```
 
 Expected output:
@@ -266,6 +266,10 @@ customresourcedefinition.apiextensions.k8s.io/tidbmonitors.pingcap.com created
 customresourcedefinition.apiextensions.k8s.io/tidbinitializers.pingcap.com created
 customresourcedefinition.apiextensions.k8s.io/tidbclusterautoscalers.pingcap.com created
 ```
+
+> **Note:**
+>
+> For Kubernetes earlier than 1.16, only v1beta1 CRD is supported, so you need to change `crd.yaml` in the above command to `crd_v1beta1.yaml`.
 
 ### Install TiDB Operator
 

@@ -49,7 +49,7 @@ TiDB Operator 使用 [Custom Resource Definition (CRD)](https://kubernetes.io/do
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
+kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
 ```
 
 如果服务器没有外网，需要先用有外网的机器下载 `crd.yaml` 文件，然后再进行安装：
@@ -58,8 +58,12 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/
 
 ```shell
 wget https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
-kubectl apply -f ./crd.yaml
+kubectl create -f ./crd.yaml
 ```
+
+> **注意：**
+> 
+> 对于 Kubernetes 1.16 之前的版本，Kubernetes 仅支持 v1beta1 版本的 CRD，你需要将上述命令中的 `crd.yaml` 修改为 `crd_v1beta1.yaml`。
 
 如果显示如下信息表示 CRD 安装成功：
 
