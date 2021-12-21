@@ -1,6 +1,7 @@
 ---
 title: Enable Dynamic Configuration for TidbMonitor
 summary: This document describes how to enable dynamic configuration for TidbMonitor.
+aliases:['/tidb-in-kubernetes/dev/enable-dynamic-configuration-for-tidbmonitor']
 ---
 
 # Enable Dynamic Configuration for TidbMonitor
