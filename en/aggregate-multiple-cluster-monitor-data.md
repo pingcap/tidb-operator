@@ -13,7 +13,9 @@ This document describes how to aggregate the monitoring data of multiple TiDB cl
 
 Thanos provides [Thanos Query](https://thanos.io/tip/components/query.md/) component as a unified query solution across multiple Prometheus clusters. You can use this feature to aggregate monitoring data of multiple TiDB clusters.
 
-## Configure Thanos Query
+## Aggregate monitoring data via Thanos Query
+
+### Configure Thanos Query
 
 1. Configure a Thanos Sidecar container for each TidbMonitor.
 
@@ -21,26 +23,22 @@ Thanos provides [Thanos Query](https://thanos.io/tip/components/query.md/) compo
 
     {{< copyable "shell-regular" >}}
 
-    ```
+    ```shell
     kubectl -n ${namespace} apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/monitor-with-thanos/tidb-monitor.yaml
     ```
-
-    > **Note:**
-    >
-    > The `${namespace}` in the command is the namespace where TidbMonitor is deployed, which must be the same namespace where `TidbCluster` is deployed.
 
 2. Deploy the Thanos Query component.
 
     1. Download the `thanos-query.yaml` file for Thanos Query deployment:
 
         {{< copyable "shell-regular" >}}
-        
+
         ```
         curl -sl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/monitor-with-thanos/thanos-query.yaml
         ```
 
     2. Manually modify the `--store` parameter in the `thanos-query.yaml` file by updating `basic-prometheus:10901` to `basic-prometheus.${namespace}:10901`.
-    
+
         `${namespace}` is the namespace where TidbMonitor is deployed.
 
     3. Execute the `kubectl apply` command for deployment.
@@ -53,9 +51,9 @@ Thanos provides [Thanos Query](https://thanos.io/tip/components/query.md/) compo
 
        In the command above, `${thanos_namespace}` is the namespace where the Thanos Query component is deployed.
 
-In Thanos Query, a Prometheus instance corresponds to a store and also corresponds to a TidbMonitor. After deploying Thanos Query, you can provide a uniform query interface for monitoring data through the Thanos Query's API.
+In Thanos Query, a Prometheus instance corresponds to a store and also corresponds to a TidbMonitor. After deploying Thanos Query, you can provide a uniform query interface for monitoring data through Thanos Query's API.
 
-## Access the Thanos Query Panel
+### Access the Thanos Query panel
 
 To access the Thanos Query panel, execute the following command, and then access <http://127.0.0.1:9090> in your browser:
 
@@ -70,16 +68,16 @@ If you want to access the Thanos Query panel using NodePort or LoadBalancer, ref
 - [NodePort method](access-tidb.md#nodeport)
 - [LoadBalancer way](access-tidb.md#loadbalancer)
 
-## Configure Grafana
+### Configure Grafana
 
 After deploying Thanos Query, to query the monitoring data of multiple TidbMonitors, take the following steps:
 
-1. Log in to Grafana. 
-2. In the left navigation bar, select `Configuration` > `Data Sources`. 
-3. Add or modify a DataSource in the Prometheus type. 
+1. Log in to Grafana.
+2. In the left navigation bar, select `Configuration` > `Data Sources`.
+3. Add or modify a DataSource in the Prometheus type.
 4. Set the URL under HTTP to `http://thanos-query.${thanos_namespace}:9090`.
 
-## Add or remove TidbMonitor
+### Add or remove TidbMonitor
 
 In Thanos Query, a Prometheus instance corresponds to a monitor store and also corresponds to a TidbMonitor. If you need to add, update, or remove a monitor store from the Thanos Query, update the `--store` configuration of the Thanos Query component, and perform a rolling update to the Thanos Query component.
 
@@ -98,7 +96,7 @@ spec:
        - --store=<TidbMonitorName2>-prometheus.<TidbMonitorNs2>:10901
 ```
 
-## Configure archives and storage of Thanos Sidecar
+### Configure archives and storage of Thanos Sidecar
 
 > **Note:**
 >
@@ -145,3 +143,38 @@ stringData:
         enable: true
       part_size: 41943040
 ```
+
+## RemoteWrite mode
+
+Besides aggregating data via Thanos Query, you can also push monitoring data to Thanos using Prometheus' RemoteWrite feature.
+
+To enable the RemoteWrite mode, specify the Prometheus RemoteWrite configuration when you create the TidbMonitor CR. For example:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+  - name: basic
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.27.1
+    remoteWrite:
+      - url: "http://thanos-receiver:19291/api/v1/receive"
+  grafana:
+    baseImage: grafana/grafana
+    version: 7.5.11
+  initializer:
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
+    version: v5.2.1
+  reloader:
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent
+```
+
+After RemoteWrite is enabled, Prometheus pushes the monitoring data to [Thanos Receiver](https://thanos.io/tip/components/receive.md/). For more information, refer to [the design of Thanos Receiver](https://thanos.io/v0.8/proposals/201812_thanos-remote-receive/).
+
+For details on the deployment, refer to [this example of integrating TidbMonitor with Thanos Receiver](https://github.com/pingcap/tidb-operator/tree/master/examples/monitor-prom-remotewrite).
