@@ -678,6 +678,16 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	var initContainers []corev1.Container // no default initContainers now
 	podSpec.InitContainers = append(initContainers, baseMasterSpec.InitContainers()...)
 
+	updateStrategy := apps.StatefulSetUpdateStrategy{}
+	if baseMasterSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else {
+		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+			Partition: pointer.Int32Ptr(dc.Spec.Master.Replicas + int32(failureReplicas) + deleteSlotsNumber),
+		}
+	}
+
 	masterSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
@@ -711,12 +721,8 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 				},
 			},
 			ServiceName:         controller.DMMasterPeerMemberName(dcName),
-			PodManagementPolicy: apps.ParallelPodManagement,
-			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(dc.Spec.Master.Replicas + int32(failureReplicas) + deleteSlotsNumber),
-				}},
+			PodManagementPolicy: baseMasterSpec.PodManagementPolicy(),
+			UpdateStrategy:      updateStrategy,
 		},
 	}
 

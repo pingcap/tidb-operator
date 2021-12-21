@@ -1194,18 +1194,20 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.DMClusterSpec{
-					ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "image-pull-secret"}},
-					HostNetwork:        pointer.BoolPtr(true),
-					Affinity:           &corev1.Affinity{NodeAffinity: &corev1.NodeAffinity{}},
-					PriorityClassName:  pointer.StringPtr("priority-class"),
-					SchedulerName:      "custom-scheduler",
-					NodeSelector:       map[string]string{"k1": "v1"},
-					Annotations:        map[string]string{"k1": "v1"},
-					Labels:             map[string]string{"k1": "v1"},
-					Tolerations:        []corev1.Toleration{{Key: "toleration-key"}},
-					PodSecurityContext: &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)},
-					Master:             v1alpha1.MasterSpec{},
-					Worker:             &v1alpha1.WorkerSpec{},
+					ImagePullSecrets:          []corev1.LocalObjectReference{{Name: "image-pull-secret"}},
+					HostNetwork:               pointer.BoolPtr(true),
+					Affinity:                  &corev1.Affinity{NodeAffinity: &corev1.NodeAffinity{}},
+					PriorityClassName:         pointer.StringPtr("priority-class"),
+					SchedulerName:             "custom-scheduler",
+					NodeSelector:              map[string]string{"k1": "v1"},
+					Annotations:               map[string]string{"k1": "v1"},
+					Labels:                    map[string]string{"k1": "v1"},
+					Tolerations:               []corev1.Toleration{{Key: "toleration-key"}},
+					PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)},
+					StatefulSetUpdateStrategy: appsv1.OnDeleteStatefulSetStrategyType,
+					PodManagementPolicy:       appsv1.OrderedReadyPodManagement,
+					Master:                    v1alpha1.MasterSpec{},
+					Worker:                    &v1alpha1.WorkerSpec{},
 				},
 			},
 			testSts: func(sts *appsv1.StatefulSet) {
@@ -1229,6 +1231,8 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 					"app.kubernetes.io/component":  "dm-worker"}))
 				g.Expect(podSpec.Tolerations).To(Equal([]corev1.Toleration{{Key: "toleration-key"}}))
 				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)}))
+				g.Expect(sts.Spec.UpdateStrategy.Type).To(Equal(appsv1.OnDeleteStatefulSetStrategyType))
+				g.Expect(sts.Spec.PodManagementPolicy).To(Equal(appsv1.OrderedReadyPodManagement))
 			},
 		},
 		{
@@ -1239,29 +1243,33 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.DMClusterSpec{
-					ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "cluster-level-secret"}},
-					HostNetwork:        pointer.BoolPtr(false),
-					Affinity:           &corev1.Affinity{NodeAffinity: &corev1.NodeAffinity{}},
-					PriorityClassName:  pointer.StringPtr("cluster-level-priority"),
-					SchedulerName:      "cluster-level-scheduler",
-					NodeSelector:       map[string]string{"k1": "v1", "k2": "v2a"},
-					Annotations:        map[string]string{"k1": "v1", "k2": "v2a"},
-					Labels:             map[string]string{"k1": "v1", "k2": "v2a"},
-					Tolerations:        []corev1.Toleration{{Key: "cluster-level-toleration-key"}},
-					PodSecurityContext: &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)},
-					Master:             v1alpha1.MasterSpec{},
+					ImagePullSecrets:          []corev1.LocalObjectReference{{Name: "cluster-level-secret"}},
+					HostNetwork:               pointer.BoolPtr(false),
+					Affinity:                  &corev1.Affinity{NodeAffinity: &corev1.NodeAffinity{}},
+					PriorityClassName:         pointer.StringPtr("cluster-level-priority"),
+					SchedulerName:             "cluster-level-scheduler",
+					NodeSelector:              map[string]string{"k1": "v1", "k2": "v2a"},
+					Annotations:               map[string]string{"k1": "v1", "k2": "v2a"},
+					Labels:                    map[string]string{"k1": "v1", "k2": "v2a"},
+					Tolerations:               []corev1.Toleration{{Key: "cluster-level-toleration-key"}},
+					PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)},
+					StatefulSetUpdateStrategy: appsv1.OnDeleteStatefulSetStrategyType,
+					PodManagementPolicy:       appsv1.OrderedReadyPodManagement,
+					Master:                    v1alpha1.MasterSpec{},
 					Worker: &v1alpha1.WorkerSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							ImagePullSecrets:   []corev1.LocalObjectReference{{Name: "component-level-secret"}},
-							HostNetwork:        pointer.BoolPtr(true),
-							Affinity:           &corev1.Affinity{PodAffinity: &corev1.PodAffinity{}},
-							PriorityClassName:  pointer.StringPtr("component-level-priority"),
-							SchedulerName:      pointer.StringPtr("component-level-scheduler"),
-							NodeSelector:       map[string]string{"k2": "v2b", "k3": "v3"},
-							Annotations:        map[string]string{"k2": "v2b", "k3": "v3"},
-							Labels:             map[string]string{"k2": "v2b", "k3": "v3"},
-							Tolerations:        []corev1.Toleration{{Key: "component-level-toleration-key"}},
-							PodSecurityContext: &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(456)},
+							ImagePullSecrets:          []corev1.LocalObjectReference{{Name: "component-level-secret"}},
+							HostNetwork:               pointer.BoolPtr(true),
+							Affinity:                  &corev1.Affinity{PodAffinity: &corev1.PodAffinity{}},
+							PriorityClassName:         pointer.StringPtr("component-level-priority"),
+							SchedulerName:             pointer.StringPtr("component-level-scheduler"),
+							NodeSelector:              map[string]string{"k2": "v2b", "k3": "v3"},
+							Annotations:               map[string]string{"k2": "v2b", "k3": "v3"},
+							Labels:                    map[string]string{"k2": "v2b", "k3": "v3"},
+							Tolerations:               []corev1.Toleration{{Key: "component-level-toleration-key"}},
+							PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(456)},
+							StatefulSetUpdateStrategy: appsv1.RollingUpdateStatefulSetStrategyType,
+							PodManagementPolicy:       appsv1.ParallelPodManagement,
 						},
 					},
 				},
@@ -1288,6 +1296,8 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 					"app.kubernetes.io/component":  "dm-worker"}))
 				g.Expect(podSpec.Tolerations).To(Equal([]corev1.Toleration{{Key: "component-level-toleration-key"}}))
 				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(456)}))
+				g.Expect(sts.Spec.UpdateStrategy.Type).To(Equal(appsv1.RollingUpdateStatefulSetStrategyType))
+				g.Expect(sts.Spec.PodManagementPolicy).To(Equal(appsv1.ParallelPodManagement))
 			},
 		},
 		// TODO add more tests

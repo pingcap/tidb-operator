@@ -910,6 +910,34 @@ Kubernetes core/v1.PodSecurityContext
 </tr>
 <tr>
 <td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of DM cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of DM cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>topologySpreadConstraints</code></br>
 <em>
 <a href="#topologyspreadconstraint">
@@ -5246,6 +5274,34 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of DM cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of DM cluster StatefulSets</p>
 </td>
 </tr>
 <tr>

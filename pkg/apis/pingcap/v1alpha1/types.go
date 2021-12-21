@@ -2056,6 +2056,14 @@ type DMClusterSpec struct {
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 
+	// StatefulSetUpdateStrategy of DM cluster StatefulSets
+	// +optional
+	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// PodManagementPolicy of DM cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
+
 	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
 	// domains. Scheduler will schedule pods in a way which abides by the constraints.
 	// This field is is only honored by clusters that enables the EvenPodsSpread feature.

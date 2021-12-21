@@ -7725,6 +7725,8 @@ spec:
                 type: object
               paused:
                 type: boolean
+              podManagementPolicy:
+                type: string
               podSecurityContext:
                 properties:
                   fsGroup:
@@ -7794,6 +7796,8 @@ spec:
                 type: string
               schedulerName:
                 default: tidb-scheduler
+                type: string
+              statefulSetUpdateStrategy:
                 type: string
               timezone:
                 type: string
