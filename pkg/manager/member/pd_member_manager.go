@@ -402,7 +402,6 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 
 // syncPDConfigMap syncs the configmap of PD
 func (m *pdMemberManager) syncPDConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-
 	// For backward compatibility, only sync tidb configmap when .pd.config is non-nil
 	if tc.Spec.PD.Config == nil {
 		return nil, nil
@@ -810,10 +809,10 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 
 func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	// For backward compatibility, only sync tidb configmap when .tidb.config is non-nil
-	config := tc.Spec.PD.Config
-	if config == nil {
+	if tc.Spec.PD.Config == nil {
 		return nil, nil
 	}
+	config := tc.Spec.PD.Config.DeepCopy() // use copy to not update tc spec
 
 	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
 	if err != nil {

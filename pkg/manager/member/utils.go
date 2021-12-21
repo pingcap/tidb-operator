@@ -331,7 +331,7 @@ func findContainerByName(sts *apps.StatefulSet, containerName string) *corev1.Co
 }
 
 func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
-	config := tikvSpec.Config
+	config := tikvSpec.Config.DeepCopy()
 	if tc.IsTLSClusterEnabled() {
 		config.Set("security.ca-path", path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
 		config.Set("security.cert-path", path.Join(tikvClusterCertPath, corev1.TLSCertKey))
