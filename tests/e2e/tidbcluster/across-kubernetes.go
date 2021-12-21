@@ -242,7 +242,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		})
 	})
 
-	ginkgo.Describe("4300[Failover]", func() {
+	ginkgo.Describe("[Failover]", func() {
 		// create three namespace
 		ginkgo.BeforeEach(func() {
 			ns1 := namespaces[0]
@@ -326,7 +326,12 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
 			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				return !tc.Status.PD.Synced, nil
+				healthy := false
+				for _, member := range tc.Status.PD.Members {
+					healthy = healthy || member.Health
+				}
+				// we consider it healthy when member is healthy and synced is true
+				return healthy && tc.Status.PD.Synced, nil
 			})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
@@ -532,7 +537,12 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
 			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				return !tc.Status.PD.Synced, nil
+				healthy := false
+				for _, member := range tc.Status.PD.Members {
+					healthy = healthy || member.Health
+				}
+				// we consider it healthy when member is healthy and synced is true
+				return healthy && tc.Status.PD.Synced, nil
 			})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
@@ -545,9 +555,11 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectError(err, "%q should not be able to join %q as pd fails", tcName2, tcName1)
 
 			ginkgo.By("Recover PD in cluster-1")
-			tc1.Spec.PD.BaseImage = baseImage
-			err = genericCli.Update(context.TODO(), tc1)
-			framework.ExpectNoError(err, "updating pd with previous image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
+			local, err = cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
+			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
+			local.Spec.PD.BaseImage = baseImage
+			err = genericCli.Update(context.TODO(), local)
+			framework.ExpectNoError(err, "updating pd with previous image %q for %q", local.Spec.PD.BaseImage, tcName1)
 			// force operator to trigger a pd upgrade when pd is down.
 			err = c.AppsV1().StatefulSets(ns1).Delete(context.TODO(), fmt.Sprintf("%s-pd", tcName1), metav1.DeleteOptions{})
 			framework.ExpectNoError(err, "deleting sts of pd for %q", tcName1)
@@ -562,15 +574,15 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 func GetTCForAcrossKubernetes(ns, name, version, clusterDomain string, joinTC *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	tc := fixture.GetTidbCluster(ns, name, version)
 	tc = fixture.AddTiFlashForTidbCluster(tc)
-	// tc = fixture.AddTiCDCForTidbCluster(tc)
-	// tc = fixture.AddPumpForTidbCluster(tc)
+	tc = fixture.AddTiCDCForTidbCluster(tc)
+	tc = fixture.AddPumpForTidbCluster(tc)
 
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
 	tc.Spec.TiFlash.Replicas = 1
-	// tc.Spec.TiCDC.Replicas = 1
-	// tc.Spec.Pump.Replicas = 1
+	tc.Spec.TiCDC.Replicas = 1
+	tc.Spec.Pump.Replicas = 1
 
 	tc.Spec.ClusterDomain = clusterDomain
 	if joinTC != nil {
