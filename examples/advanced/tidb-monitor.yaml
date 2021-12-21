@@ -1,0 +1,515 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: advanced-tidb
+  namespace: default
+
+spec:
+  #######################
+  # Basic Configuration #
+  #######################
+
+  ## TidbCluster to be monitored
+  clusters:
+  - name: advanced-tidb
+    namespace: default
+    ## ClusterDomain is the domain of TidbCluster object
+    # clusterDomain: cluster.local
+
+  ## Replicas is the number of desired replicas.
+  ## Defaults to 1.
+  replicas: 1
+
+  ## Persistent volume reclaim policy applied to the PV consumed by the TidbMonitor, default to `Retain`.
+  ## Note that the reclaim policy Recycle may not be supported by some storage types, e.g. local.
+  ## Ref: https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
+  pvReclaimPolicy: Retain
+
+  ## ImagePullPolicy of TidbMonitor Pod.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/overview/#container-images
+  # imagePullPolicy: IfNotPresent
+
+  ## If private registry is used, imagePullSecrets may be set.
+  ## You can also set this in service account.
+  ## Ref: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
+  # imagePullSecrets:
+  # - name: secretName
+
+  ## Persistent determines TidbMonitor persists monitor data or not.
+  persistent: true
+
+  ## StorageClassName of the persistent volume for monitor data storage.
+  ## Kubernetes default storage class is used if not setting this field.
+  # storageClassName: ""
+
+  ## Storage determines the reclaim storage size
+  storage: 10G
+
+  ## NodeSelector of TidbMonitor pod.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  # nodeSelector:
+  #   node-role.kubernetes.io/tidb: true
+
+  ## Annotations of TidbMonitor pod.
+  # annotations:
+  #   node.kubernetes.io/instance-type: some-vm-type
+
+  ## Labels of TidbMonitor pod.
+  # labels:
+  #   node.kubernetes.io/instance-type: some-vm-type
+
+  ## Tolerations are applied to TidbMonitor pod, allowing (but do not require) pod to be scheduled onto nodes with matching taints.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  # tolerations:
+  #   - effect: NoSchedule
+  #     key: dedicated
+  #     operator: Equal
+  #     value: tidb
+
+  ## KubePrometheusURL is where TidbMonitor get the common metrics of kube-prometheus.
+  ## Ref: https://github.com/coreos/kube-prometheus
+  # kubePrometheusURL: ""
+
+  ## AlertmanagerURL is where TidbMonitor push alerts to.
+  ## Ref: https://prometheus.io/docs/alerting/alertmanager/
+  # alertmanagerURL: ""
+
+  ## AlertManagerRulesVersion is the version of the TidbCluster that used for alert rules.
+  ## Defaults to current TidbCluster version, for example: v3.0.15.
+  # alertManagerRulesVersion: v5.2.0
+
+  ## AdditionalContainers is custom sidecar containers injected into the TidbMonitor pod,
+  ## which can act as a logging/tracing agent or for any other use case.
+  # additionalContainers:
+  # - name: myCustomContainer
+  #   image: ubuntu
+
+  ## ClusterScoped indicates whether TidbMonitor should manage Kubernetes cluster-wide TidbClusters.
+  # clusterScoped: false
+
+  ## ExternalLabels determines the labels to add to any time series or alerts when communicating with
+  ## external systems (federation, remote storage, Alertmanager).
+  # externalLabels:
+  #   tidb-cluster: advanced-tidb
+
+  ## ReplicaExternalLabelName is name of Prometheus external label used to denote replica name.
+  ## Defaults to the value of `prometheus_replica`.
+  ## External label will not be added when value is set to empty string (`""`).
+  # replicaExternalLabelName: "prometheus_replica"
+
+  ## Shards use the Prometheus `modulus` configuration,
+  ## which takes the hash of the `__address__` source label values, and splits the scrape targets based on the number of shards.
+  ## EXPERIMENTAL: Number of shards to distribute targets onto. Number of
+  ## replicas multiplied by shards is the total number of Pods created.
+  ## Note that scaling down shards will not reshard data onto remaining instances, it must be manually moved.
+  ## Increasing shards will not reshard data either but it will continue to be available from the same instances.
+  ## To query globally use Thanos sidecar and Thanos querier or remote write data to a central location.
+  ## Sharding is done on the content of the `__address__` target meta-label.
+  # shards: 0
+
+  ## Custom additional volumes in TidbMonitor pod.
+  # additionalVolumes:
+  ## specify volume types that are supported by Kubernetes.
+  ## Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes
+  # - name: nfs
+  #   nfs:
+  #     server: 192.168.0.2
+  #     path: /nfs
+
+  ## PodSecurityContext holds pod-level security attributes and common container settings.
+  ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+  # podSecurityContext:
+  #   sysctls:
+  #   - name: net.ipv4.tcp_keepalive_time
+  #     value: "300"
+
+  ## EnableAlertRules adds alert rules to the Prometheus config even if `AlertmanagerURL` is not configured.
+  ## There may be a possible case to turn on it that you customize the image of tidb-monitor-initializer but not define alertmanager urls.
+  # enableAlertRules: false
+
+
+  ###########################
+  # TidbMonitor Components #
+  ###########################
+
+  prometheus:
+    ##########################
+    # Configuration of prometheus #
+    ##########################
+
+    ## Base image of the prometheus.
+    baseImage: prom/prometheus
+    ## ImagePullPolicy of prometheus.
+    # imagePullPolicy: IfNotPresent
+    ## Prometheus version.
+    version: v2.27.1
+
+    ## Describes the compute resource requirements and limits of Prometheus.
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    # requests:
+    #   cpu: 1000m
+    #   memory: 1Gi
+    # limits:
+    #   cpu: 2000m
+    #   memory: 2Gi
+
+    ## LogLevel is Prometheus log level which maps to the '--log.level' CLI args.
+    logLevel: info
+
+    ## Service defines Kubernetes service for prometheus.
+    ## Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+    service:
+      portName: http-prometheus
+      type: NodePort
+
+    ## Prometheus Configuration for `--storage.tsdb.retention.time` of units d.
+    ## ReserveDays will be used if retentionTime not defined.
+    reserveDays: 12
+
+    ## Prometheus Configuration for `--storage.tsdb.retention.time`, Units Supported: y, w, d, h, m, s, ms.
+    ## If retentionTime set, it will override the value of `ReserveDays`.
+    # retentionTime: "12d"
+
+    ## Ingress configuration of prometheus
+    # ingress:
+    ##  hosts describe the hosts for the ingress.
+    #   hosts:
+    #   - prometheus-advanced-tidb.example.com
+    ##  annotations describe the desired annotations for the ingress
+    #   annotations:
+    #     foo: bar
+    ##  TLS configuration. Currently the Ingress only supports a single TLS
+    ##  port, 443. If multiple members of this list specify different hosts, they
+    ##  will be multiplexed on the same port according to the hostname specified
+    ##  through the SNI TLS extension, if the ingress controller fulfilling the
+    ##  ingress supports SNI.
+    ##  Ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+    #   tls:
+    #     hosts:
+    #     - https-example.foo.com
+    #     secretName: testsecret-tls
+
+    # config:
+      ## ConfigMapRef defines Prometheus custom config with external configMap.
+      ## The external configMap must contain `prometheus-config` key in data.
+      # configMapRef:
+      #   name: custom-config
+      #   namespace: default
+
+      ## CommandOptions defines prometheus command options.
+      # commandOptions:
+      #   - --web.read-timeout=5m
+      #   - --web.max-connections=512
+      #   - --storage.remote.read-concurrent-limit=10
+
+      ## RuleConfigRef defines Prometheus custom rules config with external configMap.
+      ## The external configMap must use the key with suffix `.rules.yml`.
+      # ruleConfigRef:
+      #   name: external-config
+      #   namespace: default
+
+    ## Disable prometheus compaction if set to true.
+    ## Ref: https://prometheus.io/docs/prometheus/latest/storage/#compaction
+    # disableCompaction: false
+
+    ## RemoteWrite defines the remote_write configuration for Prometheus.
+    ## Ref: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write
+    # remoteWrite:
+    #   - url: "http://localhost:1234"
+    #     remoteTimeout: 30s
+    ##    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
+    ##    It defines `<metric_relabel_configs>`-section of Prometheus configuration.
+    ##    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+    #     writeRelabelConfigs:
+    ##    A list of labels from which values are taken and concatenated with the configured separator in order.
+    #     - sourceLabels: [__test]
+    ##      Separator is the string between concatenated values from the source labels.
+    #       separator: "";
+    ##      Regular expression against which the extracted value is matched. Default is '(.*)'
+    #       regex: (.*)
+    ##      Modulus to take of the hash of concatenated values from the source labels.
+    #       modulus: 0
+    ##      TargetLabel is the label to which the resulting string is written in a replacement.
+    ##      Regexp interpolation is allowed for the replace action.
+    #       targetLabel: node
+    ##      Replacement is the regex replacement pattern to be used.
+    #       replacement: $1
+    ##      Action is the action to be performed for the relabeling.action must one of: replace, keep, drop, hashmod, labelmap, labeldrop, labelkeep
+    #       action: replace
+
+    ##    BasicAuth allow an endpoint to authenticate over basic authentication
+    ##    More info: https://prometheus.io/docs/operating/configuration/#endpoints
+    #     basicAuth: {}
+    ##    File to read bearer token for remote write.
+    #     bearerToken: ""
+    #     bearerTokenFile: ""
+    ##    TLS Config to use for remote write.
+    #     tlsConfig: {}
+    ##    Optional proxy URL.
+    #     proxyUrl: ""
+    ##    QueueConfig allows the tuning of remote_write queue_config parameters. This object is referenced in the RemoteWriteSpec object.
+    #     queueConfig:
+    #       capacity: 2500
+    #       maxShards: 200
+    #       maxSamplesPerSend: 500
+    #       batchSendDeadline: 5s
+    #       maxRetries: 0
+    #       minBackoff: 30ms
+    #       maxBackoff: 100ms
+
+    ## Custom additional volume mounts in Prometheus pods
+    # additionalVolumeMounts:
+    ## This must match `name` in `additionalVolumes`
+    # - name: nfs
+    #   mountPath: /nfs
+
+
+  grafana:
+    ##########################
+    # Configuration of grafana #
+    ##########################
+
+    ## Base image of the grafana.
+    baseImage: grafana/grafana
+    ## ImagePullPolicy of grafana.
+    # imagePullPolicy: IfNotPresent
+    ## Grafana version.
+    version: v7.5.11
+    ## Describes the compute resource requirements and limits of grafana.
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    # requests:
+    #   cpu: 1000m
+    #   memory: 1Gi
+    # limits:
+    #   cpu: 2000m
+    #   memory: 2Gi
+
+    ## Grafana log level, defaults to info.
+    logLevel: "info"
+
+    ## Service defines Kubernetes service for grafana.
+    ## Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+    service:
+      type: NodePort
+
+    ## If `usernameSecret` is not set, `username` will be used. You should create a secret named `basic-grafana` if use usernameSecret.
+    usernameSecret:
+      name: basic-grafana
+      key: username
+
+    ## If `passwordSecret` is not set, `password` will be used. You should create a secret named `basic-grafana` if use passwordSecret.
+    passwordSecret:
+      name: basic-grafana
+      key: password
+
+    ## Grafana login username.
+    ## Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use `usernameSecret` instead.
+    # username: admin
+
+    ## Grafana login password.
+    ## Deprecated in v1.3.0 for security concerns, planned for removal in v1.4.0. Use `passwordSecret` instead.
+    # password: admin
+
+    ## List of environment variables to set in the grafana container.
+    # envs: []
+
+    ## Ingress configuration of grafana, you need to deploy an ingress controller like ingress-nginx.
+    ## Ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
+    # ingress:
+      ## Hosts describe the hosts for the ingress.
+      # hosts:
+      # - grafana-advanced-tidb.example.com
+      ## Ingress Annotations configuration.
+      ## Ref of ingress-nginx: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/
+      # annotations:
+      #   foo: bar
+    ##  TLS configuration. Currently the Ingress only supports a single TLS
+    ##  port, 443. If multiple members of this list specify different hosts, they
+    ##  will be multiplexed on the same port according to the hostname specified
+    ##  through the SNI TLS extension, if the ingress controller fulfilling the
+    ##  ingress supports SNI.
+    ##  Ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+    #   tls:
+    #     hosts:
+    #     - https-example.foo.com
+    #     secretName: testsecret-tls
+
+    ## Custom additional volume mounts in grafana pods
+    # additionalVolumeMounts:
+    ## This must match `name` in `additionalVolumes`
+    # - name: nfs
+    #   mountPath: /nfs
+
+
+  reloader:
+    ##########################
+    # Configuration of reloader#
+    ##########################
+
+    ## Base image of the reloader.
+    baseImage: pingcap/tidb-monitor-reloader
+    ## ImagePullPolicy of reloader.
+    # imagePullPolicy: IfNotPresent
+    ## Reloader version.
+    version: v1.0.1
+    ## Describes the compute resource requirements and limits of reloader.
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    # requests:
+    #   cpu: 1000m
+    #   memory: 1Gi
+    # limits:
+    #   cpu: 2000m
+    #   memory: 2Gi
+
+    ## Service defines Kubernetes service for reloader.
+    ## Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+    # service:
+    #   type: NodePort
+    #   externalTrafficPolicy: Local
+
+  initializer:
+    ##########################
+    # Configuration of initializer#
+    ##########################
+
+    ## Base image of the initializer.
+    baseImage: pingcap/tidb-monitor-initializer
+    ## ImagePullPolicy of initializer.
+    # imagePullPolicy: IfNotPresent
+    ## Initializer version.
+    version: v5.2.1
+
+    ## Describes the compute resource requirements and limits of initializer.
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    # requests:
+    #   cpu: 1000m
+    #   memory: 1Gi
+    # limits:
+    #   cpu: 2000m
+    #   memory: 2Gi
+
+    ## List of environment variables to set in the initializer container.
+    # env: []
+
+  # prometheusReloader:
+    ##########################
+    # Configuration of prometheusReloader  #
+    # If prometheusReloader set, prometheus can reload config automatically. #
+    ##########################
+
+  ##  Base image of the prometheusReloader.
+  #   baseImage: quay.io/prometheus-operator/prometheus-config-reloader
+  ##  ImagePullPolicy of prometheusReloader.
+  #   ImagePullPolicy: IfNotPresent
+  #   PrometheusReloader version.
+  #   version: v0.49.0
+  ##  Describes the compute resource requirements and limits of prometheusReloader.
+  ##  Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+  #   requests:
+  #     cpu: 1000m
+  #     memory: 1Gi
+  #   limits:
+  #     cpu: 1000m
+  #     memory: 1Gi
+
+
+  # dm:
+    ##########################
+    # Configuration of monitoring dm  #
+    ##########################
+    # DmCluster to be monitored
+  #   clusters:
+  #   - namespace: default
+  #     name: advanced-dm
+  #     clusterDomain: cluster.local
+  #   initializer:
+  ##    Base image of the initializer.
+  #     baseImage: pingcap/tidb-monitor-initializer
+  ##    imagePullPolicy of initializer.
+  #     ImagePullPolicy: IfNotPresent
+  ##    Initializer version.
+  #     version: v5.2.0
+  ##    Describes the compute resource requirements and limits of initializer.
+  ##    Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+  #     requests:
+  #       cpu: 1000m
+  #       memory: 1Gi
+  #     limits:
+  #       cpu: 2000m
+  #       memory: 2Gi
+
+  ##    List of environment variables to set in the initializer container.
+  #     env: []
+
+
+  # thanos:
+    ##########################
+    # Configuration of thanos sidecar
+    # Ref: https://thanos.io/tip/thanos/design.md/
+    ##########################
+
+  ##  Base image of the thanos.
+  #   baseImage: thanosio/thanos
+  #   # ImagePullPolicy of thanos.
+  #   imagePullPolicy: IfNotPresent
+  #   # Thanos version.
+  #   version: v0.17.2
+
+  ##  Describes the compute resource requirements and limits of thanos.
+  ##  Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+  #   requests:
+  #     cpu: 1000m
+  #     memory: 1Gi
+  #   limits:
+  #     cpu: 2000m
+  #     memory: 2Gi
+
+  ##  ObjectStorageConfig configures object storage in Thanos.
+  ##  Alternative to ObjectStorageConfigFile, and lower order priority.
+  #   objectStorageConfig:
+  #     key: objectstorage.yaml
+  #     name: thanos-objectstorage
+
+  ##  ObjectStorageConfigFile specifies the path of the object storage configuration file.
+  ##  When used alongside with ObjectStorageConfig, ObjectStorageConfigFile takes precedence.
+  #   objectStorageConfigFile: "/etc/thanos/objectstorage.yaml"
+
+  ##  ListenLocal makes the Thanos sidecar listen on loopback, so that it does not bind against the Pod IP.
+  #   listenLocal: false
+
+  ##  TracingConfig configures tracing in Thanos.
+  ##  This is an experimental feature, it may change in any upcoming release in a breaking way.
+  #   tracingConfig:
+  #     key: tracing.yaml
+  #     name: thanos-tracing
+
+  ##  TracingConfig specifies the path of the tracing configuration file.
+  ##  When used alongside with TracingConfig, TracingConfigFile takes precedence.
+  #   tracingConfigFile: "/etc/thanos/tracing.yaml"
+
+  ##  GrpcServerTlsConfig configures the gRPC server from which Thanos Querier reads recorded rule data.
+  ##  Note: Currently only the CAFile, CertFile, and KeyFile fields are supported.
+  ##  Maps to the '--grpc-server-tls-*' CLI args.
+  #   grpcServerTlsConfig: {}
+
+  ##  LogLevel for Thanos sidecar to be configured with, which maps to the '--log.level' CLI args.
+  #   logLevel: "debug"
+
+  ##  LogFormat for Thanos sidecar to be configured with, which Maps to the '--log.format' CLI args.
+  #   logFormat: "logfmt"
+
+  ##  MinTime for Thanos sidecar to be configured with, which maps to the '--min-time' CLI args.
+  ##  Option can be a constant time in RFC3339 format or time duration relative to current time,
+  ##  such as -1d or 2h45m. Valid duration units are ms, s, m, h, d, w, y.
+  #   minTime: "2h45m"
+
+  ##  RoutePrefix is Prometheus prefix url, which determines the prefix of '--prometheus.url'.
+  #   routePrefix: ""
+
+  ##  Custom additional volumes in thanos pod.
+  #   additionalVolumes:
+  ##  Specify volume types that are supported by Kubernetes, Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes
+  #   - name: nfs
+  #     nfs:
+  #       server: 192.168.0.2
+  #       path: /nfs
