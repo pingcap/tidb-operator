@@ -40,15 +40,9 @@ spec:
   ## - execute sysctls when PodSecurityContext is set for some components, requires `sysctl` installed
   ## - tail slow log for tidb, requires `tail` installed
   ## - fill tiflash config template file based on pod ordinal
-<<<<<<< HEAD
   # helper:
   #   image: busybox:latest
   #   imagePullPolicy: IfNotPresent
-=======
-  helper:
-    image: busybox:1.34.1
-  # imagePullPolicy: IfNotPresent
->>>>>>> 7ef7096c... Update examples (#4309)
 
   ## Enable PVC/PV reclaim for orphan PVC/PV left by statefulset scale-in.
   ## When set to `true`, PVC/PV that are not used by any tidb cluster pods will be deleted automatically.
@@ -112,29 +106,6 @@ spec:
   #   limits:
   #     cpu: 2000m
   #     memory: 1Gi
-<<<<<<< HEAD
-=======
-  #   ## The following block overwrites TiDB cluster-level configurations in `spec`
-  #   imagePullPolicy: IfNotPresent
-  #   imagePullSecrets: secretName
-  #   hostNetwork: false
-  #   priorityClassName: system-cluster-critical
-  #   schedulerName: default-scheduler
-  #   nodeSelector:
-  #     app.kubernetes.io/component: discovery
-  #   annotations:
-  #     node.kubernetes.io/instance-type: some-vm-type
-  #   labels: {}
-  #   env:
-  #     - name: MY_ENV_1
-  #       value: value1
-  #   affinity: {}
-  #   tolerations:
-  #     - effect: NoSchedule
-  #       key: dedicated
-  #       operator: Equal
-  #       value: discovery
->>>>>>> 7ef7096c... Update examples (#4309)
 
   ## if true, this tidb cluster is paused and will not be synced by the controller
   # paused: false
@@ -142,16 +113,7 @@ spec:
   ## SchedulerName of TiDB cluster pods.
   ## If specified, the pods will be scheduled by the specified scheduler.
   ## Can be overwritten by component settings.
-<<<<<<< HEAD
-  schedulerName: tidb-scheduler
-=======
-  # schedulerName: default-scheduler
- 
-  ## PodManagementPolicy default `OrderedReady` for Pump
-  ## and default `Parallel` for the other components.
-  ## Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#pod-management-policies
-  # podManagementPolicy: Parallel
->>>>>>> 7ef7096c... Update examples (#4309)
+  #schedulerName: default-scheduler
 
   ## Affinity for pod scheduling, will be overwritten by each cluster component's specific affinity setting
   ## Can refer to PD/TiDB/TiKV affinity settings, and ensure only cluster-scope general settings here
@@ -704,31 +666,10 @@ spec:
     mountClusterClientSecret: true
 
     ## if enabled, the RocksDB log will be shown in a separate sidecar container
-<<<<<<< HEAD
-    separateRocksDBLog: true
-
-    ## if enabled, the Raft log will be shown in a separate sidecar container
-    separateRaftLog: true
-=======
     # separateRocksDBLog: true
-    ## rocksDBLogVolumeName is only applicable when separateRocksDBLog is enabled.
-    ## if separateRocksDBLog is enabled, rocksDBLogVolumeName can be set or not.
-    ## if rocksDBLogVolumeName is not set, the rocksdb log is saved in the PV of TiKV data, which may increase the IO pressure of the data disk.
-    ## if rocksDBLogVolumeName is set, rocksDBLogVolumeName should be defined in storageVolumes or additionalVolumes to use another PV.
-    ## you may need to change the `rocksdb.info-log-dir` to save the logs in the separate PV.
-    ## Ref: https://github.com/tikv/tikv/blob/master/etc/config-template.toml
-    # rocksDBLogVolumeName: ""
 
     ## if enabled, the Raft log will be shown in a separate sidecar container
     # separateRaftLog: true
-    ## raftLogVolumeName is only applicable when separateRaftLog is enabled.
-    ## if separateRaftLog is enabled, raftLogVolumeName can be set or not.
-    ## if raftLogVolumeName is not set, the separated raftdb log is saved in the PV of TiKV data, which may increase the IO pressure of the data disk.
-    ## if raftLogVolumeName is set, raftLogVolumeName should be defined in storageVolumes or additionalVolumes to use another PV.
-    ## you may need to change the `raftdb.info-log-dir` to save the logs in the separate PV.
-    ## Ref: https://github.com/tikv/tikv/blob/master/etc/config-template.toml
-    # raftLogVolumeName: ""
->>>>>>> 7ef7096c... Update examples (#4309)
 
     ## configures RocksDB/Raft log sidecar container resource requirements
     # logTailer:
