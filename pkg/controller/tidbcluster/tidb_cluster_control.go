@@ -25,7 +25,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // ControlInterface implements the control logic for updating TidbClusters and their children StatefulSets.
@@ -150,7 +150,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	if err != nil {
 		return err
 	}
-	if klog.V(10) {
+	if klog.V(10).Enabled() {
 		for podName, reason := range skipReasons {
 			klog.Infof("pod %s of cluster %s/%s is skipped, reason %q", podName, tc.Namespace, tc.Name, reason)
 		}
@@ -239,7 +239,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	if err != nil {
 		return err
 	}
-	if klog.V(10) {
+	if klog.V(10).Enabled() {
 		for pvcName, reason := range pvcSkipReasons {
 			klog.Infof("pvc %s of cluster %s/%s is skipped, reason %q", pvcName, tc.Namespace, tc.Name, reason)
 		}

@@ -9556,7 +9556,7 @@ spec:
                     type: string
                   replicas:
                     format: int32
-                    minimum: 1
+                    minimum: 0
                     type: integer
                   requests:
                     additionalProperties:
@@ -14264,6 +14264,25 @@ spec:
                       - name
                       type: object
                     type: array
+                  initializer:
+                    properties:
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        type: object
+                    type: object
                   labels:
                     additionalProperties:
                       type: string
@@ -14375,7 +14394,7 @@ spec:
                     type: boolean
                   replicas:
                     format: int32
-                    minimum: 1
+                    minimum: 0
                     type: integer
                   requests:
                     additionalProperties:
@@ -16707,7 +16726,7 @@ spec:
                     type: boolean
                   replicas:
                     format: int32
-                    minimum: 1
+                    minimum: 0
                     type: integer
                   requests:
                     additionalProperties:
@@ -17098,6 +17117,8 @@ spec:
                           type: boolean
                         podName:
                           type: string
+                        ready:
+                          type: boolean
                         version:
                           type: string
                       type: object
@@ -17388,6 +17409,16 @@ spec:
                 properties:
                   bootStrapped:
                     type: boolean
+                  evictLeader:
+                    additionalProperties:
+                      properties:
+                        podCreateTime:
+                          format: date-time
+                          type: string
+                        value:
+                          type: string
+                      type: object
+                    type: object
                   failureStores:
                     additionalProperties:
                       properties:

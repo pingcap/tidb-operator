@@ -26,87 +26,12 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
-
-func TestStatefulSetIsUpgrading(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	type testcase struct {
-		name            string
-		update          func(*apps.StatefulSet)
-		expectUpgrading bool
-	}
-
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-
-		set := &apps.StatefulSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: metav1.NamespaceDefault,
-			},
-		}
-		if test.update != nil {
-			test.update(set)
-		}
-		b := statefulSetIsUpgrading(set)
-		if test.expectUpgrading {
-			g.Expect(b).To(BeTrue())
-		} else {
-			g.Expect(b).To(BeFalse())
-		}
-	}
-	tests := []*testcase{
-		{
-			name:            "ObservedGeneration is nil",
-			update:          nil,
-			expectUpgrading: false,
-		},
-		{
-			name: "CurrentRevision not equal UpdateRevision",
-			update: func(set *apps.StatefulSet) {
-				set.Status.ObservedGeneration = 1000
-				set.Status.CurrentRevision = "v1"
-				set.Status.UpdateRevision = "v2"
-			},
-			expectUpgrading: true,
-		},
-		{
-			name: "set.Generation > *set.Status.ObservedGeneration && *set.Spec.Replicas == set.Status.Replicas",
-			update: func(set *apps.StatefulSet) {
-				set.Generation = 1001
-				set.Status.ObservedGeneration = 1000
-				set.Status.CurrentRevision = "v1"
-				set.Status.UpdateRevision = "v1"
-				set.Status.Replicas = 3
-				set.Spec.Replicas = func() *int32 { var i int32 = 3; return &i }()
-			},
-			expectUpgrading: true,
-		},
-		{
-			name: "replicas not equal",
-			update: func(set *apps.StatefulSet) {
-				set.Generation = 1001
-				set.Status.ObservedGeneration = 1000
-				set.Status.CurrentRevision = "v1"
-				set.Status.UpdateRevision = "v1"
-				set.Status.Replicas = 3
-				set.Spec.Replicas = func() *int32 { var i int32 = 2; return &i }()
-			},
-			expectUpgrading: false,
-		},
-	}
-
-	for _, test := range tests {
-		testFn(test, t)
-	}
-}
 
 func TestGetStsAnnotations(t *testing.T) {
 	tests := []struct {

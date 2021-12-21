@@ -22,14 +22,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -37,7 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 
@@ -198,7 +200,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		return err
 	}
 	if setNotExist {
-		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)
+		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err
 		}
@@ -240,7 +242,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
 }
 
 func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -255,12 +257,12 @@ func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *app
 
 	var inUseName string
 	if set != nil {
-		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiKVMemberName(tc.Name))
 		})
 	}
 
-	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiKVSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiKVSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -959,7 +961,7 @@ func (m *tikvMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.Sto
 }
 
 func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi.PDControlInterface, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if statefulSetIsUpgrading(set) {
+	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}
 	instanceName := tc.GetInstanceName()

@@ -18,20 +18,22 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 
@@ -105,14 +107,14 @@ func (m *ticdcMemberManager) syncTiCDCConfigMap(tc *v1alpha1.TidbCluster, set *a
 
 	var inUseName string
 	if set != nil {
-		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiCDCMemberName(tc.Name))
 		})
 	}
 
 	klog.V(3).Info("get ticdc in use config map name: ", inUseName)
 
-	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiCDCSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiCDCSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +173,7 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 			klog.Infof("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
 			return nil
 		}
-		err = SetStatefulSetLastAppliedConfigAnnotation(newSts)
+		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSts)
 		if err != nil {
 			return err
 		}
@@ -197,7 +199,7 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSts, oldSts)
+	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSts, oldSts)
 }
 
 func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) error {
@@ -212,6 +214,7 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 	tc.Status.TiCDC.StatefulSet = &sts.Status
 	upgrading, err := m.statefulSetIsUpgradingFn(m.deps.PodLister, m.deps.PDControl, sts, tc)
 	if err != nil {
+		tc.Status.TiCDC.Synced = false
 		return err
 	}
 	if upgrading {
@@ -221,23 +224,35 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 	}
 
 	ticdcCaptures := map[string]v1alpha1.TiCDCCapture{}
+	allCapturesReady := true
 	for id := range helper.GetPodOrdinals(tc.Status.TiCDC.StatefulSet.Replicas, sts) {
 		podName := fmt.Sprintf("%s-%d", controller.TiCDCMemberName(tc.GetName()), id)
-		capture, err := m.deps.CDCControl.GetStatus(tc, int32(id))
+
+		_, err := m.deps.PodLister.Pods(tc.GetNamespace()).Get(podName)
+		if err != nil {
+			klog.Warningf("Failed to get Pod %s of [%s/%s], error: %v", podName, ns, tcName, err)
+			continue
+		}
+
+		capture := v1alpha1.TiCDCCapture{
+			PodName: podName,
+			Ready:   false,
+		}
+		status, err := m.deps.CDCControl.GetStatus(tc, int32(id))
 		if err != nil {
 			klog.Warningf("Failed to get status for Pod %s of [%s/%s], error: %v", podName, ns, tcName, err)
+			allCapturesReady = false
 		} else {
-			ticdcCaptures[podName] = v1alpha1.TiCDCCapture{
-				PodName: podName,
-				ID:      capture.ID,
-				Version: capture.Version,
-				IsOwner: capture.IsOwner,
-			}
+			capture.ID = status.ID
+			capture.Version = status.Version
+			capture.IsOwner = status.IsOwner
+			capture.Ready = true
 		}
+
+		ticdcCaptures[podName] = capture
 	}
-	if len(ticdcCaptures) == int(tc.TiCDCDeployDesiredReplicas()) {
-		tc.Status.TiCDC.Synced = true
-	}
+
+	tc.Status.TiCDC.Synced = len(ticdcCaptures) == int(tc.TiCDCDeployDesiredReplicas()) && allCapturesReady
 	tc.Status.TiCDC.Captures = ticdcCaptures
 
 	return nil
@@ -544,7 +559,7 @@ func labelTiCDC(tc *v1alpha1.TidbCluster) label.Label {
 }
 
 func ticdcStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi.PDControlInterface, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if statefulSetIsUpgrading(set) {
+	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}
 	instanceName := tc.GetInstanceName()

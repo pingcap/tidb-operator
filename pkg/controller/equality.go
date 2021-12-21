@@ -23,7 +23,7 @@ import (
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -82,7 +82,7 @@ func ServiceEqual(newSvc, oldSvc *corev1.Service) (bool, error) {
 		}
 		equal := apiequality.Semantic.DeepEqual(oldSpec, newSvc.Spec)
 		if !equal {
-			if klog.V(2) {
+			if klog.V(2).Enabled() {
 				diff := cmp.Diff(oldSpec, newSvc.Spec)
 				klog.V(2).Infof("Service spec diff for %s/%s: %s", newSvc.Namespace, newSvc.Name, diff)
 			}

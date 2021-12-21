@@ -24,7 +24,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // BackupScheduleStatusUpdaterInterface is an interface used to update the BackupScheduleStatus associated with a BackupSchedule.

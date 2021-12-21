@@ -21,12 +21,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
+	"github.com/Masterminds/semver"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,7 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 )
@@ -202,7 +204,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		return err
 	}
 	if setNotExist {
-		err = SetStatefulSetLastAppliedConfigAnnotation(newPDSet)
+		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
 			return err
 		}
@@ -216,8 +218,8 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
 	if !tc.Status.PD.Synced && !templateEqual(newPDSet, oldPDSet) && (NeedForceUpgrade(tc.Annotations) || *oldPDSet.Spec.Replicas < 2) {
 		tc.Status.PD.Phase = v1alpha1.UpgradePhase
-		setUpgradePartition(newPDSet, 0)
-		errSTS := UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+		mngerutils.SetUpgradePartition(newPDSet, 0)
+		errSTS := mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
 		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
 	}
 
@@ -246,7 +248,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
 }
 
 // shouldRecover checks whether we should perform recovery operation.
@@ -414,12 +416,12 @@ func (m *pdMemberManager) syncPDConfigMap(tc *v1alpha1.TidbCluster, set *apps.St
 
 	var inUseName string
 	if set != nil {
-		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.PDMemberName(tc.Name))
 		})
 	}
 
-	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BasePDSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BasePDSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -508,7 +510,7 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 }
 
 func (m *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if statefulSetIsUpgrading(set) {
+	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}
 	instanceName := tc.GetInstanceName()

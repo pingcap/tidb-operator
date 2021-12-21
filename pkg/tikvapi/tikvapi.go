@@ -23,7 +23,7 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -56,8 +56,12 @@ func (c *tikvClient) GetLeaderCount() (int, error) {
 		}
 	}()
 
-	for mf := range mfChan {
-		fm := prom2json.NewFamily(mf)
+	fms := []*prom2json.Family{}
+	for mfc := range mfChan {
+		fm := prom2json.NewFamily(mfc)
+		fms = append(fms, fm)
+	}
+	for _, fm := range fms {
 		if fm.Name == metricNameRegionCount {
 			for _, m := range fm.Metrics {
 				if m, ok := m.(prom2json.Metric); ok && m.Labels["type"] == labelNameLeaderCount {
