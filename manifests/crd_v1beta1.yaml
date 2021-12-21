@@ -12346,9 +12346,6 @@ spec:
             clusterDomain:
               type: string
             configUpdateStrategy:
-              enum:
-              - InPlace
-              - RollingUpdate
               type: string
             discovery:
               properties:

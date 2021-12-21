@@ -365,10 +365,6 @@ spec:
               clusterDomain:
                 type: string
               configUpdateStrategy:
-                default: InPlace
-                enum:
-                - InPlace
-                - RollingUpdate
                 type: string
               discovery:
                 properties:
@@ -7325,7 +7321,6 @@ spec:
                 default: Retain
                 type: string
               schedulerName:
-                default: tidb-scheduler
                 type: string
               serviceAccount:
                 type: string
