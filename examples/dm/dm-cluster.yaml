@@ -8,17 +8,19 @@ spec:
   discovery: {}
   master:
     baseImage: pingcap/dm
+    maxFailoverCount: 0
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
-    storageSize: "1Gi"
+    storageSize: "10Gi"
     requests: {}
     config: {}
   worker:
     baseImage: pingcap/dm
+    maxFailoverCount: 0
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
-    storageSize: "1Gi"
+    storageSize: "100Gi"
     requests: {}
     config: {}
