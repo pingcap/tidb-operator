@@ -50,7 +50,7 @@ func NewDefaultTiDBNGMonitoringControl(
 	ngmMnger manager.TiDBNGMonitoringManager,
 	reclaimPolicyManager ReclaimPolicyManager,
 	recorder record.EventRecorder,
-) ControlInterface {
+) *defaultTiDBNGMonitoringControl {
 
 	return &defaultTiDBNGMonitoringControl{
 		deps:                 deps,
@@ -161,4 +161,32 @@ func (c *defaultTiDBNGMonitoringControl) validate(tngm *v1alpha1.TidbNGMonitorin
 		return false
 	}
 	return true
+}
+
+type FakeTiDBNGMonitoringControl struct {
+	reconcile func(*v1alpha1.TidbNGMonitoring) error
+
+	update func(*v1alpha1.TidbNGMonitoring) (*v1alpha1.TidbNGMonitoring, error)
+}
+
+func (c *FakeTiDBNGMonitoringControl) MockReconcile(reconcile func(*v1alpha1.TidbNGMonitoring) error) {
+	c.reconcile = reconcile
+}
+
+func (c *FakeTiDBNGMonitoringControl) MockUpdate(update func(*v1alpha1.TidbNGMonitoring) (*v1alpha1.TidbNGMonitoring, error)) {
+	c.update = update
+}
+
+func (c *FakeTiDBNGMonitoringControl) Reconcile(tngm *v1alpha1.TidbNGMonitoring) error {
+	if c.reconcile != nil {
+		return c.reconcile(tngm)
+	}
+	return nil
+}
+
+func (c *FakeTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring) (*v1alpha1.TidbNGMonitoring, error) {
+	if c.update != nil {
+		return c.update(tngm)
+	}
+	return tngm, nil
 }
