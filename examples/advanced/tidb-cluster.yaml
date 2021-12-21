@@ -28,7 +28,7 @@ spec:
 
   ## ImagePullPolicy of TiDB cluster Pods
   ## Ref: https://kubernetes.io/docs/concepts/configuration/overview/#container-images
-  imagePullPolicy: IfNotPresent
+  # imagePullPolicy: IfNotPresent
 
   ## If private registry is used, imagePullSecrets may be set
   ## You can also set this in service account
@@ -46,7 +46,7 @@ spec:
 
   ## Enable PVC/PV reclaim for orphan PVC/PV left by statefulset scale-in.
   ## When set to `true`, PVC/PV that are not used by any tidb cluster pods will be deleted automatically.
-  enablePVReclaim: false
+  # enablePVReclaim: false
 
   ## Persistent volume reclaim policy applied to the PV consumed by the TiDB cluster, default to `Retain`.
   ## Note that the reclaim policy Recycle may not be supported by some storage types, e.g. local.
@@ -96,7 +96,7 @@ spec:
 
   ## Use the node network namespace, default to false
   ## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#host-namespaces
-  hostNetwork: false
+  # hostNetwork: false
 
   ## specify resource requirements for discovery deployment
   # discovery:
@@ -113,7 +113,7 @@ spec:
   ## SchedulerName of TiDB cluster pods.
   ## If specified, the pods will be scheduled by the specified scheduler.
   ## Can be overwritten by component settings.
-  schedulerName: tidb-scheduler
+  #schedulerName: default-scheduler
 
   ## Affinity for pod scheduling, will be overwritten by each cluster component's specific affinity setting
   ## Can refer to PD/TiDB/TiKV affinity settings, and ensure only cluster-scope general settings here
@@ -158,14 +158,14 @@ spec:
     ## pd-server configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/pd-configuration-file
     config: |
-      lease = 3
-      enable-prevote = true
+      [dashboard]
+        internal-proxy = true
 
     ## The desired replicas
     replicas: 3
 
     ## max inprogress failover PD pod counts
-    # maxFailoverCount: 3
+    maxFailoverCount: 0
 
     ## describes the compute resource requirements and limits.
     ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
@@ -197,7 +197,7 @@ spec:
     # hostNetwork: false
     # serviceAccount: advanced-tidb-pd
     # priorityClassName: system-cluster-critical
-    # schedulerName: tidb-scheduler
+    # schedulerName: default-scheduler
     # nodeSelector:
     #   app.kubernetes.io/component: pd
     # annotations:
@@ -339,14 +339,14 @@ spec:
     ## tidb-server Configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/tidb-configuration-file
     config: |
-      level = "info"
-      enable-timestamp = true
+      [performance]
+        tcp-keep-alive = true
 
     ## The desired replicas
     replicas: 3
 
     ## max inprogress failover TiDB pod counts
-    # maxFailoverCount: 3
+    maxFailoverCount: 0
 
     ## describes the compute resource requirements.
     ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
@@ -384,7 +384,7 @@ spec:
     # hostNetwork: false
     # serviceAccount: advanced-tidb-tidb
     # priorityClassName: system-cluster-critical
-    # schedulerName: tidb-scheduler
+    # schedulerName: default-scheduler
     # nodeSelector:
     #   app.kubernetes.io/component: tidb
     # annotations:
@@ -558,13 +558,13 @@ spec:
     ## tikv-server configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/tikv-configuration-file
     config: |
-      prevote = true
+      log-level = "info"
 
     ## The desired replicas
     replicas: 3
 
     ## max inprogress failover TiKV pod counts
-    # maxFailoverCount: 3
+    maxFailoverCount: 0
 
     ## describes the compute resource requirements.
     ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
@@ -590,7 +590,7 @@ spec:
     # hostNetwork: false
     # serviceAccount: advanced-tidb-tikv
     # priorityClassName: system-cluster-critical
-    # schedulerName: tidb-scheduler
+    # schedulerName: default-scheduler
     # nodeSelector:
     #   app.kubernetes.io/component: tikv
     # annotations:
@@ -666,10 +666,10 @@ spec:
     mountClusterClientSecret: true
 
     ## if enabled, the RocksDB log will be shown in a separate sidecar container
-    separateRocksDBLog: true
+    # separateRocksDBLog: true
 
     ## if enabled, the Raft log will be shown in a separate sidecar container
-    separateRaftLog: true
+    # separateRaftLog: true
 
     ## configures RocksDB/Raft log sidecar container resource requirements
     # logTailer:
@@ -807,7 +807,7 @@ spec:
   #   hostNetwork: false
   #   serviceAccount: advanced-tidb-ticdc
   #   priorityClassName: system-cluster-critical
-  #   schedulerName: tidb-scheduler
+  #   schedulerName: default-scheduler
   #   nodeSelector:
   #     app.kubernetes.io/component: ticdc
   #   annotations:
@@ -852,11 +852,11 @@ spec:
   #   ##################################
   #   # Advanced TiFlash Configuration #
   #   ##################################
-  #   maxFailoverCount: 3
+  #   maxFailoverCount: 0
   #   hostNetwork: false
   #   serviceAccount: advanced-tidb-tiflash
   #   priorityClassName: system-cluster-critical
-  #   schedulerName: tidb-scheduler
+  #   schedulerName: default-scheduler
   #   nodeSelector:
   #     app.kubernetes.io/component: tiflash
   #   annotations:
