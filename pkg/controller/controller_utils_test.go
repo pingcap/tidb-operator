@@ -132,6 +132,20 @@ func TestGetTiDBClusterAutoScalerOwnerRef(t *testing.T) {
 	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
 }
 
+func TestGetTiDBNGMonitoringOwnerRef(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tngm := newTidbNGMonitoring()
+	tngm.UID = types.UID("demo-uid")
+	ref := GetTiDBNGMonitoringOwnerRef(tngm)
+	g.Expect(ref.APIVersion).To(Equal(tidbNGMonitoringKind.GroupVersion().String()))
+	g.Expect(ref.Kind).To(Equal(tidbNGMonitoringKind.Kind))
+	g.Expect(ref.Name).To(Equal(tngm.GetName()))
+	g.Expect(ref.UID).To(Equal(types.UID("demo-uid")))
+	g.Expect(*ref.Controller).To(BeTrue())
+	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
+}
+
 func TestGetServiceType(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -387,6 +401,11 @@ func TestEmptyClone(t *testing.T) {
 			empty: &v1alpha1.DMCluster{},
 		},
 		{
+			name:  "tidb-ng-monitoring",
+			obj:   newTidbNGMonitoring(),
+			empty: &v1alpha1.TidbNGMonitoring{},
+		},
+		{
 			name:  "backup",
 			obj:   newBackup(),
 			empty: &v1alpha1.Backup{},
@@ -430,6 +449,10 @@ func TestDeepCopyClientObject(t *testing.T) {
 		{
 			name: "dm-cluster",
 			obj:  newDMCluster(),
+		},
+		{
+			name: "tidb-ng-monitoring",
+			obj:  newTidbNGMonitoring(),
 		},
 		{
 			name: "backup",
@@ -573,6 +596,18 @@ func newDMCluster() *v1alpha1.DMCluster {
 		},
 	}
 	return dc
+}
+
+func newTidbNGMonitoring() *v1alpha1.TidbNGMonitoring {
+	tngm := &v1alpha1.TidbNGMonitoring{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1alpha1.TidbNGMonitoringSpec{},
+	}
+
+	return tngm
 }
 
 func newService(tc *v1alpha1.TidbCluster, _ string) *corev1.Service {
