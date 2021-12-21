@@ -93,8 +93,6 @@ func TestWorkerMemberManagerSyncCreate(t *testing.T) {
 			g.Expect(err).To(Succeed())
 			cmName = cmGen.Name
 			g.Expect(cmName).To(Equal(controller.DMWorkerMemberName(dcName))) // name not changed
-			g.Expect(mngerutils.AddConfigMapDigestSuffix(cmGen)).To(Succeed())
-			cmName = cmGen.Name
 		}
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: cmName}}
 		key := client.ObjectKeyFromObject(cm)
@@ -208,6 +206,7 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 		t.Log(test.name)
 
 		dc := newDMClusterForWorker()
+		dc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
 		ns := dc.Namespace
 		dcName := dc.Name
 		triggerDeleteWorker := false
@@ -235,7 +234,6 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 
 		oldCm, err := getWorkerConfigMap(dc)
 		g.Expect(err).To(Succeed())
-		g.Expect(mngerutils.AddConfigMapDigestSuffix(oldCm)).To(Succeed())
 		oldSvc := getNewWorkerHeadlessServiceForDMCluster(dc)
 		oldSvc.Spec.Ports[0].Port = 8888
 		oldSet, err := getNewWorkerSetForDMCluster(dc, oldCm)
@@ -259,8 +257,8 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 			cmGen, err := getWorkerConfigMap(dc)
 			g.Expect(err).To(Succeed())
 			cmName = cmGen.Name
-			g.Expect(cmName).To(Equal(controller.DMWorkerMemberName(dcName))) // name not changed
-			g.Expect(mngerutils.AddConfigMapDigestSuffix(cmGen)).To(Succeed())
+			g.Expect(cmName).To(Equal(controller.DMWorkerMemberName(dcName)))  // name not changed
+			g.Expect(mngerutils.AddConfigMapDigestSuffix(cmGen)).To(Succeed()) // should trigger ConfigMap rolling update
 			cmName = cmGen.Name
 		}
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: cmName}}
@@ -612,6 +610,7 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 		t.Log(test.name)
 
 		dc := newDMClusterForWorker()
+		dc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
 		ns := dc.Namespace
 		dcName := dc.Name
 
@@ -623,7 +622,6 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 
 		oldCm, err := getWorkerConfigMap(dc)
 		g.Expect(err).To(Succeed())
-		g.Expect(mngerutils.AddConfigMapDigestSuffix(oldCm)).To(Succeed())
 		oldSvc := getNewWorkerHeadlessServiceForDMCluster(dc)
 		oldSvc.Spec.Ports[0].Port = 8888
 		oldSet, err := getNewWorkerSetForDMCluster(dc, oldCm)
