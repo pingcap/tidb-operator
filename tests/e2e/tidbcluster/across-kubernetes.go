@@ -326,12 +326,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
 			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				for _, member := range tc.Status.PD.Members {
-					if member.Health {
-						return false, nil
-					}
-				}
-				return true, nil
+				return !tc.Status.PD.Synced, nil
 			})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
@@ -537,12 +532,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
 			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				for _, member := range tc.Status.PD.Members {
-					if member.Health {
-						return false, nil
-					}
-				}
-				return true, nil
+				return !tc.Status.PD.Synced, nil
 			})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
@@ -572,15 +562,15 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 func GetTCForAcrossKubernetes(ns, name, version, clusterDomain string, joinTC *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	tc := fixture.GetTidbCluster(ns, name, version)
 	tc = fixture.AddTiFlashForTidbCluster(tc)
-	tc = fixture.AddTiCDCForTidbCluster(tc)
-	tc = fixture.AddPumpForTidbCluster(tc)
+	// tc = fixture.AddTiCDCForTidbCluster(tc)
+	// tc = fixture.AddPumpForTidbCluster(tc)
 
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
 	tc.Spec.TiFlash.Replicas = 1
-	tc.Spec.TiCDC.Replicas = 1
-	tc.Spec.Pump.Replicas = 1
+	// tc.Spec.TiCDC.Replicas = 1
+	// tc.Spec.Pump.Replicas = 1
 
 	tc.Spec.ClusterDomain = clusterDomain
 	if joinTC != nil {

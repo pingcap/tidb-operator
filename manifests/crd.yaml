@@ -29021,6 +29021,8 @@ spec:
                           type: object
                       type: object
                     type: object
+                required:
+                - synced
                 type: object
               pump:
                 properties:
