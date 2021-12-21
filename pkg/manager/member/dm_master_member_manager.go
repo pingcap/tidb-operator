@@ -675,6 +675,8 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	masterContainer.Env = util.AppendEnv(env, baseMasterSpec.Env())
 	podSpec.Volumes = append(vols, baseMasterSpec.AdditionalVolumes()...)
 	podSpec.Containers = append([]corev1.Container{masterContainer}, baseMasterSpec.AdditionalContainers()...)
+	var initContainers []corev1.Container // no default initContainers now
+	podSpec.InitContainers = append(initContainers, baseMasterSpec.InitContainers()...)
 
 	masterSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

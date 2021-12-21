@@ -486,6 +486,8 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	workerContainer.Env = util.AppendEnv(env, baseWorkerSpec.Env())
 	podSpec.Volumes = append(vols, baseWorkerSpec.AdditionalVolumes()...)
 	podSpec.Containers = append([]corev1.Container{workerContainer}, baseWorkerSpec.AdditionalContainers()...)
+	var initContainers []corev1.Container // no default initContainers now
+	podSpec.InitContainers = append(initContainers, baseWorkerSpec.InitContainers()...)
 
 	workerSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

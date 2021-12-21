@@ -1165,7 +1165,77 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 			},
 			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
 		},
-
+		{
+			name: "dm-master init containers",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							InitContainers: []corev1.Container{{Name: "init-container"}},
+						},
+					},
+					Worker: &v1alpha1.WorkerSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.InitContainers).Should(HaveLen(1))
+				g.Expect(sts.Spec.Template.Spec.InitContainers[0].Name).Should(Equal("init-container"))
+			},
+		},
+		{
+			name: "dm-master additionalVolumeMounts",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							AdditionalVolumeMounts: []corev1.VolumeMount{{Name: "additional-volume-mount"}},
+						},
+					},
+					Worker: &v1alpha1.WorkerSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				found := false
+				for _, vm := range sts.Spec.Template.Spec.Containers[0].VolumeMounts {
+					if vm.Name == "additional-volume-mount" {
+						found = true
+					}
+				}
+				g.Expect(found).To(BeTrue())
+			},
+		},
+		{
+			name: "dm-master TerminationGracePeriodSeconds",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							TerminationGracePeriodSeconds: pointer.Int64Ptr(123),
+						},
+					},
+					Worker: &v1alpha1.WorkerSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				var expect = int64(123)
+				g.Expect(sts.Spec.Template.Spec.TerminationGracePeriodSeconds).To(Equal(&expect))
+			},
+		},
 		{
 			name: "dm-master without component spec fields",
 			dc: v1alpha1.DMCluster{
