@@ -100,6 +100,14 @@ func TestLabelDMWorker(t *testing.T) {
 	g.Expect(l.IsDMWorker()).To(BeTrue())
 }
 
+func TestLabelNGMonitoring(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	l := NewTiDBNGMonitoring()
+	l.NGMonitoring()
+	g.Expect(l.IsNGMonitoring()).To(BeTrue())
+}
+
 func TestLabelSelector(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -167,6 +175,24 @@ func TestDMLabelLabels(t *testing.T) {
 		NameLabelKey:      "dm-cluster",
 		ManagedByLabelKey: "tidb-operator",
 		ComponentLabelKey: "dm-master",
+		InstanceLabelKey:  "demo",
+		NamespaceLabelKey: "ns-1",
+	}
+	g.Expect(ls).To(Equal(m))
+}
+
+func TestTiDBNGMonitoringLabelLabels(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	l := NewTiDBNGMonitoring()
+	l.NGMonitoring()
+	l.Instance("demo")
+	l.Namespace("ns-1")
+	ls := l.Labels()
+	m := map[string]string{
+		NameLabelKey:      "tidb-ng-monitoring",
+		ManagedByLabelKey: "tidb-operator",
+		ComponentLabelKey: "ng-monitoring",
 		InstanceLabelKey:  "demo",
 		NamespaceLabelKey: "ns-1",
 	}
