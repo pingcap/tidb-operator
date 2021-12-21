@@ -100,7 +100,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
-		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, cfg, nil, fw, f)
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, cfg, fw, f)
 
 		if ocfg.Enabled(features.AdvancedStatefulSet) {
 			stsGetter = astsHelper.NewHijackClient(c, asCli).AppsV1()

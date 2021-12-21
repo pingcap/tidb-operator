@@ -93,7 +93,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
-		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 	})
 
 	ginkgo.JustBeforeEach(func() {
