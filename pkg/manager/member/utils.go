@@ -37,7 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
@@ -201,6 +201,15 @@ func getStsAnnotations(tcAnns map[string]string, component string) map[string]st
 func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 	m := map[string]corev1.Container{}
 	for _, c := range podSpec.Containers {
+		m[c.Name] = c
+	}
+	return m
+}
+
+// MapInitContainers index init containers of Pod by container name in favor of looking up
+func MapInitContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
+	m := map[string]corev1.Container{}
+	for _, c := range podSpec.InitContainers {
 		m[c.Name] = c
 	}
 	return m

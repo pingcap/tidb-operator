@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 
@@ -356,7 +356,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 				}
 				privileged := true
 				initContainers = append(initContainers, corev1.Container{
-					Name:  "init",
+					Name:  "sysctl",
 					Image: tc.HelperImage(),
 					Command: []string{
 						"sh",
@@ -426,7 +426,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace())
 	}
 
-	initContainers = append(initContainers, corev1.Container{
+	initializer := corev1.Container{
 		Name:  "init",
 		Image: tc.HelperImage(),
 		Command: []string{
@@ -436,7 +436,11 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		},
 		Env:          initEnv,
 		VolumeMounts: initVolMounts,
-	})
+	}
+	if spec.Initializer != nil {
+		initializer.Resources = controller.ContainerResource(spec.Initializer.ResourceRequirements)
+	}
+	initContainers = append(initContainers, initializer)
 
 	stsLabels := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)

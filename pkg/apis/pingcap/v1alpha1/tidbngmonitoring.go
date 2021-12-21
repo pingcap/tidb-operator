@@ -29,7 +29,7 @@ func (tngm *TidbNGMonitoring) NGMonitoringImage() string {
 		if version == nil {
 			version = tngm.Spec.Version
 		}
-		if *version == "" {
+		if version == nil || *version == "" {
 			image = baseImage
 		} else {
 			image = fmt.Sprintf("%s:%s", baseImage, *version)

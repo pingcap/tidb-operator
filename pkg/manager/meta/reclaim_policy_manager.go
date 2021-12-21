@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type reclaimPolicyManager struct {
@@ -135,5 +135,9 @@ func (m *FakeReclaimPolicyManager) Sync(_ *v1alpha1.TidbCluster) error {
 }
 
 func (m *FakeReclaimPolicyManager) SyncDM(_ *v1alpha1.DMCluster) error {
+	return m.err
+}
+
+func (m *FakeReclaimPolicyManager) SyncTiDBNGMonitoring(_ *v1alpha1.TidbNGMonitoring) error {
 	return m.err
 }
