@@ -51,7 +51,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/component-base/logs"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -335,11 +335,14 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		// only deploy MySQL and TiDB for DM if CRDs and TiDB Operator installed.
 		// setup upstream MySQL instances and the downstream TiDB cluster for DM testing.
 		// if we can only setup these resource for DM tests with something like `--focus` or `--skip`, that should be better.
-		oa.DeployDMMySQLOrDie(tests.DMMySQLNamespace)
-		oa.DeployDMTiDBOrDie()
+		if e2econfig.TestConfig.InstallDMMysql {
+			oa.DeployDMMySQLOrDie(tests.DMMySQLNamespace)
+			oa.DeployDMTiDBOrDie()
+		} else {
+			ginkgo.By("Skip installing MySQL and TiDB for DM tests")
+		}
 	} else {
 		ginkgo.By("Skip installing tidb-operator")
-		ginkgo.By("Skip installing MySQL and TiDB for DM tests")
 	}
 
 	ginkgo.By("Installing cert-manager")

@@ -74,6 +74,8 @@ const (
 	RaftLogTailerMemberType MemberType = "raftlog"
 	// TidbMonitorMemberType is tidbmonitor type
 	TidbMonitorMemberType MemberType = "tidbmonitor"
+	// NGMonitoringMemberType is ng monitoring type
+	NGMonitoringMemberType MemberType = "ng-monitoring"
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )
@@ -579,6 +581,11 @@ type TiFlashSpec struct {
 	// +optional
 	Config *TiFlashConfigWraper `json:"config,omitempty"`
 
+	// Initializer is the configurations of the init container for TiFlash
+	//
+	// +optional
+	Initializer *InitContainerSpec `json:"initializer,omitempty"`
+
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
@@ -655,6 +662,13 @@ type TiCDCConfig struct {
 // LogTailerSpec represents an optional log tailer sidecar container
 // +k8s:openapi-gen=true
 type LogTailerSpec struct {
+	corev1.ResourceRequirements `json:",inline"`
+}
+
+// InitContainerSpec contains basic spec about a init container
+//
+// +k8s:openapi-gen=true
+type InitContainerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
 }
 
@@ -1129,17 +1143,34 @@ type TiDBFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
+const EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
+
+// The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
+//
+// - `none`: doing nothing.
+// - `delete-pod`: delete pod and remove the evict-leader scheduler from PD.
+const (
+	EvictLeaderValueNone      = "none"
+	EvictLeaderValueDeletePod = "delete-pod"
+)
+
+type EvictLeaderStatus struct {
+	PodCreateTime metav1.Time `json:"podCreateTime,omitempty"`
+	Value         string      `json:"value,omitempty"`
+}
+
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
-	Synced          bool                        `json:"synced,omitempty"`
-	Phase           MemberPhase                 `json:"phase,omitempty"`
-	BootStrapped    bool                        `json:"bootStrapped,omitempty"`
-	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
-	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
-	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
-	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
-	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
-	Image           string                      `json:"image,omitempty"`
+	Synced          bool                          `json:"synced,omitempty"`
+	Phase           MemberPhase                   `json:"phase,omitempty"`
+	BootStrapped    bool                          `json:"bootStrapped,omitempty"`
+	StatefulSet     *apps.StatefulSetStatus       `json:"statefulSet,omitempty"`
+	Stores          map[string]TiKVStore          `json:"stores,omitempty"`
+	PeerStores      map[string]TiKVStore          `json:"peerStores,omitempty"`
+	TombstoneStores map[string]TiKVStore          `json:"tombstoneStores,omitempty"`
+	FailureStores   map[string]TiKVFailureStore   `json:"failureStores,omitempty"`
+	Image           string                        `json:"image,omitempty"`
+	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status

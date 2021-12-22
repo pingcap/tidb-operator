@@ -28,7 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/webhook/statefulset"
 	"github.com/pingcap/tidb-operator/pkg/webhook/strategy"
 	"k8s.io/component-base/logs"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 var (

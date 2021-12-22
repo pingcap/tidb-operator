@@ -42,6 +42,7 @@ type Config struct {
 
 	TidbVersions         string          `yaml:"tidb_versions" json:"tidb_versions"`
 	InstallOperator      bool            `yaml:"install_opeartor" json:"install_opeartor"`
+	InstallDMMysql       bool            `yaml:"install_dm_mysql" json:"install_dm_mysql"`
 	OperatorTag          string          `yaml:"operator_tag" json:"operator_tag"`
 	OperatorImage        string          `yaml:"operator_image" json:"operator_image"`
 	BackupImage          string          `yaml:"backup_image" json:"backup_image"`

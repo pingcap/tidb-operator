@@ -29,14 +29,15 @@ import (
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
-	pdutil "github.com/pingcap/tidb-operator/tests/e2e/util/pd"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 
 	"github.com/onsi/ginkgo"
+	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -157,72 +158,87 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to check status")
 		})
 
-	})
+		ginkgo.It("Deploy cluster with TLS-enabled across kubernetes", func() {
+			ns1, ns2 := namespaces[0], namespaces[1]
+			tcName1, tcName2 := "tls-cluster-1", "tls-cluster-2"
+			tc1 := GetTCForAcrossKubernetes(ns1, tcName1, version, clusterDomain, nil)
+			tc2 := GetTCForAcrossKubernetes(ns2, tcName2, version, clusterDomain, tc1)
 
-	ginkgo.Describe("[Advanced]", func() {
+			ginkgo.By("Installing initial tidb CA certificate")
+			err := InstallTiDBIssuer(ns1, tcName1)
+			framework.ExpectNoError(err, "failed to install CA certificate")
 
-		// create three namespace
-		ginkgo.BeforeEach(func() {
-			ns1 := namespaces[0]
-			namespaces = append(namespaces, ns1+"-1", ns1+"-2")
-		})
-
-		version := utilimage.TiDBLatest
-		clusterDomain := defaultClusterDomain
-
-		ginkgo.It("Deploy cluster with existing data across kubernetes", func() {
-			ns1 := namespaces[0]
-			ns2 := namespaces[1]
-			ns3 := namespaces[2]
-
-			tc1 := GetTCForAcrossKubernetes(ns1, "update-1", version, clusterDomain, nil)
-			tc2 := GetTCForAcrossKubernetes(ns2, "update-2", version, clusterDomain, tc1)
-			tc3 := GetTCForAcrossKubernetes(ns3, "update-3", version, clusterDomain, tc2)
-
-			ginkgo.By("Deploy the basic cluster-1 with empty cluster domain")
-			tc1.Spec.ClusterDomain = ""
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Update cluster domain of cluster-1")
-			err := controller.GuaranteedUpdate(genericCli, tc1, func() error {
-				tc1.Spec.ClusterDomain = defaultClusterDomain
-				return nil
-			})
-			framework.ExpectNoError(err, "failed to update cluster domain of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
-			err = oa.WaitForTidbClusterReady(tc1, 30*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "failed to wait for cluster-1 ready: %s/%s", tc1.Namespace, tc1.Name)
-
-			localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, tc1.Namespace, fmt.Sprintf("svc/%s-pd", tc1.Name), 2379)
-			framework.ExpectNoError(err, "failed to port-forward pd server of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
-			defer cancel()
-
-			ginkgo.By("Update pd's peerURL of cluster-1")
-			pdAddr := fmt.Sprintf("%s:%d", localHost, localPort)
-			resp, err := pdutil.GetMembersV2(pdAddr)
-			framework.ExpectNoError(err, " failed to get pd members of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
-			for _, member := range resp.Members {
-				peerURLs := []string{}
-				for _, url := range member.PeerURLs {
-					// url ex: http://cluster-1-pd-0.cluster-1-pd-peer.default.svc:2380
-					fields := strings.Split(url, ":")
-					fields[1] = fmt.Sprintf("%s.%s", fields[1], clusterDomain)
-					peerURLs = append(peerURLs, strings.Join(fields, ":"))
+			ginkgo.By("Export initial CA secret and install into other tidb clusters")
+			var caSecret *v1.Secret
+			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+				caSecret, err = c.CoreV1().Secrets(ns1).Get(context.TODO(), fmt.Sprintf("%s-ca-secret", tcName1), metav1.GetOptions{})
+				if err != nil {
+					return false, nil
 				}
-				err := pdutil.UpdateMembePeerURLs(pdAddr, member.ID, peerURLs)
-				framework.ExpectNoError(err, " failed to update peerURLs of pd members of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
+				return true, nil
+			})
+			framework.ExpectNoError(err, "error export initial CA secert")
+			caSecret.Namespace = ns2
+			caSecret.ObjectMeta.ResourceVersion = ""
+			err = genericCli.Create(context.TODO(), caSecret)
+			framework.ExpectNoError(err, "error installing CA secert into cluster %q", tcName2)
+
+			ginkgo.By("Installing tidb cluster issuer with initial ca")
+			err = InstallXK8sTiDBIssuer(ns2, tcName2, tcName1)
+			framework.ExpectNoError(err, "failed to install tidb issuer for cluster %q", tcName2)
+
+			ginkgo.By("Installing tidb server and client certificate")
+			err = InstallXK8sTiDBCertificates(ns1, tcName1, clusterDomain)
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate for cluster: %q", tcName1)
+			err = InstallXK8sTiDBCertificates(ns2, tcName2, clusterDomain)
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate for cluster: %q", tcName2)
+
+			ginkgo.By("Installing tidb components certificates")
+			err = InstallXK8sTiDBComponentsCertificates(ns1, tcName1, clusterDomain)
+			framework.ExpectNoError(err, "failed to install tidb components certificates for cluster: %q", tcName1)
+			err = InstallXK8sTiDBComponentsCertificates(ns2, tcName2, clusterDomain)
+			framework.ExpectNoError(err, "failed to install tidb components certificates for cluster: %q", tcName2)
+
+			ginkgo.By("Installing separate dashboard client certificate")
+			err = installPDDashboardCertificates(ns1, tcName1)
+			framework.ExpectNoError(err, "failed to install separate dashboard client certificate for cluster: %q", tcName1)
+			err = installPDDashboardCertificates(ns2, tcName2)
+			framework.ExpectNoError(err, "failed to install separate dashboard client certificate for cluster: %q", tcName2)
+
+			ginkgo.By("Creating tidb cluster-1 with TLS enabled")
+			tc1DashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName1)
+			tc1.Spec.PD.TLSClientSecretName = &tc1DashTLSName
+			tc1.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+			tc1.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 30*time.Second)
+
+			ginkgo.By("Creating tidb cluster-2 with TLS enabled")
+			tc2DashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName2)
+			tc2.Spec.PD.TLSClientSecretName = &tc2DashTLSName
+			tc2.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+			tc2.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 10*time.Minute, 30*time.Second)
+
+			ginkgo.By("Ensure Dashboard use custom secret")
+			foundSecretName := false
+			// only check cluster-2 here, as cluster-1 is deployed the same as a normal tls-enabled tc.
+			pdSts, err := c.AppsV1().StatefulSets(ns2).Get(context.TODO(), controller.PDMemberName(tcName2), metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get statefulsets for pd")
+			for _, vol := range pdSts.Spec.Template.Spec.Volumes {
+				if vol.Name == "tidb-client-tls" {
+					foundSecretName = true
+					framework.ExpectEqual(vol.Secret.SecretName, tc2DashTLSName)
+					break
+				}
 			}
+			framework.ExpectEqual(foundSecretName, true)
 
-			ginkgo.By("Deploy the basic cluster-2")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Deploy the basic cluster-3")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 5*time.Minute, 10*time.Second)
-
-			ginkgo.By("Deploy status of all clusters")
-			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
-			framework.ExpectNoError(err, "failed to check status")
+			ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns1, tcName1, ""))
+			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName1)
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns2, tcName2, ""))
+			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName2)
 		})
-
 	})
 })
 

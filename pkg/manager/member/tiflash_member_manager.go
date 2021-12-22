@@ -19,13 +19,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
+	"github.com/pingcap/kvproto/pkg/metapb"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -33,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 
@@ -188,7 +190,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 			klog.Infof("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
 			return nil
 		}
-		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)
+		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err
 		}
@@ -227,7 +229,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
 }
 
 func (m *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -238,12 +240,12 @@ func (m *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 
 	var inUseName string
 	if set != nil {
-		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiFlashMemberName(tc.Name))
 		})
 	}
 
-	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiFlashSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiFlashSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +356,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 				}
 				privileged := true
 				initContainers = append(initContainers, corev1.Container{
-					Name:  "init",
+					Name:  "sysctl",
 					Image: tc.HelperImage(),
 					Command: []string{
 						"sh",
@@ -424,7 +426,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace())
 	}
 
-	initContainers = append(initContainers, corev1.Container{
+	initializer := corev1.Container{
 		Name:  "init",
 		Image: tc.HelperImage(),
 		Command: []string{
@@ -434,7 +436,11 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		},
 		Env:          initEnv,
 		VolumeMounts: initVolMounts,
-	})
+	}
+	if spec.Initializer != nil {
+		initializer.Resources = controller.ContainerResource(spec.Initializer.ResourceRequirements)
+	}
+	initContainers = append(initContainers, initializer)
 
 	stsLabels := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)
@@ -833,7 +839,7 @@ func (m *tiflashMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.
 }
 
 func tiflashStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi.PDControlInterface, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if statefulSetIsUpgrading(set) {
+	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}
 	instanceName := tc.GetInstanceName()

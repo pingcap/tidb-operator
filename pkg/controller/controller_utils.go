@@ -32,7 +32,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -57,6 +57,9 @@ var (
 
 	// tidbClusterAutoScalerKind cotnains the schema.GroupVersionKind for TidbClusterAutoScaler controller type.
 	tidbClusterAutoScalerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbClusterAutoScaler")
+
+	// tidbNGMonitoringKind cotnains the schema.GroupVersionKind for TidbNGMonitoring controller type.
+	tidbNGMonitoringKind = v1alpha1.SchemeGroupVersion.WithKind("TidbNGMonitoring")
 )
 
 // RequeueError is used to requeue the item, this error type should't be considered as a real error
@@ -190,6 +193,19 @@ func GetTiDBClusterAutoScalerOwnerRef(tac *v1alpha1.TidbClusterAutoScaler) metav
 		Kind:               tidbClusterAutoScalerKind.Kind,
 		Name:               tac.GetName(),
 		UID:                tac.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+func GetTiDBNGMonitoringOwnerRef(tngm *v1alpha1.TidbNGMonitoring) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         tidbNGMonitoringKind.GroupVersion().String(),
+		Kind:               tidbNGMonitoringKind.Kind,
+		Name:               tngm.GetName(),
+		UID:                tngm.GetUID(),
 		Controller:         &controller,
 		BlockOwnerDeletion: &blockOwnerDeletion,
 	}

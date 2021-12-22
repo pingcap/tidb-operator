@@ -28,7 +28,7 @@ import (
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // JobControlInterface manages Jobs used in backup、restore and clean
