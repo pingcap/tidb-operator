@@ -517,9 +517,9 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 }
 
 func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
-	config := dc.Spec.Worker.Config
-	if config == nil {
-		config = &v1alpha1.WorkerConfig{}
+	config := &v1alpha1.WorkerConfig{}
+	if dc.Spec.Worker.Config != nil {
+		config = dc.Spec.Worker.Config.DeepCopy()
 	}
 
 	// override CA if tls enabled

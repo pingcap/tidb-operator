@@ -50,10 +50,10 @@ type ticdcMemberManager struct {
 }
 
 func getTiCDCConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	config := tc.Spec.TiCDC.Config
-	if config == nil {
+	if tc.Spec.TiCDC.Config == nil {
 		return nil, nil
 	}
+	config := tc.Spec.TiCDC.Config.DeepCopy()
 
 	confText, err := config.MarshalTOML()
 	if err != nil {
