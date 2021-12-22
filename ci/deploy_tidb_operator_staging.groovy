@@ -26,7 +26,6 @@ admissionWebhook:
   replicas: 2
   validation:
     statefulSets: true
-    pods: true
     pingcapResources: false
   mutation:
     pingcapResources: true
