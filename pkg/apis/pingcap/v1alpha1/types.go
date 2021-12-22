@@ -1999,6 +1999,15 @@ type DMClusterSpec struct {
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
+	// ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+	// UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+	// cluster component is needed to reload the configuration change.
+	// UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+	// related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
+	// +kubebuilder:validation:Enum=InPlace;RollingUpdate
+	// +kubebuilder:default=InPlace
+	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
+
 	// Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
 	// Optional: Defaults to false
 	// +optional
@@ -2054,6 +2063,14 @@ type DMClusterSpec struct {
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// StatefulSetUpdateStrategy of DM cluster StatefulSets
+	// +optional
+	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// PodManagementPolicy of DM cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
 
 	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
 	// domains. Scheduler will schedule pods in a way which abides by the constraints.
