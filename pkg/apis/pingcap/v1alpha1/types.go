@@ -1064,6 +1064,7 @@ type Service struct {
 
 // PDStatus is PD status
 type PDStatus struct {
+	// +optional
 	Synced      bool                    `json:"synced"`
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`

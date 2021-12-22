@@ -333,11 +333,11 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				for _, store := range tc.Status.TiKV.Stores {
 					down = down && (store.State == "Disconnected" || store.State == v1alpha1.TiKVStateDown)
 				}
-				return down || len(tc.Status.TiKV.FailureStores) != 0, nil
+				return down, nil
 			})
 			framework.ExpectNoError(err, "waiting for tikv pod to be unavailable")
 
-			ginkgo.By("Restart other component pods and check cluster status")
+			ginkgo.By("Restart other component pods")
 			podList, err := c.CoreV1().Pods(ns1).List(context.TODO(), metav1.ListOptions{})
 			framework.ExpectNoError(err, "list pods under namespace %q", ns1)
 			for _, pod := range podList.Items {
@@ -347,10 +347,13 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				}
 			}
 
+			ginkgo.By("Check cluster components status")
 			componentsFilter := make(map[v1alpha1.MemberType]struct{}, 2)
 			componentsFilter[v1alpha1.TiKVMemberType] = struct{}{}
 			err = oa.WaitForTidbComponentsReady(tc1, componentsFilter, 5*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "restarting components when tikv fails")
+			framework.ExpectNoError(err, "waiting for other components to be ready")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns1, tcName1, ""))
+			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName1)
 
 			ginkgo.By("Fail PD in cluster-1 by setting a wrong image")
 			local, err = cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
@@ -370,7 +373,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
-			ginkgo.By("Restart all component pods except pd and check cluster status")
+			ginkgo.By("Restart other components and check cluster status")
 			podList, err = c.CoreV1().Pods(ns1).List(context.TODO(), metav1.ListOptions{})
 			framework.ExpectNoError(err, "list pods under namespace %q", ns1)
 			for _, pod := range podList.Items {
@@ -380,9 +383,12 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				}
 			}
 
+			ginkgo.By("Check cluster components status")
 			componentsFilter[v1alpha1.PDMemberType] = struct{}{}
 			err = oa.WaitForTidbComponentsReady(tc1, componentsFilter, 5*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "restarting components when pd failed")
+			framework.ExpectNoError(err, "waiting for other components to be ready")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns1, tcName1, ""))
+			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName1)
 		})
 
 		ginkgo.It("TiDBCluter Should work when one of the TidbCluster or the k8s fails", func() {
