@@ -48,6 +48,7 @@ type ControlInterface interface {
 func NewDefaultTiDBNGMonitoringControl(
 	deps *controller.Dependencies,
 	ngmMnger manager.TiDBNGMonitoringManager,
+	assetMnger manager.TiDBNGMonitoringManager,
 	reclaimPolicyManager ReclaimPolicyManager,
 	recorder record.EventRecorder,
 ) *defaultTiDBNGMonitoringControl {
@@ -56,6 +57,7 @@ func NewDefaultTiDBNGMonitoringControl(
 		deps:                 deps,
 		recorder:             recorder,
 		ngmMnger:             ngmMnger,
+		assetMnger:           assetMnger,
 		reclaimPolicyManager: reclaimPolicyManager,
 	}
 }
@@ -65,6 +67,7 @@ type defaultTiDBNGMonitoringControl struct {
 	recorder record.EventRecorder
 
 	ngmMnger             manager.TiDBNGMonitoringManager
+	assetMnger           manager.TiDBNGMonitoringManager
 	reclaimPolicyManager ReclaimPolicyManager
 }
 
@@ -101,14 +104,29 @@ func (c *defaultTiDBNGMonitoringControl) reconcile(tngm *v1alpha1.TidbNGMonitori
 		return nil
 	}
 
-	// reoncile reclaim policy of pvc
-	err := c.reclaimPolicyManager.SyncTiDBNGMonitoring(tngm)
+	var err error
+
+	// only support one tc now
+	tcRef := tngm.Spec.Clusters[0]
+	tc, err := c.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
+	if err != nil {
+		return fmt.Errorf("get tc %s/%s failed: %s", tcRef.Namespace, tcRef.Name, err)
+	}
+
+	// reconcile reclaim policy of pvc
+	err = c.reclaimPolicyManager.SyncTiDBNGMonitoring(tngm)
+	if err != nil {
+		return err
+	}
+
+	// reconcile asset of tc
+	err = c.assetMnger.Sync(tngm, tc)
 	if err != nil {
 		return err
 	}
 
 	// reconcile ng monitoring
-	err = c.ngmMnger.Sync(tngm)
+	err = c.ngmMnger.Sync(tngm, tc)
 	if err != nil {
 		return err
 	}

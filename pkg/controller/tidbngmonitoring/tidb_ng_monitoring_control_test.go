@@ -45,11 +45,12 @@ func TestReconcile(t *testing.T) {
 	type testcase struct {
 		name string
 
-		updateTNGM func(tngm *v1alpha1.TidbNGMonitoring)
-
+		updateTNGM           func(tngm *v1alpha1.TidbNGMonitoring)
+		getTC                func(tngm *v1alpha1.TidbNGMonitoring) *v1alpha1.TidbCluster
 		validateErr          error
 		syncReclaimPolicyErr error
-		syncNGMonitoring     func(tngm *v1alpha1.TidbNGMonitoring) error
+		syncNGMonitoring     func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error
+		syncTCAsset          func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error
 		updeteTNGMErr        error
 		errExpectFn          func(error)
 	}
@@ -57,6 +58,13 @@ func TestReconcile(t *testing.T) {
 	cases := []testcase{
 		{
 			name: "reconcile succeeded",
+			getTC: func(tngm *v1alpha1.TidbNGMonitoring) *v1alpha1.TidbCluster {
+				tc := &v1alpha1.TidbCluster{}
+				tc.Name = "tc"
+				tc.Namespace = "default"
+				tngm.Spec.Clusters = []v1alpha1.TidbClusterRef{{Name: "tc", Namespace: "default"}}
+				return tc
+			},
 			errExpectFn: func(err error) {
 				g.Expect(err).Should(Succeed())
 			},
@@ -69,7 +77,14 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 		{
-			name:                 "sync reclaim policy failed",
+			name: "sync reclaim policy failed",
+			getTC: func(tngm *v1alpha1.TidbNGMonitoring) *v1alpha1.TidbCluster {
+				tc := &v1alpha1.TidbCluster{}
+				tc.Name = "tc"
+				tc.Namespace = "default"
+				tngm.Spec.Clusters = []v1alpha1.TidbClusterRef{{Name: "tc", Namespace: "default"}}
+				return tc
+			},
 			syncReclaimPolicyErr: fmt.Errorf("sync reclaim policy error"),
 			errExpectFn: func(err error) {
 				g.Expect(err).Should(HaveOccurred())
@@ -77,8 +92,27 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 		{
+			name: "tc is not found",
+			getTC: func(tngm *v1alpha1.TidbNGMonitoring) *v1alpha1.TidbCluster {
+				tngm.Spec.Clusters = []v1alpha1.TidbClusterRef{{Name: "tc", Namespace: "default"}}
+				return nil
+			},
+			syncReclaimPolicyErr: fmt.Errorf("sync reclaim policy error"),
+			errExpectFn: func(err error) {
+				g.Expect(err).Should(HaveOccurred())
+				g.Expect(err.Error()).Should(ContainSubstring("not found"))
+			},
+		},
+		{
 			name: "sync ng mmonitoring failed",
-			syncNGMonitoring: func(tngm *v1alpha1.TidbNGMonitoring) error {
+			getTC: func(tngm *v1alpha1.TidbNGMonitoring) *v1alpha1.TidbCluster {
+				tc := &v1alpha1.TidbCluster{}
+				tc.Name = "tc"
+				tc.Namespace = "default"
+				tngm.Spec.Clusters = []v1alpha1.TidbClusterRef{{Name: "tc", Namespace: "default"}}
+				return tc
+			},
+			syncNGMonitoring: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error {
 				return fmt.Errorf("sync ng mmonitoring error")
 			},
 			errExpectFn: func(err error) {
@@ -87,8 +121,32 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 		{
-			name:          "status of TidbNGMonitoring have not changed",
-			updateTNGM:    nil,
+			name: "sync tc asset failed",
+			getTC: func(tngm *v1alpha1.TidbNGMonitoring) *v1alpha1.TidbCluster {
+				tc := &v1alpha1.TidbCluster{}
+				tc.Name = "tc"
+				tc.Namespace = "default"
+				tngm.Spec.Clusters = []v1alpha1.TidbClusterRef{{Name: "tc", Namespace: "default"}}
+				return tc
+			},
+			syncTCAsset: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error {
+				return fmt.Errorf("sync tc asset error")
+			},
+			errExpectFn: func(err error) {
+				g.Expect(err).Should(HaveOccurred())
+				g.Expect(err.Error()).Should(ContainSubstring("sync tc asset error"))
+			},
+		},
+		{
+			name:       "status of TidbNGMonitoring have not changed",
+			updateTNGM: nil,
+			getTC: func(tngm *v1alpha1.TidbNGMonitoring) *v1alpha1.TidbCluster {
+				tc := &v1alpha1.TidbCluster{}
+				tc.Name = "tc"
+				tc.Namespace = "default"
+				tngm.Spec.Clusters = []v1alpha1.TidbClusterRef{{Name: "tc", Namespace: "default"}}
+				return tc
+			},
 			updeteTNGMErr: fmt.Errorf("update TidbNGMonitoring error"), // shouldn't return this err
 			errExpectFn: func(err error) {
 				g.Expect(err).Should(Succeed())
@@ -97,7 +155,14 @@ func TestReconcile(t *testing.T) {
 		{
 			name:       "update TidbNGMonitoring failed",
 			updateTNGM: nil,
-			syncNGMonitoring: func(tngm *v1alpha1.TidbNGMonitoring) error {
+			getTC: func(tngm *v1alpha1.TidbNGMonitoring) *v1alpha1.TidbCluster {
+				tc := &v1alpha1.TidbCluster{}
+				tc.Name = "tc"
+				tc.Namespace = "default"
+				tngm.Spec.Clusters = []v1alpha1.TidbClusterRef{{Name: "tc", Namespace: "default"}}
+				return tc
+			},
+			syncNGMonitoring: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error {
 				tngm.Status.NGMonitoring.Synced = true
 				return nil
 			},
@@ -112,7 +177,8 @@ func TestReconcile(t *testing.T) {
 	for _, testcase := range cases {
 		t.Logf("testcase: %s", testcase.name)
 
-		control := newTiDBNGMonitoringControlForTest()
+		control, deps := newTiDBNGMonitoringControlForTest()
+		tcIndexer := deps.InformerFactory.Pingcap().V1alpha1().TidbClusters().Informer().GetIndexer()
 
 		tngm := newTidbNGMonitoringForTest()
 		if testcase.updateTNGM != nil {
@@ -129,6 +195,13 @@ func TestReconcile(t *testing.T) {
 		})
 		defer validatePatch.Reset()
 
+		// mock tc
+		if testcase.getTC != nil {
+			if tc := testcase.getTC(tngm); tc != nil {
+				tcIndexer.Add(tc)
+			}
+		}
+
 		// mock result of reclaim policy synchronization
 		if testcase.syncReclaimPolicyErr != nil {
 			control.reclaimPolicyManager.(*meta.FakeReclaimPolicyManager).SetSyncError(testcase.syncReclaimPolicyErr)
@@ -137,6 +210,11 @@ func TestReconcile(t *testing.T) {
 		// mock result of ng monitoring synchronization
 		if testcase.syncNGMonitoring != nil {
 			control.ngmMnger.(*tidbngmonitoring.FakeNGMonitoringManager).MockSync(testcase.syncNGMonitoring)
+		}
+
+		// mock result of tc asset synchronization
+		if testcase.syncTCAsset != nil {
+			control.assetMnger.(*tidbngmonitoring.FakeNGMonitoringManager).MockSync(testcase.syncTCAsset)
 		}
 
 		// mock result of updating TidbNGMonitoring
@@ -200,7 +278,7 @@ func TestUpdate(t *testing.T) {
 	for _, testcase := range cases {
 		t.Logf("testcase: %s", testcase.name)
 
-		control := newTiDBNGMonitoringControlForTest()
+		control, _ := newTiDBNGMonitoringControlForTest()
 		tngm := newTidbNGMonitoringForTest()
 
 		control.deps.Clientset.(*fake.Clientset).PrependReactor("update", v1alpha1.TiDBNGMonitoringName, func(action clitesting.Action) (bool, runtime.Object, error) {
@@ -216,21 +294,23 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-func newTiDBNGMonitoringControlForTest() *defaultTiDBNGMonitoringControl {
+func newTiDBNGMonitoringControlForTest() (*defaultTiDBNGMonitoringControl, *controller.Dependencies) {
 	deps := controller.NewFakeDependencies()
 	recorder := record.NewFakeRecorder(10)
 
 	ngmManager := tidbngmonitoring.NewFakeNGMonitoringManager()
+	assetManager := tidbngmonitoring.NewFakeNGMonitoringManager()
 	reclaimPolicyManager := meta.NewFakeReclaimPolicyManager()
 
 	control := NewDefaultTiDBNGMonitoringControl(
 		deps,
 		ngmManager,
+		assetManager,
 		reclaimPolicyManager,
 		recorder,
 	)
 
-	return control
+	return control, deps
 }
 
 func newTidbNGMonitoringForTest() *v1alpha1.TidbNGMonitoring {

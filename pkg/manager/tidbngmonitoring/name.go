@@ -13,14 +13,30 @@
 
 package tidbngmonitoring
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // NGMonitoringName return ng monitoring name
-func NGMonitoringName(monitorName string) string {
-	return fmt.Sprintf("%s-ng-monitoring", monitorName)
+func NGMonitoringName(tngm string) string {
+	return fmt.Sprintf("%s-ng-monitoring", tngm)
+}
+
+// NGMonitoringHeadlessServiceName return config map name
+func NGMonitoringConfigMapName(tngm string) string {
+	return fmt.Sprintf("%s-ng-monitoring", tngm)
 }
 
 // NGMonitoringHeadlessServiceName return headless service name
 func NGMonitoringHeadlessServiceName(tngm string) string {
 	return fmt.Sprintf("%s-ng-monitoring", tngm)
+}
+
+// TCClientTLSSecretName return name of secret which contains client certs for tc
+func TCClientTLSSecretName(tngm string) string {
+	return fmt.Sprintf("%s-tc-client-tls", tngm)
+}
+
+func assetKey(tcName, tcNS, field string) string {
+	return fmt.Sprintf("%s_%s_%s", tcName, tcNS, field)
 }
