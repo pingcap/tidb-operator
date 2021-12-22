@@ -30,7 +30,9 @@ TiDB 集群的编排和调度逻辑则由下列组件负责：
 * `tidb-scheduler` 是一个 Kubernetes 调度器扩展，它为 Kubernetes 调度器注入 TiDB 集群特有的调度逻辑。
 * `tidb-admission-webhook` 是一个 Kubernetes 动态准入控制器，完成 Pod、StatefulSet 等相关资源的修改、验证与运维。
 
-此外，TiDB Operator 还提供了命令行接口 `tkctl` 用于运维集群和诊断集群问题。
+> **注意：**
+>
+> `tidb-scheduler` 并不是必须使用，详情可以参考 [tidb-scheduler 与 default-scheduler](tidb-scheduler.md#tidb-scheduler-与-default-scheduler)。
 
 ## 流程解析
 
@@ -43,6 +45,6 @@ TiDB 集群的编排和调度逻辑则由下列组件负责：
 1. 用户通过 kubectl 创建 `TidbCluster` 和其他 CR 对象，比如 `TidbMonitor` 等；
 2. TiDB Operator 会 watch `TidbCluster` 以及其它相关对象，基于集群的实际状态不断调整 PD、TiKV、TiDB 或者 Monitor 等组件的 `StatefulSet`、`Deployment` 和 `Service` 等对象；
 3. Kubernetes 的原生控制器根据 `StatefulSet`、`Deployment`、`Job` 等对象创建更新或删除对应的 `Pod`；
-4. PD、TiKV、TiDB 的 `Pod` 声明中会指定使用 `tidb-scheduler` 调度器，`tidb-scheduler` 会在调度对应 `Pod` 时应用 TiDB 的特定调度逻辑。
+4. 如果 `TidbCluster` 中配置组件使用 `tidb-scheduler`，PD、TiKV、TiDB 的 `Pod` 声明中会指定使用 `tidb-scheduler` 调度器。在调度对应 `Pod` 时，`tidb-scheduler` 会应用 TiDB 的特定调度逻辑。
 
 基于上述的声明式控制流程，TiDB Operator 能够自动进行集群节点健康检查和故障恢复。部署、升级、扩缩容等操作也可以通过修改 `TidbCluster` 对象声明“一键”完成。

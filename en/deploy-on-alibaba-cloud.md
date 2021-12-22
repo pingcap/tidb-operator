@@ -180,7 +180,7 @@ All the instances except ACK mandatory workers are deployed across availability 
           ...
           tiflash:
             baseImage: pingcap/tiflash
-            maxFailoverCount: 3
+            maxFailoverCount: 0
             nodeSelector:
               dedicated: TIDB_CLUSTER_NAME-tiflash
             replicas: 1

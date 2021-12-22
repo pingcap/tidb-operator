@@ -321,6 +321,7 @@ The two components are *not required* in the deployment. This section shows a qu
       ...
       tiflash:
         baseImage: pingcap/tiflash
+        maxFailoverCount: 0
         replicas: 1
         storageClaims:
         - resources:

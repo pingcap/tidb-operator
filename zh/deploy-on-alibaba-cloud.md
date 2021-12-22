@@ -175,7 +175,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
       ...
       tiflash:
         baseImage: pingcap/tiflash
-        maxFailoverCount: 3
+        maxFailoverCount: 0
         nodeSelector:
           dedicated: TIDB_CLUSTER_NAME-tiflash
         replicas: 1

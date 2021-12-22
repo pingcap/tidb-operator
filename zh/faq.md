@@ -118,7 +118,7 @@ TiDB Operator 调度 Pod 失败的原因可能有三种情况：
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get deployment --all-namespaces |grep tidb-scheduler
+    kubectl get deployment --all-namespaces | grep tidb-scheduler
     ```
 
 ## TiDB 如何保证数据安全可靠？

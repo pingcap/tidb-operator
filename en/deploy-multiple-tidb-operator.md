@@ -7,6 +7,8 @@ summary: Learn how to deploy multiple sets of TiDB Operator to manage different 
 
 This document describes how to deploy multiple sets of TiDB Operator to manage different TiDB clusters.
 
+When you use TiDB Operator, `tidb-scheduler` is not mandatory. Refer to [tidb-scheduler and default-scheduler](tidb-scheduler.md#tidb-scheduler-and-default-scheduler) to confirm whether you need to deploy `tidb-scheduler`.
+
 > **Note:**
 >
 > - Currently, you can only deploy multiple sets of `tidb-controller-manager` and `tidb-scheduler`. Deploying multiple sets of AdvancedStatefulSet controller and `tidb-admission-webhook` is not supported.
@@ -101,6 +103,7 @@ To support deploying multiple sets of TiDB Operator, the following parameters ar
       - user=qa
     appendReleaseSuffix: true
     scheduler:
+      # If you do not need tidb-scheduler, set this value to false.
       create: false
     advancedStatefulset:
       create: false

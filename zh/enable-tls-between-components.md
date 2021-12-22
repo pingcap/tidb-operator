@@ -1301,24 +1301,27 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
      pvReclaimPolicy: Retain
      pd:
        baseImage: pingcap/pd
+       maxFailoverCount: 0
        replicas: 1
        requests:
-         storage: "1Gi"
+         storage: "10Gi"
        config:
          security:
            cert-allowed-cn:
              - TiDB
      tikv:
        baseImage: pingcap/tikv
+       maxFailoverCount: 0
        replicas: 1
        requests:
-         storage: "1Gi"
+         storage: "100Gi"
        config:
          security:
            cert-allowed-cn:
              - TiDB
      tidb:
        baseImage: pingcap/tidb
+       maxFailoverCount: 0
        replicas: 1
        service:
          type: ClusterIP
@@ -1330,7 +1333,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
        baseImage: pingcap/tidb-binlog
        replicas: 1
        requests:
-         storage: "1Gi"
+         storage: "100Gi"
        config:
          security:
            cert-allowed-cn:
@@ -1346,10 +1349,10 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
      - name: ${cluster_name}
      prometheus:
        baseImage: prom/prometheus
-       version: v2.11.1
+       version: v2.27.1
      grafana:
        baseImage: grafana/grafana
-       version: 6.0.1
+       version: 7.5.11
      initializer:
        baseImage: pingcap/tidb-monitor-initializer
        version: v5.2.1

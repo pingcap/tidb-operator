@@ -40,7 +40,7 @@ spec:
 >
 > This guide shows how to quickly access TiDB Dashboard. Do **NOT** use this method in the production environment. For production environments, refer to [Access TiDB Dashboard by Ingress](#access-tidb-dashboard-by-ingress).
 
-TiDB Dashboard is built in the PD component in TiDB 4.0 and later versions. You can refer to the following example to quickly deploy a v4.0.4 TiDB cluster in Kubernetes.
+TiDB Dashboard is built in the PD component in TiDB 4.0 and later versions. You can refer to the following example to quickly deploy a TiDB cluster in Kubernetes.
 
 1. Deploy the following `.yaml` file into the Kubernetes cluster by running the `kubectl apply -f` command:
 
@@ -56,18 +56,21 @@ TiDB Dashboard is built in the PD component in TiDB 4.0 and later versions. You 
       pd:
         enableDashboardInternalProxy: true
         baseImage: pingcap/pd
+        maxFailoverCount: 0
         replicas: 1
         requests:
-          storage: "1Gi"
+          storage: "10Gi"
         config: {}
       tikv:
         baseImage: pingcap/tikv
+        maxFailoverCount: 0
         replicas: 1
         requests:
-          storage: "1Gi"
+          storage: "100Gi"
         config: {}
       tidb:
         baseImage: pingcap/tidb
+        maxFailoverCount: 0
         replicas: 1
         service:
           type: ClusterIP

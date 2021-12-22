@@ -7,6 +7,8 @@ summary: 介绍如何灰度升级 TiDB Operator。
 
 本文介绍如何灰度升级 TiDB Operator。灰度升级可以控制 TiDB Operator 升级的影响范围，避免由于 TiDB Operator 升级导致对整个 Kubernetes 集群中的所有 TiDB 集群产生不可预知的影响，在确认 TiDB Operator 升级的影响或者确认 TiDB Operator 新版本能正常稳定工作后再正常升级 TiDB Operator。
 
+在使用 TiDB Operator 时，`tidb-scheduler` 并不是必须使用。你可以参考 [tidb-scheduler 与 default-scheduler](tidb-scheduler.md#tidb-scheduler-与-default-scheduler)，确认是否需要部署 `tidb-scheduler`。
+
 > **注意：**
 >
 > - 目前仅支持灰度升级 tidb-controller-manager 和 tidb-scheduler，不支持灰度升级 AdvancedStatefulSet controller 和 AdmissionWebhook。
@@ -40,7 +42,7 @@ summary: 介绍如何灰度升级 TiDB Operator。
       - version=canary
     appendReleaseSuffix: true
     #scheduler:
-    #  create: false
+    #  create: false # 如果你不需要 `tidb-scheduler`，将这个值设置为 false
     advancedStatefulset:
       create: false
     admissionWebhook:

@@ -488,6 +488,7 @@ spec:
   discovery: {}
   master:
     baseImage: pingcap/dm
+    maxFailoverCount: 0
     replicas: 1
     storageSize: "1Gi"
     config:
@@ -495,6 +496,7 @@ spec:
         - TiDB
   worker:
     baseImage: pingcap/dm
+    maxFailoverCount: 0
     replicas: 1
     storageSize: "1Gi"
     config:
