@@ -282,23 +282,25 @@ func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 
 // getNewPumpConfigMap returns a configMap for pump
 func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	if tc.Spec.Pump == nil {
-		return nil, nil
-	}
 	spec := tc.Spec.Pump
 	objMeta, _ := getPumpMeta(tc, controller.PumpMemberName)
 
-	if tc.IsTLSClusterEnabled() {
-		if spec.Config == nil {
-			spec.Config = config.New(map[string]interface{}{})
-		}
-
-		spec.Config.Set("security.ssl-ca", path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey))
-		spec.Config.Set("security.ssl-cert", path.Join(pumpCertPath, corev1.TLSCertKey))
-		spec.Config.Set("security.ssl-key", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))
+	var cfg *config.GenericConfig
+	if spec.Config != nil {
+		cfg = spec.Config.DeepCopy()
 	}
 
-	confText, err := spec.Config.MarshalTOML()
+	if tc.IsTLSClusterEnabled() {
+		if cfg == nil {
+			cfg = config.New(map[string]interface{}{})
+		}
+
+		cfg.Set("security.ssl-ca", path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey))
+		cfg.Set("security.ssl-cert", path.Join(pumpCertPath, corev1.TLSCertKey))
+		cfg.Set("security.ssl-key", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))
+	}
+
+	confText, err := cfg.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}

@@ -709,9 +709,9 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 }
 
 func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
-	config := dc.Spec.Master.Config
-	if config == nil {
-		config = &v1alpha1.MasterConfig{}
+	config := &v1alpha1.MasterConfig{}
+	if dc.Spec.Master.Config != nil {
+		config = dc.Spec.Master.Config.DeepCopy()
 	}
 
 	// override CA if tls enabled

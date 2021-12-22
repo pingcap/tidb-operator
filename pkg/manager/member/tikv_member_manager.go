@@ -634,8 +634,7 @@ func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
 }
 
 func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	config := tc.Spec.TiKV.Config
-	if config == nil {
+	if tc.Spec.TiKV.Config == nil {
 		return nil, nil
 	}
 
