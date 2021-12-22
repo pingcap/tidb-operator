@@ -48,17 +48,19 @@ func (m *tcAssetManager) syncClientTLSSecret(tngm *v1alpha1.TidbNGMonitoring, tc
 	tcName := tc.GetName()
 	tcNS := tc.GetNamespace()
 
-	// collect secret of tc
-	tcClientSecretName := util.ClusterClientTLSSecretName(tcName)
-	tcSecret, err := m.deps.SecretLister.Secrets(tcNS).Get(tcClientSecretName)
-	if err != nil {
-		return err
-	}
-
-	// generate data of secret
 	data := map[string][]byte{}
-	for k, v := range tcSecret.Data {
-		data[assetKey(tcName, tcNS, k)] = v
+
+	// collect data from secret of tc
+	if tc.IsTLSClusterEnabled() {
+		tcClientSecretName := util.ClusterClientTLSSecretName(tcName)
+		tcSecret, err := m.deps.SecretLister.Secrets(tcNS).Get(tcClientSecretName)
+		if err != nil {
+			return err
+		}
+
+		for k, v := range tcSecret.Data {
+			data[assetKey(tcName, tcNS, k)] = v
+		}
 	}
 
 	// create/update secret
@@ -67,7 +69,7 @@ func (m *tcAssetManager) syncClientTLSSecret(tngm *v1alpha1.TidbNGMonitoring, tc
 		ObjectMeta: meta,
 		Data:       data,
 	}
-	_, err = m.deps.TypedControl.CreateOrUpdateSecret(tngm, secret)
+	_, err := m.deps.TypedControl.CreateOrUpdateSecret(tngm, secret)
 	if err != nil {
 		return err
 	}
