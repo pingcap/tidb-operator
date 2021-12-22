@@ -733,6 +733,23 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>configUpdateStrategy</code></br>
+<em>
+<a href="#configupdatestrategy">
+ConfigUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+cluster component is needed to reload the configuration change.
+UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>enablePVReclaim</code></br>
 <em>
 bool
@@ -889,6 +906,34 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of DM cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of DM cluster StatefulSets</p>
 </td>
 </tr>
 <tr>
@@ -4459,6 +4504,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#componentspec">ComponentSpec</a>, 
+<a href="#dmclusterspec">DMClusterSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -4955,6 +5001,23 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>configUpdateStrategy</code></br>
+<em>
+<a href="#configupdatestrategy">
+ConfigUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+cluster component is needed to reload the configuration change.
+UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>enablePVReclaim</code></br>
 <em>
 bool
@@ -5111,6 +5174,34 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of DM cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of DM cluster StatefulSets</p>
 </td>
 </tr>
 <tr>
