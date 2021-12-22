@@ -374,10 +374,10 @@ func (m *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *app
 }
 
 func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	config := tc.Spec.TiDB.Config
-	if config == nil {
+	if tc.Spec.TiDB.Config == nil {
 		return nil, nil
 	}
+	config := tc.Spec.TiDB.Config.DeepCopy()
 
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
