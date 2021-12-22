@@ -75,6 +75,16 @@ func TestTCAssetManager(t *testing.T) {
 					g.Expect(err.Error()).Should(ContainSubstring("not found"))
 				},
 			},
+			{
+				name: "should create a empty secret if tls is disable",
+				setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
+					tc.Spec.TLSCluster = nil
+				},
+				createOrUpdateSecretErr: nil,
+				expectFn: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster, err error) {
+					g.Expect(err).Should(Succeed())
+				},
+			},
 		}
 
 		for _, testcase := range cases {
@@ -91,6 +101,7 @@ func TestTCAssetManager(t *testing.T) {
 			tc := &v1alpha1.TidbCluster{}
 			tc.Name = "tc"
 			tc.Namespace = "default"
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			if testcase.setInputs != nil {
 				testcase.setInputs(tngm, tc)
 			}

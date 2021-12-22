@@ -16,7 +16,6 @@ package tidbngmonitoring
 import (
 	"fmt"
 	"path"
-	"reflect"
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -169,28 +168,12 @@ func TestNGMonitorManager(t *testing.T) {
 
 			setInputs            func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster)
 			getSts               func() (*apps.StatefulSet, *apps.StatefulSet) // old sts is nil means that sts isn't found
-			populateStatusErr    error
-			syncConfigMapErr     error
 			createStatefulSetErr error
 			updateStatefulSetErr error
 			expectFn             func(tngm *v1alpha1.TidbNGMonitoring, err error)
 		}
 
 		cases := []testcase{
-			{
-				name: "populate status failed",
-				getSts: func() (*apps.StatefulSet, *apps.StatefulSet) {
-					return nil, nil
-				},
-				populateStatusErr:    fmt.Errorf("populate status failed"),
-				syncConfigMapErr:     fmt.Errorf("shouldn't sync configmap"),
-				createStatefulSetErr: fmt.Errorf("shouldn't create sts"),
-				updateStatefulSetErr: fmt.Errorf("shouldn't update sts"),
-				expectFn: func(tngm *v1alpha1.TidbNGMonitoring, err error) {
-					g.Expect(err).Should(HaveOccurred())
-					g.Expect(err.Error()).Should(ContainSubstring("populate status failed"))
-				},
-			},
 			{
 				name: "manager is paused",
 				setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
@@ -199,24 +182,10 @@ func TestNGMonitorManager(t *testing.T) {
 				getSts: func() (*apps.StatefulSet, *apps.StatefulSet) {
 					return nil, nil
 				},
-				syncConfigMapErr:     fmt.Errorf("shouldn't sync configmap"),
 				createStatefulSetErr: fmt.Errorf("shouldn't create sts"),
 				updateStatefulSetErr: fmt.Errorf("shouldn't update sts"),
 				expectFn: func(tngm *v1alpha1.TidbNGMonitoring, err error) {
 					g.Expect(err).Should(Succeed())
-				},
-			},
-			{
-				name: "sync configmap failed",
-				getSts: func() (*apps.StatefulSet, *apps.StatefulSet) {
-					return nil, nil
-				},
-				syncConfigMapErr:     fmt.Errorf("should sync configmap"),
-				createStatefulSetErr: fmt.Errorf("shouldn't create sts"),
-				updateStatefulSetErr: fmt.Errorf("shouldn't update sts"),
-				expectFn: func(tngm *v1alpha1.TidbNGMonitoring, err error) {
-					g.Expect(err).Should(HaveOccurred())
-					g.Expect(err.Error()).Should(ContainSubstring("should sync configmap"))
 				},
 			},
 			{
@@ -279,16 +248,6 @@ func TestNGMonitorManager(t *testing.T) {
 					indexer.Add(old)
 				}
 			}
-			// mock result of status update
-			populateStatusPatch := gomonkey.ApplyPrivateMethod(reflect.TypeOf(manager), "populateStatus", func(_ *ngMonitoringManager, _ *v1alpha1.TidbNGMonitoring, _ *apps.StatefulSet) error {
-				return testcase.populateStatusErr
-			})
-			defer populateStatusPatch.Reset()
-			// mock result of configmap update
-			syncConfigMapPatch := gomonkey.ApplyPrivateMethod(reflect.TypeOf(manager), "syncConfigMap", func(_ *ngMonitoringManager, _ *v1alpha1.TidbNGMonitoring, _ *v1alpha1.TidbCluster, _ *apps.StatefulSet) (*corev1.ConfigMap, error) {
-				return nil, testcase.syncConfigMapErr
-			})
-			defer syncConfigMapPatch.Reset()
 			// mock result of sts creation
 			deps.StatefulSetControl.(*controller.FakeStatefulSetControl).SetCreateStatefulSetError(testcase.createStatefulSetErr, 0)
 			// mock result of sts update
