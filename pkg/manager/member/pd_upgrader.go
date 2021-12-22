@@ -98,11 +98,6 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 			continue
 		}
 
-		if u.deps.CLIConfig.PodWebhookEnabled {
-			mngerutils.SetUpgradePartition(newSet, i)
-			return nil
-		}
-
 		return u.upgradePDPod(tc, i, newSet)
 	}
 
