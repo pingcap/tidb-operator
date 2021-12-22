@@ -139,6 +139,7 @@ func TestDMComponentAccessor(t *testing.T) {
 			name: "use cluster-level defaults",
 			cluster: &DMClusterSpec{
 				ImagePullPolicy:   corev1.PullNever,
+				ImagePullSecrets:  []corev1.LocalObjectReference{{Name: "image-pull-secret"}},
 				HostNetwork:       pointer.BoolPtr(true),
 				Affinity:          affinity,
 				PriorityClassName: pointer.StringPtr("test"),
@@ -147,6 +148,7 @@ func TestDMComponentAccessor(t *testing.T) {
 			component: &ComponentSpec{},
 			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
 				g.Expect(a.ImagePullPolicy()).Should(Equal(corev1.PullNever))
+				g.Expect(a.ImagePullSecrets()).Should(Equal([]corev1.LocalObjectReference{{Name: "image-pull-secret"}}))
 				g.Expect(a.HostNetwork()).Should(Equal(true))
 				g.Expect(a.Affinity()).Should(Equal(affinity))
 				g.Expect(*a.PriorityClassName()).Should(Equal("test"))
@@ -157,12 +159,14 @@ func TestDMComponentAccessor(t *testing.T) {
 			name: "override at component-level",
 			cluster: &DMClusterSpec{
 				ImagePullPolicy:   corev1.PullNever,
+				ImagePullSecrets:  []corev1.LocalObjectReference{{Name: "cluster-level-secret"}},
 				HostNetwork:       pointer.BoolPtr(true),
 				Affinity:          nil,
 				PriorityClassName: pointer.StringPtr("test"),
 				SchedulerName:     "test",
 			},
 			component: &ComponentSpec{
+				ImagePullSecrets:  []corev1.LocalObjectReference{{Name: "component-level-secret"}},
 				ImagePullPolicy:   func() *corev1.PullPolicy { a := corev1.PullAlways; return &a }(),
 				HostNetwork:       func() *bool { a := false; return &a }(),
 				Affinity:          affinity,
@@ -171,6 +175,7 @@ func TestDMComponentAccessor(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
 				g.Expect(a.ImagePullPolicy()).Should(Equal(corev1.PullAlways))
+				g.Expect(a.ImagePullSecrets()).Should(Equal([]corev1.LocalObjectReference{{Name: "component-level-secret"}}))
 				g.Expect(a.HostNetwork()).Should(Equal(false))
 				g.Expect(a.Affinity()).Should(Equal(affinity))
 				g.Expect(*a.PriorityClassName()).Should(Equal("override"))
