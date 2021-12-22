@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/tests/slack"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -102,26 +101,6 @@ func CleanNodeLabels(c kubernetes.Interface) error {
 		))
 		if _, err = c.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.StrategicMergePatchType, patch, metav1.PatchOptions{}); err != nil {
 			return err
-		}
-	}
-	return nil
-}
-
-func (oa *OperatorActions) checkPodsDisasterTolerance(allPods []corev1.Pod) error {
-	for _, pod := range allPods {
-		if pod.Spec.Affinity == nil {
-			return fmt.Errorf("the pod:[%s/%s] has not Affinity", pod.Namespace, pod.Name)
-		}
-		if pod.Spec.Affinity.PodAntiAffinity == nil {
-			return fmt.Errorf("the pod:[%s/%s] has not Affinity.PodAntiAffinity", pod.Namespace, pod.Name)
-		}
-		if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) == 0 {
-			return fmt.Errorf("the pod:[%s/%s] has not PreferredDuringSchedulingIgnoredDuringExecution", pod.Namespace, pod.Name)
-		}
-		for _, prefer := range pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-			if prefer.PodAffinityTerm.TopologyKey != RackLabel {
-				return fmt.Errorf("the pod:[%s/%s] topology key is not %s", pod.Namespace, pod.Name, RackLabel)
-			}
 		}
 	}
 	return nil

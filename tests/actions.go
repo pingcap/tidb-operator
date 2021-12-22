@@ -38,7 +38,6 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	pingcapErrors "github.com/pingcap/errors"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -50,7 +49,6 @@ import (
 	e2eutil "github.com/pingcap/tidb-operator/tests/e2e/util"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
@@ -62,13 +60,11 @@ import (
 	"github.com/pingcap/tidb-operator/tests/slack"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	apps "k8s.io/api/apps/v1"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -80,11 +76,6 @@ import (
 )
 
 const (
-	period = 5 * time.Minute
-
-	tidbControllerName string = "tidb-controller-manager"
-	tidbSchedulerName  string = "tidb-scheduler"
-
 	// NodeUnreachablePodReason is defined in k8s.io/kubernetes/pkg/util/node
 	// but not in client-go and apimachinery, so we define it here
 	NodeUnreachablePodReason = "NodeLost"
@@ -746,18 +737,6 @@ func (oa *OperatorActions) drainerChartPath(tag string) string {
 	return oa.chartPath(drainerChartName, tag)
 }
 
-func (oa *OperatorActions) setPartitionAnnotation(namespace, tcName, component string, ordinal int) error {
-	// add annotation to pause statefulset upgrade process
-	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/%s-partition=%d --overwrite",
-		tcName, namespace, component, ordinal)
-	log.Logf("%s", cmd)
-	output, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d, err: %v, output: %s", namespace, tcName, component, ordinal, err, string(output))
-	}
-	return nil
-}
-
 // getMemberContainer gets member container
 func getMemberContainer(kubeCli kubernetes.Interface, stsGetter typedappsv1.StatefulSetsGetter, namespace, tcName, component string) (*corev1.Container, bool) {
 	sts, err := stsGetter.StatefulSets(namespace).Get(context.TODO(), fmt.Sprintf("%s-%s", tcName, component), metav1.GetOptions{})
@@ -1254,409 +1233,6 @@ func (oa *OperatorActions) dmWorkerMembersReadyFn(dc *v1alpha1.DMCluster) bool {
 	return true
 }
 
-func (oa *OperatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(
-			label.New().Instance(tcName).Labels(),
-		).String(),
-	}
-	var pvcList *corev1.PersistentVolumeClaimList
-	var err error
-	if pvcList, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), listOptions); err != nil {
-		log.Logf("failed to list pvs for tidbcluster %s/%s, %v", ns, tcName, err)
-		return false, nil
-	}
-
-	for _, pvc := range pvcList.Items {
-		pvName := pvc.Spec.VolumeName
-		if pv, err := oa.kubeCli.CoreV1().PersistentVolumes().Get(context.TODO(), pvName, metav1.GetOptions{}); err != nil {
-			log.Logf("failed to get pv: %s, error: %v", pvName, err)
-			return false, nil
-		} else if pv.Spec.PersistentVolumeReclaimPolicy != *tc.Spec.PVReclaimPolicy {
-			log.Logf("pv: %s's reclaimPolicy is not Retain", pvName)
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-func (oa *OperatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	pdClient, cancel, err := oa.getPDClient(tc)
-	if err != nil {
-		log.Logf("failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
-		return false, nil
-	}
-	defer cancel()
-	var cluster *metapb.Cluster
-	if cluster, err = pdClient.GetCluster(); err != nil {
-		log.Logf("failed to get cluster from pdControl: %s/%s, error: %v", ns, tcName, err)
-		return false, nil
-	}
-
-	clusterID := strconv.FormatUint(cluster.Id, 10)
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(
-			label.New().Instance(tcName).Labels(),
-		).String(),
-	}
-
-	var podList *corev1.PodList
-	if podList, err = oa.kubeCli.CoreV1().Pods(ns).List(context.TODO(), listOptions); err != nil {
-		log.Logf("failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
-		return false, nil
-	}
-
-outerLoop:
-	for _, pod := range podList.Items {
-		podName := pod.GetName()
-		if pod.Labels[label.ClusterIDLabelKey] != clusterID {
-			log.Logf("tidbcluster %s/%s's pod %s's label %s not equals %s ",
-				ns, tcName, podName, label.ClusterIDLabelKey, clusterID)
-			return false, nil
-		}
-
-		component := pod.Labels[label.ComponentLabelKey]
-		switch component {
-		case label.PDLabelVal:
-			var memberID string
-			members, err := pdClient.GetMembers()
-			if err != nil {
-				log.Logf("failed to get members for tidbcluster %s/%s, %v", ns, tcName, err)
-				return false, nil
-			}
-			for _, member := range members.Members {
-				if member.Name == podName {
-					memberID = strconv.FormatUint(member.GetMemberId(), 10)
-					break
-				}
-			}
-			if memberID == "" {
-				log.Logf("tidbcluster: %s/%s's pod %s label [%s] is empty",
-					ns, tcName, podName, label.MemberIDLabelKey)
-				return false, nil
-			}
-			if pod.Labels[label.MemberIDLabelKey] != memberID {
-				return false, fmt.Errorf("tidbcluster: %s/%s's pod %s label [%s] not equals %s",
-					ns, tcName, podName, label.MemberIDLabelKey, memberID)
-			}
-		case label.TiKVLabelVal:
-			var storeID string
-			stores, err := pdClient.GetStores()
-			if err != nil {
-				log.Logf("failed to get stores for tidbcluster %s/%s, %v", ns, tcName, err)
-				return false, nil
-			}
-			for _, store := range stores.Stores {
-				addr := store.Store.GetAddress()
-				if strings.Split(addr, ".")[0] == podName {
-					storeID = strconv.FormatUint(store.Store.GetId(), 10)
-					break
-				}
-			}
-			if storeID == "" {
-				log.Logf("tidbcluster: %s/%s's pod %s label [%s] is empty",
-					tc.GetNamespace(), tc.GetName(), podName, label.StoreIDLabelKey)
-				return false, nil
-			}
-			if pod.Labels[label.StoreIDLabelKey] != storeID {
-				return false, fmt.Errorf("tidbcluster: %s/%s's pod %s label [%s] not equals %s",
-					ns, tcName, podName, label.StoreIDLabelKey, storeID)
-			}
-		case label.TiDBLabelVal:
-			continue outerLoop
-		default:
-			continue outerLoop
-		}
-
-		var pvcName string
-		for _, vol := range pod.Spec.Volumes {
-			if vol.PersistentVolumeClaim != nil {
-				pvcName = vol.PersistentVolumeClaim.ClaimName
-				break
-			}
-		}
-		if pvcName == "" {
-			return false, fmt.Errorf("pod: %s/%s's pvcName is empty", ns, podName)
-		}
-
-		var pvc *corev1.PersistentVolumeClaim
-		if pvc, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), pvcName, metav1.GetOptions{}); err != nil {
-			log.Logf("failed to get pvc %s/%s for pod %s/%s", ns, pvcName, ns, podName)
-			return false, nil
-		}
-		if pvc.Labels[label.ClusterIDLabelKey] != clusterID {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pvc %s label [%s] not equals %s ",
-				ns, tcName, pvcName, label.ClusterIDLabelKey, clusterID)
-		}
-		if pvc.Labels[label.MemberIDLabelKey] != pod.Labels[label.MemberIDLabelKey] {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pvc %s label [%s=%s] not equals pod lablel [%s=%s]",
-				ns, tcName, pvcName,
-				label.MemberIDLabelKey, pvc.Labels[label.MemberIDLabelKey],
-				label.MemberIDLabelKey, pod.Labels[label.MemberIDLabelKey])
-		}
-		if pvc.Labels[label.StoreIDLabelKey] != pod.Labels[label.StoreIDLabelKey] {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pvc %s label[%s=%s] not equals pod lable[%s=%s]",
-				ns, tcName, pvcName,
-				label.StoreIDLabelKey, pvc.Labels[label.StoreIDLabelKey],
-				label.StoreIDLabelKey, pod.Labels[label.StoreIDLabelKey])
-		}
-		if pvc.Annotations[label.AnnPodNameKey] != podName {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pvc %s annotations [%s] not equals podName: %s",
-				ns, tcName, pvcName, label.AnnPodNameKey, podName)
-		}
-
-		pvName := pvc.Spec.VolumeName
-		var pv *corev1.PersistentVolume
-		if pv, err = oa.kubeCli.CoreV1().PersistentVolumes().Get(context.TODO(), pvName, metav1.GetOptions{}); err != nil {
-			log.Logf("failed to get pv for pvc %s/%s, %v", ns, pvcName, err)
-			return false, nil
-		}
-		if pv.Labels[label.NamespaceLabelKey] != ns {
-			return false, fmt.Errorf("tidbcluster: %s/%s 's pv %s label [%s] not equals %s",
-				ns, tcName, pvName, label.NamespaceLabelKey, ns)
-		}
-		if pv.Labels[label.ComponentLabelKey] != pod.Labels[label.ComponentLabelKey] {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pv %s label [%s=%s] not equals pod label[%s=%s]",
-				ns, tcName, pvName,
-				label.ComponentLabelKey, pv.Labels[label.ComponentLabelKey],
-				label.ComponentLabelKey, pod.Labels[label.ComponentLabelKey])
-		}
-		if pv.Labels[label.NameLabelKey] != pod.Labels[label.NameLabelKey] {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pv %s label [%s=%s] not equals pod label [%s=%s]",
-				ns, tcName, pvName,
-				label.NameLabelKey, pv.Labels[label.NameLabelKey],
-				label.NameLabelKey, pod.Labels[label.NameLabelKey])
-		}
-		if pv.Labels[label.ManagedByLabelKey] != pod.Labels[label.ManagedByLabelKey] {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pv %s label [%s=%s] not equals pod label [%s=%s]",
-				ns, tcName, pvName,
-				label.ManagedByLabelKey, pv.Labels[label.ManagedByLabelKey],
-				label.ManagedByLabelKey, pod.Labels[label.ManagedByLabelKey])
-		}
-		if pv.Labels[label.InstanceLabelKey] != pod.Labels[label.InstanceLabelKey] {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pv %s label [%s=%s] not equals pod label [%s=%s]",
-				ns, tcName, pvName,
-				label.InstanceLabelKey, pv.Labels[label.InstanceLabelKey],
-				label.InstanceLabelKey, pod.Labels[label.InstanceLabelKey])
-		}
-		if pv.Labels[label.ClusterIDLabelKey] != clusterID {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pv %s label [%s] not equals %s",
-				ns, tcName, pvName, label.ClusterIDLabelKey, clusterID)
-		}
-		if pv.Labels[label.MemberIDLabelKey] != pod.Labels[label.MemberIDLabelKey] {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pv %s label [%s=%s] not equals pod label [%s=%s]",
-				ns, tcName, pvName,
-				label.MemberIDLabelKey, pv.Labels[label.MemberIDLabelKey],
-				label.MemberIDLabelKey, pod.Labels[label.MemberIDLabelKey])
-		}
-		if pv.Labels[label.StoreIDLabelKey] != pod.Labels[label.StoreIDLabelKey] {
-			return false, fmt.Errorf("tidbcluster: %s/%s's pv %s label [%s=%s] not equals pod label [%s=%s]",
-				ns, tcName, pvName,
-				label.StoreIDLabelKey, pv.Labels[label.StoreIDLabelKey],
-				label.StoreIDLabelKey, pod.Labels[label.StoreIDLabelKey])
-		}
-		if pv.Annotations[label.AnnPodNameKey] != podName {
-			return false, fmt.Errorf("tidbcluster:[%s/%s's pv %s annotations [%s] not equals %s",
-				ns, tcName, pvName, label.AnnPodNameKey, podName)
-		}
-	}
-
-	return true, nil
-}
-
-func (oa *OperatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	fn := func(component string) (bool, error) {
-		nodeMap := make(map[string][]string)
-		listOptions := metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(
-				label.New().Instance(tcName).Component(component).Labels()).String(),
-		}
-		var podList *corev1.PodList
-		var err error
-		if podList, err = oa.kubeCli.CoreV1().Pods(ns).List(context.TODO(), listOptions); err != nil {
-			log.Logf("failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
-			return false, nil
-		}
-
-		totalCount := len(podList.Items)
-		for _, pod := range podList.Items {
-			nodeName := pod.Spec.NodeName
-			if len(nodeMap[nodeName]) == 0 {
-				nodeMap[nodeName] = make([]string, 0)
-			}
-			nodeMap[nodeName] = append(nodeMap[nodeName], pod.GetName())
-			if len(nodeMap[nodeName]) > totalCount/2 {
-				return false, fmt.Errorf("node %s have %d pods, greater than %d/2",
-					nodeName, len(nodeMap[nodeName]), totalCount)
-			}
-		}
-		return true, nil
-	}
-
-	components := []string{label.PDLabelVal, label.TiKVLabelVal}
-	for _, com := range components {
-		if b, err := fn(com); err != nil {
-			return false, err
-		} else if !b && err == nil {
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-func (oa *OperatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) (bool, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(
-			label.New().Instance(tcName).Labels()).String(),
-	}
-
-	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), listOptions)
-	if err != nil {
-		log.Logf("failed to list pvcs for tidb cluster %s/%s, err: %v", ns, tcName, err)
-		return false, nil
-	}
-
-	for _, pvc := range pvcList.Items {
-		pvcName := pvc.GetName()
-		l := label.Label(pvc.Labels)
-		if !(l.IsPD() || l.IsTiKV()) {
-			continue
-		}
-
-		if _, exist := pvc.Annotations[label.AnnPVCPodScheduling]; exist {
-			log.Logf("tidb cluster %s/%s pvc %s has pod scheduling annotation", ns, tcName, pvcName)
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-func (oa *OperatorActions) checkReclaimPVSuccess(tc *v1alpha1.TidbCluster) (bool, error) {
-	// check pv reclaim	for pd
-	if err := oa.checkComponentReclaimPVSuccess(tc, label.PDLabelVal); err != nil {
-		log.Logf("%v", err)
-		return false, nil
-	}
-
-	// check pv reclaim for tikv
-	if err := oa.checkComponentReclaimPVSuccess(tc, label.TiKVLabelVal); err != nil {
-		log.Logf("%v", err)
-		return false, nil
-	}
-	return true, nil
-}
-
-func (oa *OperatorActions) checkComponentReclaimPVSuccess(tc *v1alpha1.TidbCluster, component string) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	var replica int
-	switch component {
-	case label.PDLabelVal:
-		replica = int(tc.Spec.PD.Replicas)
-	case label.TiKVLabelVal:
-		replica = int(tc.Spec.TiKV.Replicas)
-	default:
-		return fmt.Errorf("check tidb cluster %s/%s component %s is not supported", ns, tcName, component)
-	}
-
-	pvcList, err := oa.getComponentPVCList(tc, component)
-	if err != nil {
-		return err
-	}
-
-	pvList, err := oa.getComponentPVList(tc, component)
-	if err != nil {
-		return err
-	}
-
-	if len(pvcList) != replica {
-		return fmt.Errorf("tidb cluster %s/%s component %s pvc has not been reclaimed completely, expected: %d, got %d", ns, tcName, component, replica, len(pvcList))
-	}
-
-	if len(pvList) != replica {
-		return fmt.Errorf("tidb cluster %s/%s component %s pv has not been reclaimed completely, expected: %d, got %d", ns, tcName, component, replica, len(pvList))
-	}
-
-	return nil
-}
-
-func (oa *OperatorActions) getComponentPVCList(tc *v1alpha1.TidbCluster, component string) ([]corev1.PersistentVolumeClaim, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(
-			label.New().Instance(tcName).Component(component).Labels()).String(),
-	}
-
-	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), listOptions)
-	if err != nil {
-		err := fmt.Errorf("failed to list pvcs for tidb cluster %s/%s, component: %s, err: %v", ns, tcName, component, err)
-		return nil, err
-	}
-	return pvcList.Items, nil
-}
-
-func (oa *OperatorActions) getComponentPVList(tc *v1alpha1.TidbCluster, component string) ([]corev1.PersistentVolume, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(
-			label.New().Instance(tcName).Component(component).Namespace(ns).Labels()).String(),
-	}
-
-	pvList, err := oa.kubeCli.CoreV1().PersistentVolumes().List(context.TODO(), listOptions)
-	if err != nil {
-		err := fmt.Errorf("failed to list pvs for tidb cluster %s/%s, component: %s, err: %v", ns, tcName, component, err)
-		return nil, err
-	}
-	return pvList.Items, nil
-}
-
-func (oa *OperatorActions) storeLabelsIsSet(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
-	pdClient, cancel, err := oa.getPDClient(tc)
-	if err != nil {
-		log.Logf("failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
-		return false, nil
-	}
-	defer cancel()
-	for _, store := range tc.Status.TiKV.Stores {
-		storeID, err := strconv.ParseUint(store.ID, 10, 64)
-		if err != nil {
-			return false, err
-		}
-		storeInfo, err := pdClient.GetStore(storeID)
-		if err != nil {
-			return false, nil
-		}
-		if len(storeInfo.Store.Labels) == 0 {
-			return false, nil
-		}
-		for _, label := range storeInfo.Store.Labels {
-			if label.Key != topologyKey {
-				return false, nil
-			}
-		}
-	}
-	return true, nil
-}
-
 func getDatasourceID(addr string) (int, error) {
 	u := fmt.Sprintf("http://%s/api/datasources", addr)
 	req, err := http.NewRequest(http.MethodGet, u, nil)
@@ -1803,25 +1379,6 @@ func (oa *OperatorActions) DataIsTheSameAsInfo(bwc, otherBwc *BlockWriterConfig)
 	}
 
 	return true, nil
-}
-
-func releaseIsExist(err error) bool {
-	return strings.Contains(err.Error(), "already exists")
-}
-
-func getParentUIDFromJob(j batchv1.Job) (types.UID, bool) {
-	controllerRef := metav1.GetControllerOf(&j)
-
-	if controllerRef == nil {
-		return types.UID(""), false
-	}
-
-	if controllerRef.Kind != "CronJob" {
-		log.Logf("Job with non-CronJob parent, name %s namespace %s", j.Name, j.Namespace)
-		return types.UID(""), false
-	}
-
-	return controllerRef.UID, true
 }
 
 func strPtr(s string) *string { return &s }
@@ -2288,13 +1845,6 @@ func (oa *OperatorActions) WaitForDmClusterDeleted(ns, dcName string, timeout, p
 }
 
 var dummyCancel = func() {}
-
-func (oa *OperatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
-	if oa.fw != nil {
-		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.fw, oa.secretLister, tc)
-	}
-	return controller.GetPDClient(oa.pdControl, tc), dummyCancel, nil
-}
 
 func (oa *OperatorActions) getTiDBDSN(ns, tcName, databaseName, password string) (string, context.CancelFunc, error) {
 	if oa.fw != nil {
