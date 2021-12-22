@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/onsi/ginkgo"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -32,10 +33,9 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-
-	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -317,8 +317,43 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			tc3.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 30*time.Second)
 
-			ginkgo.By("Fail PD in cluster-1 by setting a wrong image")
+			ginkgo.By("Fail TiKV in cluster-1 by setting a wrong image")
 			local, err := cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
+			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
+			local.Spec.TiKV.BaseImage = inexistentBaseImage
+			err = genericCli.Update(context.TODO(), local)
+			framework.ExpectNoError(err, "updating tikv with an inexistent image %q for %q", tc1.Spec.TiKV.BaseImage, tcName1)
+			// force operator to trigger an upgrade.
+			err = c.AppsV1().StatefulSets(ns1).Delete(context.TODO(), fmt.Sprintf("%s-tikv", tcName1), metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "deleting sts of tikv for %q", tcName1)
+
+			ginkgo.By("Waiting for tikv pod to be unavailable")
+			err = utiltc.WaitForTidbClusterCondition(cli, tc1.Namespace, tc1.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				down := true
+				for _, store := range tc.Status.TiKV.Stores {
+					down = down && (store.State == "Disconnected" || store.State == v1alpha1.TiKVStateDown)
+				}
+				return down || len(tc.Status.TiKV.FailureStores) != 0, nil
+			})
+			framework.ExpectNoError(err, "waiting for tikv pod to be unavailable")
+
+			ginkgo.By("Restart other component pods and check cluster status")
+			podList, err := c.CoreV1().Pods(ns1).List(context.TODO(), metav1.ListOptions{})
+			framework.ExpectNoError(err, "list pods under namespace %q", ns1)
+			for _, pod := range podList.Items {
+				if !strings.Contains(pod.Name, "pd") && !strings.Contains(pod.Name, "tikv") {
+					err := c.CoreV1().Pods(ns1).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+					framework.ExpectNoError(err, "failed to delete pod %q", pod.Name)
+				}
+			}
+
+			componentsFilter := make(map[v1alpha1.MemberType]struct{}, 2)
+			componentsFilter[v1alpha1.TiKVMemberType] = struct{}{}
+			err = oa.WaitForTidbComponentsReady(tc1, componentsFilter, 5*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "restarting components when tikv fails")
+
+			ginkgo.By("Fail PD in cluster-1 by setting a wrong image")
+			local, err = cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
 			local.Spec.PD.BaseImage = inexistentBaseImage
 			err = genericCli.Update(context.TODO(), local)
@@ -330,13 +365,13 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				for _, member := range tc.Status.PD.Members {
 					healthy = healthy || member.Health
 				}
-				// we consider it healthy when member is healthy and synced is true
-				return healthy && tc.Status.PD.Synced, nil
+				// we consider it healthy only when member is healthy and synced is true
+				return !(healthy && tc.Status.PD.Synced), nil
 			})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
 			ginkgo.By("Restart all component pods except pd and check cluster status")
-			podList, err := c.CoreV1().Pods(ns1).List(context.TODO(), metav1.ListOptions{})
+			podList, err = c.CoreV1().Pods(ns1).List(context.TODO(), metav1.ListOptions{})
 			framework.ExpectNoError(err, "list pods under namespace %q", ns1)
 			for _, pod := range podList.Items {
 				if !strings.Contains(pod.Name, "pd") {
@@ -345,45 +380,9 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				}
 			}
 
-			componentsFilter := make(map[v1alpha1.MemberType]struct{}, 2)
 			componentsFilter[v1alpha1.PDMemberType] = struct{}{}
 			err = oa.WaitForTidbComponentsReady(tc1, componentsFilter, 5*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "restarting components when pd failed")
-
-			ginkgo.By("Fail TiKV in cluster-1 by setting a wrong image")
-			local, err = cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
-			local.Spec.TiKV.BaseImage = inexistentBaseImage
-			err = genericCli.Update(context.TODO(), local)
-			framework.ExpectNoError(err, "updating tikv with an inexistent image %q for %q", tc1.Spec.TiKV.BaseImage, tcName1)
-			// force operator to trigger a pd upgrade when pd is down.
-			err = c.AppsV1().StatefulSets(ns1).Delete(context.TODO(), fmt.Sprintf("%s-tikv", tcName1), metav1.DeleteOptions{})
-			framework.ExpectNoError(err, "deleting sts of tikv for %q", tcName1)
-
-			ginkgo.By("Waiting for tikv store to be in Down state")
-			err = utiltc.WaitForTidbClusterCondition(cli, tc1.Namespace, tc1.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				for _, store := range tc.Status.TiKV.Stores {
-					if store.State == v1alpha1.TiKVStateDown {
-						return true, nil
-					}
-				}
-				return false, nil
-			})
-			framework.ExpectNoError(err, "waiting for the tikv store to be in down state")
-
-			ginkgo.By("Restart other component pods and check cluster status")
-			podList, err = c.CoreV1().Pods(ns1).List(context.TODO(), metav1.ListOptions{})
-			framework.ExpectNoError(err, "list pods under namespace %q", ns1)
-			for _, pod := range podList.Items {
-				if !strings.Contains(pod.Name, "pd") && !strings.Contains(pod.Name, "tikv") {
-					err := c.CoreV1().Pods(ns1).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
-					framework.ExpectNoError(err, "failed to delete pod %q", pod.Name)
-				}
-			}
-
-			componentsFilter[v1alpha1.TiKVMemberType] = struct{}{}
-			err = oa.WaitForTidbComponentsReady(tc1, componentsFilter, 5*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "restarting components when tikv fails")
 		})
 
 		ginkgo.It("TiDBCluter Should work when one of the TidbCluster or the k8s fails", func() {
@@ -452,21 +451,16 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 30*time.Second)
 
 			ginkgo.By("Fail all components in cluster-2 by deleting ns")
-			propForeground := metav1.DeletePropagationForeground
-			opts := metav1.DeleteOptions{
-				PropagationPolicy: &propForeground,
-			}
-			err = c.CoreV1().Namespaces().Delete(context.TODO(), ns2, opts)
+			err = c.CoreV1().Namespaces().Delete(context.TODO(), ns2, metav1.DeleteOptions{})
 			framework.ExpectNoError(err, "deleting namespsace %q", ns2)
-
-			ginkgo.By("Waiting for namespace to be deleted")
-			wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
 				_, err = c.CoreV1().Namespaces().Get(context.TODO(), ns2, metav1.GetOptions{})
-				if err != nil {
+				if apierrors.IsNotFound(err) {
 					return true, nil
 				}
 				return false, nil
 			})
+			framework.ExpectNoError(err, "waiting namespsace %q to be deleted", ns2)
 
 			ginkgo.By("Check status of other clusters")
 			err = oa.WaitForTidbClusterReady(tc1, 10*time.Minute, 30*time.Second)
@@ -541,8 +535,8 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				for _, member := range tc.Status.PD.Members {
 					healthy = healthy || member.Health
 				}
-				// we consider it healthy when member is healthy and synced is true
-				return healthy && tc.Status.PD.Synced, nil
+				// we consider it healthy only when member is healthy and synced is true
+				return !(healthy && tc.Status.PD.Synced), nil
 			})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
