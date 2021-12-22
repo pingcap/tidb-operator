@@ -5027,7 +5027,6 @@ spec:
                 default: Retain
                 type: string
               schedulerName:
-                default: tidb-scheduler
                 type: string
               statefulSetUpdateStrategy:
                 type: string
