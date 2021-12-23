@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -321,6 +322,18 @@ func (m *workerMemberManager) syncWorkerConfigMap(dc *v1alpha1.DMCluster, set *a
 	if err != nil {
 		return nil, err
 	}
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+			return strings.HasPrefix(name, controller.DMWorkerMemberName(dc.Name))
+		})
+	}
+
+	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, dc.BaseWorkerSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
 	return m.deps.TypedControl.CreateOrUpdateConfigMap(dc, newCm)
 }
 
@@ -472,6 +485,8 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	workerContainer.Env = util.AppendEnv(env, baseWorkerSpec.Env())
 	podSpec.Volumes = append(vols, baseWorkerSpec.AdditionalVolumes()...)
 	podSpec.Containers = append([]corev1.Container{workerContainer}, baseWorkerSpec.AdditionalContainers()...)
+	var initContainers []corev1.Container // no default initContainers now
+	podSpec.InitContainers = append(initContainers, baseWorkerSpec.InitContainers()...)
 
 	workerSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -508,7 +523,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			ServiceName:         controller.DMWorkerPeerMemberName(dcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: apps.RollingUpdateStatefulSetStrategyType,
+				Type: baseWorkerSpec.StatefulSetUpdateStrategy(),
 			},
 		},
 	}
@@ -554,10 +569,6 @@ func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 			"config-file":    string(confText),
 			"startup-script": startScript,
 		},
-	}
-
-	if err := AddConfigMapDigestSuffix(cm); err != nil {
-		return nil, err
 	}
 	return cm, nil
 }
