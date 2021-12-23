@@ -1297,7 +1297,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"namespace": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace with TidbMonitor",
+							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -11537,7 +11537,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"namespace": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace with TidbMonitor",
+							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring",
 							Type:        []string{"string"},
 							Format:      "",
 						},
