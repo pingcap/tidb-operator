@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -322,6 +323,18 @@ func (m *workerMemberManager) syncWorkerConfigMap(dc *v1alpha1.DMCluster, set *a
 	if err != nil {
 		return nil, err
 	}
+
+	var inUseName string
+	if set != nil {
+		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+			return strings.HasPrefix(name, controller.DMWorkerMemberName(dc.Name))
+		})
+	}
+
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, dc.BaseWorkerSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
 	return m.deps.TypedControl.CreateOrUpdateConfigMap(dc, newCm)
 }
 
@@ -473,6 +486,8 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	workerContainer.Env = util.AppendEnv(env, baseWorkerSpec.Env())
 	podSpec.Volumes = append(vols, baseWorkerSpec.AdditionalVolumes()...)
 	podSpec.Containers = append([]corev1.Container{workerContainer}, baseWorkerSpec.AdditionalContainers()...)
+	var initContainers []corev1.Container // no default initContainers now
+	podSpec.InitContainers = append(initContainers, baseWorkerSpec.InitContainers()...)
 
 	workerSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -507,9 +522,9 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 				},
 			},
 			ServiceName:         controller.DMWorkerPeerMemberName(dcName),
-			PodManagementPolicy: apps.ParallelPodManagement,
+			PodManagementPolicy: baseWorkerSpec.PodManagementPolicy(),
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: apps.RollingUpdateStatefulSetStrategyType,
+				Type: baseWorkerSpec.StatefulSetUpdateStrategy(),
 			},
 		},
 	}
@@ -518,9 +533,9 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 }
 
 func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
-	config := dc.Spec.Worker.Config
-	if config == nil {
-		config = &v1alpha1.WorkerConfig{}
+	config := &v1alpha1.WorkerConfig{}
+	if dc.Spec.Worker.Config != nil {
+		config = dc.Spec.Worker.Config.DeepCopy()
 	}
 
 	// override CA if tls enabled
@@ -555,10 +570,6 @@ func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 			"config-file":    string(confText),
 			"startup-script": startScript,
 		},
-	}
-
-	if err := mngerutils.AddConfigMapDigestSuffix(cm); err != nil {
-		return nil, err
 	}
 	return cm, nil
 }

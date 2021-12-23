@@ -733,6 +733,23 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>configUpdateStrategy</code></br>
+<em>
+<a href="#configupdatestrategy">
+ConfigUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+cluster component is needed to reload the configuration change.
+UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>enablePVReclaim</code></br>
 <em>
 bool
@@ -889,6 +906,34 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of DM cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of DM cluster StatefulSets</p>
 </td>
 </tr>
 <tr>
@@ -4547,6 +4592,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#componentspec">ComponentSpec</a>, 
+<a href="#dmclusterspec">DMClusterSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -5055,6 +5101,23 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>configUpdateStrategy</code></br>
+<em>
+<a href="#configupdatestrategy">
+ConfigUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+cluster component is needed to reload the configuration change.
+UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>enablePVReclaim</code></br>
 <em>
 bool
@@ -5211,6 +5274,34 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of DM cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of DM cluster StatefulSets</p>
 </td>
 </tr>
 <tr>
@@ -6788,6 +6879,39 @@ port, 443. If multiple members of this list specify different hosts, they
 will be multiplexed on the same port according to the hostname specified
 through the SNI TLS extension, if the ingress controller fulfilling the
 ingress supports SNI.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="initcontainerspec">InitContainerSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>)
+</p>
+<p>
+<p>InitContainerSpec contains basic spec about a init container</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -15364,6 +15488,20 @@ TiFlashConfigWraper
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of TiFlash</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initializer</code></br>
+<em>
+<a href="#initcontainerspec">
+InitContainerSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Initializer is the configurations of the init container for TiFlash</p>
 </td>
 </tr>
 <tr>

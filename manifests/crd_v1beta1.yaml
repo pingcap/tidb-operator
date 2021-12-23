@@ -3111,6 +3111,8 @@ spec:
               additionalProperties:
                 type: string
               type: object
+            configUpdateStrategy:
+              type: string
             discovery:
               properties:
                 additionalContainers:
@@ -7717,6 +7719,8 @@ spec:
               type: object
             paused:
               type: boolean
+            podManagementPolicy:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:
@@ -7784,6 +7788,8 @@ spec:
             pvReclaimPolicy:
               type: string
             schedulerName:
+              type: string
+            statefulSetUpdateStrategy:
               type: string
             timezone:
               type: string
@@ -12346,9 +12352,6 @@ spec:
             clusterDomain:
               type: string
             configUpdateStrategy:
-              enum:
-              - InPlace
-              - RollingUpdate
               type: string
             discovery:
               properties:
@@ -26223,6 +26226,25 @@ spec:
                     - name
                     type: object
                   type: array
+                initializer:
+                  properties:
+                    limits:
+                      additionalProperties:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      type: object
+                    requests:
+                      additionalProperties:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      type: object
+                  type: object
                 labels:
                   additionalProperties:
                     type: string

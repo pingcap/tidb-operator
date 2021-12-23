@@ -206,6 +206,15 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 	return m
 }
 
+// MapInitContainers index init containers of Pod by container name in favor of looking up
+func MapInitContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
+	m := map[string]corev1.Container{}
+	for _, c := range podSpec.InitContainers {
+		m[c.Name] = c
+	}
+	return m
+}
+
 // findContainerByName finds targetContainer by containerName, If not find, then return nil
 func findContainerByName(sts *apps.StatefulSet, containerName string) *corev1.Container {
 	for _, c := range sts.Spec.Template.Spec.Containers {
@@ -217,7 +226,7 @@ func findContainerByName(sts *apps.StatefulSet, containerName string) *corev1.Co
 }
 
 func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
-	config := tikvSpec.Config
+	config := tikvSpec.Config.DeepCopy()
 	if tc.IsTLSClusterEnabled() {
 		config.Set("security.ca-path", path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
 		config.Set("security.cert-path", path.Join(tikvClusterCertPath, corev1.TLSCertKey))
