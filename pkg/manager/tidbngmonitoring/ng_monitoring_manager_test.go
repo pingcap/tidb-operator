@@ -15,10 +15,9 @@ package tidbngmonitoring
 
 import (
 	"fmt"
-	"reflect"
+	"path"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
@@ -26,6 +25,7 @@ import (
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func TestNewNGMonitorManager(t *testing.T) {
+func TestNGMonitorManager(t *testing.T) {
 
 	t.Run("syncService", func(t *testing.T) {
 		g := NewGomegaWithT(t)
@@ -43,7 +43,7 @@ func TestNewNGMonitorManager(t *testing.T) {
 		type testcase struct {
 			name string
 
-			setTNGM func(tngm *v1alpha1.TidbNGMonitoring)
+			setInputs func(tngm *v1alpha1.TidbNGMonitoring)
 
 			getServices      func() (*corev1.Service /*old*/, *corev1.Service /*new*/) // old service is nil means that service isn't found
 			createServiceErr error
@@ -54,7 +54,7 @@ func TestNewNGMonitorManager(t *testing.T) {
 		cases := []testcase{
 			{
 				name: "manager is paused",
-				setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+				setInputs: func(tngm *v1alpha1.TidbNGMonitoring) {
 					tngm.Spec.Paused = true
 				},
 				getServices: func() (*corev1.Service, *corev1.Service) {
@@ -135,8 +135,8 @@ func TestNewNGMonitorManager(t *testing.T) {
 			manager := NewNGMonitorManager(deps)
 
 			tngm := &v1alpha1.TidbNGMonitoring{}
-			if testcase.setTNGM != nil {
-				testcase.setTNGM(tngm)
+			if testcase.setInputs != nil {
+				testcase.setInputs(tngm)
 			}
 
 			// mock new and old service
@@ -166,10 +166,8 @@ func TestNewNGMonitorManager(t *testing.T) {
 		type testcase struct {
 			name string
 
-			setTNGM              func(tngm *v1alpha1.TidbNGMonitoring)
+			setInputs            func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster)
 			getSts               func() (*apps.StatefulSet, *apps.StatefulSet) // old sts is nil means that sts isn't found
-			populateStatusErr    error
-			syncConfigMapErr     error
 			createStatefulSetErr error
 			updateStatefulSetErr error
 			expectFn             func(tngm *v1alpha1.TidbNGMonitoring, err error)
@@ -177,45 +175,17 @@ func TestNewNGMonitorManager(t *testing.T) {
 
 		cases := []testcase{
 			{
-				name: "populate status failed",
-				getSts: func() (*apps.StatefulSet, *apps.StatefulSet) {
-					return nil, nil
-				},
-				populateStatusErr:    fmt.Errorf("populate status failed"),
-				syncConfigMapErr:     fmt.Errorf("shouldn't sync configmap"),
-				createStatefulSetErr: fmt.Errorf("shouldn't create sts"),
-				updateStatefulSetErr: fmt.Errorf("shouldn't update sts"),
-				expectFn: func(tngm *v1alpha1.TidbNGMonitoring, err error) {
-					g.Expect(err).Should(HaveOccurred())
-					g.Expect(err.Error()).Should(ContainSubstring("populate status failed"))
-				},
-			},
-			{
 				name: "manager is paused",
-				setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+				setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
 					tngm.Spec.Paused = true
 				},
 				getSts: func() (*apps.StatefulSet, *apps.StatefulSet) {
 					return nil, nil
 				},
-				syncConfigMapErr:     fmt.Errorf("shouldn't sync configmap"),
 				createStatefulSetErr: fmt.Errorf("shouldn't create sts"),
 				updateStatefulSetErr: fmt.Errorf("shouldn't update sts"),
 				expectFn: func(tngm *v1alpha1.TidbNGMonitoring, err error) {
 					g.Expect(err).Should(Succeed())
-				},
-			},
-			{
-				name: "sync configmap failed",
-				getSts: func() (*apps.StatefulSet, *apps.StatefulSet) {
-					return nil, nil
-				},
-				syncConfigMapErr:     fmt.Errorf("should sync configmap"),
-				createStatefulSetErr: fmt.Errorf("shouldn't create sts"),
-				updateStatefulSetErr: fmt.Errorf("shouldn't update sts"),
-				expectFn: func(tngm *v1alpha1.TidbNGMonitoring, err error) {
-					g.Expect(err).Should(HaveOccurred())
-					g.Expect(err.Error()).Should(ContainSubstring("should sync configmap"))
 				},
 			},
 			{
@@ -258,16 +228,19 @@ func TestNewNGMonitorManager(t *testing.T) {
 			manager := NewNGMonitorManager(deps)
 
 			tngm := &v1alpha1.TidbNGMonitoring{}
+			tc := &v1alpha1.TidbCluster{}
 			tngm.Name = "ngm"
 			tngm.Namespace = "default"
-			if testcase.setTNGM != nil {
-				testcase.setTNGM(tngm)
+			tc.Name = "tc"
+			tc.Namespace = "default"
+			if testcase.setInputs != nil {
+				testcase.setInputs(tngm, tc)
 			}
 
 			// mock old and new sts
 			if testcase.getSts != nil {
 				old, new := testcase.getSts()
-				patch := gomonkey.ApplyFunc(GenerateNGMonitoringStatefulSet, func(tngm *v1alpha1.TidbNGMonitoring, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+				patch := gomonkey.ApplyFunc(GenerateNGMonitoringStatefulSet, func(_ *v1alpha1.TidbNGMonitoring, _ *v1alpha1.TidbCluster, _ *corev1.ConfigMap) (*apps.StatefulSet, error) {
 					return new, nil
 				})
 				defer patch.Reset()
@@ -275,16 +248,6 @@ func TestNewNGMonitorManager(t *testing.T) {
 					indexer.Add(old)
 				}
 			}
-			// mock result of status update
-			populateStatusPatch := gomonkey.ApplyPrivateMethod(reflect.TypeOf(manager), "populateStatus", func(_ *ngMonitoringManager, _ *v1alpha1.TidbNGMonitoring, _ *apps.StatefulSet) error {
-				return testcase.populateStatusErr
-			})
-			defer populateStatusPatch.Reset()
-			// mock result of configmap update
-			syncConfigMapPatch := gomonkey.ApplyPrivateMethod(reflect.TypeOf(manager), "syncConfigMap", func(_ *ngMonitoringManager, _ *v1alpha1.TidbNGMonitoring, _ *apps.StatefulSet) (*corev1.ConfigMap, error) {
-				return nil, testcase.syncConfigMapErr
-			})
-			defer syncConfigMapPatch.Reset()
 			// mock result of sts creation
 			deps.StatefulSetControl.(*controller.FakeStatefulSetControl).SetCreateStatefulSetError(testcase.createStatefulSetErr, 0)
 			// mock result of sts update
@@ -293,7 +256,7 @@ func TestNewNGMonitorManager(t *testing.T) {
 			})
 			defer updateStsPatch.Reset()
 
-			err := manager.syncCore(tngm)
+			err := manager.syncCore(tngm, tc)
 			testcase.expectFn(tngm, err)
 		}
 	})
@@ -407,15 +370,15 @@ func TestNewNGMonitorManager(t *testing.T) {
 func TestGenerateNGMonitoringHeadlessService(t *testing.T) {
 
 	type testcase struct {
-		name     string
-		setTNGM  func(tngm *v1alpha1.TidbNGMonitoring)
-		expectFn func(tngm *v1alpha1.TidbNGMonitoring, svc *corev1.Service)
+		name      string
+		setInputs func(tngm *v1alpha1.TidbNGMonitoring)
+		expectFn  func(tngm *v1alpha1.TidbNGMonitoring, svc *corev1.Service)
 	}
 
 	cases := []testcase{
 		{
-			name:    "basic",
-			setTNGM: nil,
+			name:      "basic",
+			setInputs: nil,
 			expectFn: func(tngm *v1alpha1.TidbNGMonitoring, svc *corev1.Service) {
 				expectSvc := corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
@@ -474,8 +437,8 @@ func TestGenerateNGMonitoringHeadlessService(t *testing.T) {
 		tngm := &v1alpha1.TidbNGMonitoring{}
 		tngm.Name = "ngm"
 		tngm.Namespace = "default"
-		if testcase.setTNGM != nil {
-			testcase.setTNGM(tngm)
+		if testcase.setInputs != nil {
+			testcase.setInputs(tngm)
 		}
 
 		svc := GenerateNGMonitoringHeadlessService(tngm)
@@ -489,7 +452,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 	type testcase struct {
 		name string
 
-		setTNGM      func(tngm *v1alpha1.TidbNGMonitoring)
+		setInputs    func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster)
 		nilConfigMap bool
 		expectFn     func(sts *apps.StatefulSet, err error)
 	}
@@ -497,7 +460,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 	cases := []testcase{
 		{
 			name:         "configmap is nil",
-			setTNGM:      nil,
+			setInputs:    nil,
 			nilConfigMap: true,
 			expectFn: func(sts *apps.StatefulSet, err error) {
 				g.Expect(err).Should(HaveOccurred())
@@ -512,7 +475,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 		},
 		{
 			name: "run in host network",
-			setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
 				hostnetwork := true
 				tngm.Spec.HostNetwork = &hostnetwork
 			},
@@ -523,7 +486,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 		},
 		{
 			name: "should set resouce",
-			setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
 				tngm.Spec.NGMonitoring.ResourceRequirements = corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("1"),
@@ -561,7 +524,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 		},
 		{
 			name: "should set custom env",
-			setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
 				tngm.Spec.NGMonitoring.Env = []corev1.EnvVar{
 					{
 						Name:  "SOURCE1",
@@ -590,7 +553,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 		},
 		{
 			name: "should add additional containers",
-			setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
 				tngm.Spec.NGMonitoring.AdditionalContainers = []corev1.Container{
 					{
 						Name: "custom1",
@@ -614,7 +577,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 		},
 		{
 			name: "should add additional storage volumes",
-			setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
 				tngm.Spec.NGMonitoring.StorageVolumes = []v1alpha1.StorageVolume{
 					{
 						Name:        "test",
@@ -654,7 +617,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 		},
 		{
 			name: "should add custom labels",
-			setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
 				tngm.Spec.NGMonitoring.Labels = map[string]string{
 					"test1": "test1",
 					"test2": "test2",
@@ -672,7 +635,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 		},
 		{
 			name: "should add custom annotation",
-			setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
 				tngm.Spec.NGMonitoring.Annotations = map[string]string{
 					"test1": "test1",
 					"test2": "test2",
@@ -690,7 +653,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 		},
 		{
 			name: "should add additional volumes and mounts",
-			setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
 				tngm.Spec.NGMonitoring.AdditionalVolumeMounts = []corev1.VolumeMount{{Name: "test"}}
 				tngm.Spec.NGMonitoring.AdditionalVolumes = []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}
 			},
@@ -702,11 +665,29 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.Volumes).Should(ContainElements(expectVolumes))
 			},
 		},
+		{
+			name: "should add secret volume when tls is enable",
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{
+					Enabled: true,
+				}
+			},
+			expectFn: func(sts *apps.StatefulSet, err error) {
+				expectVolumeMounts := []corev1.VolumeMount{{Name: "tc-client-tls", ReadOnly: true, MountPath: ngmTCClientTLSMountDir}}
+				expectVolumes := []corev1.Volume{{Name: "tc-client-tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: TCClientTLSSecretName("ngm")}}}}
+				container := getNGMonitoringContainer(sts)
+				g.Expect(container.VolumeMounts).Should(ContainElements(expectVolumeMounts))
+				g.Expect(sts.Spec.Template.Spec.Volumes).Should(ContainElements(expectVolumes))
+			},
+		},
 	}
 
 	for _, testcase := range cases {
 		t.Logf("testcase: %s", testcase.name)
 
+		tc := &v1alpha1.TidbCluster{}
+		tc.Name = "tc"
+		tc.Namespace = "default"
 		tngm := &v1alpha1.TidbNGMonitoring{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "ngm",
@@ -721,8 +702,9 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 				},
 			},
 		}
-		if testcase.setTNGM != nil {
-			testcase.setTNGM(tngm)
+
+		if testcase.setInputs != nil {
+			testcase.setInputs(tngm, tc)
 		}
 
 		var cm *corev1.ConfigMap
@@ -730,7 +712,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 			cm = &corev1.ConfigMap{}
 		}
 
-		sts, err := GenerateNGMonitoringStatefulSet(tngm, cm)
+		sts, err := GenerateNGMonitoringStatefulSet(tngm, tc, cm)
 		testcase.expectFn(sts, err)
 	}
 }
@@ -739,9 +721,9 @@ func TestGenerateNGMonitoringConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcases struct {
-		name     string
-		setTNGM  func(tngm *v1alpha1.TidbNGMonitoring)
-		expectFn func(tngm *v1alpha1.TidbNGMonitoring, cm *corev1.ConfigMap, err error)
+		name      string
+		setInputs func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster)
+		expectFn  func(tngm *v1alpha1.TidbNGMonitoring, cm *corev1.ConfigMap, err error)
 	}
 
 	cases := []testcases{
@@ -785,7 +767,7 @@ func TestGenerateNGMonitoringConfigMap(t *testing.T) {
 		},
 		{
 			name: "should add custom config",
-			setTNGM: func(tngm *v1alpha1.TidbNGMonitoring) {
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
 				tngm.Spec.NGMonitoring.Config = config.New(map[string]interface{}{
 					"test": "test",
 					"table": map[string]interface{}{
@@ -811,11 +793,69 @@ func TestGenerateNGMonitoringConfigMap(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "should set config about cert when tls is enable",
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{
+					Enabled: true,
+				}
+			},
+			expectFn: func(tngm *v1alpha1.TidbNGMonitoring, cm *corev1.ConfigMap, err error) {
+				g.Expect(err).Should(Succeed())
+
+				cfg := config.New(nil)
+				err = cfg.UnmarshalTOML([]byte(cm.Data[ngmConfigMapConfigKey]))
+				g.Expect(err).Should(Succeed())
+
+				expectConfig := map[string]interface{}{
+					"security": map[string]interface{}{
+						"ca-path":   path.Join(ngmTCClientTLSMountDir, assetKey("tc", "default", corev1.ServiceAccountRootCAKey)),
+						"cert-path": path.Join(ngmTCClientTLSMountDir, assetKey("tc", "default", corev1.TLSCertKey)),
+						"key-path":  path.Join(ngmTCClientTLSMountDir, assetKey("tc", "default", corev1.TLSPrivateKeyKey)),
+					},
+				}
+				for k, v := range expectConfig {
+					g.Expect(cfg.MP).Should(HaveKeyWithValue(k, v))
+				}
+			},
+		},
+		{
+			name: "shouldn't change config in spec",
+			setInputs: func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) {
+				tngm.Spec.NGMonitoring.Config = config.New(map[string]interface{}{
+					"test": "test",
+					"table": map[string]interface{}{
+						"test": "test",
+					},
+				})
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{
+					Enabled: true,
+				}
+			},
+			expectFn: func(tngm *v1alpha1.TidbNGMonitoring, cm *corev1.ConfigMap, err error) {
+				g.Expect(err).Should(Succeed())
+
+				cfg := config.New(nil)
+				err = cfg.UnmarshalTOML([]byte(cm.Data[ngmConfigMapConfigKey]))
+				g.Expect(err).Should(Succeed())
+
+				expectConfig := config.New(map[string]interface{}{
+					"test": "test",
+					"table": map[string]interface{}{
+						"test": "test",
+					},
+				})
+				g.Expect(tngm.Spec.NGMonitoring.Config).Should(Equal(expectConfig))
+			},
+		},
 	}
 
 	for _, testcase := range cases {
 		t.Logf("testcase: %s", testcase.name)
 
+		tc := &v1alpha1.TidbCluster{}
+		tc.Name = "tc"
+		tc.Namespace = "default"
 		tngm := &v1alpha1.TidbNGMonitoring{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "ngm",
@@ -830,11 +870,11 @@ func TestGenerateNGMonitoringConfigMap(t *testing.T) {
 				},
 			},
 		}
-		if testcase.setTNGM != nil {
-			testcase.setTNGM(tngm)
+		if testcase.setInputs != nil {
+			testcase.setInputs(tngm, tc)
 		}
 
-		cm, err := GenerateNGMonitoringConfigMap(tngm)
+		cm, err := GenerateNGMonitoringConfigMap(tngm, tc)
 		testcase.expectFn(tngm, cm, err)
 	}
 }
