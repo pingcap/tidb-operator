@@ -15,10 +15,6 @@ package defaulting
 
 import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
-const (
-	defaultNGMonitoringImage = "pingcap/ng-monitoring"
-)
-
 func SetTidbNGMonitoringDefault(tngm *v1alpha1.TidbNGMonitoring) {
 	setTidbNGMonitoringSpecDefault(tngm)
 }
