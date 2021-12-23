@@ -3646,12 +3646,10 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 	if tc == nil {
 		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
 	}
-	var checkErr error
-	err := wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
-		var local *v1alpha1.TidbCluster
-		var err error
-		tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
-
+	var checkErr, err error
+	var local *v1alpha1.TidbCluster
+	tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
+	err = wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{}); err != nil {
 			checkErr = fmt.Errorf("failed to get TidbCluster: %q, %v", tcID, err)
 			return false, nil
@@ -3802,12 +3800,10 @@ func (oa *OperatorActions) WaitForTidbComponentsReady(tc *v1alpha1.TidbCluster, 
 	if tc == nil {
 		return fmt.Errorf("tidbcluster is nil")
 	}
-	var checkErr error
-	err := wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
-		var local *v1alpha1.TidbCluster
-		var err error
-		tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
-
+	var checkErr, err error
+	var local *v1alpha1.TidbCluster
+	tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
+	err = wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{}); err != nil {
 			checkErr = fmt.Errorf("failed to get TidbCluster: %q, %v", tcID, err)
 			return false, nil
