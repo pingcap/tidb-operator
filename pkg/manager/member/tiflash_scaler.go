@@ -86,12 +86,6 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 		return fmt.Errorf("tiflashScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
-	// TODO: Update Webhook to support TiFlash
-	// if controller.PodWebhookEnabled {
-	// 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-	// 	return nil
-	// }
-
 	for _, store := range tc.Status.TiFlash.Stores {
 		if store.PodName == podName {
 			state := store.State

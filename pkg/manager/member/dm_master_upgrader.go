@@ -97,11 +97,6 @@ func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.St
 			continue
 		}
 
-		//if controller.PodWebhookEnabled {
-		//	mngerutils.SetUpgradePartition(newSet, i)
-		//	return nil
-		//}
-
 		return u.upgradeMasterPod(dc, i, newSet)
 	}
 
