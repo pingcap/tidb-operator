@@ -924,20 +924,6 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 </tr>
 <tr>
 <td>
-<code>podManagementPolicy</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
-Kubernetes apps/v1.PodManagementPolicyType
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>PodManagementPolicy of DM cluster StatefulSets</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>topologySpreadConstraints</code></br>
 <em>
 <a href="#topologyspreadconstraint">
@@ -5188,20 +5174,6 @@ Kubernetes apps/v1.StatefulSetUpdateStrategyType
 <td>
 <em>(Optional)</em>
 <p>StatefulSetUpdateStrategy of DM cluster StatefulSets</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>podManagementPolicy</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
-Kubernetes apps/v1.PodManagementPolicyType
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>PodManagementPolicy of DM cluster StatefulSets</p>
 </td>
 </tr>
 <tr>

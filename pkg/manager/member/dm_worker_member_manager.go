@@ -325,12 +325,12 @@ func (m *workerMemberManager) syncWorkerConfigMap(dc *v1alpha1.DMCluster, set *a
 
 	var inUseName string
 	if set != nil {
-		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.DMWorkerMemberName(dc.Name))
 		})
 	}
 
-	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, dc.BaseWorkerSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, dc.BaseWorkerSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +521,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 				},
 			},
 			ServiceName:         controller.DMWorkerPeerMemberName(dcName),
-			PodManagementPolicy: baseWorkerSpec.PodManagementPolicy(),
+			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: baseWorkerSpec.StatefulSetUpdateStrategy(),
 			},
@@ -570,13 +570,6 @@ func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 			"startup-script": startScript,
 		},
 	}
-<<<<<<< HEAD
-
-	if err := AddConfigMapDigestSuffix(cm); err != nil {
-		return nil, err
-	}
-=======
->>>>>>> 391f2d03... Support all component spec fields for DM (#4313)
 	return cm, nil
 }
 

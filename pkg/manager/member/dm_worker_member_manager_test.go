@@ -258,8 +258,8 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 			cmGen, err := getWorkerConfigMap(dc)
 			g.Expect(err).To(Succeed())
 			cmName = cmGen.Name
-			g.Expect(cmName).To(Equal(controller.DMWorkerMemberName(dcName)))  // name not changed
-			g.Expect(mngerutils.AddConfigMapDigestSuffix(cmGen)).To(Succeed()) // should trigger ConfigMap rolling update
+			g.Expect(cmName).To(Equal(controller.DMWorkerMemberName(dcName))) // name not changed
+			g.Expect(AddConfigMapDigestSuffix(cmGen)).To(Succeed())           // should trigger ConfigMap rolling update
 			cmName = cmGen.Name
 		}
 		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: cmName}}
@@ -1207,7 +1207,6 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 					Tolerations:               []corev1.Toleration{{Key: "toleration-key"}},
 					PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)},
 					StatefulSetUpdateStrategy: appsv1.OnDeleteStatefulSetStrategyType,
-					PodManagementPolicy:       appsv1.OrderedReadyPodManagement,
 					Master:                    v1alpha1.MasterSpec{},
 					Worker:                    &v1alpha1.WorkerSpec{},
 				},
@@ -1234,7 +1233,6 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 				g.Expect(podSpec.Tolerations).To(Equal([]corev1.Toleration{{Key: "toleration-key"}}))
 				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)}))
 				g.Expect(sts.Spec.UpdateStrategy.Type).To(Equal(appsv1.OnDeleteStatefulSetStrategyType))
-				g.Expect(sts.Spec.PodManagementPolicy).To(Equal(appsv1.OrderedReadyPodManagement))
 			},
 		},
 		{
@@ -1256,7 +1254,6 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 					Tolerations:               []corev1.Toleration{{Key: "cluster-level-toleration-key"}},
 					PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)},
 					StatefulSetUpdateStrategy: appsv1.OnDeleteStatefulSetStrategyType,
-					PodManagementPolicy:       appsv1.OrderedReadyPodManagement,
 					Master:                    v1alpha1.MasterSpec{},
 					Worker: &v1alpha1.WorkerSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
@@ -1271,7 +1268,6 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 							Tolerations:               []corev1.Toleration{{Key: "component-level-toleration-key"}},
 							PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(456)},
 							StatefulSetUpdateStrategy: appsv1.RollingUpdateStatefulSetStrategyType,
-							PodManagementPolicy:       appsv1.ParallelPodManagement,
 						},
 					},
 				},
@@ -1299,7 +1295,6 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 				g.Expect(podSpec.Tolerations).To(Equal([]corev1.Toleration{{Key: "component-level-toleration-key"}}))
 				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(456)}))
 				g.Expect(sts.Spec.UpdateStrategy.Type).To(Equal(appsv1.RollingUpdateStatefulSetStrategyType))
-				g.Expect(sts.Spec.PodManagementPolicy).To(Equal(appsv1.ParallelPodManagement))
 			},
 		},
 		// TODO add more tests

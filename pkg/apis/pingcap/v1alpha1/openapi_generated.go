@@ -1914,13 +1914,6 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
-					"podManagementPolicy": {
-						SchemaProps: spec.SchemaProps{
-							Description: "PodManagementPolicy of DM cluster StatefulSets",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"topologySpreadConstraints": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{

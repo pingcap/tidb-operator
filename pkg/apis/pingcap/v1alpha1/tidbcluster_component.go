@@ -392,7 +392,6 @@ func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *
 		tolerations:               spec.Tolerations,
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
-		podManagementPolicy:       spec.PodManagementPolicy,
 		podSecurityContext:        spec.PodSecurityContext,
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
 

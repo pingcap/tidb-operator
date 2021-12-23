@@ -24,10 +24,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
-<<<<<<< HEAD
 	"github.com/pingcap/tidb-operator/pkg/label"
-=======
->>>>>>> 391f2d03... Support all component spec fields for DM (#4313)
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -1258,7 +1256,6 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 					Tolerations:               []corev1.Toleration{{Key: "toleration-key"}},
 					PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)},
 					StatefulSetUpdateStrategy: apps.OnDeleteStatefulSetStrategyType,
-					PodManagementPolicy:       apps.OrderedReadyPodManagement,
 					Master:                    v1alpha1.MasterSpec{},
 					Worker:                    &v1alpha1.WorkerSpec{},
 				},
@@ -1285,7 +1282,6 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 				g.Expect(podSpec.Tolerations).To(Equal([]corev1.Toleration{{Key: "toleration-key"}}))
 				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)}))
 				g.Expect(sts.Spec.UpdateStrategy.Type).To(Equal(apps.OnDeleteStatefulSetStrategyType))
-				g.Expect(sts.Spec.PodManagementPolicy).To(Equal(apps.OrderedReadyPodManagement))
 			},
 		},
 		{
@@ -1307,7 +1303,6 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 					Tolerations:               []corev1.Toleration{{Key: "cluster-level-toleration-key"}},
 					PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)},
 					StatefulSetUpdateStrategy: apps.OnDeleteStatefulSetStrategyType,
-					PodManagementPolicy:       apps.OrderedReadyPodManagement,
 					Master: v1alpha1.MasterSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ImagePullSecrets:          []corev1.LocalObjectReference{{Name: "component-level-secret"}},
@@ -1321,7 +1316,6 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 							Tolerations:               []corev1.Toleration{{Key: "component-level-toleration-key"}},
 							PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(456)},
 							StatefulSetUpdateStrategy: apps.RollingUpdateStatefulSetStrategyType,
-							PodManagementPolicy:       apps.ParallelPodManagement,
 						},
 					},
 					Worker: &v1alpha1.WorkerSpec{},
@@ -1350,7 +1344,6 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 				g.Expect(podSpec.Tolerations).To(Equal([]corev1.Toleration{{Key: "component-level-toleration-key"}}))
 				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(456)}))
 				g.Expect(sts.Spec.UpdateStrategy.Type).To(Equal(apps.RollingUpdateStatefulSetStrategyType))
-				g.Expect(sts.Spec.PodManagementPolicy).To(Equal(apps.ParallelPodManagement))
 			},
 		},
 		// TODO add more tests
@@ -1533,10 +1526,6 @@ ssl-key = "/var/lib/dm-master-tls/tls.key"
 			g.Expect(err).To(Succeed())
 			// startup-script is better to be tested in e2e
 			tt.expected.Data["startup-script"] = cm.Data["startup-script"]
-<<<<<<< HEAD
-			g.Expect(AddConfigMapDigestSuffix(tt.expected)).To(Succeed())
-=======
->>>>>>> 391f2d03... Support all component spec fields for DM (#4313)
 			if diff := cmp.Diff(*tt.expected, *cm); diff != "" {
 				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}

@@ -2626,7 +2626,6 @@ spec:
                                     type: array
                                   path:
                                     type: string
-<<<<<<< HEAD
                                   port:
                                     anyOf:
                                     - type: string
@@ -2637,53 +2636,6 @@ spec:
                                 - port
                                 type: object
                               tcpSocket:
-=======
-                                  type: object
-                              type: object
-                            namespaces:
-                              items:
-                                type: string
-                              type: array
-                            topologyKey:
-                              type: string
-                          required:
-                          - topologyKey
-                          type: object
-                        type: array
-                    type: object
-                type: object
-              annotations:
-                additionalProperties:
-                  type: string
-                type: object
-              configUpdateStrategy:
-                default: InPlace
-                enum:
-                - InPlace
-                - RollingUpdate
-                type: string
-              discovery:
-                properties:
-                  additionalContainers:
-                    items:
-                      properties:
-                        args:
-                          items:
-                            type: string
-                          type: array
-                        command:
-                          items:
-                            type: string
-                          type: array
-                        env:
-                          items:
-                            properties:
-                              name:
-                                type: string
-                              value:
-                                type: string
-                              valueFrom:
->>>>>>> 391f2d03... Support all component spec fields for DM (#4313)
                                 properties:
                                   host:
                                     type: string
@@ -6584,7 +6536,6 @@ spec:
                   type: object
                 priorityClassName:
                   type: string
-<<<<<<< HEAD
                 replicas:
                   format: int32
                   type: integer
@@ -6610,29 +6561,6 @@ spec:
                   type: array
                 tolerations:
                   items:
-=======
-                type: object
-              paused:
-                type: boolean
-              podManagementPolicy:
-                type: string
-              podSecurityContext:
-                properties:
-                  fsGroup:
-                    format: int64
-                    type: integer
-                  fsGroupChangePolicy:
-                    type: string
-                  runAsGroup:
-                    format: int64
-                    type: integer
-                  runAsNonRoot:
-                    type: boolean
-                  runAsUser:
-                    format: int64
-                    type: integer
-                  seLinuxOptions:
->>>>>>> 391f2d03... Support all component spec fields for DM (#4313)
                     properties:
                       effect:
                         type: string
@@ -6660,191 +6588,8 @@ spec:
                 additionalContainers:
                   items:
                     properties:
-<<<<<<< HEAD
                       args:
                         items:
-=======
-                      localhostProfile:
-                        type: string
-                      type:
-                        type: string
-                    required:
-                    - type
-                    type: object
-                  supplementalGroups:
-                    items:
-                      format: int64
-                      type: integer
-                    type: array
-                  sysctls:
-                    items:
-                      properties:
-                        name:
-                          type: string
-                        value:
-                          type: string
-                      required:
-                      - name
-                      - value
-                      type: object
-                    type: array
-                  windowsOptions:
-                    properties:
-                      gmsaCredentialSpec:
-                        type: string
-                      gmsaCredentialSpecName:
-                        type: string
-                      runAsUserName:
-                        type: string
-                    type: object
-                type: object
-              priorityClassName:
-                type: string
-              pvReclaimPolicy:
-                default: Retain
-                type: string
-              schedulerName:
-                default: tidb-scheduler
-                type: string
-              statefulSetUpdateStrategy:
-                type: string
-              timezone:
-                type: string
-              tlsClientSecretNames:
-                items:
-                  type: string
-                type: array
-              tlsCluster:
-                properties:
-                  enabled:
-                    type: boolean
-                type: object
-              tolerations:
-                items:
-                  properties:
-                    effect:
-                      type: string
-                    key:
-                      type: string
-                    operator:
-                      type: string
-                    tolerationSeconds:
-                      format: int64
-                      type: integer
-                    value:
-                      type: string
-                  type: object
-                type: array
-              topologySpreadConstraints:
-                items:
-                  properties:
-                    topologyKey:
-                      type: string
-                  required:
-                  - topologyKey
-                  type: object
-                type: array
-                x-kubernetes-list-map-keys:
-                - topologyKey
-                x-kubernetes-list-type: map
-              version:
-                type: string
-              worker:
-                properties:
-                  additionalContainers:
-                    items:
-                      properties:
-                        args:
-                          items:
-                            type: string
-                          type: array
-                        command:
-                          items:
-                            type: string
-                          type: array
-                        env:
-                          items:
-                            properties:
-                              name:
-                                type: string
-                              value:
-                                type: string
-                              valueFrom:
-                                properties:
-                                  configMapKeyRef:
-                                    properties:
-                                      key:
-                                        type: string
-                                      name:
-                                        type: string
-                                      optional:
-                                        type: boolean
-                                    required:
-                                    - key
-                                    type: object
-                                  fieldRef:
-                                    properties:
-                                      apiVersion:
-                                        type: string
-                                      fieldPath:
-                                        type: string
-                                    required:
-                                    - fieldPath
-                                    type: object
-                                  resourceFieldRef:
-                                    properties:
-                                      containerName:
-                                        type: string
-                                      divisor:
-                                        anyOf:
-                                        - type: integer
-                                        - type: string
-                                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                        x-kubernetes-int-or-string: true
-                                      resource:
-                                        type: string
-                                    required:
-                                    - resource
-                                    type: object
-                                  secretKeyRef:
-                                    properties:
-                                      key:
-                                        type: string
-                                      name:
-                                        type: string
-                                      optional:
-                                        type: boolean
-                                    required:
-                                    - key
-                                    type: object
-                                type: object
-                            required:
-                            - name
-                            type: object
-                          type: array
-                        envFrom:
-                          items:
-                            properties:
-                              configMapRef:
-                                properties:
-                                  name:
-                                    type: string
-                                  optional:
-                                    type: boolean
-                                type: object
-                              prefix:
-                                type: string
-                              secretRef:
-                                properties:
-                                  name:
-                                    type: string
-                                  optional:
-                                    type: boolean
-                                type: object
-                            type: object
-                          type: array
-                        image:
->>>>>>> 391f2d03... Support all component spec fields for DM (#4313)
                           type: string
                         type: array
                       command:
@@ -13518,6 +13263,8 @@ spec:
               type: object
             annotations:
               type: object
+            configUpdateStrategy:
+              type: string
             discovery:
               properties:
                 limits:
@@ -15654,6 +15401,8 @@ spec:
             pvReclaimPolicy:
               type: string
             schedulerName:
+              type: string
+            statefulSetUpdateStrategy:
               type: string
             timezone:
               type: string
