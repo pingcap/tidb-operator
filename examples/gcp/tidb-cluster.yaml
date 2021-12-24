@@ -103,9 +103,6 @@ spec:
       key: dedicated
       operator: Equal
       value: tidb
-<<<<<<< HEAD
-
-=======
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
@@ -116,4 +113,3 @@ spec:
               values:
               - tidb
           topologyKey: kubernetes.io/hostname
->>>>>>> 1fc23bed... add podAntiAffinity for aws/gcp/aks examples (#4325)
