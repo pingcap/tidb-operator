@@ -10,7 +10,6 @@ spec:
   schedulerName: default-scheduler
   topologySpreadConstraints:
   - topologyKey: topology.kubernetes.io/zone
-  - topologyKey: kubernetes.io/hostname
   enableDynamicConfiguration: true
   pd:
     baseImage: pingcap/pd
@@ -31,6 +30,16 @@ spec:
       key: dedicated
       operator: Equal
       value: pd
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - pd
+          topologyKey: kubernetes.io/hostname
   tikv:
     baseImage: pingcap/tikv
     maxFailoverCount: 0
@@ -45,6 +54,16 @@ spec:
       key: dedicated
       operator: Equal
       value: tikv
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - tikv
+          topologyKey: kubernetes.io/hostname
   tidb:
     baseImage: pingcap/tidb
     maxFailoverCount: 0
@@ -76,3 +95,13 @@ spec:
       key: dedicated
       operator: Equal
       value: tidb
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - tidb
+          topologyKey: kubernetes.io/hostname
