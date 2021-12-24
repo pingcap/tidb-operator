@@ -356,7 +356,7 @@ type MonitorContainer struct {
 // TidbClusterRef reference to a TidbCluster
 type TidbClusterRef struct {
 	// Namespace is the namespace that TidbCluster object locates,
-	// default to the same namespace with TidbMonitor
+	// default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 
