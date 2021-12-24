@@ -9,6 +9,8 @@ spec:
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
   schedulerName: default-scheduler
+  topologySpreadConstraints:
+  - topologyKey: topology.kubernetes.io/zone
   helper:
     image: busybox:1.34.1
   pd:
