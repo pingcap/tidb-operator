@@ -4040,7 +4040,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Namespace is the namespace that TidbCluster object locates,
-default to the same namespace with TidbMonitor</p>
+default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring</p>
 </td>
 </tr>
 <tr>
@@ -20645,7 +20645,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Namespace is the namespace that TidbCluster object locates,
-default to the same namespace with TidbMonitor</p>
+default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring</p>
 </td>
 </tr>
 <tr>
