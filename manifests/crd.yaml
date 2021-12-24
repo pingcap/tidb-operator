@@ -3107,6 +3107,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              configUpdateStrategy:
+                type: string
               discovery:
                 properties:
                   additionalContainers:
@@ -7719,6 +7721,8 @@ spec:
                 type: object
               paused:
                 type: boolean
+              podManagementPolicy:
+                type: string
               podSecurityContext:
                 properties:
                   fsGroup:
@@ -7787,7 +7791,8 @@ spec:
                 default: Retain
                 type: string
               schedulerName:
-                default: tidb-scheduler
+                type: string
+              statefulSetUpdateStrategy:
                 type: string
               timezone:
                 type: string
@@ -12347,10 +12352,6 @@ spec:
               clusterDomain:
                 type: string
               configUpdateStrategy:
-                default: InPlace
-                enum:
-                - InPlace
-                - RollingUpdate
                 type: string
               discovery:
                 properties:
@@ -19307,7 +19308,6 @@ spec:
                 default: Retain
                 type: string
               schedulerName:
-                default: tidb-scheduler
                 type: string
               serviceAccount:
                 type: string

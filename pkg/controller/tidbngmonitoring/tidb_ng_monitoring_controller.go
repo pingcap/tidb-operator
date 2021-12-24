@@ -42,6 +42,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 	control := NewDefaultTiDBNGMonitoringControl(
 		deps,
 		tidbngmonitoring.NewNGMonitorManager(deps),
+		tidbngmonitoring.NewTCAssetManager(deps),
 		meta.NewReclaimPolicyManager(deps),
 		deps.Recorder,
 	)

@@ -1,4 +1,4 @@
-// Copyright 2019 PingCAP, Inc.
+// Copyright 2021 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,18 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tidbcluster
+package defaulting
 
-import (
-	"encoding/json"
+import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-)
+func SetTidbNGMonitoringDefault(tngm *v1alpha1.TidbNGMonitoring) {
+	setTidbNGMonitoringSpecDefault(tngm)
+}
 
-func mustToString(set sets.Int32) string {
-	b, err := json.Marshal(set.List())
-	if err != nil {
-		panic(err)
+func setTidbNGMonitoringSpecDefault(tngm *v1alpha1.TidbNGMonitoring) {
+	for id := range tngm.Spec.Clusters {
+		if tngm.Spec.Clusters[id].Namespace == "" {
+			tngm.Spec.Clusters[id].Namespace = tngm.Namespace
+		}
 	}
-	return string(b)
 }

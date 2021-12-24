@@ -18,18 +18,17 @@ spec:
     name: basic
   tikv:
     baseImage: pingcap/tikv
+    maxFailoverCount: 0
     replicas: 1
     mountClusterClientSecret: true
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
-      storage: "1Gi"
-    config:
-      storage:
-        # In basic examples, we set this to avoid using too much storage.
-        reserve-space: "0MB"
+      storage: "100Gi"
+    config: {}
   tidb:
     baseImage: pingcap/tidb
+    maxFailoverCount: 0
     replicas: 1
     service:
       type: ClusterIP
@@ -38,11 +37,11 @@ spec:
       enabled: true
   tiflash:
     baseImage: pingcap/tiflash
+    maxFailoverCount: 0
     version: v5.2.1
     maxFailoverCount: 1
     replicas: 1
     storageClaims:
       - resources:
           requests:
-            storage: 1Gi
-        storageClassName: standard
+            storage: 100Gi

@@ -392,7 +392,6 @@ func newOperatorConfig() *tests.OperatorConfig {
 		ImagePullPolicy:    v1.PullAlways,
 		TestMode:           true,
 		WebhookEnabled:     true,
-		PodWebhookEnabled:  false,
 		StsWebhookEnabled:  true,
 	}
 }

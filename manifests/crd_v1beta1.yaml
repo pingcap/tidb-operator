@@ -3111,6 +3111,8 @@ spec:
               additionalProperties:
                 type: string
               type: object
+            configUpdateStrategy:
+              type: string
             discovery:
               properties:
                 additionalContainers:
@@ -7717,6 +7719,8 @@ spec:
               type: object
             paused:
               type: boolean
+            podManagementPolicy:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:
@@ -7784,6 +7788,8 @@ spec:
             pvReclaimPolicy:
               type: string
             schedulerName:
+              type: string
+            statefulSetUpdateStrategy:
               type: string
             timezone:
               type: string
@@ -12346,9 +12352,6 @@ spec:
             clusterDomain:
               type: string
             configUpdateStrategy:
-              enum:
-              - InPlace
-              - RollingUpdate
               type: string
             discovery:
               properties:

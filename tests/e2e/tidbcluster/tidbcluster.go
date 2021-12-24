@@ -40,7 +40,6 @@ import (
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
-	"k8s.io/kubernetes/test/e2e/framework/pod"
 	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	"k8s.io/kubernetes/test/utils"
 	"k8s.io/utils/pointer"
@@ -65,7 +64,6 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
-	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
@@ -394,49 +392,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to get EvictLeader")
 		res := utiltc.MustPDHasScheduler(evictLeaderSchedulers, "evict-leader-scheduler")
 		framework.ExpectEqual(res, false)
-	})
-
-	// TODO: move into Upgrade cases below
-	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
-		ginkgo.By("Creating webhook certs and self signing it")
-		svcName := "webhook"
-		certCtx, err := apimachinery.SetupServerCert(ns, svcName)
-		framework.ExpectNoError(err, "failed to setup certs for apimachinery webservice %s", tests.WebhookServiceName)
-
-		ginkgo.By("Starting webhook pod")
-		webhookPod, svc := startWebhook(c, cfg.E2EImage, ns, svcName, certCtx.Cert, certCtx.Key)
-
-		ginkgo.By("Register webhook")
-		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
-
-		ginkgo.By("Deploying tidb cluster")
-		clusterName := "webhook-upgrade-cluster"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
-		tc.Spec.PD.Replicas = 3
-		// Deploy
-		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
-
-		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", tc.Spec.Version, utilimage.TiDBLatest))
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBLatest
-			return nil
-		})
-		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
-		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
-
-		ginkgo.By("Check webhook is still running")
-		webhookPod, err = c.CoreV1().Pods(webhookPod.Namespace).Get(context.TODO(), webhookPod.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get webhook pod %s/%s", webhookPod.Namespace, webhookPod.Name)
-		if webhookPod.Status.Phase != corev1.PodRunning {
-			logs, err := pod.GetPodLogs(c, webhookPod.Namespace, webhookPod.Name, "webhook")
-			framework.ExpectNoError(err, "failed to get pod log %s/%s", webhookPod.Namespace, webhookPod.Name)
-			log.Logf("webhook logs: %s", logs)
-			log.Failf("webhook pod is not running")
-		}
-
-		ginkgo.By("Clean up webhook")
-		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
 
 	ginkgo.Context("[Feature: Helm Chart migrate to CR]", func() {
@@ -1157,6 +1112,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+			ginkgo.By("Ensure configs of all components are not changed")
+			newTC, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{})
+			tc.Spec.TiDB.Config.Set("log.file.max-backups", int64(3))
+			framework.ExpectNoError(err, "failed to get TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.PD.Config, tc.Spec.PD.Config, "pd config isn't equal of TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.TiKV.Config, tc.Spec.TiKV.Config, "tikv config isn't equal of TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.TiDB.Config, tc.Spec.TiDB.Config, "tidb config isn't equal of TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.Pump.Config, tc.Spec.Pump.Config, "pump config isn't equal of TidbCluster: %s", tc.Name)
 
 			ginkgo.By("Ensure Dashboard use custom secret")
 			foundSecretName := false
