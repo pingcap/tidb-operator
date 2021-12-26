@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/sethvargo/go-password/password"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -425,4 +426,20 @@ func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeC
 		return pvcs, err
 	}
 	return pvcs, nil
+}
+
+// FixedLengthRandomPasswordBytes generates a random password
+func FixedLengthRandomPasswordBytes() []byte {
+	return RandomBytes(24)
+}
+
+// RandomBytes generates some random bytes that can be used as a token or as a key
+func RandomBytes(length int) []byte {
+	return []byte(password.MustGenerate(
+		length,
+		10,    // number of digits to include in the result
+		0,     // number of symbols to include in the result
+		false, // noUpper
+		true,  // allowRepeat
+	))
 }

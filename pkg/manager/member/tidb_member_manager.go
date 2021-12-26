@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -241,8 +243,61 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 			return err
 		}
 	}
+	// set random password
+	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.InitPassword {
+		// sync password secret
+		secret := m.buildRandomPasswordSecret(tc)
+		secret, err := m.deps.TypedControl.CreateOrUpdateSecret(tc, secret)
+		if err != nil {
+			return err
+		}
+		tidbInitializer := &v1alpha1.TidbInitializer{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "TidbCluster",
+				APIVersion: "pingcap.com/v1alpha1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-init", tc.Name),
+				Namespace: tc.Namespace,
+			},
+			Spec: v1alpha1.TidbInitializerSpec{
+				Clusters: v1alpha1.TidbClusterRef{
+					Name:      tc.Name,
+					Namespace: tc.Namespace,
+				},
+				PasswordSecret: pointer.StringPtr(secret.Name),
+			},
+		}
+		_, err = m.deps.TypedControl.CreateOrUpdateTidbInitializer(tc, tidbInitializer)
+		if err != nil {
+			return err
+		}
+
+		exist, err := m.deps.TiDBInitializerLister.TidbInitializers(tidbInitializer.Namespace).Get(tidbInitializer.Name)
+		if err != nil {
+			return err
+		}
+		if exist.Status.Phase == v1alpha1.InitializePhaseCompleted {
+			tc.Status.InitPassword = true
+		}
+	}
 
 	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
+}
+
+func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) *corev1.Secret {
+
+	s := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-secret", tc.Name),
+			Namespace: tc.Namespace,
+		},
+	}
+	password := util.FixedLengthRandomPasswordBytes()
+	s.Data = map[string][]byte{
+		constants.TidbPasswordKey: password,
+	}
+	return s
 }
 
 func (m *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {

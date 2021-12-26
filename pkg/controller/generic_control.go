@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -62,6 +64,8 @@ type TypedControlInterface interface {
 	CreateOrUpdateIngress(controller client.Object, ingress *networkingv1.Ingress) (*networkingv1.Ingress, error)
 	// CreateOrUpdateIngressV1beta1 create the desired v1beta1 ingress or update the current one to desired state if already existed
 	CreateOrUpdateIngressV1beta1(controller client.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error)
+	// CreateOrUpdateTidbInitializer create the desired v1alpha1 TidbInitializer or update the current one to desired state if already existed
+	CreateOrUpdateTidbInitializer(controller client.Object, tidbInitializer *v1alpha1.TidbInitializer) (*v1alpha1.TidbInitializer, error)
 	// UpdateStatus update the /status subresource of the object
 	UpdateStatus(newStatus client.Object) error
 	// Delete delete the given object from the cluster
@@ -261,6 +265,23 @@ func (w *typedWrapper) CreateOrUpdateConfigMap(controller client.Object, cm *cor
 		return nil, err
 	}
 	return result.(*corev1.ConfigMap), nil
+}
+
+func (w *typedWrapper) CreateOrUpdateTidbInitializer(controller client.Object, tidbInitializer *v1alpha1.TidbInitializer) (*v1alpha1.TidbInitializer, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, tidbInitializer, func(existing, desired client.Object) error {
+		existingInitializer := existing.(*v1alpha1.TidbInitializer)
+		desiredInitializer := desired.(*v1alpha1.TidbInitializer)
+
+		existingInitializer.Labels = desiredInitializer.Labels
+		for k, v := range desiredInitializer.Annotations {
+			existingInitializer.Annotations[k] = v
+		}
+		return nil
+	}, true)
+	if err != nil {
+		return nil, err
+	}
+	return result.(*v1alpha1.TidbInitializer), nil
 }
 
 func (w *typedWrapper) CreateOrUpdateService(controller client.Object, svc *corev1.Service) (*corev1.Service, error) {
