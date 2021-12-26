@@ -11743,6 +11743,13 @@ spec:
                     - name
                     type: object
                   type: array
+                initializer:
+                  properties:
+                    createPassword:
+                      type: boolean
+                  required:
+                  - createPassword
+                  type: object
                 labels:
                   additionalProperties:
                     type: string
@@ -17161,6 +17168,8 @@ spec:
                   type: object
                 image:
                   type: string
+                initPassword:
+                  type: boolean
                 members:
                   additionalProperties:
                     properties:
