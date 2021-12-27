@@ -320,8 +320,10 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Fail TiKV in cluster-1 by setting a wrong image")
 			local, err := cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
-			local.Spec.TiKV.BaseImage = inexistentBaseImage
-			err = genericCli.Update(context.TODO(), local)
+			err = controller.GuaranteedUpdate(genericCli, local, func() error {
+				local.Spec.TiKV.BaseImage = inexistentBaseImage
+				return nil
+			})
 			framework.ExpectNoError(err, "updating tikv with an inexistent image %q for %q", tc1.Spec.TiKV.BaseImage, tcName1)
 			// force operator to trigger an upgrade.
 			err = c.AppsV1().StatefulSets(ns1).Delete(context.TODO(), fmt.Sprintf("%s-tikv", tcName1), metav1.DeleteOptions{})
@@ -341,7 +343,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			podList, err := c.CoreV1().Pods(ns1).List(context.TODO(), metav1.ListOptions{})
 			framework.ExpectNoError(err, "list pods under namespace %q", ns1)
 			for _, pod := range podList.Items {
-				if !strings.Contains(pod.Name, "pd") && !strings.Contains(pod.Name, "tikv") {
+				if !strings.Contains(pod.Name, "tikv") {
 					err := c.CoreV1().Pods(ns1).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 					framework.ExpectNoError(err, "failed to delete pod %q", pod.Name)
 				}
@@ -350,7 +352,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Check cluster components status")
 			componentsFilter := make(map[v1alpha1.MemberType]struct{}, 2)
 			componentsFilter[v1alpha1.TiKVMemberType] = struct{}{}
-			err = oa.WaitForTidbComponentsReady(tc1, componentsFilter, 5*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbComponentsReady(tc1, componentsFilter, 15*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "waiting for other components to be ready")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns1, tcName1, ""))
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName1)
@@ -358,12 +360,14 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Fail PD in cluster-1 by setting a wrong image")
 			local, err = cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
-			local.Spec.PD.BaseImage = inexistentBaseImage
-			err = genericCli.Update(context.TODO(), local)
+			err = controller.GuaranteedUpdate(genericCli, tc1, func() error {
+				local.Spec.PD.BaseImage = inexistentBaseImage
+				return nil
+			})
 			framework.ExpectNoError(err, "updating pd with an inexistent image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
-			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*10, func(tc *v1alpha1.TidbCluster) (bool, error) {
 				healthy := false
 				for _, member := range tc.Status.PD.Members {
 					healthy = healthy || member.Health
@@ -377,7 +381,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			podList, err = c.CoreV1().Pods(ns1).List(context.TODO(), metav1.ListOptions{})
 			framework.ExpectNoError(err, "list pods under namespace %q", ns1)
 			for _, pod := range podList.Items {
-				if !strings.Contains(pod.Name, "pd") {
+				if !strings.Contains(pod.Name, "tikv") && !strings.Contains(pod.Name, "pd") {
 					err := c.CoreV1().Pods(ns1).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 					framework.ExpectNoError(err, "failed to delete pod %q", pod.Name)
 				}
@@ -385,7 +389,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			ginkgo.By("Check cluster components status")
 			componentsFilter[v1alpha1.PDMemberType] = struct{}{}
-			err = oa.WaitForTidbComponentsReady(tc1, componentsFilter, 5*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbComponentsReady(tc1, componentsFilter, 15*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "waiting for other components to be ready")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns1, tcName1, ""))
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName1)
