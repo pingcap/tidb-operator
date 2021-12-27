@@ -15,10 +15,12 @@ package tidbngmonitoring
 
 import (
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -35,6 +37,7 @@ const (
 	ngmPodDataVolumeMountDir   = "/var/lib/ng-monitoring" // the mount path for ng monitoring data volume
 	ngmPodConfigVolumeMountDir = "/etc/ng-monitoring"     // the dir for ng monitoring config
 	ngmPodConfigFilename       = "ng-monitoring.toml"     // the filename of config file
+	ngmTCClientTLSMountDir     = "/var/lib/tc-client-tls" // the dir for tc client tls
 
 	ngmConfigMapConfigKey = "config-file" // the key for config data in config map
 
@@ -51,7 +54,7 @@ func NewNGMonitorManager(deps *controller.Dependencies) *ngMonitoringManager {
 	}
 }
 
-func (m *ngMonitoringManager) Sync(tngm *v1alpha1.TidbNGMonitoring) error {
+func (m *ngMonitoringManager) Sync(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error {
 	var err error
 
 	err = m.syncService(tngm)
@@ -59,7 +62,7 @@ func (m *ngMonitoringManager) Sync(tngm *v1alpha1.TidbNGMonitoring) error {
 		return err
 	}
 
-	err = m.syncCore(tngm)
+	err = m.syncCore(tngm, tc)
 	if err != nil {
 		return err
 	}
@@ -112,7 +115,7 @@ func (m *ngMonitoringManager) syncService(tngm *v1alpha1.TidbNGMonitoring) error
 	return nil
 }
 
-func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TidbNGMonitoring) error {
+func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error {
 	ns := tngm.GetNamespace()
 	name := tngm.GetName()
 
@@ -138,13 +141,13 @@ func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TidbNGMonitoring) error {
 
 	// sync resources
 
-	cm, err := m.syncConfigMap(tngm, oldSts)
+	cm, err := m.syncConfigMap(tngm, tc, oldSts)
 	if err != nil {
 		klog.Errorf("failed to sync ng monitoring's configmap of tidb ng monitring %s/%s, error: %v", ns, name, err)
 		return err
 	}
 
-	newSts, err := GenerateNGMonitoringStatefulSet(tngm, cm)
+	newSts, err := GenerateNGMonitoringStatefulSet(tngm, tc, cm)
 	if err != nil {
 		return err
 	}
@@ -162,10 +165,10 @@ func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TidbNGMonitoring) error {
 	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tngm, newSts, oldSts)
 }
 
-func (m *ngMonitoringManager) syncConfigMap(tngm *v1alpha1.TidbNGMonitoring, sts *apps.StatefulSet) (*corev1.ConfigMap, error) {
+func (m *ngMonitoringManager) syncConfigMap(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) (*corev1.ConfigMap, error) {
 	spec := tngm.BaseNGMonitoringSpec()
 
-	newCM, err := GenerateNGMonitoringConfigMap(tngm)
+	newCM, err := GenerateNGMonitoringConfigMap(tngm, tc)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +241,7 @@ func (m *ngMonitoringManager) confirmStatefulSetIsUpgrading(tngm *v1alpha1.TidbN
 	return false, nil
 }
 
-func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tngm.GetNamespace()
 	name := tngm.GetName()
 
@@ -247,7 +250,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, cm *corev1
 	}
 
 	spec := tngm.BaseNGMonitoringSpec()
-	meta, stsLabels := GenerateNGMonitoringMeta(tngm, NGMonitoringName)
+	meta, stsLabels := GenerateNGMonitoringMeta(tngm, NGMonitoringName(tngm.Name))
 	headlessServiceName := NGMonitoringHeadlessServiceName(name)
 	replicas := int32(1) // only support one replica now
 
@@ -259,7 +262,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, cm *corev1
 	// base containers
 	baseContainers := []corev1.Container{}
 	nmContainerName := v1alpha1.NGMonitoringMemberType.String()
-	startScript, err := GenerateNGMonitoringStartScript(tngm)
+	startScript, err := GenerateNGMonitoringStartScript(tngm, tc)
 	if err != nil {
 		return nil, fmt.Errorf("cannot render start-script for ng monitoring, tidb ng monitoring %s/%s, error: %v", ns, name, err)
 	}
@@ -391,32 +394,52 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, cm *corev1
 	builder.PodTemplateSpecBuilder().AddVolumes(spec.AdditionalVolumes()...)
 	// additional containers
 	builder.PodTemplateSpecBuilder().AddContainers(spec.AdditionalContainers()...)
-	// TODO: TLS
+	// tc enable tls
+	if tc.IsTLSClusterEnabled() {
+		builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddVolumeMounts(corev1.VolumeMount{
+			Name: "tc-client-tls", ReadOnly: true, MountPath: ngmTCClientTLSMountDir,
+		})
+		builder.PodTemplateSpecBuilder().AddVolumes(corev1.Volume{
+			Name: "tc-client-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: TCClientTLSSecretName(name),
+				},
+			},
+		})
+	}
 
 	return builder.Get(), nil
 }
 
 // GenerateNGMonitoringConfigMap generate ConfigMap from tidb ng monitoring
-func GenerateNGMonitoringConfigMap(tngm *v1alpha1.TidbNGMonitoring) (*corev1.ConfigMap, error) {
-	config := tngm.Spec.NGMonitoring.Config
-	meta, _ := GenerateNGMonitoringMeta(tngm, NGMonitoringName)
+func GenerateNGMonitoringConfigMap(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
+	tcName := tc.Name
+	tcNS := tc.Namespace
 
-	// TODO: TLS
+	var ngmConfig *config.GenericConfig
+	if tngm.Spec.NGMonitoring.Config != nil {
+		ngmConfig = tngm.Spec.NGMonitoring.Config.DeepCopy()
+	}
 
-	confText, err := config.MarshalTOML()
+	if tc.IsTLSClusterEnabled() {
+		if ngmConfig == nil {
+			ngmConfig = config.New(map[string]interface{}{})
+		}
+
+		ngmConfig.Set("security.ca-path", path.Join(ngmTCClientTLSMountDir, assetKey(tcName, tcNS, corev1.ServiceAccountRootCAKey)))
+		ngmConfig.Set("security.cert-path", path.Join(ngmTCClientTLSMountDir, assetKey(tcName, tcNS, corev1.TLSCertKey)))
+		ngmConfig.Set("security.key-path", path.Join(ngmTCClientTLSMountDir, assetKey(tcName, tcNS, corev1.TLSPrivateKeyKey)))
+	}
+
+	confText, err := ngmConfig.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}
 
-	name := NGMonitoringName(tngm.Name)
-	confTextStr := string(confText)
-
+	meta, _ := GenerateNGMonitoringMeta(tngm, NGMonitoringConfigMapName(tngm.Name))
 	data := map[string]string{
-		ngmConfigMapConfigKey: confTextStr,
+		ngmConfigMapConfigKey: string(confText),
 	}
-
-	meta.Name = name
-
 	return &corev1.ConfigMap{
 		ObjectMeta: meta,
 		Data:       data,
@@ -424,12 +447,12 @@ func GenerateNGMonitoringConfigMap(tngm *v1alpha1.TidbNGMonitoring) (*corev1.Con
 }
 
 // GenerateNGMonitoringMeta build ObjectMeta and Label for ng monitoring
-func GenerateNGMonitoringMeta(tngm *v1alpha1.TidbNGMonitoring, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {
+func GenerateNGMonitoringMeta(tngm *v1alpha1.TidbNGMonitoring, name string) (metav1.ObjectMeta, label.Label) {
 	instanceName := tngm.GetInstanceName()
 	label := label.NewTiDBNGMonitoring().Instance(instanceName).NGMonitoring()
 
 	objMeta := metav1.ObjectMeta{
-		Name:            nameFunc(tngm.Name),
+		Name:            name,
 		Namespace:       tngm.GetNamespace(),
 		Labels:          label,
 		OwnerReferences: []metav1.OwnerReference{controller.GetTiDBNGMonitoringOwnerRef(tngm)},
@@ -439,7 +462,7 @@ func GenerateNGMonitoringMeta(tngm *v1alpha1.TidbNGMonitoring, nameFunc func(str
 
 // GenerateNGMonitoringHeadlessService build headless service for ng monitoring
 func GenerateNGMonitoringHeadlessService(tngm *v1alpha1.TidbNGMonitoring) *corev1.Service {
-	meta, labels := GenerateNGMonitoringMeta(tngm, NGMonitoringHeadlessServiceName)
+	meta, labels := GenerateNGMonitoringMeta(tngm, NGMonitoringHeadlessServiceName(tngm.Name))
 
 	return &corev1.Service{
 		ObjectMeta: meta,
@@ -459,13 +482,11 @@ func GenerateNGMonitoringHeadlessService(tngm *v1alpha1.TidbNGMonitoring) *corev
 	}
 }
 
-func GenerateNGMonitoringStartScript(tngm *v1alpha1.TidbNGMonitoring) (string, error) {
-	tcRef := tngm.Spec.Clusters[0]
-
+func GenerateNGMonitoringStartScript(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) (string, error) {
 	model := &NGMonitoringStartScriptModel{
-		TCName:            tcRef.Name,
-		TCNamespace:       tcRef.Namespace,
-		TCClusterDomain:   tcRef.ClusterDomain,
+		TCName:            tc.Name,
+		TCNamespace:       tc.Namespace,
+		TCClusterDomain:   tc.Spec.ClusterDomain,
 		TNGMName:          tngm.Name,
 		TNGMNamespace:     tngm.Namespace,
 		TNGMClusterDomain: tngm.Spec.ClusterDomain,
@@ -480,20 +501,20 @@ func GenerateNGMonitoringStartScript(tngm *v1alpha1.TidbNGMonitoring) (string, e
 }
 
 type FakeNGMonitoringManager struct {
-	sync func(tngm *v1alpha1.TidbNGMonitoring) error
+	sync func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error
 }
 
 func NewFakeNGMonitoringManager() *FakeNGMonitoringManager {
 	return &FakeNGMonitoringManager{}
 }
 
-func (m *FakeNGMonitoringManager) MockSync(sync func(tngm *v1alpha1.TidbNGMonitoring) error) {
+func (m *FakeNGMonitoringManager) MockSync(sync func(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error) {
 	m.sync = sync
 }
 
-func (m *FakeNGMonitoringManager) Sync(tngm *v1alpha1.TidbNGMonitoring) error {
+func (m *FakeNGMonitoringManager) Sync(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) error {
 	if m.sync == nil {
 		return nil
 	}
-	return m.sync(tngm)
+	return m.sync(tngm, tc)
 }
