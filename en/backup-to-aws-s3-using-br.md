@@ -30,7 +30,7 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-rbac.yaml -n test1
     ```
 
@@ -44,7 +44,7 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
@@ -58,7 +58,7 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-aws-s3.yaml
     ```
 
@@ -105,7 +105,7 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-aws-s3.yaml
     ```
 
@@ -153,7 +153,7 @@ Before you perform ad-hoc backup, AWS account permissions need to be granted. Th
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-aws-s3.yaml
     ```
 
@@ -208,7 +208,7 @@ After you create the `Backup` CR, view the backup status by running the followin
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get bk -n test1 -o wide
 ```
 
@@ -226,7 +226,7 @@ The prerequisites for the scheduled full backup is the same as the [prerequisite
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-scheduler-aws-s3.yaml
     ```
 
@@ -276,7 +276,7 @@ The prerequisites for the scheduled full backup is the same as the [prerequisite
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-scheduler-aws-s3.yaml
     ```
 
@@ -327,7 +327,7 @@ The prerequisites for the scheduled full backup is the same as the [prerequisite
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-scheduler-aws-s3.yaml
     ```
 
@@ -377,7 +377,7 @@ After creating the scheduled full backup, use the following command to check the
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get bks -n test1 -o wide
 ```
 
@@ -385,7 +385,7 @@ You can use the following command to check all the backup items:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n test1
 ```
 

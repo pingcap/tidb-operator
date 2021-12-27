@@ -64,7 +64,7 @@ Execute the following command to create the heterogeneous cluster:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f cluster.yaml -n ${namespace}
 ```
 
@@ -104,7 +104,7 @@ Execute the following command to create the heterogeneous cluster:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f tidbmonitor.yaml -n ${namespace}
 ```
 
@@ -175,7 +175,7 @@ Execute the following command to create the TLS-enabled heterogeneous cluster:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f cluster.yaml -n ${namespace}
 ```
 

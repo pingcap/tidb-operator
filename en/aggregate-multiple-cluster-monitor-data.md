@@ -23,7 +23,7 @@ Thanos provides [Thanos Query](https://thanos.io/tip/components/query.md/) compo
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/monitor-with-thanos/tidb-monitor.yaml
     ```
 
@@ -59,7 +59,7 @@ To access the Thanos Query panel, execute the following command, and then access
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${thanos_namespace} svc/thanos-query 9090
 ```
 

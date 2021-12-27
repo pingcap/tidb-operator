@@ -30,7 +30,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-rbac.yaml -n test1
     ```
 
@@ -42,7 +42,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
@@ -52,7 +52,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-gcs.yaml
     ```
 
@@ -108,7 +108,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get bk -n test1 -owide
     ```
 
@@ -126,7 +126,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-schedule-gcs.yaml
     ```
 
@@ -173,7 +173,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get bks -n test1 -owide
     ```
 
@@ -181,7 +181,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-gcs -n test1
     ```
 

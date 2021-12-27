@@ -14,7 +14,7 @@ Kubernetes 上的 TiDB 运维管理需要使用一些开源工具。同时，在
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
 ```
 
@@ -22,7 +22,7 @@ kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/por
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 pd-ctl -d config show
 ```
 
@@ -30,7 +30,7 @@ pd-ctl -d config show
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} svc/${cluster_name}-pd ${local_port}:2379 &>/tmp/portforward-pd.log &
 ```
 
@@ -38,7 +38,7 @@ kubectl port-forward -n ${namespace} svc/${cluster_name}-pd ${local_port}:2379 &
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 pd-ctl -u 127.0.0.1:${local_port} -d config show
 ```
 
@@ -50,13 +50,13 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl port-forward -n ${namespace} ${pod_name} 20160:20160 &>/tmp/portforward-tikv.log &
     ```
 
@@ -64,13 +64,13 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     $ tikv-ctl --host 127.0.0.1:20160 ${subcommands}
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     tikv-ctl --pd 127.0.0.1:2379 compact-cluster
     ```
 
@@ -80,7 +80,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl annotate pod ${pod_name} -n ${namespace} runmode=debug
         ```
 
@@ -88,7 +88,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl exec ${pod_name} -n ${namespace} -c tikv -- kill -s TERM 1
         ```
 
@@ -96,7 +96,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl exec -it ${pod_name} -n ${namespace} -- sh
         ```
 
@@ -104,7 +104,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         ./tikv-ctl --data-dir /var/lib/tikv size -r 2
         ```
 
@@ -114,13 +114,13 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} ${pod_name} 10080:10080 &>/tmp/portforward-tidb.log &
 ```
 
@@ -128,7 +128,7 @@ kubectl port-forward -n ${namespace} ${pod_name} 10080:10080 &>/tmp/portforward-
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tidb-ctl schema in mysql
 ```
 
@@ -144,14 +144,14 @@ tidb-ctl schema in mysql
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 wget https://get.helm.sh/helm-v3.4.1-linux-amd64.tar.gz
 tar zxvf helm-v3.4.1-linux-amd64.tar.gz
 ```
 
 解压之后，有以下文件：
 
-```shell
+```bash
 linux-amd64/
 linux-amd64/README.md
 linux-amd64/helm
@@ -164,11 +164,11 @@ linux-amd64/LICENSE
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm version
 ```
 
-```shell
+```bash
 version.BuildInfo{Version:"v3.4.1", GitCommit:"c4e74854886b2efe3321e185578e6db9be0a6e29", GitTreeState:"clean", GoVersion:"go1.14.11"}
 ```
 
@@ -187,7 +187,7 @@ Kubernetes 应用在 Helm 中被打包为 chart。PingCAP 针对 Kubernetes 上�
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm repo add pingcap https://charts.pingcap.org/
 ```
 
@@ -195,7 +195,7 @@ helm repo add pingcap https://charts.pingcap.org/
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm search repo pingcap
 ```
 
@@ -225,7 +225,7 @@ Helm 的常用操作有部署（`helm install`）、升级（`helm upgrade`)、�
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm ls
 ```
 
@@ -235,7 +235,7 @@ helm ls
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${release_name} ${chart_name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
     ```
 
@@ -243,7 +243,7 @@ helm ls
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade ${release_name} ${chart_name} --version=${chart_version} -f ${values_file}
     ```
 
@@ -251,7 +251,7 @@ helm ls
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm uninstall ${release_name} -n ${namespace}
 ```
 
@@ -265,7 +265,7 @@ helm uninstall ${release_name} -n ${namespace}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 wget http://charts.pingcap.org/tidb-operator-v1.2.4.tgz
 wget http://charts.pingcap.org/tidb-drainer-v1.2.4.tgz
 wget http://charts.pingcap.org/tidb-lightning-v1.2.4.tgz
@@ -275,7 +275,7 @@ wget http://charts.pingcap.org/tidb-lightning-v1.2.4.tgz
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tar zxvf tidb-operator.v1.2.4.tgz
 helm install ${release_name} ./tidb-operator --namespace=${namespace}
 ```

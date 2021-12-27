@@ -60,7 +60,7 @@ To verify the PVC status, run the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor -n ${namespace}
 ```
 
@@ -105,7 +105,7 @@ You can run the `kubectl port-forward` command to access the Grafana monitoring 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} svc/${cluster_name}-grafana 3000:3000 &>/tmp/portforward-grafana.log &
 ```
 
@@ -121,7 +121,7 @@ To access the monitoring data directly, run the `kubectl port-forward` command t
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} svc/${cluster_name}-prometheus 9090:9090 &>/tmp/portforward-prometheus.log &
 ```
 
@@ -279,7 +279,7 @@ type: kubernetes.io/tls
 
 In a public cloud-deployed Kubernetes cluster, you can usually [configure Loadbalancer](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/) to access Ingress through a domain name. If you cannot configure the Loadbalancer service (for example, when you use NodePort as the service type of Ingress), you can access the service in a way equivalent to the following command:
 
-```shell
+```bash
 curl -H "Host: example.com" ${node_ip}:${NodePort}
 ```
 

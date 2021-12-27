@@ -124,7 +124,7 @@ The core is configured as below:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 sysctl net.core.somaxconn=32768
 sysctl vm.swappiness=0
 sysctl net.ipv4.tcp_syncookies=0
@@ -142,7 +142,7 @@ Before the test, the `prewarm` command of `oltp_common` is used to warm up data.
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 sysbench \
   --mysql-host=${tidb_host} \
   --mysql-port=4000 \
@@ -166,7 +166,7 @@ sysbench \
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 sysbench \
   --mysql-host=${tidb_host} \
   --mysql-port=4000 \
@@ -188,7 +188,7 @@ sysbench \
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 sysbench \
   --mysql-host=${tidb_host} \
   --mysql-port=4000 \

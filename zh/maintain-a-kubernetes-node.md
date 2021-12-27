@@ -25,7 +25,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl cordon ${node_name}
     ```
 
@@ -33,7 +33,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name} | grep tikv
     ```
 
@@ -47,7 +47,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         pd-ctl config set max-store-down-time 60m
         ```
 
@@ -57,7 +57,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name} | grep pd
     ```
 
@@ -67,7 +67,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name}
     ```
 
@@ -75,7 +75,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl drain ${node_name} --ignore-daemonsets
     ```
 
@@ -85,7 +85,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name}
     ```
 
@@ -93,7 +93,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl get node ${node_name}
     ```
 
@@ -103,7 +103,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl uncordon ${node_name}
     ```
 
@@ -111,7 +111,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name}
     ```
 
@@ -123,7 +123,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name} | grep tikv
     ```
 
@@ -133,7 +133,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name} | grep pd
     ```
 
@@ -143,7 +143,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name}
     ```
 
@@ -151,7 +151,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl drain ${node_name} --ignore-daemonsets
     ```
 
@@ -161,7 +161,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name}
     ```
 
@@ -169,7 +169,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete node ${node_name}
     ```
 
@@ -185,7 +185,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl cordon ${node_name}
     ```
 
@@ -193,7 +193,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name} | grep pd
     ```
 
@@ -203,7 +203,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} pod ${pod_name}
     ```
 
@@ -211,7 +211,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl -n ${namespace} get pod -o wide
     ```
 
@@ -223,7 +223,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl cordon ${node_name}
     ```
 
@@ -231,7 +231,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name} | grep pd
     ```
 
@@ -241,7 +241,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl member delete name ${pod_name}
     ```
 
@@ -249,7 +249,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl member
     ```
 
@@ -259,7 +259,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get pvc -l tidb.pingcap.com/pod-name=${pod_name}
     ```
 
@@ -267,7 +267,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} pvc ${pvc_name} --wait=false
     ```
 
@@ -275,7 +275,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} pod ${pod_name}
     ```
 
@@ -283,7 +283,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl -n ${namespace} get pod -o wide
     ```
 
@@ -299,7 +299,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl cordon ${node_name}
     ```
 
@@ -307,7 +307,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name} | grep tikv
     ```
 
@@ -317,7 +317,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} pod ${pod_name}
     ```
 
@@ -325,7 +325,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl -n ${namespace} get pod -o wide
     ```
 
@@ -333,7 +333,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl scheduler remove evict-leader-scheduler-${ID}
     ```
 
@@ -345,7 +345,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl cordon ${node_name}
     ```
 
@@ -353,7 +353,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name} | grep tikv
     ```
 
@@ -369,7 +369,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get tc ${cluster_name} -ojson | jq ".status.tikv.stores | .[] | select ( .podName == \"${pod_name}\" ) | .id"
     ```
 
@@ -377,7 +377,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl store delete ${ID}
     ```
 
@@ -385,7 +385,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch pd-ctl store ${ID}
     ```
 
@@ -395,7 +395,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get pvc -l tidb.pingcap.com/pod-name=${pod_name}
     ```
 
@@ -403,7 +403,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} pvc ${pvc_name} --wait=false
     ```
 
@@ -411,7 +411,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} pod ${pod_name}
     ```
 
@@ -419,7 +419,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl -n ${namespace} get pod -o wide
     ```
 
@@ -427,7 +427,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl scheduler remove evict-leader-scheduler-${ID}
     ```
 
@@ -437,7 +437,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl member leader show
     ```
 
@@ -445,7 +445,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl member leader transfer ${pod_name}
     ```
 
@@ -457,7 +457,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get tc ${cluster_name} -ojson | jq ".status.tikv.stores | .[] | select ( .podName == \"${pod_name}\" ) | .id"
     ```
 
@@ -465,7 +465,7 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl scheduler add evict-leader-scheduler ${ID}
     ```
 
@@ -473,6 +473,6 @@ TiDB 是高可用数据库，可以在部分数据库节点下线的情况下正
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get tc ${cluster_name} -ojson | jq ".status.tikv.stores | .[] | select ( .podName == \"${pod_name}\" ) | .leaderCount"
     ```

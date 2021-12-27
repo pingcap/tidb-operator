@@ -40,7 +40,7 @@ When a cluster is created, a default account `root` is created with no password.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic tidb-secret --from-literal=root=${root_password} --namespace=${namespace}
     ```
 
@@ -48,7 +48,7 @@ When a cluster is created, a default account `root` is created with no password.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic tidb-secret --from-literal=root=${root_password} --from-literal=developer=${developer_password} --namespace=${namespace}
     ```
 
@@ -82,7 +82,7 @@ initSql: |-
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl apply -f ${cluster_name}/tidb-initializer.yaml --namespace=${namespace}
 ```
 
@@ -104,7 +104,7 @@ Next, download all these images with the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 docker pull tnir/mysqlclient:latest
 docker save -o mysqlclient-latest.tar tnir/mysqlclient:latest
 ```
@@ -113,6 +113,6 @@ Next, upload these Docker images to the server, and execute `docker load` to ins
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 docker load -i mysqlclient-latest.tar
 ```

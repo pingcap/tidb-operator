@@ -28,13 +28,13 @@ You can deploy tikv-importer using the Helm chart. See the following example:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm repo update
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm search repo tikv-importer -l
     ```
 
@@ -42,7 +42,7 @@ You can deploy tikv-importer using the Helm chart. See the following example:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm inspect values pingcap/tikv-importer --version=${chart_version} > values.yaml
     ```
 
@@ -74,7 +74,7 @@ You can deploy tikv-importer using the Helm chart. See the following example:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${cluster_name} pingcap/tikv-importer --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
@@ -90,7 +90,7 @@ Use the following command to get the default configuration of TiDB Lightning:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm inspect values pingcap/tidb-lightning --version=${chart_version} > tidb-lightning-values.yaml
 ```
 
@@ -183,7 +183,7 @@ To restore backup data from the remote source, take the following steps:
 
             {{< copyable "shell-regular" >}}
 
-            ```shell
+            ```bash
             kubectl apply -f secret.yaml -n ${namespace}
             ```
 
@@ -216,7 +216,7 @@ To restore backup data from the remote source, take the following steps:
 
             {{< copyable "shell-regular" >}}
 
-            ```shell
+            ```bash
             kubectl apply -f secret.yaml -n ${namespace}
             ```
 
@@ -240,7 +240,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
     ```
 
@@ -256,7 +256,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
@@ -278,7 +278,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl annotate sa ${servieaccount} -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user
         ```
 
@@ -286,7 +286,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set-string failFast=true,serviceAccount=${servieaccount} -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
@@ -303,7 +303,7 @@ To destroy tikv-importer, execute the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm uninstall ${release_name} -n ${namespace}
 ```
 
@@ -311,7 +311,7 @@ To destroy tidb-lightning, execute the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm uninstall ${release_name} -n ${namespace}
 ```
 
@@ -329,7 +329,7 @@ If TiDB Lightning fails to restore data, and if you have configured to persist t
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl logs -n ${namespace} ${pod_name}
     ```
 

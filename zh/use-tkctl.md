@@ -30,7 +30,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/use-tkctl/']
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 git clone https://github.com/pingcap/tidb-operator.git && \
 GOOS=${YOUR_GOOS} make cli && \
 mv tkctl /usr/local/bin/tkctl
@@ -46,7 +46,7 @@ mv tkctl /usr/local/bin/tkctl
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 source <(tkctl completion bash)
 ```
 
@@ -54,7 +54,7 @@ source <(tkctl completion bash)
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 echo "if hash tkctl 2>/dev/null; then source <(tkctl completion bash); fi" >> ~/.bashrc
 ```
 
@@ -64,7 +64,7 @@ echo "if hash tkctl 2>/dev/null; then source <(tkctl completion bash); fi" >> ~/
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 source <(tkctl completion zsh)
 ```
 
@@ -72,7 +72,7 @@ source <(tkctl completion zsh)
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 echo "if hash tkctl 2>/dev/null; then source <(tkctl completion zsh); fi" >> ~/.zshrc
 ```
 
@@ -82,7 +82,7 @@ echo "if hash tkctl 2>/dev/null; then source <(tkctl completion zsh); fi" >> ~/.
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl version
 ```
 
@@ -98,7 +98,7 @@ tkctl version
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl version
 ```
 
@@ -121,7 +121,7 @@ TiDB Scheduler Version: pingcap/tidb-operator:latest
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl list -A
 ```
 
@@ -139,7 +139,7 @@ bar       demo-cluster   3/3   3/3    1/2    11m
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl use --namespace=foo demo-cluster
 ```
 
@@ -159,7 +159,7 @@ Tidb cluster switched to foo/demo-cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl info
 ```
 
@@ -193,7 +193,7 @@ Endpoints(NodePort):
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl get tikv
 ```
 
@@ -206,7 +206,7 @@ demo-cluster-tikv-2   2/2     Running   2098Mi/4196Mi   2/2   0          4m45s  
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl get volume
 ```
 
@@ -242,13 +242,13 @@ local-pv-e54c122a   pd-demo-cluster-pd-2       Bound    1476Gi     172.16.4.156 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl debug demo-cluster-tikv-0
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 ps -ef
 ```
 
@@ -260,13 +260,13 @@ ps -ef
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl debug demo-cluster-tikv-0
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 gdb /proc/${pid:-1}/root/tikv-server 1
 ```
 
@@ -274,7 +274,7 @@ gdb /proc/${pid:-1}/root/tikv-server 1
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 (gdb) set sysroot /proc/${pid}/root/
 ```
 
@@ -282,13 +282,13 @@ gdb /proc/${pid:-1}/root/tikv-server 1
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 (gdb) thread apply all bt
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 (gdb) info threads
 ```
 
@@ -298,19 +298,19 @@ gdb /proc/${pid:-1}/root/tikv-server 1
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl debug demo-cluster-tikv-0
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 cp /proc/1/root/tikv-server /
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 ./run_flamegraph.sh 1
 ```
 
@@ -331,13 +331,13 @@ cp /proc/1/root/tikv-server /
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl ctop demo-cluster-tikv-0
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl ctop node/172.16.4.155
 ```
 
@@ -349,7 +349,7 @@ tkctl ctop node/172.16.4.155
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl help debug
 ```
 
@@ -361,7 +361,7 @@ tkctl help debug
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl options
 ```
 

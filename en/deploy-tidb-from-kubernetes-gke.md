@@ -44,11 +44,11 @@ This tutorial requires use of the Compute and Container APIs. Please enable them
 
 This step defaults gcloud to your preferred project and [zone](https://cloud.google.com/compute/docs/regions-zones/), which simplifies the commands used for the rest of this tutorial:
 
-```shell
+```bash
 gcloud config set project {{project-id}}
 ```
 
-```shell
+```bash
 gcloud config set compute/zone us-west1-a
 ```
 
@@ -58,19 +58,19 @@ It's now time to launch a 3-node kubernetes cluster! The following command launc
 
 It takes a few minutes to complete:
 
-```shell
+```bash
 gcloud container clusters create tidb
 ```
 
 Once the cluster has launched, set it to be the default:
 
-```shell
+```bash
 gcloud config set container/cluster tidb
 ```
 
 The last step is to verify that `kubectl` can connect to the cluster, and all three machines are running:
 
-```shell
+```bash
 kubectl get nodes
 ```
 
@@ -82,13 +82,13 @@ If you see `Ready` for all nodes, congratulations! You've set up your first Kube
 
 1. Install the Helm client:
 
-    ```shell
+    ```bash
     curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
     ```
 
 2. Add the PingCAP repository:
 
-    ```shell
+    ```bash
     helm repo add pingcap https://charts.pingcap.org/
     ```
 
@@ -96,7 +96,7 @@ If you see `Ready` for all nodes, congratulations! You've set up your first Kube
 
 TiDB Operator uses [Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions) to extend Kubernetes. Therefore, to use TiDB Operator, you must first create the `TidbCluster` CRD.
 
-```shell
+```bash
 kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
 kubectl get crd tidbclusters.pingcap.com
 ```
@@ -107,7 +107,7 @@ kubectl get crd tidbclusters.pingcap.com
 
 After the `TidbCluster` CRD is created, install TiDB Operator in your Kubernetes cluster.
 
-```shell
+```bash
 kubectl create namespace tidb-admin
 helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.2.4
 kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
@@ -119,7 +119,7 @@ To deploy the TiDB cluster, perform the following steps:
 
 1. Create `Namespace`:
 
-    ```shell
+    ```bash
     kubectl create namespace demo
     ```
 
@@ -145,7 +145,7 @@ To deploy the TiDB cluster, perform the following steps:
 
 There can be a small delay between the pod being up and running, and the service being available. You can view the service status using the following command:
 
-```shell
+```bash
 kubectl get svc -n demo --watch
 ```
 
@@ -153,13 +153,13 @@ When you see `basic-tidb` appear, the service is ready to access. You can use <k
 
 To connect to TiDB within the Kubernetes cluster, you can establish a tunnel between the TiDB service and your Cloud Shell. This is recommended only for debugging purposes, because the tunnel will not automatically be transferred if your Cloud Shell restarts. To establish a tunnel:
 
-```shell
+```bash
 kubectl -n demo port-forward svc/basic-tidb 4000:4000 &>/tmp/pf4000.log &
 ```
 
 From your Cloud Shell:
 
-```shell
+```bash
 sudo apt-get install -y mysql-client && \
 mysql --comments -h 127.0.0.1 -u root -P 4000
 ```
@@ -200,7 +200,7 @@ To access the Grafana dashboards, you can forward a port from the Cloud Shell to
 
 To do so, use the following command:
 
-```shell
+```bash
 kubectl -n demo port-forward svc/basic-grafana 8080:3000 &>/tmp/pf8080.log &
 ```
 
@@ -212,19 +212,19 @@ The default username and password are both "admin".
 
 To destroy a TiDB cluster in Kubernetes, run the following command:
 
-```shell
+```bash
 kubectl delete tc basic -n demo
 ```
 
 To destroy the monitoring component, run the following command:
 
-```shell
+```bash
 kubectl delete tidbmonitor basic -n demo
 ```
 
 The above commands only delete the running pods, the data is persistent. If you do not need the data anymore, you should run the following commands to clean the data and the dynamically created persistent disks:
 
-```shell
+```bash
 kubectl delete pvc -n demo -l app.kubernetes.io/instance=basic,app.kubernetes.io/managed-by=tidb-operator && \
 kubectl get pv -l app.kubernetes.io/namespace=demo,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=basic -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 ```
@@ -233,6 +233,6 @@ kubectl get pv -l app.kubernetes.io/namespace=demo,app.kubernetes.io/managed-by=
 
 Once you have finished experimenting, you can delete the Kubernetes cluster:
 
-```shell
+```bash
 gcloud container clusters delete tidb
 ```

@@ -20,7 +20,7 @@ To use the diagnostic mode for troubleshooting:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl annotate pod ${pod_name} -n ${namespace} runmode=debug
     ```
 
@@ -30,7 +30,7 @@ To use the diagnostic mode for troubleshooting:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl get pod ${pod_name} -n ${namespace}
     ```
 
@@ -38,13 +38,13 @@ To use the diagnostic mode for troubleshooting:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl exec -it ${pod_name} -n ${namespace} -- /bin/sh
     ```
 
 3. After finishing the diagnosis and resolving the problem, delete the Pod.
 
-    ```shell
+    ```bash
     kubectl delete pod ${pod_name} -n ${namespace}
     ```
 

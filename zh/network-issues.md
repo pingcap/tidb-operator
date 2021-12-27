@@ -18,7 +18,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/network-issues/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get endpoints ${cluster_name}-pd
     kubectl -n ${namespace} get endpoints ${cluster_name}-tidb
     kubectl -n ${namespace} get endpoints ${cluster_name}-pd-peer
@@ -40,7 +40,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/network-issues/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     dig ${HOSTNAME}
     ```
 
@@ -48,7 +48,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/network-issues/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     ping ${TARGET_IP}
     ```
 
@@ -58,7 +58,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/network-issues/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     telnet ${TARGET_IP} ${TARGET_PORT}
     ```
 
@@ -66,7 +66,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/network-issues/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     # 检查端口是否一致
     kubectl -n ${namespace} get po ${pod_name} -ojson | jq '.spec.containers[].ports[].containerPort'
 
@@ -87,7 +87,7 @@ TiDB 服务访问不了时，首先确认 TiDB 服务是否部署成功，确认
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get po -n ${namespace}
 ```
 
@@ -95,7 +95,7 @@ kubectl get po -n ${namespace}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get endpoints -n ${namespaces} ${cluster_name}-tidb
 ```
 
@@ -103,7 +103,7 @@ kubectl get endpoints -n ${namespaces} ${cluster_name}-tidb
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl logs -f ${pod_name} -n ${namespace} -c tidb
 ```
 
@@ -120,7 +120,7 @@ kubectl logs -f ${pod_name} -n ${namespace} -c tidb
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl get po -n kube-system -l k8s-app=kube-proxy
         ```
 
@@ -128,7 +128,7 @@ kubectl logs -f ${pod_name} -n ${namespace} -c tidb
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         iptables-save -t nat |grep ${clusterIP}
         ```
 
@@ -136,7 +136,7 @@ kubectl logs -f ${pod_name} -n ${namespace} -c tidb
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl get endpoints -n ${namespaces} ${cluster_name}-tidb
         ```
 

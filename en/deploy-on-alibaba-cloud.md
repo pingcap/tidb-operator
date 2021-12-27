@@ -64,7 +64,7 @@ All the instances except ACK mandatory workers are deployed across availability 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     export TF_VAR_ALICLOUD_REGION=${REGION} && \
     export TF_VAR_ALICLOUD_ACCESS_KEY=${ACCESS_KEY} && \
     export TF_VAR_ALICLOUD_SECRET_KEY=${SECRET_KEY}
@@ -76,7 +76,7 @@ All the instances except ACK mandatory workers are deployed across availability 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     git clone --depth=1 https://github.com/pingcap/tidb-operator && \
     cd tidb-operator/deploy/aliyun
     ```
@@ -104,7 +104,7 @@ All the instances except ACK mandatory workers are deployed across availability 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     terraform init
     ```
 
@@ -112,7 +112,7 @@ All the instances except ACK mandatory workers are deployed across availability 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     terraform apply
     ```
 
@@ -145,19 +145,19 @@ All the instances except ACK mandatory workers are deployed across availability 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     export KUBECONFIG=$PWD/credentials/kubeconfig
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl version
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm ls
     ```
 
@@ -167,7 +167,7 @@ All the instances except ACK mandatory workers are deployed across availability 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cp manifests/db.yaml.example db.yaml && cp manifests/db-monitor.yaml.example db-monitor.yaml
     ```
 
@@ -247,7 +247,7 @@ All the instances except ACK mandatory workers are deployed across availability 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl --kubeconfig credentials/kubeconfig create namespace ${namespace}
     ```
 
@@ -259,7 +259,7 @@ All the instances except ACK mandatory workers are deployed across availability 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl --kubeconfig credentials/kubeconfig create -f db.yaml -n ${namespace} &&
     kubectl --kubeconfig credentials/kubeconfig create -f db-monitor.yaml -n ${namespace}
     ```
@@ -274,13 +274,13 @@ You can connect the TiDB cluster via the bastion instance. All necessary informa
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 ssh -i credentials/${cluster_name}-key.pem root@${bastion_ip}
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 mysql --comments -h ${tidb_lb_ip} -P 4000 -u root
 ```
 
@@ -312,7 +312,7 @@ This may take a while to complete. You can watch the process using the following
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pods --namespace ${namespace} -o wide --watch
 ```
 
@@ -422,7 +422,7 @@ It is recommended to use a separate Terraform module to manage a specific Kubern
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mkdir -p deploy/aliyun-staging
     ```
 
@@ -491,7 +491,7 @@ You can customize this script. For example, you can remove the `module "bastion"
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     terraform destroy
     ```
 
@@ -499,13 +499,13 @@ If the Kubernetes cluster is not successfully created, the `destroy` operation m
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 terraform state list
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 terraform state rm module.ack.alicloud_cs_managed_kubernetes.k8s
 ```
 

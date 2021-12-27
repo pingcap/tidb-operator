@@ -120,7 +120,7 @@ GKE 支持两种操作系统：COS (Container Optimized OS) 和 Ubuntu 。Point 
 
 内核统一做了如下配置:
 
-```shell
+```bash
 sysctl net.core.somaxconn=32768
 sysctl vm.swappiness=0
 sysctl net.ipv4.tcp_syncookies=0
@@ -134,7 +134,7 @@ sysctl net.ipv4.tcp_syncookies=0
 
 #### 初始化
 
-```shell
+```bash
 sysbench \
   --mysql-host=${tidb_host} \
   --mysql-port=4000 \
@@ -156,7 +156,7 @@ sysbench \
 
 #### 预热
 
-```shell
+```bash
 sysbench \
   --mysql-host=${tidb_host} \
   --mysql-port=4000 \
@@ -176,7 +176,7 @@ sysbench \
 
 #### 压测
 
-```shell
+```bash
 sysbench \
   --mysql-host=${tidb_host} \
   --mysql-port=4000 \

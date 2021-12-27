@@ -44,7 +44,7 @@ This document describes how to deploy a TiDB cluster in general Kubernetes.
 
     To deploy a TiDB cluster, you need the following Docker images (assuming the version of the TiDB cluster is v5.2.1):
 
-    ```shell
+    ```bash
     pingcap/pd:v5.2.1
     pingcap/tikv:v5.2.1
     pingcap/tidb:v5.2.1
@@ -62,7 +62,7 @@ This document describes how to deploy a TiDB cluster in general Kubernetes.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker pull pingcap/pd:v5.2.1
     docker pull pingcap/tikv:v5.2.1
     docker pull pingcap/tidb:v5.2.1
@@ -92,7 +92,7 @@ This document describes how to deploy a TiDB cluster in general Kubernetes.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker load -i pd-v5.2.1.tar
     docker load -i tikv-v5.2.1.tar
     docker load -i tidb-v5.2.1.tar

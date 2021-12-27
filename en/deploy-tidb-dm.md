@@ -143,7 +143,7 @@ If the server does not have an external network, you need to download the Docker
 
 1. Deploy a DM cluster requires the following Docker image (assuming the version of the DM cluster is v2.0.7):
 
-    ```shell
+    ```bash
     pingcap/dm:v2.0.7
     ```
 
@@ -151,7 +151,7 @@ If the server does not have an external network, you need to download the Docker
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker pull pingcap/dm:v2.0.7
     docker save -o dm-v2.0.7.tar pingcap/dm:v2.0.7
     ```
@@ -160,13 +160,13 @@ If the server does not have an external network, you need to download the Docker
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker load -i dm-v2.0.7.tar
     ```
 
 After deploying the DM cluster, execute the following command to view the Pod status:
 
-```shell
+```bash
 kubectl get po -n ${namespace} -l app.kubernetes.io/instance=${dm_cluster_name}
 ```
 

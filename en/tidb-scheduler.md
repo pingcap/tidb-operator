@@ -43,7 +43,7 @@ The configuration above indicates scheduling by the node dimension (default). If
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl label nodes node1 zone=zone1
 ```
 

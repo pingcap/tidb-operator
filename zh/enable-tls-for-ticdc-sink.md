@@ -20,7 +20,7 @@ summary: 了解如何让 TiCDC 组件同步数据到开启 TLS 的下游服务
     
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic ${secret_name} --namespace=${cluster_namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
     ```
 
@@ -52,6 +52,6 @@ summary: 了解如何让 TiCDC 组件同步数据到开启 TLS 的下游服务
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl exec ${cluster_name}-ticdc-0 -- /cdc cli changefeed create --pd=https://${cluster_name}-pd:2379 --sink-uri="mysql://${user}:{$password}@${downstream_service}/?ssl-ca=/var/lib/sink-tls/${secret_name}/ca.crt&ssl-cert=/var/lib/sink-tls/${secret_name}/tls.crt&ssl-key=/var/lib/sink-tls/${secret_name}/tls.key"
     ```

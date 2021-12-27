@@ -15,7 +15,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get -n ${namespace} tidbcluster ${cluster_name} -ojson | jq '.status.tikv.stores'
     ```
 
@@ -23,7 +23,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get -n ${namespace} po -l app.kubernetes.io/component=tikv
     ```
 
@@ -33,7 +33,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl port-forward -n ${namespace} svc/${cluster_name}-pd ${local_port}:2379 &>/tmp/portforward-pd.log &
         ```
 
@@ -41,7 +41,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         curl -X POST http://127.0.0.1:2379/pd/api/v1/store/${store_id}/state?state=Up
         ```
 
@@ -51,7 +51,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl patch $(kubectl get pv -l app.kubernetes.io/instance=${release_name},tidb.pingcap.com/store-id=${store_id} -o name) -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}
         ```
 
@@ -59,7 +59,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl delete -n ${namespace} pvc tikv-${pod_name} --wait=false
         ```
 
@@ -67,7 +67,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl delete -n ${namespace} pod ${pod_name}
         ```
 

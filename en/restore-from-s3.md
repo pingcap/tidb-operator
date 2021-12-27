@@ -18,7 +18,7 @@ TiDB Lightning supports three backends: `Importer-backend`, `Local-backend`, and
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-rbac.yaml -n test2
     ```
 
@@ -32,7 +32,7 @@ TiDB Lightning supports three backends: `Importer-backend`, `Local-backend`, and
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
     ```
 
@@ -67,7 +67,7 @@ TiDB Lightning supports three backends: `Importer-backend`, `Local-backend`, and
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f restore.yaml
     ```
 
@@ -100,7 +100,7 @@ TiDB Lightning supports three backends: `Importer-backend`, `Local-backend`, and
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f restore.yaml
     ```
 
@@ -133,7 +133,7 @@ TiDB Lightning supports three backends: `Importer-backend`, `Local-backend`, and
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f restore.yaml
     ```
 
@@ -167,7 +167,7 @@ TiDB Lightning supports three backends: `Importer-backend`, `Local-backend`, and
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f restore.yaml
     ```
 
@@ -200,7 +200,7 @@ After creating the `Restore` CR, execute the following command to check the rest
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get rt -n test2 -owide
 ```
 

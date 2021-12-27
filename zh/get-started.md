@@ -67,7 +67,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/get-started/','/docs-cn/dev/tidb-in-k
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kind create cluster
 ```
 
@@ -93,7 +93,7 @@ Thanks for using kind! 😊
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl cluster-info
 ```
 
@@ -140,7 +140,7 @@ kind delete cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 minikube start
 ```
 
@@ -246,7 +246,7 @@ TiDB Operator 包含许多实现 TiDB 集群不同组件的自定义资源类型
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
 ```
 
@@ -274,7 +274,7 @@ TiDB Operator 使用 Helm 3 安装。
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm repo add pingcap https://charts.pingcap.org/
     ```
 
@@ -288,7 +288,7 @@ TiDB Operator 使用 Helm 3 安装。
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create namespace tidb-admin
     ```
 
@@ -302,7 +302,7 @@ TiDB Operator 使用 Helm 3 安装。
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.2.4
     ```
 
@@ -336,7 +336,7 @@ TiDB Operator 使用 Helm 3 安装。
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pods --namespace tidb-admin -l app.kubernetes.io/instance=tidb-operator
 ```
 
@@ -643,7 +643,7 @@ TiDB Operator 还可简化 TiDB 集群的滚动升级。以下展示使用 kubec
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl patch tc basic -n tidb-cluster --type merge -p '{"spec": {"version": "release-4.0-nightly"} }'
 ```
 
@@ -722,7 +722,7 @@ Check Table Before Drop: false
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete tc basic -n tidb-cluster
 ```
 
@@ -732,7 +732,7 @@ kubectl delete tc basic -n tidb-cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete tidbmonitor basic -n tidb-cluster
 ```
 
@@ -742,7 +742,7 @@ kubectl delete tidbmonitor basic -n tidb-cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete pvc -n tidb-cluster -l app.kubernetes.io/instance=basic,app.kubernetes.io/managed-by=tidb-operator && \
 kubectl get pv -l app.kubernetes.io/namespace=tidb-cluster,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=basic -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 ```
@@ -753,7 +753,7 @@ kubectl get pv -l app.kubernetes.io/namespace=tidb-cluster,app.kubernetes.io/man
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete namespace tidb-cluster
 ```
 
@@ -763,7 +763,7 @@ kubectl delete namespace tidb-cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 pgrep -lfa kubectl
 ```
 

@@ -52,7 +52,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
 
 2. 生成 `ca-config.json` 配置文件：
 
-    ```shell
+    ```bash
     cat << EOF > ca-config.json
     {
         "signing": {
@@ -85,7 +85,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
 
 3. 生成 `ca-csr.json` 配置文件：
 
-    ```shell
+    ```bash
     cat << EOF > ca-csr.json
     {
         "CN": "TiDB",
@@ -402,7 +402,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl print-defaults csr > tiflash-server.json
         ```
 
@@ -445,7 +445,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl print-defaults csr > importer-server.json
         ```
 
@@ -485,7 +485,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl print-defaults csr > lightning-server.json
         ```
 

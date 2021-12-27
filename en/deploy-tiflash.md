@@ -116,7 +116,7 @@ If the server does not have an external network, refer to [deploy the TiDB clust
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tidbcluster ${cluster_name} -n ${namespace}
     ```
 
@@ -126,7 +126,7 @@ If the server does not have an external network, refer to [deploy the TiDB clust
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod -n ${namespace} -l app.kubernetes.io/component=tiflash,app.kubernetes.io/instance=${cluster_name}
     ```
 
@@ -134,7 +134,7 @@ If the server does not have an external network, refer to [deploy the TiDB clust
 
    To check whether the stores of the TiFlash are in the `Tombstone` state, run the following command:
 
-    ```shell
+    ```bash
     kubectl get tidbcluster ${cluster_name} -n ${namespace} -o yaml
     ```
 
@@ -170,7 +170,7 @@ If the server does not have an external network, refer to [deploy the TiDB clust
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tidbcluster ${cluster_name} -n ${namespace}
     ```
 
@@ -178,7 +178,7 @@ If the server does not have an external network, refer to [deploy the TiDB clust
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete statefulsets -n ${namespace} -l app.kubernetes.io/component=tiflash,app.kubernetes.io/instance=${cluster_name}
     ```
 
@@ -186,7 +186,7 @@ If the server does not have an external network, refer to [deploy the TiDB clust
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get sts -n ${namespace} -l app.kubernetes.io/component=tiflash,app.kubernetes.io/instance=${cluster_name}
     ```
 
@@ -200,7 +200,7 @@ If the server does not have an external network, refer to [deploy the TiDB clust
 
       {{< copyable "shell-regular" >}}
 
-      ```shell
+      ```bash
       kubectl delete pvc -n ${namespace} -l app.kubernetes.io/component=tiflash,app.kubernetes.io/instance=${cluster_name}
       ```
 
@@ -208,7 +208,7 @@ If the server does not have an external network, refer to [deploy the TiDB clust
 
       {{< copyable "shell-regular" >}}
 
-      ```shell
+      ```bash
       kubectl patch pv ${pv_name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
       ```
 
@@ -216,7 +216,7 @@ If the server does not have an external network, refer to [deploy the TiDB clust
 
       {{< copyable "shell-regular" >}}
 
-      ```shell
+      ```bash
       kubectl get pv -l app.kubernetes.io/component=tiflash,app.kubernetes.io/instance=${cluster_name}
       ```
 

@@ -40,7 +40,7 @@ spec:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create secret generic tidb-secret --from-literal=root=${root_password} --namespace=${namespace}
 ```
 
@@ -48,7 +48,7 @@ kubectl create secret generic tidb-secret --from-literal=root=${root_password} -
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create secret generic tidb-secret --from-literal=root=${root_password} --from-literal=developer=${developer_password} --namespace=${namespace}
 ```
 
@@ -82,7 +82,7 @@ initSql: |-
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl apply -f ${cluster_name}/tidb-initializer.yaml --namespace=${namespace}
 ```
 
@@ -92,7 +92,7 @@ kubectl apply -f ${cluster_name}/tidb-initializer.yaml --namespace=${namespace}
 
 初始化一套 TiDB 集群会用到下面这些 Docker 镜像：
 
-```shell
+```bash
 tnir/mysqlclient:latest
 ```
 
@@ -100,7 +100,7 @@ tnir/mysqlclient:latest
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 docker pull tnir/mysqlclient:latest
 docker save -o mysqlclient-latest.tar tnir/mysqlclient:latest
 ```
@@ -109,6 +109,6 @@ docker save -o mysqlclient-latest.tar tnir/mysqlclient:latest
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 docker load -i mysqlclient-latest.tar
 ```

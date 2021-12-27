@@ -84,7 +84,7 @@ aliases: ['/zh/tidb-in-kubernetes/dev/canary-deployment-tidb-operator/']
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl -n ${namespace} label tidbcluster ${cluster_name} user=dev
         ```
 
@@ -134,7 +134,7 @@ aliases: ['/zh/tidb-in-kubernetes/dev/canary-deployment-tidb-operator/']
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl -n ${namespace} label tidbcluster ${cluster_name} user=qa
         ```
 
@@ -146,7 +146,7 @@ aliases: ['/zh/tidb-in-kubernetes/dev/canary-deployment-tidb-operator/']
 
     查看第一套 TiDB Operator `tidb-controller-manager` 的日志:
 
-    ```shell
+    ```bash
     kubectl -n tidb-admin logs tidb-controller-manager-55b887bdc9-lzdwv
     ```
 
@@ -164,7 +164,7 @@ aliases: ['/zh/tidb-in-kubernetes/dev/canary-deployment-tidb-operator/']
 
     查看第二套 TiDB Operator `tidb-controller-manager` 的日志:
 
-    ```shell
+    ```bash
     kubectl -n tidb-admin-qa logs tidb-controller-manager-qa-5dfcd7f9-vll4c
     ```
 

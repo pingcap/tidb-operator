@@ -176,13 +176,13 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm repo update
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm search repo tidb-drainer -l
     ```
 
@@ -190,7 +190,7 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm inspect values pingcap/tidb-drainer --version=${chart_version} > values.yaml
     ```
 
@@ -240,7 +240,7 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${release_name} pingcap/tidb-drainer --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
@@ -351,7 +351,7 @@ The steps are as follows:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl run offline-pump-${ordinal_id} --image=pingcap/tidb-binlog:${tidb_version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd offline-pump -node-id ${cluster_name}-pump-${ordinal_id}:8250
         ```
 
@@ -359,7 +359,7 @@ The steps are as follows:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl exec binlogctl -n ${namespace} -- /binlogctl -pd-urls "https://${cluster_name}-pd:2379" -cmd offline-pump -node-id ${cluster_name}-pump-${ordinal_id}:8250 -ssl-ca "/etc/binlog-tls/ca.crt" -ssl-cert "/etc/binlog-tls/tls.crt" -ssl-key "/etc/binlog-tls/tls.key"
         ```
 
@@ -367,7 +367,7 @@ The steps are as follows:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl logs -f -n ${namespace} ${release_name}-pump-${ordinal_id}
     ```
 
@@ -385,7 +385,7 @@ The steps are as follows:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl run update-pump-${ordinal_id} --image=pingcap/tidb-binlog:${tidb_version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd update-pump -node-id ${cluster_name}-pump-${ordinal_id}:8250 --state offline
         ```
 
@@ -393,7 +393,7 @@ The steps are as follows:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl exec binlogctl -n ${namespace} -- /binlogctl -pd-urls=https://${cluster_name}-pd:2379 -cmd update-pump -node-id ${cluster_name}-pump-${ordinal_id}:8250 --state offline -ssl-ca "/etc/binlog-tls/ca.crt" -ssl-cert "/etc/binlog-tls/tls.crt" -ssl-key "/etc/binlog-tls/tls.key"
         ```
 
@@ -426,7 +426,7 @@ The steps are as follows:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl run offline-drainer-0 --image=pingcap/tidb-binlog:${tidb_version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd offline-drainer -node-id ${drainer_node_id}:8249
         ```
 
@@ -434,7 +434,7 @@ The steps are as follows:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl exec binlogctl -n ${namespace} -- /binlogctl -pd-urls "https://${cluster_name}-pd:2379" -cmd offline-drainer -node-id ${drainer_node_id}:8249 -ssl-ca "/etc/binlog-tls/ca.crt" -ssl-cert "/etc/binlog-tls/tls.crt" -ssl-key "/etc/binlog-tls/tls.key"
         ```
 
@@ -442,7 +442,7 @@ The steps are as follows:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl logs -f -n ${namespace} ${drainer_node_id}
     ```
 
@@ -462,7 +462,7 @@ The steps are as follows:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl run update-drainer-${ordinal_id} --image=pingcap/tidb-binlog:${tidb_version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${cluster_name}-pd:2379 -cmd update-drainer -node-id ${drainer_node_id}:8249 --state offline
         ```
 
@@ -470,6 +470,6 @@ The steps are as follows:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl exec binlogctl -n ${namespace} -- /binlogctl -pd-urls=https://${cluster_name}-pd:2379 -cmd update-drainer -node-id ${drainer_node_id}:8249 --state offline -ssl-ca "/etc/binlog-tls/ca.crt" -ssl-cert "/etc/binlog-tls/tls.crt" -ssl-key "/etc/binlog-tls/tls.key"
         ```

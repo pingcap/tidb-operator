@@ -87,7 +87,7 @@ To support deploying multiple sets of TiDB Operator, the following parameters ar
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl -n ${namespace} label tidbcluster ${cluster_name} user=dev
         ```
 
@@ -137,7 +137,7 @@ To support deploying multiple sets of TiDB Operator, the following parameters ar
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl -n ${namespace} label tidbcluster ${cluster_name} user=qa
         ```
 
@@ -149,7 +149,7 @@ To support deploying multiple sets of TiDB Operator, the following parameters ar
 
     View the log of `tidb-controller-manager` of the first TiDB Operator:
 
-    ```shell
+    ```bash
     kubectl -n tidb-admin logs tidb-controller-manager-55b887bdc9-lzdwv
     ```
 
@@ -167,7 +167,7 @@ To support deploying multiple sets of TiDB Operator, the following parameters ar
 
     View the log of `tidb-controller-manager` of the second TiDB Operator:
 
-    ```shell
+    ```bash
     kubectl -n tidb-admin-qa logs tidb-controller-manager-qa-5dfcd7f9-vll4c
     ```
 

@@ -141,7 +141,7 @@ kubectl apply -f ${dm_cluster_name}.yaml -n ${namespace}
 
 1. 部署一套 DM 集群会用到下面这些 Docker 镜像（假设 DM 集群的版本是 v2.0.7）：
 
-    ```shell
+    ```bash
     pingcap/dm:v2.0.7
     ```
 
@@ -149,7 +149,7 @@ kubectl apply -f ${dm_cluster_name}.yaml -n ${namespace}
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker pull pingcap/dm:v2.0.7
 
     docker save -o dm-v2.0.7.tar pingcap/dm:v2.0.7
@@ -159,7 +159,7 @@ kubectl apply -f ${dm_cluster_name}.yaml -n ${namespace}
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker load -i dm-v2.0.7.tar
     ```
 

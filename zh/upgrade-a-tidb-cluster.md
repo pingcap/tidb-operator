@@ -31,7 +31,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-a-tidb-cluster/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
@@ -39,7 +39,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-a-tidb-cluster/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl -n ${namespace} get pod -o wide
     ```
 
@@ -59,7 +59,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-a-tidb-cluster/']
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com/force-upgrade=true
 ```
 
@@ -71,7 +71,7 @@ kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com
 >
 > {{< copyable "shell-regular" >}}
 >
-> ```shell
+> ```bash
 > kubectl annotate tc ${cluster_name} -n ${namespace} tidb.pingcap.com/force-upgrade-
 > ```
 
@@ -86,7 +86,7 @@ kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
@@ -94,7 +94,7 @@ kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl -n ${namespace} get pod -o wide
     ```
 

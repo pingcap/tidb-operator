@@ -44,7 +44,7 @@ TiDB Operator 使用 [Custom Resource Definition (CRD)](https://kubernetes.io/do
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
 ```
 
@@ -52,7 +52,7 @@ kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 wget https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
 kubectl create -f ./crd.yaml
 ```
@@ -65,11 +65,11 @@ kubectl create -f ./crd.yaml
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get crd
 ```
 
-```shell
+```bash
 NAME                                 CREATED AT
 backups.pingcap.com                  2020-06-11T07:59:40Z
 backupschedules.pingcap.com          2020-06-11T07:59:41Z
@@ -94,7 +94,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mkdir -p ${HOME}/tidb-operator && \
     helm inspect values pingcap/tidb-operator --version=${chart_version} > ${HOME}/tidb-operator/values-tidb-operator.yaml
     ```
@@ -119,7 +119,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --version=${chart_version} -f ${HOME}/tidb-operator/values-tidb-operator.yaml && \
     kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
     ```
@@ -134,7 +134,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade tidb-operator pingcap/tidb-operator --namespace=tidb-admin -f ${HOME}/tidb-operator/values-tidb-operator.yaml
     ```
 
@@ -150,7 +150,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     wget http://charts.pingcap.org/tidb-operator-v1.2.4.tgz
     ```
 
@@ -158,7 +158,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     tar zxvf tidb-operator.v1.2.4.tgz
     ```
 
@@ -168,7 +168,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     TiDB Operator 用到的 Docker 镜像有：
 
-    ```shell
+    ```bash
     pingcap/tidb-operator:v1.2.4
     pingcap/tidb-backup-manager:v1.2.4
     bitnami/kubectl:latest
@@ -182,7 +182,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker pull pingcap/tidb-operator:v1.2.4
     docker pull pingcap/tidb-backup-manager:v1.2.4
     docker pull bitnami/kubectl:latest
@@ -198,7 +198,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker load -i tidb-operator-v1.2.4.tar
     docker load -i tidb-backup-manager-v1.2.4.tar
     docker load -i bitnami-kubectl.tar
@@ -209,7 +209,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     如果需要部署 `tidb-scheduler`，请修改 `./tidb-operator/values.yaml` 文件来配置内置 `kube-scheduler` 组件的 Docker 镜像名字和版本，例如你的 Kubernetes 集群中的 `kube-scheduler` 使用的镜像为 `k8s.gcr.io/kube-scheduler:v1.16.9`，请这样设置 `./tidb-operator/values.yaml`：
 
-    ```shell
+    ```bash
     ...
     scheduler:
       serviceAccount: tidb-scheduler
@@ -236,7 +236,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install tidb-operator ./tidb-operator --namespace=tidb-admin
     ```
 
@@ -250,7 +250,7 @@ tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade tidb-operator ./tidb-operator --namespace=tidb-admin
     ```
 
@@ -269,6 +269,6 @@ TiDB Operator 包含两个组件：
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm upgrade tidb-operator pingcap/tidb-operator --version=${chart_version} --namespace=tidb-admin -f ${HOME}/tidb-operator/values-tidb-operator.yaml
 ```

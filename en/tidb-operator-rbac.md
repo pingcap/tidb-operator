@@ -15,13 +15,13 @@ To check the ClusterRole created for TiDB Operator, run the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get clusterrole | grep tidb
 ```
 
 The example output is as follows:
 
-```shell
+```bash
 tidb-operator:tidb-controller-manager                                  2021-05-04T13:08:55Z
 tidb-operator:tidb-scheduler                                           2021-05-04T13:08:55Z
 ```
@@ -96,13 +96,13 @@ If `clusterScoped=false` is set during the TiDB Operator deployment, TiDB Operat
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get clusterrole | grep tidb
     ```
 
     The output is as follows:
 
-    ```shell
+    ```bash
     tidb-operator:tidb-controller-manager                                  2021-05-04T13:08:55Z
     ```
 
@@ -116,13 +116,13 @@ If `clusterScoped=false` is set during the TiDB Operator deployment, TiDB Operat
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get role -n tidb-admin
     ```
 
     The example output is as follows:
 
-    ```shell
+    ```bash
     tidb-admin    tidb-operator:tidb-controller-manager            2021-05-04T13:08:55Z
     tidb-admin    tidb-operator:tidb-scheduler                     2021-05-04T13:08:55Z
     ```

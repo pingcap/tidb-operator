@@ -148,7 +148,7 @@ nodeGroups:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 eksctl create cluster -f cluster.yaml
 ```
 
@@ -259,7 +259,7 @@ mountOptions:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         eksctl create nodegroups -f cluster.yaml
         ```
 
@@ -277,7 +277,7 @@ mountOptions:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl apply -f <local-volume-provisioner.yaml>
         ```
 
@@ -301,7 +301,7 @@ mountOptions:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create namespace tidb-cluster
 ```
 
@@ -315,7 +315,7 @@ kubectl create namespace tidb-cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aws/tidb-cluster.yaml &&
 curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aws/tidb-monitor.yaml
 ```
@@ -330,7 +330,7 @@ curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl apply -f tidb-cluster.yaml -n tidb-cluster && \
 kubectl apply -f tidb-monitor.yaml -n tidb-cluster
 ```
@@ -347,7 +347,7 @@ kubectl apply -f tidb-monitor.yaml -n tidb-cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pods -n tidb-cluster
 ```
 
@@ -379,7 +379,7 @@ VPC 和 Subnet 需选择集群的 VPC 和 Subnet，在下拉框通过集群名�
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 eksctl get cluster -n ${clusterName}
 ```
 
@@ -397,7 +397,7 @@ eksctl get cluster -n ${clusterName}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 ssh [-i /path/to/your/private-key.pem] ec2-user@<bastion-public-dns-name>
 ```
 
@@ -405,7 +405,7 @@ ssh [-i /path/to/your/private-key.pem] ec2-user@<bastion-public-dns-name>
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 sudo yum install mysql -y
 ```
 
@@ -413,7 +413,7 @@ sudo yum install mysql -y
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 mysql --comments -h ${tidb-nlb-dnsname} -P 4000 -u root
 ```
 
@@ -421,7 +421,7 @@ mysql --comments -h ${tidb-nlb-dnsname} -P 4000 -u root
 
 以下为一个连接 TiDB 集群的示例：
 
-```shell
+```bash
 $ mysql --comments -h abfc623004ccb4cc3b363f3f37475af1-9774d22c27310bc1.elb.us-west-2.amazonaws.com -P 4000 -u root
 Welcome to the MariaDB monitor.  Commands end with ; or \g.
 Your MySQL connection id is 1189
@@ -456,7 +456,7 @@ MySQL [(none)]> show status;
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n tidb-cluster get svc basic-grafana
 ```
 
@@ -496,7 +496,7 @@ TiKV 扩容需要保证在各可用区均匀扩容。以下是将集群 `${clust
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 eksctl scale nodegroup --cluster ${clusterName} --name tikv-1a --nodes 2 --nodes-min 2 --nodes-max 2
 eksctl scale nodegroup --cluster ${clusterName} --name tikv-1c --nodes 2 --nodes-min 2 --nodes-max 2
 eksctl scale nodegroup --cluster ${clusterName} --name tikv-1d --nodes 2 --nodes-min 2 --nodes-max 2

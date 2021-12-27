@@ -12,7 +12,7 @@ Service 可以根据场景配置不同的类型，比如 `ClusterIP`、`NodePort
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get svc ${serviceName} -n ${namespace}
 ```
 
@@ -45,7 +45,7 @@ basic-tidb   NodePort   10.233.6.240   <none>        4000:32498/TCP,10080:30171/
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n ${namespace} get svc ${cluster_name}-tidb -ojsonpath="{.spec.ports[?(@.name=='mysql-client')].nodePort}{'\n'}"
 ```
 
@@ -56,7 +56,7 @@ kubectl -n ${namespace} get svc ${cluster_name}-tidb -ojsonpath="{.spec.ports[?(
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get pods -l "app.kubernetes.io/component=tidb,app.kubernetes.io/instance=${cluster_name}" -ojsonpath="{range .items[*]}{.spec.nodeName}{'\n'}{end}"
     ```
 

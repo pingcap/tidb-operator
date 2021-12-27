@@ -29,7 +29,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-gcp-gke/']
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 gcloud config set core/project <gcp-project>
 gcloud config set compute/region <gcp-region>
 ```
@@ -42,7 +42,7 @@ gcloud config set compute/region <gcp-region>
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     gcloud container clusters create tidb --region us-east1 --machine-type n1-standard-4 --num-nodes=1
     ```
 
@@ -54,7 +54,7 @@ gcloud config set compute/region <gcp-region>
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     gcloud container node-pools create pd --cluster tidb --machine-type n1-standard-4 --num-nodes=1 \
         --node-labels=dedicated=pd --node-taints=dedicated=pd:NoSchedule
     gcloud container node-pools create tikv --cluster tidb --machine-type n1-highmem-8 --num-nodes=1 \
@@ -79,7 +79,7 @@ gcloud config set compute/region <gcp-region>
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create namespace tidb-cluster
 ```
 
@@ -93,7 +93,7 @@ kubectl create namespace tidb-cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/gcp/tidb-cluster.yaml &&
 curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/gcp/tidb-monitor.yaml
 ```
@@ -104,7 +104,7 @@ curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f tidb-cluster.yaml -n tidb-cluster && \
 kubectl create -f tidb-monitor.yaml -n tidb-cluster
 ```
@@ -121,7 +121,7 @@ kubectl create -f tidb-monitor.yaml -n tidb-cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pods -n tidb-cluster
 ```
 
@@ -149,7 +149,7 @@ tidb-tikv-2                       1/1     Running   0          47h
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 gcloud compute instances create bastion \
     --machine-type=n1-standard-4 \
     --image-project=centos-cloud \
@@ -169,7 +169,7 @@ gcloud compute instances create bastion \
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     gcloud compute ssh tidb@bastion
     ```
 
@@ -177,7 +177,7 @@ gcloud compute instances create bastion \
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     sudo yum install mysql -y
     ```
 
@@ -185,7 +185,7 @@ gcloud compute instances create bastion \
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mysql --comments -h ${tidb-nlb-dnsname} -P 4000 -u root
     ```
 
@@ -193,7 +193,7 @@ gcloud compute instances create bastion \
 
     示例：
 
-    ```shell
+    ```bash
     $ mysql --comments -h 10.128.15.243 -P 4000 -u root
     Welcome to the MariaDB monitor.  Commands end with ; or \g.
     Your MySQL connection id is 7823
@@ -228,7 +228,7 @@ gcloud compute instances create bastion \
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n tidb-cluster get svc basic-grafana
 ```
 
@@ -264,7 +264,7 @@ basic-grafana            LoadBalancer   10.15.255.169   34.123.168.114   3000:30
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 gcloud container clusters resize tidb --node-pool tikv --num-nodes 2
 ```
 
@@ -288,7 +288,7 @@ gcloud container clusters resize tidb --node-pool tikv --num-nodes 2
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 gcloud container node-pools create tiflash --cluster tidb --machine-type n1-highmem-8 --num-nodes=1 \
     --node-labels dedicated=tiflash --node-taints dedicated=tiflash:NoSchedule
 ```
@@ -297,7 +297,7 @@ gcloud container node-pools create tiflash --cluster tidb --machine-type n1-high
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 gcloud container node-pools create ticdc --cluster tidb --machine-type n1-standard-4 --num-nodes=1 \
     --node-labels dedicated=ticdc --node-taints dedicated=ticdc:NoSchedule
 ```
@@ -385,7 +385,7 @@ spec:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     gcloud container node-pools create tikv --cluster tidb --machine-type n1-standard-4 --num-nodes=1 --local-ssd-count 1 \
       --node-labels dedicated=tikv --node-taints dedicated=tikv:NoSchedule
     ```
@@ -398,7 +398,7 @@ spec:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/gke/local-ssd-provision/local-ssd-provision.yaml
     ```
 

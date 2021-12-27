@@ -19,7 +19,7 @@ Create the `s3-secret` secret by running the following command. Use the AWS acco
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-literal=secret_key=yyy --namespace=test1
 ```
 
@@ -46,7 +46,7 @@ If you associate the user's [IAM](https://aws.amazon.com/cn/iam/) role with the 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tc demo1 -n test1
     ```
 
@@ -74,7 +74,7 @@ When you use this method to grant permissions, you can [create the EKS cluster](
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test1
     ```
 
@@ -82,7 +82,7 @@ When you use this method to grant permissions, you can [create the EKS cluster](
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tc demo1 -n test1
     ```
 
@@ -100,6 +100,6 @@ Create the `gcs-secret` secret which stores the credential used to access GCS. T
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create secret generic gcs-secret --from-file=credentials=./google-credentials.json -n test1
 ```

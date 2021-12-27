@@ -44,7 +44,7 @@ TiDB Operator uses [Custom Resource Definition (CRD)](https://kubernetes.io/docs
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
 ```
 
@@ -52,7 +52,7 @@ If the server cannot access the Internet, you need to download the `crd.yaml` fi
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 wget https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
 kubectl create -f ./crd.yaml
 ```
@@ -65,11 +65,11 @@ If the following message is displayed, the CRD installation is successful:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get crd
 ```
 
-```shell
+```bash
 NAME                                 CREATED AT
 backups.pingcap.com                  2020-06-11T07:59:40Z
 backupschedules.pingcap.com          2020-06-11T07:59:41Z
@@ -94,7 +94,7 @@ When you use TiDB Operator, `tidb-scheduler` is not mandatory. Refer to [tidb-sc
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mkdir -p ${HOME}/tidb-operator && \
     helm inspect values pingcap/tidb-operator --version=${chart_version} > ${HOME}/tidb-operator/values-tidb-operator.yaml
     ```
@@ -117,7 +117,7 @@ When you use TiDB Operator, `tidb-scheduler` is not mandatory. Refer to [tidb-sc
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --version=${chart_version} -f ${HOME}/tidb-operator/values-tidb-operator.yaml && \
     kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
     ```
@@ -132,7 +132,7 @@ When you use TiDB Operator, `tidb-scheduler` is not mandatory. Refer to [tidb-sc
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade tidb-operator pingcap/tidb-operator --namespace=tidb-admin -f ${HOME}/tidb-operator/values-tidb-operator.yaml
     ```
 
@@ -148,7 +148,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     wget http://charts.pingcap.org/tidb-operator-v1.2.4.tgz
     ```
 
@@ -156,7 +156,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     tar zxvf tidb-operator.v1.2.4.tgz
     ```
 
@@ -168,7 +168,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
 
     {{< copyable "" >}}
 
-    ```shell
+    ```bash
     pingcap/tidb-operator:v1.2.4
     pingcap/tidb-backup-manager:v1.2.4
     bitnami/kubectl:latest
@@ -182,7 +182,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker pull pingcap/tidb-operator:v1.2.4
     docker pull pingcap/tidb-backup-manager:v1.2.4
     docker pull bitnami/kubectl:latest
@@ -198,7 +198,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker load -i tidb-operator-v1.2.4.tar
     docker load -i tidb-backup-manager-v1.2.4.tar
     docker load -i bitnami-kubectl.tar
@@ -209,7 +209,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
 
     TiDB Operator embeds a `kube-scheduler` to implement a custom scheduler. If you need to deploy `tidb-scheduler`, modify the `./tidb-operator/values.yaml` file to configure the Docker image's name and version of this built-in `kube-scheduler` component. For example, if `kube-scheduler` in your Kubernetes cluster uses the image `k8s.gcr.io/kube-scheduler:v1.16.9`, set `./tidb-operator/values.yaml` as follows:
 
-    ```shell
+    ```bash
     ...
     scheduler:
       serviceAccount: tidb-scheduler
@@ -236,7 +236,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install tidb-operator ./tidb-operator --namespace=tidb-admin
     ```
 
@@ -250,7 +250,7 @@ If your server cannot access the Internet, install TiDB Operator offline by the 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade tidb-operator ./tidb-operator --namespace=tidb-admin
     ```
 
@@ -269,6 +269,6 @@ After modifying `values.yaml`, run the following command to apply this modificat
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm upgrade tidb-operator pingcap/tidb-operator --version=${chart_version} --namespace=tidb-admin -f ${HOME}/tidb-operator/values-tidb-operator.yaml
 ```

@@ -34,7 +34,7 @@ Attach to the DM-master Pod by executing the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl exec -ti ${dm_cluster_name}-dm-master-0 -n ${namespace} - /bin/sh
 ```
 
@@ -50,7 +50,7 @@ kubectl exec -ti ${dm_cluster_name}-dm-master-0 -n ${namespace} - /bin/sh
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     /dmctl --master-addr ${dm_cluster_name}-dm-master:8261 operate-source create source1.yaml
     ```
 

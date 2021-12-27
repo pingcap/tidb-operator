@@ -81,7 +81,7 @@ TiDB Dashboard is built in the PD component in TiDB 4.0 and later versions. You 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl port-forward svc/basic-discovery -n ${namespace} 10262:10262
     ```
 

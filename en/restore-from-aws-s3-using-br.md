@@ -22,7 +22,7 @@ This document shows an example in which the backup data stored in the specified 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-rbac.yaml -n test2
     ```
 
@@ -36,7 +36,7 @@ This document shows an example in which the backup data stored in the specified 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
     ```
 
@@ -50,7 +50,7 @@ This document shows an example in which the backup data stored in the specified 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f resotre-aws-s3.yaml
     ```
 
@@ -92,7 +92,7 @@ This document shows an example in which the backup data stored in the specified 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f restore-aws-s3.yaml
     ```
 
@@ -135,7 +135,7 @@ This document shows an example in which the backup data stored in the specified 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f restore-aws-s3.yaml
     ```
 
@@ -177,7 +177,7 @@ After creating the `Restore` CR, execute the following command to check the rest
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get rt -n test2 -o wide
 ```
 

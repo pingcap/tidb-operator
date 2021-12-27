@@ -28,7 +28,7 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-rbac.yaml -n test1
     ```
 
@@ -40,7 +40,7 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
@@ -54,7 +54,7 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-aws-s3.yaml
     ```
 
@@ -99,7 +99,7 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-aws-s3.yaml
     ```
 
@@ -145,7 +145,7 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-aws-s3.yaml
     ```
 
@@ -198,7 +198,7 @@ Ad-hoc 备份支持全量备份与增量备份。Ad-hoc 备份通过创建一个
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get bk -n test1 -o wide
 ```
 
@@ -216,7 +216,7 @@ kubectl get bk -n test1 -o wide
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-scheduler-aws-s3.yaml
     ```
 
@@ -264,7 +264,7 @@ kubectl get bk -n test1 -o wide
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-scheduler-aws-s3.yaml
     ```
 
@@ -313,7 +313,7 @@ kubectl get bk -n test1 -o wide
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-scheduler-aws-s3.yaml
     ```
 
@@ -361,7 +361,7 @@ kubectl get bk -n test1 -o wide
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get bks -n test1 -o wide
 ```
 
@@ -369,7 +369,7 @@ kubectl get bks -n test1 -o wide
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n test1
 ```
 

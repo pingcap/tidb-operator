@@ -14,7 +14,7 @@ The TiDB components deployed by TiDB Operator output the logs in the `stdout` an
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl logs -n ${namespace} ${pod_name}
 ```
 
@@ -22,7 +22,7 @@ If the Pod has multiple containers, you can also view the logs of a container in
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl logs -n ${namespace} ${pod_name} -c ${container_name}
 ```
 
@@ -34,7 +34,7 @@ For TiDB 3.0 or later versions, TiDB separates slow query logs from application 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl logs -n ${namespace} ${pod_name} -c slowlog
 ```
 

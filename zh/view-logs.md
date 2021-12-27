@@ -14,7 +14,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/view-logs/']
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl logs -n ${namespace} ${pod_name}
 ```
 
@@ -22,7 +22,7 @@ kubectl logs -n ${namespace} ${pod_name}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl logs -n ${namespace} ${pod_name} -c ${container_name}
 ```
 
@@ -34,7 +34,7 @@ TiDB 3.0 及以上的版本中，慢查询日志和应用日志区分开，可�
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl logs -n ${namespace} ${pod_name} -c slowlog
 ```
 

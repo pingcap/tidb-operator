@@ -59,7 +59,7 @@ Thanos 提供了跨 Prometheus 的统一查询方案 [Thanos Query](https://than
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${thanos_namespace} svc/thanos-query 9090
 ```
 

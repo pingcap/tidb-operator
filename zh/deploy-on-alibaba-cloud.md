@@ -64,7 +64,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     export TF_VAR_ALICLOUD_REGION=${REGION} && \
     export TF_VAR_ALICLOUD_ACCESS_KEY=${ACCESS_KEY} && \
     export TF_VAR_ALICLOUD_SECRET_KEY=${SECRET_KEY}
@@ -76,7 +76,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     git clone --depth=1 https://github.com/pingcap/tidb-operator && \
     cd tidb-operator/deploy/aliyun
     ```
@@ -104,7 +104,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     terraform init
     ```
 
@@ -112,7 +112,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     terraform apply
     ```
 
@@ -140,19 +140,19 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     export KUBECONFIG=$PWD/credentials/kubeconfig
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl version
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm ls
     ```
 
@@ -162,7 +162,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cp manifests/db.yaml.example db.yaml && cp manifests/db-monitor.yaml.example db-monitor.yaml
     ```
 
@@ -242,7 +242,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl --kubeconfig credentials/kubeconfig create namespace ${namespace}
     ```
 
@@ -254,7 +254,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
 
   {{< copyable "shell-regular" >}}
 
-  ```shell
+  ```bash
   kubectl --kubeconfig credentials/kubeconfig create -f db.yaml -n ${namespace} &&
   kubectl --kubeconfig credentials/kubeconfig create -f db-monitor.yaml -n ${namespace}
   ```
@@ -269,13 +269,13 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-alibaba-cloud/']
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 ssh -i credentials/${cluster_name}-key.pem root@${bastion_ip}
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 mysql --comments -h ${tidb_lb_ip} -P 4000 -u root
 ```
 
@@ -330,7 +330,7 @@ kubectl get pods --namespace ${namespace} -o wide --watch
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 terraform destroy
 ```
 
@@ -338,13 +338,13 @@ terraform destroy
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 terraform state list
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 terraform state rm module.ack.alicloud_cs_managed_kubernetes.k8s
 ```
 
@@ -445,7 +445,7 @@ module "tidb-cluster-staging" {
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mkdir -p deploy/aliyun-staging
     ```
 

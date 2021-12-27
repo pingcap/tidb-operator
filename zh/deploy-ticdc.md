@@ -49,7 +49,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-ticdc/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl exec -it ${pod_name} -n ${namespace} -- sh
     ```
 
@@ -57,11 +57,11 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-ticdc/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     /cdc cli capture list --pd=http://${cluster_name}-pd:2379
     ```
 
-    ```shell
+    ```bash
     [
       {
         "id": "3ed24f6c-22cf-446f-9fe0-bf4a66d00f5b",
@@ -87,7 +87,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-ticdc/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     /cdc cli capture list --pd=https://${cluster_name}-pd:2379 --ca=/var/lib/cluster-client-tls/ca.crt --cert=/var/lib/cluster-client-tls/tls.crt --key=/var/lib/cluster-client-tls/tls.key
     ```
 

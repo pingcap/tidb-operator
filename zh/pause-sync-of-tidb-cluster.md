@@ -33,7 +33,7 @@ summary: 介绍如何暂停同步 Kubernetes 上的 TiDB 集群
 
     {{< copyable "shell-regular" >}}
     
-    ```shell
+    ```bash
     kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
@@ -61,7 +61,7 @@ summary: 介绍如何暂停同步 Kubernetes 上的 TiDB 集群
 
     {{< copyable "shell-regular" >}}
     
-    ```shell
+    ```bash
     kubectl logs ${pod_name} -n ${namespace} | grep paused
     ```
 
@@ -86,7 +86,7 @@ summary: 介绍如何暂停同步 Kubernetes 上的 TiDB 集群
 
     {{< copyable "shell-regular" >}}
     
-    ```shell
+    ```bash
     kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
@@ -114,7 +114,7 @@ summary: 介绍如何暂停同步 Kubernetes 上的 TiDB 集群
 
     {{< copyable "shell-regular" >}}
     
-    ```shell
+    ```bash
     kubectl logs ${pod_name} -n ${namespace} | grep "Finished syncing TidbCluster"
     ```
     

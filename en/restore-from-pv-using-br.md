@@ -21,7 +21,7 @@ The restore method described in this document is implemented based on Custom Res
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-rbac.yaml -n test2
     ```
 
@@ -29,7 +29,7 @@ The restore method described in this document is implemented based on Custom Res
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=user=root --from-literal=password=<password> --namespace=test2
     ```
 
@@ -45,7 +45,7 @@ The restore method described in this document is implemented based on Custom Res
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f restore.yaml
     ```
 
@@ -90,7 +90,7 @@ The restore method described in this document is implemented based on Custom Res
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get rt -n test2 -owide
     ```
 

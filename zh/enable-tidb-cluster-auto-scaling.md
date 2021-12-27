@@ -127,19 +127,19 @@ TiDB Operator 会根据 TidbClusterAutoScaler CR 的配置，向 PD 发起请求
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n ${namespace}
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n ${namespace}
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
     ```
 
@@ -163,7 +163,7 @@ TiDB Operator 会根据 TidbClusterAutoScaler CR 的配置，向 PD 发起请求
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     sysbench --config-file=${path}/sysbench.config oltp_point_select --tables=1 --table-size=20000 prepare
     ```
 
@@ -171,7 +171,7 @@ TiDB Operator 会根据 TidbClusterAutoScaler CR 的配置，向 PD 发起请求
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     sysbench --config-file=${path}/sysbench.config oltp_point_select --tables=1 --table-size=20000 run
     ```
 
@@ -190,7 +190,7 @@ TiDB Operator 会根据 TidbClusterAutoScaler CR 的配置，向 PD 发起请求
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch -n1 "kubectl -n ${namespace} get pod"
     ```
 
@@ -211,7 +211,7 @@ TiDB Operator 会根据 TidbClusterAutoScaler CR 的配置，向 PD 发起请求
 
 5. 使用如下命令销毁环境：
 
-    ```shell
+    ```bash
     kubectl delete tidbcluster auto-scaling-demo -n ${namespace}
     kubectl delete tidbmonitor auto-scaling-demo -n ${namespace}
     kubectl delete tidbclusterautoscaler auto-scaling-demo -n ${namespace}

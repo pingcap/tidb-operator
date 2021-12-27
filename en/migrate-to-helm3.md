@@ -15,7 +15,7 @@ In this example, TiDB Operator (`tidb-operator`) managed by Helm 2 is installed 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm list
 ```
 
@@ -36,7 +36,7 @@ tidb-operator   1               Tue Jan  5 15:28:00 2021        DEPLOYED        
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm3 plugin install https://github.com/helm/helm-2to3
     ```
 
@@ -44,7 +44,7 @@ tidb-operator   1               Tue Jan  5 15:28:00 2021        DEPLOYED        
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm3 plugin list
     ```
 
@@ -57,7 +57,7 @@ tidb-operator   1               Tue Jan  5 15:28:00 2021        DEPLOYED        
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm3 2to3 move config
     ```
 
@@ -67,7 +67,7 @@ tidb-operator   1               Tue Jan  5 15:28:00 2021        DEPLOYED        
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm3 repo list
     ```
 
@@ -80,7 +80,7 @@ tidb-operator   1               Tue Jan  5 15:28:00 2021        DEPLOYED        
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm3 2to3 convert tidb-operator
     ```
 
@@ -90,7 +90,7 @@ tidb-operator   1               Tue Jan  5 15:28:00 2021        DEPLOYED        
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm3 list --namespace=tidb-admin
     ```
 
@@ -109,7 +109,7 @@ tidb-operator   1               Tue Jan  5 15:28:00 2021        DEPLOYED        
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pods --namespace=tidb-admin -l app.kubernetes.io/instance=tidb-operator
     ```
 
@@ -144,7 +144,7 @@ tidb-operator   1               Tue Jan  5 15:28:00 2021        DEPLOYED        
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm3 2to3 cleanup --name=tidb-operator
     ```
 

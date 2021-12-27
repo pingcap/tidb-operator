@@ -44,7 +44,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mkdir -p ~/bin
     curl -s -L -o ~/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
     curl -s -L -o ~/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
@@ -57,7 +57,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
 2. Generate the `ca-config.json` configuration file:
 
-    ```shell
+    ```bash
     cat << EOF > ca-config.json
     {
         "signing": {
@@ -90,7 +90,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
 3. Generate the `ca-csr.json` configuration file:
 
-    ```shell
+    ```bash
     cat << EOF > ca-csr.json
     {
         "CN": "TiDB",
@@ -118,7 +118,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
     ```
 
@@ -163,7 +163,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal pd-server.json | cfssljson -bare pd-server
         ```
 
@@ -204,7 +204,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal tikv-server.json | cfssljson -bare tikv-server
         ```
 
@@ -214,7 +214,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl print-defaults csr > tidb-server.json
         ```
 
@@ -245,7 +245,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal tidb-server.json | cfssljson -bare tidb-server
         ```
 
@@ -255,7 +255,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl print-defaults csr > pump-server.json
         ```
 
@@ -280,7 +280,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal pump-server.json | cfssljson -bare pump-server
         ```
 
@@ -290,7 +290,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl print-defaults csr > drainer-server.json
         ```
 
@@ -356,7 +356,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal drainer-server.json | cfssljson -bare drainer-server
         ```
 
@@ -407,7 +407,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
             {{< copyable "shell-regular" >}}
 
-            ```shell
+            ```bash
             cfssl print-defaults csr > tiflash-server.json
             ```
 
@@ -450,7 +450,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
             {{< copyable "shell-regular" >}}
 
-            ```shell
+            ```bash
             cfssl print-defaults csr > importer-server.json
             ```
 
@@ -491,7 +491,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
             {{< copyable "shell-regular" >}}
 
-            ```shell
+            ```bash
             cfssl print-defaults csr > lightning-server.json
             ```
 
@@ -526,7 +526,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cfssl print-defaults csr > client.json
     ```
 
@@ -541,7 +541,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     Finally, generate the client-side certificate:
 
-    ```shell
+    ```bash
     cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson -bare client
     ```
 
@@ -553,7 +553,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl create secret generic ${cluster_name}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=pd-server.pem --from-file=tls.key=pd-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
@@ -561,7 +561,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl create secret generic ${cluster_name}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=tikv-server.pem --from-file=tls.key=tikv-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
@@ -569,7 +569,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl create secret generic ${cluster_name}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=tidb-server.pem --from-file=tls.key=tidb-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
@@ -577,7 +577,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl create secret generic ${cluster_name}-pump-cluster-secret --namespace=${namespace} --from-file=tls.crt=pump-server.pem --from-file=tls.key=pump-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
@@ -585,7 +585,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl create secret generic ${cluster_name}-drainer-cluster-secret --namespace=${namespace} --from-file=tls.crt=drainer-server.pem --from-file=tls.key=drainer-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
@@ -593,7 +593,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl create secret generic ${cluster_name}-ticdc-cluster-secret --namespace=${namespace} --from-file=tls.crt=ticdc-server.pem --from-file=tls.key=ticdc-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
@@ -625,7 +625,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl create secret generic ${cluster_name}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
         ```
 
@@ -648,7 +648,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mkdir -p cert-manager
     cd cert-manager
     ```
@@ -699,7 +699,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f tidb-cluster-issuer.yaml
     ```
 

@@ -19,7 +19,7 @@ This document describes how to migrate a TiDB cluster deployed in the physical o
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl describe svc/kube-dns -n kube-system
     ```
 
@@ -36,7 +36,7 @@ This document describes how to migrate a TiDB cluster deployed in the physical o
 
 3. Test whether the node can successfully resolve the domain name of the Pods in Kubernetes:
 
-    ```shell
+    ```bash
     $ ping basic-pd-2.basic-pd-peer.blade.svc
     PING basic-pd-2.basic-pd-peer.blade.svc (10.24.66.178) 56(84) bytes of data.
     64 bytes from basic-pd-2.basic-pd-peer.blade.svc (10.24.66.178): icmp_seq=1 ttl=61 time=0.213 ms
@@ -51,7 +51,7 @@ This document describes how to migrate a TiDB cluster deployed in the physical o
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl -u http://<address>:<port> member | jq '.members | .[] | .client_urls'
     ```
 
@@ -72,7 +72,7 @@ This document describes how to migrate a TiDB cluster deployed in the physical o
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         # Get the number of stores
         pd-ctl -u http://<address>:<port> store | jq '.count'
         # Get the state of stores

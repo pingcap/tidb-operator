@@ -22,7 +22,7 @@ Modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tidbcluster ${cluster_name} -n ${namespace}
     ```
 
@@ -30,7 +30,7 @@ Check whether the TiDB cluster in Kubernetes has updated to your desired definit
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get tidbcluster ${cluster_name} -n ${namespace} -oyaml
 ```
 
@@ -38,7 +38,7 @@ In the `TidbCluster` file output by the command above, if the values of `spec.pd
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 watch kubectl -n ${namespace} get pod -o wide
 ```
 
@@ -60,7 +60,7 @@ If TiCDC is deployed in the cluster, you can scale out TiCDC by modifying `spec.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379
     ```
 
@@ -68,7 +68,7 @@ If TiCDC is deployed in the cluster, you can scale out TiCDC by modifying `spec.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     curl 127.0.0.1:2379/pd/api/v1/config/rules/group/tiflash | grep count
     ```
 
@@ -106,7 +106,7 @@ If TiCDC is deployed in the cluster, you can scale out TiCDC by modifying `spec.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get tidbcluster ${cluster-name} -n ${namespace} -oyaml
     ```
 
@@ -116,7 +116,7 @@ To view the scaling status of the cluster, run the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 watch kubectl -n ${namespace} get pod -o wide
 ```
 
@@ -155,7 +155,7 @@ To view the upgrade progress of the cluster, run the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 watch kubectl -n ${namespace} get pod -o wide
 ```
 

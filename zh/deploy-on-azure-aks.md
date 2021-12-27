@@ -27,7 +27,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-azure-aks/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az extension add --name aks-preview
     ```
 
@@ -35,7 +35,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-azure-aks/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az feature register --name EnableAzureDiskFileCSIDriver --namespace Microsoft.ContainerService --subscription ${your-subscription-id}
     ```
 
@@ -51,7 +51,7 @@ TiDB 集群大部分组件使用 Azure 磁盘作为存储，根据 AKS 中的[�
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 az aks create \
     --resource-group ${resourceGroup} \
     --name ${clusterName} \
@@ -72,7 +72,7 @@ az aks create \
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name admin \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -86,7 +86,7 @@ az aks create \
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name pd \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -102,7 +102,7 @@ az aks create \
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tidb \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -118,7 +118,7 @@ az aks create \
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tikv \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -139,7 +139,7 @@ Azure AKS 集群使用 "尽量实现区域均衡" 在多个可用区间部署节
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tikv1 \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -156,7 +156,7 @@ Azure AKS 集群使用 "尽量实现区域均衡" 在多个可用区间部署节
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tikv2 \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -173,7 +173,7 @@ Azure AKS 集群使用 "尽量实现区域均衡" 在多个可用区间部署节
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tikv3 \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -218,7 +218,7 @@ mountOptions:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create namespace tidb-cluster
 ```
 
@@ -232,7 +232,7 @@ kubectl create namespace tidb-cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aks/tidb-cluster.yaml && \
 curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aks/tidb-monitor.yaml
 ```
@@ -247,7 +247,7 @@ curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl apply -f tidb-cluster.yaml -n tidb-cluster && \
 kubectl apply -f tidb-monitor.yaml -n tidb-cluster
 ```
@@ -260,7 +260,7 @@ kubectl apply -f tidb-monitor.yaml -n tidb-cluster
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pods -n tidb-cluster
 ```
 
@@ -310,7 +310,7 @@ tidb-tikv-2                       1/1     Running   0          47h
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 sudo yum install mysql -y
 ```
 
@@ -318,7 +318,7 @@ sudo yum install mysql -y
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 mysql --comments -h ${tidb-lb-ip} -P 4000 -u root
 ```
 
@@ -326,7 +326,7 @@ mysql --comments -h ${tidb-lb-ip} -P 4000 -u root
 
 以下为一个连接 TiDB 集群的示例：
 
-```shell
+```bash
 mysql --comments -h 20.240.0.7 -P 4000 -u root
 Welcome to the MariaDB monitor.  Commands end with ; or \g.
 Your MySQL connection id is 1189
@@ -361,13 +361,13 @@ MySQL [(none)]> show status;
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n tidb-cluster get svc basic-grafana
 ```
 
 示例输出：
 
-```shell
+```bash
 kubectl get svc basic-grafana
 NAME            TYPE           CLUSTER-IP      EXTERNAL-IP                                                             PORT(S)          AGE
 basic-grafana   LoadBalancer   10.100.199.42   20.240.0.8    3000:30761/TCP   121m
@@ -401,7 +401,7 @@ TiKV 扩容需要保证在各可用区均匀扩容。以下是将集群 `${clust
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 az aks nodepool scale \
     --resource-group ${resourceGroup} \
     --cluster-name ${clusterName} \
@@ -431,7 +431,7 @@ az aks nodepool scale \
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tiflash \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -447,7 +447,7 @@ az aks nodepool scale \
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name ticdc \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -579,7 +579,7 @@ Azure Disk 支持多种磁盘类型。若需要低延迟、高吞吐，可以选
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tikv \
         --cluster-name ${clusterName}  \
         --resource-group ${resourceGroup} \
@@ -600,7 +600,7 @@ Azure Disk 支持多种磁盘类型。若需要低延迟、高吞吐，可以选
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/eks/local-volume-provisioner.yaml
     ```
 

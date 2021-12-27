@@ -31,7 +31,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
     ```
 
@@ -107,7 +107,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cfssl print-defaults csr > webhook-server.json
     ```
 
@@ -144,7 +144,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server webhook-server.json | cfssljson -bare webhook-server
     ```
 
@@ -161,7 +161,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=~/cfssl/webhook-server.pem --from-file=tls.key=~/cfssl/webhook-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
     ```
 
@@ -171,7 +171,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get secret ${secret_name} --namespace=${namespace} -o=jsonpath='{.data.ca\.crt}'
     ```
 
@@ -215,7 +215,7 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     $  kubectl annotate tidbcluster ${name} -n ${namespace} tidb.pingcap.com/tikv-partition=2
     tidbcluster.pingcap.com/${name} annotated
     ```
@@ -224,7 +224,7 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     $  kubectl annotate tidbcluster ${name} -n ${namespace} tidb.pingcap.com/tikv-partition-
     tidbcluster.pingcap.com/${name} annotated
     ```

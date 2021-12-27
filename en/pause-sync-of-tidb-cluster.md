@@ -33,7 +33,7 @@ Here are some cases where you might need to pause sync of a TiDB cluster in Kube
 
     {{< copyable "shell-regular" >}}
     
-    ```shell
+    ```bash
     kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
@@ -61,7 +61,7 @@ Here are some cases where you might need to pause sync of a TiDB cluster in Kube
 
     {{< copyable "shell-regular" >}}
     
-    ```shell
+    ```bash
     kubectl logs ${pod_name} -n ${namespace} | grep paused
     ```
     
@@ -86,7 +86,7 @@ To resume the sync of the TiDB cluster, configure `spec.paused: false` in the Ti
 
     {{< copyable "shell-regular" >}}
     
-    ```shell
+    ```bash
     kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
@@ -114,7 +114,7 @@ To resume the sync of the TiDB cluster, configure `spec.paused: false` in the Ti
 
     {{< copyable "shell-regular" >}}
     
-    ```shell
+    ```bash
     kubectl logs ${pod_name} -n ${namespace} | grep "Finished syncing TidbCluster"
     ```
     

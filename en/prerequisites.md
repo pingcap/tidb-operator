@@ -23,7 +23,7 @@ It is recommended that you disable the firewall.
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 systemctl stop firewalld
 systemctl disable firewalld
 ```
@@ -34,7 +34,7 @@ If you cannot stop the firewalld service, to ensure the normal operation of Kube
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     firewall-cmd --permanent --add-port=6443/tcp
     firewall-cmd --permanent --add-port=2379-2380/tcp
     firewall-cmd --permanent --add-port=10250/tcp
@@ -53,7 +53,7 @@ If you cannot stop the firewalld service, to ensure the normal operation of Kube
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     firewall-cmd --permanent --add-port=10250/tcp
     firewall-cmd --permanent --add-port=10255/tcp
     firewall-cmd --permanent --add-port=8472/udp
@@ -69,7 +69,7 @@ The FORWARD chain is configured to `ACCEPT` by default and is set in the startup
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 iptables -P FORWARD ACCEPT
 ```
 
@@ -77,7 +77,7 @@ iptables -P FORWARD ACCEPT
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 setenforce 0
 sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
 ```
@@ -88,7 +88,7 @@ To make kubelet work, you need to turn off swap and comment out the swap-related
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 swapoff -a
 sed -i 's/^\(.*swap.*\)$/#\1/' /etc/fstab
 ```
@@ -99,7 +99,7 @@ Configure the kernel parameters as follows. You can also adjust them according t
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 modprobe br_netfilter
 
 cat <<EOF >  /etc/sysctl.d/k8s.conf
@@ -128,7 +128,7 @@ The [Irqbalance](https://access.redhat.com/documentation/en-us/red_hat_enterpris
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 systemctl enable irqbalance
 systemctl start irqbalance
 ```
@@ -139,7 +139,7 @@ To make full use of CPU performance, set the CPUfreq governor mode to `performan
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 cpupower frequency-set --governor performance
 ```
 
@@ -149,7 +149,7 @@ The TiDB cluster uses many file descriptors by default. The `ulimit` of the work
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 cat <<EOF >>  /etc/security/limits.conf
 root        soft        nofile        1048576
 root        hard        nofile        1048576
@@ -168,7 +168,7 @@ After the installation, take the following steps:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cat > /etc/docker/daemon.json <<EOF
     {
       "exec-opts": ["native.cgroupdriver=systemd"],
@@ -193,7 +193,7 @@ After the installation, take the following steps:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         mkdir -p /etc/systemd/system/docker.service.d
         ```
 
@@ -201,7 +201,7 @@ After the installation, take the following steps:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cat > /etc/systemd/system/docker.service.d/limit-nofile.conf <<EOF
         [Service]
         LimitNOFILE=1048576
@@ -216,7 +216,7 @@ After the installation, take the following steps:
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         systemctl daemon-reload && systemctl restart docker
         ```
 
@@ -241,7 +241,7 @@ After Kubelet is installed, take the following steps:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     echo "KUBELET_EXTRA_ARGS=--root-dir=/data1/kubelet" > /etc/sysconfig/kubelet
     systemctl restart kubelet
     ```

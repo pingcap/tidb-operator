@@ -25,7 +25,7 @@ If the original TLS certificates are issued by [the `cfssl` system](enable-tls-b
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mv ca.pem ca.old.pem && \
     mv ca-key.pem ca-key.old.pem
     ```
@@ -34,7 +34,7 @@ If the original TLS certificates are issued by [the `cfssl` system](enable-tls-b
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
     ```
 
@@ -46,7 +46,7 @@ If the original TLS certificates are issued by [the `cfssl` system](enable-tls-b
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mv ca.pem ca.new.pem && \
     mv ca-key.pem ca-key.new.pem && \
     cat ca.new.pem ca.old.pem > ca.pem
@@ -56,7 +56,7 @@ If the original TLS certificates are issued by [the `cfssl` system](enable-tls-b
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic ${cluster_name}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=pd-server.pem --from-file=tls.key=pd-server-key.pem --from-file=ca.crt=ca.pem --dry-run=client -o yaml | kubectl apply -f -
     kubectl create secret generic ${cluster_name}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=tikv-server.pem --from-file=tls.key=tikv-server-key.pem --from-file=ca.crt=ca.pem --dry-run=client -o yaml | kubectl apply -f -
     kubectl create secret generic ${cluster_name}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=tidb-server.pem --from-file=tls.key=tidb-server-key.pem --from-file=ca.crt=ca.pem --dry-run=client -o yaml | kubectl apply -f -
@@ -83,7 +83,7 @@ If the original TLS certificates are issued by [the `cfssl` system](enable-tls-b
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cfssl gencert -ca=ca.new.pem -ca-key=ca-key.new.pem -config=ca-config.json -profile=internal pd-server.json | cfssljson -bare pd-server
     cfssl gencert -ca=ca.new.pem -ca-key=ca-key.new.pem -config=ca-config.json -profile=internal tikv-server.json | cfssljson -bare tikv-server
     cfssl gencert -ca=ca.new.pem -ca-key=ca-key.new.pem -config=ca-config.json -profile=internal tidb-server.json | cfssljson -bare tidb-server
@@ -99,7 +99,7 @@ If the original TLS certificates are issued by [the `cfssl` system](enable-tls-b
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic ${cluster_name}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=pd-server.pem --from-file=tls.key=pd-server-key.pem --from-file=ca.crt=ca.pem --dry-run=client -o yaml | kubectl apply -f -
     kubectl create secret generic ${cluster_name}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=tikv-server.pem --from-file=tls.key=tikv-server-key.pem --from-file=ca.crt=ca.pem --dry-run=client -o yaml | kubectl apply -f -
     kubectl create secret generic ${cluster_name}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=tidb-server.pem --from-file=tls.key=tidb-server-key.pem --from-file=ca.crt=ca.pem --dry-run=client -o yaml | kubectl apply -f -
@@ -124,7 +124,7 @@ After you [renew and replace the combined CA certificate](#renew-and-replace-the
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic ${cluster_name}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=pd-server.pem --from-file=tls.key=pd-server-key.pem --from-file=ca.crt=ca.new.pem --dry-run=client -o yaml | kubectl apply -f -
     kubectl create secret generic ${cluster_name}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=tikv-server.pem --from-file=tls.key=tikv-server-key.pem --from-file=ca.crt=ca.new.pem --dry-run=client -o yaml | kubectl apply -f -
     kubectl create secret generic ${cluster_name}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=tidb-server.pem --from-file=tls.key=tidb-server-key.pem --from-file=ca.crt=ca.new.pem --dry-run=client -o yaml | kubectl apply -f -
@@ -167,7 +167,7 @@ The steps to renew and replace the CA certificates of PD, TiKV, TiDB and certifi
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete secret ${cluster_name}-pd-cluster-secret --namespace=${namespace}
     kubectl delete secret ${cluster_name}-tikv-cluster-secret --namespace=${namespace}
     kubectl delete secret ${cluster_name}-tidb-cluster-secret --namespace=${namespace}

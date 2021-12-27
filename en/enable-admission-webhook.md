@@ -33,7 +33,7 @@ With a default installation, TiDB Operator disables the admission controller. Ta
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
         ```
 
@@ -111,7 +111,7 @@ By default, the admission controller and Kubernetes api-server skip the [TLS ver
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl print-defaults csr > webhook-server.json
         ```
 
@@ -148,7 +148,7 @@ By default, the admission controller and Kubernetes api-server skip the [TLS ver
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server webhook-server.json | cfssljson -bare webhook-server
         ```
 
@@ -165,7 +165,7 @@ By default, the admission controller and Kubernetes api-server skip the [TLS ver
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=~/cfssl/webhook-server.pem --from-file=tls.key=~/cfssl/webhook-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
     ```
 
@@ -175,7 +175,7 @@ By default, the admission controller and Kubernetes api-server skip the [TLS ver
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get secret <secret-name> --namespace=<release-namespace> -o=jsonpath='{.data.ca\.crt}'
     ```
 
@@ -219,7 +219,7 @@ TiDB Operator implements many functions using the admission controller. This sec
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl annotate tidbcluster ${name} -n ${namespace} tidb.pingcap.com/tikv-partition=2 &&
     tidbcluster.pingcap.com/${name} annotated
     ```
@@ -228,7 +228,7 @@ TiDB Operator implements many functions using the admission controller. This sec
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl annotate tidbcluster ${name} -n ${namespace} tidb.pingcap.com/tikv-partition- &&
     tidbcluster.pingcap.com/${name} annotated
     ```

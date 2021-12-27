@@ -18,7 +18,7 @@ After [Deploying TiDB on general Kubernetes](deploy-on-general-kubernetes.md), m
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl edit tc ${name} -n ${namespace}
 ```
 
@@ -57,7 +57,7 @@ To trigger a graceful restart, add an annotation with the `tidb.pingcap.com/evic
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n ${namespace} annotate pod ${tikv_pod_name} tidb.pingcap.com/evict-leader="delete-pod"
 ```
 

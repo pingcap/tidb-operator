@@ -20,7 +20,7 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl edit tidbcluster ${cluster_name} -n ${namespace}
 ```
 
@@ -28,7 +28,7 @@ kubectl edit tidbcluster ${cluster_name} -n ${namespace}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get tidbcluster ${cluster_name} -n ${namespace} -oyaml
 ```
 
@@ -36,7 +36,7 @@ kubectl get tidbcluster ${cluster_name} -n ${namespace} -oyaml
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 watch kubectl -n ${namespace} get pod -o wide
 ```
 
@@ -54,7 +54,7 @@ watch kubectl -n ${namespace} get pod -o wide
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379
     ```
 
@@ -62,7 +62,7 @@ watch kubectl -n ${namespace} get pod -o wide
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     curl 127.0.0.1:2379/pd/api/v1/config/rules/group/tiflash | grep count
     ```
 
@@ -94,7 +94,7 @@ watch kubectl -n ${namespace} get pod -o wide
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get tidbcluster ${cluster-name} -n ${namespace} -oyaml
     ```
 
@@ -102,7 +102,7 @@ watch kubectl -n ${namespace} get pod -o wide
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 watch kubectl -n ${namespace} get pod -o wide
 ```
 
@@ -137,7 +137,7 @@ watch kubectl -n ${namespace} get pod -o wide
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 watch kubectl -n ${namespace} get pod -o wide
 ```
 

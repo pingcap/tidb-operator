@@ -22,7 +22,7 @@ Kubernetes 内置 [StatefulSet](https://kubernetes.io/docs/concepts/workloads/co
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/advanced-statefulset-crd.v1beta1.yaml
         ```
 
@@ -59,7 +59,7 @@ Kubernetes 内置 [StatefulSet](https://kubernetes.io/docs/concepts/workloads/co
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get -n ${namespace} asts
 ```
 

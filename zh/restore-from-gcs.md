@@ -20,7 +20,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-rbac.yaml -n test2
     ```
 
@@ -32,7 +32,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=user=root --from-literal=password=${password} --namespace=test2
     ```
 
@@ -54,7 +54,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f restore.yaml
     ```
 
@@ -89,7 +89,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs/']
 
     {{< copyable "shell-regular" >}}
 
-     ```shell
+     ```bash
      kubectl get rt -n test2 -owide
      ```
 

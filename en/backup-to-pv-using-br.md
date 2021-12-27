@@ -29,7 +29,7 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-rbac.yaml -n test1
     ```
 
@@ -37,7 +37,7 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
     ```
 
@@ -70,7 +70,7 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-nfs.yaml
     ```
 
@@ -129,7 +129,7 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get bk -n test1 -owide
     ```
 
@@ -147,7 +147,7 @@ The prerequisites for the scheduled full backup is the same with the [prerequisi
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-schedule-nfs.yaml
     ```
 
@@ -198,7 +198,7 @@ The prerequisites for the scheduled full backup is the same with the [prerequisi
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get bks -n test1 -owide
     ```
 
@@ -206,7 +206,7 @@ The prerequisites for the scheduled full backup is the same with the [prerequisi
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-nfs -n test1
     ```
 

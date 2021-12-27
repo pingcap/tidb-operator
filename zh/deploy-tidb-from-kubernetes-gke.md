@@ -79,13 +79,13 @@ kubectl get nodes
 
 1. 安装 Helm 服务端
 
-    ```shell
+    ```bash
     curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
     ```
 
 2. 通过下面的命令添加仓库：
 
-    ```shell
+    ```bash
     helm repo add pingcap https://charts.pingcap.org/
     ```
 
@@ -93,7 +93,7 @@ kubectl get nodes
 
 TiDB Operator 使用 [Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions) 扩展 Kubernetes，所以要使用 TiDB Operator，必须先创建 `TidbCluster` 等各种自定义资源类型：
 
-```shell
+```bash
 kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
 kubectl get crd tidbclusters.pingcap.com
 ```
@@ -104,7 +104,7 @@ kubectl get crd tidbclusters.pingcap.com
 
 创建 `TidbCluster` 自定义资源类型后，接下来在 Kubernetes 集群上安装 TiDB Operator。
 
-```shell
+```bash
 kubectl create namespace tidb-admin
 helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.2.4
 kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
@@ -116,7 +116,7 @@ kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
 
 1. 创建 `Namespace`：
 
-    ```shell
+    ```bash
     kubectl create namespace demo
     ```
 
@@ -213,13 +213,13 @@ kubectl -n demo port-forward svc/basic-grafana 8080:3000 &>/tmp/pf8080.log &
 
 要删除 TiDB 集群，执行以下命令：
 
-```shell
+```bash
 kubectl delete tc basic -n demo
 ```
 
 要删除监控组件，执行以下命令：
 
-```shell
+```bash
 kubectl delete tidbmonitor basic -n demo
 ```
 

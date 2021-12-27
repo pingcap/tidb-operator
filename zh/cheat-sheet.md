@@ -16,7 +16,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get crd
     ```
 
@@ -24,7 +24,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get tc ${name}
     ```
 
@@ -32,7 +32,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get tidbmonitor ${name}
     ```
 
@@ -40,7 +40,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get bk ${name}
     ```
 
@@ -48,7 +48,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get bks ${name}
     ```
 
@@ -56,7 +56,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get restore ${name}
     ```
 
@@ -64,7 +64,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get tidbclusterautoscaler ${name}
     ```
 
@@ -72,7 +72,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get tidbinitializer ${name}
     ```
 
@@ -80,7 +80,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get asts ${name}
     ```
 
@@ -88,7 +88,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get pod ${name}
     ```
 
@@ -96,19 +96,19 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get pod -l app.kubernetes.io/component=tikv
     ```
 
     持续观察 Pod 状态变化：
 
-    ```shell
+    ```bash
     watch kubectl -n ${namespace} get pod
     ```
 
     查看 Pod 详细信息：
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} describe pod ${name}
     ```
 
@@ -116,7 +116,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get pods -l "app.kubernetes.io/component=tidb,app.kubernetes.io/instance=${cluster_name}" -ojsonpath="{range .items[*]}{.spec.nodeName}{'\n'}{end}"
     ```
 
@@ -124,7 +124,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get service ${name}
     ```
 
@@ -132,7 +132,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get cm ${name}
     ```
 
@@ -140,7 +140,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get pv ${name}
     ```
 
@@ -148,7 +148,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pv -l app.kubernetes.io/namespace=${namespace},app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=${cluster_name}
     ```
 
@@ -156,7 +156,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get pvc ${name}
     ```
 
@@ -164,7 +164,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get sc
     ```
 
@@ -172,7 +172,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get sts ${name}
     ```
 
@@ -180,7 +180,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} describe sts ${name}
     ```
 
@@ -190,7 +190,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} annotate tc ${cluster_name} ${key}=${value}
     ```
 
@@ -198,7 +198,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} annotate --overwrite tc ${cluster_name} tidb.pingcap.com/force-upgrade=true
     ```
 
@@ -206,7 +206,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} annotate tc ${cluster_name} tidb.pingcap.com/force-upgrade-
     ```
 
@@ -214,7 +214,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} annotate pod ${pod_name} runmode=debug
     ```
 
@@ -224,7 +224,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} edit tc ${name}
     ```
 
@@ -234,7 +234,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl patch pv ${name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
     ```
 
@@ -242,7 +242,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} patch pvc ${name} -p '{"spec": {"resources": {"requests": {"storage": "100Gi"}}}'
     ```
 
@@ -250,7 +250,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl patch storageclass ${name} -p '{"allowVolumeExpansion": true}'
     ```
 
@@ -260,7 +260,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} apply -f ${file}
     ```
 
@@ -268,7 +268,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create ns ${namespace}
     ```
 
@@ -278,7 +278,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} create secret generic ${secret_name} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
 
@@ -286,7 +286,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
     
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} create secret generic ${secret_name} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
@@ -296,7 +296,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} -it exec ${pod_name} -- cat /etc/pd/pd.toml
     ```
 
@@ -304,7 +304,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} -it exec ${pod_name} -- cat /etc/tidb/tidb.toml
     ```
 
@@ -312,7 +312,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} -it exec ${pod_name} -- cat /etc/tikv/tikv.toml
     ```
 
@@ -320,7 +320,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} logs ${pod_name} -f
     ```
 
@@ -328,7 +328,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} logs ${pod_name} -p
     ```
 
@@ -336,7 +336,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} logs ${pod_name} -c ${container_name}
     ```
 
@@ -344,7 +344,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} port-forward svc/${service_name} ${local_port}:${port_in_pod}
     ```
 
@@ -352,7 +352,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} port-forward svc/${cluster_name}-pd 2379:2379
     ```
 
@@ -362,7 +362,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl cordon ${node_name}
     ```
 
@@ -370,7 +370,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl uncordon ${node_name}
     ```
 
@@ -380,7 +380,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} pod ${pod_name}
     ```
 
@@ -388,7 +388,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} pvc ${pvc_name}
     ```
 
@@ -396,7 +396,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} tc ${tc_name}
     ```
 
@@ -404,7 +404,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} tidbmonitor ${tidb_monitor_name}
     ```
 
@@ -412,7 +412,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} delete tidbclusterautoscaler ${name}
     ```
 
@@ -426,7 +426,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm repo add pingcap https://charts.pingcap.org/
 ```
 
@@ -434,7 +434,7 @@ helm repo add pingcap https://charts.pingcap.org/
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm repo update
 ```
 
@@ -444,7 +444,7 @@ helm repo update
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm search hub ${chart_name}
     ```
 
@@ -452,7 +452,7 @@ helm repo update
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm search hub mysql
     ```
 
@@ -460,7 +460,7 @@ helm repo update
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm search repo ${chart_name} -l --devel
     ```
 
@@ -468,7 +468,7 @@ helm repo update
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm search repo tidb-operator -l --devel
     ```
 
@@ -476,7 +476,7 @@ helm repo update
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm inspect values ${chart_name} --version=${chart_version} > values.yaml
 ```
 
@@ -484,7 +484,7 @@ helm inspect values ${chart_name} --version=${chart_version} > values.yaml
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm inspect values pingcap/tidb-operator --version=v1.2.4 > values-tidb-operator.yaml
 ```
 
@@ -492,7 +492,7 @@ helm inspect values pingcap/tidb-operator --version=v1.2.4 > values-tidb-operato
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm install ${name} ${chart_name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
 ```
 
@@ -500,7 +500,7 @@ helm install ${name} ${chart_name} --namespace=${namespace} --version=${chart_ve
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --version=v1.2.4 -f values-tidb-operator.yaml
 ```
 
@@ -508,7 +508,7 @@ helm install tidb-operator pingcap/tidb-operator --namespace=tidb-admin --versio
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm ls
 ```
 
@@ -516,7 +516,7 @@ helm ls
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm upgrade ${name} ${chart_name} --version=${chart_version} -f ${values_file}
 ```
 
@@ -524,7 +524,7 @@ helm upgrade ${name} ${chart_name} --version=${chart_version} -f ${values_file}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm upgrade tidb-operator pingcap/tidb-operator --version=v1.2.4 -f values-tidb-operator.yaml
 ```
 
@@ -532,7 +532,7 @@ helm upgrade tidb-operator pingcap/tidb-operator --version=v1.2.4 -f values-tidb
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm uninstall ${name} -n ${namespace}
 ```
 
@@ -540,7 +540,7 @@ helm uninstall ${name} -n ${namespace}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm uninstall tidb-operator -n tidb-admin
 ```
 

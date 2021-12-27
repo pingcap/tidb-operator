@@ -30,7 +30,7 @@ To better explain how to perform the backup operation, this document shows an ex
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-rbac.yaml -n test1
     ```
 
@@ -42,7 +42,7 @@ To better explain how to perform the backup operation, this document shows an ex
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
@@ -52,7 +52,7 @@ To better explain how to perform the backup operation, this document shows an ex
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-gcs.yaml
     ```
 
@@ -108,7 +108,7 @@ To better explain how to perform the backup operation, this document shows an ex
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get bk -n test1 -owide
     ```
 
@@ -126,7 +126,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-schedule-gcs.yaml
     ```
 
@@ -175,7 +175,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get bks -n test1 -owide
     ```
 
@@ -183,7 +183,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-gcs -n test1
     ```
 

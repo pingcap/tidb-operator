@@ -14,7 +14,7 @@ Operations on TiDB in Kubernetes require some open source tools. In the meantime
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
 ```
 
@@ -22,7 +22,7 @@ After the above command is executed, you can access the PD service via `127.0.0.
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 pd-ctl -d config show
 ```
 
@@ -30,7 +30,7 @@ Assume that your local port `2379` has been occupied and you want to switch to a
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} svc/${cluster_name}-pd ${local_port}:2379 &>/tmp/portforward-pd.log &
 ```
 
@@ -38,7 +38,7 @@ Then you need to explicitly assign a PD port for `pd-ctl`:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 pd-ctl -u 127.0.0.1:${local_port} -d config show
 ```
 
@@ -50,13 +50,13 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl port-forward -n ${namespace} ${pod_name} 20160:20160 &>/tmp/portforward-tikv.log &
     ```
 
@@ -64,13 +64,13 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     tikv-ctl --host 127.0.0.1:20160 ${subcommands}
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     tikv-ctl --pd 127.0.0.1:2379 compact-cluster
     ```
 
@@ -80,7 +80,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl annotate pod ${pod_name} -n ${namespace} runmode=debug
         ```
 
@@ -88,7 +88,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl exec ${pod_name} -n ${namespace} -c tikv -- kill -s TERM 1
         ```
 
@@ -96,7 +96,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl exec -it ${pod_name} -n ${namespace} -- sh
         ```
 
@@ -104,7 +104,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         ./tikv-ctl --data-dir /var/lib/tikv size -r 2
         ```
 
@@ -114,13 +114,13 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} ${pod_name} 10080:10080 &>/tmp/portforward-tidb.log &
 ```
 
@@ -128,7 +128,7 @@ Then you can use the `tidb-ctl`:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tidb-ctl schema in mysql
 ```
 
@@ -144,14 +144,14 @@ If the server does not have access to the Internet, you need to download Helm on
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 wget https://get.helm.sh/helm-v3.4.1-linux-amd64.tar.gz
 tar zxvf helm-v3.4.1-linux-amd64.tar.gz
 ```
 
 After decompression, you can see the following files:
 
-```shell
+```bash
 linux-amd64/
 linux-amd64/README.md
 linux-amd64/helm
@@ -164,11 +164,11 @@ Then execute `helm verison`. If the command outputs normally, the Helm installat
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm version
 ```
 
-```shell
+```bash
 version.BuildInfo{Version:"v3.4.1", GitCommit:"c4e74854886b2efe3321e185578e6db9be0a6e29", GitTreeState:"clean", GoVersion:"go1.14.11"}
 ```
 
@@ -187,7 +187,7 @@ These charts are hosted in the Helm chart repository `https://charts.pingcap.org
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm repo add pingcap https://charts.pingcap.org/
 ```
 
@@ -195,7 +195,7 @@ Then you can search the chart provided by PingCAP using the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm search repo pingcap
 ```
 
@@ -225,7 +225,7 @@ Before performing the deploy, upgrade and deploy, you can view the deployed appl
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm ls
 ```
 
@@ -235,7 +235,7 @@ When performing a deployment or upgrade, you must specify the chart name (`chart
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${release_name} ${chart_name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
     ```
 
@@ -243,7 +243,7 @@ When performing a deployment or upgrade, you must specify the chart name (`chart
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade ${release_name} ${chart_name} --version=${chart_version} -f ${values_file}
     ```
 
@@ -253,7 +253,7 @@ When performing a deployment or upgrade, you must specify the chart name (`chart
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm uninstall ${release_name} -n ${namespace}
     ```
 
@@ -267,7 +267,7 @@ Use the following command to download the chart file required for cluster instal
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 wget http://charts.pingcap.org/tidb-operator-v1.2.4.tgz
 wget http://charts.pingcap.org/tidb-drainer-v1.2.4.tgz
 wget http://charts.pingcap.org/tidb-lightning-v1.2.4.tgz
@@ -277,7 +277,7 @@ Copy these chart files to the server and decompress them. You can use these char
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tar zxvf tidb-operator.v1.2.4.tgz
 helm install ${release_name} ./tidb-operator --namespace=${namespace}
 ```

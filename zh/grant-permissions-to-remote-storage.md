@@ -19,7 +19,7 @@ AWS 的客户端支持读取进程环境变量中的 `AWS_ACCESS_KEY_ID` 以及 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-literal=secret_key=yyy --namespace=test1
 ```
 
@@ -42,7 +42,7 @@ kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-lit
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tc demo1 -n test1
     ```
 
@@ -70,7 +70,7 @@ kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-lit
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test1
     ```
 
@@ -78,7 +78,7 @@ kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-lit
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tc demo1 -n test1
     ```
 
@@ -96,6 +96,6 @@ kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-lit
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create secret generic gcs-secret --from-file=credentials=./google-credentials.json -n test1
 ```

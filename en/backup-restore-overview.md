@@ -91,7 +91,7 @@ This section introduces the fields in the `Backup` CR.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
 
@@ -246,7 +246,7 @@ This section introduces the fields in the `Restore` CR.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
 
@@ -296,7 +296,7 @@ You can delete the `Backup` CR or `BackupSchedule` CR by running the following c
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete backup ${name} -n ${namespace}
 kubectl delete backupschedule ${name} -n ${namespace}
 ```
@@ -311,7 +311,7 @@ To address this issue, delete `finalizers` by running the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl edit backup ${name} -n ${namespace}
 ```
 

@@ -61,7 +61,7 @@ summary: 介绍如何灰度升级 TiDB Operator。
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} label tc ${cluster_name} version=canary
     ```
 
@@ -69,7 +69,7 @@ summary: 介绍如何灰度升级 TiDB Operator。
 
     1. 查看当前 TiDB Operator `tidb-controller-manager` 的日志:
 
-        ```shell
+        ```bash
         kubectl -n tidb-admin logs tidb-controller-manager-55b887bdc9-lzdwv
         ```
 
@@ -79,7 +79,7 @@ summary: 介绍如何灰度升级 TiDB Operator。
 
     2. 查看灰度 TiDB Operator `tidb-controller-manager` 的日志:
 
-        ```shell
+        ```bash
         kubectl -n tidb-admin-canary logs tidb-controller-manager-canary-6dcb9bdd95-qf4qr
         ```
 
@@ -91,13 +91,13 @@ summary: 介绍如何灰度升级 TiDB Operator。
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} edit tc ${cluster_name}
     ```
 
     修改后，集群内各组件会滚动升级，可以通过查看灰度 TiDB Operator `tidb-scheduler` 的日志确认集群已经使用灰度 `tidb-scheduler`：
 
-    ```shell
+    ```bash
     kubectl -n tidb-admin-canary logs tidb-scheduler-canary-7f7b6c7c6-j5p2j -c tidb-scheduler
     ```
 
@@ -105,19 +105,19 @@ summary: 介绍如何灰度升级 TiDB Operator。
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} label tc ${cluster_name} version-
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} edit tc ${cluster_name}
     ```
 
 6. 删除灰度 TiDB Operator。
 
-    ```shell
+    ```bash
     helm -n tidb-admin-canary uninstall ${release_name}
     ```
 

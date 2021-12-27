@@ -43,7 +43,7 @@ metadata:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl label nodes node1 zone=zone1
 ```
 

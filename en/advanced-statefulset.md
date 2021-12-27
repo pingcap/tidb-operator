@@ -22,7 +22,7 @@ The [advanced StatefulSet controller](https://github.com/pingcap/advanced-statef
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/advanced-statefulset-crd.v1beta1.yaml
         ```
 
@@ -61,7 +61,7 @@ The data format of `AdvancedStatefulSet` is the same as that of `StatefulSet`, b
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get -n ${namespace} asts
 ```
 

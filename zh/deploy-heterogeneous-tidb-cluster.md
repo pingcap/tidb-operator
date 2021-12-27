@@ -66,7 +66,7 @@ spec:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f cluster.yaml -n ${namespace}
 ```
 
@@ -106,7 +106,7 @@ spec:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f tidbmonitor.yaml -n ${namespace}
 ```
 
@@ -174,7 +174,7 @@ spec:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f cluster.yaml -n ${namespace}
 ```
 

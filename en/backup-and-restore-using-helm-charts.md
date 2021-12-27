@@ -56,7 +56,7 @@ To configure a scheduled full backup, modify the `scheduledBackup` section in th
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
@@ -64,7 +64,7 @@ To configure a scheduled full backup, modify the `scheduledBackup` section in th
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
     ```
 
@@ -88,7 +88,7 @@ Follow the steps below to perform an ad-hoc full backup task:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
@@ -96,7 +96,7 @@ Follow the steps below to perform an ad-hoc full backup task:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${backup_name} pingcap/tidb-backup --namespace=${namespace} -f values.yaml --version=${version}
     ```
 
@@ -106,7 +106,7 @@ For backups stored in PV, you can view them by using the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.com/backup-cluster-name=${cluster_name}
 ```
 
@@ -124,7 +124,7 @@ The `pingcap/tidb-backup` helm chart helps restore a TiDB cluster using backup d
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
@@ -132,7 +132,7 @@ The `pingcap/tidb-backup` helm chart helps restore a TiDB cluster using backup d
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${restore_name} pingcap/tidb-backup --namespace=${namespace} -f values.yaml --version=${version}
     ```
 
@@ -152,7 +152,7 @@ To scale in Pump, for each Pump node, make the node offline and then run the `he
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl run offline-pump-${ordinal_id} --image=pingcap/tidb-binlog:${version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${release_name}-pd:2379 -cmd offline-pump -node-id ${release_name}-pump-${ordinal_id}:8250
     ```
 
@@ -160,7 +160,7 @@ To scale in Pump, for each Pump node, make the node offline and then run the `he
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl logs -f -n ${namespace} ${release_name}-pump-${ordinal_id}
     ```
 
@@ -170,6 +170,6 @@ To scale in Pump, for each Pump node, make the node offline and then run the `he
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
     ```

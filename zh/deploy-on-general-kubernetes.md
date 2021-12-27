@@ -22,7 +22,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-general-kubernetes/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create namespace ${namespace}
     ```
 
@@ -46,7 +46,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-general-kubernetes/']
 
     部署一套 TiDB 集群会用到下面这些 Docker 镜像（假设 TiDB 集群的版本是 v5.2.1）：
 
-    ```shell
+    ```bash
     pingcap/pd:v5.2.1
     pingcap/tikv:v5.2.1
     pingcap/tidb:v5.2.1
@@ -64,7 +64,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-general-kubernetes/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker pull pingcap/pd:v5.2.1
     docker pull pingcap/tikv:v5.2.1
     docker pull pingcap/tidb:v5.2.1
@@ -94,7 +94,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-on-general-kubernetes/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker load -i pd-v5.2.1.tar
     docker load -i tikv-v5.2.1.tar
     docker load -i tidb-v5.2.1.tar

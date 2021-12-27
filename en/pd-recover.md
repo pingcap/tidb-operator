@@ -14,7 +14,7 @@ aliases: ['/docs/tidb-in-kubernetes/dev/pd-recover/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     wget https://download.pingcap.org/tidb-${version}-linux-amd64.tar.gz
     ```
 
@@ -24,7 +24,7 @@ aliases: ['/docs/tidb-in-kubernetes/dev/pd-recover/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     tar -xzf tidb-${version}-linux-amd64.tar.gz
     ```
 
@@ -38,7 +38,7 @@ This section introduces how to recover the PD cluster using PD Recover.
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get tc ${cluster_name} -n ${namespace} -o='go-template={{.status.clusterID}}{{"\n"}}'
 ```
 
@@ -67,7 +67,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
@@ -75,7 +75,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit sts ${cluster_name}-pd -n ${namespace}
     ```
 
@@ -83,7 +83,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod -n ${namespace}
     ```
 
@@ -91,7 +91,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete pvc -l app.kubernetes.io/component=pd,app.kubernetes.io/instance=${cluster_name} -n ${namespace}
     ```
 
@@ -101,7 +101,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
@@ -109,7 +109,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit sts ${cluster_name}-pd -n ${namespace}
     ```
 
@@ -117,7 +117,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod -n ${namespace}
     ```
 
@@ -127,7 +127,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379
     ```
 
@@ -135,7 +135,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     ./pd-recover -endpoints http://127.0.0.1:2379 -cluster-id ${cluster_id} -alloc-id ${alloc_id}
     ```
 
@@ -143,7 +143,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     After the `pd-recover` command is successfully executed, the following result is printed:
 
-    ```shell
+    ```bash
     recover success! please restart the PD cluster
     ```
 
@@ -155,7 +155,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete pod ${cluster_name}-pd-0 -n ${namespace}
     ```
 
@@ -163,7 +163,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379
     ```
 
@@ -171,7 +171,7 @@ When you use `pd-recover` to recover the PD cluster, you need to specify `alloc-
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     curl 127.0.0.1:2379/pd/api/v1/cluster
     ```
 
@@ -183,7 +183,7 @@ Execute the following command to set the value of `spec.pd.replicas` to the desi
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl edit tc ${cluster_name} -n ${namespace}
 ```
 
@@ -191,7 +191,7 @@ kubectl edit tc ${cluster_name} -n ${namespace}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete pod -l app.kubernetes.io/component=tidb,app.kubernetes.io/instance=${cluster_name} -n ${namespace} &&
 kubectl delete pod -l app.kubernetes.io/component=tikv,app.kubernetes.io/instance=${cluster_name} -n ${namespace}
 ```

@@ -68,7 +68,7 @@ The following is an example of using `kind` v0.8.1:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kind create cluster
 ```
 
@@ -94,7 +94,7 @@ Check whether the cluster is successfully created:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl cluster-info
 ```
 
@@ -141,7 +141,7 @@ After minikube is installed, execute the following command to start a minikube K
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 minikube start
 ```
 
@@ -176,7 +176,7 @@ If you have trouble accessing Docker Hub, you might use your local gcr.io mirror
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 minikube start --image-repository registry.cn-hangzhou.aliyuncs.com/google_containers
 ```
 
@@ -184,7 +184,7 @@ Or you can configure HTTP/HTTPS proxy environments in your Docker:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 # change 127.0.0.1:1086 to your http/https proxy server IP:PORT
 minikube start --docker-env https_proxy=http://127.0.0.1:1086 \
     --docker-env http_proxy=http://127.0.0.1:1086
@@ -251,7 +251,7 @@ Execute this command to install the CRDs into your cluster:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
 ```
 
@@ -279,7 +279,7 @@ This section describes how to install TiDB Operator using Helm 3.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm repo add pingcap https://charts.pingcap.org/
     ```
 
@@ -293,7 +293,7 @@ This section describes how to install TiDB Operator using Helm 3.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create namespace tidb-admin
     ```
 
@@ -307,7 +307,7 @@ This section describes how to install TiDB Operator using Helm 3.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.2.4
     ```
 
@@ -341,7 +341,7 @@ To confirm that the TiDB Operator components are running, execute the following 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pods --namespace tidb-admin -l app.kubernetes.io/instance=tidb-operator
 ```
 
@@ -653,7 +653,7 @@ In this case, you can use a JSON merge patch to update the version of the TiDB c
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl patch tc basic -n tidb-cluster --type merge -p '{"spec": {"version": "release-4.0-nightly"} }'
 ```
 
@@ -736,7 +736,7 @@ The following steps show how to destroy the TiDB cluster, but do not affect the 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete tc basic -n tidb-cluster
 ```
 
@@ -746,7 +746,7 @@ The `tc` in this command is a short name for tidbclusters.
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete tidbmonitor basic -n tidb-cluster
 ```
 
@@ -756,7 +756,7 @@ If your deployment has persistent data storage, deleting the TiDB cluster does n
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete pvc -n tidb-cluster -l app.kubernetes.io/instance=basic,app.kubernetes.io/managed-by=tidb-operator && \
 kubectl get pv -l app.kubernetes.io/namespace=tidb-cluster,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=basic -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 ```
@@ -767,7 +767,7 @@ To make sure there are no lingering resources, you can delete the namespace used
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete namespace tidb-cluster
 ```
 
@@ -777,7 +777,7 @@ If you still have running `kubectl` processes that are forwarding ports, end the
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 pgrep -lfa kubectl
 ```
 

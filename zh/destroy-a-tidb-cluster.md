@@ -14,7 +14,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/destroy-a-tidb-cluster/']
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete tc ${cluster_name} -n ${namespace}
 ```
 
@@ -22,7 +22,7 @@ kubectl delete tc ${cluster_name} -n ${namespace}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete tidbmonitor ${tidb_monitor_name} -n ${namespace}
 ```
 
@@ -32,7 +32,7 @@ kubectl delete tidbmonitor ${tidb_monitor_name} -n ${namespace}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm uninstall ${cluster_name} -n ${namespace}
 ```
 
@@ -48,12 +48,12 @@ helm uninstall ${cluster_name} -n ${namespace}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl delete pvc -n ${namespace} -l app.kubernetes.io/instance=${cluster_name},app.kubernetes.io/managed-by=tidb-operator
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pv -l app.kubernetes.io/namespace=${namespace},app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=${cluster_name} -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 ```

@@ -54,7 +54,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
 2. Generate the `ca-config.json` configuration file:
 
-    ```shell
+    ```bash
     cat << EOF > ca-config.json
     {
         "signing": {
@@ -87,7 +87,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
 3. Generate the `ca-csr.json` configuration file:
 
-    ```shell
+    ```bash
     cat << EOF > ca-csr.json
     {
         "CN": "TiDB",
@@ -564,7 +564,7 @@ Suppose you have deployed a MySQL/TiDB database with TLS-enabled for the MySQL c
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create secret generic ${mysql_secret_name1} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
 kubectl create secret generic ${tidb_secret_name} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
 ```

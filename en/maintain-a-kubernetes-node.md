@@ -28,7 +28,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces -o wide | grep ${node_name}
     ```
 
@@ -38,7 +38,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl cordon ${node_name}
     ```
 
@@ -46,7 +46,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl drain ${node_name} --ignore-daemonsets --delete-local-data
     ```
 
@@ -56,7 +56,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete node ${node_name}
     ```
 
@@ -64,7 +64,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl get node ${node_name}
     ```
 
@@ -74,7 +74,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl uncordon ${node_name}
     ```
 
@@ -82,7 +82,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl get -n $namespace pod -o wide
     ```
 
@@ -101,13 +101,13 @@ For a short-term maintenance, you can increase the TiKV instance downtime that t
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward svc/${CLUSTER_NAME}-pd 2379:2379
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 pd-ctl -d config set max-store-down-time 10m
 ```
 
@@ -121,7 +121,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl cordon ${node_name}
     ```
 
@@ -129,7 +129,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     tkctl get -A tikv | grep ${node_name}
     ```
 
@@ -143,7 +143,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get tc ${CLUSTER_NAME} -ojson | jq '.status.tikv.stores | .[] | select ( .podName == "${POD_NAME}" ) | .id'
     ```
 
@@ -151,13 +151,13 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl port-forward svc/${CLUSTER_NAME}-pd 2379:2379
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl -d store delete ${ID}
     ```
 
@@ -165,7 +165,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch pd-ctl -d store ${ID}
     ```
 
@@ -175,7 +175,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get -n ${namespace} pod ${pod_name} -ojson | jq '.spec.volumes | .[] | select (.name == "tikv") | .persistentVolumeClaim.claimName'
     ```
 
@@ -183,7 +183,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} pvc ${pvc_name} --wait=false
     ```
 
@@ -191,7 +191,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete -n ${namespace} pod ${pod_name}
     ```
 
@@ -199,7 +199,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl -n ${namespace} get pod -o wide
     ```
 
@@ -209,7 +209,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl drain ${node_name} --ignore-daemonsets --delete-local-data
     ```
 
@@ -217,7 +217,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod --all-namespaces | grep ${node_name}
     ```
 
@@ -225,7 +225,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete node ${node_name}
     ```
 

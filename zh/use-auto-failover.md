@@ -95,7 +95,7 @@ TiDB Operator 通过访问 PD API 获取 TiKV store 健康状况，并记录到 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl edit tc -n ${namespace} ${cluster_name}
 ```
 
@@ -122,7 +122,7 @@ TiDB Operator 通过访问 PD API 获取 TiFlash store 健康状况，并记录�
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl edit tc -n ${namespace} ${cluster_name}
 ```
 

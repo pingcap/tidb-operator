@@ -13,7 +13,7 @@ After creating a cluster, if the Pod is not created, you can diagnose it using t
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get tidbclusters -n ${namespace} && \
 kubectl describe tidbclusters -n ${namespace} ${cluster_name} && \
 kubectl get statefulsets -n ${namespace} && \
@@ -24,7 +24,7 @@ After creating a backup/restore task, if the Pod is not created, you can perform
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get backups -n ${namespace}
 kubectl get jobs -n ${namespace}
 kubectl describe backups -n ${namespace} ${backup_name}
@@ -45,7 +45,7 @@ You can check the specific reason for Pending by using the `kubectl describe pod
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl describe po -n ${namespace} ${pod_name}
 ```
 
@@ -61,7 +61,7 @@ If the `StorageClass` of the PVC cannot be found, take the following steps:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get storageclass
     ```
 
@@ -76,7 +76,7 @@ If the `StorageClass` of the PVC cannot be found, take the following steps:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete pvc -n ${namespace} ${pvc_name} && \
     kubectl delete sts -n ${namespace} ${statefulset_name}
     ```
@@ -99,7 +99,7 @@ A Pod in the `CrashLoopBackOff` state means that the container in the Pod repeat
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n ${namespace} logs -f ${pod_name}
 ```
 
@@ -107,7 +107,7 @@ kubectl -n ${namespace} logs -f ${pod_name}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n ${namespace} logs -p ${pod_name}
 ```
 

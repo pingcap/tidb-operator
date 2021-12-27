@@ -16,7 +16,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/faq/']
 
 配置 TidbCluster CR 的 `.spec.timezone` 属性，例如：
 
-```shell
+```bash
 ...
 spec:
   timezone: Asia/Shanghai
@@ -33,7 +33,7 @@ spec:
 
     配置 TidbCluster CR 的 `.spec.timezone` 属性，例如：
 
-    ```shell
+    ```bash
     ...
     spec:
       timezone: Asia/Shanghai
@@ -83,7 +83,7 @@ TiDB Operator 尚不支持自动编排 TiSpark。
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl exec -it ${pod_name} -n ${namespace} -- cat /etc/pd/pd.toml
     ```
 
@@ -91,7 +91,7 @@ TiDB Operator 尚不支持自动编排 TiSpark。
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl exec -it ${pod_name} -n ${namespace} -- cat /etc/tikv/tikv.toml
     ```
 
@@ -99,7 +99,7 @@ TiDB Operator 尚不支持自动编排 TiSpark。
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl exec -it ${pod_name} -c tidb -n ${namespace} -- cat /etc/tidb/tidb.toml
     ```
 
@@ -117,7 +117,7 @@ TiDB Operator 调度 Pod 失败的原因可能有三种情况：
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get deployment --all-namespaces | grep tidb-scheduler
     ```
 

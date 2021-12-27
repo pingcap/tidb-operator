@@ -39,7 +39,7 @@ aliases: ['/docs/tidb-in-kubernetes/dev/configure-backup/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=root --from-literal=password=${password}
     ```
 
@@ -81,7 +81,7 @@ aliases: ['/docs/tidb-in-kubernetes/dev/configure-backup/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic gcp-backup-secret -n ${namespace} --from-file=./credentials.json
     ```
 
@@ -107,6 +107,6 @@ aliases: ['/docs/tidb-in-kubernetes/dev/configure-backup/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic ceph-backup-secret -n ${namespace} --from-literal=access_key=${access_key} --from-literal=secret_key=${secret_key}
     ```

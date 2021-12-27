@@ -629,7 +629,7 @@ topologySpreadConstraints:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl label node ${node_name} region=${region_name} zone=${zone_name} rack=${rack_name} kubernetes.io/hostname=${host_name}
     ```
 

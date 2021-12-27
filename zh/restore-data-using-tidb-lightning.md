@@ -26,13 +26,13 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm repo update
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm search repo tikv-importer -l
     ```
 
@@ -40,7 +40,7 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm inspect values pingcap/tikv-importer --version=${chart_version} > values.yaml
     ```
 
@@ -72,7 +72,7 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${cluster_name} pingcap/tikv-importer --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
@@ -88,7 +88,7 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm inspect values pingcap/tidb-lightning --version=${chart_version} > tidb-lightning-values.yaml
 ```
 
@@ -179,7 +179,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
             {{< copyable "shell-regular" >}}
 
-            ```shell
+            ```bash
             kubectl apply -f secret.yaml -n ${namespace}
             ```
 
@@ -212,7 +212,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
             {{< copyable "shell-regular" >}}
 
-            ```shell
+            ```bash
             kubectl apply -f secret.yaml -n ${namespace}
             ```
 
@@ -236,7 +236,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
     ```
 
@@ -252,7 +252,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
@@ -274,7 +274,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl annotate sa ${servieaccount} -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user
         ```
 
@@ -282,7 +282,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         helm install ${release_name} pingcap/tidb-lightning --namespace=${namespace} --set-string failFast=true,serviceAccount=${servieaccount} -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 

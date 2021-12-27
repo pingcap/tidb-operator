@@ -14,7 +14,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-failures/']
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get tidbclusters -n ${namespace}
 kubectl describe tidbclusters -n ${namespace} ${cluster_name}
 kubectl get statefulsets -n ${namespace}
@@ -25,7 +25,7 @@ kubectl describe statefulsets -n ${namespace} ${cluster_name}-pd
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get backups -n ${namespace}
 kubectl get jobs -n ${namespace}
 kubectl describe backups -n ${namespace} ${backup_name}
@@ -100,7 +100,7 @@ Pod 处于 CrashLoopBackOff 状态意味着 Pod 内的容器重复地异常退�
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n ${namespace} logs -f ${pod_name}
 ```
 
@@ -108,7 +108,7 @@ kubectl -n ${namespace} logs -f ${pod_name}
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n ${namespace} logs -p ${pod_name}
 ```
 

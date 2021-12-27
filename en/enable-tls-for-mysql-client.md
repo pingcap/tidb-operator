@@ -37,7 +37,7 @@ This section describes how to issue certificates for the TiDB cluster using two 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mkdir -p ~/bin
     curl -s -L -o ~/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
     curl -s -L -o ~/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
@@ -108,7 +108,7 @@ This section describes how to issue certificates for the TiDB cluster using two 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
     ```
 
@@ -186,7 +186,7 @@ This section describes how to issue certificates for the TiDB cluster using two 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic ${cluster_name}-tidb-server-secret --namespace=${namespace} --from-file=tls.crt=server.pem --from-file=tls.key=server-key.pem --from-file=ca.crt=ca.pem
     kubectl create secret generic ${cluster_name}-tidb-client-secret --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
     ```

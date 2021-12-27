@@ -38,7 +38,7 @@ Kubernetes 1.11 and later versions support [volume expansion of network PV](http
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl patch storageclass ${storage_class} -p '{"allowVolumeExpansion": true}'
 ```
 
@@ -50,7 +50,7 @@ After volume expansion is enabled, expand the PV using the following method:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl patch pvc -n ${namespace} ${pvc_name} -p '{"spec": {"resources": {"requests": {"storage": "100Gi"}}}'
     ```
 
@@ -60,7 +60,7 @@ After volume expansion is enabled, expand the PV using the following method:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pv | grep ${pvc_name}
     ```
 
@@ -76,7 +76,7 @@ The following process uses `/mnt/disks` as the discovery directory and `local-st
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
      ```
 
@@ -84,7 +84,7 @@ The following process uses `/mnt/disks` as the discovery directory and `local-st
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     wget https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml &&
     kubectl apply -f ./local-volume-provisioner.yaml
     ```
@@ -102,7 +102,7 @@ The following process uses `/mnt/disks` as the discovery directory and `local-st
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     docker load -i local-volume-provisioner-v2.3.4.tar
     ```
 
@@ -110,7 +110,7 @@ The following process uses `/mnt/disks` as the discovery directory and `local-st
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get po -n kube-system -l app=local-volume-provisioner &&
     kubectl get pv | grep local-storage
     ```
@@ -253,7 +253,7 @@ Finally, execute the `kubectl apply` command to deploy `local-volume-provisioner
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
 ```
 
@@ -285,7 +285,7 @@ In general, after a PVC is no longer used and deleted, the PV bound to it is rec
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl patch pv ${pv_name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
     ```
 
@@ -301,7 +301,7 @@ When the reclaim policy of PVs is set to `Retain`, if you have confirmed that th
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete pvc ${pvc_name} --namespace=${namespace}
     ```
 
@@ -309,7 +309,7 @@ When the reclaim policy of PVs is set to `Retain`, if you have confirmed that th
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl patch pv ${pv_name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
     ```
 

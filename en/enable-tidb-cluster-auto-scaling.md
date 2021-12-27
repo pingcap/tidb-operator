@@ -127,19 +127,19 @@ For more information about configuration fields, refer to [API references](https
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n ${namespace}
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n ${namespace}
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
     ```
 
@@ -165,7 +165,7 @@ For more information about configuration fields, refer to [API references](https
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     sysbench --config-file=${path}/sysbench.config oltp_point_select --tables=1 --table-size=20000 prepare
     ```
 
@@ -173,7 +173,7 @@ For more information about configuration fields, refer to [API references](https
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     sysbench --config-file=${path}/sysbench.config oltp_point_select --tables=1 --table-size=20000 run
     ```
 
@@ -192,7 +192,7 @@ For more information about configuration fields, refer to [API references](https
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch -n1 "kubectl -n ${namespace} get pod"
     ```
 
@@ -217,7 +217,7 @@ For more information about configuration fields, refer to [API references](https
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete tidbcluster auto-scaling-demo -n ${namespace}
     kubectl delete tidbmonitor auto-scaling-demo -n ${namespace}
     kubectl delete tidbclusterautoscaler auto-scaling-demo -n ${namespace}

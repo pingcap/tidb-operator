@@ -16,7 +16,7 @@ The default time zone setting for each component container of a TiDB cluster in 
 
 Configure the `.spec.timezone` attribute in the TidbCluster CR. For example:
 
-```shell
+```bash
 ...
 spec:
   timezone: Asia/Shanghai
@@ -33,7 +33,7 @@ If the TiDB cluster is already running, first upgrade the cluster, and then conf
 
     Configure the `.spec.timezone` attribute in the TidbCluster CR. For example:
 
-    ```shell
+    ```bash
     ...
     spec:
       timezone: Asia/Shanghai
@@ -83,7 +83,7 @@ To check the configuration of the PD, TiKV, and TiDB components of the current c
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl exec -it ${pod_name} -n ${namespace} -- cat /etc/pd/pd.toml
     ```
 
@@ -91,7 +91,7 @@ To check the configuration of the PD, TiKV, and TiDB components of the current c
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl exec -it ${pod_name} -n ${namespace} -- cat /etc/tikv/tikv.toml
     ```
 
@@ -99,7 +99,7 @@ To check the configuration of the PD, TiKV, and TiDB components of the current c
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl exec -it ${pod_name} -c tidb -n ${namespace} -- cat /etc/tidb/tidb.toml
     ```
 
@@ -117,7 +117,7 @@ Three possible reasons:
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get deployment --all-namespaces | grep tidb-scheduler
     ```
 

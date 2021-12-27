@@ -30,7 +30,7 @@ Requirement: [Go](https://golang.org/) >= the 1.11 version or later
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 git clone --depth=1 https://github.com/pingcap/tidb-operator.git && \
 GOOS=<YOUR_GOOS> make cli &&\
 mv tkctl /usr/local/bin/tkctl
@@ -46,7 +46,7 @@ To configure the auto-completion for `BASH`, you need to first install the [bash
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     source <(tkctl completion bash)
     ```
 
@@ -54,7 +54,7 @@ To configure the auto-completion for `BASH`, you need to first install the [bash
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     echo "if hash tkctl 2>/dev/null; then source <(tkctl completion bash); fi" >> ~/.bashrc
     ```
 
@@ -64,7 +64,7 @@ To configure the auto-completion for `ZSH`, you can choose from either of the tw
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     source <(tkctl completion zsh)
     ```
 
@@ -72,7 +72,7 @@ To configure the auto-completion for `ZSH`, you can choose from either of the tw
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     echo "if hash tkctl 2>/dev/null; then source <(tkctl completion zsh); fi" >> ~/.zshrc
     ```
 
@@ -82,7 +82,7 @@ To configure the auto-completion for `ZSH`, you can choose from either of the tw
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl version
 ```
 
@@ -98,7 +98,7 @@ For example:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl version
 ```
 
@@ -121,7 +121,7 @@ For example:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl list -A
 ```
 
@@ -139,7 +139,7 @@ For example:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl use --namespace=foo demo-cluster
 ```
 
@@ -159,7 +159,7 @@ For example:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl info
 ```
 
@@ -193,7 +193,7 @@ For example:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl get tikv
 ```
 
@@ -206,7 +206,7 @@ demo-cluster-tikv-2   2/2     Running   2098Mi/4196Mi   2/2   0          4m45s  
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl get volume
 ```
 
@@ -240,13 +240,13 @@ For example:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl debug demo-cluster-tikv-0
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 ps -ef
 ```
 
@@ -258,13 +258,13 @@ When you use GDB to debug the process in the target container, make sure you set
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl debug demo-cluster-tikv-0
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 gdb /proc/${pid:-1}/root/tikv-server 1
 ```
 
@@ -274,7 +274,7 @@ The `.gdbinit` pre-configured in the `tidb-debug` image will set `sysroot` to `/
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 (gdb) set sysroot /proc/${pid}/root/
 ```
 
@@ -282,13 +282,13 @@ Start debugging:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 (gdb) thread apply all bt
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 (gdb) info threads
 ```
 
@@ -298,19 +298,19 @@ To use the `perf` command and the `run_flamegraph.sh` script properly, you must 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl debug demo-cluster-tikv-0
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 cp /proc/1/root/tikv-server /
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 ./run_flamegraph.sh 1
 ```
 
@@ -331,13 +331,13 @@ For example:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl ctop node/172.16.4.155
 ```
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl ctop demo-cluster-tikv-0
 ```
 
@@ -349,7 +349,7 @@ For example:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl help debug
 ```
 
@@ -361,7 +361,7 @@ For example:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 tkctl options
 ```
 

@@ -21,7 +21,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
          {{< copyable "shell-regular" >}}
 
-         ```shell
+         ```bash
          kubectl replace -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
          kubectl get crd tidbclusters.pingcap.com
          ```
@@ -30,7 +30,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
          {{< copyable "shell-regular" >}}
 
-         ```shell
+         ```bash
          kubectl replace -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd_v1beta1.yaml && \
          kubectl get crd tidbclusters.pingcap.com
          ```
@@ -39,7 +39,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mkdir -p ${HOME}/tidb-operator/v1.2.4 && \
     helm inspect values pingcap/tidb-operator --version=v1.2.4 > ${HOME}/tidb-operator/v1.2.4/values-tidb-operator.yaml
     ```
@@ -48,7 +48,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade tidb-operator pingcap/tidb-operator --version=v1.2.4 -f ${HOME}/tidb-operator/v1.2.4/values-tidb-operator.yaml
     ```
     
@@ -56,7 +56,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get po -n tidb-admin -l app.kubernetes.io/instance=tidb-operator -o yaml | grep 'image:.*operator:'
     ```
 
@@ -85,7 +85,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
            {{< copyable "shell-regular" >}}
 
-           ```shell
+           ```bash
            wget -O crd.yaml https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
            ```
        
@@ -93,7 +93,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
            {{< copyable "shell-regular" >}}
 
-           ```shell
+           ```bash
            wget -O crd.yaml https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd_v1beta1.yaml
            ```
 
@@ -101,7 +101,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         wget http://charts.pingcap.org/tidb-operator-v1.2.4.tgz
         ```
    
@@ -109,7 +109,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         docker pull pingcap/tidb-operator:v1.2.4
         docker pull pingcap/tidb-backup-manager:v1.2.4
 
@@ -123,7 +123,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl replace -f ./crd.yaml
         ```
 
@@ -131,7 +131,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         tar zxvf tidb-operator-v1.2.4.tgz && \
         mkdir -p ${HOME}/tidb-operator/v1.2.4 && \
         cp tidb-operator/values.yaml ${HOME}/tidb-operator/v1.2.4/values-tidb-operator.yaml
@@ -141,7 +141,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         docker load -i tidb-operator-v1.2.4.tar
         docker load -i tidb-backup-manager-v1.2.4.tar
         ```
@@ -150,7 +150,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
    {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade tidb-operator ./tidb-operator --version=v1.2.4 -f ${HOME}/tidb-operator/v1.2.4/values-tidb-operator.yaml
     ```
 
@@ -158,7 +158,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/upgrade-tidb-operator/']
 
    {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get po -n tidb-admin -l app.kubernetes.io/instance=tidb-operator -o yaml | grep 'image:.*operator:'
     ```
 

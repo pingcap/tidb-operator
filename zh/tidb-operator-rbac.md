@@ -15,13 +15,13 @@ Kubernetes [基于角色的访问控制 (RBAC)](https://kubernetes.io/docs/refer
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get clusterrole | grep tidb
 ```
 
 输出结果如下：
 
-```shell
+```bash
 tidb-operator:tidb-controller-manager                                  2021-05-04T13:08:55Z
 tidb-operator:tidb-scheduler                                           2021-05-04T13:08:55Z
 ```
@@ -95,13 +95,13 @@ tidb-operator:tidb-scheduler                                           2021-05-0
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get clusterrole | grep tidb
     ```
 
     输出结果如下：
 
-    ```shell
+    ```bash
     tidb-operator:tidb-controller-manager                                  2021-05-04T13:08:55Z
     ```
 
@@ -115,13 +115,13 @@ tidb-operator:tidb-scheduler                                           2021-05-0
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get role -n tidb-admin
     ```
 
     输出结果如下：
 
-    ```shell
+    ```bash
     tidb-admin    tidb-operator:tidb-controller-manager            2021-05-04T13:08:55Z
     tidb-admin    tidb-operator:tidb-scheduler                     2021-05-04T13:08:55Z
     ```

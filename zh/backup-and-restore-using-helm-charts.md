@@ -57,7 +57,7 @@ Kubernetes 上的 TiDB 集群支持两种备份策略：
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
@@ -65,7 +65,7 @@ Kubernetes 上的 TiDB 集群支持两种备份策略：
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
     ```
 
@@ -89,7 +89,7 @@ Ad-hoc 全量备份封装在 `pingcap/tidb-backup` 这个 Helm chart 中。根�
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
@@ -97,7 +97,7 @@ Ad-hoc 全量备份封装在 `pingcap/tidb-backup` 这个 Helm chart 中。根�
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${backup_name} pingcap/tidb-backup --namespace=${namespace} -f values.yaml --version=${version}
     ```
 
@@ -107,7 +107,7 @@ Ad-hoc 全量备份封装在 `pingcap/tidb-backup` 这个 Helm chart 中。根�
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.com/backup-cluster-name=${cluster_name}
 ```
 
@@ -125,7 +125,7 @@ kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.co
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
@@ -133,7 +133,7 @@ kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.co
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm install ${restore_name} pingcap/tidb-backup --namespace=${namespace} -f values.yaml --version=${version}
     ```
 
@@ -153,7 +153,7 @@ kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.co
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl run offline-pump-${ordinal_id} --image=pingcap/tidb-binlog:${version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${release_name}-pd:2379 -cmd offline-pump -node-id ${release_name}-pump-${ordinal_id}:8250
     ```
 
@@ -161,7 +161,7 @@ kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.co
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl logs -f -n ${namespace} ${release_name}-pump-${ordinal_id}
     ```
 
@@ -171,6 +171,6 @@ kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.co
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
     ```

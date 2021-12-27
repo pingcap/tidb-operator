@@ -18,7 +18,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/tips/','/zh/tidb-in-kubernetes/dev/tr
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl annotate pod ${pod_name} -n ${namespace} runmode=debug
     ```
 
@@ -28,7 +28,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/tips/','/zh/tidb-in-kubernetes/dev/tr
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl get pod ${pod_name} -n ${namespace}
     ```
 
@@ -36,13 +36,13 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/tips/','/zh/tidb-in-kubernetes/dev/tr
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl exec -it ${pod_name} -n ${namespace} -- /bin/sh
     ```
 
 3. 诊断完毕，修复问题后，删除 Pod：
 
-    ```shell
+    ```bash
     kubectl delete pod ${pod_name} -n ${namespace}
     ```
 

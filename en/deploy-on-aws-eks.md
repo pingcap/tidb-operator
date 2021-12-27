@@ -152,7 +152,7 @@ Execute the following command to create the cluster:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 eksctl create cluster -f cluster.yaml
 ```
 
@@ -270,7 +270,7 @@ The following `c5d.4xlarge` example shows how to configure StorageClass for the 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         eksctl create nodegroups -f cluster.yaml
         ```
 
@@ -291,7 +291,7 @@ The following `c5d.4xlarge` example shows how to configure StorageClass for the 
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl apply -f <local-volume-provisioner.yaml>
         ```
 
@@ -315,7 +315,7 @@ To create a namespace to deploy the TiDB cluster, run the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create namespace tidb-cluster
 ```
 
@@ -329,7 +329,7 @@ First, download the sample `TidbCluster` and `TidbMonitor` configuration files:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aws/tidb-cluster.yaml && \
 curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aws/tidb-monitor.yaml
 ```
@@ -344,7 +344,7 @@ To deploy the `TidbCluster` and `TidbMonitor` CR in the EKS cluster, run the fol
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl apply -f tidb-cluster.yaml -n tidb-cluster && \
 kubectl apply -f tidb-monitor.yaml -n tidb-cluster
 ```
@@ -361,7 +361,7 @@ To view the status of the starting TiDB cluster, run the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pods -n tidb-cluster
 ```
 
@@ -393,7 +393,7 @@ Select the cluster's VPC and Subnet, and verify whether the cluster name is corr
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 eksctl get cluster -n ${clusterName}
 ```
 
@@ -411,7 +411,7 @@ After the bastion host is created, you can connect to the bastion host via SSH a
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     ssh [-i /path/to/your/private-key.pem] ec2-user@<bastion-public-dns-name>
     ```
 
@@ -419,7 +419,7 @@ After the bastion host is created, you can connect to the bastion host via SSH a
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     sudo yum install mysql -y
     ```
 
@@ -427,7 +427,7 @@ After the bastion host is created, you can connect to the bastion host via SSH a
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mysql --comments -h ${tidb-nlb-dnsname} -P 4000 -u root
     ```
 
@@ -435,7 +435,7 @@ After the bastion host is created, you can connect to the bastion host via SSH a
 
     For example:
 
-    ```shell
+    ```bash
     $ mysql --comments -h abfc623004ccb4cc3b363f3f37475af1-9774d22c27310bc1.elb.us-west-2.amazonaws.com -P 4000 -u root
     Welcome to the MariaDB monitor.  Commands end with ; or \g.
     Your MySQL connection id is 1189
@@ -470,7 +470,7 @@ Obtain the LoadBalancer domain name of Grafana:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n tidb-cluster get svc basic-grafana
 ```
 
@@ -512,7 +512,7 @@ When scaling out TiKV, the node groups must be scaled out evenly among the diffe
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 eksctl scale nodegroup --cluster ${clusterName} --name tikv-1a --nodes 2 --nodes-min 2 --nodes-max 2
 eksctl scale nodegroup --cluster ${clusterName} --name tikv-1c --nodes 2 --nodes-min 2 --nodes-max 2
 eksctl scale nodegroup --cluster ${clusterName} --name tikv-1d --nodes 2 --nodes-min 2 --nodes-max 2

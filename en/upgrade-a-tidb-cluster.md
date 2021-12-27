@@ -35,7 +35,7 @@ If the TiDB cluster is deployed directly using TidbCluster CR, or deployed using
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
@@ -43,7 +43,7 @@ If the TiDB cluster is deployed directly using TidbCluster CR, or deployed using
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl -n ${namespace} get pod -o wide
     ```
 
@@ -59,7 +59,7 @@ First, set `annotation` for the cluster:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com/force-upgrade=true
 ```
 
@@ -71,7 +71,7 @@ Change the related PD configuration to make sure that PD is in a normal state.
 >
 > {{< copyable "shell-regular" >}}
 >
-> ```shell
+> ```bash
 > kubectl annotate tc ${cluster_name} -n ${namespace} tidb.pingcap.com/force-upgrade-
 > ```
 
@@ -86,7 +86,7 @@ Change the related PD configuration to make sure that PD is in a normal state.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
@@ -94,7 +94,7 @@ Change the related PD configuration to make sure that PD is in a normal state.
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     watch kubectl -n ${namespace} get pod -o wide
     ```
 

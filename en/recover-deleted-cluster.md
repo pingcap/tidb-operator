@@ -16,7 +16,7 @@ To recover the deleted cluster, use the `kubectl create` command to create a clu
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n ${namespace} create -f tidb-cluster.yaml
 ```
 
@@ -28,6 +28,6 @@ To recover the cluster at this time, use the `helm install` command to create a 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm install ${release_name} pingcap/tidb-cluster --namespace=${namespace} --version=${chart_version} -f values.yaml
 ```

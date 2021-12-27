@@ -14,7 +14,7 @@ You can obtain TiDB Service information by running the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get svc ${serviceName} -n ${namespace}
 ```
 
@@ -47,7 +47,7 @@ To view the Node Port assigned by Service, run the following commands to obtain 
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n ${namespace} get svc ${cluster_name}-tidb -ojsonpath="{.spec.ports[?(@.name=='mysql-client')].nodePort}{'\n'}"
 ```
 
@@ -58,7 +58,7 @@ To check you can access TiDB services by using the IP of what nodes, see the fol
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get pods -l "app.kubernetes.io/component=tidb,app.kubernetes.io/instance=${cluster_name}" -ojsonpath="{range .items[*]}{.spec.nodeName}{'\n'}{end}"
     ```
 

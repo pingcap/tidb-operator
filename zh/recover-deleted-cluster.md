@@ -16,7 +16,7 @@ TiDB Operator 使用 PV (Persistent Volume)、PVC (Persistent Volume Claim) 来�
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n ${namespace} create -f tidb-cluster.yaml
 ```
 
@@ -28,6 +28,6 @@ TiDB Operator 使用 PV (Persistent Volume)、PVC (Persistent Volume Claim) 来�
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 helm install ${release_name} pingcap/tidb-cluster --namespace=${namespace} --version=${chart_version} -f values.yaml
 ```

@@ -114,7 +114,7 @@ TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/wor
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tidbcluster ${cluster_name} -n ${namespace}
     ```
 
@@ -124,7 +124,7 @@ TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/wor
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pod -n ${namespace} -l app.kubernetes.io/component=tiflash,app.kubernetes.io/instance=${cluster_name}
     ```
 
@@ -132,7 +132,7 @@ TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/wor
 
     使用以下命令检查 TiFlash 节点 store 状态是否为 Tombstone:
 
-    ```shell
+    ```bash
     kubectl get tidbcluster ${cluster_name} -n ${namespace} -o yaml
     ```
 
@@ -168,7 +168,7 @@ TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/wor
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl edit tidbcluster ${cluster_name} -n ${namespace}
     ```
 
@@ -176,7 +176,7 @@ TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/wor
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete statefulsets -n ${namespace} -l app.kubernetes.io/component=tiflash,app.kubernetes.io/instance=${cluster_name}
     ```
 
@@ -184,7 +184,7 @@ TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/wor
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get sts -n ${namespace} -l app.kubernetes.io/component=tiflash,app.kubernetes.io/instance=${cluster_name}
     ```
 
@@ -198,7 +198,7 @@ TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/wor
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl delete pvc -n ${namespace} -l app.kubernetes.io/component=tiflash,app.kubernetes.io/instance=${cluster_name}
         ```
 
@@ -206,7 +206,7 @@ TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/wor
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl patch pv ${pv_name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
         ```
 
@@ -214,7 +214,7 @@ TiDB Operator 通过创建 [StatefulSet](https://kubernetes.io/docs/concepts/wor
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl get pv -l app.kubernetes.io/component=tiflash,app.kubernetes.io/instance=${cluster_name}
         ```
 

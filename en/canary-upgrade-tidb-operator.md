@@ -62,7 +62,7 @@ To support canary upgrade, some parameters are added to the `values.yaml` file i
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} label tc ${cluster_name} version=canary
     ```
 
@@ -70,7 +70,7 @@ To support canary upgrade, some parameters are added to the `values.yaml` file i
 
     1. View the log of `tidb-controller-manager` of the current TiDB Operator:
 
-        ```shell
+        ```bash
         kubectl -n tidb-admin logs tidb-controller-manager-55b887bdc9-lzdwv
         ```
 
@@ -80,7 +80,7 @@ To support canary upgrade, some parameters are added to the `values.yaml` file i
 
     2. View the log of `tidb-controller-manager` of the canary TiDB Operator:
 
-        ```shell
+        ```bash
         kubectl -n tidb-admin-canary logs tidb-controller-manager-canary-6dcb9bdd95-qf4qr
         ```
 
@@ -92,7 +92,7 @@ To support canary upgrade, some parameters are added to the `values.yaml` file i
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} edit tc ${cluster_name}
     ```
 
@@ -100,7 +100,7 @@ To support canary upgrade, some parameters are added to the `values.yaml` file i
 
     Check the logs of `tidb-scheduler` of the canary TiDB Operator, and you can see this TiDB cluster is now using the canary `tidb-scheduler`:
 
-    ```shell
+    ```bash
     kubectl -n tidb-admin-canary logs tidb-scheduler-canary-7f7b6c7c6-j5p2j -c tidb-scheduler
     ```
 
@@ -108,19 +108,19 @@ To support canary upgrade, some parameters are added to the `values.yaml` file i
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} label tc ${cluster_name} version-
     ```
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} edit tc ${cluster_name}
     ```
 
 6. Delete the canary TiDB Operator:
 
-    ```shell
+    ```bash
     helm -n tidb-admin-canary uninstall ${release_name}
     ```
 

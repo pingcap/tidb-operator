@@ -38,7 +38,7 @@ Kubernetes 1.11 及以上的版本支持[网络 PV 的动态扩容](https://kube
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl patch storageclass ${storage_class} -p '{"allowVolumeExpansion": true}'
 ```
 
@@ -50,7 +50,7 @@ kubectl patch storageclass ${storage_class} -p '{"allowVolumeExpansion": true}'
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl patch pvc -n ${namespace} ${pvc_name} -p '{"spec": {"resources": {"requests": {"storage": "100Gi"}}}'
     ```
 
@@ -60,7 +60,7 @@ kubectl patch storageclass ${storage_class} -p '{"allowVolumeExpansion": true}'
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get pv | grep ${pvc_name}
     ```
 
@@ -76,7 +76,7 @@ Kubernetes 当前支持静态分配的本地存储。可使用 [local-static-pro
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
     ```
 
@@ -84,7 +84,7 @@ Kubernetes 当前支持静态分配的本地存储。可使用 [local-static-pro
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     wget https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
     kubectl apply -f ./local-volume-provisioner.yaml
     ```
@@ -110,7 +110,7 @@ Kubernetes 当前支持静态分配的本地存储。可使用 [local-static-pro
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get po -n kube-system -l app=local-volume-provisioner && \
     kubectl get pv | grep local-storage
     ```
@@ -253,7 +253,7 @@ data:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
 ```
 
@@ -285,7 +285,7 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl patch pv ${pv_name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
     ```
 
@@ -301,7 +301,7 @@ PV 保留策略是 `Retain` 时，如果确认某个 PV 的数据可以被删除
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl delete pvc ${pvc_name} --namespace=${namespace}
     ```
 
@@ -309,7 +309,7 @@ PV 保留策略是 `Retain` 时，如果确认某个 PV 的数据可以被删除
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl patch pv ${pv_name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
     ```
 

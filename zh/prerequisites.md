@@ -23,7 +23,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/prerequisites/']
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 systemctl stop firewalld
 systemctl disable firewalld
 ```
@@ -34,7 +34,7 @@ systemctl disable firewalld
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     firewall-cmd --permanent --add-port=6443/tcp
     firewall-cmd --permanent --add-port=2379-2380/tcp
     firewall-cmd --permanent --add-port=10250/tcp
@@ -54,7 +54,7 @@ systemctl disable firewalld
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     firewall-cmd --permanent --add-port=10250/tcp
     firewall-cmd --permanent --add-port=10255/tcp
     firewall-cmd --permanent --add-port=8472/udp
@@ -70,7 +70,7 @@ FORWARD 链默认配置成 ACCEPT，并将其设置到开机启动脚本里：
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 iptables -P FORWARD ACCEPT
 ```
 
@@ -78,7 +78,7 @@ iptables -P FORWARD ACCEPT
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 setenforce 0
 sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
 ```
@@ -89,7 +89,7 @@ Kubelet 正常工作需要关闭 Swap，并且把 `/etc/fstab` 里面有关 Swap
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 swapoff -a
 sed -i 's/^\(.*swap.*\)$/#\1/' /etc/fstab 
 ```
@@ -100,7 +100,7 @@ sed -i 's/^\(.*swap.*\)$/#\1/' /etc/fstab
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 modprobe br_netfilter
 
 cat <<EOF >  /etc/sysctl.d/k8s.conf
@@ -129,7 +129,7 @@ sysctl --system
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 systemctl enable irqbalance
 systemctl start irqbalance
 ```
@@ -140,7 +140,7 @@ systemctl start irqbalance
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 cpupower frequency-set --governor performance
 ```
 
@@ -150,7 +150,7 @@ TiDB 集群默认会使用很多文件描述符，需要将工作节点上面的
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 cat <<EOF >>  /etc/security/limits.conf
 root        soft        nofile        1048576
 root        hard        nofile        1048576
@@ -170,7 +170,7 @@ sysctl --system
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     cat > /etc/docker/daemon.json <<EOF
     {
       "exec-opts": ["native.cgroupdriver=systemd"],
@@ -195,7 +195,7 @@ sysctl --system
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         mkdir -p /etc/systemd/system/docker.service.d
         ```
 
@@ -203,7 +203,7 @@ sysctl --system
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         cat > /etc/systemd/system/docker.service.d/limit-nofile.conf <<EOF
         [Service]
         LimitNOFILE=1048576
@@ -218,7 +218,7 @@ sysctl --system
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         systemctl daemon-reload && systemctl restart docker
         ```
 
@@ -243,7 +243,7 @@ Kubernetes Master 节点的配置取决于 Kubernetes 集群中 Node 节点个�
 
     {{< copyable "shell-regular" >}}
     
-    ```shell
+    ```bash
     echo "KUBELET_EXTRA_ARGS=--root-dir=/data1/kubelet" > /etc/sysconfig/kubelet
     systemctl restart kubelet
     ```

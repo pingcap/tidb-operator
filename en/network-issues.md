@@ -17,7 +17,7 @@ When you find some network connection issues among Pods from the log or monitori
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl -n ${namespace} get endpoints ${cluster_name}-pd
     kubectl -n ${namespace} get endpoints ${cluster_name}-tidb
     kubectl -n ${namespace} get endpoints ${cluster_name}-pd-peer
@@ -31,7 +31,7 @@ When you find some network connection issues among Pods from the log or monitori
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     tkctl debug -n ${namespace} ${pod_name}
     ```
 
@@ -39,7 +39,7 @@ When you find some network connection issues among Pods from the log or monitori
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     dig ${HOSTNAME}
     ```
 
@@ -47,7 +47,7 @@ When you find some network connection issues among Pods from the log or monitori
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     ping ${TARGET_IP}
     ```
 
@@ -57,7 +57,7 @@ When you find some network connection issues among Pods from the log or monitori
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         telnet ${TARGET_IP} ${TARGET_PORT}
         ```
 
@@ -65,7 +65,7 @@ When you find some network connection issues among Pods from the log or monitori
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         # Checks whether the ports are consistent.
         kubectl -n ${namespace} get po ${pod_name} -ojson | jq '.spec.containers[].ports[].containerPort'
 
@@ -86,7 +86,7 @@ If you cannot access the TiDB service, first check whether the TiDB service is d
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get po -n ${namespace}
     ```
 
@@ -94,7 +94,7 @@ If you cannot access the TiDB service, first check whether the TiDB service is d
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl get endpoints -n ${namespaces} ${cluster_name}-tidb
     ```
 
@@ -102,7 +102,7 @@ If you cannot access the TiDB service, first check whether the TiDB service is d
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl logs -f ${pod_name} -n ${namespace} -c tidb
     ```
 
@@ -119,7 +119,7 @@ If the cluster is successfully deployed, check the network using the following s
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl get po -n kube-system -l k8s-app=kube-proxy
         ```
 
@@ -127,7 +127,7 @@ If the cluster is successfully deployed, check the network using the following s
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         iptables-save -t nat |grep ${clusterIP}
         ```
 
@@ -135,7 +135,7 @@ If the cluster is successfully deployed, check the network using the following s
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         kubectl get endpoints -n ${namespaces} ${cluster_name}-tidb
         ```
 

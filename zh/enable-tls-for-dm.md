@@ -50,7 +50,7 @@ TiDB Operator 从 v1.2 开始已经支持为 Kubernetes 上 DM 集群组件间�
 
 2. 生成 `ca-config.json` 配置文件：
 
-    ```shell
+    ```bash
     cat << EOF > ca-config.json
     {
         "signing": {
@@ -83,7 +83,7 @@ TiDB Operator 从 v1.2 开始已经支持为 Kubernetes 上 DM 集群组件间�
 
 3. 生成 `ca-csr.json` 配置文件：
 
-    ```shell
+    ```bash
     cat << EOF > ca-csr.json
     {
         "CN": "TiDB",
@@ -535,7 +535,7 @@ cd /var/lib/dm-master-tls
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create secret generic ${mysql_secret_name1} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
 kubectl create secret generic ${tidb_secret_name} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
 ```

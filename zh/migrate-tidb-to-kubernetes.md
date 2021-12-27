@@ -19,7 +19,7 @@ summary: 介绍如何将部署在物理机或虚拟机中的 TiDB 迁移至 Kube
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl describe svc/kube-dns -n kube-system
     ```
    
@@ -27,7 +27,7 @@ summary: 介绍如何将部署在物理机或虚拟机中的 TiDB 迁移至 Kube
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     search default.svc.cluster.local svc.cluster.local cluster.local
     nameserver <CoreDNS Pod_IP_1>
     nameserver <CoreDNS Pod_IP_2>
@@ -36,7 +36,7 @@ summary: 介绍如何将部署在物理机或虚拟机中的 TiDB 迁移至 Kube
 
 3. 测试解析 Kubernetes 集群内部域名是否成功：
 
-    ```shell
+    ```bash
     $ ping basic-pd-2.basic-pd-peer.blade.svc
     PING basic-pd-2.basic-pd-peer.blade.svc (10.24.66.178) 56(84) bytes of data.
     64 bytes from basic-pd-2.basic-pd-peer.blade.svc (10.24.66.178): icmp_seq=1 ttl=61 time=0.213 ms
@@ -51,7 +51,7 @@ summary: 介绍如何将部署在物理机或虚拟机中的 TiDB 迁移至 Kube
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     pd-ctl -u http://<address>:<port> member | jq '.members | .[] | .client_urls'
     ```
 
@@ -72,7 +72,7 @@ summary: 介绍如何将部署在物理机或虚拟机中的 TiDB 迁移至 Kube
 
         {{< copyable "shell-regular" >}}
 
-        ```shell
+        ```bash
         # store 个数
         pd-ctl -u http://<address>:<port> store | jq '.count'
         # store 状态

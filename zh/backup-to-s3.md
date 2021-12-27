@@ -23,7 +23,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/backup/backup-rbac.yaml -n tidb-cluster
     ```
 
@@ -35,7 +35,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=tidb-cluster
     ```
 
@@ -86,7 +86,7 @@ GRANT
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-s3.yaml
     ```
 
@@ -128,7 +128,7 @@ GRANT
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-s3.yaml
     ```
 
@@ -167,7 +167,7 @@ GRANT
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-s3.yaml
     ```
 
@@ -211,7 +211,7 @@ GRANT
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-s3.yaml
     ```
 
@@ -266,7 +266,7 @@ options:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get bk -n tidb-cluster -owide
 ```
 
@@ -274,7 +274,7 @@ kubectl get bk -n tidb-cluster -owide
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl describe bk -n tidb-cluster $backup_job_name
 ```
 
@@ -309,7 +309,7 @@ kubectl describe bk -n tidb-cluster $backup_job_name
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-schedule-s3.yaml
     ```
 
@@ -356,7 +356,7 @@ kubectl describe bk -n tidb-cluster $backup_job_name
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-schedule-s3.yaml
     ```
 
@@ -400,7 +400,7 @@ kubectl describe bk -n tidb-cluster $backup_job_name
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-schedule-s3.yaml
     ```
 
@@ -448,7 +448,7 @@ kubectl describe bk -n tidb-cluster $backup_job_name
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f backup-schedule-s3.yaml
     ```
 
@@ -495,7 +495,7 @@ kubectl describe bk -n tidb-cluster $backup_job_name
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get bks -n tidb-cluster -owide
 ```
 
@@ -503,7 +503,7 @@ kubectl get bks -n tidb-cluster -owide
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n tidb-cluster
 ```
 

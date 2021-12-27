@@ -28,7 +28,7 @@ Before deploying a TiDB cluster on Azure AKS, perform the following operations:
 
       {{< copyable "shell-regular" >}}
 
-      ```shell
+      ```bash
       az extension add --name aks-preview
       ```
 
@@ -36,7 +36,7 @@ Before deploying a TiDB cluster on Azure AKS, perform the following operations:
 
       {{< copyable "shell-regular" >}}
 
-      ```shell
+      ```bash
       az feature register --name EnableAzureDiskFileCSIDriver --namespace Microsoft.ContainerService --subscription ${your-subscription-id}
       ```
 
@@ -54,7 +54,7 @@ To create an AKS cluster with [CSI enabled](https://docs.microsoft.com/en-us/azu
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 # create AKS cluster
 az aks create \
     --resource-group ${resourceGroup} \
@@ -76,7 +76,7 @@ After creating an AKS cluster, run the following commands to create component no
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name admin \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -90,7 +90,7 @@ After creating an AKS cluster, run the following commands to create component no
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name pd \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -106,7 +106,7 @@ After creating an AKS cluster, run the following commands to create component no
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tidb \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -122,7 +122,7 @@ After creating an AKS cluster, run the following commands to create component no
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tikv \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -143,7 +143,7 @@ The Azure AKS cluster deploys nodes across multiple zones using "best effort zon
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tikv1 \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -160,7 +160,7 @@ The Azure AKS cluster deploys nodes across multiple zones using "best effort zon
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tikv2 \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -177,7 +177,7 @@ The Azure AKS cluster deploys nodes across multiple zones using "best effort zon
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tikv3 \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -222,7 +222,7 @@ To create a namespace to deploy the TiDB cluster, run the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl create namespace tidb-cluster
 ```
 
@@ -236,7 +236,7 @@ First, download the sample `TidbCluster` and `TidbMonitor` configuration files:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aks/tidb-cluster.yaml && \
 curl -O https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aks/tidb-monitor.yaml
 ```
@@ -251,7 +251,7 @@ To deploy the `TidbCluster` and `TidbMonitor` CR in the AKS cluster, run the fol
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl apply -f tidb-cluster.yaml -n tidb-cluster && \
 kubectl apply -f tidb-monitor.yaml -n tidb-cluster
 ```
@@ -264,7 +264,7 @@ To view the status of the TiDB cluster, run the following command:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pods -n tidb-cluster
 ```
 
@@ -314,7 +314,7 @@ After access to the internal host via SSH, you can access the TiDB cluster throu
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     sudo yum install mysql -y
     ```
 
@@ -322,7 +322,7 @@ After access to the internal host via SSH, you can access the TiDB cluster throu
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     mysql --comments -h ${tidb-lb-ip} -P 4000 -u root
     ```
 
@@ -330,7 +330,7 @@ After access to the internal host via SSH, you can access the TiDB cluster throu
 
     For example:
 
-    ```shell
+    ```bash
     $ mysql --comments -h 20.240.0.7 -P 4000 -u root
     Welcome to the MariaDB monitor.  Commands end with ; or \g.
     Your MySQL connection id is 1189
@@ -365,13 +365,13 @@ Obtain the LoadBalancer IP address of Grafana:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl -n tidb-cluster get svc basic-grafana
 ```
 
 For example:
 
-```shell
+```bash
 kubectl get svc basic-grafana
 NAME            TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
 basic-grafana   LoadBalancer   10.100.199.42   20.240.0.8    3000:30761/TCP   121m
@@ -407,7 +407,7 @@ When scaling out TiKV, the node pools must be scaled out evenly among availabili
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 az aks nodepool scale \
     --resource-group ${resourceGroup} \
     --cluster-name ${clusterName} \
@@ -437,7 +437,7 @@ Add a node pool for TiFlash/TiCDC respectively. You can set `--node-count` as re
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tiflash \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -453,7 +453,7 @@ Add a node pool for TiFlash/TiCDC respectively. You can set `--node-count` as re
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name ticdc \
         --cluster-name ${clusterName} \
         --resource-group ${resourceGroup} \
@@ -586,7 +586,7 @@ For instance types that provide local disks, refer to [Lsv2-series](https://docs
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     az aks nodepool add --name tikv \
         --cluster-name ${clusterName}  \
         --resource-group ${resourceGroup} \
@@ -607,7 +607,7 @@ For instance types that provide local disks, refer to [Lsv2-series](https://docs
 
     {{< copyable "shell-regular" >}}
 
-    ```shell
+    ```bash
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/eks/local-volume-provisioner.yaml
     ```
 

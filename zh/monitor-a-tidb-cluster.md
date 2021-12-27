@@ -58,7 +58,7 @@ spec:
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor -n ${namespace}
 ```
 
@@ -103,7 +103,7 @@ basic-monitor   Bound    pvc-6db79253-cc9e-4730-bbba-ba987c29db6f   5G         R
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} svc/${cluster_name}-grafana 3000:3000 &>/tmp/portforward-grafana.log &
 ```
 
@@ -119,7 +119,7 @@ kubectl port-forward -n ${namespace} svc/${cluster_name}-grafana 3000:3000 &>/tm
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl port-forward -n ${namespace} svc/${cluster_name}-prometheus 9090:9090 &>/tmp/portforward-prometheus.log &
 ```
 
@@ -275,7 +275,7 @@ type: kubernetes.io/tls
 
 在公有云 Kubernetes 集群中，通常可以[配置 Loadbalancer](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/) 通过域名访问 Ingress。如果无法配置 Loadbalancer 服务，比如使用了 NodePort 作为 Ingress 的服务类型，可通过与如下命令等价的方式访问服务：
 
-```shell
+```bash
 curl -H "Host: example.com" ${node_ip}:${NodePort}
 ```
 

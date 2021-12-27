@@ -95,7 +95,7 @@ Configure `spec.tikv.recoverFailover: true` (Supported since TiDB Operator v1.1.
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl edit tc -n ${namespace} ${cluster_name}
 ```
 
@@ -122,7 +122,7 @@ Configure `spec.tiflash.recoverFailover: true` (Supported since TiDB Operator v1
 
 {{< copyable "shell-regular" >}}
 
-```shell
+```bash
 kubectl edit tc -n ${namespace} ${cluster_name}
 ```
 
