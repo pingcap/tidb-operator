@@ -118,7 +118,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			PD: &v1alpha1.PDSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/pd",
-				ResourceRequirements: WithStorage(BestEffort, "1Gi"),
+				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
 				Config: func() *v1alpha1.PDConfigWraper {
 					c := v1alpha1.NewPDConfig()
 					c.Set("log.level", "info")
@@ -139,7 +139,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			TiKV: &v1alpha1.TiKVSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/tikv",
-				ResourceRequirements: WithStorage(BestEffort, "10Gi"),
+				ResourceRequirements: WithStorage(BurstableMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				Config:               tikvConfig,
 				ComponentSpec: v1alpha1.ComponentSpec{
@@ -212,7 +212,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 				BaseImage:            "pingcap/dm",
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				StorageSize:          "1Gi",
-				ResourceRequirements: WithStorage(BestEffort, "1Gi"),
+				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
 				Config:               &v1alpha1.MasterConfig{},
 				Service: &v1alpha1.MasterServiceSpec{
 					ServiceSpec: v1alpha1.ServiceSpec{
@@ -239,7 +239,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 				Replicas:             3,
 				BaseImage:            "pingcap/dm",
 				MaxFailoverCount:     pointer.Int32Ptr(3),
-				ResourceRequirements: WithStorage(BestEffort, "1Gi"),
+				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
 				Config:               &v1alpha1.WorkerConfig{},
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.DMWorkerMemberType),
@@ -632,7 +632,7 @@ func AddTiFlashForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 		MaxFailoverCount: pointer.Int32Ptr(3),
 		StorageClaims: []v1alpha1.StorageClaim{
 			{
-				Resources: WithStorage(BestEffort, "10Gi"),
+				Resources: WithStorage(BurstableMedium, "10Gi"),
 			},
 		},
 	}
