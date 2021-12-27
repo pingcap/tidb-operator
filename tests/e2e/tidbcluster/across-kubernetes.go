@@ -33,11 +33,11 @@ import (
 	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/onsi/ginkgo"
-	// v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -131,7 +131,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ns1 := namespaces[0]
 			namespaces = append(namespaces, ns1+"-1", ns1+"-2")
 		})
-
+		clusterDomain := defaultClusterDomain
 		version := utilimage.TiDBLatest
 		cluster1Domain := defaultClusterDomain
 		cluster2Domain := defaultClusterDomain
