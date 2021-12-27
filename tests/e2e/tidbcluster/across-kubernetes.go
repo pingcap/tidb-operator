@@ -127,6 +127,8 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 	})
 
 	ginkgo.Describe("[Basic]", func() {
+
+		// create three namespace
 		ginkgo.BeforeEach(func() {
 			ns1 := namespaces[0]
 			namespaces = append(namespaces, ns1+"-1", ns1+"-2")
