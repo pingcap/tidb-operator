@@ -293,11 +293,8 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 })
 
 func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster, expectNonExistedTc *v1alpha1.TidbCluster) error {
-	var checkTidbCluster *v1alpha1.TidbCluster
-	clusterCli.Get(context.TODO(), types.NamespacedName{Namespace: tc.Namespace, Name: tc.Name}, checkTidbCluster)
-	if checkTidbCluster == nil {
-		return fmt.Errorf("the tc is not found")
-	}
+	checkTidbCluster := v1alpha1.TidbCluster{}
+	clusterCli.Get(context.TODO(), types.NamespacedName{Namespace: tc.Namespace, Name: tc.Name}, &checkTidbCluster)
 
 	if checkTidbCluster.Status.PD.Phase != v1alpha1.NormalPhase || checkTidbCluster.Status.TiKV.Phase != v1alpha1.NormalPhase || checkTidbCluster.Status.TiDB.Phase != v1alpha1.NormalPhase || checkTidbCluster.Status.TiFlash.Phase != v1alpha1.NormalPhase || checkTidbCluster.Status.Pump.Phase != v1alpha1.NormalPhase || checkTidbCluster.Status.TiCDC.Phase != v1alpha1.NormalPhase {
 		return fmt.Errorf("the tc %s is not healthy", tc.Name)
