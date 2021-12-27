@@ -197,7 +197,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				tc2.Spec.Pump.Replicas = 0
 				return nil
 			}), "failed to scale in cluster 2")
-			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(10*time.Second, 6*time.Minute, func() (bool, error) {
 				if err := CheckPeerMembersAndClusterStatus(genericCli, tc1, tc2); err != nil {
 					log.Logf("wait for tc2 member deleted, status: %s", err)
 					return false, nil
@@ -301,6 +301,7 @@ func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.Ti
 
 	for _, peerMember := range tc.Status.PD.PeerMembers {
 		if strings.Contains(peerMember.Name, expectNonExistedTc.Name) {
+			fmt.Println(tc.Status.PD.PeerMembers)
 			return fmt.Errorf("the PD peer members contain the member belonging to the deleted tc")
 		}
 	}
