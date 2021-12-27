@@ -17,6 +17,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"path"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 	"strings"
 
@@ -244,7 +245,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 	}
 	// set random password
-	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.InitPassword {
+	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.InitPassword {
 		// sync password secret
 		secret := m.buildRandomPasswordSecret(tc)
 		secret, err := m.deps.TypedControl.CreateOrUpdateSecret(tc, secret)
@@ -268,17 +269,28 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 				PasswordSecret: pointer.StringPtr(secret.Name),
 			},
 		}
-		_, err = m.deps.TypedControl.CreateOrUpdateTidbInitializer(tc, tidbInitializer)
+
+		exist, err := m.deps.TypedControl.Exist(client.ObjectKey{
+			Namespace: tidbInitializer.Namespace,
+			Name:      tidbInitializer.Name,
+		}, tidbInitializer)
 		if err != nil {
 			return err
+		}
+		if !exist {
+			_, err = m.deps.TypedControl.CreateOrUpdateTidbInitializer(tc, tidbInitializer)
+			if err != nil {
+				return err
+			}
+
 		}
 
-		exist, err := m.deps.TiDBInitializerLister.TidbInitializers(tidbInitializer.Namespace).Get(tidbInitializer.Name)
+		existInitializer, err := m.deps.TiDBInitializerLister.TidbInitializers(tidbInitializer.Namespace).Get(tidbInitializer.Name)
 		if err != nil {
 			return err
 		}
-		if exist.Status.Phase == v1alpha1.InitializePhaseCompleted {
-			tc.Status.InitPassword = true
+		if existInitializer.Status.Phase == v1alpha1.InitializePhaseCompleted {
+			tc.Status.TiDB.InitPassword = true
 		}
 	}
 
