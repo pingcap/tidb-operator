@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: initialize-demo
 spec:
-  version: v5.2.1
+  version: v5.3.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
