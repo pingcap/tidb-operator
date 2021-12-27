@@ -44,6 +44,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -198,7 +199,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			}), "failed to scale in cluster 2")
 			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
 				if err := CheckPeerMembersAndClusterStatus(genericCli, tc1, tc2); err != nil {
-					fmt.Println(err)
+					log.Logf("wait for tc2 member deleted, status: %s", err)
 					return false, nil
 				}
 				return true, nil
