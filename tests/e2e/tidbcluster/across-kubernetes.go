@@ -293,26 +293,29 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 })
 
 func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster, expectNonExistedTc *v1alpha1.TidbCluster) error {
-	clusterCli.Get(context.TODO(), types.NamespacedName{Namespace: tc.Namespace, Name: tc.Name}, tc)
+	var checkTidbCluster *v1alpha1.TidbCluster
+	clusterCli.Get(context.TODO(), types.NamespacedName{Namespace: tc.Namespace, Name: tc.Name}, checkTidbCluster)
+	if checkTidbCluster == nil {
+		return fmt.Errorf("the tc is not found")
+	}
 
-	if tc.Status.PD.Phase != v1alpha1.NormalPhase || tc.Status.TiKV.Phase != v1alpha1.NormalPhase || tc.Status.TiDB.Phase != v1alpha1.NormalPhase || tc.Status.TiFlash.Phase != v1alpha1.NormalPhase || tc.Status.Pump.Phase != v1alpha1.NormalPhase || tc.Status.TiCDC.Phase != v1alpha1.NormalPhase {
+	if checkTidbCluster.Status.PD.Phase != v1alpha1.NormalPhase || checkTidbCluster.Status.TiKV.Phase != v1alpha1.NormalPhase || checkTidbCluster.Status.TiDB.Phase != v1alpha1.NormalPhase || checkTidbCluster.Status.TiFlash.Phase != v1alpha1.NormalPhase || checkTidbCluster.Status.Pump.Phase != v1alpha1.NormalPhase || checkTidbCluster.Status.TiCDC.Phase != v1alpha1.NormalPhase {
 		return fmt.Errorf("the tc %s is not healthy", tc.Name)
 	}
 
-	for _, peerMember := range tc.Status.PD.PeerMembers {
+	for _, peerMember := range checkTidbCluster.Status.PD.PeerMembers {
 		if strings.Contains(peerMember.Name, expectNonExistedTc.Name) {
-			fmt.Println(tc.Status.PD.PeerMembers)
 			return fmt.Errorf("the PD peer members contain the member belonging to the deleted tc")
 		}
 	}
 
-	for _, peerStore := range tc.Status.TiKV.PeerStores {
+	for _, peerStore := range checkTidbCluster.Status.TiKV.PeerStores {
 		if strings.Contains(peerStore.PodName, expectNonExistedTc.Name) {
 			return fmt.Errorf("the TiKV peer stores contain the store belonging to the deleted tc")
 		}
 	}
 
-	for _, peerStore := range tc.Status.TiFlash.PeerStores {
+	for _, peerStore := range checkTidbCluster.Status.TiFlash.PeerStores {
 		if strings.Contains(peerStore.PodName, expectNonExistedTc.Name) {
 			return fmt.Errorf("the TiFlash peer stores contain the store belonging to the deleted tc")
 		}
