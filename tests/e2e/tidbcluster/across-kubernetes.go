@@ -136,9 +136,6 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 		version := utilimage.TiDBLatest
 		clusterDomain := defaultClusterDomain
-		cluster1Domain := defaultClusterDomain
-		cluster2Domain := defaultClusterDomain
-		cluster3Domain := defaultClusterDomain
 
 		ginkgo.It("Deploy cluster across kubernetes", func() {
 			ns1 := namespaces[0]
@@ -166,11 +163,12 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		ginkgo.It("Deploy and delete cluster across kubernetes", func() {
 			ns1 := namespaces[0]
 			ns2 := namespaces[1]
-			ns3 := namespaces[2]
+
+			cluster1Domain := defaultClusterDomain
+			cluster2Domain := defaultClusterDomain
 
 			tc1 := GetTCForAcrossKubernetes(ns1, "basic-1", version, cluster1Domain, nil)
 			tc2 := GetTCForAcrossKubernetes(ns2, "basic-2", version, cluster2Domain, tc1)
-			tc3 := GetTCForAcrossKubernetes(ns3, "basic-3", version, cluster3Domain, tc1)
 
 			ginkgo.By("Deploy the basic cluster-1")
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 10*time.Second)
@@ -178,47 +176,36 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Deploy the basic cluster-2")
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 10*time.Minute, 10*time.Second)
 
-			ginkgo.By("Deploy the basic cluster-3")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 10*time.Second)
-
-			ginkgo.By("Check status of all clusters")
-			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
-			framework.ExpectNoError(err, "failed to check status")
+			// ginkgo.By("Check status of all clusters")
+			// err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2})
+			// framework.ExpectNoError(err, "failed to check status")
 
 			// connectable test
-			_, err = utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
+			_, err := utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
 			framework.ExpectNoError(err, "tc1 are not connectable")
 			_, err = utiltidb.TiDBIsConnectable(fw, tc2.Namespace, tc2.Name, "root", "")()
 			framework.ExpectNoError(err, "tc2 are not connectable")
-			_, err = utiltidb.TiDBIsConnectable(fw, tc3.Namespace, tc3.Name, "root", "")()
-			framework.ExpectNoError(err, "tc3 are not connectable")
 
-			ginkgo.By("Scale in cluster-3, and delete the cluster-3")
+			ginkgo.By("Scale in cluster-2, and delete the cluster-2")
 
-			framework.ExpectNoError(controller.GuaranteedUpdate(genericCli, tc3, func() error {
-				tc3.Spec.PD.Replicas = 0
-				tc3.Spec.TiDB.Replicas = 0
-				tc3.Spec.TiKV.Replicas = 0
-				tc3.Spec.TiFlash.Replicas = 0
-				tc3.Spec.TiCDC.Replicas = 0
-				tc3.Spec.Pump.Replicas = 0
+			framework.ExpectNoError(controller.GuaranteedUpdate(genericCli, tc2, func() error {
+				tc2.Spec.PD.Replicas = 0
+				tc2.Spec.TiDB.Replicas = 0
+				tc2.Spec.TiKV.Replicas = 0
+				tc2.Spec.TiFlash.Replicas = 0
+				tc2.Spec.TiCDC.Replicas = 0
+				tc2.Spec.Pump.Replicas = 0
 				return nil
-			}), "failed to scale in cluster 3")
-			framework.ExpectNoError(genericCli.Delete(context.TODO(), tc3), "failed to delete cluster 3")
+			}), "failed to scale in cluster 2")
+			framework.ExpectNoError(genericCli.Delete(context.TODO(), tc2), "failed to delete cluster 3")
 			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
-				if err := CheckPeerMembersAndClusterStatus(genericCli, tc1, tc3); err != nil {
+				if err := CheckPeerMembersAndClusterStatus(genericCli, tc1, tc2); err != nil {
+					fmt.Println(err)
 					return false, nil
 				}
 				return true, nil
 			})
 			framework.ExpectNoError(err, "tc1 are not all healthy")
-			err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
-				if err := CheckPeerMembersAndClusterStatus(genericCli, tc2, tc3); err != nil {
-					return false, nil
-				}
-				return true, nil
-			})
-			framework.ExpectNoError(err, "tc2 are not all healthy")
 		})
 
 		ginkgo.It("Deploy cluster with TLS-enabled across kubernetes", func() {
