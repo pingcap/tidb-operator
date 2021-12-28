@@ -25,6 +25,7 @@ spec:
     config: {}
   tikv:
     baseImage: uhub.service.ucloud.cn/pingcap/tikv
+    evictLeaderTimeout: 1m
     maxFailoverCount: 0
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used

@@ -18,6 +18,7 @@ spec:
     name: basic
   tikv:
     baseImage: pingcap/tikv
+    evictLeaderTimeout: 1m
     maxFailoverCount: 0
     replicas: 1
     mountClusterClientSecret: true
