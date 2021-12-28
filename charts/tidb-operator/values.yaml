@@ -12,12 +12,12 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.2.4
+operatorImage: pingcap/tidb-operator:v1.2.5
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.2.4
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.2.5
 
 #
 # Enable or disable tidb-operator features:
@@ -215,25 +215,15 @@ admissionWebhook:
   logLevel: 2
   rbac:
     create: true
-  ## jobImage is to indicate the image used in `pre-delete-job.yaml`
-  ## if admissionWebhook.create and admissionWebhook.validation.pods are both enabled,
-  ## The pre-delete-job would delete the validationWebhookConfiguration using this image
-  jobImage: "bitnami/kubectl:latest"
   ## validation webhook would check the given request for the specific resource and operation
   validation:
     ## statefulsets hook would check requests for updating tidbcluster's statefulsets
     ## If enabled it, the statefulsets of tidbcluseter would update in partition by tidbcluster's annotation
     statefulSets: false
-    ## pods hook would check requests for creating and deleting tidbcluster's pods
-    ## if enabled it, the pods of tidbcluster would safely created or deleted by webhook instead of controller
-    pods: true
     ## validating hook validates the correctness of the resources under pingcap.com group
     pingcapResources: false
   ## mutation webhook would mutate the given request for the specific resource and operation
   mutation:
-    ## pods mutation hook would mutate the pod. Currently It is used for TiKV Auto-Scaling.
-    ## refer to https://github.com/pingcap/tidb-operator/issues/1651
-    pods: true
     ## defaulting hook set default values for the the resources under pingcap.com group
     pingcapResources: true
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook

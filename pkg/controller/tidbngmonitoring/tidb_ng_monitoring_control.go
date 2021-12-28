@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -48,6 +49,7 @@ type ControlInterface interface {
 func NewDefaultTiDBNGMonitoringControl(
 	deps *controller.Dependencies,
 	ngmMnger manager.TiDBNGMonitoringManager,
+	assetMnger manager.TiDBNGMonitoringManager,
 	reclaimPolicyManager ReclaimPolicyManager,
 	recorder record.EventRecorder,
 ) *defaultTiDBNGMonitoringControl {
@@ -56,6 +58,7 @@ func NewDefaultTiDBNGMonitoringControl(
 		deps:                 deps,
 		recorder:             recorder,
 		ngmMnger:             ngmMnger,
+		assetMnger:           assetMnger,
 		reclaimPolicyManager: reclaimPolicyManager,
 	}
 }
@@ -65,10 +68,12 @@ type defaultTiDBNGMonitoringControl struct {
 	recorder record.EventRecorder
 
 	ngmMnger             manager.TiDBNGMonitoringManager
+	assetMnger           manager.TiDBNGMonitoringManager
 	reclaimPolicyManager ReclaimPolicyManager
 }
 
 func (c *defaultTiDBNGMonitoringControl) Reconcile(tngm *v1alpha1.TidbNGMonitoring) error {
+	c.defaulting(tngm)
 	if !c.validate(tngm) {
 		return nil // fatal error, no need to retry on invalid object
 	}
@@ -101,14 +106,29 @@ func (c *defaultTiDBNGMonitoringControl) reconcile(tngm *v1alpha1.TidbNGMonitori
 		return nil
 	}
 
-	// reoncile reclaim policy of pvc
-	err := c.reclaimPolicyManager.SyncTiDBNGMonitoring(tngm)
+	var err error
+
+	// only support one tc now
+	tcRef := tngm.Spec.Clusters[0]
+	tc, err := c.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
+	if err != nil {
+		return fmt.Errorf("get tc %s/%s failed: %s", tcRef.Namespace, tcRef.Name, err)
+	}
+
+	// reconcile reclaim policy of pvc
+	err = c.reclaimPolicyManager.SyncTiDBNGMonitoring(tngm)
+	if err != nil {
+		return err
+	}
+
+	// reconcile asset of tc
+	err = c.assetMnger.Sync(tngm, tc)
 	if err != nil {
 		return err
 	}
 
 	// reconcile ng monitoring
-	err = c.ngmMnger.Sync(tngm)
+	err = c.ngmMnger.Sync(tngm, tc)
 	if err != nil {
 		return err
 	}
@@ -150,6 +170,10 @@ func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring)
 		klog.Errorf("failed to update TidbMonTiDBNGMonitoringitor: [%s/%s], error: %v", ns, name, err)
 	}
 	return update, err
+}
+
+func (c *defaultTiDBNGMonitoringControl) defaulting(tngm *v1alpha1.TidbNGMonitoring) {
+	defaulting.SetTidbNGMonitoringDefault(tngm)
 }
 
 func (c *defaultTiDBNGMonitoringControl) validate(tngm *v1alpha1.TidbNGMonitoring) bool {

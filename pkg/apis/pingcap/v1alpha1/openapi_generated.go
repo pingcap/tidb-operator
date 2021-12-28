@@ -1297,7 +1297,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"namespace": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace with TidbMonitor",
+							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1800,6 +1800,13 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 							},
 						},
 					},
+					"configUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConfigUpdateStrategy determines how the configuration change is applied to the cluster. UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the cluster component is needed to reload the configuration change. UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the related components to use the new ConfigMap, that is, the new configuration will be applied automatically.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"enablePVReclaim": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether enable PVC reclaim for orphan PVC left by statefulset scale-in Optional: Defaults to false",
@@ -1916,6 +1923,20 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 						SchemaProps: spec.SchemaProps{
 							Description: "PodSecurityContext of the component",
 							Ref:         ref("k8s.io/api/core/v1.PodSecurityContext"),
+						},
+					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy of DM cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of DM cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"topologySpreadConstraints": {
@@ -11516,7 +11537,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"namespace": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace with TidbMonitor",
+							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring",
 							Type:        []string{"string"},
 							Format:      "",
 						},
