@@ -55,6 +55,7 @@ const (
 	DMV2                          = "nightly" // nightly for https://github.com/pingcap/dm/pull/1672, FIXME after v2.0.4 released
 	DMMonitorInitializerImage     = "pingcap/dm-monitor-initializer"
 	DMMonitorInitializerVersion   = DMV2
+	TiDBNGMonitoringLatest        = "v5.4.0-pre" // TODO: change it after release
 )
 
 func ListImages() []string {

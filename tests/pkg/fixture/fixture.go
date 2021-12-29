@@ -622,6 +622,38 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 	return restore
 }
 
+func GetTidbNGMonitoring(ns, name string, tc *v1alpha1.TidbCluster) *v1alpha1.TidbNGMonitoring {
+	deletePVP := corev1.PersistentVolumeReclaimDelete
+	version := utilimage.TiDBNGMonitoringLatest
+
+	tngm := &v1alpha1.TidbNGMonitoring{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbNGMonitoringSpec{
+			Clusters: []v1alpha1.TidbClusterRef{
+				{
+					Name:      tc.Name,
+					Namespace: tc.Namespace,
+				},
+			},
+
+			PVReclaimPolicy: &deletePVP,
+			NGMonitoring: v1alpha1.NGMonitoringSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Version: &version,
+				},
+
+				BaseImage:            "pingcap/ng-monitoring",
+				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
+			},
+		},
+	}
+
+	return tngm
+}
+
 func AddTiFlashForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	if tc.Spec.TiFlash != nil {
 		return tc

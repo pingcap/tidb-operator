@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pd
+package ngm
 
 import (
 	"bytes"
@@ -21,19 +21,23 @@ import (
 	"net/http"
 )
 
-type Member struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	PeerURLs   []string `json:"peerURLs"`
-	ClientURLs []string `json:"clientURLs"`
+type NGMConprofConfig struct {
+	Enable               bool `json:"enable"`
+	ProfileSeconds       int  `json:"profile_seconds"`
+	IntervalSeconds      int  `json:"interval_seconds"`
+	TimeoutSeconds       int  `json:"timeout_seconds"`
+	DataRetentionSeconds int  `json:"data_retention_seconds"`
 }
 
-type GetMembersResponse struct {
-	Members []Member `json:"members"`
+type NGMConfig struct {
+	Addr          string
+	AdvertiseAddr string
+
+	Conprof *NGMConprofConfig `json:"continuous_profiling"`
 }
 
-func GetMembersV2(addr string) (*GetMembersResponse, error) {
-	url := fmt.Sprintf("http://%s/v2/members", addr)
+func GetConfig(ns, tngm string) (*NGMConfig, error) {
+	url := fmt.Sprintf("http://%s-ng-monitoring-0.%s-ng-monitoring.%s/config", tngm, tngm, ns)
 
 	httpResp, err := http.Get(url)
 	if err != nil {
@@ -50,22 +54,19 @@ func GetMembersV2(addr string) (*GetMembersResponse, error) {
 		return nil, fmt.Errorf("code %s msg %s", httpResp.Status, string(data))
 	}
 
-	resp := &GetMembersResponse{}
-	err = json.Unmarshal(data, resp)
+	config := &NGMConfig{}
+	err = json.Unmarshal(data, config)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal failed: %s", err)
 	}
 
-	return resp, nil
+	return config, nil
 }
 
-func UpdateMembePeerURLs(addr string, id string, peerURLs []string) error {
-	url := fmt.Sprintf("http://%s/v2/members/%s", addr, id)
+func SetConfig(ns, tngm string, cfg *NGMConfig) error {
+	url := fmt.Sprintf("http://%s-ng-monitoring-0.%s-ng-monitoring.%s/config", tngm, tngm, ns)
 
-	member := Member{
-		PeerURLs: peerURLs,
-	}
-	data, err := json.Marshal(member)
+	data, err := json.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("marshal failed %s", err)
 	}
