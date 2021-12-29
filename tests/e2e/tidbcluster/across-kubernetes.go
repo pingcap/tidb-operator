@@ -36,7 +36,6 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
