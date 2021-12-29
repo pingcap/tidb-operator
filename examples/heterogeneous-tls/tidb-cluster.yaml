@@ -31,7 +31,6 @@ spec:
   tikv:
     imagePullPolicy: IfNotPresent
     baseImage: pingcap/tikv
-    evictLeaderTimeout: 1m
     maxFailoverCount: 0
     mountClusterClientSecret: true
     replicas: 1

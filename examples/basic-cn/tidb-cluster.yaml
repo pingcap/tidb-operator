@@ -25,8 +25,11 @@ spec:
     config: {}
   tikv:
     baseImage: uhub.service.ucloud.cn/pingcap/tikv
-    evictLeaderTimeout: 1m
     maxFailoverCount: 0
+    # If only 1 TiKV is deployed, the TiKV region leader 
+    # cannot be transferred during upgrade, so we have
+    # to configure a short timeout here
+    evictLeaderTimeout: 1m
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
