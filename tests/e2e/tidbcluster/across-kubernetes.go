@@ -184,9 +184,9 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			// connectable test
 			_, err := utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
-			framework.ExpectNoError(err, "tc1 are not connectable")
+			framework.ExpectNoError(err, "tc1 is not connectable")
 			_, err = utiltidb.TiDBIsConnectable(fw, tc2.Namespace, tc2.Name, "root", "")()
-			framework.ExpectNoError(err, "tc2 are not connectable")
+			framework.ExpectNoError(err, "tc2 is not connectable")
 
 			ginkgo.By("Scale in cluster-2, and delete the cluster-2")
 
@@ -206,7 +206,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				}
 				return true, nil
 			})
-			framework.ExpectNoError(err, "tc1 are not all healthy")
+			framework.ExpectNoError(err, "tc1 is not all healthy")
 			framework.ExpectNoError(genericCli.Delete(context.TODO(), tc2), "failed to delete cluster 2")
 		})
 
