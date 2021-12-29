@@ -216,7 +216,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			// connectable test
 			ginkgo.By("Check if tc1 is connectable")
 			_, err = utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
-			framework.ExpectNoError(err, "tc1 are not connectable")
+			framework.ExpectNoError(err, "tc1 is not connectable")
 		})
 
 		ginkgo.It("Deploy cluster with TLS-enabled across kubernetes", func() {
