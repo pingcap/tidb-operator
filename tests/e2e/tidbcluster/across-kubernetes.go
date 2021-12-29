@@ -206,8 +206,12 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				}
 				return true, nil
 			})
-			framework.ExpectNoError(err, "tc1 is not all healthy")
+			framework.ExpectNoError(err, "there are tc2 members remaining in tc1 PeerMembers or some components in tc1 are not healthy.")
 			framework.ExpectNoError(genericCli.Delete(context.TODO(), tc2), "failed to delete cluster 2")
+
+			// connectable test
+			_, err = utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
+			framework.ExpectNoError(err, "tc1 are not connectable")
 		})
 
 		ginkgo.It("Deploy cluster with TLS-enabled across kubernetes", func() {
