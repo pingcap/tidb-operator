@@ -209,7 +209,12 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "there are tc2 members remaining in tc1 PeerMembers or some components in tc1 are not healthy.")
 			framework.ExpectNoError(genericCli.Delete(context.TODO(), tc2), "failed to delete cluster 2")
 
+			ginkgo.By("Check status of tc1")
+			err = oa.WaitForTidbClusterReady(tc1, 2*time.Minute, 30*time.Second)
+			framework.ExpectNoError(err, "timeout to wait for tc1 to be healthy")
+
 			// connectable test
+			ginkgo.By("Check if tc1 is connectable")
 			_, err = utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
 			framework.ExpectNoError(err, "tc1 are not connectable")
 		})
