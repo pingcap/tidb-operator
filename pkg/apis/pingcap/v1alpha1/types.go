@@ -1061,7 +1061,8 @@ type Service struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-	Synced      bool                    `json:"synced,omitempty"`
+	// +optional
+	Synced      bool                    `json:"synced"`
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	// Members contains PDs in current TidbCluster
