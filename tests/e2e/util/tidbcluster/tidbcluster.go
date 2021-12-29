@@ -56,8 +56,8 @@ func IsTidbClusterReady(tc *v1alpha1.TidbCluster) bool {
 	return condition != nil && condition.Status == v1.ConditionTrue
 }
 
-// IsTidbClusterAvaiable returns true if a tidbcluster is ready for at least minReadyDuration duration; false otherwise.
-func IsTidbClusterAvaiable(tc *v1alpha1.TidbCluster, minReadyDuration time.Duration, now time.Time) bool {
+// IsTidbClusterAvailable returns true if a tidbcluster is ready for at least minReadyDuration duration; false otherwise.
+func IsTidbClusterAvailable(tc *v1alpha1.TidbCluster, minReadyDuration time.Duration, now time.Time) bool {
 	if !IsTidbClusterReady(tc) {
 		return false
 	}
@@ -71,7 +71,7 @@ func IsTidbClusterAvaiable(tc *v1alpha1.TidbCluster, minReadyDuration time.Durat
 // WaitForTidbClusterConditionReady waits for a TidbClusterCondition to be ready for at least minReadyDuration duration.
 func WaitForTidbClusterConditionReady(c versioned.Interface, ns, name string, timeout time.Duration, minReadyDuration time.Duration) error {
 	return WaitForTidbClusterCondition(c, ns, name, timeout, func(tc *v1alpha1.TidbCluster) (bool, error) {
-		return IsTidbClusterAvaiable(tc, minReadyDuration, time.Now()), nil
+		return IsTidbClusterAvailable(tc, minReadyDuration, time.Now()), nil
 	})
 }
 
