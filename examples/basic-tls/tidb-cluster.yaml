@@ -31,7 +31,7 @@ spec:
     maxFailoverCount: 0
     # If only 1 TiKV is deployed, the TiKV region leader 
     # cannot be transferred during upgrade, so we have
-    # to configure a short timeout here
+    # to configure a short timeout
     evictLeaderTimeout: 1m
     replicas: 1
     requests:
