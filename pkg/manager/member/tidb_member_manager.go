@@ -262,6 +262,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 				Namespace: tc.Namespace,
 			},
 			Spec: v1alpha1.TidbInitializerSpec{
+				Image: "tnir/mysqlclient",
 				Clusters: v1alpha1.TidbClusterRef{
 					Name:      tc.Name,
 					Namespace: tc.Namespace,
@@ -307,7 +308,7 @@ func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) 
 	}
 	password := util.FixedLengthRandomPasswordBytes()
 	s.Data = map[string][]byte{
-		constants.TidbPasswordKey: password,
+		constants.TidbRootKey: password,
 	}
 	return s
 }

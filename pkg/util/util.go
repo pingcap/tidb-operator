@@ -438,7 +438,7 @@ func RandomBytes(length int) []byte {
 	return []byte(password.MustGenerate(
 		length,
 		10,    // number of digits to include in the result
-		0,     // number of symbols to include in the result
+		5,     // number of symbols to include in the result
 		false, // noUpper
 		true,  // allowRepeat
 	))

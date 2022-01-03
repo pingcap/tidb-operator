@@ -42,6 +42,8 @@ spec:
       raftdb:
         max-open-files: 256
   tidb:
+    initializer:
+      createPassword: true
     baseImage: pingcap/tidb
     maxFailoverCount: 0
     replicas: 1
