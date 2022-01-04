@@ -430,16 +430,16 @@ func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeC
 
 // FixedLengthRandomPasswordBytes generates a random password
 func FixedLengthRandomPasswordBytes() []byte {
-	return RandomBytes(24)
+	return RandomBytes(13)
 }
 
 // RandomBytes generates some random bytes that can be used as a token or as a key
 func RandomBytes(length int) []byte {
 	return []byte(password.MustGenerate(
 		length,
-		10,    // number of digits to include in the result
-		5,     // number of symbols to include in the result
+		2,     // number of digits to include in the result
+		3,     // number of symbols to include in the result
 		false, // noUpper
-		true,  // allowRepeat
+		false, // allowRepeat
 	))
 }

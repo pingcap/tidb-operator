@@ -252,9 +252,10 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		if err != nil {
 			return err
 		}
+		policy := corev1.PullIfNotPresent
 		tidbInitializer := &v1alpha1.TidbInitializer{
 			TypeMeta: metav1.TypeMeta{
-				Kind:       "TidbCluster",
+				Kind:       "TidbInitializer",
 				APIVersion: "pingcap.com/v1alpha1",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -262,11 +263,13 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 				Namespace: tc.Namespace,
 			},
 			Spec: v1alpha1.TidbInitializerSpec{
-				Image: "tnir/mysqlclient",
+				Image:           "tnir/mysqlclient",
+				ImagePullPolicy: &policy,
 				Clusters: v1alpha1.TidbClusterRef{
 					Name:      tc.Name,
 					Namespace: tc.Namespace,
 				},
+				InitSql:        pointer.StringPtr("create database hello;"),
 				PasswordSecret: pointer.StringPtr(secret.Name),
 			},
 		}
