@@ -7,7 +7,7 @@ spec:
   ## tidb cluster to be monitored
   ## ** now only support monitoring one tidb cluster **
   clusters:
-  - name: main-cluster
+  - name: advanced-tidb
     namespace: default
     ## ClusterDomain is the domain of TidbCluster object
     # clusterDomain: cluster.local
@@ -35,7 +35,7 @@ spec:
   # imagePullSecrets:
   # - name: secretName
 
-  ## Specify pod priorities of pods in TidbCluster, default to empty.
+  ## Specify pod priorities of pods in TidbNGMonitoring, default to empty.
   ## Can be overwritten by component settings.
   ## Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
   # priorityClassName: system-cluster-critical
@@ -68,7 +68,7 @@ spec:
     #   memory: 2Gi
 
     ## version of ng-monitoring
-    version: test-1
+    version: nightly
     
     ## Base image of the component
     baseImage: pingcap/ng-monitoring
