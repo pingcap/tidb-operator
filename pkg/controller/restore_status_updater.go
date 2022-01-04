@@ -68,7 +68,8 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 	ns := restore.GetNamespace()
 	restoreName := restore.GetName()
 	var isUpdate bool
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	// try best effort to guarantee restore is updated.
+	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
 		updateRestoreStatus(&restore.Status, newStatus)
 		isUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
 		if isUpdate {

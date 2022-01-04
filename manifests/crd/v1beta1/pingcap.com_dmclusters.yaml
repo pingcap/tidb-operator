@@ -340,9 +340,6 @@ spec:
                 type: string
               type: object
             configUpdateStrategy:
-              enum:
-              - InPlace
-              - RollingUpdate
               type: string
             discovery:
               properties:

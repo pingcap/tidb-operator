@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -72,6 +73,7 @@ type defaultTiDBNGMonitoringControl struct {
 }
 
 func (c *defaultTiDBNGMonitoringControl) Reconcile(tngm *v1alpha1.TidbNGMonitoring) error {
+	c.defaulting(tngm)
 	if !c.validate(tngm) {
 		return nil // fatal error, no need to retry on invalid object
 	}
@@ -168,6 +170,10 @@ func (c *defaultTiDBNGMonitoringControl) Update(tngm *v1alpha1.TidbNGMonitoring)
 		klog.Errorf("failed to update TidbMonTiDBNGMonitoringitor: [%s/%s], error: %v", ns, name, err)
 	}
 	return update, err
+}
+
+func (c *defaultTiDBNGMonitoringControl) defaulting(tngm *v1alpha1.TidbNGMonitoring) {
+	defaulting.SetTidbNGMonitoringDefault(tngm)
 }
 
 func (c *defaultTiDBNGMonitoringControl) validate(tngm *v1alpha1.TidbNGMonitoring) bool {
