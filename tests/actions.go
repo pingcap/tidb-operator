@@ -3812,7 +3812,7 @@ func (oa *OperatorActions) ngmReadyFn(tngm *v1alpha1.TidbNGMonitoring) bool {
 	}
 
 	if tngm.NGMonitoringImage() != c.Image {
-		log.Logf("iDBNGMonitoring NGM Sts %q: container image(%s) != %s", stsLocator, c.Image, tngm.TiCDCImage())
+		log.Logf("iDBNGMonitoring NGM Sts %q: container image(%s) != %s", stsLocator, c.Image, tngm.NGMonitoringImage())
 		return false
 	}
 
