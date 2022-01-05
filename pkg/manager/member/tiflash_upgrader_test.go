@@ -136,6 +136,10 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				store := tc.Status.TiFlash.Stores["3"]
 				store.LeaderCount = 0
 				tc.Status.TiFlash.Stores["3"] = store
+				fakeClient := NewFakeTiKVClient(tiflashControl, tc, "upgrader-tiflash-2")
+				fakeClient.AddReaction(tiflashapi.GetStoreStatusActionType, func(action *tiflashapi.Action) (interface{}, error) {
+					return tiflashapi.Running, nil
+				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
@@ -162,6 +166,14 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				store := tc.Status.TiFlash.Stores["2"]
 				store.LeaderCount = 0
 				tc.Status.TiFlash.Stores["2"] = store
+				fakeClient := NewFakeTiKVClient(tiflashControl, tc, "upgrader-tiflash-2")
+				fakeClient.AddReaction(tiflashapi.GetStoreStatusActionType, func(action *tiflashapi.Action) (interface{}, error) {
+					return tiflashapi.Running, nil
+				})
+				fakeClient = NewFakeTiKVClient(tiflashControl, tc, "upgrader-tiflash-1")
+				fakeClient.AddReaction(tiflashapi.GetStoreStatusActionType, func(action *tiflashapi.Action) (interface{}, error) {
+					return tiflashapi.Running, nil
+				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
