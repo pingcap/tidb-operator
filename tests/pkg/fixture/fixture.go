@@ -625,6 +625,7 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 func GetTidbNGMonitoring(ns, name string, tc *v1alpha1.TidbCluster) *v1alpha1.TidbNGMonitoring {
 	deletePVP := corev1.PersistentVolumeReclaimDelete
 	version := utilimage.TiDBNGMonitoringLatest
+	cfgUpdateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
 
 	tngm := &v1alpha1.TidbNGMonitoring{
 		ObjectMeta: metav1.ObjectMeta{
@@ -639,6 +640,9 @@ func GetTidbNGMonitoring(ns, name string, tc *v1alpha1.TidbCluster) *v1alpha1.Ti
 				},
 			},
 
+			ComponentSpec: v1alpha1.ComponentSpec{
+				ConfigUpdateStrategy: &cfgUpdateStrategy,
+			},
 			PVReclaimPolicy: &deletePVP,
 			NGMonitoring: v1alpha1.NGMonitoringSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{

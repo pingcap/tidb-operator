@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ngm
+package tngm
 
 import (
 	"bytes"
@@ -22,22 +22,26 @@ import (
 )
 
 type NGMConprofConfig struct {
-	Enable               bool `json:"enable"`
-	ProfileSeconds       int  `json:"profile_seconds"`
-	IntervalSeconds      int  `json:"interval_seconds"`
-	TimeoutSeconds       int  `json:"timeout_seconds"`
-	DataRetentionSeconds int  `json:"data_retention_seconds"`
+	Enable               bool `json:"enable,omitempty"`
+	ProfileSeconds       int  `json:"profile_seconds,omitempty"`
+	IntervalSeconds      int  `json:"interval_seconds,omitempty"`
+	TimeoutSeconds       int  `json:"timeout_seconds,omitempty"`
+	DataRetentionSeconds int  `json:"data_retention_seconds,omitempty"`
 }
 
 type NGMConfig struct {
-	Addr          string
-	AdvertiseAddr string
+	Addr          string `json:"addr"`
+	AdvertiseAddr string `json:"advertise_addr"`
 
-	Conprof *NGMConprofConfig `json:"continuous_profiling"`
+	Conprof *NGMConprofConfig `json:"continuous_profiling,omitempty"`
 }
 
-func GetConfig(ns, tngm string) (*NGMConfig, error) {
-	url := fmt.Sprintf("http://%s-ng-monitoring-0.%s-ng-monitoring.%s/config", tngm, tngm, ns)
+type ConfigureNGMReq struct {
+	Conprof *NGMConprofConfig `json:"continuous_profiling,omitempty"`
+}
+
+func GetConfig(addr string) (*NGMConfig, error) {
+	url := fmt.Sprintf("http://%s/config", addr)
 
 	httpResp, err := http.Get(url)
 	if err != nil {
@@ -63,15 +67,15 @@ func GetConfig(ns, tngm string) (*NGMConfig, error) {
 	return config, nil
 }
 
-func SetConfig(ns, tngm string, cfg *NGMConfig) error {
-	url := fmt.Sprintf("http://%s-ng-monitoring-0.%s-ng-monitoring.%s/config", tngm, tngm, ns)
+func SetConfig(addr string, req *ConfigureNGMReq) error {
+	url := fmt.Sprintf("http://%s/config", addr)
 
-	data, err := json.Marshal(cfg)
+	data, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("marshal failed %s", err)
 	}
 
-	httpReq, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(data))
+	httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("create req failed %s", err)
 	}

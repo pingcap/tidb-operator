@@ -16,24 +16,31 @@ package tidbngmonitoring
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	utilconfig "github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/tidbngmonitoring"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
-	utilngm "github.com/pingcap/tidb-operator/tests/e2e/util/ngm"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
+	utiltngm "github.com/pingcap/tidb-operator/tests/e2e/util/tngm"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 
 	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -42,7 +49,7 @@ import (
 )
 
 var _ = ginkgo.Describe("[TiDBNGMonitoring]", func() {
-	f := e2eframework.NewDefaultFramework("tidb-ng-monitoring")
+	f := e2eframework.NewDefaultFramework("tngm")
 
 	var (
 		ns         string
@@ -98,32 +105,36 @@ var _ = ginkgo.Describe("[TiDBNGMonitoring]", func() {
 
 		ginkgo.It("Deploy tidb cluster and ngm", func() {
 			name := "normal-cluster"
-			locator := fmt.Sprintf(ns, name)
+			locator := fmt.Sprintf("%s/%s", ns, name)
 
 			tc := GetTCForTiDBNGMonitoring(ns, name)
 			tngm := fixture.GetTidbNGMonitoring(ns, name, tc)
 
-			ginkgo.By(fmt.Sprintf("Deploy tidb cluster %s", locator))
+			ginkgo.By("Deploy tidb cluster")
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
-			ginkgo.By(fmt.Sprintf("Deploy tidb ng monitoring %s", locator))
+			ginkgo.By("Deploy tidb ng monitoring")
 			err := genericCli.Create(context.TODO(), tngm)
 			framework.ExpectNoError(err, "failed to create TidbNGMonitoring %s", locator)
 			err = oa.WaitForTiDBNGMonitoringReady(tngm, 1*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbNGMonitoring %s components ready", locator)
 
-			ginkgo.By(fmt.Sprintf("Enable continue profile for tidb ng monitoring %s", locator))
-			err = utilngm.SetConfig(ns, name, &utilngm.NGMConfig{Conprof: &utilngm.NGMConprofConfig{Enable: true}})
+			localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, fmt.Sprintf("pod/%s-ng-monitoring-0", name), 12020)
+			framework.ExpectNoError(err, "failed to forward port for TidbNGMonitoring %s", locator)
+			defer cancel()
+
+			ginkgo.By("Enable continue profile for tidb ng monitoring")
+			err = utiltngm.SetConfig(fmt.Sprintf("%s:%d", localHost, localPort), &utiltngm.ConfigureNGMReq{Conprof: &utiltngm.NGMConprofConfig{Enable: true}})
 			framework.ExpectNoError(err, "failed to enable continue profile for TidbNGMonitoring %s", locator)
 
-			ginkgo.By(fmt.Sprintf("Ensure continue profile is enabled for tidb ng monitoring %s", locator))
-			cfg, err := utilngm.GetConfig(ns, name)
+			ginkgo.By("Ensure continue profile is enabled for tidb ng monitoring")
+			cfg, err := utiltngm.GetConfig(fmt.Sprintf("%s:%d", localHost, localPort))
 			framework.ExpectEqual(cfg.Conprof.Enable, true, "continue profile isn't enabled for TidbNGMonitoring %s", locator)
 		})
 
 		ginkgo.It("Deploy tidb cluster with TLS-enabled and ngm", func() {
 			name := "tls-cluster"
-			locator := fmt.Sprintf(ns, name)
+			locator := fmt.Sprintf("%s/%s", ns, name)
 
 			tc := GetTCForTiDBNGMonitoring(ns, name)
 			tngm := fixture.GetTidbNGMonitoring(ns, name, tc)
@@ -132,27 +143,74 @@ var _ = ginkgo.Describe("[TiDBNGMonitoring]", func() {
 			err := tidbcluster.InstallTiDBIssuer(ns, name)
 			framework.ExpectNoError(err, "failed to install CA certificate")
 
-			ginkgo.By("Install TiDB server and client certificate")
+			ginkgo.By("Install tidb cluster certificate")
 			framework.ExpectNoError(tidbcluster.InstallTiDBComponentsCertificates(ns, name), "failed to install TiDB server and client certificate")
 			<-time.After(30 * time.Second)
 
-			ginkgo.By(fmt.Sprintf("Deploy tidb cluster %s with TLS enabled", locator))
+			ginkgo.By("Deploy tidb cluster with TLS enabled")
 			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
 
-			ginkgo.By(fmt.Sprintf("Deploy tidb ng monitoring %s", locator))
+			ginkgo.By("Deploy tidb ng monitoring")
 			err = genericCli.Create(context.TODO(), tngm)
 			framework.ExpectNoError(err, "failed to create TidbNGMonitoring %s", locator)
 			err = oa.WaitForTiDBNGMonitoringReady(tngm, 1*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbNGMonitoring %s components ready", locator)
 
-			ginkgo.By(fmt.Sprintf("Enable continue profile for tidb ng monitoring %s", locator))
-			err = utilngm.SetConfig(ns, name, &utilngm.NGMConfig{Conprof: &utilngm.NGMConprofConfig{Enable: true}})
-			framework.ExpectNoError(err, "failed to enable continue profile for TidbNGMonitoring %s", locator)
+			localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, fmt.Sprintf("pod/%s-ng-monitoring-0", name), 12020)
+			framework.ExpectNoError(err, "failed to forward port for TidbNGMonitoring %q", locator)
+			defer cancel()
 
-			ginkgo.By(fmt.Sprintf("Ensure continue profile is enabled for tidb ng monitoring %s", locator))
-			cfg, err := utilngm.GetConfig(ns, name)
-			framework.ExpectEqual(cfg.Conprof.Enable, true, "continue profile isn't enabled for TidbNGMonitoring %s", locator)
+			ginkgo.By("Enable continue profile for tidb ng monitoring")
+			err = utiltngm.SetConfig(fmt.Sprintf("%s:%d", localHost, localPort), &utiltngm.ConfigureNGMReq{Conprof: &utiltngm.NGMConprofConfig{Enable: true}})
+			framework.ExpectNoError(err, "failed to enable continue profile for TidbNGMonitoring %q", locator)
+
+			ginkgo.By("Ensure continue profile is enabled for tidb ng monitoring")
+			cfg, err := utiltngm.GetConfig(fmt.Sprintf("%s:%d", localHost, localPort))
+			framework.ExpectEqual(cfg.Conprof.Enable, true, "continue profile isn't enabled for TidbNGMonitoring %q", locator)
+		})
+
+	})
+
+	ginkgo.Context("[Update]", func() {
+		ginkgo.It("Update config of ngm", func() {
+			name := "update-cfg"
+			locator := fmt.Sprintf("%s/%s", ns, name)
+
+			tc := GetTCForTiDBNGMonitoring(ns, name)
+			tngm := fixture.GetTidbNGMonitoring(ns, name, tc)
+
+			ginkgo.By("Deploy tidb cluster")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+
+			ginkgo.By("Deploy tidb ng monitoring")
+			err := genericCli.Create(context.TODO(), tngm)
+			framework.ExpectNoError(err, "failed to create TidbNGMonitoring %s", locator)
+			err = oa.WaitForTiDBNGMonitoringReady(tngm, 1*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbNGMonitoring %q components ready", locator)
+
+			ginkgo.By("Update config of ngm")
+			err = controller.GuaranteedUpdate(genericCli, tngm, func() error {
+				cfg := utilconfig.New(make(map[string]interface{}))
+				cfg.Set("log.level", "DEBUG")
+				tngm.Spec.NGMonitoring.Config = cfg
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update config")
+			utiltngm.MustWaitForNGMPhase(cli, tngm, v1alpha1.UpgradePhase, 5*time.Minute, 2*time.Second)
+			err = oa.WaitForTiDBNGMonitoringReady(tngm, 1*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "failed to wait for TidbNGMonitoring %q components ready", locator)
+
+			ginkgo.By("Check config of ngm")
+			stsName := tidbngmonitoring.NGMonitoringName(name)
+			sts, err := c.AppsV1().StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get statefulset %s/%s", ns, stsName)
+			cmName := mngerutils.FindConfigMapVolume(&sts.Spec.Template.Spec, func(cmName string) bool {
+				return strings.HasPrefix(cmName, tidbngmonitoring.NGMonitoringName(name))
+			})
+			cm, err := c.CoreV1().ConfigMaps(ns).Get(context.TODO(), cmName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get config map %s/%s", ns, cmName)
+			gomega.Expect(cm.Data["config-file"]).To(gomega.ContainSubstring("level = \"DEBUG\""), fmt.Sprintf("config map %s/%s isn't updated", ns, cmName))
 		})
 	})
 
