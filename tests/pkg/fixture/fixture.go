@@ -213,7 +213,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				StorageSize:          "1Gi",
 				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
-				Config:               &v1alpha1.MasterConfig{},
+				Config:               v1alpha1.NewMasterConfig(),
 				Service: &v1alpha1.MasterServiceSpec{
 					ServiceSpec: v1alpha1.ServiceSpec{
 						Type: corev1.ServiceTypeClusterIP,
@@ -240,7 +240,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 				BaseImage:            "pingcap/dm",
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
-				Config:               &v1alpha1.WorkerConfig{},
+				Config:               v1alpha1.NewWorkerConfig(),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.DMWorkerMemberType),
 					Labels: map[string]string{
