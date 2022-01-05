@@ -247,55 +247,64 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	// set random password
 	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.InitPassword {
 		// sync password secret
-		secret := m.buildRandomPasswordSecret(tc)
-		secret, err := m.deps.TypedControl.CreateOrUpdateSecret(tc, secret)
+		secretName := fmt.Sprintf("%s-secret", tc.Name)
+		passwordSecret := &corev1.Secret{}
+		exist, err := m.deps.TypedControl.Exist(client.ObjectKey{
+			Namespace: ns,
+			Name:      secretName,
+		}, passwordSecret)
 		if err != nil {
 			return err
 		}
-		policy := corev1.PullIfNotPresent
-		tidbInitializer := &v1alpha1.TidbInitializer{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "TidbInitializer",
-				APIVersion: "pingcap.com/v1alpha1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-init", tc.Name),
-				Namespace: tc.Namespace,
-			},
-			Spec: v1alpha1.TidbInitializerSpec{
-				Image:           "tnir/mysqlclient",
-				ImagePullPolicy: &policy,
-				Clusters: v1alpha1.TidbClusterRef{
-					Name:      tc.Name,
-					Namespace: tc.Namespace,
-				},
-				InitSql:        pointer.StringPtr("create database hello;"),
-				PasswordSecret: pointer.StringPtr(secret.Name),
-			},
+		if !exist {
+			klog.Errorf("buildRandomPasswordSecret run")
+			secret := m.buildRandomPasswordSecret(tc)
+			secret, err := m.deps.TypedControl.CreateOrUpdateSecret(tc, secret)
+			if err != nil {
+				return err
+			}
 		}
-
-		exist, err := m.deps.TypedControl.Exist(client.ObjectKey{
-			Namespace: tidbInitializer.Namespace,
-			Name:      tidbInitializer.Name,
+		tidbInitializer := &v1alpha1.TidbInitializer{}
+		tidbInitializerName := fmt.Sprintf("%s-init", tc.Name)
+		exist, err = m.deps.TypedControl.Exist(client.ObjectKey{
+			Namespace: tc.Namespace,
+			Name:      tidbInitializerName,
 		}, tidbInitializer)
 		if err != nil {
 			return err
 		}
 		if !exist {
+			policy := corev1.PullIfNotPresent
+			tidbInitializer = &v1alpha1.TidbInitializer{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-init", tc.Name),
+					Namespace: tc.Namespace,
+				},
+				Spec: v1alpha1.TidbInitializerSpec{
+					Image:           "tnir/mysqlclient",
+					ImagePullPolicy: &policy,
+					Clusters: v1alpha1.TidbClusterRef{
+						Name:      tc.Name,
+						Namespace: tc.Namespace,
+					},
+					PasswordSecret: pointer.StringPtr(secretName),
+				},
+			}
 			_, err = m.deps.TypedControl.CreateOrUpdateTidbInitializer(tc, tidbInitializer)
 			if err != nil {
 				return err
 			}
+		} else {
+			existInitializer, err := m.deps.TiDBInitializerLister.TidbInitializers(tc.Name).Get(tidbInitializerName)
+			if err != nil {
+				return err
+			}
+			if existInitializer.Status.Phase == v1alpha1.InitializePhaseCompleted {
+				tc.Status.TiDB.InitPassword = true
+			}
 
 		}
 
-		existInitializer, err := m.deps.TiDBInitializerLister.TidbInitializers(tidbInitializer.Namespace).Get(tidbInitializer.Name)
-		if err != nil {
-			return err
-		}
-		if existInitializer.Status.Phase == v1alpha1.InitializePhaseCompleted {
-			tc.Status.TiDB.InitPassword = true
-		}
 	}
 
 	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
