@@ -129,7 +129,8 @@ var _ = ginkgo.Describe("[TiDBNGMonitoring]", func() {
 
 			ginkgo.By("Ensure continue profile is enabled for tidb ng monitoring")
 			cfg, err := utiltngm.GetConfig(fmt.Sprintf("%s:%d", localHost, localPort))
-			framework.ExpectEqual(cfg.Conprof.Enable, true, "continue profile isn't enabled for TidbNGMonitoring %s", locator)
+			framework.ExpectNoError(err, "get config failed for TidbNGMonitoring %q", locator)
+			framework.ExpectEqual(cfg.Conprof.Enable, true, "continue profile isn't enabled for TidbNGMonitoring %q", locator)
 		})
 
 		ginkgo.It("Deploy tidb cluster with TLS-enabled and ngm", func() {
@@ -167,6 +168,7 @@ var _ = ginkgo.Describe("[TiDBNGMonitoring]", func() {
 
 			ginkgo.By("Ensure continue profile is enabled for tidb ng monitoring")
 			cfg, err := utiltngm.GetConfig(fmt.Sprintf("%s:%d", localHost, localPort))
+			framework.ExpectNoError(err, "get config failed for TidbNGMonitoring %q", locator)
 			framework.ExpectEqual(cfg.Conprof.Enable, true, "continue profile isn't enabled for TidbNGMonitoring %q", locator)
 		})
 
