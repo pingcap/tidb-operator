@@ -27,14 +27,14 @@ import (
 )
 
 var (
-	TiDBPreviousVersions []string = []string{"v4.0.13", "v5.0.3", "v5.1.1"}
+	TiDBPreviousVersions []string = []string{"v4.0.16", "v5.0.6", "v5.1.3", "v5.2.3"}
 )
 
 const (
 	// TiDB Version
 	TiDBV3             = "v3.0.20"
-	TiDBLatestPrev     = "v5.1.1"
-	TiDBLatest         = "v5.2.0"
+	TiDBLatestPrev     = "v5.2.3"
+	TiDBLatest         = "v5.3.0"
 	TiDBNightlyVersion = "nightly"
 	// specific version
 	TiDBV4x0x9 = "v4.0.9"
@@ -51,8 +51,8 @@ const (
 	GrafanaVersion                = "6.1.6"
 	ThanosImage                   = "thanosio/thanos"
 	ThanosVersion                 = "v0.17.2"
-	DMV2Prev                      = "v2.0.3"
-	DMV2                          = "nightly" // nightly for https://github.com/pingcap/dm/pull/1672, FIXME after v2.0.4 released
+	DMV2Prev                      = "v2.0.7"
+	DMV2                          = TiDBLatest
 	DMMonitorInitializerImage     = "pingcap/dm-monitor-initializer"
 	DMMonitorInitializerVersion   = DMV2
 	TiDBNGMonitoringLatest        = "v5.4.0-pre" // TODO: change it after release
