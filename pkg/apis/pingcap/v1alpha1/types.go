@@ -772,7 +772,7 @@ type TiDBSpec struct {
 }
 
 type TiDBInitializer struct {
-	CreatePassword bool `json:"createPassword"`
+	CreatePassword bool `json:"createPassword,omitempty"`
 }
 
 const (
