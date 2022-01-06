@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
