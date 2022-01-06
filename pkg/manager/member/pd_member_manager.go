@@ -683,7 +683,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	podAnnotations := util.CombineStringMap(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
 
-	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	//deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
 	if err != nil {
 		return nil, fmt.Errorf("get delete slots number of statefulset %s/%s failed, err:%v", ns, setName, err)
 	}
@@ -757,15 +757,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, basePDSpec.InitContainers()...)
 
-	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if basePDSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
-		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
-	} else {
-		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
-		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas() + deleteSlotsNumber),
-		}
-	}
+	updateStrategy := apps.StatefulSetUpdateStrategy{Type: apps.OnDeleteStatefulSetStrategyType}
 
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

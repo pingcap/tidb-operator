@@ -16,7 +16,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/labels"
 	"strconv"
 	"strings"
 
@@ -42,7 +41,6 @@ type PodControlInterface interface {
 	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.Pod) (*corev1.Pod, error)
 	DeletePod(runtime.Object, *corev1.Pod) error
 	UpdatePod(runtime.Object, *corev1.Pod) (*corev1.Pod, error)
-	ListPod(runtime.Object, string, map[string]string) ([]*corev1.Pod, error)
 }
 
 type realPodControl struct {
@@ -65,31 +63,6 @@ func NewRealPodControl(
 		podLister: podLister,
 		recorder:  recorder,
 	}
-}
-
-func (c *realPodControl) ListPod(controller runtime.Object, ns string, selector map[string]string) ([]*corev1.Pod, error) {
-	controllerMo, ok := controller.(metav1.Object)
-	if !ok {
-		return nil, fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
-	}
-
-	pods, err := c.kubeCli.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromSet(selector).String()})
-
-	kind := controller.GetObjectKind().GroupVersionKind().Kind
-	name := controllerMo.GetName()
-	namespace := controllerMo.GetNamespace()
-
-	podName := pod.GetName()
-	preconditions := metav1.Preconditions{UID: &pod.UID, ResourceVersion: &pod.ResourceVersion}
-	deleteOptions := metav1.DeleteOptions{Preconditions: &preconditions}
-
-	if err != nil {
-		klog.Errorf("failed to delete Pod: [%s/%s], %s: %s, %v", namespace, podName, kind, namespace, err)
-	} else {
-		klog.V(4).Infof("delete Pod: [%s/%s] successfully, %s: %s", namespace, podName, kind, namespace)
-	}
-	c.recordPodEvent("delete", kind, name, controller, podName, err)
-	return err
 }
 
 func (c *realPodControl) UpdatePod(controller runtime.Object, pod *corev1.Pod) (*corev1.Pod, error) {

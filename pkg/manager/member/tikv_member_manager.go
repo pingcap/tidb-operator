@@ -236,11 +236,6 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-	if err := mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet); err != nil {
-		return err
-	}
-	// upgrade cluster
-
 	if !templateEqual(newSet, oldSet) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		if err := m.upgrader.Upgrade(tc, oldSet, newSet); err != nil {
 			return err
@@ -248,10 +243,6 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	}
 
 	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
-}
-
-func (m *tikvMemberManager) handleRollingUpgrades(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
-	m.deps.PodControl.UpdatePod()
 }
 
 func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -444,10 +435,10 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 
-	//deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
-	//if err != nil {
-	//	return nil, fmt.Errorf("get delete slots number of statefulset %s/%s failed, err:%v", ns, setName, err)
-	//}
+	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	if err != nil {
+		return nil, fmt.Errorf("get delete slots number of statefulset %s/%s failed, err:%v", ns, setName, err)
+	}
 
 	var containers []corev1.Container
 	if tc.Spec.TiKV.ShouldSeparateRocksDBLog() {
@@ -628,16 +619,15 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
 	}
 
-	updateStrategy := apps.StatefulSetUpdateStrategy{Type: apps.OnDeleteStatefulSetStrategyType}
-
-	//if baseTiKVSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
-	//	updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
-	//} else {
-	//	updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
-	//	updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-	//		Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas() + deleteSlotsNumber),
-	//	}
-	//}
+	updateStrategy := apps.StatefulSetUpdateStrategy{}
+	if baseTiKVSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else {
+		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+			Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas() + deleteSlotsNumber),
+		}
+	}
 
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
