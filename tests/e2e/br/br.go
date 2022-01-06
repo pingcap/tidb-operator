@@ -161,9 +161,12 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 		if tcase.enableXK8sMode {
 			ginkgo.By("Create TiDB cluster for backup and wait ready")
-			createXK8sTidbClusterWithComponentsReady(f, backupClusterName, backupVersion, enableTLS)
+			err := createXK8sTidbClusterWithComponentsReady(f, backupClusterName, backupVersion, enableTLS)
+			framework.ExpectNoError(err, "creating TiDB clsuter for backup")
+
 			ginkgo.By("Create TiDB cluster for restore and wait ready")
-			createXK8sTidbClusterWithComponentsReady(f, restoreClusterName, restoreVersion, enableTLS)
+			err = createXK8sTidbClusterWithComponentsReady(f, restoreClusterName, restoreVersion, enableTLS)
+			framework.ExpectNoError(err, "creating TiDB clsuter for restore")
 		} else {
 			ginkgo.By("Create TiDB cluster for backup")
 			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
@@ -352,11 +355,13 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, name st
 	tc3 := GetTCForXK8s(ns3, name, version, clusterDomain, tc1)
 
 	if enableTLS {
+		ginkgo.By("Installing initial tidb CA certificate")
 		err := e2etc.InstallTiDBIssuer(ns1, name)
 		if err != nil {
 			return err
 		}
 
+		ginkgo.By("Export initial CA secret and install into other tidb clusters")
 		var caSecret *v1.Secret
 		err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
 			caSecret, err = f.ClientSet.CoreV1().Secrets(ns1).Get(context.TODO(), fmt.Sprintf("%s-ca-secret", name), metav1.GetOptions{})
@@ -381,6 +386,7 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, name st
 			return err
 		}
 
+		ginkgo.By("Installing tidb cluster issuer with initial ca")
 		err = e2etc.InstallXK8sTiDBIssuer(ns2, name, name)
 		if err != nil {
 			return err
@@ -390,6 +396,7 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, name st
 			return err
 		}
 
+		ginkgo.By("Installing tidb server and client certificate")
 		err = e2etc.InstallXK8sTiDBCertificates(ns1, name, clusterDomain)
 		if err != nil {
 			return err
@@ -403,6 +410,7 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, name st
 			return err
 		}
 
+		ginkgo.By("Installing tidb components certificates")
 		err = e2etc.InstallXK8sTiDBComponentsCertificates(ns1, name, clusterDomain)
 		if err != nil {
 			return err
@@ -426,6 +434,7 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, name st
 		tc3.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 	}
 
+	ginkgo.By("Creating tidb clusters with TLS enabled")
 	err := f.GenericClient.Create(context.TODO(), tc1)
 	if err != nil {
 		return err
@@ -453,13 +462,7 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, name st
 		return err
 	}
 
-	clusters := []*v1alpha1.TidbCluster{tc1, tc2, tc3}
-	err = e2etc.CheckClusterDomainEffect(f.ExtClient, clusters)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return e2etc.CheckClusterDomainEffect(f.ExtClient, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
 }
 
 func GetTCForXK8s(ns, name, version, clusterDomain string, joinTC *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
