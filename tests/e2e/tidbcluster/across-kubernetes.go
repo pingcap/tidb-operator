@@ -366,6 +366,10 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			}
 			framework.ExpectEqual(foundSecretName, true)
 
+			ginkgo.By("Check deploy status over all clusters")
+			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2})
+			framework.ExpectNoError(err, "failed to check status")
+
 			ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns1, tcName1, ""))
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName1)
@@ -450,10 +454,8 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 30*time.Second)
 
 			ginkgo.By("Fail TiKV in cluster-1 by setting a wrong image")
-			local, err := cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
-			err = controller.GuaranteedUpdate(genericCli, local, func() error {
-				local.Spec.TiKV.BaseImage = inexistentBaseImage
+			err = controller.GuaranteedUpdate(genericCli, tc1, func() error {
+				tc1.Spec.TiKV.BaseImage = inexistentBaseImage
 				return nil
 			})
 			framework.ExpectNoError(err, "updating tikv with an inexistent image %q for %q", tc1.Spec.TiKV.BaseImage, tcName1)
@@ -490,10 +492,8 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName1)
 
 			ginkgo.By("Fail PD in cluster-1 by setting a wrong image")
-			local, err = cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
 			err = controller.GuaranteedUpdate(genericCli, tc1, func() error {
-				local.Spec.PD.BaseImage = inexistentBaseImage
+				tc1.Spec.PD.BaseImage = inexistentBaseImage
 				return nil
 			})
 			framework.ExpectNoError(err, "updating pd with an inexistent image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
@@ -609,6 +609,8 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "%q cluster not healthy after cluster %q fail", tcName1, tcName2)
 			err = oa.WaitForTidbClusterReady(tc3, 10*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "%q cluster not healthy after cluster %q fail", tcName3, tcName2)
+			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc3})
+			framework.ExpectNoError(err, "failed to check status after cluster %q fail", tcName2)
 
 			ginkgo.By("Check functionality of other clusters by querying tidb")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns1, tcName1, ""))
@@ -664,11 +666,11 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 30*time.Second)
 
 			ginkgo.By("Fail PD in cluster-1 by setting a wrong image")
-			local, err := cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
-			baseImage := local.Spec.PD.BaseImage
-			local.Spec.PD.BaseImage = inexistentBaseImage
-			err = genericCli.Update(context.TODO(), local)
+			baseImage := tc1.Spec.PD.BaseImage
+			err = controller.GuaranteedUpdate(genericCli, tc1, func() error {
+				tc1.Spec.PD.BaseImage = inexistentBaseImage
+				return nil
+			})
 			framework.ExpectNoError(err, "updating pd with an inexistent image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
@@ -691,17 +693,19 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectError(err, "%q should not be able to join %q as pd fails", tcName2, tcName1)
 
 			ginkgo.By("Recover PD in cluster-1")
-			local, err = cli.PingcapV1alpha1().TidbClusters(tc1.Namespace).Get(context.TODO(), tc1.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err, "getting tidbcluster %s/%s", tc1.Namespace, tc1.Name)
-			local.Spec.PD.BaseImage = baseImage
-			err = genericCli.Update(context.TODO(), local)
-			framework.ExpectNoError(err, "updating pd with previous image %q for %q", local.Spec.PD.BaseImage, tcName1)
+			err = controller.GuaranteedUpdate(genericCli, tc1, func() error {
+				tc1.Spec.PD.BaseImage = baseImage
+				return nil
+			})
+			framework.ExpectNoError(err, "updating pd with previous image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
 			// force operator to trigger a pd upgrade when pd is down.
 			err = c.AppsV1().StatefulSets(ns1).Delete(context.TODO(), fmt.Sprintf("%s-pd", tcName1), metav1.DeleteOptions{})
 			framework.ExpectNoError(err, "deleting sts of pd for %q", tcName1)
 
 			ginkgo.By("Join cluster-2 into cluster-1 when pd running normally")
 			err = oa.WaitForTidbClusterReady(tc2, 10*time.Minute, 30*time.Second)
+			framework.ExpectNoError(err, "waiting for %q ready", tcName2)
+			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2})
 			framework.ExpectNoError(err, "%q failed to join into %q", tcName2, tcName1)
 		})
 	})
