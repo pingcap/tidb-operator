@@ -30,6 +30,7 @@ import (
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
+	pdutil "github.com/pingcap/tidb-operator/tests/e2e/util/pd"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
@@ -217,6 +218,113 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Check if tc1 is connectable")
 			_, err = utiltidb.TiDBIsConnectable(fw, tc1.Namespace, tc1.Name, "root", "")()
 			framework.ExpectNoError(err, "tc1 is not connectable")
+		})
+
+		ginkgo.It("Join: cluster-2 join cluster-1 and cluster-3 join cluster-2", func() {
+			ns1, ns2, ns3 := namespaces[0], namespaces[1], namespaces[2]
+			tc1 := GetTCForAcrossKubernetes(ns1, "cluster-1", version, clusterDomain, nil)
+			tc2 := GetTCForAcrossKubernetes(ns2, "cluster-2-join-1", version, clusterDomain, tc1)
+			tc3 := GetTCForAcrossKubernetes(ns3, "cluster-3-join-2", version, clusterDomain, tc2)
+
+			ginkgo.By("Deploy cluster-1")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 10*time.Second)
+
+			ginkgo.By("Deploy cluster-2 and join cluster-1")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 10*time.Minute, 10*time.Second)
+
+			ginkgo.By("Deploy cluster-3 and join cluster-2")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 10*time.Second)
+
+			ginkgo.By("Check status over all clusters")
+			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
+			framework.ExpectNoError(err, "failed to check status")
+		})
+
+		ginkgo.It("Join: cluster-2 join cluster-1 and cluster-3 join cluster-2 after cluster-1 failed", func() {
+			ns1, ns2, ns3 := namespaces[0], namespaces[1], namespaces[2]
+			tc1 := GetTCForAcrossKubernetes(ns1, "cluster-1", version, clusterDomain, nil)
+			tc2 := GetTCForAcrossKubernetes(ns2, "cluster-2-join-1", version, clusterDomain, tc1)
+			tc3 := GetTCForAcrossKubernetes(ns3, "cluster-3-join-2", version, clusterDomain, tc2)
+
+			ginkgo.By("Deploy cluster-1")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 10*time.Second)
+
+			ginkgo.By("Deploy cluster-2 and join cluster-1")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 10*time.Minute, 10*time.Second)
+
+			ginkgo.By("Check deploy status")
+			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2})
+			framework.ExpectNoError(err, "failed to check status")
+
+			ginkgo.By("Deleting cluster-1 by deleting ns")
+			err = c.CoreV1().Namespaces().Delete(context.TODO(), ns1, metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "deleting namespsace %q", ns1)
+			err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
+				_, err = c.CoreV1().Namespaces().Get(context.TODO(), ns1, metav1.GetOptions{})
+				if apierrors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "waiting namespsace %q to be deleted", ns1)
+
+			ginkgo.By("Deploy cluster-3 and join cluster-2")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 10*time.Second)
+
+			ginkgo.By("Check deploy status")
+			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc2, tc3})
+			framework.ExpectNoError(err, "failed to check status")
+		})
+
+		ginkgo.It("Join cluster with existing data", func() {
+			ns1, ns2, ns3 := namespaces[0], namespaces[1], namespaces[2]
+
+			tc1 := GetTCForAcrossKubernetes(ns1, "update-1", version, clusterDomain, nil)
+			tc2 := GetTCForAcrossKubernetes(ns2, "update-2", version, clusterDomain, tc1)
+			tc3 := GetTCForAcrossKubernetes(ns3, "update-3", version, clusterDomain, tc1)
+
+			ginkgo.By("Deploy the basic cluster-1 with empty cluster domain")
+			tc1.Spec.ClusterDomain = ""
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 5*time.Minute, 10*time.Second)
+
+			ginkgo.By("Update cluster domain of cluster-1")
+			err := controller.GuaranteedUpdate(genericCli, tc1, func() error {
+				tc1.Spec.ClusterDomain = defaultClusterDomain
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update cluster domain of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
+			err = oa.WaitForTidbClusterReady(tc1, 30*time.Minute, 30*time.Second)
+			framework.ExpectNoError(err, "failed to wait for cluster-1 ready: %s/%s", tc1.Namespace, tc1.Name)
+
+			localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, tc1.Namespace, fmt.Sprintf("svc/%s-pd", tc1.Name), 2379)
+			framework.ExpectNoError(err, "failed to port-forward pd server of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
+			defer cancel()
+
+			ginkgo.By("Update pd's peerURL of cluster-1")
+			pdAddr := fmt.Sprintf("%s:%d", localHost, localPort)
+			resp, err := pdutil.GetMembersV2(pdAddr)
+			framework.ExpectNoError(err, " failed to get pd members of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
+			for _, member := range resp.Members {
+				peerURLs := []string{}
+				for _, url := range member.PeerURLs {
+					// url ex: http://cluster-1-pd-0.cluster-1-pd-peer.default.svc:2380
+					fields := strings.Split(url, ":")
+					fields[1] = fmt.Sprintf("%s.%s", fields[1], clusterDomain)
+					peerURLs = append(peerURLs, strings.Join(fields, ":"))
+				}
+				err := pdutil.UpdateMembePeerURLs(pdAddr, member.ID, peerURLs)
+				framework.ExpectNoError(err, " failed to update peerURLs of pd members of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
+			}
+
+			ginkgo.By("Deploy the basic cluster-2")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 5*time.Minute, 10*time.Second)
+
+			ginkgo.By("Deploy the basic cluster-3")
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 5*time.Minute, 10*time.Second)
+
+			ginkgo.By("Deploy status of all clusters")
+			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
+			framework.ExpectNoError(err, "failed to check status")
 		})
 
 		ginkgo.It("Deploy cluster with TLS-enabled across kubernetes", func() {
