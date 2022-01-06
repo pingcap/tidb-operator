@@ -91,17 +91,8 @@ spec:
 
     ## List of environment variables to set in the container
     ## Note that the following env names cannot be used and will be overwritten by TiDB Operator builtin envs
-    ##   - NAMESPACE
-    ##   - TZ
-    ##   - SERVICE_NAME
-    ##   - PEER_SERVICE_NAME
     ##   - HEADLESS_SERVICE_NAME
-    ##   - SET_NAME
-    ##   - HOSTNAME
-    ##   - CLUSTER_NAME
     ##   - POD_NAME
-    ##   - BINLOG_ENABLED
-    ##   - SLOW_LOG_FILE
     ## Ref: https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/
     # env:
     # - name: MY_ENV_1
@@ -117,8 +108,6 @@ spec:
     #   node-role.kubernetes.io/ngm: true
 
     ## Tolerations are applied to ng monitoring pods, allowing (but do not require) pods to be scheduled onto nodes with matching taints.
-    ## This cluster-level `tolerations` only takes effect when no component-level `tolerations` are set.
-    ## e.g. if `pd.tolerations` is not empty, `tolerations` here will be ignored.
     ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
     # tolerations:
     #   - effect: NoSchedule
