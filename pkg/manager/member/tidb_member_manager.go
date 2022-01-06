@@ -266,7 +266,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 
 		tidbInitializerName := controller.TiDBInitializer(tc.Name)
-		tidbInitializer, err := m.deps.TiDBInitializerLister.TidbInitializers(ns).Get(tidbInitializerName)
+		_, err = m.deps.TiDBInitializerLister.TidbInitializers(ns).Get(tidbInitializerName)
 		isExistTidbInitializer := true
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -277,7 +277,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 		if !isExistTidbInitializer {
 			policy := corev1.PullIfNotPresent
-			tidbInitializer = &v1alpha1.TidbInitializer{
+			tidbInitializer := &v1alpha1.TidbInitializer{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("%s-init", tc.Name),
 					Namespace: tc.Namespace,
