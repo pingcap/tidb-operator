@@ -11747,8 +11747,6 @@ spec:
                   properties:
                     createPassword:
                       type: boolean
-                  required:
-                  - createPassword
                   type: object
                 labels:
                   additionalProperties:
@@ -17168,8 +17166,8 @@ spec:
                   type: object
                 image:
                   type: string
-                initPassword:
-                  type: boolean
+                initPasswordPhase:
+                  type: string
                 members:
                   additionalProperties:
                     properties:

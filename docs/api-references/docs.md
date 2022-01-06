@@ -6919,6 +6919,7 @@ Kubernetes core/v1.ResourceRequirements
 <h3 id="initializephase">InitializePhase</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#tidbstatus">TiDBStatus</a>, 
 <a href="#tidbinitializerstatus">TidbInitializerStatus</a>)
 </p>
 <p>
@@ -15198,9 +15199,11 @@ string
 </tr>
 <tr>
 <td>
-<code>initPassword</code></br>
+<code>initPasswordPhase</code></br>
 <em>
-bool
+<a href="#initializephase">
+InitializePhase
+</a>
 </em>
 </td>
 <td>

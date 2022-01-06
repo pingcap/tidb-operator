@@ -5594,6 +5594,11 @@ func (in *TiDBStatus) DeepCopyInto(out *TiDBStatus) {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
+	if in.InitPasswordPhase != nil {
+		in, out := &in.InitPasswordPhase, &out.InitPasswordPhase
+		*out = new(InitializePhase)
+		**out = **in
+	}
 	return
 }
 

@@ -41,7 +41,6 @@ import (
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -245,35 +244,38 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 	}
 	// set random password
-	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.InitPassword {
+	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && tc.Status.TiDB.InitPasswordPhase == nil {
 		// sync password secret
-		secretName := fmt.Sprintf("%s-secret", tc.Name)
-		passwordSecret := &corev1.Secret{}
-		exist, err := m.deps.TypedControl.Exist(client.ObjectKey{
-			Namespace: ns,
-			Name:      secretName,
-		}, passwordSecret)
+		secretName := controller.TiDBSecret(tc.Name)
+		_, err := m.deps.ServiceLister.Services(ns).Get(secretName)
+		isExistPasswordSecret := true
 		if err != nil {
-			return err
+			if errors.IsNotFound(err) {
+				isExistPasswordSecret = false
+			} else {
+				return err
+			}
 		}
-		if !exist {
+		if !isExistPasswordSecret {
 			klog.Infof("Create random password for cluster %s/%s", tc.Namespace, tc.Name)
 			secret := m.buildRandomPasswordSecret(tc)
-			_, err := m.deps.TypedControl.CreateOrUpdateSecret(tc, secret)
+			err := m.deps.TypedControl.Create(tc, secret)
 			if err != nil {
 				return err
 			}
 		}
-		tidbInitializer := &v1alpha1.TidbInitializer{}
-		tidbInitializerName := fmt.Sprintf("%s-init", tc.Name)
-		exist, err = m.deps.TypedControl.Exist(client.ObjectKey{
-			Namespace: tc.Namespace,
-			Name:      tidbInitializerName,
-		}, tidbInitializer)
+
+		tidbInitializerName := controller.TiDBInitializer(tc.Name)
+		tidbInitializer, err := m.deps.TiDBInitializerLister.TidbInitializers(ns).Get(tidbInitializerName)
+		isExistTidbInitializer := true
 		if err != nil {
-			return err
+			if errors.IsNotFound(err) {
+				isExistTidbInitializer = false
+			} else {
+				return err
+			}
 		}
-		if !exist {
+		if !isExistTidbInitializer {
 			policy := corev1.PullIfNotPresent
 			tidbInitializer = &v1alpha1.TidbInitializer{
 				ObjectMeta: metav1.ObjectMeta{
@@ -290,7 +292,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 					PasswordSecret: pointer.StringPtr(secretName),
 				},
 			}
-			_, err = m.deps.TypedControl.CreateOrUpdateTidbInitializer(tc, tidbInitializer)
+			err = m.deps.TypedControl.CreateTidbInitializer(tc, tidbInitializer)
 			if err != nil {
 				return err
 			}
@@ -299,12 +301,9 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 			if err != nil {
 				return err
 			}
-			if existInitializer.Status.Phase == v1alpha1.InitializePhaseCompleted {
-				tc.Status.TiDB.InitPassword = true
-			}
+			tc.Status.TiDB.InitPasswordPhase = &existInitializer.Status.Phase
 
 		}
-
 	}
 
 	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
