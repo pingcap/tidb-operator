@@ -116,7 +116,7 @@ var _ = ginkgo.Describe("[TiDBNGMonitoring]", func() {
 			ginkgo.By("Deploy tidb ng monitoring")
 			err := genericCli.Create(context.TODO(), tngm)
 			framework.ExpectNoError(err, "failed to create TidbNGMonitoring %s", locator)
-			err = oa.WaitForTiDBNGMonitoringReady(tngm, 1*time.Minute, 10*time.Second)
+			err = oa.WaitForTiDBNGMonitoringReady(tngm, 5*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbNGMonitoring %s components ready", locator)
 
 			localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, fmt.Sprintf("pod/%s-ng-monitoring-0", name), 12020)
@@ -144,6 +144,10 @@ var _ = ginkgo.Describe("[TiDBNGMonitoring]", func() {
 			err := tidbcluster.InstallTiDBIssuer(ns, name)
 			framework.ExpectNoError(err, "failed to install CA certificate")
 
+			ginkgo.By("Installing tidb server and client certificate")
+			err = tidbcluster.InstallTiDBCertificates(ns, name)
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
 			ginkgo.By("Install tidb cluster certificate")
 			framework.ExpectNoError(tidbcluster.InstallTiDBComponentsCertificates(ns, name), "failed to install TiDB server and client certificate")
 			<-time.After(30 * time.Second)
@@ -155,7 +159,7 @@ var _ = ginkgo.Describe("[TiDBNGMonitoring]", func() {
 			ginkgo.By("Deploy tidb ng monitoring")
 			err = genericCli.Create(context.TODO(), tngm)
 			framework.ExpectNoError(err, "failed to create TidbNGMonitoring %s", locator)
-			err = oa.WaitForTiDBNGMonitoringReady(tngm, 1*time.Minute, 10*time.Second)
+			err = oa.WaitForTiDBNGMonitoringReady(tngm, 5*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbNGMonitoring %s components ready", locator)
 
 			localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, fmt.Sprintf("pod/%s-ng-monitoring-0", name), 12020)
@@ -188,7 +192,7 @@ var _ = ginkgo.Describe("[TiDBNGMonitoring]", func() {
 			ginkgo.By("Deploy tidb ng monitoring")
 			err := genericCli.Create(context.TODO(), tngm)
 			framework.ExpectNoError(err, "failed to create TidbNGMonitoring %s", locator)
-			err = oa.WaitForTiDBNGMonitoringReady(tngm, 1*time.Minute, 10*time.Second)
+			err = oa.WaitForTiDBNGMonitoringReady(tngm, 5*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbNGMonitoring %q components ready", locator)
 
 			ginkgo.By("Update config of ngm")
@@ -200,7 +204,7 @@ var _ = ginkgo.Describe("[TiDBNGMonitoring]", func() {
 			})
 			framework.ExpectNoError(err, "failed to update config")
 			utiltngm.MustWaitForNGMPhase(cli, tngm, v1alpha1.UpgradePhase, 5*time.Minute, 2*time.Second)
-			err = oa.WaitForTiDBNGMonitoringReady(tngm, 1*time.Minute, 10*time.Second)
+			err = oa.WaitForTiDBNGMonitoringReady(tngm, 5*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbNGMonitoring %q components ready", locator)
 
 			ginkgo.By("Check config of ngm")

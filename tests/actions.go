@@ -3801,7 +3801,7 @@ func (oa *OperatorActions) ngmReadyFn(tngm *v1alpha1.TidbNGMonitoring) bool {
 	}
 
 	if tngm.Status.NGMonitoring.StatefulSet == nil {
-		log.Logf("TiDBNGMonitoring NGM %q: .Status.Master.StatefulSet is nil", tngmLocator)
+		log.Logf("TiDBNGMonitoring NGM %q: .Status.NGMonitoring.StatefulSet is nil", tngmLocator)
 		return false
 	}
 
