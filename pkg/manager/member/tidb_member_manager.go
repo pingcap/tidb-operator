@@ -257,7 +257,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 			return err
 		}
 		if !exist {
-			klog.Errorf("buildRandomPasswordSecret run")
+			klog.Infof("Create random password for cluster %s/%s", tc.Namespace, tc.Name)
 			secret := m.buildRandomPasswordSecret(tc)
 			_, err := m.deps.TypedControl.CreateOrUpdateSecret(tc, secret)
 			if err != nil {
