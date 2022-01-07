@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pd
+package tngm
 
 import (
 	"bytes"
@@ -21,19 +21,27 @@ import (
 	"net/http"
 )
 
-type Member struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	PeerURLs   []string `json:"peerURLs"`
-	ClientURLs []string `json:"clientURLs"`
+type NGMConprofConfig struct {
+	Enable               bool `json:"enable,omitempty"`
+	ProfileSeconds       int  `json:"profile_seconds,omitempty"`
+	IntervalSeconds      int  `json:"interval_seconds,omitempty"`
+	TimeoutSeconds       int  `json:"timeout_seconds,omitempty"`
+	DataRetentionSeconds int  `json:"data_retention_seconds,omitempty"`
 }
 
-type GetMembersResponse struct {
-	Members []Member `json:"members"`
+type NGMConfig struct {
+	Addr          string `json:"addr"`
+	AdvertiseAddr string `json:"advertise_addr"`
+
+	Conprof *NGMConprofConfig `json:"continuous_profiling,omitempty"`
 }
 
-func GetMembersV2(addr string) (*GetMembersResponse, error) {
-	url := fmt.Sprintf("http://%s/v2/members", addr)
+type ConfigureNGMReq struct {
+	Conprof *NGMConprofConfig `json:"continuous_profiling,omitempty"`
+}
+
+func GetConfig(addr string) (*NGMConfig, error) {
+	url := fmt.Sprintf("http://%s/config", addr)
 
 	httpResp, err := http.Get(url)
 	if err != nil {
@@ -50,27 +58,24 @@ func GetMembersV2(addr string) (*GetMembersResponse, error) {
 		return nil, fmt.Errorf("code %s msg %s", httpResp.Status, string(data))
 	}
 
-	resp := &GetMembersResponse{}
-	err = json.Unmarshal(data, resp)
+	config := &NGMConfig{}
+	err = json.Unmarshal(data, config)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal failed: %s", err)
 	}
 
-	return resp, nil
+	return config, nil
 }
 
-func UpdateMembePeerURLs(addr string, id string, peerURLs []string) error {
-	url := fmt.Sprintf("http://%s/v2/members/%s", addr, id)
+func SetConfig(addr string, req *ConfigureNGMReq) error {
+	url := fmt.Sprintf("http://%s/config", addr)
 
-	member := Member{
-		PeerURLs: peerURLs,
-	}
-	data, err := json.Marshal(member)
+	data, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("marshal failed %s", err)
 	}
 
-	httpReq, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(data))
+	httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("create req failed %s", err)
 	}
