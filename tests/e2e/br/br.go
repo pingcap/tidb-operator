@@ -502,7 +502,13 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, namespa
 		return err
 	}
 
-	return e2etc.CheckClusterDomainEffect(f.ExtClient, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
+	ginkgo.By("Check deploy status")
+	return wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+		if err := e2etc.CheckClusterDomainEffect(f.ExtClient, []*v1alpha1.TidbCluster{tc1, tc2, tc3}); err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 func GetTCForXK8s(ns, name, version, clusterDomain string, joinTC *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
