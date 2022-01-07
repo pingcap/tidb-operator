@@ -1,0 +1,39 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbNGMonitoring
+metadata:
+  name: basic
+spec:
+
+  ## tidb cluster to be monitored
+  ## ** now only support monitoring one tidb cluster **
+  clusters:
+  - name: basic
+
+  ###########################
+  # Components              #
+  ###########################
+
+  ngMonitoring:
+    ## describes the compute resource requirements and limits.
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    requests:
+    #   cpu: 1000m
+    #   memory: 1Gi
+      storage: 10Gi
+    # limits:
+    #   cpu: 2000m
+    #   memory: 2Gi
+
+    ## version of ng-monitoring
+    version: nightly
+    
+    ## Base image of the component
+    baseImage: pingcap/ng-monitoring
+
+    ## The storageClassName of the persistent volume for data storage.
+    # storageClassName: standard
+
+    ## ng-monitoring configuration
+    # config: |
+    #   [log]
+    #     level = "DEBUG"
