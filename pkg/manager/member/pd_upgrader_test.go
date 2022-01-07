@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	v1 "k8s.io/client-go/informers/apps/v1"
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -47,7 +48,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 
 	testFn := func(test *testcase) {
 		t.Log(test.name)
-		upgrader, pdControl, _, podInformer := newPDUpgrader()
+		upgrader, pdControl, _, podInformer, stsInformer := newPDUpgrader()
 		tc := newTidbClusterForPDUpgrader()
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 
@@ -79,8 +80,8 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			test.changeOldSet(oldSet)
 		}
 		mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
-
-		newSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(3)
+		stsInformer.Informer().GetIndexer().Add(oldSet)
+		//newSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(3)
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		test.errExpectFn(g, err)
@@ -101,7 +102,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
 		{
@@ -121,7 +121,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy).To(Equal(apps.StatefulSetUpdateStrategy{Type: apps.OnDeleteStatefulSetStrategyType}))
+
 			},
 		},
 		{
@@ -141,7 +141,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy).To(Equal(apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType}))
 			},
 		},
 		{
@@ -159,7 +158,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(3)))
 			},
 		},
 		{
@@ -178,7 +176,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.ScalePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(3)))
 			},
 		},
 		{
@@ -194,7 +191,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(3)))
 			},
 		},
 		{
@@ -210,7 +206,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
 			},
 		},
 		{
@@ -226,7 +221,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
 			},
 		},
 		{
@@ -241,7 +235,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(3)))
 			},
 		},
 		{
@@ -257,7 +250,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
 			},
 		},
 	}
@@ -268,13 +260,14 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 
 }
 
-func newPDUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
+func newPDUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer, v1.StatefulSetInformer) {
 	fakeDeps := controller.NewFakeDependencies()
 	pdUpgrader := &pdUpgrader{deps: fakeDeps}
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
 	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
 	podInformer := fakeDeps.KubeInformerFactory.Core().V1().Pods()
-	return pdUpgrader, pdControl, podControl, podInformer
+	stsInformer := fakeDeps.KubeInformerFactory.Apps().V1().StatefulSets()
+	return pdUpgrader, pdControl, podControl, podInformer, stsInformer
 }
 
 func newStatefulSetForPDUpgrader() *apps.StatefulSet {

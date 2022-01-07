@@ -43,6 +43,7 @@ func (u *pdUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 }
 
 func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	if !tc.Status.PD.Synced {
@@ -94,6 +95,7 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 			continue
 		}
 		klog.Infof("cwtest upgradePod:%s", pod.Name)
+		u.deps.Recorder.Event(tc, corev1.EventTypeNormal, fmt.Sprintf("PDUpgrade"), pod.Name)
 		return u.upgradePDPod(tc, pod1Ordinal, newSet)
 	}
 
@@ -205,6 +207,7 @@ func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSe
 				klog.Errorf("pd upgrader: failed to transfer pd leader to: %s, %v", targetName, err)
 				return err
 			}
+
 			klog.Infof("pd upgrader: transfer pd leader to: %s successfully", targetName)
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePdName, targetName)
 		}
