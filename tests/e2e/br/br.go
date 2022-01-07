@@ -30,6 +30,7 @@ import (
 	e2etc "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	utilginkgo "github.com/pingcap/tidb-operator/tests/e2e/util/ginkgo"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 
@@ -95,12 +96,17 @@ func (t *testcase) description() string {
 	if t.enableTLS {
 		builder.WriteString("[TLS]")
 	}
+	if t.enableXK8sMode {
+		builder.WriteString("[4352X-K8s TidbCluster]")
+	}
 
 	return builder.String()
 }
 
 var _ = ginkgo.Describe("Backup and Restore", func() {
 	f := e2eframework.NewFramework("br")
+
+	var namespaces []string
 
 	ginkgo.BeforeEach(func() {
 		accessKey := "12345678"
@@ -125,9 +131,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableTLS),
 		// latest version Dumper and enable TLS
 		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeDumper, enableTLS),
-		// BR with x-k8s tidbcluster
-		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableXK8sMode),
-		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableXK8sMode, enableTLS),
 	}
 	for _, prevVersion := range utilimage.TiDBPreviousVersions {
 		cases = append(cases,
@@ -161,11 +164,11 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 		if tcase.enableXK8sMode {
 			ginkgo.By("Create TiDB cluster for backup and wait ready")
-			err := createXK8sTidbClusterWithComponentsReady(f, backupClusterName, backupVersion, enableTLS)
+			err := createXK8sTidbClusterWithComponentsReady(f, namespaces, backupClusterName, backupVersion, enableTLS)
 			framework.ExpectNoError(err, "creating TiDB clsuter for backup")
 
 			ginkgo.By("Create TiDB cluster for restore and wait ready")
-			err = createXK8sTidbClusterWithComponentsReady(f, restoreClusterName, restoreVersion, enableTLS)
+			err = createXK8sTidbClusterWithComponentsReady(f, namespaces, restoreClusterName, restoreVersion, enableTLS)
 			framework.ExpectNoError(err, "creating TiDB clsuter for restore")
 		} else {
 			ginkgo.By("Create TiDB cluster for backup")
@@ -228,6 +231,44 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			brTest(tcase)
 		})
 	}
+
+	ginkgo.Context("By X-k8s TidbCluster", func() {
+		cases := []*testcase{
+			// BR with x-k8s tidbcluster
+			newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableXK8sMode),
+			newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableXK8sMode, enableTLS),
+		}
+
+		ginkgo.JustBeforeEach(func() {
+			namespaces = []string{f.Namespace.Name, f.Namespace.Name + "-1", f.Namespace.Name + "-2"}
+			// create all namespaces except framework's namespace
+			for _, ns := range namespaces[1:] {
+				ginkgo.By(fmt.Sprintf("Building namespace %s", ns))
+				_, existed, err := nsutil.CreateNamespaceIfNeeded(ns, f.ClientSet, nil)
+				framework.ExpectEqual(existed, false, fmt.Sprintf("namespace %s is existed", ns))
+				framework.ExpectNoError(err, fmt.Sprintf("failed to create namespace %s", ns))
+			}
+		})
+
+		ginkgo.AfterEach(func() {
+			// delete all namespaces if needed except framework's namespace
+			if framework.TestContext.DeleteNamespace && (framework.TestContext.DeleteNamespaceOnFailure || !ginkgo.CurrentGinkgoTestDescription().Failed) {
+				for _, ns := range namespaces[1:] {
+					ginkgo.By(fmt.Sprintf("Destroying namespace %s", ns))
+					_, err := nsutil.DeleteNamespace(ns, f.ClientSet)
+					framework.ExpectNoError(err, fmt.Sprintf("failed to create namespace %s", ns))
+				}
+			}
+		})
+
+		for i := range cases {
+			tcase := cases[i]
+			ginkgo.It(tcase.description(), func() {
+				brTest(tcase)
+			})
+		}
+
+	})
 
 	utilginkgo.ContextWhenFocus("Specific Version", func() {
 		cases := []*testcase{
@@ -347,8 +388,8 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 	return nil
 }
 
-func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, name string, version string, enableTLS bool) error {
-	ns1, ns2, ns3 := f.Namespace.Name, f.Namespace.Name+"-1", f.Namespace.Name+"-2"
+func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, namespaces []string, name string, version string, enableTLS bool) error {
+	ns1, ns2, ns3 := namespaces[0], namespaces[1], namespaces[2]
 	clusterDomain := "cluster.local"
 	tc1 := GetTCForXK8s(ns1, name, version, clusterDomain, nil)
 	tc2 := GetTCForXK8s(ns2, name, version, clusterDomain, tc1)
@@ -434,18 +475,17 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, name st
 		tc3.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 	}
 
-	ginkgo.By("Creating tidb clusters with TLS enabled")
-	err := f.GenericClient.Create(context.TODO(), tc1)
-	if err != nil {
+	ginkgo.By(fmt.Sprintf("Creating tidb cluster in %s", ns1))
+	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns1).Create(context.TODO(), tc1, metav1.CreateOptions{}); err != nil {
 		return err
 	}
-	err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns1, name, tidbReadyTimeout, 0)
+	err := utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns1, name, tidbReadyTimeout, 0)
 	if err != nil {
 		return err
 	}
 
-	err = f.GenericClient.Create(context.TODO(), tc2)
-	if err != nil {
+	ginkgo.By(fmt.Sprintf("Creating tidb cluster in %s", ns2))
+	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns2).Create(context.TODO(), tc2, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns2, name, tidbReadyTimeout, 0)
@@ -453,8 +493,8 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, name st
 		return err
 	}
 
-	err = f.GenericClient.Create(context.TODO(), tc3)
-	if err != nil {
+	ginkgo.By(fmt.Sprintf("Creating tidb cluster in %s", ns3))
+	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns3).Create(context.TODO(), tc3, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns3, name, tidbReadyTimeout, 0)
