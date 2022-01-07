@@ -1085,7 +1085,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to install dashboard client certificate")
 
 			ginkgo.By("Installing tidb components certificates")
-			err = installTiDBComponentsCertificates(ns, tcName)
+			err = InstallTiDBComponentsCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster with TLS enabled")
@@ -1266,7 +1266,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to install separate dashboard client certificate")
 
 			ginkgo.By("Installing tidb components certificates")
-			err = installTiDBComponentsCertificates(ns, tcName)
+			err = InstallTiDBComponentsCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb components certificates")
 			err = installHeterogeneousTiDBComponentsCertificates(ns, heterogeneousTcName, tcName)
 			framework.ExpectNoError(err, "failed to install heterogeneous tidb components certificates")
