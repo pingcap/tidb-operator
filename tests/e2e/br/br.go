@@ -42,7 +42,7 @@ import (
 )
 
 var (
-	tidbReadyTimeout       = time.Minute * 7
+	tidbReadyTimeout       = time.Minute * 15
 	backupCompleteTimeout  = time.Minute * 7
 	restoreCompleteTimeout = time.Minute * 7
 )
@@ -97,7 +97,7 @@ func (t *testcase) description() string {
 		builder.WriteString("[TLS]")
 	}
 	if t.enableXK8sMode {
-		builder.WriteString("[4352X-K8s TidbCluster]")
+		builder.WriteString("[X-K8s TidbCluster]")
 	}
 
 	return builder.String()
