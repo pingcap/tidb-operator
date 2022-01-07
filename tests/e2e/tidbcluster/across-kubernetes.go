@@ -240,42 +240,6 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "failed to check status")
 		})
 
-		ginkgo.It("Join: cluster-2 join cluster-1 and cluster-3 join cluster-2 after cluster-1 failed", func() {
-			ns1, ns2, ns3 := namespaces[0], namespaces[1], namespaces[2]
-			tc1 := GetTCForAcrossKubernetes(ns1, "cluster-1", version, clusterDomain, nil)
-			tc2 := GetTCForAcrossKubernetes(ns2, "cluster-2-join-1", version, clusterDomain, tc1)
-			tc3 := GetTCForAcrossKubernetes(ns3, "cluster-3-join-2", version, clusterDomain, tc2)
-
-			ginkgo.By("Deploy cluster-1")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 10*time.Second)
-
-			ginkgo.By("Deploy cluster-2 and join cluster-1")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc2, 10*time.Minute, 10*time.Second)
-
-			ginkgo.By("Check deploy status")
-			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2})
-			framework.ExpectNoError(err, "failed to check status")
-
-			ginkgo.By("Deleting cluster-1 by deleting ns")
-			err = c.CoreV1().Namespaces().Delete(context.TODO(), ns1, metav1.DeleteOptions{})
-			framework.ExpectNoError(err, "deleting namespsace %q", ns1)
-			err = wait.PollImmediate(10*time.Second, 5*time.Minute, func() (bool, error) {
-				_, err = c.CoreV1().Namespaces().Get(context.TODO(), ns1, metav1.GetOptions{})
-				if apierrors.IsNotFound(err) {
-					return true, nil
-				}
-				return false, nil
-			})
-			framework.ExpectNoError(err, "waiting namespsace %q to be deleted", ns1)
-
-			ginkgo.By("Deploy cluster-3 and join cluster-2")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 10*time.Second)
-
-			ginkgo.By("Check deploy status")
-			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc2, tc3})
-			framework.ExpectNoError(err, "failed to check status")
-		})
-
 		ginkgo.It("Join cluster with existing data", func() {
 			ns1, ns2, ns3 := namespaces[0], namespaces[1], namespaces[2]
 
