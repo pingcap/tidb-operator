@@ -24,7 +24,7 @@ spec:
       cpu: 100m
       storage: "1Gi"
     config: {}
-    IsEnableIntelligentOperation: true
+    isEnableIntelligentOperation: true
   tikv:
     baseImage: pingcap/tikv
     maxFailoverCount: 0
