@@ -2653,6 +2653,8 @@ spec:
               type: boolean
             pd:
               properties:
+                IsEnableIntelligentOperation:
+                  type: boolean
                 additionalContainers:
                   items:
                     properties:

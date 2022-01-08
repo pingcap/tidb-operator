@@ -243,7 +243,6 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	}
 
 	if !templateEqual(newPDSet, oldPDSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-
 		if err := m.upgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
 		}
@@ -513,8 +512,14 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 }
 
 func (m *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if mngerutils.PDStatefulSetIsUpgrading(set) {
-		return true, nil
+	if tc.Spec.PD.IsEnableIntelligentOperation != nil && *tc.Spec.PD.IsEnableIntelligentOperation {
+		if mngerutils.PDStatefulSetIsUpgrading(set) {
+			return true, nil
+		}
+	} else {
+		if mngerutils.StatefulSetIsUpgrading(set) {
+			return true, nil
+		}
 	}
 	instanceName := tc.GetInstanceName()
 	selector, err := label.New().
@@ -534,11 +539,9 @@ func (m *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1
 			return false, nil
 		}
 		if revisionHash != tc.Status.PD.StatefulSet.UpdateRevision {
-			klog.Infof("test:%s,%s,%s", pod.Name, revisionHash, tc.Status.PD.StatefulSet.UpdateRevision)
 			return true, nil
 		}
 	}
-	klog.Infof("cwtestxxx")
 	return false, nil
 }
 

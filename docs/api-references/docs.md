@@ -10165,6 +10165,18 @@ bool
 <p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>IsEnableIntelligentOperation</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IsEnableIntelligentOperation is enable intelligent operation</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>

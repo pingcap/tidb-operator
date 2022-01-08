@@ -438,6 +438,10 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
+	// IsEnableIntelligentOperation is enable intelligent operation
+	// +optional
+	IsEnableIntelligentOperation *bool `json:"IsEnableIntelligentOperation,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members

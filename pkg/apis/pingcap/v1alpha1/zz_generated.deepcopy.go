@@ -3543,6 +3543,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.IsEnableIntelligentOperation != nil {
+		in, out := &in.IsEnableIntelligentOperation, &out.IsEnableIntelligentOperation
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
