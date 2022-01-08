@@ -2644,6 +2644,8 @@ spec:
                       type: string
                   type: object
                 type: array
+              isEnableIntelligentOperation:
+                type: boolean
               labels:
                 additionalProperties:
                   type: string
@@ -4790,8 +4792,6 @@ spec:
                       - name
                       type: object
                     type: array
-                  isEnableIntelligentOperation:
-                    type: boolean
                   labels:
                     additionalProperties:
                       type: string

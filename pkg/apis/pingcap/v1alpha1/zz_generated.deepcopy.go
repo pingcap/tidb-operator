@@ -3543,11 +3543,6 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.IsEnableIntelligentOperation != nil {
-		in, out := &in.IsEnableIntelligentOperation, &out.IsEnableIntelligentOperation
-		*out = new(bool)
-		**out = **in
-	}
 	return
 }
 
@@ -8330,6 +8325,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		in, out := &in.TopologySpreadConstraints, &out.TopologySpreadConstraints
 		*out = make([]TopologySpreadConstraint, len(*in))
 		copy(*out, *in)
+	}
+	if in.IsEnableIntelligentOperation != nil {
+		in, out := &in.IsEnableIntelligentOperation, &out.IsEnableIntelligentOperation
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }

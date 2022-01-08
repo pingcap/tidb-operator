@@ -48,6 +48,7 @@ spec:
         max-open-files: 256
       raftdb:
         max-open-files: 256
+    isEnableIntelligentOperation: true
   tidb:
     baseImage: pingcap/tidb
     maxFailoverCount: 0

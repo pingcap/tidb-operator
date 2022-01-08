@@ -509,7 +509,7 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 }
 
 func (m *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if tc.Spec.PD.IsEnableIntelligentOperation != nil && *tc.Spec.PD.IsEnableIntelligentOperation {
+	if tc.Spec.IsEnableIntelligentOperation != nil && *tc.Spec.IsEnableIntelligentOperation {
 		if mngerutils.PDStatefulSetIsUpgrading(set) {
 			return true, nil
 		}
@@ -764,7 +764,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	podSpec.InitContainers = append(initContainers, basePDSpec.InitContainers()...)
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if tc.Spec.PD.IsEnableIntelligentOperation != nil && *tc.Spec.PD.IsEnableIntelligentOperation {
+	if tc.Spec.IsEnableIntelligentOperation != nil && *tc.Spec.IsEnableIntelligentOperation {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 
 	} else {

@@ -310,6 +310,10 @@ type TidbClusterSpec struct {
 	// +listType=map
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// IsEnableIntelligentOperation is enable intelligent operation
+	// +optional
+	IsEnableIntelligentOperation *bool `json:"isEnableIntelligentOperation,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -438,10 +442,6 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
-
-	// IsEnableIntelligentOperation is enable intelligent operation
-	// +optional
-	IsEnableIntelligentOperation *bool `json:"isEnableIntelligentOperation,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
