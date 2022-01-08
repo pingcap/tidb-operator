@@ -305,13 +305,10 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 
 	// Scaling takes precedence over upgrading.
 	if tc.PDStsDesiredReplicas() != *set.Spec.Replicas {
-		klog.Errorf("test1")
 		tc.Status.PD.Phase = v1alpha1.ScalePhase
 	} else if upgrading {
-		klog.Errorf("test2")
 		tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	} else {
-		klog.Errorf("test3")
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 	}
 
@@ -692,7 +689,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	podAnnotations := util.CombineStringMap(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
 
-	//deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
 	if err != nil {
 		return nil, fmt.Errorf("get delete slots number of statefulset %s/%s failed, err:%v", ns, setName, err)
 	}
@@ -766,7 +763,20 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, basePDSpec.InitContainers()...)
 
-	updateStrategy := apps.StatefulSetUpdateStrategy{Type: apps.OnDeleteStatefulSetStrategyType}
+	updateStrategy := apps.StatefulSetUpdateStrategy{}
+	if tc.Spec.PD.IsEnableIntelligentOperation != nil && *tc.Spec.PD.IsEnableIntelligentOperation {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+
+	} else {
+		if basePDSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+			updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+		} else {
+			updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+			updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+				Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas() + deleteSlotsNumber),
+			}
+		}
+	}
 
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

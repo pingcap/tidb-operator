@@ -481,5 +481,10 @@ func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, er
 }
 
 func SplitRevision(test string) string {
-	return strings.Split(test, "-")[2]
+	splitStr := strings.Split(test, "-")
+	if len(splitStr) >= 3 {
+		return splitStr[2]
+	} else {
+		return ""
+	}
 }

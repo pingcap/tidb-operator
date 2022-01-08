@@ -17,10 +17,11 @@ spec:
   pd:
     baseImage: pingcap/pd
     maxFailoverCount: 0
-    replicas: 1
+    replicas: 3
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
+      cpu: 50m
       storage: "1Gi"
     config: {}
   tikv:
@@ -34,6 +35,7 @@ spec:
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
+      cpu: 100m
       storage: "1Gi"
     config:
       storage:
@@ -48,6 +50,9 @@ spec:
   tidb:
     baseImage: pingcap/tidb
     maxFailoverCount: 0
+    requests:
+      cpu: 100m
+      storage: "1Gi"
     replicas: 1
     service:
       type: ClusterIP
