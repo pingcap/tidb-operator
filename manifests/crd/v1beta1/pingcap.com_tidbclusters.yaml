@@ -2653,8 +2653,6 @@ spec:
               type: boolean
             pd:
               properties:
-                IsEnableIntelligentOperation:
-                  type: boolean
                 additionalContainers:
                   items:
                     properties:
@@ -4786,6 +4784,8 @@ spec:
                     - name
                     type: object
                   type: array
+                isEnableIntelligentOperation:
+                  type: boolean
                 labels:
                   additionalProperties:
                     type: string

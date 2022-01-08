@@ -21,9 +21,10 @@ spec:
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
-      cpu: 50m
+      cpu: 100m
       storage: "1Gi"
     config: {}
+    IsEnableIntelligentOperation: true
   tikv:
     baseImage: pingcap/tikv
     maxFailoverCount: 0

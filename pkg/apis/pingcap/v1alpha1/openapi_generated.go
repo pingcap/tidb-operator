@@ -5117,7 +5117,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
-					"IsEnableIntelligentOperation": {
+					"isEnableIntelligentOperation": {
 						SchemaProps: spec.SchemaProps{
 							Description: "IsEnableIntelligentOperation is enable intelligent operation",
 							Type:        []string{"boolean"},

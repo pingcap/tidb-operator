@@ -10167,7 +10167,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>IsEnableIntelligentOperation</code></br>
+<code>isEnableIntelligentOperation</code></br>
 <em>
 bool
 </em>

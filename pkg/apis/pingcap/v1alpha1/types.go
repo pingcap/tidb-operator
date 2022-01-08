@@ -441,7 +441,7 @@ type PDSpec struct {
 
 	// IsEnableIntelligentOperation is enable intelligent operation
 	// +optional
-	IsEnableIntelligentOperation *bool `json:"IsEnableIntelligentOperation,omitempty"`
+	IsEnableIntelligentOperation *bool `json:"isEnableIntelligentOperation,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
