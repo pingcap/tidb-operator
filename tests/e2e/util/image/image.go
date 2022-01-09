@@ -55,6 +55,7 @@ const (
 	DMV2                          = TiDBLatest
 	DMMonitorInitializerImage     = "pingcap/dm-monitor-initializer"
 	DMMonitorInitializerVersion   = DMV2
+	TiDBNGMonitoringLatest        = "v5.4.0-pre" // TODO: change it after release
 )
 
 func ListImages() []string {
