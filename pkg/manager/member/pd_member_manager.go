@@ -509,8 +509,14 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 }
 
 func (m *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if mngerutils.StatefulSetIsUpgrading(set) {
-		return true, nil
+	if tc.IsEnableIntelligentOperation() {
+		if mngerutils.NewStatefulSetIsUpgrading(set) {
+			return true, nil
+		}
+	} else {
+		if mngerutils.StatefulSetIsUpgrading(set) {
+			return true, nil
+		}
 	}
 	instanceName := tc.GetInstanceName()
 	selector, err := label.New().
@@ -758,12 +764,17 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	podSpec.InitContainers = append(initContainers, basePDSpec.InitContainers()...)
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if basePDSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+	if tc.Spec.IsEnableIntelligentOperation != nil && *tc.Spec.IsEnableIntelligentOperation {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+
 	} else {
-		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
-		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas() + deleteSlotsNumber),
+		if basePDSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+			updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+		} else {
+			updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+			updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+				Partition: pointer.Int32Ptr(tc.PDStsDesiredReplicas() + deleteSlotsNumber),
+			}
 		}
 	}
 

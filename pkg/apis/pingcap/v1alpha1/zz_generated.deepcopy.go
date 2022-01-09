@@ -8326,6 +8326,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		*out = make([]TopologySpreadConstraint, len(*in))
 		copy(*out, *in)
 	}
+	if in.IsEnableIntelligentOperation != nil {
+		in, out := &in.IsEnableIntelligentOperation, &out.IsEnableIntelligentOperation
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 

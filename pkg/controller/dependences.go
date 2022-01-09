@@ -16,6 +16,7 @@ package controller
 import (
 	"flag"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -216,6 +217,9 @@ type Dependencies struct {
 
 	// Controls
 	Controls
+
+	//Metric Cache
+	MetricCache *metrics.MetricCache
 }
 
 func newRealControls(
@@ -311,8 +315,11 @@ func newDependencies(
 	} else {
 		ingv1beta1Lister = kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister()
 	}
+	// new metric cache
+	promCache := metrics.NewPromCache()
 
 	return &Dependencies{
+		MetricCache:                    promCache,
 		CLIConfig:                      cliCfg,
 		InformerFactory:                informerFactory,
 		Clientset:                      clientset,

@@ -177,7 +177,7 @@ helm_template_args=(
     --set-string controllerManager.logLevel=4
     --set-string scheduler.logLevel=4
 )
- 
+
 $HELM_BIN template tidb-operator-dev ./charts/tidb-operator/ ${helm_template_args[@]} | kubectl -n "$NAMESPACE" apply -f  -
 
 deploys=(

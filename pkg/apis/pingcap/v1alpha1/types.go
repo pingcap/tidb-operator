@@ -310,6 +310,10 @@ type TidbClusterSpec struct {
 	// +listType=map
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// IsEnableIntelligentOperation is enable intelligent operation
+	// +optional
+	IsEnableIntelligentOperation *bool `json:"isEnableIntelligentOperation,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.

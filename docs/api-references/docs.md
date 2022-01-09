@@ -1821,6 +1821,18 @@ This field is is only honored by clusters that enables the EvenPodsSpread featur
 All topologySpreadConstraints are ANDed.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>isEnableIntelligentOperation</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IsEnableIntelligentOperation is enable intelligent operation</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -21160,6 +21172,18 @@ Kubernetes core/v1.PodSecurityContext
 domains. Scheduler will schedule pods in a way which abides by the constraints.
 This field is is only honored by clusters that enables the EvenPodsSpread feature.
 All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>isEnableIntelligentOperation</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IsEnableIntelligentOperation is enable intelligent operation</p>
 </td>
 </tr>
 </tbody>

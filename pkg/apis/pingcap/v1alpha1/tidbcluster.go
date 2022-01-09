@@ -915,3 +915,7 @@ func (tc *TidbCluster) TiCDCLogLevel() string {
 func (tc *TidbCluster) HeterogeneousWithoutLocalPD() bool {
 	return tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 && tc.Spec.PD == nil
 }
+
+func (tc *TidbCluster) IsEnableIntelligentOperation() bool {
+	return tc.Spec.IsEnableIntelligentOperation != nil && *tc.Spec.IsEnableIntelligentOperation
+}

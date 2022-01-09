@@ -125,7 +125,7 @@ func PdPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), ordinal)
 }
 
-func tidbPodName(tcName string, ordinal int32) string {
+func TidbPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
 }
 
@@ -478,4 +478,46 @@ func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, er
 		}
 	}
 	return 0, ErrNotFoundStoreID
+}
+
+func SplitRevision(test string) string {
+	splitStr := strings.Split(test, "-")
+	if len(splitStr) >= 3 {
+		return splitStr[2]
+	} else {
+		return ""
+	}
+}
+
+func GetPodsToUpgrade(deps *controller.Dependencies, set *apps.StatefulSet) ([]*corev1.Pod, error) {
+	sts, err := deps.StatefulSetLister.StatefulSets(set.Namespace).Get(set.Name)
+	if err != nil {
+		return nil, err
+	}
+	var replica int32
+	if sts.Spec.Replicas != nil {
+		replica = *sts.Spec.Replicas
+	} else {
+		replica = 0
+	}
+	// get upgrade pods
+	var toUpgrade []*corev1.Pod
+	for idx := replica - 1; idx >= 0; idx-- {
+		// Do we need to upgrade that pod?
+		podName := fmt.Sprintf("%s-%d", sts.Name, idx)
+		pod, err := deps.PodLister.Pods(sts.Namespace).Get(podName)
+		if err != nil && !errors.IsNotFound(err) {
+			break
+		}
+		if err != nil && errors.IsNotFound(err) {
+			// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
+			continue
+		}
+
+		if sts.Status.UpdateRevision != pod.Labels["controller-revision-hash"] {
+			toUpgrade = append(toUpgrade, pod)
+		}
+	}
+
+	return toUpgrade, nil
 }

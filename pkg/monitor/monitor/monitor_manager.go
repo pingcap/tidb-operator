@@ -107,6 +107,15 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			klog.Errorf("Fail to sync TiDB Dashboard metrics config for TiDB cluster [%s/%s], error: %v", tc.Namespace, tc.Name, err)
 			continue
 		}
+		if tc.IsEnableIntelligentOperation() {
+			// sync metrics data
+			err := m.syncMetrics(tc, monitor)
+			if err != nil {
+				klog.Errorf("Fail to sync tc[%s/%s],tm[%s/%s]'s metric, err: %v", tc.Namespace, tc.Name, monitor.Namespace, monitor.Name, err)
+				return err
+			}
+
+		}
 	}
 
 	var firstDc *v1alpha1.DMCluster
@@ -179,6 +188,20 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 
+	return nil
+}
+
+func (m *MonitorManager) syncMetrics(tc *v1alpha1.TidbCluster, tm *v1alpha1.TidbMonitor) error {
+	err := m.deps.MetricCache.SyncTiKVFlowByte(fmt.Sprintf("%s-%s", tc.Namespace, tc.Name), fmt.Sprintf("%s.%s.svc:9090", PrometheusName(tm.Name, 0), tm.Namespace))
+	if err != nil {
+		klog.Errorf("Fail to sync tm[%s/%s]'s tc[%s/%s] TiKVWritingByte metric, err: %v", tm.Namespace, tm.Name, tc.Namespace, tc.Name, err)
+		return err
+	}
+	err = m.deps.MetricCache.SyncTiDBQPS(fmt.Sprintf("%s-%s", tc.Namespace, tc.Name), fmt.Sprintf("%s.%s.svc:9090", PrometheusName(tm.Name, 0), tm.Namespace))
+	if err != nil {
+		klog.Errorf("Fail to sync tm[%s/%s]'s tc[%s/%s] TiDBQPS metric, err: %v", tm.Namespace, tm.Name, tc.Namespace, tc.Name, err)
+		return err
+	}
 	return nil
 }
 

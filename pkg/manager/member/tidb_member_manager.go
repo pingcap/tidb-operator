@@ -798,13 +798,18 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if baseTiDBSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+	if tc.Spec.IsEnableIntelligentOperation != nil && *tc.Spec.IsEnableIntelligentOperation {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
-		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
-		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas() + deleteSlotsNumber),
+		if baseTiDBSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+			updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+		} else {
+			updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+			updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+				Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas() + deleteSlotsNumber),
+			}
 		}
+
 	}
 
 	tidbSet := &apps.StatefulSet{
@@ -842,7 +847,9 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 
 	tc.Status.TiDB.StatefulSet = &set.Status
+	if tc.IsEnableIntelligentOperation() {
 
+	}
 	upgrading, err := m.tidbStatefulSetIsUpgradingFn(m.deps.PodLister, set, tc)
 	if err != nil {
 		return err
@@ -899,8 +906,14 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 }
 
 func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if mngerutils.StatefulSetIsUpgrading(set) {
-		return true, nil
+	if tc.IsEnableIntelligentOperation() {
+		if mngerutils.NewStatefulSetIsUpgrading(set) {
+			return true, nil
+		}
+	} else {
+		if mngerutils.StatefulSetIsUpgrading(set) {
+			return true, nil
+		}
 	}
 	selector, err := label.New().
 		Instance(tc.GetInstanceName()).

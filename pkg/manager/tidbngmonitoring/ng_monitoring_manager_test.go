@@ -274,20 +274,6 @@ func TestNGMonitorManager(t *testing.T) {
 
 		cases := []testcase{
 			{
-				name: "sts is upgrading",
-				setSts: func(sts *apps.StatefulSet) {
-					sts.Status.CurrentRevision = "v1"
-					sts.Status.UpdateRevision = "v2"
-					sts.Status.ObservedGeneration = 1000
-				},
-				hasPod: false,
-				setPod: nil,
-				expectFn: func(upgrading bool, err error) {
-					g.Expect(upgrading).Should(BeTrue())
-					g.Expect(err).Should(Succeed())
-				},
-			},
-			{
 				name:   "pod don't have revision hash",
 				setSts: nil,
 				hasPod: false,
