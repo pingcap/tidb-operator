@@ -44,6 +44,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/manager/tidbngmonitoring"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
@@ -3745,6 +3746,78 @@ func (oa *OperatorActions) WaitForDmClusterDeleted(ns, dcName string, timeout, p
 		return checkErr
 	}
 	return err
+}
+
+func (oa *OperatorActions) WaitForTiDBNGMonitoringReady(tngm *v1alpha1.TidbNGMonitoring, timeout, pollInterval time.Duration) error {
+	var checkErr error
+
+	err := wait.PollImmediate(pollInterval, timeout, func() (done bool, err error) {
+		ns := tngm.Namespace
+		name := tngm.Name
+		locator := fmt.Sprintf("%s/%s", tngm.Namespace, tngm.Name)
+
+		local, err := oa.cli.PingcapV1alpha1().TidbNGMonitorings(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			checkErr = fmt.Errorf("get tngm %q failed: %s", locator, err)
+			return false, nil
+		}
+
+		if ready := oa.ngmReadyFn(local); !ready {
+			checkErr = fmt.Errorf("ng monitoring is not ready for tngm %q", locator)
+			return false, nil
+		}
+
+		log.Logf("TiDBNGMonitoring %q: all components are ready", locator)
+		return true, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = checkErr
+	}
+
+	return err
+}
+
+func (oa *OperatorActions) ngmReadyFn(tngm *v1alpha1.TidbNGMonitoring) bool {
+	ns := tngm.Namespace
+	name := tngm.Name
+	tngmLocator := fmt.Sprintf("%s/%s", tngm.Namespace, tngm.Name)
+	stsName := tidbngmonitoring.NGMonitoringName(name)
+	stsLocator := fmt.Sprintf("%s/%s", tngm.Namespace, stsName)
+
+	sts, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
+	if err != nil {
+		log.Logf("TiDBNGMonitoring NGM Sts %q: get sts failed: %s", stsLocator, err)
+		return false
+	}
+
+	if sts.Status.CurrentRevision != sts.Status.UpdateRevision {
+		log.Logf("TiDBNGMonitoring NGM Sts %q: CurrentRevision(%s) != UpdateRevision(%s)", stsLocator, sts.Status.CurrentRevision, sts.Status.UpdateRevision)
+		return false
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), sts) {
+		return false
+	}
+
+	if tngm.Status.NGMonitoring.StatefulSet == nil {
+		log.Logf("TiDBNGMonitoring NGM %q: .Status.NGMonitoring.StatefulSet is nil", tngmLocator)
+		return false
+	}
+
+	c, found := getStsContainer(oa.kubeCli, sts, v1alpha1.NGMonitoringMemberType.String())
+	if !found {
+		log.Logf("TiDBNGMonitoring NGM Sts %q: not found containers %q", stsLocator, v1alpha1.NGMonitoringMemberType.String())
+		return false
+	}
+
+	if tngm.NGMonitoringImage() != c.Image {
+		log.Logf("iDBNGMonitoring NGM Sts %q: container image(%s) != %s", stsLocator, c.Image, tngm.NGMonitoringImage())
+		return false
+	}
+
+	log.Logf("iDBNGMonitoring NGM %q: ngm monitoring is ready", tngmLocator)
+	return true
 }
 
 var dummyCancel = func() {}
