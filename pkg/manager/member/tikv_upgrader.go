@@ -15,6 +15,9 @@ package member
 
 import (
 	"fmt"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	"sort"
 	"strconv"
 	"time"
 
@@ -97,60 +100,142 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	if status.StatefulSet.UpdateRevision == status.StatefulSet.CurrentRevision {
 		return nil
 	}
-
-	if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
-		// Manually bypass tidb-operator to modify statefulset directly, such as modify tikv statefulset's RollingUpdate strategy to OnDelete strategy,
-		// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
-		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading tikv.
-		// Therefore, in the production environment, we should try to avoid modifying the tikv statefulset update strategy directly.
-		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
-		klog.Warningf("tidbcluster: [%s/%s] tikv statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
-		return nil
-	}
-
-	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
-	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
-		i := podOrdinals[_i]
-		store := getStoreByOrdinal(meta.GetName(), *status, i)
-		if store == nil {
-			mngerutils.SetUpgradePartition(newSet, i)
-			continue
-		}
-		podName := TikvPodName(tcName, i)
-		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
+	if tc.IsEnableIntelligentOperation() {
+		//get need to upgrade pod list
+		pods, err := GetPodsToUpgrade(u.deps, oldSet)
 		if err != nil {
-			return fmt.Errorf("tikvUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
-		}
-		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
-		if !exist {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
+			return err
 		}
 
-		if revision == status.StatefulSet.UpdateRevision {
+		// sort candidates
+		sortedCandidates := u.sortCandidates(pods)
 
-			if !podutil.IsPodReady(pod) {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
-			}
-			if store.State != v1alpha1.TiKVStateUp {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
+		//predicate nodes
+
+		for _, candidate := range sortedCandidates {
+			podName := candidate.Name
+			pod1Ordinal, err := util.GetOrdinalFromPodName(podName)
+			i := pod1Ordinal
+			store := getStoreByOrdinal(meta.GetName(), *status, i)
+
+			if store == nil {
+				pod, err := u.deps.PodLister.Pods(ns).Get(podName)
+				if err != nil && !errors.IsNotFound(err) {
+					return fmt.Errorf("tikv upgrade[get pod]: failed to upgrade tikv %s/%s for tc %s/%s, error: %s", ns, podName, ns, tcName, err)
+				}
+				if pod != nil {
+					if pod.DeletionTimestamp == nil {
+						if err := u.deps.PodControl.DeletePod(tc, pod); err != nil {
+							return err
+						}
+					}
+				} else {
+					klog.Infof("tikv upgrade: get pod %s/%s not found, skip", ns, podName)
+				}
+				continue
 			}
 
-			// If pods recreated successfully, endEvictLeader for the store on this Pod.
-			storeID, err := strconv.ParseUint(store.ID, 10, 64)
+			pod, err := u.deps.PodLister.Pods(ns).Get(podName)
 			if err != nil {
-				return err
+				return fmt.Errorf("tikvUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 			}
-			if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
-				return err
+			revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+			if !exist {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 			}
-			continue
+
+			if revision == status.StatefulSet.UpdateRevision {
+
+				if !podutil.IsPodReady(pod) {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
+				}
+				if store.State != v1alpha1.TiKVStateUp {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
+				}
+
+				// If pods recreated successfully, endEvictLeader for the store on this Pod.
+				storeID, err := strconv.ParseUint(store.ID, 10, 64)
+				if err != nil {
+					return err
+				}
+				if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
+					return err
+				}
+				continue
+			}
+
+			return u.upgradeTiKVPod(tc, i, newSet)
 		}
 
-		return u.upgradeTiKVPod(tc, i, newSet)
+	} else {
+		if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
+			// Manually bypass tidb-operator to modify statefulset directly, such as modify tikv statefulset's RollingUpdate strategy to OnDelete strategy,
+			// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
+			// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading tikv.
+			// Therefore, in the production environment, we should try to avoid modifying the tikv statefulset update strategy directly.
+			newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
+			klog.Warningf("tidbcluster: [%s/%s] tikv statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
+			return nil
+		}
+
+		mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+		podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
+		for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
+			i := podOrdinals[_i]
+			store := getStoreByOrdinal(meta.GetName(), *status, i)
+			if store == nil {
+				mngerutils.SetUpgradePartition(newSet, i)
+				continue
+			}
+			podName := TikvPodName(tcName, i)
+			pod, err := u.deps.PodLister.Pods(ns).Get(podName)
+			if err != nil {
+				return fmt.Errorf("tikvUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
+			}
+			revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+			if !exist {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
+			}
+
+			if revision == status.StatefulSet.UpdateRevision {
+
+				if !podutil.IsPodReady(pod) {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
+				}
+				if store.State != v1alpha1.TiKVStateUp {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
+				}
+
+				// If pods recreated successfully, endEvictLeader for the store on this Pod.
+				storeID, err := strconv.ParseUint(store.ID, 10, 64)
+				if err != nil {
+					return err
+				}
+				if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
+					return err
+				}
+				continue
+			}
+
+			return u.upgradeTiKVPod(tc, i, newSet)
+		}
 	}
 
 	return nil
+}
+
+func (u *tikvUpgrader) sortCandidates(allPods []*corev1.Pod) []*corev1.Pod {
+	// Step 1. Sort the Pods to get the ones with the higher priority
+	candidates := make([]*corev1.Pod, len(allPods))
+	copy(candidates, allPods)
+	sort.Slice(candidates, func(i, j int) bool {
+		//pod1 := allPods[i]
+		//pod2 := allPods[j]
+		//// compare client traffic
+		//return pod1PdName > pod2PdName
+		return true
+	})
+	return candidates
 }
 
 func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
@@ -175,9 +260,25 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 		return u.beginEvictLeader(tc, storeID, upgradePod)
 	}
 
-	if u.readyToUpgrade(upgradePod, tc) {
-		mngerutils.SetUpgradePartition(newSet, ordinal)
-		return nil
+	if tc.IsEnableIntelligentOperation() {
+		pod, err := u.deps.PodLister.Pods(ns).Get(upgradePodName)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("tikv upgrade[get pod]: failed to upgrade tikv %s/%s for tc %s/%s, error: %s", ns, upgradePodName, ns, tcName, err)
+		}
+		if pod != nil {
+			if pod.DeletionTimestamp == nil {
+				if err := u.deps.PodControl.DeletePod(tc, pod); err != nil {
+					return err
+				}
+			}
+		} else {
+			klog.Infof("tikv upgrade: get pod %s/%s not found, skip", ns, upgradePodName)
+		}
+	} else {
+		if u.readyToUpgrade(upgradePod, tc) {
+			mngerutils.SetUpgradePartition(newSet, ordinal)
+			return nil
+		}
 	}
 
 	return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)

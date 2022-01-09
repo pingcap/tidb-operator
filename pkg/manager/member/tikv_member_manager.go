@@ -618,14 +618,17 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
 	}
-
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if baseTiKVSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+	if tc.IsEnableIntelligentOperation() {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
-		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
-		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas() + deleteSlotsNumber),
+		if baseTiKVSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+			updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+		} else {
+			updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
+			updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
+				Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas() + deleteSlotsNumber),
+			}
 		}
 	}
 
@@ -960,8 +963,14 @@ func (m *tikvMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.Sto
 }
 
 func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi.PDControlInterface, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if mngerutils.StatefulSetIsUpgrading(set) {
-		return true, nil
+	if tc.IsEnableIntelligentOperation() {
+		if mngerutils.NewStatefulSetIsUpgrading(set) {
+			return true, nil
+		}
+	} else {
+		if mngerutils.StatefulSetIsUpgrading(set) {
+			return true, nil
+		}
 	}
 	instanceName := tc.GetInstanceName()
 	selector, err := label.New().Instance(instanceName).TiKV().Selector()

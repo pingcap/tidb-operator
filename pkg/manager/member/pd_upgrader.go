@@ -71,7 +71,7 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 	}
 	if tc.Spec.IsEnableIntelligentOperation != nil && *tc.Spec.IsEnableIntelligentOperation {
 		// get need to upgrade pod list
-		pods, err := u.podsToUpgrade(tc, oldSet)
+		pods, err := GetPodsToUpgrade(u.deps, oldSet)
 		if err != nil {
 			return err
 		}
@@ -141,7 +141,7 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 	return nil
 }
 
-func (u *pdUpgrader) podsToUpgrade(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) ([]*corev1.Pod, error) {
+func (u *pdUpgrader) podsToUpgrade(set *apps.StatefulSet) ([]*corev1.Pod, error) {
 	sts, err := u.deps.StatefulSetLister.StatefulSets(set.Namespace).Get(set.Name)
 	if err != nil {
 		return nil, err
@@ -249,7 +249,7 @@ func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSe
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePdName, targetName)
 		}
 	}
-	if tc.Spec.IsEnableIntelligentOperation != nil && *tc.Spec.IsEnableIntelligentOperation {
+	if tc.IsEnableIntelligentOperation() {
 		pod, err := u.deps.PodLister.Pods(ns).Get(upgradePodName)
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("pd upgrade[get pod]: failed to upgrade pod %s/%s for tc %s/%s, error: %s", ns, upgradePodName, ns, tcName, err)

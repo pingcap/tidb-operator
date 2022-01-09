@@ -488,3 +488,36 @@ func SplitRevision(test string) string {
 		return ""
 	}
 }
+
+func GetPodsToUpgrade(deps *controller.Dependencies, set *apps.StatefulSet) ([]*corev1.Pod, error) {
+	sts, err := deps.StatefulSetLister.StatefulSets(set.Namespace).Get(set.Name)
+	if err != nil {
+		return nil, err
+	}
+	var replica int32
+	if sts.Spec.Replicas != nil {
+		replica = *sts.Spec.Replicas
+	} else {
+		replica = 0
+	}
+	// get upgrade pods
+	var toUpgrade []*corev1.Pod
+	for idx := replica - 1; idx >= 0; idx-- {
+		// Do we need to upgrade that pod?
+		podName := fmt.Sprintf("%s-%d", sts.Name, idx)
+		pod, err := deps.PodLister.Pods(sts.Namespace).Get(podName)
+		if err != nil && !errors.IsNotFound(err) {
+			break
+		}
+		if err != nil && errors.IsNotFound(err) {
+			// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
+			continue
+		}
+
+		if sts.Status.UpdateRevision != pod.Labels["controller-revision-hash"] {
+			toUpgrade = append(toUpgrade, pod)
+		}
+	}
+
+	return toUpgrade, nil
+}

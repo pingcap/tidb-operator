@@ -40,8 +40,8 @@ func StatefulSetIsUpgrading(set *apps.StatefulSet) bool {
 	return false
 }
 
-// PDStatefulSetIsUpgrading confirms whether the statefulSet is upgrading phase
-func PDStatefulSetIsUpgrading(set *apps.StatefulSet) bool {
+// NewStatefulSetIsUpgrading confirms whether the statefulSet is upgrading phase
+func NewStatefulSetIsUpgrading(set *apps.StatefulSet) bool {
 
 	if set.Generation > set.Status.ObservedGeneration && *set.Spec.Replicas == set.Status.Replicas {
 		return true
