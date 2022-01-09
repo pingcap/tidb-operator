@@ -107,7 +107,7 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				}
 				continue
 			}
-			u.deps.Recorder.Event(tc, corev1.EventTypeNormal, fmt.Sprintf("TiDBUpgrade"), fmt.Sprintf("%s:upgrade pod %s QPS:%f", SplitRevision(tc.Status.PD.StatefulSet.UpdateRevision), pod.Name, u.deps.MetricCache.GetTiDBQPSRate(tcName, podName)))
+			u.deps.Recorder.Event(tc, corev1.EventTypeNormal, fmt.Sprintf("TiDBUpgrade"), fmt.Sprintf("%s:upgrade pod %s QPS:%f", SplitRevision(tc.Status.PD.StatefulSet.UpdateRevision), pod.Name, u.deps.MetricCache.GetTiDBQPSRate(fmt.Sprintf("%s-%s", tc.Namespace, tcName), podName)))
 
 			return u.upgradeTiDBPod(tc, i, newSet)
 		}
@@ -159,8 +159,8 @@ func (u *tidbUpgrader) sortCandidates(tc *v1alpha1.TidbCluster, allPods []*corev
 		pod1 := allPods[i]
 		pod2 := allPods[j]
 		// compare client traffic
-		pod1QPS := u.deps.MetricCache.GetTiDBQPSRate(tcName, pod1.Name)
-		pod2QPS := u.deps.MetricCache.GetTiDBQPSRate(tcName, pod2.Name)
+		pod1QPS := u.deps.MetricCache.GetTiDBQPSRate(fmt.Sprintf("%s-%s", tc.Namespace, tcName), pod1.Name)
+		pod2QPS := u.deps.MetricCache.GetTiDBQPSRate(fmt.Sprintf("%s-%s", tc.Namespace, tcName), pod2.Name)
 		klog.Infof("sort %s compare %s  %f:%f", pod1.Name, pod2.Name, pod1QPS, pod2QPS)
 		return pod1QPS < pod2QPS
 	})

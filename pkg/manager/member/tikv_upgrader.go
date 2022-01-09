@@ -101,6 +101,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	if status.StatefulSet.UpdateRevision == status.StatefulSet.CurrentRevision {
 		return nil
 	}
+	// is enable intelligent operation
 	if tc.IsEnableIntelligentOperation() {
 		//get need to upgrade pod list
 		pods, err := GetPodsToUpgrade(u.deps, oldSet)
@@ -111,9 +112,10 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		// sort candidates
 		sortedCandidates := u.sortCandidates(tc, pods)
 
-		//predicate nodes
-
-		for _, candidate := range sortedCandidates {
+		//predicate candidates
+		predicatePods := u.predicateCandidates(tc, sortedCandidates)
+		// update candidates
+		for _, candidate := range predicatePods {
 			podName := candidate.Name
 			pod1Ordinal, err := util.GetOrdinalFromPodName(podName)
 			i := pod1Ordinal
@@ -224,6 +226,24 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	}
 
 	return nil
+}
+
+func (u *tikvUpgrader) predicateCandidates(tc *v1alpha1.TidbCluster, allPods []*corev1.Pod) []*corev1.Pod {
+	// Step 1. Sort the Pods to get the ones with the higher priority
+	candidates := make([]*corev1.Pod, len(allPods))
+	copy(candidates, allPods)
+	tcName := fmt.Sprintf("%s-%s", tc.Namespace, tc.Name)
+
+	sort.Slice(candidates, func(i, j int) bool {
+		pod1 := allPods[i]
+		pod2 := allPods[j]
+		// compare client traffic
+		pod1WritingBytes := u.deps.MetricCache.GetTiKVFlowBytes(fmt.Sprintf("%s-%s", tc.Namespace, tcName), pod1.Name)
+		pod2WritingBytes := u.deps.MetricCache.GetTiKVFlowBytes(fmt.Sprintf("%s-%s", tc.Namespace, tcName), pod2.Name)
+		klog.Infof("sort %s compare %s", pod1WritingBytes, pod2WritingBytes)
+		return pod1WritingBytes < pod2WritingBytes
+	})
+	return candidates
 }
 
 func (u *tikvUpgrader) sortCandidates(tc *v1alpha1.TidbCluster, allPods []*corev1.Pod) []*corev1.Pod {
