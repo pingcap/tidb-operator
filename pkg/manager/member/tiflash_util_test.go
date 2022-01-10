@@ -821,9 +821,7 @@ func TestTestGetTiFlashConfigV2(t *testing.T) {
 					  [storage.main]
 						dir = ["/data0/db"]
 					  [storage.raft]
-						dir = "/data0/kvstore"
-					[server]
-					  engine-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"`,
+						dir = "/data0/kvstore"`,
 				expectProxyCfg: `
 					log-level = "info"
 
@@ -860,8 +858,6 @@ func TestTestGetTiFlashConfigV2(t *testing.T) {
 					  ca_path = "/var/lib/tiflash-tls/ca.crt"
 					  cert_path = "/var/lib/tiflash-tls/tls.crt"
 					  key_path = "/var/lib/tiflash-tls/tls.key"
-					[server]
-					  engine-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					[storage]
 					  [storage.main]
 						dir = ["/data0/db"]
@@ -911,8 +907,6 @@ func TestTestGetTiFlashConfigV2(t *testing.T) {
 					  cert_path = "/var/lib/tiflash-tls/tls.crt"
 					  key_path = "/var/lib/tiflash-tls/tls.key"
 					  cert_allowed_cn = ["TiDB"]
-					[server]
-					  engine-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					[storage]
 					  [storage.main]
 						dir = ["/data0/db"]
@@ -966,9 +960,7 @@ func TestTestGetTiFlashConfigV2(t *testing.T) {
 					  [storage.main]
 						dir = ["/data0/db","/data1/db"]
 					  [storage.raft]
-						dir = "/data0/kvstore"
-					[server]
-					  engine-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"`,
+						dir = "/data0/kvstore"`,
 				expectProxyCfg: `
 					log-level = "info"
 
