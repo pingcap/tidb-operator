@@ -7343,10 +7343,6 @@ Kubernetes core/v1.ResourceRequirements
 </table>
 <h3 id="masterconfig">MasterConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#masterspec">MasterSpec</a>)
-</p>
-<p>
 <p>MasterConfig is the configuration of dm-master-server</p>
 </p>
 <table>
@@ -7462,6 +7458,36 @@ DMExperimental
 <td>
 <em>(Optional)</em>
 <p>dm-master&rsquo;s experimental config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterconfigwraper">MasterConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterspec">MasterSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -7938,8 +7964,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#masterconfig">
-MasterConfig
+<a href="#masterconfigwraper">
+MasterConfigWraper
 </a>
 </em>
 </td>
@@ -22557,10 +22583,6 @@ Networks
 </table>
 <h3 id="workerconfig">WorkerConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#workerspec">WorkerSpec</a>)
-</p>
-<p>
 <p>WorkerConfig is the configuration of dm-worker-server</p>
 </p>
 <table>
@@ -22636,6 +22658,36 @@ DMSecurityConfig
 </p>
 <em>(Optional)</em>
 <p>dm-worker&rsquo;s security config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workerconfigwraper">WorkerConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#workerspec">WorkerSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -22872,8 +22924,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#workerconfig">
-WorkerConfig
+<a href="#workerconfigwraper">
+WorkerConfigWraper
 </a>
 </em>
 </td>
