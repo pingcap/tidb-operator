@@ -209,11 +209,11 @@ func TestValidateDMAnnotations(t *testing.T) {
 					Version: "v2.0.0-rc.1",
 					Master: v1alpha1.MasterSpec{
 						BaseImage: "pingcap/dm",
-						Config:    &v1alpha1.MasterConfig{},
+						Config:    v1alpha1.NewMasterConfig(),
 					},
 					Worker: &v1alpha1.WorkerSpec{
 						BaseImage: "pingcap/dm",
-						Config:    &v1alpha1.WorkerConfig{},
+						Config:    v1alpha1.NewWorkerConfig(),
 					},
 				},
 			},
@@ -229,11 +229,11 @@ func TestValidateDMAnnotations(t *testing.T) {
 					Version: "v2.0.0-rc.1",
 					Master: v1alpha1.MasterSpec{
 						BaseImage: "pingcap/dm",
-						Config:    &v1alpha1.MasterConfig{},
+						Config:    v1alpha1.NewMasterConfig(),
 					},
 					Worker: &v1alpha1.WorkerSpec{
 						BaseImage: "pingcap/dm",
-						Config:    &v1alpha1.WorkerConfig{},
+						Config:    v1alpha1.NewWorkerConfig(),
 					},
 				},
 			},
@@ -266,11 +266,11 @@ func TestValidateDMAnnotations(t *testing.T) {
 					Version: "v2.0.0-rc.1",
 					Master: v1alpha1.MasterSpec{
 						BaseImage: "pingcap/dm",
-						Config:    &v1alpha1.MasterConfig{},
+						Config:    v1alpha1.NewMasterConfig(),
 					},
 					Worker: &v1alpha1.WorkerSpec{
 						BaseImage: "pingcap/dm",
-						Config:    &v1alpha1.WorkerConfig{},
+						Config:    v1alpha1.NewWorkerConfig(),
 					},
 				},
 			},
@@ -298,11 +298,11 @@ func TestValidateDMAnnotations(t *testing.T) {
 					Version: "v2.0.0-rc.1",
 					Master: v1alpha1.MasterSpec{
 						BaseImage: "pingcap/dm",
-						Config:    &v1alpha1.MasterConfig{},
+						Config:    v1alpha1.NewMasterConfig(),
 					},
 					Worker: &v1alpha1.WorkerSpec{
 						BaseImage: "pingcap/dm",
-						Config:    &v1alpha1.WorkerConfig{},
+						Config:    v1alpha1.NewWorkerConfig(),
 					},
 				},
 			},

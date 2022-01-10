@@ -3566,7 +3566,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 					"config": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of dm-master-servers",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterConfig"),
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterConfigWraper"),
 						},
 					},
 				},
@@ -3574,7 +3574,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -13372,7 +13372,7 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 					"config": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of dm-worker-servers",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerConfig"),
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerConfigWraper"),
 						},
 					},
 					"recoverFailover": {
@@ -13387,7 +13387,7 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerConfigWraper", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
