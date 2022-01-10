@@ -29,7 +29,7 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 
 	// check config
 	tomlField := []string{
-		"config-file",       // pd,tikv,tidb,ng-monitoring
+		"config-file",       // pd,dm,tikv,tidb,ng-monitoring
 		"pump-config",       // pump
 		"config_templ.toml", // tiflash
 		"proxy_templ.toml",  // tiflash
