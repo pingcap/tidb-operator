@@ -51,7 +51,7 @@ func Compare(ver1 string, op Operation, ver2 string) (bool, error) {
 	return c.Check(ver1)
 }
 
-// Compare compare ver1 and ver2
+// CompareByStr compare ver1 and ver2
 //
 // For example:
 //	CompareByStr(ver1, ">", ver2) is same as "ver1 > ver2"
@@ -95,7 +95,7 @@ func NewConstraint(op Operation, version string) (*Constraint, error) {
 // Dirty versions and pre versions are regarded as standard version.
 // For example: 'v5.1.2-dev' and 'v5.1.2-betav1' are regarded as 'v5.1.2'.
 //
-// latest or nightly version is larger than any version
+// Latest or nightly version is larger than any version
 func (c *Constraint) Check(version string) (bool, error) {
 	if isLastest(version) {
 		return compareLastest(c.op), nil
