@@ -289,13 +289,13 @@ func newDMClusterForDMClusterControl() *v1alpha1.DMCluster {
 			Master: v1alpha1.MasterSpec{
 				Replicas:    3,
 				BaseImage:   "pingcap/dm",
-				Config:      &v1alpha1.MasterConfig{},
+				Config:      v1alpha1.NewMasterConfig(),
 				StorageSize: "10Gi",
 			},
 			Worker: &v1alpha1.WorkerSpec{
 				Replicas:    3,
 				BaseImage:   "pingcap/dm",
-				Config:      &v1alpha1.WorkerConfig{},
+				Config:      v1alpha1.NewWorkerConfig(),
 				StorageSize: "10Gi",
 			},
 		},
