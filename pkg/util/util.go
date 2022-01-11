@@ -374,7 +374,7 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 	// The annotations in old sts may include LastAppliedConfigAnnotation
 	tmpAnno := map[string]string{}
 	for k, v := range old.Annotations {
-		if k != LastAppliedConfigAnnotation {
+		if k != LastAppliedConfigAnnotation && k != label.AnnStsLastSyncTimestamp {
 			tmpAnno[k] = v
 		}
 	}
