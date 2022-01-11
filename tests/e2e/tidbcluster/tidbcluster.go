@@ -341,6 +341,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		clusterName := "upgrade-cluster-pd-1"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
 		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.PD.BaseImage = "pingcap/pd-not-exist"
 		// Deploy
 		err := genericCli.Create(context.TODO(), tc)
@@ -370,7 +372,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	ginkgo.It("should direct upgrade tc successfully when TiKV replicas less than 2.", func() {
 		clusterName := "upgrade-cluster-tikv-1"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		tc.Spec.TiKV.Version = pointer.StringPtr(utilimage.TiDBLatestPrev)
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiKV.EvictLeaderTimeout = pointer.StringPtr("10m")
 		// Deploy
@@ -2263,7 +2268,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
 		// when scale-in, replica is first set to 5 and changed to 3
 		// when scale-out, replica is first set to 3 and changed to 5
-		ginkgo.Context("while concurrently scale PD", func() {
+		utilginkgo.ContextWhenFocus("while concurrently scale PD", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
 				op := op
@@ -2326,7 +2331,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 
 		// similar to PD scale-in/scale-out case above, need to check no evict leader scheduler left
-		ginkgo.Context("while concurrently scale TiKV", func() {
+		utilginkgo.ContextWhenFocus("while concurrently scale TiKV", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
 				op := op
