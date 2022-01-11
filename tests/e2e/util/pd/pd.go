@@ -59,7 +59,7 @@ func GetMembersV2(addr string) (*GetMembersResponse, error) {
 	return resp, nil
 }
 
-func UpdateMembePeerURLs(addr string, id string, peerURLs []string) error {
+func UpdateMemberPeerURLs(addr string, id string, peerURLs []string) error {
 	url := fmt.Sprintf("http://%s/v2/members/%s", addr, id)
 
 	member := Member{
