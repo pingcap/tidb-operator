@@ -236,7 +236,12 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Check status over all clusters")
-			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
+			err := wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+				if err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}); err != nil {
+					return false, nil
+				}
+				return true, nil
+			})
 			framework.ExpectNoError(err, "failed to check status")
 		})
 
@@ -394,7 +399,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			tc1 := GetTCForAcrossKubernetes(ns1, tcName1, version, clusterDomain, nil)
 			tc2 := GetTCForAcrossKubernetes(ns2, tcName2, version, clusterDomain, tc1)
 			tc3 := GetTCForAcrossKubernetes(ns3, tcName3, version, clusterDomain, tc1)
-			// FIXME(jsut1900): remove pump for testing pd failover case.
+			// FIXME(jsut1900): remove this after #4361 get fixed.
 			tc1.Spec.Pump, tc2.Spec.Pump, tc3.Spec.Pump = nil, nil, nil
 
 			ginkgo.By("Installing initial tidb CA certificate")
