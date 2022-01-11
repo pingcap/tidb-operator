@@ -44,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/util/retry"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
@@ -281,7 +282,9 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 					fields[1] = fmt.Sprintf("%s.%s", fields[1], clusterDomain)
 					peerURLs = append(peerURLs, strings.Join(fields, ":"))
 				}
-				err := pdutil.UpdateMembePeerURLs(pdAddr, member.ID, peerURLs)
+				err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+					return pdutil.UpdateMemberPeerURLs(pdAddr, member.ID, peerURLs)
+				})
 				framework.ExpectNoError(err, " failed to update peerURLs of pd members of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
 			}
 
