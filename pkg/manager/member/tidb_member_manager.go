@@ -28,7 +28,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-	perrors "github.com/pingcap/errors"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -248,7 +247,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	notExistMount := notExistMount(newTiDBSet, oldTiDBSet)
 	if len(notExistMount) > 0 {
 		m.deps.Recorder.Eventf(tc, corev1.EventTypeWarning, "FailedUpdateTiDBSTS", "contains not exist volume mounts: %v", notExistMount)
-		return perrors.Errorf("contains not exist volume mounts: %v", notExistMount)
+		return fmt.Errorf("contains not exist volume mounts: %v", notExistMount)
 	}
 
 	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
