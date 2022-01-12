@@ -1738,7 +1738,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out TiCDC", ns, fromTc.Name)
 
 			ginkgo.By("Check PVCs are recreated for newly scaled out TiCDC")
-			err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
 				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
 				framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 				if len(pvcs.Items) == 0 {
@@ -1747,9 +1747,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				for _, pvc := range pvcs.Items {
 					annotations := pvc.GetObjectMeta().GetAnnotations()
-					log.Logf("pvc annotations: %+v", annotations)
-					_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
-					framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+					v, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+					if ok {
+						log.Logf("PVC %s/%s also have annotation tidb.pingcap.com/pvc-defer-deleting=%s", pvc.GetNamespace(), pvc.GetName(), v)
+						return false, nil
+					}
 					pvcUIDString := pvcUIDs[pvc.Name]
 					framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
 				}
