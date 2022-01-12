@@ -18,6 +18,7 @@ import (
 	"path"
 	"testing"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -719,6 +720,291 @@ func TestSetTiFlashConfigDefault(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTestGetTiFlashConfigV2(t *testing.T) {
+	t.Run("GetTiFlashConfig", func(t *testing.T) {
+		cases := []struct {
+			name      string
+			tcVersion string
+			expectV2  bool
+		}{
+			{
+				name:      "version is larger than v5.4.0",
+				tcVersion: "v5.4.1",
+				expectV2:  true,
+			},
+			{
+				name:      "version is v5.4.0",
+				tcVersion: "v5.4.0",
+				expectV2:  true,
+			},
+			{
+				name:      "version is latest",
+				tcVersion: "latest",
+				expectV2:  true,
+			},
+			{
+				name:      "version is v5.4.0 and dirty",
+				tcVersion: "v5.4.0-dev123",
+				expectV2:  true,
+			},
+			{
+				name:      "version is less than v5.4.0",
+				tcVersion: "v5.3.0",
+				expectV2:  false,
+			},
+		}
+
+		for _, testcase := range cases {
+			t.Run(testcase.name, func(t *testing.T) {
+				g := NewGomegaWithT(t)
+
+				tc := &v1alpha1.TidbCluster{}
+				tc.Name = "test"
+				tc.Namespace = "ns"
+				tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{}
+				tc.Spec.TiFlash.BaseImage = "pingcap/tiflash"
+				tc.Spec.Version = testcase.tcVersion
+
+				if testcase.expectV2 {
+					patch := gomonkey.ApplyFunc(getTiFlashConfig, func(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
+						t.Fatalf("shouldn't call getTiFlashConfig()")
+						return nil
+					})
+					defer patch.Reset()
+				} else {
+					patch := gomonkey.ApplyFunc(getTiFlashConfigV2, func(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
+						t.Fatalf("shouldn't call getTiFlashConfigV2()")
+						return nil
+					})
+					defer patch.Reset()
+				}
+
+				cfg := GetTiFlashConfig(tc)
+				g.Expect(cfg).ShouldNot(BeNil())
+			})
+		}
+	})
+
+	t.Run("getTiFlashConfigV2", func(t *testing.T) {
+		cases := []struct {
+			name            string
+			setTC           func(tc *v1alpha1.TidbCluster)
+			expectCommonCfg string
+			expectProxyCfg  string
+		}{
+			{
+				name: "config is nil",
+				setTC: func(tc *v1alpha1.TidbCluster) {
+					tc.Spec.TiFlash.Config = nil
+				},
+				expectCommonCfg: `
+					http_port = 8123
+					tcp_port = 9000
+					[flash]
+					  service_addr = "0.0.0.0:3930"
+					  tidb_status_addr = "test-tidb.default.svc:10080"
+					  [flash.flash_cluster]
+						log = "/data0/logs/flash_cluster_manager.log"
+					  [flash.proxy]
+						addr = "0.0.0.0:20170"
+						advertise-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20170"
+						config = "/data0/proxy.toml"
+						data-dir = "/data0/proxy"
+					[logger]
+					  errorlog = "/data0/logs/error.log"
+					  log = "/data0/logs/server.log"
+					[raft]
+					  pd_addr = "test-pd.default.svc:2379"
+					[storage]
+					  [storage.main]
+						dir = ["/data0/db"]
+					  [storage.raft]
+						dir = "/data0/kvstore"`,
+				expectProxyCfg: `
+					log-level = "info"
+
+					[server]
+					advertise-status-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20292"
+					engine-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+					status-addr = "0.0.0.0:20292"`,
+			},
+			{
+				name: "config is nil and cluster enable tls",
+				setTC: func(tc *v1alpha1.TidbCluster) {
+					tc.Spec.TiFlash.Config = nil
+					tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+				},
+				expectCommonCfg: `
+					https_port = 8123
+					tcp_port_secure = 9000
+					[flash]
+					  service_addr = "0.0.0.0:3930"
+					  tidb_status_addr = "test-tidb.default.svc:10080"
+					  [flash.flash_cluster]
+						log = "/data0/logs/flash_cluster_manager.log"
+					  [flash.proxy]
+						addr = "0.0.0.0:20170"
+						advertise-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20170"
+						config = "/data0/proxy.toml"
+						data-dir = "/data0/proxy"
+					[logger]
+					  errorlog = "/data0/logs/error.log"
+					  log = "/data0/logs/server.log"
+					[raft]
+					  pd_addr = "test-pd.default.svc:2379"
+					[security]
+					  ca_path = "/var/lib/tiflash-tls/ca.crt"
+					  cert_path = "/var/lib/tiflash-tls/tls.crt"
+					  key_path = "/var/lib/tiflash-tls/tls.key"
+					[storage]
+					  [storage.main]
+						dir = ["/data0/db"]
+					  [storage.raft]
+						dir = "/data0/kvstore"`,
+				expectProxyCfg: `
+					log-level = "info"
+					[security]
+					  ca-path = "/var/lib/tiflash-tls/ca.crt"
+					  cert-path = "/var/lib/tiflash-tls/tls.crt"
+					  key-path = "/var/lib/tiflash-tls/tls.key"
+					[server]
+					  advertise-status-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20292"
+					  engine-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+					  status-addr = "0.0.0.0:20292"`,
+			},
+			{
+				name: "config contain cert-allowed-cn and cluster enable tls",
+				setTC: func(tc *v1alpha1.TidbCluster) {
+					input := `
+					[security]
+					  cert_allowed_cn = ["TiDB"]`
+					tc.Spec.TiFlash.Config = v1alpha1.NewTiFlashConfig()
+					tc.Spec.TiFlash.Config.Common.UnmarshalTOML([]byte(input))
+					tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+				},
+				expectCommonCfg: `
+					https_port = 8123
+					tcp_port_secure = 9000
+					[flash]
+					  service_addr = "0.0.0.0:3930"
+					  tidb_status_addr = "test-tidb.default.svc:10080"
+					  [flash.flash_cluster]
+						log = "/data0/logs/flash_cluster_manager.log"
+					  [flash.proxy]
+						addr = "0.0.0.0:20170"
+						advertise-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20170"
+						config = "/data0/proxy.toml"
+						data-dir = "/data0/proxy"
+					[logger]
+					  errorlog = "/data0/logs/error.log"
+					  log = "/data0/logs/server.log"
+					[raft]
+					  pd_addr = "test-pd.default.svc:2379"
+					[security]
+					  ca_path = "/var/lib/tiflash-tls/ca.crt"
+					  cert_path = "/var/lib/tiflash-tls/tls.crt"
+					  key_path = "/var/lib/tiflash-tls/tls.key"
+					  cert_allowed_cn = ["TiDB"]
+					[storage]
+					  [storage.main]
+						dir = ["/data0/db"]
+					  [storage.raft]
+						dir = "/data0/kvstore"`,
+				expectProxyCfg: `
+					log-level = "info"
+					[security]
+					  ca-path = "/var/lib/tiflash-tls/ca.crt"
+					  cert-path = "/var/lib/tiflash-tls/tls.crt"
+					  key-path = "/var/lib/tiflash-tls/tls.key"
+					  cert-allowed-cn = ["TiDB"]
+					[server]
+					  advertise-status-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20292"
+					  engine-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+					  status-addr = "0.0.0.0:20292"`,
+			},
+			{
+				name: "config is nil with multi storage",
+				setTC: func(tc *v1alpha1.TidbCluster) {
+					tc.Spec.TiFlash.Config = nil
+					tc.Spec.TiFlash.StorageClaims = []v1alpha1.StorageClaim{
+						{
+							StorageClassName: pointer.StringPtr("local-storage"),
+						},
+						{
+							StorageClassName: pointer.StringPtr("local-storage-2"),
+						},
+					}
+
+				},
+				expectCommonCfg: `
+					http_port = 8123
+					tcp_port = 9000
+					[flash]
+					  service_addr = "0.0.0.0:3930"
+					  tidb_status_addr = "test-tidb.default.svc:10080"
+					  [flash.flash_cluster]
+						log = "/data0/logs/flash_cluster_manager.log"
+					  [flash.proxy]
+						addr = "0.0.0.0:20170"
+						advertise-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20170"
+						config = "/data0/proxy.toml"
+						data-dir = "/data0/proxy"
+					[logger]
+					  errorlog = "/data0/logs/error.log"
+					  log = "/data0/logs/server.log"
+					[raft]
+					  pd_addr = "test-pd.default.svc:2379"
+					[storage]
+					  [storage.main]
+						dir = ["/data0/db","/data1/db"]
+					  [storage.raft]
+						dir = "/data0/kvstore"`,
+				expectProxyCfg: `
+					log-level = "info"
+
+					[server]
+					advertise-status-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20292"
+					engine-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+					status-addr = "0.0.0.0:20292"`,
+			},
+		}
+
+		for _, testcase := range cases {
+			t.Run(testcase.name, func(t *testing.T) {
+				g := NewGomegaWithT(t)
+
+				tc := &v1alpha1.TidbCluster{}
+				tc.Name = "test"
+				tc.Namespace = "default"
+				tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{}
+
+				if testcase.setTC != nil {
+					testcase.setTC(tc)
+				}
+
+				cfg := getTiFlashConfigV2(tc)
+
+				commonCfgData, err := cfg.Common.MarshalTOML()
+				g.Expect(err).Should(Succeed())
+				proxyCfgData, err := cfg.Proxy.MarshalTOML()
+				g.Expect(err).Should(Succeed())
+
+				outputCfg := v1alpha1.NewTiFlashConfig()
+				expectCfg := v1alpha1.NewTiFlashConfig()
+				outputCfg.Common.UnmarshalTOML(commonCfgData)
+				outputCfg.Proxy.UnmarshalTOML(proxyCfgData)
+				expectCfg.Common.UnmarshalTOML([]byte(testcase.expectCommonCfg))
+				expectCfg.Proxy.UnmarshalTOML([]byte(testcase.expectProxyCfg))
+
+				diff := cmp.Diff(outputCfg.Common.Inner(), expectCfg.Common.Inner())
+				g.Expect(diff).Should(BeEmpty())
+				diff = cmp.Diff(outputCfg.Proxy.Inner(), expectCfg.Proxy.Inner())
+				g.Expect(diff).Should(BeEmpty())
+			})
+		}
+	})
 }
 
 func TestGetTiFlashConfig(t *testing.T) {

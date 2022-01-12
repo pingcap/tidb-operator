@@ -611,7 +611,7 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 }
 
 func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	config := getTiFlashConfig(tc)
+	config := GetTiFlashConfig(tc)
 
 	configText, err := config.Common.MarshalTOML()
 	if err != nil {
