@@ -1887,9 +1887,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			for _, pvc := range pvcs.Items {
 				annotations := pvc.GetObjectMeta().GetAnnotations()
-				log.Logf("pvc annotations: %+v", annotations)
-				_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
-				framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+				v, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+				if ok {
+					log.Logf("PVC %s/%s also have annotation tidb.pingcap.com/pvc-defer-deleting=%s", pvc.GetNamespace(), pvc.GetName(), v)
+					return false, nil
+				}
 				pvcUIDString := pvcUIDs[pvc.Name]
 				framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
 			}
