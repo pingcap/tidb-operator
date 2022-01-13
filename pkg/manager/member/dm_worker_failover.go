@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/klog/v2"
 )
 
@@ -65,6 +66,9 @@ func (f *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 					klog.Warningf("%s/%s failure workers count reached the limit: %d", ns, dcName, *dc.Spec.Worker.MaxFailoverCount)
 					return nil
 				}
+				if dc.Status.Worker.FailoverUID == "" {
+					dc.Status.Worker.FailoverUID = uuid.NewUUID()
+				}
 				dc.Status.Worker.FailureMembers[podName] = v1alpha1.WorkerFailureMember{
 					PodName:   podName,
 					CreatedAt: metav1.Now(),
@@ -80,6 +84,7 @@ func (f *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 
 func (f *workerFailover) Recover(dc *v1alpha1.DMCluster) {
 	dc.Status.Worker.FailureMembers = nil
+	dc.Status.Worker.FailoverUID = ""
 	klog.Infof("dm-worker recover: clear FailureWorkers, %s/%s", dc.GetNamespace(), dc.GetName())
 }
 

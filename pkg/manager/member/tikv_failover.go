@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/klog/v2"
 )
 
@@ -77,6 +78,9 @@ func (f *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 					klog.Warningf("%s/%s failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
 					return nil
 				}
+				if tc.Status.TiKV.FailoverUID == "" {
+					tc.Status.TiKV.FailoverUID = uuid.NewUUID()
+				}
 				tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
 					PodName:   podName,
 					StoreID:   store.ID,
@@ -104,6 +108,7 @@ func (f *tikvFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 
 func (f *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.FailureStores = nil
+	tc.Status.TiKV.FailoverUID = ""
 	klog.Infof("TiKV recover: clear FailureStores, %s/%s", tc.GetNamespace(), tc.GetName())
 }
 

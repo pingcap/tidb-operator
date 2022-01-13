@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	//find a better way to manage store only managed by tiflash in Operator
+	// find a better way to manage store only managed by tiflash in Operator
 	tiflashStoreLimitPattern = `%s-tiflash-\d+\.%s-tiflash-peer\.%s\.svc%s:\d+`
 	tiflashCertPath          = "/var/lib/tiflash-tls"
 	tiflashCertVolumeName    = "tiflash-tls"
@@ -176,7 +176,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		m.failover.RemoveUndesiredFailures(tc)
 	}
 	if len(tc.Status.TiFlash.FailureStores) > 0 &&
-		tc.Spec.TiFlash.RecoverFailover &&
+		(tc.Spec.TiFlash.RecoverFailover || tc.Status.TiFlash.FailoverUID == tc.Spec.TiFlash.Failover.RecoverByUID) &&
 		shouldRecover(tc, label.TiFlashLabelVal, m.deps.PodLister) {
 		m.failover.Recover(tc)
 	}
@@ -707,7 +707,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		}
 	}
 
-	//this returns all tombstone stores
+	// this returns all tombstone stores
 	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
 	if err != nil {
 		tc.Status.TiFlash.Synced = false

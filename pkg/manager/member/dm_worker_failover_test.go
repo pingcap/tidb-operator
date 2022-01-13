@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 )
 
@@ -35,12 +36,12 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			name: "normal",
 			update: func(dc *v1alpha1.DMCluster) {
 				dc.Status.Worker.Members = map[string]v1alpha1.WorkerMember{
-					"1": {
+					"dm-worker-1": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-1",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
-					"2": {
+					"dm-worker-2": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-2",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
@@ -51,6 +52,8 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(2))
+				g.Expect(dc.Status.Worker.FailoverUID).NotTo(BeEmpty())
+
 			},
 		},
 		{
@@ -64,13 +67,15 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(0))
+				g.Expect(dc.Status.Worker.FailoverUID).To(BeEmpty())
+
 			},
 		},
 		{
 			name: "deadline not exceed",
 			update: func(dc *v1alpha1.DMCluster) {
 				dc.Status.Worker.Members = map[string]v1alpha1.WorkerMember{
-					"1": {
+					"dm-worker-1": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-1",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-30 * time.Minute)},
@@ -81,13 +86,15 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(0))
+				g.Expect(dc.Status.Worker.FailoverUID).To(BeEmpty())
+
 			},
 		},
 		{
 			name: "lastTransitionTime is zero",
 			update: func(dc *v1alpha1.DMCluster) {
 				dc.Status.Worker.Members = map[string]v1alpha1.WorkerMember{
-					"1": {
+					"dm-worker-1": {
 						Stage: v1alpha1.DMWorkerStateOffline,
 						Name:  "dm-worker-1",
 					},
@@ -97,20 +104,22 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(0))
+				g.Expect(dc.Status.Worker.FailoverUID).To(BeEmpty())
+
 			},
 		},
 		{
 			name: "exist in failureStores",
 			update: func(dc *v1alpha1.DMCluster) {
 				dc.Status.Worker.Members = map[string]v1alpha1.WorkerMember{
-					"1": {
+					"dm-worker-1": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-1",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
 				}
 				dc.Status.Worker.FailureMembers = map[string]v1alpha1.WorkerFailureMember{
-					"1": {
+					"dm-worker-1": {
 						PodName: "dm-worker-1",
 					},
 				}
@@ -119,33 +128,34 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(1))
+				g.Expect(dc.Status.Worker.FailoverUID).To(BeEmpty())
 			},
 		},
 		{
 			name: "not exceed max failover count",
 			update: func(dc *v1alpha1.DMCluster) {
 				dc.Status.Worker.Members = map[string]v1alpha1.WorkerMember{
-					"3": {
+					"dm-worker-0": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-0",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
-					"4": {
+					"dm-worker-4": {
 						Stage:              v1alpha1.DMWorkerStateFree,
 						Name:               "dm-worker-4",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
-					"5": {
+					"dm-worker-5": {
 						Stage:              v1alpha1.DMWorkerStateFree,
 						Name:               "dm-worker-5",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
 					},
 				}
 				dc.Status.Worker.FailureMembers = map[string]v1alpha1.WorkerFailureMember{
-					"1": {
+					"dm-worker-1": {
 						PodName: "dm-worker-1",
 					},
-					"2": {
+					"dm-worker-2": {
 						PodName: "dm-worker-2",
 					},
 				}
@@ -154,33 +164,34 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(3))
+				g.Expect(dc.Status.Worker.FailoverUID).NotTo(BeEmpty())
 			},
 		},
 		{
 			name: "exceed max failover count1",
 			update: func(dc *v1alpha1.DMCluster) {
 				dc.Status.Worker.Members = map[string]v1alpha1.WorkerMember{
-					"3": {
+					"dm-worker-3": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-3",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
-					"4": {
+					"dm-worker-4": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-4",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
-					"5": {
+					"dm-worker-5": {
 						Stage:              v1alpha1.DMWorkerStateFree,
 						Name:               "dm-worker-5",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
 					},
 				}
 				dc.Status.Worker.FailureMembers = map[string]v1alpha1.WorkerFailureMember{
-					"1": {
+					"dm-worker-1": {
 						PodName: "dm-worker-1",
 					},
-					"2": {
+					"dm-worker-2": {
 						PodName: "dm-worker-2",
 					},
 				}
@@ -189,36 +200,37 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(3))
+				g.Expect(dc.Status.Worker.FailoverUID).NotTo(BeEmpty())
 			},
 		},
 		{
 			name: "exceed max failover count2",
 			update: func(dc *v1alpha1.DMCluster) {
 				dc.Status.Worker.Members = map[string]v1alpha1.WorkerMember{
-					"0": {
+					"dm-worker-0": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-0",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
-					"4": {
+					"dm-worker-4": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-4",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
 					},
-					"5": {
+					"dm-worker-5": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-5",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
 				}
 				dc.Status.Worker.FailureMembers = map[string]v1alpha1.WorkerFailureMember{
-					"1": {
+					"dm-worker-1": {
 						PodName: "dm-worker-1",
 					},
-					"2": {
+					"dm-worker-2": {
 						PodName: "dm-worker-2",
 					},
-					"3": {
+					"dm-worker-3": {
 						PodName: "dm-worker-3",
 					},
 				}
@@ -227,6 +239,8 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(3))
+				g.Expect(dc.Status.Worker.FailoverUID).To(BeEmpty())
+
 			},
 		},
 		{
@@ -234,30 +248,30 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			update: func(dc *v1alpha1.DMCluster) {
 				dc.Spec.Worker.MaxFailoverCount = pointer.Int32Ptr(0)
 				dc.Status.Worker.Members = map[string]v1alpha1.WorkerMember{
-					"12": {
+					"dm-worker-12": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-12",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
-					"13": {
+					"dm-worker-13": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-13",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
 					},
-					"14": {
+					"dm-worker-14": {
 						Stage:              v1alpha1.DMWorkerStateOffline,
 						Name:               "dm-worker-14",
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
 					},
 				}
 				dc.Status.Worker.FailureMembers = map[string]v1alpha1.WorkerFailureMember{
-					"1": {
+					"dm-worker-1": {
 						PodName: "dm-worker-1",
 					},
-					"2": {
+					"dm-worker-2": {
 						PodName: "dm-worker-2",
 					},
-					"3": {
+					"dm-worker-3": {
 						PodName: "dm-worker-3",
 					},
 				}
@@ -266,6 +280,32 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(3))
+				g.Expect(dc.Status.Worker.FailoverUID).To(BeEmpty())
+			},
+		},
+		{
+			name: "already have failoverUID",
+			update: func(dc *v1alpha1.DMCluster) {
+				dc.Status.Worker.FailoverUID = "failover-uid-test"
+				dc.Status.Worker.Members = map[string]v1alpha1.WorkerMember{
+					"dm-worker-1": {
+						Stage:              v1alpha1.DMWorkerStateOffline,
+						Name:               "dm-worker-1",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+					"dm-worker-2": {
+						Stage:              v1alpha1.DMWorkerStateOffline,
+						Name:               "dm-worker-2",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+					},
+				}
+			},
+			err: false,
+			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
+				g := NewGomegaWithT(t)
+				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(2))
+				g.Expect(dc.Status.Worker.FailoverUID).NotTo(BeEmpty())
+				g.Expect(dc.Status.Worker.FailoverUID).To(Equal(types.UID("failover-uid-test")))
 			},
 		},
 	}

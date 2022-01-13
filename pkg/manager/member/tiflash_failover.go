@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/klog/v2"
 )
 
@@ -78,6 +79,9 @@ func (f *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
 					klog.Warningf("%s/%s TiFlash failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiFlash.MaxFailoverCount)
 					return nil
 				}
+				if tc.Status.TiFlash.FailoverUID == "" {
+					tc.Status.TiFlash.FailoverUID = uuid.NewUUID()
+				}
 				tc.Status.TiFlash.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
 					PodName:   podName,
 					StoreID:   store.ID,
@@ -104,6 +108,7 @@ func (f *tiflashFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 
 func (f *tiflashFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiFlash.FailureStores = nil
+	tc.Status.TiFlash.FailoverUID = ""
 	klog.Infof("TiFlash recover: clear FailureStores, %s/%s", tc.GetNamespace(), tc.GetName())
 }
 

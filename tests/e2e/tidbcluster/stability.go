@@ -905,9 +905,11 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 			ginkgo.By("Waiting for the store to be put into failure stores")
 			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				for _, failureStore := range tc.Status.TiKV.FailureStores {
-					if failureStore.PodName == podName {
-						return true, nil
+				if tc.Status.TiKV.FailoverUID != "" {
+					for _, failureStore := range tc.Status.TiKV.FailureStores {
+						if failureStore.PodName == podName {
+							return true, nil
+						}
 					}
 				}
 				return false, nil
@@ -924,6 +926,34 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				return !apierrors.IsNotFound(err), nil
 			})
 			framework.ExpectNoError(err, "failed to wait for the new pod to be created")
+
+			ginkgo.By("Update TiKV failover.recoverByUID")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiKV.RecoverFailover = false
+				tc.Spec.TiKV.Failover.RecoverByUID = tc.Status.TiKV.FailoverUID
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tikv failover.recoverByUID")
+
+			ginkgo.By("Waiting for failureStore empty because of recover")
+			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				if len(tc.Status.TiKV.FailureStores) == 0 && tc.Status.TiKV.FailoverUID == "" {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for failureStore empty because of recover")
+
+			ginkgo.By("Waiting for delete tikv pod because of recover")
+			delPodName := controller.TiKVMemberName(clusterName) + "-3"
+			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), delPodName, metav1.GetOptions{})
+				if err != nil && apierrors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for delete tikv pod because of recover")
 		})
 
 		// https://github.com/pingcap/tidb-operator/issues/2739
