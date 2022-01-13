@@ -267,7 +267,11 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			ginkgo.By("Update pd's peerURL of cluster-1")
 			pdAddr := fmt.Sprintf("%s:%d", localHost, localPort)
-			resp, err := pdutil.GetMembersV2(pdAddr)
+			var resp *pdutil.GetMembersResponse
+			err = retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+				resp, err = pdutil.GetMembersV2(pdAddr)
+				return err
+			})
 			framework.ExpectNoError(err, " failed to get pd members of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
 			for _, member := range resp.Members {
 				peerURLs := []string{}
