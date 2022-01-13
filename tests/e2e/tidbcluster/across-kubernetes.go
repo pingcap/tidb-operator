@@ -161,7 +161,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("Deploy status of all clusters")
-			err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
+			err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "failed to check status")
 		})
 
@@ -237,12 +237,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Check status over all clusters")
-			err := wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
-				if err := CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}); err != nil {
-					return false, nil
-				}
-				return true, nil
-			})
+			err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "failed to check status")
 		})
 
@@ -295,7 +290,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc3, 5*time.Minute, 10*time.Second)
 
 			ginkgo.By("Deploy status of all clusters")
-			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3})
+			err = CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "failed to check status")
 		})
 
@@ -375,7 +370,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectEqual(foundSecretName, true)
 
 			ginkgo.By("Check deploy status over all clusters")
-			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2})
+			err = CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "failed to check status")
 
 			ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")
@@ -622,7 +617,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "%q cluster not healthy after cluster %q fail", tcName1, tcName2)
 			err = oa.WaitForTidbClusterReady(tc3, 10*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "%q cluster not healthy after cluster %q fail", tcName3, tcName2)
-			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc3})
+			err = CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc3}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "failed to check status after cluster %q fail", tcName2)
 
 			ginkgo.By("Check functionality of other clusters by querying tidb")
@@ -718,7 +713,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Join cluster-2 into cluster-1 when pd running normally")
 			err = oa.WaitForTidbClusterReady(tc2, 10*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "waiting for %q ready", tcName2)
-			err = CheckClusterDomainEffect(cli, []*v1alpha1.TidbCluster{tc1, tc2})
+			err = CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "%q failed to join into %q", tcName2, tcName1)
 		})
 	})
@@ -775,6 +770,15 @@ func GetTCForAcrossKubernetes(ns, name, version, clusterDomain string, joinTC *v
 	}
 
 	return tc
+}
+
+func CheckClusterDomainEffectWithTimeout(cli versioned.Interface, tidbclusters []*v1alpha1.TidbCluster, interval time.Duration, timeout time.Duration) error {
+	return wait.PollImmediate(interval, timeout, func() (done bool, err error) {
+		if err := CheckClusterDomainEffect(cli, tidbclusters); err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.TidbCluster) error {
