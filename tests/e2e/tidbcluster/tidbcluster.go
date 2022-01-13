@@ -136,13 +136,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	// basic deploy, scale out, scale in, change configuration tests
-	ginkgo.Describe("when using version", func() {
+	utilginkgo.ContextWhenFocus("[Feature: Deploy and Scale]", func() {
 		versions := []string{utilimage.TiDBV3, utilimage.TiDBLatest}
 		versions = append(versions, utilimage.TiDBPreviousVersions...)
 		for _, version := range versions {
 			version := version
 			versionDashed := strings.ReplaceAll(version, ".", "-")
-			ginkgo.Context(version, func() {
+			ginkgo.Context(fmt.Sprintf("[Version: %s]", version), func() {
 				ginkgo.It("should scale out tc successfully", func() {
 					ginkgo.By("Deploy a basic tc")
 					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
