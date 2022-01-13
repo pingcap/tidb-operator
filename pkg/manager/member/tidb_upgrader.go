@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -99,6 +100,9 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		}
 
 		if revision == tc.Status.TiDB.StatefulSet.UpdateRevision {
+			if !podutil.IsPodReady(pod) {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tidb pod: [%s] is not ready", ns, tcName, podName)
+			}
 			if member, exist := tc.Status.TiDB.Members[podName]; !exist || !member.Health {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pod: [%s] is not ready", ns, tcName, podName)
 			}
