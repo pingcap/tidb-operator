@@ -1118,12 +1118,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Waiting for the new tikv pod to be created")
 			newPodName := controller.TiKVMemberName(clusterName) + "-3"
-			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(time.Second*10, 5*time.Minute, func() (bool, error) {
 				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), newPodName, metav1.GetOptions{})
-				if err != nil && !apierrors.IsNotFound(err) {
+				if err != nil {
 					return false, nil
 				}
-				return !apierrors.IsNotFound(err), nil
+				return true, nil
 			})
 			framework.ExpectNoError(err, "failed to wait for the new tikv pod to be created")
 
@@ -1146,7 +1146,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Waiting for delete tikv pod because of recover")
 			delPodName := controller.TiKVMemberName(clusterName) + "-3"
-			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(time.Second*10, 5*time.Minute, func() (bool, error) {
 				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), delPodName, metav1.GetOptions{})
 				if err != nil && apierrors.IsNotFound(err) {
 					return true, nil
