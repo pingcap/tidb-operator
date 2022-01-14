@@ -1067,6 +1067,94 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "not clear TiDB failureMembers when scale TiDB to zero")
 		})
+
+		ginkgo.It("[Feature: AutoFailover] Failover can work if a store fails to update", func() {
+			clusterName := "scale"
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
+			tc.Spec.PD.Replicas = 1
+			// By default, PD set the state of disconnected store to Down
+			// after 30 minutes. Use a short time in testing.
+			tc.Spec.PD.Config.Set("schedule.max-store-down-time", "1m")
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 1
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 30*time.Minute, 15*time.Second)
+
+			ginkgo.By("Fail a TiKV store")
+			podName := controller.TiKVMemberName(clusterName) + "-1"
+			f.ExecCommandInContainer(podName, "tikv", "sh", "-c", "rm -rf /var/lib/tikv/*")
+
+			ginkgo.By("Waiting for the store to be in Down state")
+			err := utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				for _, store := range tc.Status.TiKV.Stores {
+					if store.PodName == podName && store.State == v1alpha1.TiKVStateDown {
+						return true, nil
+					}
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for ")
+
+			ginkgo.By("Update TiKV configuration")
+			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiKV.Config.Set("log-level", "info")
+				tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tikv configuration")
+
+			ginkgo.By("Waiting for the store to be put into failure stores")
+			err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				if tc.Status.TiKV.FailoverUID != "" {
+					for _, failureStore := range tc.Status.TiKV.FailureStores {
+						if failureStore.PodName == podName {
+							return true, nil
+						}
+					}
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for the store to be put into failure stores")
+
+			ginkgo.By("Waiting for the new pod to be created")
+			newPodName := controller.TiKVMemberName(clusterName) + "-3"
+			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), newPodName, metav1.GetOptions{})
+				if err != nil && !apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				return !apierrors.IsNotFound(err), nil
+			})
+			framework.ExpectNoError(err, "failed to wait for the new pod to be created")
+
+			ginkgo.By("Update TiKV failover.recoverByUID")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiKV.RecoverFailover = false
+				tc.Spec.TiKV.Failover.RecoverByUID = tc.Status.TiKV.FailoverUID
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tikv failover.recoverByUID")
+
+			ginkgo.By("Waiting for failureStore empty because of recover")
+			err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				if len(tc.Status.TiKV.FailureStores) == 0 && tc.Status.TiKV.FailoverUID == "" {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for failureStore empty because of recover")
+
+			ginkgo.By("Waiting for delete tikv pod because of recover")
+			delPodName := controller.TiKVMemberName(clusterName) + "-3"
+			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), delPodName, metav1.GetOptions{})
+				if err != nil && apierrors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for delete tikv pod because of recover")
+		})
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
