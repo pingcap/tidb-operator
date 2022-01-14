@@ -1136,7 +1136,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			ginkgo.By("Update TiKV failover.recoverByUID")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.TiKV.RecoverFailover = false
-				tc.Spec.TiKV.Failover.RecoverByUID = tc.Status.TiKV.FailoverUID
+				tc.Spec.TiKV.Failover = &v1alpha1.Failover{RecoverByUID: tc.Status.TiKV.FailoverUID}
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TiKV failover.recoverByUID")
