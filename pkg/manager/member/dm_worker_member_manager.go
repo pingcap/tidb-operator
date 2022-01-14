@@ -182,7 +182,7 @@ func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMC
 		m.failover.RemoveUndesiredFailures(dc)
 	}
 	if len(dc.Status.Worker.FailureMembers) > 0 &&
-		(dc.Spec.Worker.RecoverFailover || dc.Status.Worker.FailoverUID == dc.Spec.Worker.Failover.RecoverByUID) &&
+		(dc.Spec.Worker.RecoverFailover || dc.Status.Worker.FailoverUID == dc.GetWorkerRecoverByUID()) &&
 		shouldRecoverDM(dc, label.DMWorkerLabelVal, m.deps.PodLister) {
 		m.failover.Recover(dc)
 	}
