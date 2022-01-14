@@ -329,8 +329,12 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		// only deploy MySQL and TiDB for DM if CRDs and TiDB Operator installed.
 		// setup upstream MySQL instances and the downstream TiDB cluster for DM testing.
 		// if we can only setup these resource for DM tests with something like `--focus` or `--skip`, that should be better.
-		oa.DeployDMMySQLOrDie(tests.DMMySQLNamespace)
-		oa.DeployDMTiDBOrDie()
+		if e2econfig.TestConfig.InstallDMMysql {
+			oa.DeployDMMySQLOrDie(tests.DMMySQLNamespace)
+			oa.DeployDMTiDBOrDie()
+		} else {
+			ginkgo.By("Skip installing MySQL and TiDB for DM tests")
+		}
 	} else {
 		ginkgo.By("Skip installing tidb-operator")
 		ginkgo.By("Skip installing MySQL and TiDB for DM tests")
