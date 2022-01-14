@@ -1104,7 +1104,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to update tikv configuration")
 
 			ginkgo.By("Waiting for the store to be put into failure stores")
-			err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+			err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*10, func(tc *v1alpha1.TidbCluster) (bool, error) {
 				if tc.Status.TiKV.FailoverUID != "" {
 					for _, failureStore := range tc.Status.TiKV.FailureStores {
 						if failureStore.PodName == podName {
