@@ -131,7 +131,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 		}
 	})
 
-	ginkgo.Describe("[Basic]", func() {
+	ginkgo.Describe("[Across Kubernetes: Basic]", func() {
 
 		// create three namespace
 		ginkgo.BeforeEach(func() {
