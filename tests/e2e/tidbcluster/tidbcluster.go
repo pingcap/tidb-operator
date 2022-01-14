@@ -1068,7 +1068,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "not clear TiDB failureMembers when scale TiDB to zero")
 		})
 
-		ginkgo.It("[Feature: AutoFailover] Failover can work if a store fails to update", func() {
+		ginkgo.It("should failover tikv and recover by failover.recoverByUID", func() {
 			clusterName := "scale"
 			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
 			tc.Spec.PD.Replicas = 1
@@ -1116,7 +1116,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to wait for the store to be put into failure stores")
 
-			ginkgo.By("Waiting for the new pod to be created")
+			ginkgo.By("Waiting for the new tikv pod to be created")
 			newPodName := controller.TiKVMemberName(clusterName) + "-3"
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
 				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), newPodName, metav1.GetOptions{})
@@ -1125,7 +1125,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				return !apierrors.IsNotFound(err), nil
 			})
-			framework.ExpectNoError(err, "failed to wait for the new pod to be created")
+			framework.ExpectNoError(err, "failed to wait for the new tikv pod to be created")
 
 			ginkgo.By("Update TiKV failover.recoverByUID")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
