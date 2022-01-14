@@ -132,13 +132,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	// basic deploy, scale out, scale in, change configuration tests
-	ginkgo.Describe("when using version", func() {
+	ginkgo.Context("[TiDBCluster: Basic]", func() {
 		versions := []string{utilimage.TiDBV3, utilimage.TiDBLatest}
 		versions = append(versions, utilimage.TiDBPreviousVersions...)
 		for _, version := range versions {
 			version := version
 			versionDashed := strings.ReplaceAll(version, ".", "-")
-			ginkgo.Context(version, func() {
+			ginkgo.Context(fmt.Sprintf("[Version: %s]", version), func() {
 				ginkgo.It("should scale out tc successfully", func() {
 					ginkgo.By("Deploy a basic tc")
 					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
@@ -333,12 +333,25 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
 
+<<<<<<< HEAD
 	// TODO: move into Upgrade cases below
 	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
 		ginkgo.By("Creating webhook certs and self signing it")
 		svcName := "webhook"
 		certCtx, err := apimachinery.SetupServerCert(ns, svcName)
 		framework.ExpectNoError(err, "failed to setup certs for apimachinery webservice %s", tests.WebhookServiceName)
+=======
+	ginkgo.It("should direct upgrade tc successfully when PD replicas less than 2.", func() {
+		clusterName := "upgrade-cluster-pd-1"
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.PD.BaseImage = "pingcap/pd-not-exist"
+		// Deploy
+		err := genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
+>>>>>>> b5ae6bf41... Improve and remove some unstable e2e cases (#4363)
 
 		ginkgo.By("Starting webhook pod")
 		webhookPod, svc := startWebhook(c, cfg.E2EImage, ns, svcName, certCtx.Cert, certCtx.Key)
@@ -346,10 +359,21 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Register webhook")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
 
+<<<<<<< HEAD
 		ginkgo.By("Deploying tidb cluster")
 		clusterName := "webhook-upgrade-cluster"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
 		tc.Spec.PD.Replicas = 3
+=======
+	ginkgo.It("should direct upgrade tc successfully when TiKV replicas less than 2.", func() {
+		clusterName := "upgrade-cluster-tikv-1"
+		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		tc.Spec.TiKV.Version = pointer.StringPtr(utilimage.TiDBLatestPrev)
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiKV.EvictLeaderTimeout = pointer.StringPtr("10m")
+>>>>>>> b5ae6bf41... Improve and remove some unstable e2e cases (#4363)
 		// Deploy
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
@@ -1714,8 +1738,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out TiCDC", ns, fromTc.Name)
 
 			ginkgo.By("Check PVCs are recreated for newly scaled out TiCDC")
+<<<<<<< HEAD
 			err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
 				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
+=======
+			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
+>>>>>>> b5ae6bf41... Improve and remove some unstable e2e cases (#4363)
 				framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 				if len(pvcs.Items) == 0 {
 					log.Logf("no PVC found")
@@ -1723,9 +1752,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				for _, pvc := range pvcs.Items {
 					annotations := pvc.GetObjectMeta().GetAnnotations()
-					log.Logf("pvc annotations: %+v", annotations)
-					_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
-					framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+					v, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+					if ok {
+						log.Logf("PVC %s/%s also have annotation tidb.pingcap.com/pvc-defer-deleting=%s", pvc.GetNamespace(), pvc.GetName(), v)
+						return false, nil
+					}
 					pvcUIDString := pvcUIDs[pvc.Name]
 					framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
 				}
@@ -1861,9 +1892,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			for _, pvc := range pvcs.Items {
 				annotations := pvc.GetObjectMeta().GetAnnotations()
-				log.Logf("pvc annotations: %+v", annotations)
-				_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
-				framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+				v, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+				if ok {
+					log.Logf("PVC %s/%s also have annotation tidb.pingcap.com/pvc-defer-deleting=%s", pvc.GetNamespace(), pvc.GetName(), v)
+					return false, nil
+				}
 				pvcUIDString := pvcUIDs[pvc.Name]
 				framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
 			}
@@ -2244,7 +2277,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
 		// when scale-in, replica is first set to 5 and changed to 3
 		// when scale-out, replica is first set to 3 and changed to 5
-		ginkgo.Context("while concurrently scale PD", func() {
+		utilginkgo.ContextWhenFocus("while concurrently scale PD", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
 				op := op
@@ -2307,7 +2340,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 
 		// similar to PD scale-in/scale-out case above, need to check no evict leader scheduler left
-		ginkgo.Context("while concurrently scale TiKV", func() {
+		utilginkgo.ContextWhenFocus("while concurrently scale TiKV", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
 				op := op
