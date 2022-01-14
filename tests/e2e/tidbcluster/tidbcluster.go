@@ -333,25 +333,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
 
-<<<<<<< HEAD
 	// TODO: move into Upgrade cases below
 	ginkgo.It("should upgrade TidbCluster with webhook enabled", func() {
 		ginkgo.By("Creating webhook certs and self signing it")
 		svcName := "webhook"
 		certCtx, err := apimachinery.SetupServerCert(ns, svcName)
 		framework.ExpectNoError(err, "failed to setup certs for apimachinery webservice %s", tests.WebhookServiceName)
-=======
-	ginkgo.It("should direct upgrade tc successfully when PD replicas less than 2.", func() {
-		clusterName := "upgrade-cluster-pd-1"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
-		tc.Spec.PD.Replicas = 1
-		tc.Spec.TiDB.Replicas = 1
-		tc.Spec.TiKV.Replicas = 1
-		tc.Spec.PD.BaseImage = "pingcap/pd-not-exist"
-		// Deploy
-		err := genericCli.Create(context.TODO(), tc)
-		framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
->>>>>>> b5ae6bf41... Improve and remove some unstable e2e cases (#4363)
 
 		ginkgo.By("Starting webhook pod")
 		webhookPod, svc := startWebhook(c, cfg.E2EImage, ns, svcName, certCtx.Cert, certCtx.Key)
@@ -359,21 +346,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Register webhook")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
 
-<<<<<<< HEAD
 		ginkgo.By("Deploying tidb cluster")
 		clusterName := "webhook-upgrade-cluster"
 		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatestPrev)
 		tc.Spec.PD.Replicas = 3
-=======
-	ginkgo.It("should direct upgrade tc successfully when TiKV replicas less than 2.", func() {
-		clusterName := "upgrade-cluster-tikv-1"
-		tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
-		tc.Spec.PD.Replicas = 1
-		tc.Spec.TiDB.Replicas = 1
-		tc.Spec.TiKV.Version = pointer.StringPtr(utilimage.TiDBLatestPrev)
-		tc.Spec.TiKV.Replicas = 1
-		tc.Spec.TiKV.EvictLeaderTimeout = pointer.StringPtr("10m")
->>>>>>> b5ae6bf41... Improve and remove some unstable e2e cases (#4363)
 		// Deploy
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
@@ -1738,13 +1714,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out TiCDC", ns, fromTc.Name)
 
 			ginkgo.By("Check PVCs are recreated for newly scaled out TiCDC")
-<<<<<<< HEAD
-			err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
-				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
-=======
 			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
-				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
->>>>>>> b5ae6bf41... Improve and remove some unstable e2e cases (#4363)
+				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
 				framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 				if len(pvcs.Items) == 0 {
 					log.Logf("no PVC found")

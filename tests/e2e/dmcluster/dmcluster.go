@@ -561,23 +561,16 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				}
 			}
 			for _, podName := range podNames {
-<<<<<<< HEAD
-				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
-				framework.ExpectNoError(err, "failed to get pod %q for DmCluster %q", podName, dcName)
-				log.Logf("kill pod %s", podName)
-				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{}), "failed to kill pod %q", podName)
-				framework.ExpectNoError(utilpod.WaitForPodsAreChanged(c, []corev1.Pod{*pod}, 3*time.Minute))
-=======
 				log.Logf("kill pod %s and check if pod will be recreated and healty", podName)
 
-				pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
+				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get pod %q for DmCluster %q", podName, dcName)
 
-				err = c.CoreV1().Pods(ns).Delete(context.TODO(), podName, metav1.DeleteOptions{})
+				err = c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{})
 				framework.ExpectNoError(err, "failed to kill pod %q", podName)
 
 				err = wait.PollImmediate(time.Second*5, 3*time.Minute, func() (done bool, err error) {
-					podNew, err := c.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+					podNew, err := c.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
 					if err != nil {
 						if testutils.IsRetryableAPIError(err) || errors.IsNotFound(err) {
 							return false, nil
@@ -587,7 +580,6 @@ var _ = ginkgo.Describe("DMCluster", func() {
 					return utilpod.IsPodsChanged(*pod, *podNew), nil
 				})
 				framework.ExpectNoError(err, "pod have not been recreated")
->>>>>>> b5ae6bf41... Improve and remove some unstable e2e cases (#4363)
 
 				err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
 					return checkPodHealthy(podName), nil
