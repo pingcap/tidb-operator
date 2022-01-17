@@ -242,7 +242,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiKVSTS", newSet, oldSet)
 }
 
 func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {

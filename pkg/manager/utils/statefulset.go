@@ -14,11 +14,15 @@
 package utils
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
@@ -51,6 +55,53 @@ func SetStatefulSetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
 	}
 	set.Annotations[LastAppliedConfigAnnotation] = setApply
 	return nil
+}
+
+func notExistMount(sts *apps.StatefulSet, oldSTS *apps.StatefulSet) map[string]corev1.VolumeMount {
+	volumes := make(map[string]struct{})
+	for _, v := range sts.Spec.Template.Spec.Volumes {
+		volumes[v.Name] = struct{}{}
+	}
+	// Note VolumeClaimTemplates DO NOT support update and we will ignore it when update
+	// the STS.
+	for _, pvc := range oldSTS.Spec.VolumeClaimTemplates {
+		volumes[pvc.Name] = struct{}{}
+	}
+
+	mounts := make(map[string]corev1.VolumeMount)
+
+	for _, c := range sts.Spec.Template.Spec.Containers {
+		for _, m := range c.VolumeMounts {
+			_, ok := volumes[m.Name]
+			if ok {
+				continue
+			}
+
+			mounts[m.Name] = m
+		}
+	}
+
+	return mounts
+}
+
+func UpdateStatefulSetWithPrecheck(
+	deps *controller.Dependencies,
+	tc *v1alpha1.TidbCluster,
+	reason string,
+	newTiDBSet *apps.StatefulSet,
+	oldTiDBSet *apps.StatefulSet,
+) error {
+	// If the StatefulSet spec contains a volume mount that does not have a matched volume,
+	// do not update the StatefulSet, otherwise, it will trigger a rolling update and the
+	// rolling update will hang because the new Pod cannot be created after deleting the old one.
+	// Emit event and return error here to let the user be aware of this and fix it in the spec
+	notExistMount := notExistMount(newTiDBSet, oldTiDBSet)
+	if len(notExistMount) > 0 {
+		deps.Recorder.Eventf(tc, corev1.EventTypeWarning, reason, "contains not exist volume mounts: %v", notExistMount)
+		return fmt.Errorf("contains not exist volume mounts: %v", notExistMount)
+	}
+
+	return UpdateStatefulSet(deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
 }
 
 // UpdateStatefulSet is a template function to update the statefulset of components

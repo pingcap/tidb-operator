@@ -242,42 +242,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 	}
 
-	// when contains a not exist mount, instead of update STS -> rolling update(delete pod + keep failed to create pod)...
-	// we skip update the STS and add event in tc to let user learn this and fix the spec of tc.
-	notExistMount := notExistMount(newTiDBSet, oldTiDBSet)
-	if len(notExistMount) > 0 {
-		m.deps.Recorder.Eventf(tc, corev1.EventTypeWarning, "FailedUpdateTiDBSTS", "contains not exist volume mounts: %v", notExistMount)
-		return fmt.Errorf("contains not exist volume mounts: %v", notExistMount)
-	}
-
-	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
-}
-
-func notExistMount(sts *apps.StatefulSet, oldSTS *apps.StatefulSet) map[string]corev1.VolumeMount {
-	volumes := make(map[string]struct{})
-	for _, v := range sts.Spec.Template.Spec.Volumes {
-		volumes[v.Name] = struct{}{}
-	}
-	// Note VolumeClaimTemplates DO NOT support update and we will ignore it when update
-	// the STS.
-	for _, pvc := range oldSTS.Spec.VolumeClaimTemplates {
-		volumes[pvc.Name] = struct{}{}
-	}
-
-	mounts := make(map[string]corev1.VolumeMount)
-
-	for _, c := range sts.Spec.Template.Spec.Containers {
-		for _, m := range c.VolumeMounts {
-			_, ok := volumes[m.Name]
-			if ok {
-				continue
-			}
-
-			mounts[m.Name] = m
-		}
-	}
-
-	return mounts
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiDBSTS", newTiDBSet, oldTiDBSet)
 }
 
 func (m *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {

@@ -18,6 +18,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -93,4 +94,76 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 	for _, test := range tests {
 		testFn(test, t)
 	}
+}
+
+func TestNotExistMount(t *testing.T) {
+	oldSTS := &apps.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testem",
+		},
+		Spec: apps.StatefulSetSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc1",
+					},
+				},
+			},
+		},
+	}
+
+	newSTS := &apps.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testem",
+		},
+		Spec: apps.StatefulSetSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "notexist",
+					},
+				},
+			},
+		},
+	}
+	newSTS.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "v1",
+		},
+	}
+
+	g := NewGomegaWithT(t)
+	mp := notExistMount(newSTS, oldSTS)
+	g.Expect(mp).Should(BeEmpty())
+
+	// test mount volume in oldSTS.Spec.VolumeClaimTemplates
+	c := corev1.Container{VolumeMounts: []corev1.VolumeMount{
+		{
+			Name: "pvc1",
+		},
+	}}
+	newSTS.Spec.Template.Spec.Containers = []corev1.Container{c}
+	mp = notExistMount(newSTS, oldSTS)
+	g.Expect(mp).Should(BeEmpty())
+
+	// test mount volume in newSTS.Spec.Template.Spec.Volumes
+	c = corev1.Container{VolumeMounts: []corev1.VolumeMount{
+		{
+			Name: "v1",
+		},
+	}}
+	newSTS.Spec.Template.Spec.Containers = []corev1.Container{c}
+	mp = notExistMount(newSTS, oldSTS)
+	g.Expect(mp).Should(BeEmpty())
+
+	// test mount volume in newSTS.Spec.Template.Spec.Volumes
+	// but not in newSTS.Spec.Template.Spec.Volumes
+	c = corev1.Container{VolumeMounts: []corev1.VolumeMount{
+		{
+			Name: "notexist",
+		},
+	}}
+	newSTS.Spec.Template.Spec.Containers = []corev1.Container{c}
+	mp = notExistMount(newSTS, oldSTS)
+	g.Expect(mp).ShouldNot(BeEmpty())
 }
