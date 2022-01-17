@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 )
@@ -807,6 +808,20 @@ func (tikv *TiKVSpec) GetLogTailerSpec() LogTailerSpec {
 		return defaultLogTailerSpec
 	}
 	return *tikv.LogTailer
+}
+
+func (tikv *TiKVSpec) GetRecoverByUID() types.UID {
+	if tikv.Failover == nil {
+		return ""
+	}
+	return tikv.Failover.RecoverByUID
+}
+
+func (tiflash *TiFlashSpec) GetRecoverByUID() types.UID {
+	if tiflash.Failover == nil {
+		return ""
+	}
+	return tiflash.Failover.RecoverByUID
 }
 
 func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {
