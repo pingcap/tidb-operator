@@ -2352,7 +2352,8 @@ type TopologySpreadConstraint struct {
 // Failover contains the failover specification.
 // +k8s:openapi-gen=true
 type Failover struct {
-	// RecoverByUID indicates that Operator can recover by this uid , it takes effect only when set `spec.recoverFailover=false`
+	// RecoverByUID indicates that TiDB Operator will recover the failover by this UID,
+	// it takes effect only when set `spec.recoverFailover=false`
 	// +optional
 	RecoverByUID types.UID `json:"recoverByUID,omitempty"`
 }
