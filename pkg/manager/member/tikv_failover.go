@@ -68,26 +68,28 @@ func (f *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 				break
 			}
 		}
-		if store.State == v1alpha1.TiKVStateDown && time.Now().After(deadline) && !exist {
-			if tc.Status.TiKV.FailureStores == nil {
-				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
-			}
+		if store.State == v1alpha1.TiKVStateDown && time.Now().After(deadline) {
 			if tc.Spec.TiKV.MaxFailoverCount != nil && *tc.Spec.TiKV.MaxFailoverCount > 0 {
-				maxFailoverCount := *tc.Spec.TiKV.MaxFailoverCount
-				if len(tc.Status.TiKV.FailureStores) >= int(maxFailoverCount) {
-					klog.Warningf("%s/%s failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
-					return nil
-				}
 				if tc.Status.TiKV.FailoverUID == "" {
 					tc.Status.TiKV.FailoverUID = uuid.NewUUID()
 				}
-				tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
-					PodName:   podName,
-					StoreID:   store.ID,
-					CreatedAt: metav1.Now(),
+				if !exist {
+					if tc.Status.TiKV.FailureStores == nil {
+						tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
+					}
+					maxFailoverCount := *tc.Spec.TiKV.MaxFailoverCount
+					if len(tc.Status.TiKV.FailureStores) >= int(maxFailoverCount) {
+						klog.Warningf("%s/%s TiKV failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
+						return nil
+					}
+					tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
+						PodName:   podName,
+						StoreID:   store.ID,
+						CreatedAt: metav1.Now(),
+					}
+					msg := fmt.Sprintf("store[%s] is Down", store.ID)
+					f.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
 				}
-				msg := fmt.Sprintf("store[%s] is Down", store.ID)
-				f.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
 			}
 		}
 	}

@@ -128,7 +128,7 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(1))
-				g.Expect(dc.Status.Worker.FailoverUID).To(BeEmpty())
+				g.Expect(dc.Status.Worker.FailoverUID).NotTo(BeEmpty())
 			},
 		},
 		{
@@ -239,7 +239,7 @@ func TestWorkerFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, dc *v1alpha1.DMCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(dc.Status.Worker.FailureMembers)).To(Equal(3))
-				g.Expect(dc.Status.Worker.FailoverUID).To(BeEmpty())
+				g.Expect(dc.Status.Worker.FailoverUID).NotTo(BeEmpty())
 
 			},
 		},

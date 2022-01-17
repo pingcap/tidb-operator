@@ -125,7 +125,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(1))
-				g.Expect(tc.Status.TiKV.FailoverUID).To(BeEmpty())
+				g.Expect(tc.Status.TiKV.FailoverUID).NotTo(BeEmpty())
 			},
 		},
 		{
@@ -243,7 +243,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(3))
-				g.Expect(tc.Status.TiKV.FailoverUID).To(BeEmpty())
+				g.Expect(tc.Status.TiKV.FailoverUID).NotTo(BeEmpty())
 			},
 		},
 		{
