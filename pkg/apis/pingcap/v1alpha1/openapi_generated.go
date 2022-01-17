@@ -2281,7 +2281,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Failover(ref common.ReferenceCallback) com
 				Properties: map[string]spec.Schema{
 					"recoverByUID": {
 						SchemaProps: spec.SchemaProps{
-							Description: "RecoverByUID indicates that Operator can recover by this uid , it takes effect only when set `spec.recoverFailover=false`",
+							Description: "RecoverByUID indicates that TiDB Operator will recover the failover by this UID, it takes effect only when set `spec.recoverFailover=false`",
 							Type:        []string{"string"},
 							Format:      "",
 						},

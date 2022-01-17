@@ -6035,7 +6035,8 @@ k8s.io/apimachinery/pkg/types.UID
 </td>
 <td>
 <em>(Optional)</em>
-<p>RecoverByUID indicates that Operator can recover by this uid , it takes effect only when set <code>spec.recoverFailover=false</code></p>
+<p>RecoverByUID indicates that TiDB Operator will recover the failover by this UID,
+it takes effect only when set <code>spec.recoverFailover=false</code></p>
 </td>
 </tr>
 </tbody>
