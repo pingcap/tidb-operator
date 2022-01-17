@@ -9382,6 +9382,11 @@ spec:
                       - name
                       type: object
                     type: array
+                  failover:
+                    properties:
+                      recoverByUID:
+                        type: string
+                    type: object
                   hostNetwork:
                     type: boolean
                   image:
@@ -10246,6 +10251,8 @@ spec:
                 type: object
               worker:
                 properties:
+                  failoverUID:
+                    type: string
                   failureMembers:
                     additionalProperties:
                       properties:
@@ -25639,6 +25646,11 @@ spec:
                       - name
                       type: object
                     type: array
+                  failover:
+                    properties:
+                      recoverByUID:
+                        type: string
+                    type: object
                   hostNetwork:
                     type: boolean
                   image:
@@ -27986,6 +27998,11 @@ spec:
                     type: array
                   evictLeaderTimeout:
                     type: string
+                  failover:
+                    properties:
+                      recoverByUID:
+                        type: string
+                    type: object
                   hostNetwork:
                     type: boolean
                   image:
@@ -29195,6 +29212,8 @@ spec:
                 type: object
               tiflash:
                 properties:
+                  failoverUID:
+                    type: string
                   failureStores:
                     additionalProperties:
                       properties:
@@ -29353,6 +29372,8 @@ spec:
                           type: string
                       type: object
                     type: object
+                  failoverUID:
+                    type: string
                   failureStores:
                     additionalProperties:
                       properties:

@@ -6605,6 +6605,11 @@ spec:
                     - name
                     type: object
                   type: array
+                failover:
+                  properties:
+                    recoverByUID:
+                      type: string
+                  type: object
                 hostNetwork:
                   type: boolean
                 image:
@@ -7468,6 +7473,8 @@ spec:
               type: object
             worker:
               properties:
+                failoverUID:
+                  type: string
                 failureMembers:
                   additionalProperties:
                     properties:
