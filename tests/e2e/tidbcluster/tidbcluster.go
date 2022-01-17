@@ -1068,7 +1068,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "not clear TiDB failureMembers when scale TiDB to zero")
 		})
 
-		ginkgo.It("should failover tikv and recover by failover.recoverByUID", func() {
+		ginkgo.It("should failover tikv and recover by recoverByUID", func() {
 			clusterName := "scale"
 			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
 			tc.Spec.PD.Replicas = 1
@@ -1160,6 +1160,117 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return false, nil
 			})
 			framework.ExpectNoError(err, "failed to wait for delete scale-tikv-3 pod because of recover")
+		})
+
+		ginkgo.It("should failover tikv and not recover by wrong recoverByUID, recover by recoverFailover eventually", func() {
+			clusterName := "recover"
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBLatest)
+			tc.Spec.PD.Replicas = 1
+			// By default, PD set the state of disconnected store to Down
+			// after 30 minutes. Use a short time in testing.
+			tc.Spec.PD.Config.Set("schedule.max-store-down-time", "1m")
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 1
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 30*time.Minute, 15*time.Second)
+
+			ginkgo.By("Down recover-tikv-1 store")
+			downPodName := controller.TiKVMemberName(clusterName) + "-1"
+			f.ExecCommandInContainer(downPodName, "tikv", "sh", "-c", "mv /var/lib/tikv/db /var/lib/tikv/db_down")
+
+			ginkgo.By("Waiting for recover-tikv-1 store bo be in Down state")
+			err := utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				for _, store := range tc.Status.TiKV.Stores {
+					if store.PodName == downPodName && store.State == v1alpha1.TiKVStateDown {
+						return true, nil
+					}
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to waiting for recover-tikv-1 store to be in Down state")
+
+			ginkgo.By("Waiting for recover-tikv-1 store to be put into failure stores")
+			err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*10, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				if tc.Status.TiKV.FailoverUID != "" {
+					for _, failureStore := range tc.Status.TiKV.FailureStores {
+						if failureStore.PodName == downPodName {
+							return true, nil
+						}
+					}
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for recover-tikv-1 store to be put into failure stores")
+
+			ginkgo.By("Waiting for recover-tikv-3 pod to be created")
+			newPodName := controller.TiKVMemberName(clusterName) + "-3"
+			err = wait.PollImmediate(time.Second*10, 5*time.Minute, func() (bool, error) {
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), newPodName, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for recover-tikv-3 pod to be created")
+
+			ginkgo.By("Up recover-tikv-1 store")
+			upPodName := controller.TiKVMemberName(clusterName) + "-1"
+			f.ExecCommandInContainer(upPodName, "tikv", "sh", "-c", "mv /var/lib/tikv/db_down /var/lib/tikv/db")
+
+			ginkgo.By("Waiting for recover-tikv-1 store to be in Up state")
+			err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				for _, store := range tc.Status.TiKV.Stores {
+					if store.PodName == upPodName && store.State == v1alpha1.TiKVStateUp {
+						return true, nil
+					}
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to waiting for recover-tikv-1 store to be in Up state")
+
+			ginkgo.By("Update TiKV wrong failover.recoverByUID")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiKV.RecoverFailover = false
+				tc.Spec.TiKV.Failover = &v1alpha1.Failover{RecoverByUID: "11111111-1111-1111-1111-111111111111"}
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update TiKV wrong failover.recoverByUID")
+
+			ginkgo.By("Waiting for failureStore empty timeout")
+			err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*3, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				if len(tc.Status.TiKV.FailureStores) == 0 {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+
+			ginkgo.By("Update TiKV spec.recoverFailover")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiKV.RecoverFailover = true
+				// even still wrong recoverByUID
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update TiKV wrong spec.recoverFailover")
+
+			ginkgo.By("Waiting for failureStore empty")
+			err = utiltc.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				if len(tc.Status.TiKV.FailureStores) == 0 && tc.Status.TiKV.FailoverUID == "" {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to waiting for failureStore empty")
+
+			ginkgo.By("Waiting for delete recover-tikv-3 pod")
+			delPodName := controller.TiKVMemberName(clusterName) + "-3"
+			err = wait.PollImmediate(time.Second*10, 5*time.Minute, func() (bool, error) {
+				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), delPodName, metav1.GetOptions{})
+				if err != nil && apierrors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for delete recover-tikv-3 pod")
 		})
 	})
 
