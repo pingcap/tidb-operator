@@ -167,7 +167,9 @@ if ! $KUBECTL_BIN get ns "$NAMESPACE" &>/dev/null; then
 fi
 
 echo "info: installing crds"
-$KUBECTL_BIN create -f manifests/crd.yaml
+if ! $KUBECTL_BIN create -f manifests/crd.yaml &>/dev/null; then
+    $KUBECTL_BIN replace -f manifests/crd.yaml
+fi
 
 echo "info: deploying tidb-operator"
 helm_template_args=(
@@ -177,7 +179,7 @@ helm_template_args=(
     --set-string controllerManager.logLevel=4
     --set-string scheduler.logLevel=4
 )
- 
+
 $HELM_BIN template tidb-operator-dev ./charts/tidb-operator/ ${helm_template_args[@]} | kubectl -n "$NAMESPACE" apply -f  -
 
 deploys=(
