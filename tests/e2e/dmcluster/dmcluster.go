@@ -26,6 +26,7 @@ import (
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -53,6 +54,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	testutils "k8s.io/kubernetes/test/utils"
 )
 
 var _ = ginkgo.Describe("DMCluster", func() {
@@ -565,11 +567,25 @@ var _ = ginkgo.Describe("DMCluster", func() {
 				}
 			}
 			for _, podName := range podNames {
+				log.Logf("kill pod %s and check if pod will be recreated and healty", podName)
+
 				pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get pod %q for DmCluster %q", podName, dcName)
-				log.Logf("kill pod %s", podName)
-				framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(context.TODO(), podName, metav1.DeleteOptions{}), "failed to kill pod %q", podName)
-				framework.ExpectNoError(utilpod.WaitForPodsAreChanged(c, []corev1.Pod{*pod}, 3*time.Minute))
+
+				err = c.CoreV1().Pods(ns).Delete(context.TODO(), podName, metav1.DeleteOptions{})
+				framework.ExpectNoError(err, "failed to kill pod %q", podName)
+
+				err = wait.PollImmediate(time.Second*5, 3*time.Minute, func() (done bool, err error) {
+					podNew, err := c.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+					if err != nil {
+						if testutils.IsRetryableAPIError(err) || errors.IsNotFound(err) {
+							return false, nil
+						}
+						return false, err
+					}
+					return utilpod.IsPodsChanged(*pod, *podNew), nil
+				})
+				framework.ExpectNoError(err, "pod have not been recreated")
 
 				err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
 					return checkPodHealthy(podName), nil
