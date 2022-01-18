@@ -199,7 +199,7 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSts, oldSts)
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCDCSTS", newSts, oldSts)
 }
 
 func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) error {
