@@ -97,8 +97,8 @@ func UpdateStatefulSetWithPrecheck(
 	// Emit event and return error here to let the user be aware of this and fix it in the spec
 	notExistMount := notExistMount(newTiDBSet, oldTiDBSet)
 	if len(notExistMount) > 0 {
-		deps.Recorder.Eventf(tc, corev1.EventTypeWarning, reason, "contains not exist volume mounts: %v", notExistMount)
-		return fmt.Errorf("contains not exist volume mounts: %v", notExistMount)
+		deps.Recorder.Eventf(tc, corev1.EventTypeWarning, reason, "contains volumeMounts that do not have matched volume: %v", notExistMount)
+		return fmt.Errorf("contains volumeMounts that do not have matched volume: %v", notExistMount)
 	}
 
 	return UpdateStatefulSet(deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
