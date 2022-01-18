@@ -50,7 +50,7 @@ const (
 	// tikvClusterCertPath is where the cert for inter-cluster communication stored (if any)
 	tikvClusterCertPath = "/var/lib/tikv-tls"
 
-	//find a better way to manage store only managed by tikv in Operator
+	// find a better way to manage store only managed by tikv in Operator
 	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc%s\:\d+`
 )
 
@@ -190,7 +190,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		m.failover.RemoveUndesiredFailures(tc)
 	}
 	if len(tc.Status.TiKV.FailureStores) > 0 &&
-		tc.Spec.TiKV.RecoverFailover &&
+		(tc.Spec.TiKV.RecoverFailover || tc.Status.TiKV.FailoverUID == tc.Spec.TiKV.GetRecoverByUID()) &&
 		shouldRecover(tc, label.TiKVLabelVal, m.deps.PodLister) {
 		m.failover.Recover(tc)
 	}
@@ -821,7 +821,7 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 	}
 
-	//this returns all tombstone stores
+	// this returns all tombstone stores
 	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
 	if err != nil {
 		tc.Status.TiKV.Synced = false
