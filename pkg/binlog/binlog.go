@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"go.etcd.io/etcd/clientv3"
+	"google.golang.org/grpc"
 )
 
 // Client is the client of binlog.
@@ -46,11 +47,12 @@ func (c *Client) hookAddr(addr string) string {
 	return addr
 }
 
-// NewBinlogClient create a Client.
+// NewBinlogClient create a Client and return an error if the underlying conn is not up within 5 seconds.
 func NewBinlogClient(pdEndpoint []string, tlsConfig *tls.Config) (*Client, error) {
 	etcdClient, err := clientv3.New(clientv3.Config{
 		Endpoints:   pdEndpoint,
 		DialTimeout: time.Second * 5,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         tlsConfig,
 	})
 	if err != nil {

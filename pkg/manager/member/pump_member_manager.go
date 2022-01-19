@@ -149,9 +149,18 @@ func buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterfac
 		return nil, err
 	}
 
+	// support x-k8s tidbcluster without local pd
 	client, err = binlog.NewBinlogClient(endpoints, tlsConfig)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		return client, nil
+	}
+
+	for _, pdMember := range tc.Status.PD.PeerMembers {
+		endpoints = []string{pdMember.ClientURL}
+		client, err = binlog.NewBinlogClient(endpoints, tlsConfig)
+		if err == nil {
+			return client, nil
+		}
 	}
 
 	return
