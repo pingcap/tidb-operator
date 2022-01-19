@@ -78,10 +78,12 @@ func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object, member
 	for _, pvc := range pvcs {
 		pvcName := pvc.Name
 		if pvc.Annotations == nil {
+			klog.Infof("Exists unexpected pvc %s/%s: %s", ns, pvcName, skipReasonScalerAnnIsNil)
 			skipReason[pvcName] = skipReasonScalerAnnIsNil
 			continue
 		}
 		if _, ok := pvc.Annotations[label.AnnPVCDeferDeleting]; !ok {
+			klog.Infof("Exists unexpected pvc %s/%s: %s", ns, pvcName, skipReasonScalerAnnDeferDeletingIsEmpty)
 			skipReason[pvcName] = skipReasonScalerAnnDeferDeletingIsEmpty
 			continue
 		}
