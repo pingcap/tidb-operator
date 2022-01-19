@@ -37,7 +37,7 @@ function tidb_operator::version::get_version_vars() {
     fi
 
     # Use git describe to find the version based on tags.
-    if [[ -n ${GIT_VERSION-} ]] || GIT_VERSION=$(git describe --tags --abbrev=14 "${GIT_COMMIT}^{commit}" 2>/dev/null); then
+    if [[ -n ${GIT_VERSION-} ]] || GIT_VERSION=$(git describe --tags --abbrev=14 "${GIT_COMMIT}^{commit}" 2>/dev/null | awk -F / '{print $NF}'); then
       # This translates the "git describe" to an actual semver.org
       # compatible semantic version that looks something like this:
       #   v1.0.0-beta.0.10+4c183422345d8f
