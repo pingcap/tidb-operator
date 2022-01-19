@@ -6893,35 +6893,7 @@ spec:
                 baseImage:
                   type: string
                 config:
-                  properties:
-                    cert-allowed-cn:
-                      items:
-                        type: string
-                      type: array
-                    experimental:
-                      properties:
-                        openapi:
-                          type: boolean
-                      type: object
-                    log-file:
-                      type: string
-                    log-format:
-                      type: string
-                    log-level:
-                      type: string
-                    rpc-rate-burst:
-                      type: integer
-                    rpc-rate-limit:
-                      type: number
-                    rpc-timeout:
-                      type: string
-                    ssl-ca:
-                      type: string
-                    ssl-cert:
-                      type: string
-                    ssl-key:
-                      type: string
-                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   type: string
                 dataSubDir:
@@ -9340,27 +9312,7 @@ spec:
                 baseImage:
                   type: string
                 config:
-                  properties:
-                    cert-allowed-cn:
-                      items:
-                        type: string
-                      type: array
-                    keepalive-ttl:
-                      format: int64
-                      type: integer
-                    log-file:
-                      type: string
-                    log-format:
-                      type: string
-                    log-level:
-                      type: string
-                    ssl-ca:
-                      type: string
-                    ssl-cert:
-                      type: string
-                    ssl-key:
-                      type: string
-                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   type: string
                 dataSubDir:
@@ -9425,6 +9377,11 @@ spec:
                     - name
                     type: object
                   type: array
+                failover:
+                  properties:
+                    recoverByUID:
+                      type: string
+                  type: object
                 hostNetwork:
                   type: boolean
                 image:
@@ -10288,6 +10245,8 @@ spec:
               type: object
             worker:
               properties:
+                failoverUID:
+                  type: string
                 failureMembers:
                   additionalProperties:
                     properties:
@@ -23730,11 +23689,6 @@ spec:
                     - name
                     type: object
                   type: array
-                initializer:
-                  properties:
-                    createPassword:
-                      type: boolean
-                  type: object
                 labels:
                   additionalProperties:
                     type: string
@@ -25673,6 +25627,11 @@ spec:
                     - name
                     type: object
                   type: array
+                failover:
+                  properties:
+                    recoverByUID:
+                      type: string
+                  type: object
                 hostNetwork:
                   type: boolean
                 image:
@@ -28017,6 +27976,11 @@ spec:
                   type: array
                 evictLeaderTimeout:
                   type: string
+                failover:
+                  properties:
+                    recoverByUID:
+                      type: string
+                  type: object
                 hostNetwork:
                   type: boolean
                 image:
@@ -29153,8 +29117,6 @@ spec:
                   type: object
                 image:
                   type: string
-                initPasswordPhase:
-                  type: boolean
                 members:
                   additionalProperties:
                     properties:
@@ -29227,6 +29189,8 @@ spec:
               type: object
             tiflash:
               properties:
+                failoverUID:
+                  type: string
                 failureStores:
                   additionalProperties:
                     properties:
@@ -29385,6 +29349,8 @@ spec:
                         type: string
                     type: object
                   type: object
+                failoverUID:
+                  type: string
                 failureStores:
                   additionalProperties:
                     properties:

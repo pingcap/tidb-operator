@@ -182,7 +182,7 @@ func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMC
 		m.failover.RemoveUndesiredFailures(dc)
 	}
 	if len(dc.Status.Worker.FailureMembers) > 0 &&
-		dc.Spec.Worker.RecoverFailover &&
+		(dc.Spec.Worker.RecoverFailover || dc.Status.Worker.FailoverUID == dc.GetWorkerRecoverByUID()) &&
 		shouldRecoverDM(dc, label.DMWorkerLabelVal, m.deps.PodLister) {
 		m.failover.Recover(dc)
 	}
@@ -533,19 +533,19 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 }
 
 func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
-	config := &v1alpha1.WorkerConfig{}
+	config := v1alpha1.NewWorkerConfig()
 	if dc.Spec.Worker.Config != nil {
 		config = dc.Spec.Worker.Config.DeepCopy()
 	}
 
 	// override CA if tls enabled
 	if dc.IsTLSClusterEnabled() {
-		config.SSLCA = pointer.StringPtr(path.Join(dmWorkerClusterCertPath, tlsSecretRootCAKey))
-		config.SSLCert = pointer.StringPtr(path.Join(dmWorkerClusterCertPath, corev1.TLSCertKey))
-		config.SSLKey = pointer.StringPtr(path.Join(dmWorkerClusterCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("ssl-ca", path.Join(dmWorkerClusterCertPath, tlsSecretRootCAKey))
+		config.Set("ssl-cert", path.Join(dmWorkerClusterCertPath, corev1.TLSCertKey))
+		config.Set("ssl-key", path.Join(dmWorkerClusterCertPath, corev1.TLSPrivateKeyKey))
 	}
 
-	confText, err := MarshalTOML(config)
+	confText, err := config.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}

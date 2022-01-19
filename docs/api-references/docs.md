@@ -6008,6 +6008,39 @@ to communicate to the external service</p>
 </tr>
 </tbody>
 </table>
+<h3 id="failover">Failover</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>, 
+<a href="#tikvspec">TiKVSpec</a>, 
+<a href="#workerspec">WorkerSpec</a>)
+</p>
+<p>
+<p>Failover contains the failover specification.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>recoverByUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverByUID indicates that TiDB Operator will recover the failover by this UID,
+it takes effect only when set <code>spec.recoverFailover=false</code></p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="filelogconfig">FileLogConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -7343,10 +7376,6 @@ Kubernetes core/v1.ResourceRequirements
 </table>
 <h3 id="masterconfig">MasterConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#masterspec">MasterSpec</a>)
-</p>
-<p>
 <p>MasterConfig is the configuration of dm-master-server</p>
 </p>
 <table>
@@ -7462,6 +7491,36 @@ DMExperimental
 <td>
 <em>(Optional)</em>
 <p>dm-master&rsquo;s experimental config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterconfigwraper">MasterConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterspec">MasterSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -7938,8 +7997,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#masterconfig">
-MasterConfig
+<a href="#masterconfigwraper">
+MasterConfigWraper
 </a>
 </em>
 </td>
@@ -15582,6 +15641,20 @@ bool
 <p>RecoverFailover indicates that Operator can recover the failover Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>failover</code></br>
+<em>
+<a href="#failover">
+Failover
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Failover is the configurations of failover</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvbackupconfig">TiKVBackupConfig</h3>
@@ -19582,6 +19655,20 @@ bool
 </tr>
 <tr>
 <td>
+<code>failover</code></br>
+<em>
+<a href="#failover">
+Failover
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Failover is the configurations of failover</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>mountClusterClientSecret</code></br>
 <em>
 bool
@@ -19748,6 +19835,16 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
 <a href="#tikvfailurestore">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVFailureStore
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>failoverUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
 </em>
 </td>
 <td>
@@ -22608,10 +22705,6 @@ Networks
 </table>
 <h3 id="workerconfig">WorkerConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#workerspec">WorkerSpec</a>)
-</p>
-<p>
 <p>WorkerConfig is the configuration of dm-worker-server</p>
 </p>
 <table>
@@ -22687,6 +22780,36 @@ DMSecurityConfig
 </p>
 <em>(Optional)</em>
 <p>dm-worker&rsquo;s security config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workerconfigwraper">WorkerConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#workerspec">WorkerSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -22923,8 +23046,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#workerconfig">
-WorkerConfig
+<a href="#workerconfigwraper">
+WorkerConfigWraper
 </a>
 </em>
 </td>
@@ -22943,6 +23066,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>RecoverFailover indicates that Operator can recover the failover Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failover</code></br>
+<em>
+<a href="#failover">
+Failover
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Failover is the configurations of failover</p>
 </td>
 </tr>
 </tbody>
@@ -23016,6 +23153,16 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerMemb
 <a href="#workerfailuremember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerFailureMember
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>failoverUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
 </em>
 </td>
 <td>

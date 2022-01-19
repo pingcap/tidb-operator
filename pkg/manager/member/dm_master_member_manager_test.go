@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	apps "k8s.io/api/apps/v1"
@@ -1429,11 +1430,11 @@ func TestGetMasterConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{
-						Config: &v1alpha1.MasterConfig{
+						Config: mustMasterConfig(&v1alpha1.MasterConfig{
 							LogLevel:      pointer.StringPtr("debug"),
 							RPCTimeoutStr: pointer.StringPtr("40s"),
 							RPCRateLimit:  pointer.Float64Ptr(15),
-						},
+						}),
 					},
 					Worker: &v1alpha1.WorkerSpec{},
 				},
@@ -1466,8 +1467,8 @@ func TestGetMasterConfigMap(t *testing.T) {
 				Data: map[string]string{
 					"startup-script": "",
 					"config-file": `log-level = "debug"
-rpc-timeout = "40s"
 rpc-rate-limit = 15.0
+rpc-timeout = "40s"
 `,
 				},
 			},
@@ -2269,4 +2270,16 @@ func hasClusterVolMount(sts *apps.StatefulSet, memberType v1alpha1.MemberType) b
 		}
 	}
 	return false
+}
+
+func mustMasterConfig(x interface{}) *v1alpha1.MasterConfigWraper {
+	data, err := toml.Marshal(x)
+	if err != nil {
+		panic(err)
+	}
+
+	c := v1alpha1.NewMasterConfig()
+	c.UnmarshalTOML(data)
+
+	return c
 }
