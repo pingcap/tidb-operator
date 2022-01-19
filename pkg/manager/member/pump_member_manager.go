@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -154,7 +155,7 @@ func buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterfac
 		endpoints = append(endpoints, pdMember.ClientURL)
 	}
 
-	client, err = binlog.NewBinlogClient(endpoints, tlsConfig)
+	client, err = binlog.NewBinlogClient(endpoints, tlsConfig, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
