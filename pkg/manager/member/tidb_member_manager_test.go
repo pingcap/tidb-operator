@@ -143,7 +143,6 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		statusChange             func(*apps.StatefulSet)
 		err                      bool
 		expectStatefulSetFn      func(*GomegaWithT, *apps.StatefulSet, error)
-		isCreatePassword         bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {

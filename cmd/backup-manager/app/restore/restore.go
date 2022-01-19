@@ -23,8 +23,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
-
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -33,7 +31,7 @@ import (
 )
 
 type Options struct {
-	tidbcluster.GenericOptions
+	backupUtil.GenericOptions
 }
 
 func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore) error {

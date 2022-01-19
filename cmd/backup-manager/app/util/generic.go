@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tidbcluster
+package util
 
 import (
 	"context"
@@ -93,26 +93,4 @@ func (bo *GenericOptions) SetTikvGCLifeTime(ctx context.Context, db *sql.DB, gcT
 		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
 	}
 	return nil
-}
-
-func (bo *GenericOptions) SetPassword(ctx context.Context, db *sql.DB, password string) error {
-	sql := fmt.Sprintf("SET PASSWORD FOR 'root'@'%%' = '%s'; FLUSH PRIVILEGES;", password)
-	_, err := db.ExecContext(ctx, sql)
-	if err != nil {
-		return fmt.Errorf("set cluster %s password failed, sql: %s, err: %v", bo, sql, err)
-	}
-	return nil
-}
-
-// OpenDB opens db
-func (bo *GenericOptions) OpenDB(ctx context.Context, dsn string) (*sql.DB, error) {
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("open datasource failed, err: %v", err)
-	}
-	if err := db.PingContext(ctx); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("cannot connect to mysql, err: %v", err)
-	}
-	return db, nil
 }

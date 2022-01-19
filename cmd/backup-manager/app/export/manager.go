@@ -121,7 +121,7 @@ func (bm *BackupManager) ProcessBackup() error {
 			return false, err
 		}
 
-		db, err = bm.OpenDB(ctx, dsn)
+		db, err = util.OpenDB(ctx, dsn)
 		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
 			if ctx.Err() != nil {

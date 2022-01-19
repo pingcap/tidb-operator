@@ -27,15 +27,13 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
-
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -47,6 +45,8 @@ import (
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
+	// for sql/driver
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
@@ -69,7 +69,6 @@ type tidbMemberManager struct {
 	tidbUpgrader                 Upgrader
 	tidbFailover                 Failover
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
-	tidbcluster.GenericOptions
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
@@ -251,7 +250,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 	}
 	// set random password
-	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.InitPasswordPhase {
+	if tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.InitPasswordPhase && !tc.IsTLSClusterEnabled() {
 		// check tidb pod is ready
 		podOrdinals := helper.GetPodOrdinals(*oldTiDBSet.Spec.Replicas, oldTiDBSet).List()
 		isTiDBReady := true
@@ -272,7 +271,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 			// sync password secret
 			var password string
 			secretName := controller.TiDBSecret(tc.Name)
-			_, err := m.deps.SecretLister.Secrets(ns).Get(secretName)
+			secret, err := m.deps.SecretLister.Secrets(ns).Get(secretName)
 			passwordSecretExist := true
 			if err != nil {
 				if errors.IsNotFound(err) {
@@ -290,12 +289,14 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 				if err != nil {
 					return err
 				}
+			} else {
+				password = string(secret.Data["root"])
 			}
 			// init password
 			var db *sql.DB
 			var dsn string
 			err = wait.PollImmediate(5*time.Second, 30*time.Minute, func() (done bool, err error) {
-				dsn, err = m.GetDSN(tc.IsTLSClusterEnabled())
+				dsn, err = m.GetDBUrl(tc)
 				if err != nil {
 					klog.Errorf("can't get dsn of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
 					return false, err
@@ -319,10 +320,11 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 					klog.Errorf("set tidb[%s:%s] password err: %s", tc.Namespace, tc.Name, err)
 				}
 				tc.Status.TiDB.InitPasswordPhase = true
+				klog.Infof("set password successfully for tidb[%s:%s]", tc.Namespace, tc.Name)
 			}
 			defer db.Close()
 		} else {
-			klog.Infof("set password wit for tidb[%s:%s] pod ready, err: %s", tc.Namespace, tc.Name, err)
+			klog.Infof("set password wait for tidb[%s:%s] pod ready", tc.Namespace, tc.Name)
 		}
 	}
 
@@ -993,6 +995,31 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	c := findContainerByName(set, "tidb")
 	if c != nil {
 		tc.Status.TiDB.Image = c.Image
+	}
+	return nil
+}
+
+func (m *tidbMemberManager) GetDBUrl(tc *v1alpha1.TidbCluster) (string, error) {
+	return fmt.Sprintf("root:@tcp(%s-tidb.%s.svc:4000)/?charset=utf8mb4,utf8&multiStatements=true", tc.Name, tc.Namespace), nil
+}
+
+func (bo *tidbMemberManager) OpenDB(ctx context.Context, dsn string) (*sql.DB, error) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("open datasource failed, err: %v", err)
+	}
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("cannot connect to mysql, err: %v", err)
+	}
+	return db, nil
+}
+
+func (bo *tidbMemberManager) SetPassword(ctx context.Context, db *sql.DB, password string) error {
+	sql := fmt.Sprintf("SET PASSWORD FOR 'root'@'%%' = '%s'; FLUSH PRIVILEGES;", password)
+	_, err := db.ExecContext(ctx, sql)
+	if err != nil {
+		return fmt.Errorf("set cluster %s password failed, sql: %s, err: %v", bo, sql, err)
 	}
 	return nil
 }

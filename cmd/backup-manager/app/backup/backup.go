@@ -23,8 +23,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
-
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -34,7 +32,7 @@ import (
 
 // Options contains the input arguments to the backup command
 type Options struct {
-	tidbcluster.GenericOptions
+	backupUtil.GenericOptions
 }
 
 // backupData generates br args and runs br binary to do the real backup work
