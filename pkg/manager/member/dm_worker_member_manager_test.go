@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
@@ -272,10 +273,10 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "basic",
 			prepare: func(dc *v1alpha1.DMCluster, _ *workerFakeIndexers) {
-				dc.Spec.Worker.Config = &v1alpha1.WorkerConfig{
+				dc.Spec.Worker.Config = mustWorkerConfig(&v1alpha1.WorkerConfig{
 					LogLevel:     pointer.StringPtr("info"),
 					KeepAliveTTL: pointer.Int64Ptr(25),
-				}
+				})
 				dc.Spec.Worker.Replicas = 4
 			},
 			errOnUpdateCm:  false,
@@ -293,10 +294,10 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "error on update configmap",
 			prepare: func(dc *v1alpha1.DMCluster, _ *workerFakeIndexers) {
-				dc.Spec.Worker.Config = &v1alpha1.WorkerConfig{
+				dc.Spec.Worker.Config = mustWorkerConfig(&v1alpha1.WorkerConfig{
 					LogLevel:     pointer.StringPtr("info"),
 					KeepAliveTTL: pointer.Int64Ptr(25),
-				}
+				})
 				dc.Spec.Worker.Replicas = 4
 			},
 			errOnUpdateCm:  true,
@@ -318,10 +319,10 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "error on update service",
 			prepare: func(dc *v1alpha1.DMCluster, _ *workerFakeIndexers) {
-				dc.Spec.Worker.Config = &v1alpha1.WorkerConfig{
+				dc.Spec.Worker.Config = mustWorkerConfig(&v1alpha1.WorkerConfig{
 					LogLevel:     pointer.StringPtr("info"),
 					KeepAliveTTL: pointer.Int64Ptr(25),
-				}
+				})
 				dc.Spec.Worker.Replicas = 4
 			},
 			errOnUpdateCm:  false,
@@ -343,10 +344,10 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "error on update statefulset",
 			prepare: func(dc *v1alpha1.DMCluster, _ *workerFakeIndexers) {
-				dc.Spec.Worker.Config = &v1alpha1.WorkerConfig{
+				dc.Spec.Worker.Config = mustWorkerConfig(&v1alpha1.WorkerConfig{
 					LogLevel:     pointer.StringPtr("info"),
 					KeepAliveTTL: pointer.Int64Ptr(25),
-				}
+				})
 				dc.Spec.Worker.Replicas = 4
 			},
 			errOnUpdateCm:  false,
@@ -368,10 +369,10 @@ func TestWorkerMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "offline scaled dm-worker",
 			prepare: func(dc *v1alpha1.DMCluster, _ *workerFakeIndexers) {
-				dc.Spec.Worker.Config = &v1alpha1.WorkerConfig{
+				dc.Spec.Worker.Config = mustWorkerConfig(&v1alpha1.WorkerConfig{
 					LogLevel:     pointer.StringPtr("info"),
 					KeepAliveTTL: pointer.Int64Ptr(25),
-				}
+				})
 				dc.Spec.Worker.Replicas = 3
 			},
 			errOnUpdateCm:  false,
@@ -648,10 +649,10 @@ func TestWorkerSyncConfigUpdate(t *testing.T) {
 		{
 			name: "basic",
 			prepare: func(tc *v1alpha1.DMCluster, _ *workerFakeIndexers) {
-				tc.Spec.Worker.Config = &v1alpha1.WorkerConfig{
+				tc.Spec.Worker.Config = mustWorkerConfig(&v1alpha1.WorkerConfig{
 					LogLevel:     pointer.StringPtr("info"),
 					KeepAliveTTL: pointer.Int64Ptr(25),
-				}
+				})
 			},
 			expectFn: func(g *GomegaWithT, r *result) {
 				g.Expect(r.sync).To(Succeed())
@@ -741,10 +742,10 @@ func newDMClusterForWorker() *v1alpha1.DMCluster {
 			Worker: &v1alpha1.WorkerSpec{
 				BaseImage: "dm-test-image",
 				Replicas:  3,
-				Config: &v1alpha1.WorkerConfig{
+				Config: mustWorkerConfig(&v1alpha1.WorkerConfig{
 					LogLevel:     pointer.StringPtr("debug"),
 					KeepAliveTTL: pointer.Int64Ptr(15),
-				},
+				}),
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:     resource.MustParse("1"),
@@ -1381,10 +1382,10 @@ func TestGetNewWorkerConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Worker: &v1alpha1.WorkerSpec{
-						Config: &v1alpha1.WorkerConfig{
+						Config: mustWorkerConfig(&v1alpha1.WorkerConfig{
 							LogLevel:     pointer.StringPtr("info"),
 							KeepAliveTTL: pointer.Int64Ptr(25),
-						},
+						}),
 					},
 				},
 			},
@@ -1414,8 +1415,8 @@ func TestGetNewWorkerConfigMap(t *testing.T) {
 					},
 				},
 				Data: map[string]string{
-					"config-file": `log-level = "info"
-keepalive-ttl = 25
+					"config-file": `keepalive-ttl = 25
+log-level = "info"
 `,
 					"startup-script": "",
 				},
@@ -1435,4 +1436,16 @@ keepalive-ttl = 25
 			}
 		})
 	}
+}
+
+func mustWorkerConfig(x interface{}) *v1alpha1.WorkerConfigWraper {
+	data, err := toml.Marshal(x)
+	if err != nil {
+		panic(err)
+	}
+
+	c := v1alpha1.NewWorkerConfig()
+	c.UnmarshalTOML(data)
+
+	return c
 }

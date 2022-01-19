@@ -28,21 +28,8 @@ func TestSetDMSpecDefault(t *testing.T) {
 	g.Expect(dc.Spec.Master.Config).Should(BeNil())
 
 	dc = newDMCluster()
-	rpcTimeoutStr := "40s"
-	dc.Spec.Master.Config = &v1alpha1.MasterConfig{
-		RPCTimeoutStr: &rpcTimeoutStr,
-	}
-	SetDMClusterDefault(dc)
-	g.Expect(*dc.Spec.Master.Config.RPCTimeoutStr).Should(Equal(rpcTimeoutStr))
-
-	dc = newDMCluster()
 	dc.Spec.Version = "v2.0.0-rc.2"
-	keepAliveTTL := int64(15)
-	dc.Spec.Worker.Config = &v1alpha1.WorkerConfig{
-		KeepAliveTTL: &keepAliveTTL,
-	}
 	SetDMClusterDefault(dc)
-	g.Expect(*dc.Spec.Worker.Config.KeepAliveTTL).Should(Equal(keepAliveTTL))
 	g.Expect(*dc.Spec.Master.MaxFailoverCount).Should(Equal(int32(3)))
 	g.Expect(dc.Spec.Master.BaseImage).Should(Equal(defaultMasterImage))
 	g.Expect(*dc.Spec.Worker.MaxFailoverCount).Should(Equal(int32(3)))
