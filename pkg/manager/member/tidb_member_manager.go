@@ -14,11 +14,16 @@
 package member
 
 import (
+	"context"
 	"crypto/tls"
+	"database/sql"
 	"fmt"
 	"path"
 	"strconv"
 	"strings"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 
@@ -28,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
@@ -63,6 +69,7 @@ type tidbMemberManager struct {
 	tidbUpgrader                 Upgrader
 	tidbFailover                 Failover
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
+	tidbcluster.GenericOptions
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
@@ -244,72 +251,85 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 	}
 	// set random password
-	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && tc.Status.TiDB.InitPasswordPhase == nil {
-		// sync password secret
-		secretName := controller.TiDBSecret(tc.Name)
-		_, err := m.deps.ServiceLister.Services(ns).Get(secretName)
-		isExistPasswordSecret := true
-		if err != nil {
-			if errors.IsNotFound(err) {
-				isExistPasswordSecret = false
-			} else {
-				return err
-			}
-		}
-		if !isExistPasswordSecret {
-			klog.Infof("Create random password for cluster %s/%s", tc.Namespace, tc.Name)
-			secret := m.buildRandomPasswordSecret(tc)
-			err := m.deps.TypedControl.Create(tc, secret)
+	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.InitPasswordPhase {
+		// check tidb pod is ready
+		podOrdinals := helper.GetPodOrdinals(*oldTiDBSet.Spec.Replicas, oldTiDBSet).List()
+		isTiDBReady := true
+		for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
+			i := podOrdinals[_i]
+			podName := tidbPodName(tcName, i)
+			pod, err := m.deps.PodLister.Pods(ns).Get(podName)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
+			}
+			isReady := podutil.IsPodReady(pod)
+			if !isReady {
+				isTiDBReady = false
+				break
 			}
 		}
+		if isTiDBReady {
+			// sync password secret
+			var password string
+			secretName := controller.TiDBSecret(tc.Name)
+			_, err := m.deps.SecretLister.Secrets(ns).Get(secretName)
+			isExistPasswordSecret := true
+			if err != nil {
+				if errors.IsNotFound(err) {
+					isExistPasswordSecret = false
+				} else {
+					return err
+				}
+			}
 
-		tidbInitializerName := controller.TiDBInitializer(tc.Name)
-		_, err = m.deps.TiDBInitializerLister.TidbInitializers(ns).Get(tidbInitializerName)
-		isExistTidbInitializer := true
-		if err != nil {
-			if errors.IsNotFound(err) {
-				isExistTidbInitializer = false
-			} else {
-				return err
+			if !isExistPasswordSecret {
+				klog.Infof("Create random password for cluster %s/%s", tc.Namespace, tc.Name)
+				var secret *corev1.Secret
+				secret, password = m.buildRandomPasswordSecret(tc)
+				err := m.deps.TypedControl.Create(tc, secret)
+				if err != nil {
+					return err
+				}
 			}
-		}
-		if !isExistTidbInitializer {
-			policy := corev1.PullIfNotPresent
-			tidbInitializer := &v1alpha1.TidbInitializer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      fmt.Sprintf("%s-init", tc.Name),
-					Namespace: tc.Namespace,
-				},
-				Spec: v1alpha1.TidbInitializerSpec{
-					Image:           "tnir/mysqlclient",
-					ImagePullPolicy: &policy,
-					Clusters: v1alpha1.TidbClusterRef{
-						Name:      tc.Name,
-						Namespace: tc.Namespace,
-					},
-					PasswordSecret: pointer.StringPtr(secretName),
-				},
-			}
-			err = m.deps.TypedControl.CreateTidbInitializer(tc, tidbInitializer)
+			// init password
+			var db *sql.DB
+			var dsn string
+			err = wait.PollImmediate(5*time.Second, 30*time.Minute, func() (done bool, err error) {
+				dsn, err = m.GetDSN(tc.IsTLSClusterEnabled())
+				if err != nil {
+					klog.Errorf("can't get dsn of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+					return false, err
+				}
+				ctx := context.TODO()
+				db, err = m.OpenDB(ctx, dsn)
+				if err != nil {
+					klog.Warningf("can't connect to tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+					if ctx.Err() != nil {
+						return false, ctx.Err()
+					}
+					return false, nil
+				}
+				return true, nil
+			})
 			if err != nil {
-				return err
+				klog.Errorf("can't get connection of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+			} else {
+				err = m.SetPassword(context.TODO(), db, password)
+				if err != nil {
+					klog.Errorf("set tidb[%s:%s] password err: %s", tc.Namespace, tc.Name, err)
+				}
+				tc.Status.TiDB.InitPasswordPhase = true
 			}
+			defer db.Close()
 		} else {
-			existInitializer, err := m.deps.TiDBInitializerLister.TidbInitializers(tc.Name).Get(tidbInitializerName)
-			if err != nil {
-				return err
-			}
-			tc.Status.TiDB.InitPasswordPhase = &existInitializer.Status.Phase
-
+			klog.Infof("set password wit for tidb[%s:%s] pod ready, err: %s", tc.Namespace, tc.Name, err)
 		}
 	}
 
 	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
 }
 
-func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) *corev1.Secret {
+func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) (*corev1.Secret, string) {
 
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -321,7 +341,7 @@ func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) 
 	s.Data = map[string][]byte{
 		constants.TidbRootKey: password,
 	}
-	return s
+	return s, string(password)
 }
 
 func (m *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {

@@ -29177,7 +29177,7 @@ spec:
                   image:
                     type: string
                   initPasswordPhase:
-                    type: string
+                    type: boolean
                   members:
                     additionalProperties:
                       properties:

@@ -21,15 +21,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/google/go-cmp/cmp"
-	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -199,27 +197,6 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 			set, err := tmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 			test.expectStatefulSetFn(g, set, err)
 		}
-		if test.isCreatePassword {
-
-			tiDBInitializer := &v1alpha1.TidbInitializer{}
-			existTiDBInitializer, err := tmm.deps.TypedControl.Exist(client.ObjectKey{
-				Namespace: ns,
-				Name:      controller.TiDBInitializer(tcName),
-			}, tiDBInitializer)
-
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(existTiDBInitializer).To(Equal(true))
-
-			secret := &v1.Secret{}
-			existSecret, err := tmm.deps.TypedControl.Exist(client.ObjectKey{
-				Namespace: ns,
-				Name:      controller.TiDBSecret(tcName),
-			}, secret)
-
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(existSecret).To(Equal(true))
-
-		}
 	}
 
 	tests := []testcase{
@@ -261,19 +238,6 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(set.Spec.Template.Spec.Containers).To(HaveLen(2))
 			},
-		},
-		{
-			name: "enable random password",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.TiDB.Initializer = &v1alpha1.TiDBInitializer{CreatePassword: true}
-			},
-			errWhenUpdateStatefulSet: false,
-			err:                      false,
-			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(set.Spec.Template.Spec.Containers).To(HaveLen(2))
-			},
-			isCreatePassword: true,
 		},
 	}
 

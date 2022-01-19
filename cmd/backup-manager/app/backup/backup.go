@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
 	"io"
 	"io/ioutil"
 	"os/exec"
@@ -32,7 +33,7 @@ import (
 
 // Options contains the input arguments to the backup command
 type Options struct {
-	backupUtil.GenericOptions
+	tidbcluster.GenericOptions
 }
 
 // backupData generates br args and runs br binary to do the real backup work

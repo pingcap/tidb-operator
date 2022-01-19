@@ -28,13 +28,14 @@ import (
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
 
 // Options contains the input arguments to the backup command
 type Options struct {
-	backupUtil.GenericOptions
+	tidbcluster.GenericOptions
 	Bucket      string
 	Prefix      string
 	StorageType string
