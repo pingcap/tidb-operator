@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -91,6 +92,9 @@ func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.St
 		}
 
 		if revision == dc.Status.Master.StatefulSet.UpdateRevision {
+			if !podutil.IsPodReady(pod) {
+				return controller.RequeueErrorf("dmcluster: [%s/%s]'s upgraded dm pod: [%s] is not ready", ns, dcName, podName)
+			}
 			if member, exist := dc.Status.Master.Members[podName]; !exist || !member.Health {
 				return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master upgraded pod: [%s] is not ready", ns, dcName, podName)
 			}

@@ -82,8 +82,9 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 			name: "normal",
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(0)))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
+			errorExpect: true,
 		},
 		{
 			name: "modify oldSet update strategy to OnDelete",

@@ -98,11 +98,11 @@ func TestMasterUpgraderUpgrade(t *testing.T) {
 			changeOldSet:      nil,
 			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(err).To(HaveOccurred())
 			},
 			expectFn: func(g *GomegaWithT, dc *v1alpha1.DMCluster, newSet *apps.StatefulSet) {
 				g.Expect(dc.Status.Master.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
 			},
 		},
 		{
@@ -207,7 +207,7 @@ func TestMasterUpgraderUpgrade(t *testing.T) {
 			changePods:        nil,
 			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err.Error()).To(Equal(fmt.Sprintf("dmcluster: [default/upgrader]'s dm-master upgraded pod: [%s] is not ready", DMMasterPodName(upgradeTcName, 2))))
+				g.Expect(err.Error()).To(Equal(fmt.Sprintf("dmcluster: [%s/%s]'s upgraded dm pod: [%s] is not ready", metav1.NamespaceDefault, upgradeTcName, DMMasterPodName(upgradeTcName, 2))))
 			},
 			expectFn: func(g *GomegaWithT, dc *v1alpha1.DMCluster, newSet *apps.StatefulSet) {
 				g.Expect(dc.Status.Master.Phase).To(Equal(v1alpha1.UpgradePhase))
