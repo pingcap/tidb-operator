@@ -23705,6 +23705,11 @@ spec:
                       - name
                       type: object
                     type: array
+                  initializer:
+                    properties:
+                      createPassword:
+                        type: boolean
+                    type: object
                   labels:
                     additionalProperties:
                       type: string
@@ -29140,6 +29145,8 @@ spec:
                     type: object
                   image:
                     type: string
+                  initPasswordPhase:
+                    type: boolean
                   members:
                     additionalProperties:
                       properties:

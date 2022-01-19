@@ -17,12 +17,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
 	"io"
 	"io/ioutil"
 	"os/exec"
 	"path"
 	"strings"
+
+	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
 
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"

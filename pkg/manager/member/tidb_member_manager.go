@@ -273,16 +273,16 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 			var password string
 			secretName := controller.TiDBSecret(tc.Name)
 			_, err := m.deps.SecretLister.Secrets(ns).Get(secretName)
-			isExistPasswordSecret := true
+			passwordSecretExist := true
 			if err != nil {
 				if errors.IsNotFound(err) {
-					isExistPasswordSecret = false
+					passwordSecretExist = false
 				} else {
 					return err
 				}
 			}
 
-			if !isExistPasswordSecret {
+			if !passwordSecretExist {
 				klog.Infof("Create random password for cluster %s/%s", tc.Namespace, tc.Name)
 				var secret *corev1.Secret
 				secret, password = m.buildRandomPasswordSecret(tc)
