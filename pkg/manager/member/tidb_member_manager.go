@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 
@@ -44,7 +45,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/utils/pointer"
 	// for sql/driver
 	_ "github.com/go-sql-driver/mysql"
 )
