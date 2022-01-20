@@ -401,8 +401,6 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			tc1 := GetTCForAcrossKubernetes(ns1, tcName1, version, clusterDomain, nil)
 			tc2 := GetTCForAcrossKubernetes(ns2, tcName2, version, clusterDomain, tc1)
 			tc3 := GetTCForAcrossKubernetes(ns3, tcName3, version, clusterDomain, tc1)
-			// FIXME(jsut1900): remove this after #4361 get fixed.
-			tc1.Spec.Pump, tc2.Spec.Pump, tc3.Spec.Pump = nil, nil, nil
 
 			ginkgo.By("Installing initial tidb CA certificate")
 			err := InstallTiDBIssuer(ns1, tcName1)
