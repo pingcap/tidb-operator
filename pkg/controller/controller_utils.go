@@ -350,8 +350,8 @@ func TiDBInitializer(clusterName string) string {
 	return fmt.Sprintf("%s-init", clusterName)
 }
 
-// TiDBSecret returns tidb secret name
-func TiDBSecret(clusterName string) string {
+// TiDBInitSecret returns tidb init secret name
+func TiDBInitSecret(clusterName string) string {
 	return fmt.Sprintf("%s-init", clusterName)
 }
 
