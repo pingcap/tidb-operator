@@ -124,7 +124,11 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return nil
 	}
 
+<<<<<<< HEAD
 	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+=======
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdatePumpSTS", newSet, oldSet)
+>>>>>>> 3baf411e1... Skip update tidb STS when contains not exist volumn mount (#4369)
 }
 
 func (p *pumpMemberManager) buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterface) (client binlogClient, err error) {

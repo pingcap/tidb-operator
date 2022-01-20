@@ -227,7 +227,11 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
+<<<<<<< HEAD
 	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+=======
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiFlashSTS", newSet, oldSet)
+>>>>>>> 3baf411e1... Skip update tidb STS when contains not exist volumn mount (#4369)
 }
 
 func (m *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {

@@ -240,7 +240,11 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
+<<<<<<< HEAD
 	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+=======
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiKVSTS", newSet, oldSet)
+>>>>>>> 3baf411e1... Skip update tidb STS when contains not exist volumn mount (#4369)
 }
 
 func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
