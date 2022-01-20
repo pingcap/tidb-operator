@@ -352,7 +352,7 @@ func TiDBInitializer(clusterName string) string {
 
 // TiDBSecret returns tidb secret name
 func TiDBSecret(clusterName string) string {
-	return fmt.Sprintf("%s-secret", clusterName)
+	return fmt.Sprintf("%s-init", clusterName)
 }
 
 // AnnProm adds annotations for prometheus scraping metrics

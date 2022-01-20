@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -64,8 +62,6 @@ type TypedControlInterface interface {
 	CreateOrUpdateIngress(controller client.Object, ingress *networkingv1.Ingress) (*networkingv1.Ingress, error)
 	// CreateOrUpdateIngressV1beta1 create the desired v1beta1 ingress or update the current one to desired state if already existed
 	CreateOrUpdateIngressV1beta1(controller client.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error)
-	// CreateTidbInitializer create the desired v1alpha1 TidbInitializer or update the current one to desired state if already existed
-	CreateTidbInitializer(controller client.Object, tidbInitializer *v1alpha1.TidbInitializer) error
 	// UpdateStatus update the /status subresource of the object
 	UpdateStatus(newStatus client.Object) error
 	// Delete delete the given object from the cluster
@@ -265,14 +261,6 @@ func (w *typedWrapper) CreateOrUpdateConfigMap(controller client.Object, cm *cor
 		return nil, err
 	}
 	return result.(*corev1.ConfigMap), nil
-}
-
-func (w *typedWrapper) CreateTidbInitializer(controller client.Object, tidbInitializer *v1alpha1.TidbInitializer) error {
-	err := w.GenericControlInterface.Create(controller, tidbInitializer, true)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (w *typedWrapper) CreateOrUpdateService(controller client.Object, svc *corev1.Service) (*corev1.Service, error) {
@@ -671,16 +659,6 @@ func (c *FakeGenericControl) CreateOrUpdate(controller, obj client.Object, fn Me
 	}
 
 	return c.control.CreateOrUpdate(controller, obj, fn, setOwnerFlag)
-}
-
-func (c *FakeGenericControl) CreateTidbInitializer(controller client.Object, tidbInitializer *v1alpha1.TidbInitializer) error {
-	defer c.createOrUpdateTracker.Inc()
-	if c.createOrUpdateTracker.ErrorReady() {
-		defer c.createOrUpdateTracker.Reset()
-		return c.createOrUpdateTracker.GetError()
-	}
-
-	return c.control.Create(controller, tidbInitializer, true)
 }
 
 func (c *FakeGenericControl) Delete(controller, obj client.Object) error {

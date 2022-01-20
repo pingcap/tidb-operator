@@ -1018,10 +1018,7 @@ func (bo *tidbMemberManager) OpenDB(ctx context.Context, dsn string) (*sql.DB, e
 func (bo *tidbMemberManager) SetPassword(ctx context.Context, db *sql.DB, password string) error {
 	sql := fmt.Sprintf("SET PASSWORD FOR 'root'@'%%' = '%s'; FLUSH PRIVILEGES;", password)
 	_, err := db.ExecContext(ctx, sql)
-	if err != nil {
-		return fmt.Errorf("set cluster %s password failed, sql: %s, err: %v", bo, sql, err)
-	}
-	return nil
+	return err
 }
 
 func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
