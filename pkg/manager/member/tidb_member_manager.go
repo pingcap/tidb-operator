@@ -303,7 +303,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) (bool, err
 			// init password
 			var db *sql.DB
 			var dsn string
-			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+			err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (done bool, err error) {
 				dsn, err = m.GetDSN(tc)
 				if err != nil {
 					klog.Errorf("Can't get dsn of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
@@ -326,7 +326,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) (bool, err
 			} else {
 				err = util.SetPassword(context.TODO(), db, password)
 				if err != nil {
-					klog.Errorf("Set tidb[%s:%s] password err: %s", tc.Namespace, tc.Name, err)
+					klog.Errorf("Fail to set TiDB password for [%s:%s], err: %s", tc.Namespace, tc.Name, err)
 				}
 				tc.Status.TiDB.InitPasswordPhase = true
 				klog.Infof("Set password successfully for tidb[%s:%s]", tc.Namespace, tc.Name)
