@@ -250,7 +250,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 	}
 	// set random password
-	if tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.InitPasswordPhase && !tc.IsTLSClusterEnabled() {
+	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.InitPasswordPhase && !tc.IsTLSClusterEnabled() {
 		// check tidb pod is ready
 		podOrdinals := helper.GetPodOrdinals(*oldTiDBSet.Spec.Replicas, oldTiDBSet).List()
 		isTiDBReady := true
@@ -290,7 +290,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 					return err
 				}
 			} else {
-				password = string(secret.Data["root"])
+				password = string(secret.Data[constants.TidbRootKey])
 			}
 			// init password
 			var db *sql.DB
