@@ -295,7 +295,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 			// init password
 			var db *sql.DB
 			var dsn string
-			err = wait.PollImmediate(5*time.Second, 30*time.Minute, func() (done bool, err error) {
+			err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (done bool, err error) {
 				dsn, err = m.GetDBUrl(tc)
 				if err != nil {
 					klog.Errorf("can't get dsn of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
