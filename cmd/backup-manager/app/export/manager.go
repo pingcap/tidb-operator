@@ -16,6 +16,7 @@ package export
 import (
 	"context"
 	"database/sql"
+	util2 "github.com/pingcap/tidb-operator/pkg/util"
 	"os"
 	"strings"
 	"time"
@@ -121,7 +122,7 @@ func (bm *BackupManager) ProcessBackup() error {
 			return false, err
 		}
 
-		db, err = util.OpenDB(ctx, dsn)
+		db, err = util2.OpenDB(ctx, dsn)
 		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
 			if ctx.Err() != nil {

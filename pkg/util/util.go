@@ -14,6 +14,8 @@
 package util
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -437,9 +439,29 @@ func FixedLengthRandomPasswordBytes() []byte {
 func RandomBytes(length int) []byte {
 	return []byte(password.MustGenerate(
 		length,
-		2,     // number of digits to include in the result
-		3,     // number of symbols to include in the result
-		false, // noUpper
-		false, // allowRepeat
+		length/3, // number of digits to include in the result
+		length/4, // number of symbols to include in the result
+		false,    // noUpper
+		false,    // allowRepeat
 	))
+}
+
+// OpenDB opens db
+func OpenDB(ctx context.Context, dsn string) (*sql.DB, error) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("open datasource failed, err: %v", err)
+	}
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("cannot connect to mysql, err: %v", err)
+	}
+	return db, nil
+}
+
+// SetPassword set tidb password
+func SetPassword(ctx context.Context, db *sql.DB, password string) error {
+	sql := fmt.Sprintf("SET PASSWORD FOR 'root'@'%%' = '%s'; FLUSH PRIVILEGES;", password)
+	_, err := db.ExecContext(ctx, sql)
+	return err
 }

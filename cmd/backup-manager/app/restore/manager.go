@@ -17,6 +17,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	util2 "github.com/pingcap/tidb-operator/pkg/util"
 	"strconv"
 	"time"
 
@@ -107,7 +108,7 @@ func (rm *Manager) ProcessRestore() error {
 			return false, err
 		}
 
-		db, err = util.OpenDB(ctx, dsn)
+		db, err = util2.OpenDB(ctx, dsn)
 		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", rm, err)
 			if ctx.Err() != nil {

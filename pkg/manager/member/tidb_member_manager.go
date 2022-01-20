@@ -115,6 +115,13 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
+	isSet, err := m.syncInitializer(tc)
+	if isSet {
+		return nil
+	}
+	if err != nil {
+		klog.Errorf("SyncInitializer err:%v", err)
+	}
 	// Sync TiDB StatefulSet
 	return m.syncTiDBStatefulSetForTidbCluster(tc)
 }
@@ -249,35 +256,36 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 			return err
 		}
 	}
+	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
+}
+
+func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) (bool, error) {
 	// set random password
-	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.InitPasswordPhase && !tc.IsTLSClusterEnabled() {
-		// check tidb pod is ready
-		podOrdinals := helper.GetPodOrdinals(*oldTiDBSet.Spec.Replicas, oldTiDBSet).List()
-		isTiDBReady := true
-		for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
-			i := podOrdinals[_i]
-			podName := tidbPodName(tcName, i)
-			pod, err := m.deps.PodLister.Pods(ns).Get(podName)
-			if err != nil {
-				return fmt.Errorf("failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
-			}
-			isReady := podutil.IsPodReady(pod)
-			if !isReady {
-				isTiDBReady = false
-				break
-			}
+	ns := tc.Namespace
+	tcName := tc.Name
+	if tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.InitPasswordPhase {
+		//check endpoints ready
+		isTiDBReady := false
+		eps, epErr := m.deps.EndpointLister.Endpoints(tc.Namespace).Get(controller.TiDBMemberName(tc.Name))
+		if epErr != nil {
+			return false, fmt.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.PDMemberName(tc.Name), ns, tcName, epErr)
 		}
+		// pd service has no endpoints
+		if eps != nil && len(eps.Subsets) > 0 {
+			isTiDBReady = true
+		}
+
 		if isTiDBReady {
 			// sync password secret
 			var password string
 			secretName := controller.TiDBSecret(tc.Name)
-			secret, err := m.deps.SecretLister.Secrets(ns).Get(secretName)
+			secret, err := m.deps.SecretLister.Secrets(tc.Namespace).Get(secretName)
 			passwordSecretExist := true
 			if err != nil {
 				if errors.IsNotFound(err) {
 					passwordSecretExist = false
 				} else {
-					return err
+					return false, err
 				}
 			}
 
@@ -287,7 +295,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 				secret, password = m.buildRandomPasswordSecret(tc)
 				err := m.deps.TypedControl.Create(tc, secret)
 				if err != nil {
-					return err
+					return false, err
 				}
 			} else {
 				password = string(secret.Data[constants.TidbRootKey])
@@ -296,15 +304,15 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 			var db *sql.DB
 			var dsn string
 			err = wait.PollImmediate(5*time.Second, 30*time.Minute, func() (done bool, err error) {
-				dsn, err = m.GetDBUrl(tc)
+				dsn, err = m.GetDSN(tc)
 				if err != nil {
-					klog.Errorf("can't get dsn of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+					klog.Errorf("Can't get dsn of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
 					return false, err
 				}
 				ctx := context.TODO()
-				db, err = m.OpenDB(ctx, dsn)
+				db, err = util.OpenDB(ctx, dsn)
 				if err != nil {
-					klog.Warningf("can't connect to tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+					klog.Warningf("Can't connect to tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
 					if ctx.Err() != nil {
 						return false, ctx.Err()
 					}
@@ -312,23 +320,25 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 				}
 				return true, nil
 			})
+			defer db.Close()
 			if err != nil {
-				klog.Errorf("can't get connection of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+				klog.Errorf("Can't get connection of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
 			} else {
-				err = m.SetPassword(context.TODO(), db, password)
+				err = util.SetPassword(context.TODO(), db, password)
 				if err != nil {
-					klog.Errorf("set tidb[%s:%s] password err: %s", tc.Namespace, tc.Name, err)
+					klog.Errorf("Set tidb[%s:%s] password err: %s", tc.Namespace, tc.Name, err)
 				}
 				tc.Status.TiDB.InitPasswordPhase = true
-				klog.Infof("set password successfully for tidb[%s:%s]", tc.Namespace, tc.Name)
+				klog.Infof("Set password successfully for tidb[%s:%s]", tc.Namespace, tc.Name)
+				return true, nil
 			}
-			defer db.Close()
+
 		} else {
-			klog.Infof("set password wait for tidb[%s:%s] pod ready", tc.Namespace, tc.Name)
+			klog.Infof("Set password wait for tidb[%s:%s] endpoint ready", tc.Namespace, tc.Name)
 		}
 	}
+	return false, nil
 
-	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
 }
 
 func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) (*corev1.Secret, string) {
@@ -999,8 +1009,8 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	return nil
 }
 
-func (m *tidbMemberManager) GetDBUrl(tc *v1alpha1.TidbCluster) (string, error) {
-	return fmt.Sprintf("root:@tcp(%s-tidb.%s.svc:4000)/?charset=utf8mb4,utf8&multiStatements=true", tc.Name, tc.Namespace), nil
+func (m *tidbMemberManager) GetDSN(tc *v1alpha1.TidbCluster) (string, error) {
+	return fmt.Sprintf("root:@tcp(%s-tidb.%s:4000)/?charset=utf8mb4,utf8&multiStatements=true", tc.Name, tc.Namespace), nil
 }
 
 func (bo *tidbMemberManager) OpenDB(ctx context.Context, dsn string) (*sql.DB, error) {
@@ -1013,12 +1023,6 @@ func (bo *tidbMemberManager) OpenDB(ctx context.Context, dsn string) (*sql.DB, e
 		return nil, fmt.Errorf("cannot connect to mysql, err: %v", err)
 	}
 	return db, nil
-}
-
-func (bo *tidbMemberManager) SetPassword(ctx context.Context, db *sql.DB, password string) error {
-	sql := fmt.Sprintf("SET PASSWORD FOR 'root'@'%%' = '%s'; FLUSH PRIVILEGES;", password)
-	_, err := db.ExecContext(ctx, sql)
-	return err
 }
 
 func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
