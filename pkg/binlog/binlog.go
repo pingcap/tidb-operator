@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"go.etcd.io/etcd/clientv3"
+	"google.golang.org/grpc"
 )
 
 // Client is the client of binlog.
@@ -32,6 +33,7 @@ type Client struct {
 	tls        *tls.Config
 	httpClient *http.Client
 	etcdClient *clientv3.Client
+	timeout    time.Duration
 
 	// if setted, will call HookAddr to change the address of pump/drainer
 	// before accessing pump/drainer.
@@ -46,11 +48,12 @@ func (c *Client) hookAddr(addr string) string {
 	return addr
 }
 
-// NewBinlogClient create a Client.
-func NewBinlogClient(pdEndpoint []string, tlsConfig *tls.Config) (*Client, error) {
+// NewBinlogClient create a Client and return an error if the underlying conn is not up within timeout duration.
+func NewBinlogClient(pdEndpoint []string, tlsConfig *tls.Config, timeout time.Duration) (*Client, error) {
 	etcdClient, err := clientv3.New(clientv3.Config{
 		Endpoints:   pdEndpoint,
-		DialTimeout: time.Second * 5,
+		DialTimeout: timeout,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         tlsConfig,
 	})
 	if err != nil {
@@ -60,12 +63,14 @@ func NewBinlogClient(pdEndpoint []string, tlsConfig *tls.Config) (*Client, error
 	return &Client{
 		tls: tlsConfig,
 		httpClient: &http.Client{
+			Timeout: timeout,
 			Transport: &http.Transport{
 				TLSClientConfig:   tlsConfig,
 				DisableKeepAlives: true,
 			},
 		},
 		etcdClient: etcdClient,
+		timeout:    timeout,
 	}, nil
 }
 
@@ -178,6 +183,8 @@ func (c *Client) UpdatePumpState(ctx context.Context, addr string, state string)
 func (c *Client) updateStatus(ctx context.Context, ty string, nodeID string, state string) error {
 	key := fmt.Sprintf("/tidb-binlog/v1/%s/%s", ty, nodeID)
 
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
 	resp, err := c.etcdClient.KV.Get(ctx, key)
 	if err != nil {
 		return errors.AddStack(err)
@@ -215,6 +222,8 @@ func (c *Client) updateStatus(ctx context.Context, ty string, nodeID string, sta
 func (c *Client) nodeStatus(ctx context.Context, ty string) (status []*v1alpha1.PumpNodeStatus, err error) {
 	key := fmt.Sprintf("/tidb-binlog/v1/%s", ty)
 
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
 	resp, err := c.etcdClient.KV.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {
 		return nil, errors.AddStack(err)
