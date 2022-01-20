@@ -16863,6 +16863,11 @@ spec:
                     type: object
                   serviceAccount:
                     type: string
+                  startUpScriptVersion:
+                    enum:
+                    - ""
+                    - v1
+                    type: string
                   statefulSetUpdateStrategy:
                     type: string
                   storageClassName:

@@ -160,14 +160,14 @@ then
 echo "waiting for pd cluster ready timeout" >&2
 exit 1
 fi
-
+{{ if eq .CheckDomainScript ""}}
 if nslookup ${domain} 2>/dev/null
 then
 echo "nslookup domain ${domain}.svc success"
 break
 else
 echo "nslookup domain ${domain} failed" >&2
-fi
+fi {{- else}}{{.CheckDomainScript}}{{end}}
 done
 
 ARGS="--data-dir={{ .DataDir }} \
@@ -203,10 +203,29 @@ echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `))
 
+var checkDNSV1 string = `
+digRes=$(dig ${domain} A ${domain} AAAA +search +short)
+if [ $? -ne 0  ]; then
+  echo "$digRes"
+  echo "domain resolve ${domain} failed"
+  continue
+fi
+
+if [ -z "${digRes}" ]
+then
+  echo "domain resolve ${domain} no record return"
+else
+  echo "domain resolve ${domain} success"
+  echo "$digRes"
+  break
+fi
+`
+
 type PDStartScriptModel struct {
-	Scheme        string
-	DataDir       string
-	ClusterDomain string
+	Scheme            string
+	DataDir           string
+	ClusterDomain     string
+	CheckDomainScript string
 }
 
 func (p *PDStartScriptModel) FormatClusterDomain() string {

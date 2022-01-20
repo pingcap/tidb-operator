@@ -438,6 +438,10 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+	// Start up script version
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1"
+	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
