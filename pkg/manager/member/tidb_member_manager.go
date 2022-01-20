@@ -345,7 +345,7 @@ func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) 
 
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-secret", tc.Name),
+			Name:      controller.TiDBSecret(tc.Name),
 			Namespace: tc.Namespace,
 		},
 	}
