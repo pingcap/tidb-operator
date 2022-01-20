@@ -1318,6 +1318,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					},
 				}),
 			}
+			tc = fixture.AddTiFlashForTidbCluster(tc)
+			tc.Spec.TiFlash.Replicas = 1
+			tc = fixture.AddTiCDCForTidbCluster(tc)
+			tc.Spec.TiCDC.Replicas = 1
 			err = genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
@@ -1325,12 +1329,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Ensure configs of all components are not changed")
 			newTC, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{})
-			tc.Spec.TiDB.Config.Set("log.file.max-backups", int64(3))
+			tc.Spec.TiDB.Config.Set("log.file.max-backups", int64(3)) // add default configs that ard added by operator
 			framework.ExpectNoError(err, "failed to get TidbCluster: %s", tc.Name)
 			framework.ExpectEqual(newTC.Spec.PD.Config, tc.Spec.PD.Config, "pd config isn't equal of TidbCluster: %s", tc.Name)
 			framework.ExpectEqual(newTC.Spec.TiKV.Config, tc.Spec.TiKV.Config, "tikv config isn't equal of TidbCluster: %s", tc.Name)
 			framework.ExpectEqual(newTC.Spec.TiDB.Config, tc.Spec.TiDB.Config, "tidb config isn't equal of TidbCluster: %s", tc.Name)
 			framework.ExpectEqual(newTC.Spec.Pump.Config, tc.Spec.Pump.Config, "pump config isn't equal of TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.TiCDC.Config, tc.Spec.TiCDC.Config, "ticdc config isn't equal of TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.TiFlash.Config.Common, tc.Spec.TiFlash.Config.Common, "tiflash common config isn't equal of TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.TiFlash.Config.Proxy, tc.Spec.TiFlash.Config.Proxy, "tiflash proxy config isn't equal of TidbCluster: %s", tc.Name)
 
 			ginkgo.By("Ensure Dashboard use custom secret")
 			foundSecretName := false
@@ -1420,6 +1427,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.TiKV.Replicas = 5
 				tc.Spec.TiDB.Replicas = 3
 				tc.Spec.Pump.Replicas++
+				tc.Spec.TiFlash.Replicas = 3
+				tc.Spec.TiCDC.Replicas = 3
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
@@ -1432,6 +1441,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.TiKV.Replicas = 3
 				tc.Spec.TiDB.Replicas = 2
 				tc.Spec.Pump.Replicas--
+				tc.Spec.TiFlash.Replicas = 1
+				tc.Spec.TiCDC.Replicas = 1
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
