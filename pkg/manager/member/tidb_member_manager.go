@@ -309,22 +309,27 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) (bool, err
 					klog.Errorf("Can't get dsn of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
 					return false, err
 				}
-				ctx := context.TODO()
+				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				defer cancel()
 				db, err = util.OpenDB(ctx, dsn)
 				if err != nil {
-					klog.Warningf("Can't connect to tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+					klog.Warningf("Can't connect to the TiDB service of TiDB cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
 					if ctx.Err() != nil {
 						return false, ctx.Err()
 					}
 					return false, nil
 				}
+
 				return true, nil
 			})
 			defer db.Close()
 			if err != nil {
-				klog.Errorf("Can't get connection of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+				klog.Errorf("Can't get TiDB connection of the TiDB cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+				return false, err
 			} else {
-				err = util.SetPassword(context.TODO(), db, password)
+				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				defer cancel()
+				err = util.SetPassword(ctx, db, password)
 				if err != nil {
 					klog.Errorf("Fail to set TiDB password for [%s:%s], err: %s", tc.Namespace, tc.Name, err)
 				}

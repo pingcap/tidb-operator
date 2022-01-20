@@ -461,6 +461,7 @@ func OpenDB(ctx context.Context, dsn string) (*sql.DB, error) {
 
 // SetPassword set tidb password
 func SetPassword(ctx context.Context, db *sql.DB, password string) error {
+
 	sql := fmt.Sprintf("SET PASSWORD FOR 'root'@'%%' = '%s'; FLUSH PRIVILEGES;", password)
 	_, err := db.ExecContext(ctx, sql)
 	return err
