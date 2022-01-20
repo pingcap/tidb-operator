@@ -16,7 +16,6 @@ package export
 import (
 	"context"
 	"database/sql"
-	util2 "github.com/pingcap/tidb-operator/pkg/util"
 	"os"
 	"strings"
 	"time"
@@ -29,6 +28,7 @@ import (
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	util2 "github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
