@@ -625,9 +625,6 @@ func MustCreateXK8sTCWithComponentsReady(cli ctrlCli.Client, oa *tests.OperatorA
 	for _, tc := range tidbclusters {
 		tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: tlsEnabled}
 		tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: tlsEnabled}
-	}
-
-	for _, tc := range tidbclusters {
 		err := cli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
 	}
