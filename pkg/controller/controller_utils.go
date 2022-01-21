@@ -345,11 +345,6 @@ func DMWorkerPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-dm-worker-peer", clusterName)
 }
 
-// TiDBInitializer returns tidb initializer name
-func TiDBInitializer(clusterName string) string {
-	return fmt.Sprintf("%s-init", clusterName)
-}
-
 // TiDBInitSecret returns tidb init secret name
 func TiDBInitSecret(clusterName string) string {
 	return fmt.Sprintf("%s-init", clusterName)

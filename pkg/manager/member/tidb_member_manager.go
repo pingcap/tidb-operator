@@ -304,7 +304,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) (bool, err
 			var db *sql.DB
 			var dsn string
 			err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (done bool, err error) {
-				dsn, err = m.GetDSN(tc)
+				dsn, err = util.GetDSN(tc)
 				if err != nil {
 					klog.Errorf("Can't get dsn of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
 					return false, err
@@ -1012,22 +1012,6 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		tc.Status.TiDB.Image = c.Image
 	}
 	return nil
-}
-
-func (m *tidbMemberManager) GetDSN(tc *v1alpha1.TidbCluster) (string, error) {
-	return fmt.Sprintf("root:@tcp(%s-tidb.%s:4000)/?charset=utf8mb4,utf8&multiStatements=true", tc.Name, tc.Namespace), nil
-}
-
-func (bo *tidbMemberManager) OpenDB(ctx context.Context, dsn string) (*sql.DB, error) {
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("open datasource failed, err: %v", err)
-	}
-	if err := db.PingContext(ctx); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("cannot connect to mysql, err: %v", err)
-	}
-	return db, nil
 }
 
 func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
