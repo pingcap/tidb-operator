@@ -1142,7 +1142,7 @@ type TiDBStatus struct {
 	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
 	Image                    string                       `json:"image,omitempty"`
-	InitPasswordPhase        bool                         `json:"initPasswordPhase,omitempty"`
+	PasswordInitialized        bool                         `json:"passwordInitialized,omitempty"`
 }
 
 // TiDBMember is TiDB member
