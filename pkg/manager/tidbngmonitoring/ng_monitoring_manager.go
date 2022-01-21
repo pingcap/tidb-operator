@@ -162,7 +162,7 @@ func (m *ngMonitoringManager) syncCore(tngm *v1alpha1.TidbNGMonitoring, tc *v1al
 	}
 
 	// update existing statefulset if needed
-	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tngm, newSts, oldSts)
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateNGMSTS", newSts, oldSts)
 }
 
 func (m *ngMonitoringManager) syncConfigMap(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) (*corev1.ConfigMap, error) {
