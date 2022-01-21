@@ -732,6 +732,10 @@ func (tc *TidbCluster) IsTLSClusterEnabled() bool {
 	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
 }
 
+func (tc *TidbCluster) IsNeedToSyncInitializer() bool {
+	return tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.PasswordInitialized
+}
+
 func (tc *TidbCluster) Scheme() string {
 	if tc.IsTLSClusterEnabled() {
 		return "https"

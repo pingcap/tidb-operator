@@ -17204,8 +17204,6 @@ spec:
                     type: object
                   image:
                     type: string
-                  initPasswordPhase:
-                    type: boolean
                   members:
                     additionalProperties:
                       properties:
@@ -17224,6 +17222,8 @@ spec:
                       - name
                       type: object
                     type: object
+                  passwordInitialized:
+                    type: boolean
                   phase:
                     type: string
                   resignDDLOwnerRetryCount:

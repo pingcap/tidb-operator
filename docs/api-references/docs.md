@@ -15269,7 +15269,7 @@ string
 </tr>
 <tr>
 <td>
-<code>initPasswordPhase</code></br>
+<code>passwordInitialized</code></br>
 <em>
 bool
 </em>

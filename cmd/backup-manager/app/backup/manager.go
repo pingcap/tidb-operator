@@ -111,7 +111,7 @@ func (bm *Manager) ProcessBackup() error {
 			klog.Errorf("can't get dsn of tidb cluster %s, err: %s", bm, err)
 			return false, err
 		}
-		db, err = util2.OpenDB(ctx, dsn)
+		db, err = pkgutil.OpenDB(ctx, dsn)
 		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
 			if ctx.Err() != nil {
