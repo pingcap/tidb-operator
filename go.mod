@@ -72,6 +72,7 @@ require (
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gomodules.xyz/jsonpatch/v2 v2.1.0
+	google.golang.org/grpc v1.27.0
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.19.16

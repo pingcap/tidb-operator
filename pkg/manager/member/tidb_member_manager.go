@@ -257,7 +257,8 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 			return err
 		}
 	}
-	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
+
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiDBSTS", newTiDBSet, oldTiDBSet)
 }
 
 func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
