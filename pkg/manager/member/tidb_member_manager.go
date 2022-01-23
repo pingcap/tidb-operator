@@ -335,6 +335,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 		err = util.SetPassword(ctx, db, password)
 		if err != nil {
 			klog.Errorf("Fail to set TiDB password for [%s:%s], err: %s", tc.Namespace, tc.Name, err)
+			return err
 		}
 		tc.Status.TiDB.PasswordInitialized = true
 		klog.Infof("Set password successfully for tidb[%s:%s]", tc.Namespace, tc.Name)
