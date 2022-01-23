@@ -26,10 +26,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
@@ -115,7 +115,7 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	if tc.IsNeedToSyncInitializer() {
+	if tc.NeedToSyncTiDBInitializer() {
 		err := m.syncInitializer(tc)
 		if err != nil {
 			klog.Errorf("SyncInitializer err:%v", err)
