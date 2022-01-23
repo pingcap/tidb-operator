@@ -271,7 +271,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 		return fmt.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.PDMemberName(tc.Name), ns, tcName, epErr)
 	}
 	// TiDB service has endpoints
-	if eps != nil && len(eps.Subsets) > 0 {
+	if eps != nil && len(eps.Subsets[0].Addresses) > 0 {
 		isTiDBReady = true
 	}
 
