@@ -316,11 +316,11 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 		defer cancel()
 		db, err = util.OpenDB(ctx, dsn)
 		if err != nil {
-			klog.Warningf("Can't connect to the TiDB service of TiDB cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+			msg := fmt.Sprintf("can't connect to the TiDB service of TiDB cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
 			if ctx.Err() != nil {
-				return false, ctx.Err()
+				msg = fmt.Sprintf("%s, context error: %s", msg, ctx.Err())
 			}
-			return false, nil
+			return false, fmt.Errorf(msg)
 		}
 
 		return true, nil
