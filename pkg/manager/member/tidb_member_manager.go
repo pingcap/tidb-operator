@@ -322,11 +322,11 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 
 			return true, nil
 		})
-		defer db.Close()
 		if err != nil {
 			klog.Errorf("Can't get TiDB connection of the TiDB cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
 			return err
 		} else {
+			defer db.Close()
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 			err = util.SetPassword(ctx, db, password)
