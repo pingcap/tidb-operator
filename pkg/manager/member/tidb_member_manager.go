@@ -118,7 +118,7 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.NeedToSyncTiDBInitializer() {
 		err := m.syncInitializer(tc)
 		if err != nil {
-			klog.Errorf("SyncInitializer err:%v", err)
+			klog.Errorf("SyncInitializer err: %v", err)
 		}
 	}
 
