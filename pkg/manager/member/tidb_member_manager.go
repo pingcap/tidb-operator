@@ -116,10 +116,7 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	if tc.NeedToSyncTiDBInitializer() {
-		err := m.syncInitializer(tc)
-		if err != nil {
-			klog.Errorf("SyncInitializer err: %v", err)
-		}
+		m.syncInitializer(tc)
 	}
 
 	// Sync TiDB StatefulSet
@@ -260,7 +257,7 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiDBSTS", newTiDBSet, oldTiDBSet)
 }
 
-func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
+func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	// set random password
 	ns := tc.Namespace
 	tcName := tc.Name
@@ -268,7 +265,8 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 	isTiDBReady := false
 	eps, epErr := m.deps.EndpointLister.Endpoints(tc.Namespace).Get(controller.TiDBMemberName(tc.Name))
 	if epErr != nil {
-		return fmt.Errorf("fail to get endpoints %s for cluster %s/%s, err: %s", controller.TiDBMemberName(tc.Name), ns, tcName, epErr)
+		klog.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.TiDBMemberName(tc.Name), ns, tcName, epErr)
+		return
 	}
 	// TiDB service has endpoints
 	if eps != nil && len(eps.Subsets[0].Addresses) > 0 {
@@ -277,7 +275,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 
 	if !isTiDBReady {
 		klog.Infof("Wait for TiDB ready for cluster %s/%s", ns, tcName)
-		return nil
+		return
 	}
 	// sync password secret
 	var password string
@@ -288,7 +286,8 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 		if errors.IsNotFound(err) {
 			passwordSecretExist = false
 		} else {
-			return err
+			klog.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.TiDBMemberName(tc.Name), ns, tcName, epErr)
+			return
 		}
 	}
 
@@ -298,7 +297,8 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 		secret, password = m.buildRandomPasswordSecret(tc)
 		err := m.deps.TypedControl.Create(tc, secret)
 		if err != nil {
-			return err
+			klog.Errorf("Failed to create secret[%s:%s], err: %s", secret.Namespace, secret.Name, err)
+			return
 		}
 	} else {
 		password = string(secret.Data[constants.TidbRootKey])
@@ -327,7 +327,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 	})
 	if err != nil {
 		klog.Errorf("Can't get TiDB connection of the TiDB cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
-		return err
+		return
 	} else {
 		defer db.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -335,12 +335,12 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 		err = util.SetPassword(ctx, db, password)
 		if err != nil {
 			klog.Errorf("Fail to set TiDB password for [%s:%s], err: %s", tc.Namespace, tc.Name, err)
-			return err
+			return
 		}
 		tc.Status.TiDB.PasswordInitialized = true
 		klog.Infof("Set password successfully for tidb[%s:%s]", tc.Namespace, tc.Name)
 	}
-	return nil
+	return
 
 }
 
