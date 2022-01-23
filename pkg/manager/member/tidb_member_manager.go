@@ -330,7 +330,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 		return err
 	} else {
 		defer db.Close()
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		err = util.SetPassword(ctx, db, password)
 		if err != nil {
