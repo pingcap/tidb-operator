@@ -275,7 +275,10 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) error {
 		isTiDBReady = true
 	}
 
-	if isTiDBReady {
+	if !isTiDBReady {
+	klog.Infof("Wait for TiDB ready for cluster %s/%s", ns, tcName)
+	return nil
+	}
 		// sync password secret
 		var password string
 		secretName := controller.TiDBInitSecret(tc.Name)
