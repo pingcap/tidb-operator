@@ -27,7 +27,7 @@ watch kubectl -n <namespace> get pod
 Get the password from secret:
 
 ```bash
-kubectl get secret basic-secret -o=jsonpath='{.data.root}' -n <namespace>  | base64 --decode
+kubectl get secret basic-init -o=jsonpath='{.data.root}' -n <namespace>  | base64 --decode
 ```
 
 Explore the TiDB SQL interface:
