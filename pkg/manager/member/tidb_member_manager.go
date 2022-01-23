@@ -340,8 +340,6 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		tc.Status.TiDB.PasswordInitialized = true
 		klog.Infof("Set password successfully for tidb[%s:%s]", tc.Namespace, tc.Name)
 	}
-	return
-
 }
 
 func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) (*corev1.Secret, string) {
