@@ -732,8 +732,8 @@ func (tc *TidbCluster) IsTLSClusterEnabled() bool {
 	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
 }
 
-func (tc *TidbCluster) IsNeedToSyncInitializer() bool {
-	return tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.PasswordInitialized
+func (tc *TidbCluster) NeedToSyncTiDBInitializer() bool {
+	return tc.Spec.TiDB != nil && tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && !tc.Status.TiDB.PasswordInitialized
 }
 
 func (tc *TidbCluster) Scheme() string {

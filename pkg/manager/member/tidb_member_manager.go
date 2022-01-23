@@ -27,7 +27,6 @@ import (
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
