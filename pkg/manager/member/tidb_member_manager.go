@@ -290,7 +290,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	}
 
 	if !passwordSecretExist {
-		klog.Infof("Create random password for cluster[%s:%s]", ns, tcName)
+		klog.Infof("Create random password secret for cluster %s/%s", ns, tcName)
 		var secret *corev1.Secret
 		secret, password = m.buildRandomPasswordSecret(tc)
 		err := m.deps.TypedControl.Create(tc, secret)
