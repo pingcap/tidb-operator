@@ -320,7 +320,12 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		}
 		return
 	} else {
-		defer db.Close()
+		defer func(db *sql.DB) {
+			err := db.Close()
+			if err != nil {
+				klog.Errorf("Closed db connection for TiDB cluster[%s:%s], err:%v", ns, tcName, err)
+			}
+		}(db)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		err = util.SetPassword(ctx, db, password)
@@ -339,6 +344,7 @@ func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      controller.TiDBInitSecret(tc.Name),
 			Namespace: tc.Namespace,
+			Labels:    label.New().Instance(tc.Name).Labels(),
 		},
 	}
 	password := util.FixedLengthRandomPasswordBytes()
