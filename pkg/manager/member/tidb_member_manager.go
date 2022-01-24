@@ -325,7 +325,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		defer func(db *sql.DB) {
 			err := db.Close()
 			if err != nil {
-				klog.Errorf("Closed db connection for TiDB cluster[%s:%s], err:%v", ns, tcName, err)
+				klog.Errorf("Closed db connection for TiDB cluster %s/%s, err: %v", ns, tcName, err)
 			}
 		}(db)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
