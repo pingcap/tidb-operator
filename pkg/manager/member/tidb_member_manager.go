@@ -332,7 +332,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		defer cancel()
 		err = util.SetPassword(ctx, db, password)
 		if err != nil {
-			klog.Errorf("Fail to set TiDB password for [%s:%s], err: %s", ns, tcName, err)
+			klog.Errorf("Fail to set TiDB password for TiDB cluster %s/%s, err: %s", ns, tcName, err)
 			return
 		}
 		tc.Status.TiDB.PasswordInitialized = true
