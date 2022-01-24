@@ -286,7 +286,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		if errors.IsNotFound(err) {
 			passwordSecretExist = false
 		} else {
-			klog.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.TiDBMemberName(tc.Name), ns, tcName, epErr)
+			klog.Errorf("Failed to get secret %s for cluster %s/%s, err: %s", secretName, ns, tcName, epErr)
 			return
 		}
 	}
