@@ -314,9 +314,10 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	db, err = util.OpenDB(ctx, dsn)
 
 	if err != nil {
-		klog.Errorf("Can't connect to the TiDB service of the TiDB cluster[%s:%s], err: %s", ns, tcName, err)
 		if ctx.Err() != nil {
-			klog.Errorf("Can't connect to the TiDB service of the TiDB cluster[%s:%s],context error: %s", ns, tcName, ctx.Err())
+			klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s, context error: %s", ns, tcName, err, ctx.Err())
+		} else {
+			klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s", ns, tcName, err)
 		}
 		return
 	} else {
