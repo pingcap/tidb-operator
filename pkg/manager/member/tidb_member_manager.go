@@ -284,7 +284,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		if errors.IsNotFound(err) {
 			passwordSecretExist = false
 		} else {
-			klog.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.TiDBMemberName(tcName), ns, tcName, epErr)
+			klog.Errorf("Failed to get secret %s for cluster %s/%s, err: %s", secretName, ns, tcName, epErr)
 			return
 		}
 	}
@@ -295,7 +295,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		secret, password = m.buildRandomPasswordSecret(tc)
 		err := m.deps.TypedControl.Create(tc, secret)
 		if err != nil {
-			klog.Errorf("Failed to create secret[%s:%s], err: %s", secret.Namespace, secret.Name, err)
+			klog.Errorf("Failed to create secret %s for cluster %s:%s, err: %s", secretName, ns, tcName, err)
 			return
 		}
 	} else {
@@ -309,7 +309,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		klog.Errorf("Can't get dsn of tidb cluster[%s:%s], err: %s", ns, tcName, err)
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	db, err = util.OpenDB(ctx, dsn)
 
