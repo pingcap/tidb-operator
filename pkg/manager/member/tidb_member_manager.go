@@ -321,6 +321,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		}
 		return
 	} else {
+		klog.Infof("Set random password for cluster %s/%s", ns, tcName)
 		defer func(db *sql.DB) {
 			err := db.Close()
 			if err != nil {
