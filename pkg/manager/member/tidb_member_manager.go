@@ -304,11 +304,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	// init password
 	var db *sql.DB
 	var dsn string
-	dsn, err = util.GetDSN(tc)
-	if err != nil {
-		klog.Errorf("Can't get dsn of tidb cluster[%s:%s], err: %s", ns, tcName, err)
-		return
-	}
+	dsn = util.GetDSN(tc)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	db, err = util.OpenDB(ctx, dsn)
@@ -344,9 +340,10 @@ func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) 
 
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      controller.TiDBInitSecret(tc.Name),
-			Namespace: tc.Namespace,
-			Labels:    label.New().Instance(tc.Name).Labels(),
+			Name:            controller.TiDBInitSecret(tc.Name),
+			Namespace:       tc.Namespace,
+			Labels:          label.New().Instance(tc.Name).Labels(),
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 	}
 	password := util.FixedLengthRandomPasswordBytes()
