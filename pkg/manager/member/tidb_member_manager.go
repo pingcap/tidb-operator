@@ -336,7 +336,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 			return
 		}
 		tc.Status.TiDB.PasswordInitialized = true
-		klog.Infof("Set password successfully for tidb[%s:%s]", ns, tcName)
+		klog.Infof("Set password successfully for TiDB cluster %s/%s", ns, tcName)
 	}
 }
 
