@@ -297,7 +297,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		secret, password = m.buildRandomPasswordSecret(tc)
 		err := m.deps.TypedControl.Create(tc, secret)
 		if err != nil {
-			klog.Errorf("Failed to create secret[%s:%s], err: %s", secret.Namespace, secret.Name, err)
+			klog.Errorf("Failed to create secret %s for cluster %s:%s, err: %s", secretName, ns, tcName, err)
 			return
 		}
 	} else {
