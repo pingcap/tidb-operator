@@ -23,8 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/wait"
-
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -263,9 +261,9 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	tcName := tc.Name
 	//check endpoints ready
 	isTiDBReady := false
-	eps, epErr := m.deps.EndpointLister.Endpoints(tc.Namespace).Get(controller.TiDBMemberName(tc.Name))
+	eps, epErr := m.deps.EndpointLister.Endpoints(ns).Get(controller.TiDBMemberName(tcName))
 	if epErr != nil {
-		klog.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.TiDBMemberName(tc.Name), ns, tcName, epErr)
+		klog.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.TiDBMemberName(tcName), ns, tcName, epErr)
 		return
 	}
 	// TiDB service has endpoints
@@ -279,20 +277,20 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	}
 	// sync password secret
 	var password string
-	secretName := controller.TiDBInitSecret(tc.Name)
-	secret, err := m.deps.SecretLister.Secrets(tc.Namespace).Get(secretName)
+	secretName := controller.TiDBInitSecret(tcName)
+	secret, err := m.deps.SecretLister.Secrets(ns).Get(secretName)
 	passwordSecretExist := true
 	if err != nil {
 		if errors.IsNotFound(err) {
 			passwordSecretExist = false
 		} else {
-			klog.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.TiDBMemberName(tc.Name), ns, tcName, epErr)
+			klog.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.TiDBMemberName(tcName), ns, tcName, epErr)
 			return
 		}
 	}
 
 	if !passwordSecretExist {
-		klog.Infof("Create random password for cluster[%s:%s]", tc.Namespace, tc.Name)
+		klog.Infof("Create random password for cluster[%s:%s]", ns, tcName)
 		var secret *corev1.Secret
 		secret, password = m.buildRandomPasswordSecret(tc)
 		err := m.deps.TypedControl.Create(tc, secret)
@@ -306,27 +304,20 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	// init password
 	var db *sql.DB
 	var dsn string
-	err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (done bool, err error) {
-		dsn, err = util.GetDSN(tc)
-		if err != nil {
-			klog.Errorf("Can't get dsn of tidb cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
-			return false, err
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		defer cancel()
-		db, err = util.OpenDB(ctx, dsn)
-		if err != nil {
-			msg := fmt.Sprintf("can't connect to the TiDB service of TiDB cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
-			if ctx.Err() != nil {
-				msg = fmt.Sprintf("%s, context error: %s", msg, ctx.Err())
-			}
-			return false, fmt.Errorf(msg)
-		}
-
-		return true, nil
-	})
+	dsn, err = util.GetDSN(tc)
 	if err != nil {
-		klog.Errorf("Can't get TiDB connection of the TiDB cluster[%s:%s], err: %s", tc.Namespace, tc.Name, err)
+		klog.Errorf("Can't get dsn of tidb cluster[%s:%s], err: %s", ns, tcName, err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	db, err = util.OpenDB(ctx, dsn)
+
+	if err != nil {
+		klog.Errorf("Can't connect to the TiDB service of the TiDB cluster[%s:%s], err: %s", ns, tcName, err)
+		if ctx.Err() != nil {
+			klog.Errorf("Can't connect to the TiDB service of the TiDB cluster[%s:%s],context error: %s", ns, tcName, ctx.Err())
+		}
 		return
 	} else {
 		defer db.Close()
@@ -334,11 +325,11 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		defer cancel()
 		err = util.SetPassword(ctx, db, password)
 		if err != nil {
-			klog.Errorf("Fail to set TiDB password for [%s:%s], err: %s", tc.Namespace, tc.Name, err)
+			klog.Errorf("Fail to set TiDB password for [%s:%s], err: %s", ns, tcName, err)
 			return
 		}
 		tc.Status.TiDB.PasswordInitialized = true
-		klog.Infof("Set password successfully for tidb[%s:%s]", tc.Namespace, tc.Name)
+		klog.Infof("Set password successfully for tidb[%s:%s]", ns, tcName)
 	}
 }
 
