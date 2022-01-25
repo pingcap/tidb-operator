@@ -718,8 +718,6 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
-	} else if tc.HeterogeneousWithRemote() {
-		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
 	} else {
 		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
 	}

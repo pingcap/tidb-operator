@@ -408,8 +408,6 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
 		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
-	} else if tc.HeterogeneousWithRemote() {
-		tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
 	} else {
 		tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
 	}
