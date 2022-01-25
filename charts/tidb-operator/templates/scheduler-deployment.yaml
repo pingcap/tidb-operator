@@ -69,11 +69,11 @@ spec:
 {{ toYaml .Values.scheduler.resources | indent 12 }}
         command:
         - kube-scheduler
-        - --port=10261
         - --v={{ .Values.scheduler.logLevel }}
         {{- if $lgK8sV119 }}
         - --config=/etc/kubernetes/scheduler-config.yaml
         {{- else }}
+        - --port=10261
         - --leader-elect=true
         - --lock-object-namespace={{ .Release.Namespace }}
         - --policy-configmap-namespace={{ .Release.Namespace }}
