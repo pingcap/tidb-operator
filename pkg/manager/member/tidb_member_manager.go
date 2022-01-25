@@ -311,7 +311,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	if err != nil {
 		if strings.Contains(fmt.Sprint(err), "Access denied") {
 			klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s", ns, tcName, err)
-			val := false
+			val := true
 			tc.Status.TiDB.PasswordInitialized = &val
 			return
 		}
