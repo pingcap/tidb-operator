@@ -309,6 +309,12 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	db, err = util.OpenDB(ctx, dsn)
 
 	if err != nil {
+		if strings.Contains(fmt.Sprint(err), "Access denied") {
+			klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s", ns, tcName, err)
+			val := false
+			tc.Status.TiDB.PasswordInitialized = &val
+			return
+		}
 		if ctx.Err() != nil {
 			klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s, context error: %s", ns, tcName, err, ctx.Err())
 		} else {
@@ -330,7 +336,8 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 			klog.Errorf("Fail to set TiDB password for TiDB cluster %s/%s, err: %s", ns, tcName, err)
 			return
 		}
-		tc.Status.TiDB.PasswordInitialized = true
+		val := true
+		tc.Status.TiDB.PasswordInitialized = &val
 		klog.Infof("Set password successfully for TiDB cluster %s/%s", ns, tcName)
 	}
 }

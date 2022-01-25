@@ -454,7 +454,7 @@ func OpenDB(ctx context.Context, dsn string) (*sql.DB, error) {
 	}
 	if err := db.PingContext(ctx); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("cannot connect to mysql, err: %v", err)
+		return nil, fmt.Errorf("cannot connect to tidb cluster, err: %v", err)
 	}
 	return db, nil
 }
