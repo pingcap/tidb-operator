@@ -368,7 +368,7 @@ func FormatClusterDomain(clusterDomain string) string {
 }
 
 func PDPeerFullyDomain(name, ns, clusterDomain string) string {
-	return fmt.Sprintf("%s.%s.%s.svc.%s", name, PDPeerMemberName(name), ns, clusterDomain)
+	return fmt.Sprintf("%s.%s.svc.%s", PDPeerMemberName(name), ns, clusterDomain)
 }
 
 // AnnAdditionalProm adds additional prometheus scarping configuration annotation for the pod

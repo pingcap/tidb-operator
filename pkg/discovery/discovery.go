@@ -253,8 +253,14 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 		return pdURL, err
 	}
 
+	// if local pd doesn't exist, return target cluster pd peer addr
 	if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		return controller.PDPeerFullyDomain(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.ClusterDomain), nil
+		addr := controller.PDPeerFullyDomain(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.ClusterDomain)
+		if pdEndpoint.scheme != "" {
+			addr = fmt.Sprintf("%s://%s", pdEndpoint.scheme, addr)
+		}
+		addr = addr + ":" + pdEndpoint.pdMemberPort
+		return addr, nil
 	}
 
 	var returnPDMember string
