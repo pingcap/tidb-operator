@@ -212,12 +212,13 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "tc1 is not connectable")
 		})
 
-		ginkgo.It("Deploy clusters and cluster-2 without local PD", func() {
+		ginkgo.It("Deploy clusters and cluster-2 do not have PD", func() {
 			ns1 := namespaces[0]
 			ns2 := namespaces[1]
 
 			tc1 := GetTCForAcrossKubernetes(ns1, "basic-1", version, clusterDomain, nil)
 			tc2 := GetTCForAcrossKubernetes(ns2, "basic-2-without-pd", version, clusterDomain, tc1)
+			tc2.Spec.PD = nil
 
 			ginkgo.By("Deploy all clusters and wait status to be ready")
 			MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2}, false)
@@ -340,6 +341,24 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName1)
 			err = wait.PollImmediate(time.Second*15, time.Minute*10, tidbIsTLSEnabled(fw, c, ns2, tcName2, ""))
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName2)
+		})
+
+		ginkgo.It("Deploy cluster with TLS-enabled and cluster-2 do not have PD", func() {
+			ns1, ns2 := namespaces[0], namespaces[1]
+			tcName1, tcName2 := "tls-cluster-1", "tls-cluster-2-without-pd"
+			tc1 := GetTCForAcrossKubernetes(ns1, tcName1, version, clusterDomain, nil)
+			tc2 := GetTCForAcrossKubernetes(ns2, tcName2, version, clusterDomain, tc1)
+			tc2.Spec.PD = nil
+
+			ginkgo.By("Prepare TLS resources for clusters")
+			MustPrepareXK8sTLSResources(genericCli, tc1, []*v1alpha1.TidbCluster{tc2})
+
+			ginkgo.By("Deploy all clusters and wait status to be ready")
+			MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2}, false)
+
+			ginkgo.By("Check deploy status of all clusters")
+			err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
+			framework.ExpectNoError(err, "failed to check status")
 		})
 	})
 
