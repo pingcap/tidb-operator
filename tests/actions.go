@@ -425,7 +425,7 @@ func (oi *OperatorConfig) Enabled(feature string) bool {
 	return false
 }
 
-func (oa *OperatorActions) runKubectlOrDie(args ...string) string {
+func (oa *OperatorActions) RunKubectlOrDie(args ...string) string {
 	cmd := "kubectl"
 	log.Logf("Running '%s %s'", cmd, strings.Join(args, " "))
 	out, err := exec.Command(cmd, args...).CombinedOutput()
@@ -490,9 +490,9 @@ func (oa *OperatorActions) createOrReplaceCRD(version string, files map[string]s
 			return nil
 		}
 		if _, ok := files[info.Name()]; ok {
-			oa.runKubectlOrDie("replace", "-f", path)
+			oa.RunKubectlOrDie("replace", "-f", path)
 		} else {
-			oa.runKubectlOrDie("create", "-f", path)
+			oa.RunKubectlOrDie("create", "-f", path)
 		}
 		return nil
 	})
@@ -506,14 +506,14 @@ func (oa *OperatorActions) InstallCRDOrDie(info *OperatorConfig) {
 	}
 	if info.Enabled(features.AdvancedStatefulSet) {
 		if isSupported {
-			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
+			oa.RunKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
 		} else {
-			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
+			oa.RunKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
 		}
 	}
 	// replace crd to avoid problem of too big annotation
 	oa.CreateOrReplaceCRD(isSupported)
-	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
+	oa.RunKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
 	log.Logf("Wait for all CRDs are established")
 	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
 	// workaround for https://github.com/kubernetes/kubernetes/issues/65517

@@ -5166,6 +5166,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"startUpScriptVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Start up script version",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
