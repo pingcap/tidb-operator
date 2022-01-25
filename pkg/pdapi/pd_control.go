@@ -67,9 +67,9 @@ type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
 	GetPDClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
-	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
+	GetPDEtcdClient(namespace Namespace, tcName, clusterDomain string, tlsEnabled bool) (PDEtcdClient, error)
 	// GetEndpoints return the endpoints and client tls.Config to connection pd/etcd.
-	GetEndpoints(namespace Namespace, tcName string, tlsEnabled bool) (endpoints []string, tlsConfig *tls.Config, err error)
+	GetEndpoints(namespace Namespace, tcName, clusterDomain string, tlsEnabled bool) (endpoints []string, tlsConfig *tls.Config, err error)
 }
 
 type clientConfig struct {
@@ -139,7 +139,7 @@ func NewDefaultPDControlByCli(kubeCli kubernetes.Interface) PDControlInterface {
 	return &defaultPDControl{pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
 }
 
-func (c *defaultPDControl) GetEndpoints(namespace Namespace, tcName string, tlsEnabled bool) (endpoints []string, tlsConfig *tls.Config, err error) {
+func (c *defaultPDControl) GetEndpoints(namespace Namespace, tcName, clusterDomain string, tlsEnabled bool) (endpoints []string, tlsConfig *tls.Config, err error) {
 	if tlsEnabled {
 		tlsConfig, err = GetTLSConfig(c.secretLister, namespace, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
@@ -147,12 +147,12 @@ func (c *defaultPDControl) GetEndpoints(namespace Namespace, tcName string, tlsE
 		}
 	}
 
-	endpoints = []string{PDEtcdClientURL(namespace, tcName)}
+	endpoints = []string{PDEtcdClientURL(namespace, tcName, clusterDomain)}
 
 	return
 }
 
-func (c *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error) {
+func (c *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName, clusterDomain string, tlsEnabled bool) (PDEtcdClient, error) {
 	c.etcdmutex.Lock()
 	defer c.etcdmutex.Unlock()
 
@@ -169,7 +169,7 @@ func (c *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, t
 
 	key := pdEtcdClientKey(namespace, tcName, tlsEnabled)
 	if _, ok := c.pdEtcdClients[key]; !ok {
-		pdetcdClient, err := NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, tlsConfig)
+		pdetcdClient, err := NewPdEtcdClient(PDEtcdClientURL(namespace, tcName, clusterDomain), DefaultTimeout, tlsConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -236,8 +236,11 @@ func genClientUrl(namespace Namespace, clusterName string, scheme string, cluste
 	return fmt.Sprintf("%s://%s-pd-peer.%s.svc.%s:2379", scheme, clusterName, string(namespace), clusterDomain)
 }
 
-func PDEtcdClientURL(namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s-pd.%s:2379", clusterName, string(namespace))
+func PDEtcdClientURL(namespace Namespace, clusterName, clusterDomain string) string {
+	if clusterDomain == "" {
+		return fmt.Sprintf("%s-pd.%s:2379", clusterName, string(namespace))
+	}
+	return fmt.Sprintf("%s-pd-peer.%s.svc.%s:2379", clusterName, string(namespace), clusterDomain)
 }
 
 // FakePDControl implements a fake version of PDControlInterface.

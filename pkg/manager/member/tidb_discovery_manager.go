@@ -60,11 +60,9 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 	)
 	switch cluster := obj.(type) {
 	case *v1alpha1.TidbCluster:
-		// If PD is not specified return unless
-		if cluster.Spec.PD == nil {
-			if !(cluster.Spec.Cluster != nil && cluster.Spec.Cluster.ClusterDomain != "") {
-				return nil
-			}
+		// If PD is not specified return
+		if cluster.Spec.PD == nil && !cluster.HeterogeneousWithRemote() {
+			return nil
 		}
 		clusterPolicyRule = rbacv1.PolicyRule{
 			APIGroups:     []string{v1alpha1.GroupName},

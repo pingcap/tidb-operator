@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -250,6 +251,10 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 	if err != nil {
 		klog.Errorf("Failed to get the tidbcluster when verifying PD endpoint, tcName: %s , ns: %s", pdEndpoint.tcName, ns)
 		return pdURL, err
+	}
+
+	if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		return controller.PDPeerFullyDomain(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.ClusterDomain), nil
 	}
 
 	var returnPDMember string

@@ -141,10 +141,12 @@ func (p *pumpMemberManager) buildBinlogClient(tc *v1alpha1.TidbCluster, control 
 func buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterface) (client *binlog.Client, err error) {
 	var endpoints []string
 	var tlsConfig *tls.Config
-	if tc.HeterogeneousWithoutLocalPD() {
-		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name,
+			tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled())
 	} else {
-		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Namespace), tc.Name,
+			tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
 	}
 	if err != nil {
 		return nil, err

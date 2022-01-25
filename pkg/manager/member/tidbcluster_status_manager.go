@@ -103,10 +103,12 @@ func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) err
 	var pdEtcdClient pdapi.PDEtcdClient
 	var err error
 
-	if tc.HeterogeneousWithoutLocalPD() {
-		pdEtcdClient, err = m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		pdEtcdClient, err = m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name,
+			tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled())
 	} else {
-		pdEtcdClient, err = m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+		pdEtcdClient, err = m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name,
+			tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
 	}
 	if err != nil {
 		return err

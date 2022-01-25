@@ -367,6 +367,10 @@ func FormatClusterDomain(clusterDomain string) string {
 	return "." + clusterDomain
 }
 
+func PDPeerFullyDomain(name, ns, clusterDomain string) string {
+	return fmt.Sprintf("%s.%s.%s.svc.%s", name, PDPeerMemberName(name), ns, clusterDomain)
+}
+
 // AnnAdditionalProm adds additional prometheus scarping configuration annotation for the pod
 // which has multiple metrics endpoint
 // we assumes that the metrics path is as same as the previous metrics path
