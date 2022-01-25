@@ -142,11 +142,13 @@ func buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterfac
 	var endpoints []string
 	var tlsConfig *tls.Config
 	if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name,
-			tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled())
+		// connect to pd of other cluster and use own cert
+		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled(),
+			pdapi.TLSCertFromTC(pdapi.Namespace(tc.Namespace), tc.Name),
+			pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
+		)
 	} else {
-		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Namespace), tc.Name,
-			tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
+		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 	}
 	if err != nil {
 		return nil, err

@@ -128,7 +128,8 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
 	}
 
-	if tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 {
+	if tc.Heterogeneous() {
+		// connect to pd of other cluster and use own cert
 		namespace := tc.Spec.Cluster.Namespace
 		if len(namespace) == 0 {
 			namespace = tc.GetNamespace()

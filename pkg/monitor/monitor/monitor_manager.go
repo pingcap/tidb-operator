@@ -744,7 +744,7 @@ func (m *MonitorManager) syncDashboardMetricStorage(tc *v1alpha1.TidbCluster, tm
 	if tc.Spec.PD == nil {
 		return nil
 	}
-	pdEtcdClient, err := m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
+	pdEtcdClient, err := m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 
 	if err != nil {
 		return err
