@@ -669,12 +669,18 @@ func MustCreateXK8sTCWithComponentsReady(cli ctrlCli.Client, oa *tests.OperatorA
 }
 
 func CheckClusterDomainEffectWithTimeout(cli versioned.Interface, tidbclusters []*v1alpha1.TidbCluster, interval time.Duration, timeout time.Duration) error {
-	return wait.PollImmediate(interval, timeout, func() (done bool, err error) {
+	var lastErr error
+	err := wait.PollImmediate(interval, timeout, func() (done bool, err error) {
 		if err := CheckClusterDomainEffect(cli, tidbclusters); err != nil {
+			lastErr = err
 			return false, nil
 		}
 		return true, nil
 	})
+	if err != nil {
+		return fmt.Errorf("%s, last error: %v", err, lastErr)
+	}
+	return nil
 }
 
 func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.TidbCluster) error {
@@ -716,7 +722,7 @@ func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.
 
 				// check if member exist in other tc
 				for _, othertc := range tidbclusters {
-					if othertc == tc {
+					if othertc == tc || othertc.Spec.PD == nil {
 						continue
 					}
 					exist := false
@@ -743,7 +749,7 @@ func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.
 
 				// check if store exist in other tc
 				for _, othertc := range tidbclusters {
-					if othertc == tc {
+					if othertc == tc || othertc.Spec.TiKV == nil {
 						continue
 					}
 					exist := false
@@ -772,7 +778,7 @@ func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.
 
 				// check if store exist in other tc
 				for _, othertc := range tidbclusters {
-					if othertc == tc {
+					if othertc == tc || othertc.Spec.TiFlash == nil {
 						continue
 					}
 					exist := false
@@ -807,7 +813,7 @@ func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.
 			// check if member exist in other tc
 			for _, ownMember := range ownMembers {
 				for _, othertc := range tidbclusters {
-					if othertc == tc {
+					if othertc == tc || othertc.Spec.Pump == nil {
 						continue
 					}
 					exist := false
