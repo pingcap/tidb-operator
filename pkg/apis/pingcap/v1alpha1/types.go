@@ -776,6 +776,15 @@ type TiDBSpec struct {
 	// the default behavior is like setting type as "tcp"
 	// +optional
 	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
+
+	// Initializer is the init configurations of TiDB
+	//
+	// +optional
+	Initializer *TiDBInitializer `json:"initializer,omitempty"`
+}
+
+type TiDBInitializer struct {
+	CreatePassword bool `json:"createPassword,omitempty"`
 }
 
 const (
@@ -1133,6 +1142,7 @@ type TiDBStatus struct {
 	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
 	Image                    string                       `json:"image,omitempty"`
+	PasswordInitialized      *bool                        `json:"passwordInitialized,omitempty"`
 }
 
 // TiDBMember is TiDB member

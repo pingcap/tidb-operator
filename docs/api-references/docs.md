@@ -14624,6 +14624,33 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
+<h3 id="tidbinitializer">TiDBInitializer</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>createPassword</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tidbmember">TiDBMember</h3>
 <p>
 (<em>Appears on:</em>
@@ -15140,6 +15167,20 @@ TiDBProbe
 the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>initializer</code></br>
+<em>
+<a href="#tidbinitializer">
+TiDBInitializer
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Initializer is the init configurations of TiDB</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbstatus">TiDBStatus</h3>
@@ -15221,6 +15262,16 @@ int32
 <code>image</code></br>
 <em>
 string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>passwordInitialized</code></br>
+<em>
+bool
 </em>
 </td>
 <td>
