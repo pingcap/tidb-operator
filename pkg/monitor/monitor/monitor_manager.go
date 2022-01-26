@@ -99,7 +99,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			}
 		}
 
-		if firstTc == nil && !(tc.Heterogeneous() && tc.WithoutLocalPD()) {
+		if firstTc == nil && !tc.WithoutLocalPD() {
 			firstTc = tc
 		}
 		err = m.syncDashboardMetricStorage(tc, monitor)
