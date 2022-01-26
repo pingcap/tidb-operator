@@ -354,7 +354,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			MustPrepareXK8sTLSResources(genericCli, tc1, []*v1alpha1.TidbCluster{tc2})
 
 			ginkgo.By("Deploy all clusters and wait status to be ready")
-			MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2}, false)
+			MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2}, true)
 
 			ginkgo.By("Check deploy status of all clusters")
 			err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)

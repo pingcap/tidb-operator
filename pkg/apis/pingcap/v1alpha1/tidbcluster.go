@@ -940,9 +940,9 @@ func (tc *TidbCluster) WithoutLocalPD() bool {
 }
 
 func (tc *TidbCluster) HeterogeneousWithRemote() bool {
-	return tc.Heterogeneous() && tc.Spec.ClusterDomain != ""
+	return tc.Heterogeneous() && tc.Spec.Cluster.ClusterDomain != ""
 }
 
 func (tc *TidbCluster) HeterogeneousWithLocal() bool {
-	return tc.Heterogeneous() && tc.Spec.ClusterDomain == ""
+	return tc.Heterogeneous() && tc.Spec.Cluster.ClusterDomain == ""
 }
