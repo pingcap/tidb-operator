@@ -345,6 +345,11 @@ func DMWorkerPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-dm-worker-peer", clusterName)
 }
 
+// TiDBInitSecret returns tidb init secret name
+func TiDBInitSecret(clusterName string) string {
+	return fmt.Sprintf("%s-init", clusterName)
+}
+
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{

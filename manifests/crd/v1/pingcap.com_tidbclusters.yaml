@@ -11764,6 +11764,11 @@ spec:
                       - name
                       type: object
                     type: array
+                  initializer:
+                    properties:
+                      createPassword:
+                        type: boolean
+                    type: object
                   labels:
                     additionalProperties:
                       type: string
@@ -17217,6 +17222,8 @@ spec:
                       - name
                       type: object
                     type: object
+                  passwordInitialized:
+                    type: boolean
                   phase:
                     type: string
                   resignDDLOwnerRetryCount:
