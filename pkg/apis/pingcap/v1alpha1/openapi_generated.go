@@ -8159,7 +8159,14 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBTLSClient(ref common.ReferenceCallback
 					},
 					"disableClientAuthn": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DisableClientAuthn will skip client authentication from the TiDB server. Optional: defaults to false",
+							Description: "DisableClientAuthn will skip client's certificate validation from the TiDB server. Optional: defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"disableInternalClientVerify": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisableInternalClientVerify will skip TiDB server's certificate validation for internal components like Initializer, Dashboard, etc. Optional: defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

@@ -15329,7 +15329,20 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>DisableClientAuthn will skip client authentication from the TiDB server.
+<p>DisableClientAuthn will skip client&rsquo;s certificate validation from the TiDB server.
+Optional: defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>disableInternalClientVerify</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisableInternalClientVerify will skip TiDB server&rsquo;s certificate validation for internal components like Initializer, Dashboard, etc.
 Optional: defaults to false</p>
 </td>
 </tr>

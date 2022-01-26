@@ -24042,6 +24042,8 @@ spec:
                     properties:
                       disableClientAuthn:
                         type: boolean
+                      disableInternalClientVerify:
+                        type: boolean
                       enabled:
                         type: boolean
                     type: object
