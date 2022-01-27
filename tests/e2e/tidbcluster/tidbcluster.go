@@ -16,6 +16,9 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	"k8s.io/klog/v2"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
@@ -3211,6 +3214,54 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(context.TODO(), tm.Name, metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
 	})
+
+	ginkgo.It("deploy tidb cluster with random password", func() {
+		ginkgo.By("Deploy initial tc")
+		tc := fixture.GetTidbCluster(ns, "random-password", utilimage.TiDBLatest)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		tc.Spec.TiDB.Initializer = &v1alpha1.TiDBInitializer{CreatePassword: true}
+		tcName := tc.Name
+
+		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
+		framework.ExpectNoError(err, "Expected create tidbcluster")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+
+		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+			randomPasswordTc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("Failed to get TidbCluster[%s:%s],error:%v", ns, tcName, err)
+				return false, nil
+			}
+			if randomPasswordTc.Status.TiDB.PasswordInitialized != nil && *randomPasswordTc.Status.TiDB.PasswordInitialized {
+				secretName := controller.TiDBInitSecret(randomPasswordTc.Name)
+				passwordSecret, err := oa.SecretLister.Secrets(ns).Get(secretName)
+				if err != nil {
+					klog.Errorf("Failed to get secret %s for cluster %s/%s, err: %s", secretName, ns, tcName, err)
+					return false, nil
+				}
+				password := string(passwordSecret.Data[constants.TidbRootKey])
+
+				dsn := util.GetDSN(randomPasswordTc, password)
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_, err = util.OpenDB(ctx, dsn)
+				if err != nil {
+					if ctx.Err() != nil {
+						klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s, context error: %s", ns, randomPasswordTc.Name, err, ctx.Err())
+					} else {
+						klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s", ns, randomPasswordTc.Name, err)
+					}
+					return false, err
+				}
+				return true, nil
+			}
+			return false, nil
+		})
+	})
+
 })
 
 // checkPumpStatus check there are onlineNum online pump instance running now.

@@ -468,6 +468,6 @@ func SetPassword(ctx context.Context, db *sql.DB, password string) error {
 }
 
 // GetDSN get tidb dsn
-func GetDSN(tc *v1alpha1.TidbCluster) string {
-	return fmt.Sprintf("root:@tcp(%s-tidb.%s:4000)/?charset=utf8mb4,utf8&multiStatements=true", tc.Name, tc.Namespace)
+func GetDSN(tc *v1alpha1.TidbCluster, password string) string {
+	return fmt.Sprintf("root:%s@tcp(%s-tidb.%s:4000)/?charset=utf8mb4,utf8&multiStatements=true", password, tc.Name, tc.Namespace)
 }

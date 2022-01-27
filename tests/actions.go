@@ -126,7 +126,7 @@ func NewOperatorActions(cli versioned.Interface,
 		cfg:          cfg,
 		fw:           fw,
 		crdUtil:      NewCrdTestUtil(cli, kubeCli, asCli, tcStsGetter),
-		secretLister: secretLister,
+		SecretLister: secretLister,
 	}
 	if fw != nil {
 		kubeCfg, err := framework.LoadConfig()
@@ -176,7 +176,7 @@ type OperatorActions struct {
 	eventWorkerRunning bool
 	fw                 portforward.PortForward
 	crdUtil            *CrdTestUtil
-	secretLister       corelisterv1.SecretLister
+	SecretLister       corelisterv1.SecretLister
 }
 
 type clusterEvent struct {
@@ -3824,7 +3824,7 @@ var dummyCancel = func() {}
 
 func (oa *OperatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
 	if oa.fw != nil {
-		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.fw, oa.secretLister, tc)
+		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.fw, oa.SecretLister, tc)
 	}
 	return controller.GetPDClient(oa.pdControl, tc), dummyCancel, nil
 }
