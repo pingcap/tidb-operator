@@ -3260,6 +3260,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return false, nil
 		})
+		framework.ExpectNoError(err, "Expected tidbcluster deployed success")
 	})
 
 })
