@@ -16,8 +16,6 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/klog/v2"
 	_ "net/http/pprof"
 	"strconv"
@@ -28,6 +26,8 @@ import (
 	"github.com/onsi/gomega"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
