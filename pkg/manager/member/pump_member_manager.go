@@ -517,9 +517,16 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		scheme = "https"
 	}
 
+	pdDomain := controller.PDMemberName(tc.Name)
+	if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
+		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name)
+	}
+	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, pdDomain)
+
 	return RenderPumpStartScript(&PumpStartScriptModel{
 		Scheme:        scheme,
 		ClusterName:   tc.Name,
+		PDAddr:        pdAddr,
 		LogLevel:      getPumpLogLevel(tc),
 		ClusterDomain: tc.Spec.ClusterDomain,
 		Namespace:     tc.GetNamespace(),
