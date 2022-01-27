@@ -16,7 +16,6 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
-	"k8s.io/klog/v2"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
@@ -40,6 +39,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
