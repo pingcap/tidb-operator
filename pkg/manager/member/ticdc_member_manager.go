@@ -354,14 +354,19 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		vols      []corev1.Volume
 	)
 
+	pdDomain := controller.PDMemberName(tcName)
+	if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
+		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name)
+	}
+
 	if tc.IsTLSClusterEnabled() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--key=%s", path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey)))
-		if tc.Spec.ClusterDomain == "" {
-			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=https://%s-pd:2379", tcName))
-		} else {
+		if tc.HeterogeneousWithRemote() {
 			cmdArgs = append(cmdArgs, "--pd=${result}")
+		} else {
+			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=https://%s:2379", pdDomain))
 		}
 
 		volMounts = append(volMounts, corev1.VolumeMount{
@@ -388,10 +393,10 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 			},
 		})
 	} else {
-		if tc.Spec.ClusterDomain == "" {
-			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=http://%s-pd:2379", tcName))
-		} else {
+		if tc.HeterogeneousWithRemote() {
 			cmdArgs = append(cmdArgs, "--pd=${result}")
+		} else {
+			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=http://%s:2379", pdDomain))
 		}
 	}
 
@@ -406,12 +411,12 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 
 	var script string
 
-	if tc.Spec.ClusterDomain != "" {
+	if tc.HeterogeneousWithRemote() {
 		var pdAddr string
 		if tc.IsTLSClusterEnabled() {
-			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
+			pdAddr = fmt.Sprintf("https://%s:2379", pdDomain)
 		} else {
-			pdAddr = fmt.Sprintf("http://%s-pd:2379", tcName)
+			pdAddr = fmt.Sprintf("http://%s:2379", pdDomain)
 		}
 
 		str := `set -uo pipefail
