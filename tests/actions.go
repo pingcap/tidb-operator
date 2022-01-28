@@ -3710,7 +3710,7 @@ func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.Tid
 		}
 		if randomPasswordTc.Status.TiDB.PasswordInitialized != nil && *randomPasswordTc.Status.TiDB.PasswordInitialized {
 			secretName := controller.TiDBInitSecret(randomPasswordTc.Name)
-			passwordSecret, err := oa.SecretLister.Secrets(ns).Get(secretName)
+			passwordSecret, err := oa.kubeCli.CoreV1().Secrets(ns).Get(context.TODO(), secretName, metav1.GetOptions{})
 			if err != nil {
 				checkErr = fmt.Errorf("failed to get secret %s for cluster %s/%s, err: %s", secretName, ns, tcName, err)
 				return false, nil
