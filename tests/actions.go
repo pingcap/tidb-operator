@@ -127,7 +127,7 @@ func NewOperatorActions(cli versioned.Interface,
 		cfg:          cfg,
 		fw:           fw,
 		crdUtil:      NewCrdTestUtil(cli, kubeCli, asCli, tcStsGetter),
-		SecretLister: secretLister,
+		secretLister: secretLister,
 	}
 	if fw != nil {
 		kubeCfg, err := framework.LoadConfig()
@@ -177,7 +177,7 @@ type OperatorActions struct {
 	eventWorkerRunning bool
 	fw                 portforward.PortForward
 	crdUtil            *CrdTestUtil
-	SecretLister       corelisterv1.SecretLister
+	secretLister       corelisterv1.SecretLister
 }
 
 type clusterEvent struct {
