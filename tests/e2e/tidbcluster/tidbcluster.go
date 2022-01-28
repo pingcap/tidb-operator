@@ -25,8 +25,6 @@ import (
 	"github.com/onsi/gomega"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -39,7 +37,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
@@ -3215,52 +3212,65 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
 	})
 
-	ginkgo.It("deploy tidb cluster with random password", func() {
-		ginkgo.By("Deploy initial tc")
-		tc := fixture.GetTidbCluster(ns, "random-password", utilimage.TiDBLatest)
-		tc.Spec.PD.Replicas = 1
-		tc.Spec.TiKV.Replicas = 1
-		tc.Spec.TiDB.Replicas = 1
-		tc.Spec.TiDB.Initializer = &v1alpha1.TiDBInitializer{CreatePassword: true}
-		tcName := tc.Name
+	ginkgo.Describe("[Feature]: RandomPassword", func() {
+		ginkgo.It("deploy tidb cluster with random password", func() {
+			ginkgo.By("Deploy initial tc")
+			tc := fixture.GetTidbCluster(ns, "random-password", utilimage.TiDBLatest)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TiDB.Initializer = &v1alpha1.TiDBInitializer{CreatePassword: true}
 
-		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-		framework.ExpectNoError(err, "Expected create tidbcluster")
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err, "Expected get tidbcluster")
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
+			framework.ExpectNoError(err, "Expected create tidbcluster")
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected get tidbcluster")
 
-		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
-			randomPasswordTc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
-			if err != nil {
-				klog.Errorf("Failed to get TidbCluster[%s:%s],error:%v", ns, tcName, err)
-				return false, nil
-			}
-			if randomPasswordTc.Status.TiDB.PasswordInitialized != nil && *randomPasswordTc.Status.TiDB.PasswordInitialized {
-				secretName := controller.TiDBInitSecret(randomPasswordTc.Name)
-				passwordSecret, err := oa.SecretLister.Secrets(ns).Get(secretName)
-				if err != nil {
-					klog.Errorf("Failed to get secret %s for cluster %s/%s, err: %s", secretName, ns, tcName, err)
-					return false, nil
-				}
-				password := string(passwordSecret.Data[constants.TidbRootKey])
-
-				dsn := util.GetDSN(randomPasswordTc, password)
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				_, err = util.OpenDB(ctx, dsn)
-				if err != nil {
-					if ctx.Err() != nil {
-						klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s, context error: %s", ns, randomPasswordTc.Name, err, ctx.Err())
-					} else {
-						klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s", ns, randomPasswordTc.Name, err)
-					}
-					return false, err
-				}
-				return true, nil
-			}
-			return false, nil
+			err = oa.WaitForConnectTidbCluster(tc, 10*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "Expected tidbcluster connect success")
 		})
-		framework.ExpectNoError(err, "Expected tidbcluster deployed success")
+		ginkgo.It("deploy tls tidb cluster with random password", func() {
+			tcName := "tls-random-password"
+
+			ginkgo.By("Installing tidb CA certificate")
+			err := InstallTiDBIssuer(ns, tcName)
+			framework.ExpectNoError(err, "failed to install CA certificate")
+
+			ginkgo.By("Installing tidb server and client certificate")
+			err = InstallTiDBCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+			ginkgo.By("Installing tidbInitializer client certificate")
+			err = installTiDBInitializerCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+
+			ginkgo.By("Installing dashboard client certificate")
+			err = installPDDashboardCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install dashboard client certificate")
+
+			ginkgo.By("Installing tidb components certificates")
+			err = InstallTiDBComponentsCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidb components certificates")
+
+			ginkgo.By("Creating tidb cluster with TLS enabled")
+			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)
+			tc = fixture.AddTiFlashForTidbCluster(tc)
+			tc = fixture.AddTiCDCForTidbCluster(tc)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.PD.TLSClientSecretName = &dashTLSName
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+
+			err = genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+			err = oa.WaitForConnectTidbCluster(tc, 10*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "Expected tidbcluster connect success")
+		})
 	})
 
 })
