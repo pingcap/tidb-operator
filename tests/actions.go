@@ -3866,7 +3866,7 @@ var dummyCancel = func() {}
 
 func (oa *OperatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
 	if oa.fw != nil {
-		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.fw, oa.SecretLister, tc)
+		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.fw, oa.secretLister, tc)
 	}
 	return controller.GetPDClient(oa.pdControl, tc), dummyCancel, nil
 }
