@@ -197,11 +197,7 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-<<<<<<< HEAD
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSts, oldSts)
-=======
-	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCDCSTS", newSts, oldSts)
->>>>>>> 3baf411e1... Skip update tidb STS when contains not exist volumn mount (#4369)
+	return UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCDCSTS", newSts, oldSts)
 }
 
 func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) error {

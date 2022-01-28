@@ -246,11 +246,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-<<<<<<< HEAD
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
-=======
-	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdatePDSTS", newPDSet, oldPDSet)
->>>>>>> 3baf411e1... Skip update tidb STS when contains not exist volumn mount (#4369)
+	return UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdatePDSTS", newPDSet, oldPDSet)
 }
 
 // shouldRecover checks whether we should perform recovery operation.
