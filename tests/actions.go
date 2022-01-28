@@ -3698,11 +3698,11 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 	return err
 }
 
-func (oa *OperatorActions) WaitForConnectTidbCluster(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
+func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
 	var checkErr, err error
 	ns := tc.Namespace
 	tcName := tc.Name
-	err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+	err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
 		randomPasswordTc, err := oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
 		if err != nil {
 			checkErr = fmt.Errorf("failed to get TidbCluster[%s:%s], error:%v", ns, tcName, err)

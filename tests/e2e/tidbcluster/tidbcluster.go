@@ -3231,7 +3231,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "Expected get tidbcluster")
 
-			err = oa.WaitForConnectTidbCluster(tc, 10*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbClusterInitRandomPassword(tc, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "Expected tidbcluster connect success")
 		})
 		ginkgo.It("deploy tls tidb cluster with random password", func() {
@@ -3273,7 +3273,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
-			err = oa.WaitForConnectTidbCluster(tc, 10*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbClusterInitRandomPassword(tc, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "Expected tidbcluster connect success")
 		})
 	})
