@@ -3237,7 +3237,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
 			randomPasswordTc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
 			if err != nil {
-				klog.Errorf("Failed to get TidbCluster[%s:%s],error:%v", ns, tcName, err)
+				klog.Errorf("Failed to get TidbCluster[%s:%s], error:%v", ns, tcName, err)
 				return false, nil
 			}
 			if randomPasswordTc.Status.TiDB.PasswordInitialized != nil && *randomPasswordTc.Status.TiDB.PasswordInitialized {
