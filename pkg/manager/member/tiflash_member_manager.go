@@ -674,7 +674,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		tc.Status.TiFlash.Synced = false
-		klog.Warningf("Fail to GetStores for TidbCluster %s/%s", tc.Namespace, tc.Name)
+		klog.Warningf("Fail to GetStores for TidbCluster %s/%s: %s", tc.Namespace, tc.Name, err)
 		return err
 	}
 

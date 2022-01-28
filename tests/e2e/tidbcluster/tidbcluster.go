@@ -1811,10 +1811,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			ginkgo.By("Deploy heterogeneous tc")
 			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBLatest)
 			heterogeneousTc = fixture.AddTiFlashForTidbCluster(heterogeneousTc)
+			heterogeneousTc = fixture.AddPumpForTidbCluster(heterogeneousTc)
+			heterogeneousTc = fixture.AddTiCDCForTidbCluster(heterogeneousTc)
 
 			heterogeneousTc.Spec.PD = nil
 			heterogeneousTc.Spec.TiKV.Replicas = 1
 			heterogeneousTc.Spec.TiDB.Replicas = 1
+			heterogeneousTc.Spec.TiFlash.Replicas = 1
+			heterogeneousTc.Spec.Pump.Replicas = 1
+			heterogeneousTc.Spec.TiCDC.Replicas = 1
 			heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
 				Name: originTc.Name,
 			}

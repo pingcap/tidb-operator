@@ -931,6 +931,18 @@ func (tc *TidbCluster) TiCDCLogLevel() string {
 	return "info"
 }
 
-func (tc *TidbCluster) HeterogeneousWithoutLocalPD() bool {
-	return tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 && tc.Spec.PD == nil
+func (tc *TidbCluster) Heterogeneous() bool {
+	return tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0
+}
+
+func (tc *TidbCluster) WithoutLocalPD() bool {
+	return tc.Spec.PD == nil
+}
+
+func (tc *TidbCluster) HeterogeneousWithRemote() bool {
+	return tc.Heterogeneous() && tc.Spec.Cluster.ClusterDomain != ""
+}
+
+func (tc *TidbCluster) HeterogeneousWithLocal() bool {
+	return tc.Heterogeneous() && tc.Spec.Cluster.ClusterDomain == ""
 }
