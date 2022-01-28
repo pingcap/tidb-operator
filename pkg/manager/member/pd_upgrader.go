@@ -109,25 +109,16 @@ func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSe
 	tcName := tc.GetName()
 	upgradePdName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
 	upgradePodName := PdPodName(tcName, ordinal)
+
+	// If current pd is leader, transfer leader to other pd
 	if tc.Status.PD.Leader.Name == upgradePdName || tc.Status.PD.Leader.Name == upgradePodName {
 		var targetName string
 		if tc.PDStsActualReplicas() > 1 {
-			targetOrdinal := helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
-			if ordinal == targetOrdinal {
-				targetOrdinal = helper.GetMinPodOrdinal(*newSet.Spec.Replicas, newSet)
-			}
-			targetName = PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
-			if _, exist := tc.Status.PD.Members[targetName]; !exist {
-				targetName = PdPodName(tcName, targetOrdinal)
-			}
+			targetName = choosePDToTransferFromMembers(tc, newSet, ordinal)
 		} else {
-			for _, member := range tc.Status.PD.PeerMembers {
-				if member.Name != upgradePdName && member.Health {
-					targetName = member.Name
-					break
-				}
-			}
+			targetName = choosePDToTransferFromPeerMembers(tc, upgradePdName)
 		}
+
 		if len(targetName) > 0 {
 			err := u.transferPDLeaderTo(tc, targetName)
 			if err != nil {
@@ -136,14 +127,79 @@ func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSe
 			}
 			klog.Infof("pd upgrader: transfer pd leader to: %s successfully", targetName)
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePdName, targetName)
+		} else {
+			klog.Warningf("pd upgrader: skip to transfer pd leader, because can not find a suitable pd")
 		}
 	}
+
 	mngerutils.SetUpgradePartition(newSet, ordinal)
 	return nil
 }
 
 func (u *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName string) error {
 	return controller.GetPDClient(u.deps.PDControl, tc).TransferPDLeader(targetName)
+}
+
+// choosePDToTransferFromMembers choose a pd to transfer leader from members
+//
+// Assume that current leader ordinal is x, and range is [0, n]
+//	1. Find the max suitable ordinal in (x, n], because they have been upgraded
+//	2. If no suitable ordinal, find the min suitable ordinal in [0, x) to reduce the count of transfer
+func choosePDToTransferFromMembers(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, ordinal int32) string {
+	tcName := tc.GetName()
+	ordinals := helper.GetPodOrdinals(*newSet.Spec.Replicas, newSet)
+
+	genPDName := func(targetOrdinal int32) string {
+		pdName := PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
+		if _, exist := tc.Status.PD.Members[pdName]; !exist {
+			pdName = PdPodName(tcName, targetOrdinal)
+		}
+		return pdName
+	}
+	pred := func(pdName string) bool {
+		return tc.Status.PD.Members[pdName].Health
+	}
+
+	// set ordinal to max ordinal if ordinal isn't exist
+	if !ordinals.Has(ordinal) {
+		ordinal = helper.GetMaxPodOrdinal(*newSet.Spec.Replicas, newSet)
+	}
+
+	targetName := ""
+	list := ordinals.List()
+
+	// find the max ordinal which is larger than ordinal
+	for i := len(list) - 1; i >= 0 && list[i] > ordinal; i-- {
+		curName := genPDName(list[i])
+		if pred(curName) {
+			targetName = curName
+			break
+		}
+	}
+
+	if targetName == "" {
+		// find the min ordinal which is less than ordinal
+		for i := 0; i < len(list) && list[i] < ordinal; i++ {
+			curName := genPDName(list[i])
+			if pred(curName) {
+				targetName = curName
+				break
+			}
+		}
+	}
+
+	return targetName
+}
+
+// choosePDToTransferFromPeerMembers choose a pd to transfer leader from peer members
+func choosePDToTransferFromPeerMembers(tc *v1alpha1.TidbCluster, upgradePdName string) string {
+	for _, member := range tc.Status.PD.PeerMembers {
+		if member.Name != upgradePdName && member.Health {
+			return member.Name
+		}
+	}
+
+	return ""
 }
 
 type fakePDUpgrader struct{}
