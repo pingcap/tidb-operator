@@ -246,7 +246,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+	return UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdatePDSTS", newPDSet, oldPDSet)
 }
 
 // shouldRecover checks whether we should perform recovery operation.
