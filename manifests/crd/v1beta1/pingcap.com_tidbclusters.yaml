@@ -1873,6 +1873,26 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 env:
                   items:
                     properties:
@@ -4164,6 +4184,26 @@ spec:
                   type: string
                 dataSubDir:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 enableDashboardInternalProxy:
                   type: boolean
                 env:
@@ -6555,6 +6595,26 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 env:
                   items:
                     properties:
@@ -8841,6 +8901,26 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 env:
                   items:
                     properties:
@@ -11130,6 +11210,26 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 env:
                   items:
                     properties:
@@ -13631,6 +13731,26 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 env:
                   items:
                     properties:
@@ -15976,6 +16096,26 @@ spec:
                   type: string
                 dataSubDir:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 enableNamedStatusPort:
                   type: boolean
                 env:
