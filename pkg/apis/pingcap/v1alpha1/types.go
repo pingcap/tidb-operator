@@ -975,7 +975,7 @@ type ComponentSpec struct {
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 
 	// DNSConfig Specifies the DNS parameters of a pod.
-	DNSConfig corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
 
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
 	// Value must be non-negative integer. The value zero indicates delete immediately.

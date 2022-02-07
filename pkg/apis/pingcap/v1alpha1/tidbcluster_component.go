@@ -225,6 +225,10 @@ func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
 	return dnsPolicy
 }
 
+func (a *componentAccessorImpl) DNSConfig() *corev1.PodDNSConfig {
+	return a.ComponentSpec.DNSConfig
+}
+
 func (a *componentAccessorImpl) ConfigUpdateStrategy() ConfigUpdateStrategy {
 	// defaulting logic will set a default value for configUpdateStrategy field, but if the
 	// object is created in early version without this field being set, we should set a safe default
@@ -251,6 +255,7 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 		SecurityContext:           a.PodSecurityContext(),
 		TopologySpreadConstraints: a.TopologySpreadConstraints(),
 		DNSPolicy:                 a.DnsPolicy(),
+		DNSConfig:                 a.DNSConfig(),
 	}
 	if a.PriorityClassName() != nil {
 		spec.PriorityClassName = *a.PriorityClassName()
