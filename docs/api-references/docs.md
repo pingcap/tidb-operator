@@ -896,6 +896,20 @@ Optional: Defaults to UTC</p>
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -1683,6 +1697,20 @@ Can be overrode by labels in the specific component spec.</p>
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
 </td>
 </tr>
 <tr>
@@ -4491,6 +4519,7 @@ Kubernetes core/v1.PodDNSConfig
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>DNSConfig Specifies the DNS parameters of a pod.</p>
 </td>
 </tr>
@@ -5273,6 +5302,20 @@ Optional: Defaults to UTC</p>
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
 </td>
 </tr>
 <tr>
@@ -21197,6 +21240,20 @@ Can be overrode by labels in the specific component spec.</p>
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
 </td>
 </tr>
 <tr>

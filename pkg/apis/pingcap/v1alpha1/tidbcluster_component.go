@@ -84,6 +84,7 @@ type componentAccessorImpl struct {
 	clusterAnnotations        map[string]string
 	clusterLabels             map[string]string
 	tolerations               []corev1.Toleration
+	dnsConfig                 *corev1.PodDNSConfig
 	configUpdateStrategy      ConfigUpdateStrategy
 	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
 	podManagementPolicy       apps.PodManagementPolicyType
@@ -226,6 +227,9 @@ func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
 }
 
 func (a *componentAccessorImpl) DNSConfig() *corev1.PodDNSConfig {
+	if a.ComponentSpec == nil || a.ComponentSpec.DNSConfig == nil {
+		return a.dnsConfig
+	}
 	return a.ComponentSpec.DNSConfig
 }
 
@@ -388,6 +392,7 @@ func buildTidbClusterComponentAccessor(c Component, tc *TidbCluster, componentSp
 		clusterLabels:             spec.Labels,
 		clusterAnnotations:        spec.Annotations,
 		tolerations:               spec.Tolerations,
+		dnsConfig:                 spec.DNSConfig,
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
 		podManagementPolicy:       spec.PodManagementPolicy,
@@ -414,6 +419,7 @@ func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *
 		clusterLabels:             spec.Labels,
 		clusterAnnotations:        spec.Annotations,
 		tolerations:               spec.Tolerations,
+		dnsConfig:                 spec.DNSConfig,
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
 		podManagementPolicy:       spec.PodManagementPolicy,
