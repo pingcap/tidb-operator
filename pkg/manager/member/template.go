@@ -17,7 +17,17 @@ import (
 	"bytes"
 	"fmt"
 	"text/template"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
+
+type CommonModel struct {
+	RefCluster *v1alpha1.TidbClusterRef
+}
+
+func (c CommonModel) HeterogeneousWithRemote() bool {
+	return c.RefCluster != nil && c.RefCluster.IsRemote()
+}
 
 // TODO(aylei): it is hard to maintain script in go literal, we should figure out a better solution
 // tidbStartScriptTpl is the template string of tidb start script
@@ -49,7 +59,7 @@ then
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .FormatClusterDomain }}
+POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .HeterogeneousWithRemote }}
 pd_url="{{ .Path }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
@@ -91,6 +101,8 @@ exec /tidb-server ${ARGS}
 `))
 
 type TidbStartScriptModel struct {
+	CommonModel
+
 	EnablePlugin    bool
 	PluginDirectory string
 	PluginList      string
@@ -222,6 +234,8 @@ fi
 `
 
 type PDStartScriptModel struct {
+	CommonModel
+
 	Scheme            string
 	DataDir           string
 	ClusterDomain     string
@@ -268,7 +282,7 @@ then
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .FormatClusterDomain }}
+POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .HeterogeneousWithRemote }}
 pd_url="{{ .PDAddress }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
@@ -301,6 +315,8 @@ exec /tikv-server ${ARGS}
 `))
 
 type TiKVStartScriptModel struct {
+	CommonModel
+
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	DataDir                   string
@@ -321,7 +337,7 @@ func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
 
 // pumpStartScriptTpl is the template string of pump start script
 // Note: changing this will cause a rolling-update of pump cluster
-var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .FormatClusterDomain }}
+var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .HeterogeneousWithRemote }}
 pd_url="{{ .PDAddr }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}:10261"
@@ -351,6 +367,8 @@ if [ $? == 0 ]; then
 fi`))
 
 type PumpStartScriptModel struct {
+	CommonModel
+
 	Scheme        string
 	ClusterName   string
 	PDAddr        string

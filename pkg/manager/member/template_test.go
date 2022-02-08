@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 func TestRenderTiDBInitStartScript(t *testing.T) {
@@ -25,6 +26,7 @@ func TestRenderTiDBInitStartScript(t *testing.T) {
 		name          string
 		path          string
 		clusterDomain string
+		refCluster    *v1alpha1.TidbClusterRef
 		result        string
 	}{
 		{
@@ -83,9 +85,14 @@ exec /tidb-server ${ARGS}
 `,
 		},
 		{
-			name:          "basic with cluster domain",
+			name:          "heterogeneous with remote",
 			path:          "cluster01-pd:2379",
 			clusterDomain: "test.com",
+			refCluster: &v1alpha1.TidbClusterRef{
+				Namespace:     "default",
+				Name:          "cluster-2",
+				ClusterDomain: "cluster.local",
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tidb containers in kubernetes cluster
@@ -151,6 +158,9 @@ exec /tidb-server ${ARGS}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			model := TidbStartScriptModel{
+				CommonModel: CommonModel{
+					RefCluster: tt.refCluster,
+				},
 				EnablePlugin:  false,
 				ClusterDomain: tt.clusterDomain,
 				Path:          "cluster01-pd:2379",
@@ -174,6 +184,7 @@ func TestRenderTiKVStartScript(t *testing.T) {
 		dataSubDir          string
 		result              string
 		clusterDomain       string
+		refCluster          *v1alpha1.TidbClusterRef
 	}{
 		{
 			name:                "disable AdvertiseAddr",
@@ -338,11 +349,16 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name:                "non-empty clusterDomain",
+			name:                "heterogeneous with remote",
 			enableAdvertiseAddr: true,
 			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc.cluster.local",
 			dataSubDir:          "data",
 			clusterDomain:       "cluster.local",
+			refCluster: &v1alpha1.TidbClusterRef{
+				Namespace:     "default",
+				Name:          "cluster-2",
+				ClusterDomain: "cluster.local",
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
@@ -408,6 +424,9 @@ exec /tikv-server ${ARGS}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			model := TiKVStartScriptModel{
+				CommonModel: CommonModel{
+					RefCluster: tt.refCluster,
+				},
 				PDAddress:                 "http://${CLUSTER_NAME}-pd:2379",
 				EnableAdvertiseStatusAddr: tt.enableAdvertiseAddr,
 				AdvertiseStatusAddr:       tt.advertiseAddr,
@@ -430,8 +449,9 @@ func TestRenderPDStartScript(t *testing.T) {
 		name          string
 		scheme        string
 		dataSubDir    string
-		result        string
 		clusterDomain string
+		refCluster    *v1alpha1.TidbClusterRef
+		result        string
 	}{
 		{
 			name:   "https scheme",
@@ -720,6 +740,9 @@ exec /pd-server ${ARGS}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			model := PDStartScriptModel{
+				CommonModel: CommonModel{
+					RefCluster: tt.refCluster,
+				},
 				DataDir:       filepath.Join(pdDataVolumeMountPath, tt.dataSubDir),
 				ClusterDomain: tt.clusterDomain,
 			}
@@ -743,6 +766,7 @@ func TestRenderPumpStartScript(t *testing.T) {
 		LogLevel      string
 		Namespace     string
 		clusterDomain string
+		refCluster    *v1alpha1.TidbClusterRef
 		result        string
 	}{
 		{
@@ -769,13 +793,18 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "basic with cluster domain",
+			name:          "heterogeneous with remote",
 			scheme:        "http",
 			clusterName:   "demo",
 			pdAddr:        "http://demo-pd:2379",
 			LogLevel:      "INFO",
 			Namespace:     "demo-ns",
 			clusterDomain: "demo.com",
+			refCluster: &v1alpha1.TidbClusterRef{
+				Namespace:     "default",
+				Name:          "cluster-2",
+				ClusterDomain: "cluster.local",
+			},
 			result: `
 pd_url="http://demo-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
@@ -826,13 +855,18 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "specify pd addr with cluster domain",
+			name:          "specify pd addr with remote heterogeneous",
 			scheme:        "http",
 			clusterName:   "demo",
 			pdAddr:        "http://target-pd:2379",
 			LogLevel:      "INFO",
 			Namespace:     "demo-ns",
 			clusterDomain: "demo.com",
+			refCluster: &v1alpha1.TidbClusterRef{
+				Namespace:     "default",
+				Name:          "cluster-2",
+				ClusterDomain: "cluster.local",
+			},
 			result: `
 pd_url="http://target-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
@@ -864,6 +898,9 @@ fi`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			model := PumpStartScriptModel{
+				CommonModel: CommonModel{
+					RefCluster: tt.refCluster,
+				},
 				Scheme:        tt.scheme,
 				ClusterName:   tt.clusterName,
 				PDAddr:        tt.pdAddr,
