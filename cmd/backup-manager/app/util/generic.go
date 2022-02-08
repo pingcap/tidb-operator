@@ -33,14 +33,15 @@ import (
 type GenericOptions struct {
 	Namespace string
 	// ResourceName can be the name of a backup or restore resource
-	ResourceName string
-	TLSClient    bool
-	TLSCluster   bool
-	Host         string
-	Port         int32
-	Password     string
-	User         string
-	TiKVVersion  string
+	ResourceName       string
+	TLSClient          bool
+	TLSCluster         bool
+	InsecureSkipVerify bool
+	Host               string
+	Port               int32
+	Password           string
+	User               string
+	TiKVVersion        string
 }
 
 func (bo *GenericOptions) String() string {
@@ -52,13 +53,16 @@ func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
 		return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
 	}
 	rootCertPool := x509.NewCertPool()
-	pem, err := ioutil.ReadFile(path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey))
-	if err != nil {
-		return "", err
+	if !bo.InsecureSkipVerify {
+		pem, err := ioutil.ReadFile(path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey))
+		if err != nil {
+			return "", err
+		}
+		if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+			return "", errors.New("Failed to append PEM")
+		}
 	}
-	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-		return "", errors.New("Failed to append PEM")
-	}
+
 	clientCert := make([]tls.Certificate, 0, 1)
 	certs, err := tls.LoadX509KeyPair(
 		path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey),
@@ -68,9 +72,10 @@ func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
 	}
 	clientCert = append(clientCert, certs)
 	mysql.RegisterTLSConfig("customer", &tls.Config{
-		RootCAs:      rootCertPool,
-		Certificates: clientCert,
-		ServerName:   bo.Host,
+		RootCAs:            rootCertPool,
+		Certificates:       clientCert,
+		ServerName:         bo.Host,
+		InsecureSkipVerify: bo.InsecureSkipVerify,
 	})
 	return fmt.Sprintf("%s:%s@(%s:%d)/%s?tls=customer&charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
 }

@@ -184,7 +184,7 @@ func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) er
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		tlsClientEnabled = true
 	}
-	newCm, err := getTiDBInitConfigMap(ti, tlsClientEnabled)
+	newCm, err := getTiDBInitConfigMap(ti, tlsClientEnabled, tc.Spec.TiDB.TLSClient.DisableInternalClientVerify)
 	if err != nil {
 		return err
 	}
@@ -407,7 +407,7 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 	return job, nil
 }
 
-func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool) (*corev1.ConfigMap, error) {
+func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, insecure bool) (*corev1.ConfigMap, error) {
 	var initSQL, passwdSet bool
 
 	permitHost := ti.GetPermitHost()
@@ -434,7 +434,9 @@ func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool) (
 	}
 	if tlsClientEnabled {
 		initModel.TLS = true
-		initModel.CAPath = path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)
+		if !insecure {
+			initModel.CAPath = path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)
+		}
 		initModel.CertPath = path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)
 		initModel.KeyPath = path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)
 	}

@@ -45,6 +45,7 @@ func NewBackupCommand() *cobra.Command {
 	cmd.Flags().StringVar(&bo.TiKVVersion, "tikvVersion", util.DefaultVersion, "TiKV version")
 	cmd.Flags().BoolVar(&bo.TLSClient, "client-tls", false, "Whether client tls is enabled")
 	cmd.Flags().BoolVar(&bo.TLSCluster, "cluster-tls", false, "Whether cluster tls is enabled")
+	cmd.Flags().BoolVar(&bo.InsecureSkipVerify, "insecure", false, "Whether to skip tidb server's certificates validation")
 	return cmd
 }
 

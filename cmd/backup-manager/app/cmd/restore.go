@@ -47,6 +47,7 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&ro.TiKVVersion, "tikvVersion", util.DefaultVersion, "TiKV version")
 	cmd.Flags().BoolVar(&ro.TLSClient, "client-tls", false, "Whether client tls is enabled")
 	cmd.Flags().BoolVar(&ro.TLSCluster, "cluster-tls", false, "Whether cluster tls is enabled")
+	cmd.Flags().BoolVar(&ro.InsecureSkipVerify, "insecure", false, "Whether to skip tidb server's certificates validation")
 	return cmd
 }
 

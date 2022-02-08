@@ -406,6 +406,10 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	if backup.Spec.From != nil && tc.Spec.TiDB != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
 		args = append(args, "--client-tls=true")
+		if tc.Spec.TiDB.TLSClient.DisableInternalClientVerify {
+			args = append(args, "--insecure=true")
+		}
+
 		clientSecretName := util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster)
 		if backup.Spec.From.TLSClientSecretName != nil {
 			clientSecretName = *backup.Spec.From.TLSClientSecretName
