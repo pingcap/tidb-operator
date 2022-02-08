@@ -112,14 +112,17 @@ func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSe
 
 	// If current pd is leader, transfer leader to other pd
 	if tc.Status.PD.Leader.Name == upgradePdName || tc.Status.PD.Leader.Name == upgradePodName {
-		var targetName string
+		targetName := ""
+
 		if tc.PDStsActualReplicas() > 1 {
 			targetName = choosePDToTransferFromMembers(tc, newSet, ordinal)
-		} else {
+		}
+
+		if targetName == "" {
 			targetName = choosePDToTransferFromPeerMembers(tc, upgradePdName)
 		}
 
-		if len(targetName) > 0 {
+		if targetName != "" {
 			err := u.transferPDLeaderTo(tc, targetName)
 			if err != nil {
 				klog.Errorf("pd upgrader: failed to transfer pd leader to: %s, %v", targetName, err)
