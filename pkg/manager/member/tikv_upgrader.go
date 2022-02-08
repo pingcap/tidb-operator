@@ -76,7 +76,8 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
 	}
 
-	if *oldSet.Spec.Replicas < 2 {
+	// force upgrade if failed to sync status and replica is 1
+	if !status.Synced && *oldSet.Spec.Replicas < 2 {
 		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for tc %s/%s", ns, tcName)
 		status.Phase = v1alpha1.UpgradePhase
 		mngerutils.SetUpgradePartition(newSet, 0)
