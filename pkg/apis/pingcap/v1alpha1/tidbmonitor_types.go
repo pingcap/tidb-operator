@@ -368,6 +368,14 @@ type TidbClusterRef struct {
 	ClusterDomain string `json:"clusterDomain,omitempty"`
 }
 
+func (r *TidbClusterRef) IsRemote() bool {
+	return r.ClusterDomain != ""
+}
+
+func (r *TidbClusterRef) IsLocal() bool {
+	return r.ClusterDomain == ""
+}
+
 // +k8s:openapi-gen=true
 // ClusterRef reference to a TidbCluster
 type ClusterRef TidbClusterRef

@@ -130,9 +130,8 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 
 	name := tc.Name
 	ns := tc.Namespace
-	clusterDomain := tc.Spec.ClusterDomain
 	ref := tc.Spec.Cluster.DeepCopy()
-	noLocalPD := tc.HeterogeneousWithLocal() && tc.WithoutLocalPD()
+	clusterDomain := tc.Spec.ClusterDomain
 	noLocalTiDB := ref != nil && ref.Name != "" && tc.Spec.TiDB == nil
 
 	// common
@@ -168,7 +167,8 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		common.SetIfNil("flash.service_addr", "0.0.0.0:3930")
 		common.SetIfNil("flash.flash_cluster.log", defaultClusterLog)
 		common.SetIfNil("flash.proxy.addr", "0.0.0.0:20170")
-		common.SetIfNil("flash.proxy.advertise-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20170", controller.TiFlashMemberName(name), controller.TiFlashPeerMemberName(name), ns, controller.FormatClusterDomain(clusterDomain)))
+		common.SetIfNil("flash.proxy.advertise-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20170", controller.TiFlashMemberName(name),
+			controller.TiFlashPeerMemberName(name), ns, controller.FormatClusterDomain(clusterDomain)))
 		common.SetIfNil("flash.proxy.data-dir", "/data0/proxy")
 		common.SetIfNil("flash.proxy.config", "/data0/proxy.toml")
 
@@ -178,9 +178,9 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 
 		// raft
 		pdAddr := fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(name), ns)
-		if len(clusterDomain) > 0 {
-			pdAddr = "PD_ADDR"
-		} else if noLocalPD {
+		if tc.HeterogeneousWithRemote() {
+			pdAddr = "PD_ADDR" // get pd addr from discovery in startup script
+		} else if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
 			pdAddr = fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
 		}
 		common.SetIfNil("raft.pd_addr", pdAddr)
@@ -189,9 +189,11 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 	// proxy
 	{
 		proxy.SetIfNil("log-level", "info")
-		proxy.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:3930", controller.TiFlashMemberName(name), controller.TiFlashPeerMemberName(name), ns, controller.FormatClusterDomain(clusterDomain)))
+		proxy.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:3930",
+			controller.TiFlashMemberName(name), controller.TiFlashPeerMemberName(name), ns, controller.FormatClusterDomain(clusterDomain)))
 		proxy.SetIfNil("server.status-addr", "0.0.0.0:20292")
-		proxy.SetIfNil("server.advertise-status-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20292", controller.TiFlashMemberName(name), controller.TiFlashPeerMemberName(name), ns, controller.FormatClusterDomain(clusterDomain)))
+		proxy.SetIfNil("server.advertise-status-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20292",
+			controller.TiFlashMemberName(name), controller.TiFlashPeerMemberName(name), ns, controller.FormatClusterDomain(clusterDomain)))
 	}
 
 	// Note the config of tiflash use "_" by convention, others(proxy) use "-".
@@ -298,9 +300,11 @@ func setTiFlashConfigDefault(config *v1alpha1.TiFlashConfigWraper, ref *v1alpha1
 
 func setTiFlashProxyConfigDefault(config *v1alpha1.TiFlashProxyConfigWraper, clusterName, ns, clusterDomain string) {
 	config.SetIfNil("log-level", "info")
-	config.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
+	config.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:3930",
+		controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
 	config.SetIfNil("server.status-addr", "0.0.0.0:20292")
-	config.SetIfNil("server.advertise-status-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20292", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
+	config.SetIfNil("server.advertise-status-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20292",
+		controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
 }
 
 func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain string, noLocalPD bool, noLocalTiDB bool) {
@@ -368,7 +372,8 @@ func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, re
 
 	// set proxy
 	config.SetIfNil("flash.proxy.addr", "0.0.0.0:20170")
-	config.SetIfNil("flash.proxy.advertise-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20170", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
+	config.SetIfNil("flash.proxy.advertise-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20170",
+		controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
 	config.SetIfNil("flash.proxy.data-dir", "/data0/proxy")
 	config.SetIfNil("flash.proxy.config", "/data0/proxy.toml")
 }
@@ -390,11 +395,12 @@ func setTiFlashRaftConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref
 	config.SetIfNil("raft.kvstore_path", "/data0/kvstore")
 	config.SetIfNil("raft.storage_engine", "dt")
 
-	if len(clusterDomain) > 0 {
-		config.SetIfNil("raft.pd_addr", "PD_ADDR")
+	if ref != nil && ref.IsRemote() {
+		config.SetIfNil("raft.pd_addr", "PD_ADDR") // get pd addr from discovery in startup script
 	} else {
 		if noLocalPD {
-			config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain)))
+			config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc%s:2379",
+				controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain)))
 		} else {
 			config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(clusterName), ns))
 		}
