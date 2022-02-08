@@ -524,12 +524,15 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, pdDomain)
 
 	return RenderPumpStartScript(&PumpStartScriptModel{
-		Scheme:        scheme,
-		ClusterName:   tc.Name,
-		PDAddr:        pdAddr,
-		LogLevel:      getPumpLogLevel(tc),
-		ClusterDomain: tc.Spec.ClusterDomain,
-		Namespace:     tc.GetNamespace(),
+		CommonModel: CommonModel{
+			RefCluster:    tc.Spec.Cluster,
+			ClusterDomain: tc.Spec.ClusterDomain,
+		},
+		Scheme:      scheme,
+		ClusterName: tc.Name,
+		PDAddr:      pdAddr,
+		LogLevel:    getPumpLogLevel(tc),
+		Namespace:   tc.GetNamespace(),
 	})
 }
 

@@ -844,9 +844,12 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	sm := &PDStartScriptModel{
-		Scheme:        tc.Scheme(),
-		DataDir:       filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
-		ClusterDomain: tc.Spec.ClusterDomain,
+		CommonModel: CommonModel{
+			RefCluster:    tc.Spec.Cluster,
+			ClusterDomain: tc.Spec.ClusterDomain,
+		},
+		Scheme:  tc.Scheme(),
+		DataDir: filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
 	}
 	if tc.Spec.PD.StartUpScriptVersion == "v1" {
 		sm.CheckDomainScript = checkDNSV1

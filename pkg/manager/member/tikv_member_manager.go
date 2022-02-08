@@ -707,9 +707,12 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	scriptModel := &TiKVStartScriptModel{
+		CommonModel: CommonModel{
+			RefCluster:    tc.Spec.Cluster,
+			ClusterDomain: tc.Spec.ClusterDomain,
+		},
 		EnableAdvertiseStatusAddr: false,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
-		ClusterDomain:             tc.Spec.ClusterDomain,
 	}
 	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
 		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc" + controller.FormatClusterDomain(tc.Spec.ClusterDomain)

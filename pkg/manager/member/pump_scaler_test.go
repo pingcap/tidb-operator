@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -25,31 +26,41 @@ func TestPumpAdvertiseAddr(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type Case struct {
-		clusterName string
-		domain      string
-		result      string
+		name string
+
+		model  *PumpStartScriptModel
+		result string
 	}
 
 	tests := []Case{
 		{
-			clusterName: "cname",
-			result:      "pod.cname-pump:8250",
+			name: "parse addr from basic startup script",
+			model: &PumpStartScriptModel{
+				ClusterName: "cname",
+				Namespace:   "ns",
+			},
+			result: "pod.cname-pump:8250",
 		},
 		{
-			clusterName: "cname",
-			domain:      "cluster.local",
-			result:      "pod.cname-pump.ns.svc.cluster.local:8250",
+			name: "parse addr from remote heterogeneous startup script",
+			model: &PumpStartScriptModel{
+				CommonModel: CommonModel{
+					RefCluster: &v1alpha1.TidbClusterRef{
+						Namespace:     "default",
+						Name:          "cluster-2",
+						ClusterDomain: "cluster.local",
+					},
+					ClusterDomain: "cluster.local",
+				},
+				ClusterName: "cname",
+				Namespace:   "ns",
+			},
+			result: "pod.cname-pump.ns.svc.cluster.local:8250",
 		},
 	}
 
 	for _, test := range tests {
-		model := &PumpStartScriptModel{
-			ClusterName:   test.clusterName,
-			ClusterDomain: test.domain,
-			Namespace:     "ns",
-		}
-
-		data, err := RenderPumpStartScript(model)
+		data, err := RenderPumpStartScript(test.model)
 		g.Expect(err).Should(BeNil())
 
 		pod := &corev1.Pod{

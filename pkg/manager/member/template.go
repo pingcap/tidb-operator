@@ -22,11 +22,19 @@ import (
 )
 
 type CommonModel struct {
-	RefCluster *v1alpha1.TidbClusterRef
+	RefCluster    *v1alpha1.TidbClusterRef // same as tc.spec.cluster
+	ClusterDomain string                   // same as tc.spec.clusterDomain
 }
 
 func (c CommonModel) HeterogeneousWithRemote() bool {
 	return c.RefCluster != nil && c.RefCluster.IsRemote()
+}
+
+func (c CommonModel) FormatClusterDomain() string {
+	if len(c.ClusterDomain) > 0 {
+		return "." + c.ClusterDomain
+	}
+	return ""
 }
 
 // TODO(aylei): it is hard to maintain script in go literal, we should figure out a better solution
@@ -106,15 +114,7 @@ type TidbStartScriptModel struct {
 	EnablePlugin    bool
 	PluginDirectory string
 	PluginList      string
-	ClusterDomain   string
 	Path            string
-}
-
-func (t *TidbStartScriptModel) FormatClusterDomain() string {
-	if len(t.ClusterDomain) > 0 {
-		return "." + t.ClusterDomain
-	}
-	return ""
 }
 
 func RenderTiDBStartScript(model *TidbStartScriptModel) (string, error) {
@@ -238,15 +238,7 @@ type PDStartScriptModel struct {
 
 	Scheme            string
 	DataDir           string
-	ClusterDomain     string
 	CheckDomainScript string
-}
-
-func (p *PDStartScriptModel) FormatClusterDomain() string {
-	if len(p.ClusterDomain) > 0 {
-		return "." + p.ClusterDomain
-	}
-	return ""
 }
 
 func RenderPDStartScript(model *PDStartScriptModel) (string, error) {
@@ -320,15 +312,7 @@ type TiKVStartScriptModel struct {
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	DataDir                   string
-	ClusterDomain             string
 	PDAddress                 string
-}
-
-func (t *TiKVStartScriptModel) FormatClusterDomain() string {
-	if len(t.ClusterDomain) > 0 {
-		return "." + t.ClusterDomain
-	}
-	return ""
 }
 
 func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
@@ -369,20 +353,11 @@ fi`))
 type PumpStartScriptModel struct {
 	CommonModel
 
-	Scheme        string
-	ClusterName   string
-	PDAddr        string
-	LogLevel      string
-	Namespace     string
-	ClusterDomain string
-}
-
-func (pssm *PumpStartScriptModel) FormatClusterDomain() string {
-	if len(pssm.ClusterDomain) > 0 {
-		return "." + pssm.ClusterDomain
-	}
-
-	return ""
+	Scheme      string
+	ClusterName string
+	PDAddr      string
+	LogLevel    string
+	Namespace   string
 }
 
 func (pssm *PumpStartScriptModel) FormatPumpZone() string {

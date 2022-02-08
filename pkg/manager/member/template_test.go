@@ -159,11 +159,11 @@ exec /tidb-server ${ARGS}
 		t.Run(tt.name, func(t *testing.T) {
 			model := TidbStartScriptModel{
 				CommonModel: CommonModel{
-					RefCluster: tt.refCluster,
+					RefCluster:    tt.refCluster,
+					ClusterDomain: tt.clusterDomain,
 				},
-				EnablePlugin:  false,
-				ClusterDomain: tt.clusterDomain,
-				Path:          "cluster01-pd:2379",
+				EnablePlugin: false,
+				Path:         "cluster01-pd:2379",
 			}
 			script, err := RenderTiDBStartScript(&model)
 			if err != nil {
@@ -425,13 +425,13 @@ exec /tikv-server ${ARGS}
 		t.Run(tt.name, func(t *testing.T) {
 			model := TiKVStartScriptModel{
 				CommonModel: CommonModel{
-					RefCluster: tt.refCluster,
+					RefCluster:    tt.refCluster,
+					ClusterDomain: tt.clusterDomain,
 				},
 				PDAddress:                 "http://${CLUSTER_NAME}-pd:2379",
 				EnableAdvertiseStatusAddr: tt.enableAdvertiseAddr,
 				AdvertiseStatusAddr:       tt.advertiseAddr,
 				DataDir:                   filepath.Join(tikvDataVolumeMountPath, tt.dataSubDir),
-				ClusterDomain:             tt.clusterDomain,
 			}
 			script, err := RenderTiKVStartScript(&model)
 			if err != nil {
@@ -741,10 +741,10 @@ exec /pd-server ${ARGS}
 		t.Run(tt.name, func(t *testing.T) {
 			model := PDStartScriptModel{
 				CommonModel: CommonModel{
-					RefCluster: tt.refCluster,
+					RefCluster:    tt.refCluster,
+					ClusterDomain: tt.clusterDomain,
 				},
-				DataDir:       filepath.Join(pdDataVolumeMountPath, tt.dataSubDir),
-				ClusterDomain: tt.clusterDomain,
+				DataDir: filepath.Join(pdDataVolumeMountPath, tt.dataSubDir),
 			}
 			script, err := RenderPDStartScript(&model)
 			if err != nil {
@@ -899,14 +899,14 @@ fi`,
 		t.Run(tt.name, func(t *testing.T) {
 			model := PumpStartScriptModel{
 				CommonModel: CommonModel{
-					RefCluster: tt.refCluster,
+					RefCluster:    tt.refCluster,
+					ClusterDomain: tt.clusterDomain,
 				},
-				Scheme:        tt.scheme,
-				ClusterName:   tt.clusterName,
-				PDAddr:        tt.pdAddr,
-				LogLevel:      tt.LogLevel,
-				Namespace:     tt.Namespace,
-				ClusterDomain: tt.clusterDomain,
+				Scheme:      tt.scheme,
+				ClusterName: tt.clusterName,
+				PDAddr:      tt.pdAddr,
+				LogLevel:    tt.LogLevel,
+				Namespace:   tt.Namespace,
 			}
 			script, err := RenderPumpStartScript(&model)
 			if err != nil {
