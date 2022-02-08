@@ -133,7 +133,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 	clusterDomain := tc.Spec.ClusterDomain
 	ref := tc.Spec.Cluster.DeepCopy()
 	noLocalPD := tc.HeterogeneousWithLocal() && tc.WithoutLocalPD()
-	noLocalTiDB := tc.Heterogeneous() && tc.WithoutLocalTiDB()
+	noLocalTiDB := ref != nil && ref.Name != "" && tc.Spec.TiDB == nil
 
 	// common
 	{
@@ -239,7 +239,11 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
 
 	ref := tc.Spec.Cluster.DeepCopy()
 	noLocalPD := tc.HeterogeneousWithLocal() && tc.WithoutLocalPD()
-	noLocalTiDB := tc.Heterogeneous() && tc.WithoutLocalTiDB()
+
+	noLocalTiDB := false
+	if ref != nil && ref.Name != "" && tc.Spec.TiDB == nil {
+		noLocalTiDB = true
+	}
 
 	setTiFlashConfigDefault(config, ref, tc.Name, tc.Namespace, tc.Spec.ClusterDomain, noLocalPD, noLocalTiDB)
 
