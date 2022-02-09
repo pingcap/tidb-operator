@@ -942,11 +942,3 @@ func (tc *TidbCluster) WithoutLocalPD() bool {
 func (tc *TidbCluster) WithoutLocalTiDB() bool {
 	return tc.Spec.TiDB == nil
 }
-
-func (tc *TidbCluster) HeterogeneousWithRemote() bool {
-	return tc.Heterogeneous() && tc.Spec.Cluster.IsRemote()
-}
-
-func (tc *TidbCluster) HeterogeneousWithLocal() bool {
-	return tc.Heterogeneous() && tc.Spec.Cluster.IsLocal()
-}

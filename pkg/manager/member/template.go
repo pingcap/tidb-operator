@@ -26,8 +26,8 @@ type CommonModel struct {
 	ClusterDomain string                   // same as tc.spec.clusterDomain
 }
 
-func (c CommonModel) HeterogeneousWithRemote() bool {
-	return c.RefCluster != nil && c.RefCluster.IsRemote()
+func (c CommonModel) HeterogeneousAcrossK8s() bool {
+	return c.RefCluster != nil && c.RefCluster.AcrossK8s()
 }
 
 func (c CommonModel) FormatClusterDomain() string {
@@ -67,7 +67,7 @@ then
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .HeterogeneousWithRemote }}
+POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .HeterogeneousAcrossK8s }}
 pd_url="{{ .Path }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
@@ -274,7 +274,7 @@ then
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .HeterogeneousWithRemote }}
+POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .HeterogeneousAcrossK8s }}
 pd_url="{{ .PDAddress }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
@@ -321,7 +321,7 @@ func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
 
 // pumpStartScriptTpl is the template string of pump start script
 // Note: changing this will cause a rolling-update of pump cluster
-var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .HeterogeneousWithRemote }}
+var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .HeterogeneousAcrossK8s }}
 pd_url="{{ .PDAddr }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}:10261"

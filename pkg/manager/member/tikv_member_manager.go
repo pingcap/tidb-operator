@@ -719,11 +719,15 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
 
-	if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
-		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
-	} else {
-		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
+	scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
+	if tc.Heterogeneous() {
+		if tc.Spec.Cluster.AcrossK8s() {
+			scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
+		} else if tc.WithoutLocalPD() {
+			scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
+		}
 	}
+
 	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
 	if err != nil {
 		return nil, err

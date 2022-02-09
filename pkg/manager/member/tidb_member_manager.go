@@ -523,10 +523,13 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		PluginList:      strings.Join(plugins, ","),
 	}
 
-	if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
-		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
-	} else {
-		tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
+	tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
+	if tc.Heterogeneous() {
+		if tc.Spec.Cluster.AcrossK8s() {
+			tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
+		} else if tc.WithoutLocalPD() {
+			tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
+		}
 	}
 
 	startScript, err := RenderTiDBStartScript(tidbStartScriptModel)

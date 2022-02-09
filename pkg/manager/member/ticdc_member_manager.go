@@ -354,20 +354,23 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		vols      []corev1.Volume
 	)
 
-	pdDomain := controller.PDMemberName(tcName)
-	if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
-		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name)
+	scheme := "http"
+	if tc.IsTLSClusterEnabled() {
+		scheme = "https"
+	}
+	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Name))
+	if tc.Heterogeneous() {
+		if tc.Spec.Cluster.AcrossK8s() {
+			pdAddr = "${result}" // get pd addr from discovery in startup script
+		} else if tc.WithoutLocalPD() {
+			pdAddr = fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
+		}
 	}
 
 	if tc.IsTLSClusterEnabled() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--key=%s", path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey)))
-		if tc.HeterogeneousWithRemote() {
-			cmdArgs = append(cmdArgs, "--pd=${result}")
-		} else {
-			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=https://%s:2379", pdDomain))
-		}
 
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name:      ticdcCertVolumeMount,
@@ -392,13 +395,8 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 				},
 			},
 		})
-	} else {
-		if tc.HeterogeneousWithRemote() {
-			cmdArgs = append(cmdArgs, "--pd=${result}")
-		} else {
-			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=http://%s:2379", pdDomain))
-		}
 	}
+	cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=%s", pdAddr))
 
 	if cm != nil {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--config=%s", "/etc/ticdc/ticdc.toml"))
@@ -411,8 +409,9 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 
 	var script string
 
-	if tc.HeterogeneousWithRemote() {
+	if tc.Heterogeneous() && tc.Spec.Cluster.AcrossK8s() {
 		var pdAddr string
+		pdDomain := controller.PDMemberName(tcName)
 		if tc.IsTLSClusterEnabled() {
 			pdAddr = fmt.Sprintf("https://%s:2379", pdDomain)
 		} else {

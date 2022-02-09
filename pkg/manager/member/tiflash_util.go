@@ -178,10 +178,13 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 
 		// raft
 		pdAddr := fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(name), ns)
-		if tc.HeterogeneousWithRemote() {
-			pdAddr = "PD_ADDR" // get pd addr from discovery in startup script
-		} else if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
-			pdAddr = fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+		if tc.Heterogeneous() {
+			if tc.Spec.Cluster.AcrossK8s() {
+				pdAddr = "PD_ADDR" // get pd addr from discovery in startup script
+			} else if tc.WithoutLocalPD() {
+				pdAddr = fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain)) // use pd of reference cluster
+
+			}
 		}
 		common.SetIfNil("raft.pd_addr", pdAddr)
 	}
@@ -240,7 +243,7 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
 	}
 
 	ref := tc.Spec.Cluster.DeepCopy()
-	refPD := tc.HeterogeneousWithLocal() && tc.WithoutLocalPD()
+	refPD := tc.Heterogeneous() && !tc.Spec.Cluster.AcrossK8s() && tc.WithoutLocalPD()
 	refTiDB := tc.Heterogeneous() && tc.WithoutLocalTiDB()
 
 	setTiFlashConfigDefault(config, ref, tc.Name, tc.Namespace, tc.Spec.ClusterDomain, refPD, refTiDB)
@@ -391,12 +394,11 @@ func setTiFlashRaftConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref
 	config.SetIfNil("raft.kvstore_path", "/data0/kvstore")
 	config.SetIfNil("raft.storage_engine", "dt")
 
-	if ref != nil && ref.IsRemote() {
+	if ref != nil && ref.AcrossK8s() {
 		config.SetIfNil("raft.pd_addr", "PD_ADDR") // get pd addr from discovery in startup script
 	} else {
 		if refPD {
-			config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc%s:2379",
-				controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain)))
+			config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain)))
 		} else {
 			config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(clusterName), ns))
 		}

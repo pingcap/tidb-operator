@@ -401,8 +401,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	}
 	script := "set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml"
 
-	if tc.HeterogeneousWithRemote() {
-		// if tc is remote heterogeneous, modify startup script to get pd addr from discovery
+	if tc.Heterogeneous() && tc.Spec.Cluster.AcrossK8s() {
 		var pdAddr string
 		if tc.IsTLSClusterEnabled() {
 			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
