@@ -85,7 +85,7 @@ exec /tidb-server ${ARGS}
 `,
 		},
 		{
-			name:          "heterogeneous with remote",
+			name:          "heterogeneous across k8s",
 			path:          "cluster01-pd:2379",
 			clusterDomain: "test.com",
 			refCluster: &v1alpha1.TidbClusterRef{
@@ -349,7 +349,7 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name:                "heterogeneous with remote",
+			name:                "heterogeneous across k8s",
 			enableAdvertiseAddr: true,
 			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc.cluster.local",
 			dataSubDir:          "data",
@@ -793,7 +793,7 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "heterogeneous with remote",
+			name:          "heterogeneous across k8s",
 			scheme:        "http",
 			clusterName:   "demo",
 			pdAddr:        "http://demo-pd:2379",
@@ -855,7 +855,7 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "specify pd addr with remote heterogeneous",
+			name:          "specify pd addr when heterogeneous across k8s",
 			scheme:        "http",
 			clusterName:   "demo",
 			pdAddr:        "http://target-pd:2379",
