@@ -60,6 +60,8 @@ func TestPumpAdvertiseAddr(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		t.Logf("test case: %s", test.name)
+
 		data, err := RenderPumpStartScript(test.model)
 		g.Expect(err).Should(BeNil())
 
