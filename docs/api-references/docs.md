@@ -13199,6 +13199,48 @@ bool
 </tr>
 </tbody>
 </table>
+<h3 id="scalepolicy">ScalePolicy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>, 
+<a href="#tikvspec">TiKVSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>scaleInParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleInParallelism configures max scale in replicas for TiKV stores.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scaleOutParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleOutParallelism configures max scale out replicas for TiKV stores.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="secretorconfigmap">SecretOrConfigMap</h3>
 <p>
 (<em>Appears on:</em>
@@ -16457,6 +16499,20 @@ Failover
 <td>
 <em>(Optional)</em>
 <p>Failover is the configurations of failover</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scalePolicy</code></br>
+<em>
+<a href="#scalepolicy">
+ScalePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScalePolicy is the scale configuration for TiFlash</p>
 </td>
 </tr>
 </tbody>
@@ -20532,6 +20588,20 @@ bool
 <td>
 <p>EnableNamedStatusPort enables status port(20180) in the Pod spec.
 If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scalePolicy</code></br>
+<em>
+<a href="#scalepolicy">
+ScalePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScalePolicy is the scale configuration for TiKV</p>
 </td>
 </tr>
 </tbody>

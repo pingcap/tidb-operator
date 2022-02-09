@@ -349,7 +349,7 @@ func (oa *OperatorActions) crdFiles(info *OperatorConfig) ([]string, error) {
 	files := []string{
 		crdFile,
 	}
-	if info.Enabled("advanced-statefulset") {
+	if info.Enabled(features.AdvancedStatefulSet) {
 		files = append(files, astsCRDFile)
 	}
 
