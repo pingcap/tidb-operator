@@ -1294,7 +1294,7 @@ type TiDBTLSClient struct {
 	// DisableInternalClientVerify will skip TiDB server's certificate validation for internal components like Initializer, Dashboard, etc.
 	// Optional: defaults to false
 	// +optional
-	DisableInternalClientVerify bool `json:"disableInternalClientVerify,omitempty"`
+	SkipInternalClientCA bool `json:"skipInternalClientCA,omitempty"`
 }
 
 // TLSCluster can enable mutual TLS connection between TiDB cluster components
