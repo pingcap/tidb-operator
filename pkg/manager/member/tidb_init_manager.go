@@ -184,7 +184,7 @@ func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) er
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		tlsClientEnabled = true
 	}
-	newCm, err := getTiDBInitConfigMap(ti, tlsClientEnabled, tc.Spec.TiDB.TLSClient.DisableInternalClientVerify)
+	newCm, err := getTiDBInitConfigMap(ti, tlsClientEnabled, tc.Spec.TiDB.TLSClient.SkipInternalClientCA)
 	if err != nil {
 		return err
 	}
@@ -434,9 +434,8 @@ func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, i
 	}
 	if tlsClientEnabled {
 		initModel.TLS = true
-		if !insecure {
-			initModel.CAPath = path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)
-		}
+		initModel.SkipCA = insecure
+		initModel.CAPath = path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)
 		initModel.CertPath = path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)
 		initModel.KeyPath = path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)
 	}

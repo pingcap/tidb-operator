@@ -15335,14 +15335,14 @@ Optional: defaults to false</p>
 </tr>
 <tr>
 <td>
-<code>disableInternalClientVerify</code></br>
+<code>skipInternalClientCA</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>DisableInternalClientVerify will skip TiDB server&rsquo;s certificate validation for internal components like Initializer, Dashboard, etc.
+<p>SkipInternalClientCA will skip TiDB server&rsquo;s certificate validation for internal components like Initializer, Dashboard, etc.
 Optional: defaults to false</p>
 </td>
 </tr>

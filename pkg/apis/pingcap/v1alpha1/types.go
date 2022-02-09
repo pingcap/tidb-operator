@@ -1291,7 +1291,7 @@ type TiDBTLSClient struct {
 	// +optional
 	DisableClientAuthn bool `json:"disableClientAuthn,omitempty"`
 
-	// DisableInternalClientVerify will skip TiDB server's certificate validation for internal components like Initializer, Dashboard, etc.
+	// SkipInternalClientCA will skip TiDB server's certificate validation for internal components like Initializer, Dashboard, etc.
 	// Optional: defaults to false
 	// +optional
 	SkipInternalClientCA bool `json:"skipInternalClientCA,omitempty"`

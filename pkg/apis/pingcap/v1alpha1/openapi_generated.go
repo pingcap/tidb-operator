@@ -8164,9 +8164,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBTLSClient(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
-					"disableInternalClientVerify": {
+					"skipInternalClientCA": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DisableInternalClientVerify will skip TiDB server's certificate validation for internal components like Initializer, Dashboard, etc. Optional: defaults to false",
+							Description: "SkipInternalClientCA will skip TiDB server's certificate validation for internal components like Initializer, Dashboard, etc. Optional: defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
