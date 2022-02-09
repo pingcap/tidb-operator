@@ -3698,10 +3698,20 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 	return err
 }
 
-func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
+func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.TidbCluster, fw portforward.PortForward, timeout, pollInterval time.Duration) error {
 	var checkErr, err error
 	ns := tc.Namespace
 	tcName := tc.Name
+	var localHost string
+	var localPort uint16
+	var cancel context.CancelFunc
+	if fw != nil {
+		localHost, localPort, cancel, err = portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), 4000)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+	}
 	err = wait.Poll(timeout, pollInterval, func() (done bool, err error) {
 		randomPasswordTc, err := oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
 		if err != nil {
@@ -3716,8 +3726,12 @@ func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.Tid
 				return false, nil
 			}
 			password := string(passwordSecret.Data[constants.TidbRootKey])
-
-			dsn := util.GetDSN(randomPasswordTc, password)
+			var dsn string
+			if fw != nil {
+				dsn = fmt.Sprintf("root:%s@tcp(%s:%d)/?charset=utf8mb4,utf8&multiStatements=true", password, localHost, localPort)
+			} else {
+				dsn = util.GetDSN(randomPasswordTc, password)
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			_, err = util.OpenDB(ctx, dsn)
