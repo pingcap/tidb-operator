@@ -171,7 +171,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 
 	oldSet := oldSetTmp.DeepCopy()
 
-	if err := m.syncTidbClusterStatus(tc, oldSet); err != nil {
+	if err := m.syncTiKVClusterStatus(tc, oldSet); err != nil {
 		return err
 	}
 
@@ -742,7 +742,7 @@ func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 	return label.New().Instance(instanceName).TiKV()
 }
 
-func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	if set == nil {
 		// skip if not created yet
 		return nil
