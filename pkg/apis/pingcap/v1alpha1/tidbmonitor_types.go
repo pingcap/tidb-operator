@@ -368,10 +368,6 @@ type TidbClusterRef struct {
 	ClusterDomain string `json:"clusterDomain,omitempty"`
 }
 
-func (r *TidbClusterRef) AcrossK8s() bool {
-	return r.ClusterDomain != ""
-}
-
 // +k8s:openapi-gen=true
 // ClusterRef reference to a TidbCluster
 type ClusterRef TidbClusterRef

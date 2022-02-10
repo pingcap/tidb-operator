@@ -515,7 +515,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	plugins := tc.Spec.TiDB.Plugins
 	tidbStartScriptModel := &TidbStartScriptModel{
 		CommonModel: CommonModel{
-			RefCluster:    tc.Spec.Cluster,
+			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
 		EnablePlugin:    len(plugins) > 0,
@@ -524,12 +524,10 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
-	if tc.Heterogeneous() {
-		if tc.Spec.Cluster.AcrossK8s() {
-			tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
-		} else if tc.WithoutLocalPD() {
-			tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
-		}
+	if tc.AcrossK8s() {
+		tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
 	}
 
 	startScript, err := RenderTiDBStartScript(tidbStartScriptModel)

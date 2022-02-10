@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 func TestRenderTiDBInitStartScript(t *testing.T) {
@@ -26,7 +25,7 @@ func TestRenderTiDBInitStartScript(t *testing.T) {
 		name          string
 		path          string
 		clusterDomain string
-		refCluster    *v1alpha1.TidbClusterRef
+		acrossK8s     bool
 		result        string
 	}{
 		{
@@ -88,11 +87,7 @@ exec /tidb-server ${ARGS}
 			name:          "heterogeneous across k8s",
 			path:          "cluster01-pd:2379",
 			clusterDomain: "test.com",
-			refCluster: &v1alpha1.TidbClusterRef{
-				Namespace:     "default",
-				Name:          "cluster-2",
-				ClusterDomain: "cluster.local",
-			},
+			acrossK8s:     true,
 			result: `#!/bin/sh
 
 # This script is used to start tidb containers in kubernetes cluster
@@ -159,7 +154,7 @@ exec /tidb-server ${ARGS}
 		t.Run(tt.name, func(t *testing.T) {
 			model := TidbStartScriptModel{
 				CommonModel: CommonModel{
-					RefCluster:    tt.refCluster,
+					AcrossK8s:     tt.acrossK8s,
 					ClusterDomain: tt.clusterDomain,
 				},
 				EnablePlugin: false,
@@ -184,7 +179,7 @@ func TestRenderTiKVStartScript(t *testing.T) {
 		dataSubDir          string
 		result              string
 		clusterDomain       string
-		refCluster          *v1alpha1.TidbClusterRef
+		acrossK8s           bool
 	}{
 		{
 			name:                "disable AdvertiseAddr",
@@ -354,11 +349,7 @@ exec /tikv-server ${ARGS}
 			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc.cluster.local",
 			dataSubDir:          "data",
 			clusterDomain:       "cluster.local",
-			refCluster: &v1alpha1.TidbClusterRef{
-				Namespace:     "default",
-				Name:          "cluster-2",
-				ClusterDomain: "cluster.local",
-			},
+			acrossK8s:           true,
 			result: `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
@@ -425,7 +416,7 @@ exec /tikv-server ${ARGS}
 		t.Run(tt.name, func(t *testing.T) {
 			model := TiKVStartScriptModel{
 				CommonModel: CommonModel{
-					RefCluster:    tt.refCluster,
+					AcrossK8s:     tt.acrossK8s,
 					ClusterDomain: tt.clusterDomain,
 				},
 				PDAddress:                 "http://${CLUSTER_NAME}-pd:2379",
@@ -450,7 +441,7 @@ func TestRenderPDStartScript(t *testing.T) {
 		scheme        string
 		dataSubDir    string
 		clusterDomain string
-		refCluster    *v1alpha1.TidbClusterRef
+		acrossK8s     bool
 		result        string
 	}{
 		{
@@ -741,7 +732,7 @@ exec /pd-server ${ARGS}
 		t.Run(tt.name, func(t *testing.T) {
 			model := PDStartScriptModel{
 				CommonModel: CommonModel{
-					RefCluster:    tt.refCluster,
+					AcrossK8s:     tt.acrossK8s,
 					ClusterDomain: tt.clusterDomain,
 				},
 				DataDir: filepath.Join(pdDataVolumeMountPath, tt.dataSubDir),
@@ -766,7 +757,7 @@ func TestRenderPumpStartScript(t *testing.T) {
 		LogLevel      string
 		Namespace     string
 		clusterDomain string
-		refCluster    *v1alpha1.TidbClusterRef
+		acrossK8s     bool
 		result        string
 	}{
 		{
@@ -800,11 +791,7 @@ fi`,
 			LogLevel:      "INFO",
 			Namespace:     "demo-ns",
 			clusterDomain: "demo.com",
-			refCluster: &v1alpha1.TidbClusterRef{
-				Namespace:     "default",
-				Name:          "cluster-2",
-				ClusterDomain: "cluster.local",
-			},
+			acrossK8s:     true,
 			result: `
 pd_url="http://demo-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
@@ -862,11 +849,7 @@ fi`,
 			LogLevel:      "INFO",
 			Namespace:     "demo-ns",
 			clusterDomain: "demo.com",
-			refCluster: &v1alpha1.TidbClusterRef{
-				Namespace:     "default",
-				Name:          "cluster-2",
-				ClusterDomain: "cluster.local",
-			},
+			acrossK8s:     true,
 			result: `
 pd_url="http://target-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
@@ -899,7 +882,7 @@ fi`,
 		t.Run(tt.name, func(t *testing.T) {
 			model := PumpStartScriptModel{
 				CommonModel: CommonModel{
-					RefCluster:    tt.refCluster,
+					AcrossK8s:     tt.acrossK8s,
 					ClusterDomain: tt.clusterDomain,
 				},
 				Scheme:      tt.scheme,

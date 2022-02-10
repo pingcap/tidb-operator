@@ -518,19 +518,17 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	}
 
 	pdDomain := controller.PDMemberName(tc.Name)
-	if tc.Heterogeneous() {
-		if tc.Spec.Cluster.AcrossK8s() {
-			pdDomain = controller.PDMemberName(tc.Name) // get pd addr from discovery in startup script
-		} else if tc.WithoutLocalPD() {
-			pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
-		}
+	if tc.AcrossK8s() {
+		pdDomain = controller.PDMemberName(tc.Name) // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
 	}
 
 	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, pdDomain)
 
 	return RenderPumpStartScript(&PumpStartScriptModel{
 		CommonModel: CommonModel{
-			RefCluster:    tc.Spec.Cluster,
+			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
 		Scheme:      scheme,

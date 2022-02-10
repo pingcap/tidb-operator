@@ -17,7 +17,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -42,14 +41,10 @@ func TestPumpAdvertiseAddr(t *testing.T) {
 			result: "pod.cname-pump:8250",
 		},
 		{
-			name: "parse addr from remote heterogeneous startup script",
+			name: "parse addr from heterogeneous startup script",
 			model: &PumpStartScriptModel{
 				CommonModel: CommonModel{
-					RefCluster: &v1alpha1.TidbClusterRef{
-						Namespace:     "default",
-						Name:          "cluster-2",
-						ClusterDomain: "cluster.local",
-					},
+					AcrossK8s:     true,
 					ClusterDomain: "cluster.local",
 				},
 				ClusterName: "cname",

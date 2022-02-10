@@ -845,7 +845,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	sm := &PDStartScriptModel{
 		CommonModel: CommonModel{
-			RefCluster:    tc.Spec.Cluster,
+			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
 		Scheme:  tc.Scheme(),

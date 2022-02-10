@@ -359,12 +359,10 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		scheme = "https"
 	}
 	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Name))
-	if tc.Heterogeneous() {
-		if tc.Spec.Cluster.AcrossK8s() {
-			pdAddr = "${result}" // get pd addr from discovery in startup script
-		} else if tc.WithoutLocalPD() {
-			pdAddr = fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
-		}
+	if tc.AcrossK8s() {
+		pdAddr = "${result}" // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		pdAddr = fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
 	}
 
 	if tc.IsTLSClusterEnabled() {
@@ -409,7 +407,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 
 	var script string
 
-	if tc.Heterogeneous() && tc.Spec.Cluster.AcrossK8s() {
+	if tc.AcrossK8s() {
 		var pdAddr string
 		pdDomain := controller.PDMemberName(tcName)
 		if tc.IsTLSClusterEnabled() {

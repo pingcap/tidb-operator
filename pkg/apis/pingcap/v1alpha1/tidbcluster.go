@@ -942,3 +942,7 @@ func (tc *TidbCluster) WithoutLocalPD() bool {
 func (tc *TidbCluster) WithoutLocalTiDB() bool {
 	return tc.Spec.TiDB == nil
 }
+
+func (tc *TidbCluster) AcrossK8s() bool {
+	return tc.Spec.AcrossK8s
+}
