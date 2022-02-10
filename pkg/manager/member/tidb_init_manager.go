@@ -180,11 +180,13 @@ func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) er
 		return fmt.Errorf("syncTiDBInitConfigMap: failed to get tidbcluster %s for TidbInitializer %s/%s, error: %s", tcName, ns, ti.Name, err)
 	}
 
-	tlsClientEnabled := false
+	tlsClientEnabled, skipCA := false, false
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		tlsClientEnabled = true
+		skipCA = tc.Spec.TiDB.TLSClient.SkipInternalClientCA
 	}
-	newCm, err := getTiDBInitConfigMap(ti, tlsClientEnabled, tc.Spec.TiDB.TLSClient.SkipInternalClientCA)
+
+	newCm, err := getTiDBInitConfigMap(ti, tlsClientEnabled, skipCA)
 	if err != nil {
 		return err
 	}
