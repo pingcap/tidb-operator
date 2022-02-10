@@ -262,6 +262,10 @@ type TidbClusterSpec struct {
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
 	// Time zone of TiDB cluster Pods
 	// Optional: Defaults to UTC
 	// +optional
@@ -973,6 +977,10 @@ type ComponentSpec struct {
 
 	// Additional volume mounts of component pod.
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
+
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
 
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
 	// Value must be non-negative integer. The value zero indicates delete immediately.
@@ -2087,6 +2095,10 @@ type DMClusterSpec struct {
 	// Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional

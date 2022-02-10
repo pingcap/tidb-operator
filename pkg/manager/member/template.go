@@ -322,7 +322,7 @@ func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
 // pumpStartScriptTpl is the template string of pump start script
 // Note: changing this will cause a rolling-update of pump cluster
 var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .FormatClusterDomain }}
-pd_url="{{ .Scheme }}://{{ .ClusterName }}-pd:2379"
+pd_url="{{ .PDAddr }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
@@ -338,7 +338,7 @@ set -euo pipefail
 -pd-urls=$pd_url \{{ else }}set -euo pipefail
 
 /pump \
--pd-urls={{ .Scheme }}://{{ .ClusterName }}-pd:2379 \{{ end }}
+-pd-urls={{ .PDAddr }} \{{ end }}
 -L={{ .LogLevel }} \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump{{ .FormatPumpZone }}:8250 \
 -config=/etc/pump/pump.toml \
@@ -353,6 +353,7 @@ fi`))
 type PumpStartScriptModel struct {
 	Scheme        string
 	ClusterName   string
+	PDAddr        string
 	LogLevel      string
 	Namespace     string
 	ClusterDomain string
