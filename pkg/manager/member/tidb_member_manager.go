@@ -303,7 +303,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	}
 	// init password
 	var db *sql.DB
-	dsn := util.GetDSN(tc)
+	dsn := util.GetDSN(tc, "")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	db, err = util.OpenDB(ctx, dsn)
