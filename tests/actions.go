@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/klog/v2"
 	"net/http"
 	"os"
 	"os/exec"
@@ -3732,6 +3733,7 @@ func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.Tid
 			} else {
 				dsn = util.GetDSN(randomPasswordTc, password)
 			}
+			klog.Errorf("tc[%s:%s] random password dsn:%s", tc.Namespace, tc.Name, dsn)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			_, err = util.OpenDB(ctx, dsn)
