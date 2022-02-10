@@ -696,7 +696,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 	}
 	tests := []testcase{
 		{
-			name: "force upgrade",
+			name: "force upgrade when annotation is set",
 			modify: func(cluster *v1alpha1.TidbCluster) {
 				cluster.Spec.PD.Image = "pd-test-image:v2"
 				cluster.Spec.PD.Replicas = 1
@@ -727,9 +727,10 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 			},
 		},
 		{
-			name: "force upgrade when PD replicas less than 2",
+			name: "force upgrade when PD replicas less than 2 and peer store is empty",
 			preModify: func(cluster *v1alpha1.TidbCluster) {
 				cluster.Spec.PD.Replicas = 1
+				cluster.Status.PD.PeerMembers = nil
 			},
 			modify: func(cluster *v1alpha1.TidbCluster) {
 				cluster.Spec.PD.Image = "pd-test-image:v2"
@@ -753,6 +754,36 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
+			},
+		},
+		{
+			name: "can't force upgrade when PD replicas less than 2 but peer store isn't empty",
+			preModify: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Spec.PD.Replicas = 1
+				cluster.Status.PD.PeerMembers = map[string]v1alpha1.PDMember{"peer-0": {Name: "peer-0", ID: "peer-0", ClientURL: "http://peer-0:2379", Health: true}}
+			},
+			modify: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Spec.PD.Image = "pd-test-image:v2"
+			},
+			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: false},
+			}},
+			err: true,
+			statusChange: func(set *apps.StatefulSet) {
+				set.Status.Replicas = *set.Spec.Replicas
+				set.Status.CurrentRevision = "pd-1"
+				set.Status.UpdateRevision = "pd-1"
+				observedGeneration := int64(1)
+				set.Status.ObservedGeneration = observedGeneration
+			},
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("pd-test-image"))
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(1)))
+				g.Expect(*set.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
 			},
 		},
 		{

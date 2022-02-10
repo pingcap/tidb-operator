@@ -870,7 +870,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			})
 		}
 
-		err := pmm.syncTidbClusterStatus(tc, set)
+		err := pmm.syncTiKVClusterStatus(tc, set)
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
 		}
