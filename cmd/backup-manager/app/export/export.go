@@ -73,7 +73,7 @@ func (bo *Options) dumpTidbClusterData(ctx context.Context, bfPath string, backu
 	}
 	args = append(args, backupUtil.ConstructDumplingOptionsForBackup(backup)...)
 	if bo.TLSClient {
-		if !bo.InsecureSkipVerify {
+		if !bo.SkipClientCA {
 			args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		}
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)))

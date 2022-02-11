@@ -33,15 +33,15 @@ import (
 type GenericOptions struct {
 	Namespace string
 	// ResourceName can be the name of a backup or restore resource
-	ResourceName       string
-	TLSClient          bool
-	TLSCluster         bool
-	InsecureSkipVerify bool
-	Host               string
-	Port               int32
-	Password           string
-	User               string
-	TiKVVersion        string
+	ResourceName string
+	TLSClient    bool
+	TLSCluster   bool
+	SkipClientCA bool
+	Host         string
+	Port         int32
+	Password     string
+	User         string
+	TiKVVersion  string
 }
 
 func (bo *GenericOptions) String() string {
@@ -53,7 +53,7 @@ func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
 		return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
 	}
 	rootCertPool := x509.NewCertPool()
-	if !bo.InsecureSkipVerify {
+	if !bo.SkipClientCA {
 		pem, err := ioutil.ReadFile(path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey))
 		if err != nil {
 			return "", err
@@ -75,7 +75,7 @@ func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
 		RootCAs:            rootCertPool,
 		Certificates:       clientCert,
 		ServerName:         bo.Host,
-		InsecureSkipVerify: bo.InsecureSkipVerify,
+		InsecureSkipVerify: bo.SkipClientCA,
 	})
 	return fmt.Sprintf("%s:%s@(%s:%d)/%s?tls=customer&charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
 }
