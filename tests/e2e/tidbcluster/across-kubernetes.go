@@ -21,10 +21,12 @@ import (
 
 	"github.com/onsi/ginkgo"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -418,11 +420,20 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 					ginkgo.By("Prepare TLS resources for clusters")
 					MustPrepareXK8sTLSResources(genericCli, tc1, []*v1alpha1.TidbCluster{tc2})
 
+					ginkgo.By("Delete PD cert secret as no PD exist")
+					pdCertSecretName := util.ClusterTLSSecretName(tc2.Name, label.PDLabelVal)
+					pdCertSecret := &v1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: tc2.Namespace, Name: pdCertSecretName}}
+					err := genericCli.Get(context.TODO(), ctrlCli.ObjectKeyFromObject(pdCertSecret), pdCertSecret)
+					framework.ExpectNoError(err, "PD cert secret should be exist before delete")
+					framework.ExpectNoError(genericCli.Delete(context.TODO(), pdCertSecret), "failed to delete PD cert secret")
+					err = genericCli.Get(context.TODO(), ctrlCli.ObjectKeyFromObject(pdCertSecret), pdCertSecret)
+					framework.ExpectEqual(apierrors.IsNotFound(err), true, "PD cert secret should have been deleted")
+
 					ginkgo.By("Deploy all clusters and wait status to be ready")
 					MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2}, true)
 
 					ginkgo.By("Check deploy status of all clusters")
-					err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
+					err = CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
 					framework.ExpectNoError(err, "failed to check status")
 				})
 			}
