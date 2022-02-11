@@ -733,6 +733,23 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>configUpdateStrategy</code></br>
+<em>
+<a href="#configupdatestrategy">
+ConfigUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+cluster component is needed to reload the configuration change.
+UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>enablePVReclaim</code></br>
 <em>
 bool
@@ -879,6 +896,20 @@ Optional: Defaults to UTC</p>
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -889,6 +920,34 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of DM cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of DM cluster StatefulSets</p>
 </td>
 </tr>
 <tr>
@@ -1638,6 +1697,20 @@ Can be overrode by labels in the specific component spec.</p>
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
 </td>
 </tr>
 <tr>
@@ -2587,6 +2660,19 @@ bool
 <em>(Optional)</em>
 <p>EnableAlertRules adds alert rules to the Prometheus config even
 if <code>AlertmanagerURL</code> is not configured.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of TidbMonitor
+Optional: Defaults to UTC</p>
 </td>
 </tr>
 </table>
@@ -3982,7 +4068,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Namespace is the namespace that TidbCluster object locates,
-default to the same namespace with TidbMonitor</p>
+default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring</p>
 </td>
 </tr>
 <tr>
@@ -4130,12 +4216,14 @@ and component-level overrides</p>
 <a href="#dmdiscoveryspec">DMDiscoverySpec</a>, 
 <a href="#discoveryspec">DiscoverySpec</a>, 
 <a href="#masterspec">MasterSpec</a>, 
+<a href="#ngmonitoringspec">NGMonitoringSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#pumpspec">PumpSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>, 
+<a href="#tidbngmonitoringspec">TidbNGMonitoringSpec</a>, 
 <a href="#workerspec">WorkerSpec</a>)
 </p>
 <p>
@@ -4423,6 +4511,20 @@ Note that the following env names cannot be used and will be overridden by TiDB 
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>terminationGracePeriodSeconds</code></br>
 <em>
 int64
@@ -4532,6 +4634,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#componentspec">ComponentSpec</a>, 
+<a href="#dmclusterspec">DMClusterSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -4788,6 +4891,18 @@ CrdKind
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>TiDBNGMonitoring</code></br>
+<em>
+<a href="#crdkind">
+CrdKind
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="dmclustercondition">DMClusterCondition</h3>
@@ -5028,6 +5143,23 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>configUpdateStrategy</code></br>
+<em>
+<a href="#configupdatestrategy">
+ConfigUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+cluster component is needed to reload the configuration change.
+UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>enablePVReclaim</code></br>
 <em>
 bool
@@ -5174,6 +5306,20 @@ Optional: Defaults to UTC</p>
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -5184,6 +5330,34 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <em>(Optional)</em>
 <p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSetUpdateStrategy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetupdatestrategytype-v1-apps">
+Kubernetes apps/v1.StatefulSetUpdateStrategyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StatefulSetUpdateStrategy of DM cluster StatefulSets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podManagementPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podmanagementpolicytype-v1-apps">
+Kubernetes apps/v1.PodManagementPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodManagementPolicy of DM cluster StatefulSets</p>
 </td>
 </tr>
 <tr>
@@ -5316,6 +5490,35 @@ string
 </td>
 <td>
 <p>(Deprecated) Address indicates the existed TiDB discovery address</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dmexperimental">DMExperimental</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterconfig">MasterConfig</a>)
+</p>
+<p>
+<p>DM experimental config</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>openapi</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>OpenAPI was introduced in DM V5.3.0</p>
 </td>
 </tr>
 </tbody>
@@ -5670,6 +5873,41 @@ Kubernetes core/v1.ResourceRequirements
 <p>EmptyStruct is defined to delight controller-gen tools
 Only named struct is allowed by controller-gen</p>
 </p>
+<h3 id="evictleaderstatus">EvictLeaderStatus</h3>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podCreateTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="experimental">Experimental</h3>
 <p>
 (<em>Appears on:</em>
@@ -5822,6 +6060,39 @@ SecretRef
 <em>(Optional)</em>
 <p>TLSSecret indicates the Secret which stores the TLS configuration. If set, the operator will use https
 to communicate to the external service</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="failover">Failover</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>, 
+<a href="#tikvspec">TiKVSpec</a>, 
+<a href="#workerspec">WorkerSpec</a>)
+</p>
+<p>
+<p>Failover contains the failover specification.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>recoverByUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverByUID indicates that TiDB Operator will recover the failover by this UID,
+it takes effect only when set <code>spec.recoverFailover=false</code></p>
 </td>
 </tr>
 </tbody>
@@ -6701,6 +6972,39 @@ ingress supports SNI.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="initcontainerspec">InitContainerSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>)
+</p>
+<p>
+<p>InitContainerSpec contains basic spec about a init container</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="initializephase">InitializePhase</h3>
 <p>
 (<em>Appears on:</em>
@@ -7128,10 +7432,6 @@ Kubernetes core/v1.ResourceRequirements
 </table>
 <h3 id="masterconfig">MasterConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#masterspec">MasterSpec</a>)
-</p>
-<p>
 <p>MasterConfig is the configuration of dm-master-server</p>
 </p>
 <table>
@@ -7233,6 +7533,50 @@ DMSecurityConfig
 </p>
 <em>(Optional)</em>
 <p>dm-master&rsquo;s security config</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>experimental</code></br>
+<em>
+<a href="#dmexperimental">
+DMExperimental
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>dm-master&rsquo;s experimental config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterconfigwraper">MasterConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterspec">MasterSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -7709,8 +8053,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#masterconfig">
-MasterConfig
+<a href="#masterconfigwraper">
+MasterConfigWraper
 </a>
 </em>
 </td>
@@ -7835,6 +8179,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#masterstatus">MasterStatus</a>, 
+<a href="#ngmonitoringstatus">NGMonitoringStatus</a>, 
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
 <a href="#ticdcstatus">TiCDCStatus</a>, 
@@ -7959,6 +8304,153 @@ Kubernetes core/v1.PullPolicy
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ngmonitoringspec">NGMonitoringSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbngmonitoringspec">TidbNGMonitoringSpec</a>)
+</p>
+<p>
+<p>NGMonitoringSpec is spec of ng monitoring</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageClassName is the persistent volume for ng monitoring.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<p>StorageVolumes configures additional storage for NG Monitoring pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>Config is the configuration of ng monitoring</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ngmonitoringstatus">NGMonitoringStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbngmonitoringstatus">TidbNGMonitoringStatus</a>)
+</p>
+<p>
+<p>NGMonitoringStatus is latest status of ng monitoring</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -9828,6 +10320,18 @@ bool
 <p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>startUpScriptVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Start up script version</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -9854,6 +10358,7 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -12868,6 +13373,7 @@ LocalStorageProvider
 <h3 id="storagevolume">StorageVolume</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#ngmonitoringspec">NGMonitoringSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
@@ -14268,6 +14774,33 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
+<h3 id="tidbinitializer">TiDBInitializer</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>createPassword</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tidbmember">TiDBMember</h3>
 <p>
 (<em>Appears on:</em>
@@ -14784,6 +15317,20 @@ TiDBProbe
 the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>initializer</code></br>
+<em>
+<a href="#tidbinitializer">
+TiDBInitializer
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Initializer is the init configurations of TiDB</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbstatus">TiDBStatus</h3>
@@ -14865,6 +15412,16 @@ int32
 <code>image</code></br>
 <em>
 string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>passwordInitialized</code></br>
+<em>
+bool
 </em>
 </td>
 <td>
@@ -15208,6 +15765,20 @@ TiFlashConfigWraper
 </tr>
 <tr>
 <td>
+<code>initializer</code></br>
+<em>
+<a href="#initcontainerspec">
+InitContainerSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Initializer is the configurations of the init container for TiFlash</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logTailer</code></br>
 <em>
 <a href="#logtailerspec">
@@ -15230,6 +15801,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>RecoverFailover indicates that Operator can recover the failover Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failover</code></br>
+<em>
+<a href="#failover">
+Failover
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Failover is the configurations of failover</p>
 </td>
 </tr>
 </tbody>
@@ -19232,6 +19817,20 @@ bool
 </tr>
 <tr>
 <td>
+<code>failover</code></br>
+<em>
+<a href="#failover">
+Failover
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Failover is the configurations of failover</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>mountClusterClientSecret</code></br>
 <em>
 bool
@@ -19405,9 +20004,31 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVFailur
 </tr>
 <tr>
 <td>
+<code>failoverUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>image</code></br>
 <em>
 string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>evictLeader</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.evictleaderstatus">
+map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLeaderStatus
+</a>
 </em>
 </td>
 <td>
@@ -20311,7 +20932,8 @@ string
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>, 
 <a href="#tidbinitializerspec">TidbInitializerSpec</a>, 
-<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>, 
+<a href="#tidbngmonitoringspec">TidbNGMonitoringSpec</a>)
 </p>
 <p>
 <p>TidbClusterRef reference to a TidbCluster</p>
@@ -20334,7 +20956,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Namespace is the namespace that TidbCluster object locates,
-default to the same namespace with TidbMonitor</p>
+default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring</p>
 </td>
 </tr>
 <tr>
@@ -20712,6 +21334,20 @@ Can be overrode by labels in the specific component spec.</p>
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
 </td>
 </tr>
 <tr>
@@ -21654,6 +22290,19 @@ bool
 if <code>AlertmanagerURL</code> is not configured.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of TidbMonitor
+Optional: Defaults to UTC</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbmonitorstatus">TidbMonitorStatus</h3>
@@ -21694,6 +22343,269 @@ Kubernetes apps/v1.StatefulSetStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbngmonitoring">TidbNGMonitoring</h3>
+<p>
+<p>TidbNGMonitoring contains the spec and status of tidb ng monitor</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#tidbngmonitoringspec">
+TidbNGMonitoringSpec
+</a>
+</em>
+</td>
+<td>
+<p>Spec contains all spec about tidb ng monitor</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+<p>ComponentSpec is common spec.
+NOTE: the same field will be overridden by component&rsquo;s spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#tidbclusterref">
+[]TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+<p>Clusters reference TiDB cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Paused pause controller if it is true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by tidb ng monitoring</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClusterDomain is the Kubernetes Cluster Domain of tidb ng monitoring</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ngMonitoring</code></br>
+<em>
+<a href="#ngmonitoringspec">
+NGMonitoringSpec
+</a>
+</em>
+</td>
+<td>
+<p>NGMonitoring is spec of ng monitoring</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#tidbngmonitoringstatus">
+TidbNGMonitoringStatus
+</a>
+</em>
+</td>
+<td>
+<p>Status is most recently observed status of tidb ng monitor</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbngmonitoringspec">TidbNGMonitoringSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbngmonitoring">TidbNGMonitoring</a>)
+</p>
+<p>
+<p>TidbNGMonitoringSpec is spec of tidb ng monitoring</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+<p>ComponentSpec is common spec.
+NOTE: the same field will be overridden by component&rsquo;s spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#tidbclusterref">
+[]TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+<p>Clusters reference TiDB cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Paused pause controller if it is true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by tidb ng monitoring</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClusterDomain is the Kubernetes Cluster Domain of tidb ng monitoring</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ngMonitoring</code></br>
+<em>
+<a href="#ngmonitoringspec">
+NGMonitoringSpec
+</a>
+</em>
+</td>
+<td>
+<p>NGMonitoring is spec of ng monitoring</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbngmonitoringstatus">TidbNGMonitoringStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbngmonitoring">TidbNGMonitoring</a>)
+</p>
+<p>
+<p>TidbNGMonitoringStatus is status of tidb ng monitoring</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ngMonitoring</code></br>
+<em>
+<a href="#ngmonitoringstatus">
+NGMonitoringStatus
+</a>
+</em>
+</td>
+<td>
+<p>NGMonitoring is status of ng monitoring</p>
 </td>
 </tr>
 </tbody>
@@ -21969,10 +22881,6 @@ Networks
 </table>
 <h3 id="workerconfig">WorkerConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#workerspec">WorkerSpec</a>)
-</p>
-<p>
 <p>WorkerConfig is the configuration of dm-worker-server</p>
 </p>
 <table>
@@ -22048,6 +22956,36 @@ DMSecurityConfig
 </p>
 <em>(Optional)</em>
 <p>dm-worker&rsquo;s security config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workerconfigwraper">WorkerConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#workerspec">WorkerSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -22284,8 +23222,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#workerconfig">
-WorkerConfig
+<a href="#workerconfigwraper">
+WorkerConfigWraper
 </a>
 </em>
 </td>
@@ -22304,6 +23242,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>RecoverFailover indicates that Operator can recover the failover Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failover</code></br>
+<em>
+<a href="#failover">
+Failover
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Failover is the configurations of failover</p>
 </td>
 </tr>
 </tbody>
@@ -22377,6 +23329,16 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerMemb
 <a href="#workerfailuremember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerFailureMember
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>failoverUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
 </em>
 </td>
 <td>

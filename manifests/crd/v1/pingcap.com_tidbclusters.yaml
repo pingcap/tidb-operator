@@ -365,10 +365,6 @@ spec:
               clusterDomain:
                 type: string
               configUpdateStrategy:
-                default: InPlace
-                enum:
-                - InPlace
-                - RollingUpdate
                 type: string
               discovery:
                 properties:
@@ -1878,6 +1874,26 @@ spec:
                     type: object
                   configUpdateStrategy:
                     type: string
+                  dnsConfig:
+                    properties:
+                      nameservers:
+                        items:
+                          type: string
+                        type: array
+                      options:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      searches:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   env:
                     items:
                       properties:
@@ -2624,6 +2640,26 @@ spec:
                     x-kubernetes-list-type: map
                   version:
                     type: string
+                type: object
+              dnsConfig:
+                properties:
+                  nameservers:
+                    items:
+                      type: string
+                    type: array
+                  options:
+                    items:
+                      properties:
+                        name:
+                          type: string
+                        value:
+                          type: string
+                      type: object
+                    type: array
+                  searches:
+                    items:
+                      type: string
+                    type: array
                 type: object
               enableDynamicConfiguration:
                 type: boolean
@@ -4173,6 +4209,26 @@ spec:
                     type: string
                   dataSubDir:
                     type: string
+                  dnsConfig:
+                    properties:
+                      nameservers:
+                        items:
+                          type: string
+                        type: array
+                      options:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      searches:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   enableDashboardInternalProxy:
                     type: boolean
                   env:
@@ -4920,6 +4976,11 @@ spec:
                         type: string
                     type: object
                   serviceAccount:
+                    type: string
+                  startUpScriptVersion:
+                    enum:
+                    - ""
+                    - v1
                     type: string
                   statefulSetUpdateStrategy:
                     type: string
@@ -6562,6 +6623,26 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     type: string
+                  dnsConfig:
+                    properties:
+                      nameservers:
+                        items:
+                          type: string
+                        type: array
+                      options:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      searches:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   env:
                     items:
                       properties:
@@ -7325,7 +7406,6 @@ spec:
                 default: Retain
                 type: string
               schedulerName:
-                default: tidb-scheduler
                 type: string
               serviceAccount:
                 type: string
@@ -8853,6 +8933,26 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     type: string
+                  dnsConfig:
+                    properties:
+                      nameservers:
+                        items:
+                          type: string
+                        type: array
+                      options:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      searches:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   env:
                     items:
                       properties:
@@ -11145,6 +11245,26 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     type: string
+                  dnsConfig:
+                    properties:
+                      nameservers:
+                        items:
+                          type: string
+                        type: array
+                      options:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      searches:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   env:
                     items:
                       properties:
@@ -11764,6 +11884,11 @@ spec:
                       - name
                       type: object
                     type: array
+                  initializer:
+                    properties:
+                      createPassword:
+                        type: boolean
+                    type: object
                   labels:
                     additionalProperties:
                       type: string
@@ -13645,6 +13770,26 @@ spec:
                     type: object
                   configUpdateStrategy:
                     type: string
+                  dnsConfig:
+                    properties:
+                      nameservers:
+                        items:
+                          type: string
+                        type: array
+                      options:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      searches:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   env:
                     items:
                       properties:
@@ -13705,6 +13850,11 @@ spec:
                       - name
                       type: object
                     type: array
+                  failover:
+                    properties:
+                      recoverByUID:
+                        type: string
+                    type: object
                   hostNetwork:
                     type: boolean
                   image:
@@ -14264,6 +14414,25 @@ spec:
                       - name
                       type: object
                     type: array
+                  initializer:
+                    properties:
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        type: object
+                    type: object
                   labels:
                     additionalProperties:
                       type: string
@@ -15969,6 +16138,26 @@ spec:
                     type: string
                   dataSubDir:
                     type: string
+                  dnsConfig:
+                    properties:
+                      nameservers:
+                        items:
+                          type: string
+                        type: array
+                      options:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      searches:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   enableNamedStatusPort:
                     type: boolean
                   env:
@@ -16033,6 +16222,11 @@ spec:
                     type: array
                   evictLeaderTimeout:
                     type: string
+                  failover:
+                    properties:
+                      recoverByUID:
+                        type: string
+                    type: object
                   hostNetwork:
                     type: boolean
                   image:
@@ -17188,6 +17382,8 @@ spec:
                       - name
                       type: object
                     type: object
+                  passwordInitialized:
+                    type: boolean
                   phase:
                     type: string
                   resignDDLOwnerRetryCount:
@@ -17242,6 +17438,8 @@ spec:
                 type: object
               tiflash:
                 properties:
+                  failoverUID:
+                    type: string
                   failureStores:
                     additionalProperties:
                       properties:
@@ -17390,6 +17588,18 @@ spec:
                 properties:
                   bootStrapped:
                     type: boolean
+                  evictLeader:
+                    additionalProperties:
+                      properties:
+                        podCreateTime:
+                          format: date-time
+                          type: string
+                        value:
+                          type: string
+                      type: object
+                    type: object
+                  failoverUID:
+                    type: string
                   failureStores:
                     additionalProperties:
                       properties:

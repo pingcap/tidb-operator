@@ -339,6 +339,8 @@ spec:
               additionalProperties:
                 type: string
               type: object
+            configUpdateStrategy:
+              type: string
             discovery:
               properties:
                 additionalContainers:
@@ -1848,6 +1850,26 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 env:
                   items:
                     properties:
@@ -2593,6 +2615,26 @@ spec:
                   x-kubernetes-list-type: map
                 version:
                   type: string
+              type: object
+            dnsConfig:
+              properties:
+                nameservers:
+                  items:
+                    type: string
+                  type: array
+                options:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    type: object
+                  type: array
+                searches:
+                  items:
+                    type: string
+                  type: array
               type: object
             enablePVReclaim:
               type: boolean
@@ -4119,34 +4161,31 @@ spec:
                 baseImage:
                   type: string
                 config:
-                  properties:
-                    cert-allowed-cn:
-                      items:
-                        type: string
-                      type: array
-                    log-file:
-                      type: string
-                    log-format:
-                      type: string
-                    log-level:
-                      type: string
-                    rpc-rate-burst:
-                      type: integer
-                    rpc-rate-limit:
-                      type: number
-                    rpc-timeout:
-                      type: string
-                    ssl-ca:
-                      type: string
-                    ssl-cert:
-                      type: string
-                    ssl-key:
-                      type: string
-                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   type: string
                 dataSubDir:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 env:
                   items:
                     properties:
@@ -4940,6 +4979,8 @@ spec:
               type: object
             paused:
               type: boolean
+            podManagementPolicy:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:
@@ -5007,6 +5048,8 @@ spec:
             pvReclaimPolicy:
               type: string
             schedulerName:
+              type: string
+            statefulSetUpdateStrategy:
               type: string
             timezone:
               type: string
@@ -6557,31 +6600,31 @@ spec:
                 baseImage:
                   type: string
                 config:
-                  properties:
-                    cert-allowed-cn:
-                      items:
-                        type: string
-                      type: array
-                    keepalive-ttl:
-                      format: int64
-                      type: integer
-                    log-file:
-                      type: string
-                    log-format:
-                      type: string
-                    log-level:
-                      type: string
-                    ssl-ca:
-                      type: string
-                    ssl-cert:
-                      type: string
-                    ssl-key:
-                      type: string
-                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   type: string
                 dataSubDir:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 env:
                   items:
                     properties:
@@ -6642,6 +6685,11 @@ spec:
                     - name
                     type: object
                   type: array
+                failover:
+                  properties:
+                    recoverByUID:
+                      type: string
+                  type: object
                 hostNetwork:
                   type: boolean
                 image:
@@ -7505,6 +7553,8 @@ spec:
               type: object
             worker:
               properties:
+                failoverUID:
+                  type: string
                 failureMembers:
                   additionalProperties:
                     properties:

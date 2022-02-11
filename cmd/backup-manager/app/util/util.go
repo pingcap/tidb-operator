@@ -15,7 +15,6 @@ package util
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -32,7 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/spf13/pflag"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
@@ -111,19 +110,6 @@ func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
 	default:
 		return "", fmt.Errorf("storage %s not supported yet", st)
 	}
-}
-
-// OpenDB opens db
-func OpenDB(ctx context.Context, dsn string) (*sql.DB, error) {
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("open datasource failed, err: %v", err)
-	}
-	if err := db.PingContext(ctx); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("cannot connect to mysql, err: %v", err)
-	}
-	return db, nil
 }
 
 // IsFileExist return true if file exist and is a regular file, other cases return false

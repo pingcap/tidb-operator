@@ -68,6 +68,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha1().TidbInitializers().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tidbmonitors"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha1().TidbMonitors().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("tidbngmonitorings"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha1().TidbNGMonitorings().Informer()}, nil
 
 	}
 

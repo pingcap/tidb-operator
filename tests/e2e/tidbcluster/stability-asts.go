@@ -117,7 +117,6 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				ImagePullPolicy:   v1.PullIfNotPresent,
 				TestMode:          true,
 				WebhookEnabled:    true,
-				PodWebhookEnabled: true,
 				StsWebhookEnabled: false,
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)

@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -78,10 +78,12 @@ func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object, member
 	for _, pvc := range pvcs {
 		pvcName := pvc.Name
 		if pvc.Annotations == nil {
+			klog.Infof("Exists unexpected pvc %s/%s: %s", ns, pvcName, skipReasonScalerAnnIsNil)
 			skipReason[pvcName] = skipReasonScalerAnnIsNil
 			continue
 		}
 		if _, ok := pvc.Annotations[label.AnnPVCDeferDeleting]; !ok {
+			klog.Infof("Exists unexpected pvc %s/%s: %s", ns, pvcName, skipReasonScalerAnnDeferDeletingIsEmpty)
 			skipReason[pvcName] = skipReasonScalerAnnDeferDeletingIsEmpty
 			continue
 		}

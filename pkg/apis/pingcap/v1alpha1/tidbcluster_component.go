@@ -66,6 +66,7 @@ const (
 	ComponentDMDiscovery
 	ComponentDMMaster
 	ComponentDMWorker
+	ComponentNGMonitoring
 )
 
 type componentAccessorImpl struct {
@@ -83,6 +84,7 @@ type componentAccessorImpl struct {
 	clusterAnnotations        map[string]string
 	clusterLabels             map[string]string
 	tolerations               []corev1.Toleration
+	dnsConfig                 *corev1.PodDNSConfig
 	configUpdateStrategy      ConfigUpdateStrategy
 	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
 	podManagementPolicy       apps.PodManagementPolicyType
@@ -224,6 +226,13 @@ func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
 	return dnsPolicy
 }
 
+func (a *componentAccessorImpl) DNSConfig() *corev1.PodDNSConfig {
+	if a.ComponentSpec == nil || a.ComponentSpec.DNSConfig == nil {
+		return a.dnsConfig
+	}
+	return a.ComponentSpec.DNSConfig
+}
+
 func (a *componentAccessorImpl) ConfigUpdateStrategy() ConfigUpdateStrategy {
 	// defaulting logic will set a default value for configUpdateStrategy field, but if the
 	// object is created in early version without this field being set, we should set a safe default
@@ -250,6 +259,7 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 		SecurityContext:           a.PodSecurityContext(),
 		TopologySpreadConstraints: a.TopologySpreadConstraints(),
 		DNSPolicy:                 a.DnsPolicy(),
+		DNSConfig:                 a.DNSConfig(),
 	}
 	if a.PriorityClassName() != nil {
 		spec.PriorityClassName = *a.PriorityClassName()
@@ -382,6 +392,7 @@ func buildTidbClusterComponentAccessor(c Component, tc *TidbCluster, componentSp
 		clusterLabels:             spec.Labels,
 		clusterAnnotations:        spec.Annotations,
 		tolerations:               spec.Tolerations,
+		dnsConfig:                 spec.DNSConfig,
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
 		podManagementPolicy:       spec.PodManagementPolicy,
@@ -408,7 +419,10 @@ func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *
 		clusterLabels:             spec.Labels,
 		clusterAnnotations:        spec.Annotations,
 		tolerations:               spec.Tolerations,
-		configUpdateStrategy:      ConfigUpdateStrategyRollingUpdate,
+		dnsConfig:                 spec.DNSConfig,
+		configUpdateStrategy:      spec.ConfigUpdateStrategy,
+		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
+		podManagementPolicy:       spec.PodManagementPolicy,
 		podSecurityContext:        spec.PodSecurityContext,
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
 

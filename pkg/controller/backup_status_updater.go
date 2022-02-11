@@ -17,7 +17,7 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -76,7 +76,8 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
 	var isUpdate bool
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	// try best effort to guarantee backup is updated.
+	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
 		updateBackupStatus(&backup.Status, newStatus)
 		isUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
 		if isUpdate {

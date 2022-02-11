@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type workerScaler struct {
@@ -95,11 +95,6 @@ func (s *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 	}
 
 	klog.Infof("scaling in dm-worker statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-
-	//if controller.PodWebhookEnabled {
-	//	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-	//	return nil
-	//}
 
 	pvcName := ordinalPVCName(v1alpha1.DMWorkerMemberType, setName, ordinal)
 	pvc, err := s.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)

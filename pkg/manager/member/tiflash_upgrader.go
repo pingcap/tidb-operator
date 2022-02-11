@@ -16,22 +16,22 @@ package member
 import (
 	"fmt"
 
-	apps "k8s.io/api/apps/v1"
-	"k8s.io/klog"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-
-	"github.com/Masterminds/semver"
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
+	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
+
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	apps "k8s.io/api/apps/v1"
+	"k8s.io/klog/v2"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 var (
 	// the first version that tiflash support `tiflash/store-status` api.
 	// https://github.com/pingcap/tidb-operator/issues/4159
-	tiflashEqualOrGreaterThanV512, _ = semver.NewConstraint(">=v5.1.2-0")
-	tiflashVersionsNeedCheckStatus   = map[string]struct{}{"lastest": {}, "nightly": {}}
+	tiflashEqualOrGreaterThanV512, _ = cmpver.NewConstraint(cmpver.GreaterOrEqual, "v5.1.2")
 )
 
 type tiflashUpgrader struct {
@@ -85,13 +85,13 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return nil
 	}
 
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		store := getTiFlashStoreByOrdinal(tc.GetName(), tc.Status.TiFlash, i)
 		if store == nil {
-			setUpgradePartition(newSet, i)
+			mngerutils.SetUpgradePartition(newSet, i)
 			continue
 		}
 		podName := TiFlashPodName(tcName, i)
@@ -112,14 +112,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store state is not UP", ns, tcName, podName)
 			}
 
-			needCheckStatus := false
-			tiflashVersion := tc.TiFlashVersion()
-			if _, ok := tiflashVersionsNeedCheckStatus[tiflashVersion]; ok {
-				needCheckStatus = true
-			} else if ver, err := semver.NewVersion(tiflashVersion); err == nil && tiflashEqualOrGreaterThanV512.Check(ver) { // NOTE: if parse image version failed, will skip this check
-				needCheckStatus = true
-			}
-			if needCheckStatus {
+			if larger, err := tiflashEqualOrGreaterThanV512.Check(tc.TiFlashVersion()); err == nil && larger {
 				status, err := u.deps.TiFlashControl.GetTiFlashPodClient(tc.Namespace, tc.Name, podName, tc.IsTLSClusterEnabled()).GetStoreStatus()
 				if err != nil {
 					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], get store status failed: %s", ns, tcName, podName, err)
@@ -133,7 +126,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 			continue
 		}
 
-		setUpgradePartition(newSet, i)
+		mngerutils.SetUpgradePartition(newSet, i)
 		return nil
 	}
 

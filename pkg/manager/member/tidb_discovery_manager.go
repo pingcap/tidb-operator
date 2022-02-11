@@ -23,7 +23,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -61,7 +61,7 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 	switch cluster := obj.(type) {
 	case *v1alpha1.TidbCluster:
 		// If PD is not specified return
-		if cluster.Spec.PD == nil {
+		if cluster.Spec.PD == nil && !cluster.HeterogeneousWithRemote() {
 			return nil
 		}
 		clusterPolicyRule = rbacv1.PolicyRule{

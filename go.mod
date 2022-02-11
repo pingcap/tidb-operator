@@ -8,11 +8,10 @@ go 1.13
 
 require (
 	cloud.google.com/go/storage v1.0.0
-	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Masterminds/semver v1.4.2
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
-	github.com/agiledragon/gomonkey/v2 v2.2.0
+	github.com/agiledragon/gomonkey/v2 v2.3.0
 	github.com/aws/aws-sdk-go v1.30.9
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
@@ -50,14 +49,15 @@ require (
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
-	github.com/pingcap/tidb-operator/pkg/apis v0.0.0
-	github.com/pingcap/tidb-operator/pkg/client v0.0.0
+	github.com/pingcap/tidb-operator/pkg/apis v1.3.0-beta.1
+	github.com/pingcap/tidb-operator/pkg/client v1.3.0-beta.1
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.26.0
 	github.com/prometheus/prom2json v1.3.0
 	github.com/prometheus/prometheus v1.8.2
 	github.com/robfig/cron v1.1.0
+	github.com/sethvargo/go-password v0.2.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
@@ -72,6 +72,7 @@ require (
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gomodules.xyz/jsonpatch/v2 v2.1.0
+	google.golang.org/grpc v1.27.0
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.19.16
@@ -82,7 +83,7 @@ require (
 	k8s.io/client-go v0.19.16
 	k8s.io/code-generator v0.19.16
 	k8s.io/component-base v0.19.16
-	k8s.io/klog v1.0.0
+	k8s.io/klog/v2 v2.3.0
 	k8s.io/kube-aggregator v0.19.16
 	k8s.io/kube-scheduler v0.19.16
 	k8s.io/kubectl v0.19.16

@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
@@ -85,12 +85,6 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	if err != nil {
 		return fmt.Errorf("tiflashScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
-
-	// TODO: Update Webhook to support TiFlash
-	// if controller.PodWebhookEnabled {
-	// 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-	// 	return nil
-	// }
 
 	for _, store := range tc.Status.TiFlash.Stores {
 		if store.PodName == podName {

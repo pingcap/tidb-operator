@@ -28,11 +28,11 @@ type Member struct {
 	ClientURLs []string `json:"clientURLs"`
 }
 
-type GetMembersReponse struct {
+type GetMembersResponse struct {
 	Members []Member `json:"members"`
 }
 
-func GetMembersV2(addr string) (*GetMembersReponse, error) {
+func GetMembersV2(addr string) (*GetMembersResponse, error) {
 	url := fmt.Sprintf("http://%s/v2/members", addr)
 
 	httpResp, err := http.Get(url)
@@ -50,7 +50,7 @@ func GetMembersV2(addr string) (*GetMembersReponse, error) {
 		return nil, fmt.Errorf("code %s msg %s", httpResp.Status, string(data))
 	}
 
-	resp := &GetMembersReponse{}
+	resp := &GetMembersResponse{}
 	err = json.Unmarshal(data, resp)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal failed: %s", err)
@@ -59,7 +59,7 @@ func GetMembersV2(addr string) (*GetMembersReponse, error) {
 	return resp, nil
 }
 
-func UpdateMembePeerURLs(addr string, id string, peerURLs []string) error {
+func UpdateMemberPeerURLs(addr string, id string, peerURLs []string) error {
 	url := fmt.Sprintf("http://%s/v2/members/%s", addr, id)
 
 	member := Member{

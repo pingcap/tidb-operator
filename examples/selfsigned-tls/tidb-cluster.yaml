@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: tls
 spec:
-  version: v5.2.1
+  version: v5.3.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
@@ -12,18 +12,21 @@ spec:
     image: busybox:1.34.1
   pd:
     baseImage: pingcap/pd
+    maxFailoverCount: 0
     replicas: 1
     requests:
       storage: "1Gi"
     config: {}
   tikv:
     baseImage: pingcap/tikv
+    maxFailoverCount: 0
     replicas: 1
     requests:
       storage: "1Gi"
     config: {}
   tidb:
     baseImage: pingcap/tidb
+    maxFailoverCount: 0
     replicas: 1
     service:
       type: ClusterIP

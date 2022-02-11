@@ -22,7 +22,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/klog/v2"
 )
 
 // TODO reuse tikvFailover since we share the same logic
@@ -68,23 +69,28 @@ func (f *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
 				break
 			}
 		}
-		if store.State == v1alpha1.TiKVStateDown && time.Now().After(deadline) && !exist {
-			if tc.Status.TiFlash.FailureStores == nil {
-				tc.Status.TiFlash.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
-			}
+		if store.State == v1alpha1.TiKVStateDown && time.Now().After(deadline) {
 			if tc.Spec.TiFlash.MaxFailoverCount != nil && *tc.Spec.TiFlash.MaxFailoverCount > 0 {
-				maxFailoverCount := *tc.Spec.TiFlash.MaxFailoverCount
-				if len(tc.Status.TiFlash.FailureStores) >= int(maxFailoverCount) {
-					klog.Warningf("%s/%s TiFlash failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiFlash.MaxFailoverCount)
-					return nil
+				if tc.Status.TiFlash.FailoverUID == "" {
+					tc.Status.TiFlash.FailoverUID = uuid.NewUUID()
 				}
-				tc.Status.TiFlash.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
-					PodName:   podName,
-					StoreID:   store.ID,
-					CreatedAt: metav1.Now(),
+				if !exist {
+					if tc.Status.TiFlash.FailureStores == nil {
+						tc.Status.TiFlash.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
+					}
+					maxFailoverCount := *tc.Spec.TiFlash.MaxFailoverCount
+					if len(tc.Status.TiFlash.FailureStores) >= int(maxFailoverCount) {
+						klog.Warningf("%s/%s TiFlash failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiFlash.MaxFailoverCount)
+						return nil
+					}
+					tc.Status.TiFlash.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
+						PodName:   podName,
+						StoreID:   store.ID,
+						CreatedAt: metav1.Now(),
+					}
+					msg := fmt.Sprintf("store [%s] is Down", store.ID)
+					f.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tiflash", podName, msg))
 				}
-				msg := fmt.Sprintf("store [%s] is Down", store.ID)
-				f.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tiflash", podName, msg))
 			}
 		}
 	}
@@ -104,6 +110,7 @@ func (f *tiflashFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 
 func (f *tiflashFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiFlash.FailureStores = nil
+	tc.Status.TiFlash.FailoverUID = ""
 	klog.Infof("TiFlash recover: clear FailureStores, %s/%s", tc.GetNamespace(), tc.GetName())
 }
 

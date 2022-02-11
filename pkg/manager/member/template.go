@@ -160,14 +160,14 @@ then
 echo "waiting for pd cluster ready timeout" >&2
 exit 1
 fi
-
+{{ if eq .CheckDomainScript ""}}
 if nslookup ${domain} 2>/dev/null
 then
 echo "nslookup domain ${domain}.svc success"
 break
 else
 echo "nslookup domain ${domain} failed" >&2
-fi
+fi {{- else}}{{.CheckDomainScript}}{{end}}
 done
 
 ARGS="--data-dir={{ .DataDir }} \
@@ -203,10 +203,29 @@ echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `))
 
+var checkDNSV1 string = `
+digRes=$(dig ${domain} A ${domain} AAAA +search +short)
+if [ $? -ne 0  ]; then
+  echo "$digRes"
+  echo "domain resolve ${domain} failed"
+  continue
+fi
+
+if [ -z "${digRes}" ]
+then
+  echo "domain resolve ${domain} no record return"
+else
+  echo "domain resolve ${domain} success"
+  echo "$digRes"
+  break
+fi
+`
+
 type PDStartScriptModel struct {
-	Scheme        string
-	DataDir       string
-	ClusterDomain string
+	Scheme            string
+	DataDir           string
+	ClusterDomain     string
+	CheckDomainScript string
 }
 
 func (p *PDStartScriptModel) FormatClusterDomain() string {
@@ -303,7 +322,7 @@ func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
 // pumpStartScriptTpl is the template string of pump start script
 // Note: changing this will cause a rolling-update of pump cluster
 var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .FormatClusterDomain }}
-pd_url="{{ .Scheme }}://{{ .ClusterName }}-pd:2379"
+pd_url="{{ .PDAddr }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
@@ -319,7 +338,7 @@ set -euo pipefail
 -pd-urls=$pd_url \{{ else }}set -euo pipefail
 
 /pump \
--pd-urls={{ .Scheme }}://{{ .ClusterName }}-pd:2379 \{{ end }}
+-pd-urls={{ .PDAddr }} \{{ end }}
 -L={{ .LogLevel }} \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump{{ .FormatPumpZone }}:8250 \
 -config=/etc/pump/pump.toml \
@@ -334,6 +353,7 @@ fi`))
 type PumpStartScriptModel struct {
 	Scheme        string
 	ClusterName   string
+	PDAddr        string
 	LogLevel      string
 	Namespace     string
 	ClusterDomain string

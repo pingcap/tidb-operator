@@ -49,4 +49,7 @@ const (
 
 	// KMS secret env prefix
 	KMSSecretPrefix = "KMS_ENCRYPTED"
+
+	// RootKey represents the username in tidb secret
+	TidbRootKey = "root"
 )

@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
 )
@@ -91,7 +92,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			name:     "modify oldSet update strategy to OnDelete",
 			changeFn: nil,
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.UpdateStrategy = apps.StatefulSetUpdateStrategy{
 					Type: apps.OnDeleteStatefulSetStrategyType,
 				}
@@ -110,7 +111,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			name:     "set oldSet's RollingUpdate strategy to nil",
 			changeFn: nil,
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.UpdateStrategy = apps.StatefulSetUpdateStrategy{
 					Type: apps.RollingUpdateStatefulSetStrategyType,
 				}
@@ -135,9 +136,13 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				store := tc.Status.TiFlash.Stores["3"]
 				store.LeaderCount = 0
 				tc.Status.TiFlash.Stores["3"] = store
+				fakeClient := NewFakeTiKVClient(tiflashControl, tc, "upgrader-tiflash-2")
+				fakeClient.AddReaction(tiflashapi.GetStoreStatusActionType, func(action *tiflashapi.Action) (interface{}, error) {
+					return tiflashapi.Running, nil
+				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			changePods:   nil,
 			updatePodErr: false,
@@ -161,9 +166,17 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				store := tc.Status.TiFlash.Stores["2"]
 				store.LeaderCount = 0
 				tc.Status.TiFlash.Stores["2"] = store
+				fakeClient := NewFakeTiKVClient(tiflashControl, tc, "upgrader-tiflash-2")
+				fakeClient.AddReaction(tiflashapi.GetStoreStatusActionType, func(action *tiflashapi.Action) (interface{}, error) {
+					return tiflashapi.Running, nil
+				})
+				fakeClient = NewFakeTiKVClient(tiflashControl, tc, "upgrader-tiflash-1")
+				fakeClient.AddReaction(tiflashapi.GetStoreStatusActionType, func(action *tiflashapi.Action) (interface{}, error) {
+					return tiflashapi.Running, nil
+				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Status.CurrentReplicas = 2
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(2)
@@ -186,7 +199,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			changePods:   nil,
 			updatePodErr: false,
@@ -224,7 +237,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiFlash.Synced = true
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			changePods:   nil,
 			updatePodErr: false,
@@ -272,7 +285,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) { // tigger upgrade
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
 			},
 			changePods: func(pods []*corev1.Pod, tc *v1alpha1.TidbCluster, old, new *apps.StatefulSet) {
@@ -303,7 +316,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) { // tigger upgrade
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
 			},
 			changePods: func(pods []*corev1.Pod, tc *v1alpha1.TidbCluster, old, new *apps.StatefulSet) {
@@ -334,7 +347,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) { // tigger upgrade
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
 			},
 			changePods: func(pods []*corev1.Pod, tc *v1alpha1.TidbCluster, old, new *apps.StatefulSet) {
@@ -365,7 +378,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) { // tigger upgrade
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
 			},
 			changePods: func(pods []*corev1.Pod, tc *v1alpha1.TidbCluster, old, new *apps.StatefulSet) {
@@ -396,7 +409,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) { // tigger upgrade
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
 			},
 			changePods: func(pods []*corev1.Pod, tc *v1alpha1.TidbCluster, old, new *apps.StatefulSet) {
@@ -427,7 +440,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) { // tigger upgrade
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
 			},
 			changePods: func(pods []*corev1.Pod, tc *v1alpha1.TidbCluster, old, new *apps.StatefulSet) {
@@ -459,7 +472,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) { // tigger upgrade
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
 			},
 			changePods: func(pods []*corev1.Pod, tc *v1alpha1.TidbCluster, old, new *apps.StatefulSet) {
@@ -491,7 +504,7 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				})
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) { // tigger upgrade
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
 			},
 			changePods: func(pods []*corev1.Pod, tc *v1alpha1.TidbCluster, old, new *apps.StatefulSet) {

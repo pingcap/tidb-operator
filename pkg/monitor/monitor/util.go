@@ -38,7 +38,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -329,6 +329,10 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 				Value: "http://127.0.0.1:9090",
 			},
 			{
+				Name:  "TZ",
+				Value: monitor.Timezone(),
+			},
+			{
 				Name:  "TIDB_VERSION",
 				Value: getAlertManagerRulesVersion(monitor),
 			},
@@ -428,7 +432,7 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 			},
 			{
 				Name:  "TZ",
-				Value: dc.Timezone(),
+				Value: monitor.Timezone(),
 			},
 		},
 		Command: command,
@@ -466,7 +470,7 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 	return container
 }
 
-func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, shard int32) core.Container {
+func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, shard int32) core.Container {
 	var retention string
 	if monitor.Spec.Prometheus.RetentionTime != nil {
 		retention = *monitor.Spec.Prometheus.RetentionTime
@@ -507,6 +511,10 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				Name:  "SHARD",
 				Value: strconv.Itoa(int(shard)),
 			},
+			{
+				Name:  "TZ",
+				Value: monitor.Timezone(),
+			},
 		},
 		VolumeMounts: []core.VolumeMount{
 			{
@@ -534,15 +542,6 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				ReadOnly:  true,
 			},
 		},
-	}
-
-	if tc != nil {
-		c.Env = append(c.Env, []core.EnvVar{
-			{
-				Name:  "TZ",
-				Value: tc.Timezone(),
-			},
-		}...)
 	}
 
 	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
@@ -591,7 +590,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	return c
 }
 
-func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonitor) core.Container {
 	var adminUserFrom, adminPasswordFrom *core.EnvVarSource
 
 	//UsernameSecret will cover Username
@@ -650,6 +649,10 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 				Name:      "GF_SECURITY_ADMIN_PASSWORD",
 				ValueFrom: adminPasswordFrom,
 			},
+			{
+				Name:  "TZ",
+				Value: monitor.Timezone(),
+			},
 		},
 		VolumeMounts: []core.VolumeMount{
 			{
@@ -672,14 +675,6 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 				ReadOnly:  false,
 			},
 		},
-	}
-	if tc != nil {
-		c.Env = append(c.Env, []core.EnvVar{
-			{
-				Name:  "TZ",
-				Value: tc.Timezone(),
-			},
-		}...)
 	}
 
 	var probeHandler core.Handler
@@ -795,7 +790,7 @@ func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor, shard 
 	return c
 }
 
-func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 	c := core.Container{
 		Name:  "reloader",
 		Image: fmt.Sprintf("%s:%s", monitor.Spec.Reloader.BaseImage, monitor.Spec.Reloader.Version),
@@ -825,14 +820,12 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 			},
 		},
 		Resources: controller.ContainerResource(monitor.Spec.Reloader.ResourceRequirements),
-	}
-	if tc != nil {
-		c.Env = append(c.Env, []core.EnvVar{
+		Env: []core.EnvVar{
 			{
 				Name:  "TZ",
-				Value: tc.Timezone(),
+				Value: monitor.Timezone(),
 			},
-		}...)
+		},
 	}
 	if monitor.Spec.Reloader.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Reloader.ImagePullPolicy
@@ -1225,12 +1218,12 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 	statefulSet := getMonitorStatefulSetSkeleton(sa, monitor, shard)
 	initContainer := getMonitorInitContainer(monitor, tc)
 	statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, initContainer)
-	if dc != nil {
+	if monitor.Spec.DM != nil && len(monitor.Spec.DM.Clusters) > 0 {
 		dmInitContainer := getMonitorDMInitContainer(monitor, dc)
 		statefulSet.Spec.Template.Spec.InitContainers = append(statefulSet.Spec.Template.Spec.InitContainers, dmInitContainer)
 	}
-	prometheusContainer := getMonitorPrometheusContainer(monitor, tc, shard)
-	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
+	prometheusContainer := getMonitorPrometheusContainer(monitor, shard)
+	reloaderContainer := getMonitorReloaderContainer(monitor)
 	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
 	if monitor.Spec.Thanos != nil {
 		thanosSideCarContainer := getThanosSidecarContainer(monitor)
@@ -1246,7 +1239,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, additionalContainers...)
 	}
 	if monitor.Spec.Grafana != nil {
-		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
+		grafanaContainer := getMonitorGrafanaContainer(secret, monitor)
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, grafanaContainer)
 	}
 	volumes := getMonitorVolumes(monitor)

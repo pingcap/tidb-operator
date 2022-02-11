@@ -178,6 +178,11 @@ type TidbMonitorSpec struct {
 	// if `AlertmanagerURL` is not configured.
 	// +optional
 	EnableAlertRules bool `json:"enableAlertRules,omitempty"`
+
+	// Time zone of TidbMonitor
+	// Optional: Defaults to UTC
+	// +optional
+	Timezone string `json:"timezone,omitempty"`
 }
 
 // PrometheusReloaderSpec is the desired state of prometheus configuration reloader
@@ -349,7 +354,7 @@ type MonitorContainer struct {
 // TidbClusterRef reference to a TidbCluster
 type TidbClusterRef struct {
 	// Namespace is the namespace that TidbCluster object locates,
-	// default to the same namespace with TidbMonitor
+	// default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 
@@ -547,4 +552,12 @@ func (tm *TidbMonitor) GetShards() int32 {
 		shards = *tm.Spec.Shards
 	}
 	return shards
+}
+
+func (tm *TidbMonitor) Timezone() string {
+	tz := tm.Spec.Timezone
+	if len(tz) <= 0 {
+		return defaultTimeZone
+	}
+	return tz
 }

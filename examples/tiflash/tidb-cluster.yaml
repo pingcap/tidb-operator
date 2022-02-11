@@ -11,35 +11,25 @@ spec:
     image: busybox:1.34.1
   pd:
     baseImage: pingcap/pd
-    config:
-      log:
-        level: info
-      replication:
-        enable-placement-rules: true
-        location-labels:
-        - zone
-        - host
-        max-replicas: 3
+    config: |
+      [replication]
+        enable-placement-rules = true
     imagePullPolicy: IfNotPresent
-    maxFailoverCount: 3
+    maxFailoverCount: 0
     replicas: 3
     requests:
       storage: 10Gi
     storageClassName: local-storage
   pvReclaimPolicy: Retain
-  schedulerName: tidb-scheduler
+  schedulerName: default-scheduler
   services:
   - name: pd
     type: ClusterIP
   tidb:
     baseImage: pingcap/tidb
-    config:
-      log:
-        file:
-          max-backups: 3
-        level: info
+    config: {}
     imagePullPolicy: IfNotPresent
-    maxFailoverCount: 3
+    maxFailoverCount: 0
     replicas: 2
     separateSlowLog: true
     service:
@@ -55,22 +45,21 @@ spec:
         memory: 5Mi
   tiflash:
     baseImage: pingcap/tiflash
-    maxFailoverCount: 3
+    maxFailoverCount: 0
     replicas: 2
     storageClaims:
     - resources:
         requests:
-          storage: 10Gi
+          storage: 100Gi
       storageClassName: local-storage
   tikv:
     baseImage: pingcap/tikv
-    config:
-      log-level: info
+    config: {}
     imagePullPolicy: IfNotPresent
-    maxFailoverCount: 3
+    maxFailoverCount: 0
     replicas: 3
     requests:
-      storage: 10Gi
+      storage: 100Gi
     storageClassName: local-storage
   timezone: UTC
-  version: v5.2.1
+  version: v5.3.0

@@ -739,6 +739,7 @@ func TestRenderPumpStartScript(t *testing.T) {
 		name          string
 		scheme        string
 		clusterName   string
+		pdAddr        string
 		LogLevel      string
 		Namespace     string
 		clusterDomain string
@@ -748,6 +749,7 @@ func TestRenderPumpStartScript(t *testing.T) {
 			name:          "basic",
 			scheme:        "http",
 			clusterName:   "demo",
+			pdAddr:        "http://demo-pd:2379",
 			LogLevel:      "INFO",
 			Namespace:     "demo-ns",
 			clusterDomain: "",
@@ -770,11 +772,69 @@ fi`,
 			name:          "basic with cluster domain",
 			scheme:        "http",
 			clusterName:   "demo",
+			pdAddr:        "http://demo-pd:2379",
 			LogLevel:      "INFO",
 			Namespace:     "demo-ns",
 			clusterDomain: "demo.com",
 			result: `
 pd_url="http://demo-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="demo-discovery.demo-ns:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
+pd_url=$result
+
+set -euo pipefail
+
+/pump \
+-pd-urls=$pd_url \
+-L=INFO \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc.demo.com:8250 \
+-config=/etc/pump/pump.toml \
+-data-dir=/data \
+-log-file=
+
+if [ $? == 0 ]; then
+    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
+    tail -f /dev/null
+fi`,
+		},
+		{
+			name:          "specify pd addr",
+			scheme:        "http",
+			clusterName:   "demo",
+			pdAddr:        "http://target-pd:2379",
+			LogLevel:      "INFO",
+			Namespace:     "demo-ns",
+			clusterDomain: "",
+			result: `set -euo pipefail
+
+/pump \
+-pd-urls=http://target-pd:2379 \
+-L=INFO \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump:8250 \
+-config=/etc/pump/pump.toml \
+-data-dir=/data \
+-log-file=
+
+if [ $? == 0 ]; then
+    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
+    tail -f /dev/null
+fi`,
+		},
+		{
+			name:          "specify pd addr with cluster domain",
+			scheme:        "http",
+			clusterName:   "demo",
+			pdAddr:        "http://target-pd:2379",
+			LogLevel:      "INFO",
+			Namespace:     "demo-ns",
+			clusterDomain: "demo.com",
+			result: `
+pd_url="http://target-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="demo-discovery.demo-ns:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
@@ -806,6 +866,7 @@ fi`,
 			model := PumpStartScriptModel{
 				Scheme:        tt.scheme,
 				ClusterName:   tt.clusterName,
+				PDAddr:        tt.pdAddr,
 				LogLevel:      tt.LogLevel,
 				Namespace:     tt.Namespace,
 				ClusterDomain: tt.clusterDomain,

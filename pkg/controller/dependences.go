@@ -42,7 +42,7 @@ import (
 	networklister "k8s.io/client-go/listers/networking/v1"
 	storagelister "k8s.io/client-go/listers/storage/v1"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -80,9 +80,6 @@ type CLIConfig struct {
 	TestMode               bool
 	TiDBBackupManagerImage string
 	TiDBDiscoveryImage     string
-	// PodWebhookEnabled is the key to indicate whether pod admission
-	// webhook is set up.
-	PodWebhookEnabled bool
 	// Selector is used to filter CR labels to decide
 	// what resources should be watched and synced by controller
 	Selector string
@@ -132,7 +129,6 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.StringVar(&c.TiDBBackupManagerImage, "tidb-backup-manager-image", c.TiDBBackupManagerImage, "The image of backup manager tool")
 	// TODO: actually we just want to use the same image with tidb-controller-manager, but DownwardAPI cannot get image ID, see if there is any better solution
 	flag.StringVar(&c.TiDBDiscoveryImage, "tidb-discovery-image", c.TiDBDiscoveryImage, "The image of the tidb discovery service")
-	flag.BoolVar(&c.PodWebhookEnabled, "pod-webhook-enabled", false, "Whether Pod admission webhook is enabled")
 	flag.StringVar(&c.Selector, "selector", c.Selector, "Selector (label query) to filter on, supports '=', '==', and '!='")
 
 	// see https://pkg.go.dev/k8s.io/client-go/tools/leaderelection#LeaderElectionConfig for the config
@@ -216,6 +212,7 @@ type Dependencies struct {
 	BackupScheduleLister        listers.BackupScheduleLister
 	TiDBInitializerLister       listers.TidbInitializerLister
 	TiDBMonitorLister           listers.TidbMonitorLister
+	TiDBNGMonitoringLister      listers.TidbNGMonitoringLister
 
 	// Controls
 	Controls
@@ -348,6 +345,7 @@ func newDependencies(
 		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
+		TiDBNGMonitoringLister:      informerFactory.Pingcap().V1alpha1().TidbNGMonitorings().Lister(),
 	}, nil
 }
 

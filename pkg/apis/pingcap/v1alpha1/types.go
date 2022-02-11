@@ -74,6 +74,8 @@ const (
 	RaftLogTailerMemberType MemberType = "raftlog"
 	// TidbMonitorMemberType is tidbmonitor type
 	TidbMonitorMemberType MemberType = "tidbmonitor"
+	// NGMonitoringMemberType is ng monitoring type
+	NGMonitoringMemberType MemberType = "ng-monitoring"
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
 )
@@ -196,7 +198,6 @@ type TidbClusterSpec struct {
 	// TODO: remove optional after defaulting logic introduced
 
 	// SchedulerName of TiDB cluster Pods
-	// +kubebuilder:default=tidb-scheduler
 	SchedulerName string `json:"schedulerName,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
@@ -216,8 +217,6 @@ type TidbClusterSpec struct {
 	// cluster component is needed to reload the configuration change.
 	// UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
 	// related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
-	// +kubebuilder:validation:Enum=InPlace;RollingUpdate
-	// +kubebuilder:default=InPlace
 	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
 	// Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
@@ -262,6 +261,10 @@ type TidbClusterSpec struct {
 	// Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
 
 	// Time zone of TiDB cluster Pods
 	// Optional: Defaults to UTC
@@ -439,6 +442,10 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+	// Start up script version
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1"
+	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
@@ -519,6 +526,10 @@ type TiKVSpec struct {
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
 
+	// Failover is the configurations of failover
+	// +optional
+	Failover *Failover `json:"failover,omitempty"`
+
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
@@ -579,6 +590,11 @@ type TiFlashSpec struct {
 	// +optional
 	Config *TiFlashConfigWraper `json:"config,omitempty"`
 
+	// Initializer is the configurations of the init container for TiFlash
+	//
+	// +optional
+	Initializer *InitContainerSpec `json:"initializer,omitempty"`
+
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
@@ -586,6 +602,10 @@ type TiFlashSpec struct {
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
+
+	// Failover is the configurations of failover
+	// +optional
+	Failover *Failover `json:"failover,omitempty"`
 }
 
 // TiCDCSpec contains details of TiCDC members
@@ -655,6 +675,13 @@ type TiCDCConfig struct {
 // LogTailerSpec represents an optional log tailer sidecar container
 // +k8s:openapi-gen=true
 type LogTailerSpec struct {
+	corev1.ResourceRequirements `json:",inline"`
+}
+
+// InitContainerSpec contains basic spec about a init container
+//
+// +k8s:openapi-gen=true
+type InitContainerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
 }
 
@@ -753,6 +780,15 @@ type TiDBSpec struct {
 	// the default behavior is like setting type as "tcp"
 	// +optional
 	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
+
+	// Initializer is the init configurations of TiDB
+	//
+	// +optional
+	Initializer *TiDBInitializer `json:"initializer,omitempty"`
+}
+
+type TiDBInitializer struct {
+	CreatePassword bool `json:"createPassword,omitempty"`
 }
 
 const (
@@ -942,6 +978,10 @@ type ComponentSpec struct {
 	// Additional volume mounts of component pod.
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
 	// Value must be non-negative integer. The value zero indicates delete immediately.
 	// If this value is nil, the default grace period will be used instead.
@@ -1050,7 +1090,8 @@ type Service struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-	Synced      bool                    `json:"synced,omitempty"`
+	// +optional
+	Synced      bool                    `json:"synced"`
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	// Members contains PDs in current TidbCluster
@@ -1109,6 +1150,7 @@ type TiDBStatus struct {
 	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
 	Image                    string                       `json:"image,omitempty"`
+	PasswordInitialized      *bool                        `json:"passwordInitialized,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -1129,17 +1171,35 @@ type TiDBFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
+const EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
+
+// The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
+//
+// - `none`: doing nothing.
+// - `delete-pod`: delete pod and remove the evict-leader scheduler from PD.
+const (
+	EvictLeaderValueNone      = "none"
+	EvictLeaderValueDeletePod = "delete-pod"
+)
+
+type EvictLeaderStatus struct {
+	PodCreateTime metav1.Time `json:"podCreateTime,omitempty"`
+	Value         string      `json:"value,omitempty"`
+}
+
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
-	Synced          bool                        `json:"synced,omitempty"`
-	Phase           MemberPhase                 `json:"phase,omitempty"`
-	BootStrapped    bool                        `json:"bootStrapped,omitempty"`
-	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
-	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
-	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
-	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
-	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
-	Image           string                      `json:"image,omitempty"`
+	Synced          bool                          `json:"synced,omitempty"`
+	Phase           MemberPhase                   `json:"phase,omitempty"`
+	BootStrapped    bool                          `json:"bootStrapped,omitempty"`
+	StatefulSet     *apps.StatefulSetStatus       `json:"statefulSet,omitempty"`
+	Stores          map[string]TiKVStore          `json:"stores,omitempty"`
+	PeerStores      map[string]TiKVStore          `json:"peerStores,omitempty"`
+	TombstoneStores map[string]TiKVStore          `json:"tombstoneStores,omitempty"`
+	FailureStores   map[string]TiKVFailureStore   `json:"failureStores,omitempty"`
+	FailoverUID     types.UID                     `json:"failoverUID,omitempty"`
+	Image           string                        `json:"image,omitempty"`
+	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status
@@ -1151,6 +1211,7 @@ type TiFlashStatus struct {
 	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
+	FailoverUID     types.UID                   `json:"failoverUID,omitempty"`
 	Image           string                      `json:"image,omitempty"`
 }
 
@@ -1957,7 +2018,6 @@ type DMClusterSpec struct {
 	// TODO: remove optional after defaulting logic introduced
 
 	// SchedulerName of DM cluster Pods
-	// +kubebuilder:default=tidb-scheduler
 	SchedulerName string `json:"schedulerName,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by DM cluster
@@ -1971,6 +2031,13 @@ type DMClusterSpec struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+	// UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+	// cluster component is needed to reload the configuration change.
+	// UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+	// related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
+	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
 	// Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
 	// Optional: Defaults to false
@@ -2024,9 +2091,21 @@ type DMClusterSpec struct {
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// StatefulSetUpdateStrategy of DM cluster StatefulSets
+	// +optional
+	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
+
+	// PodManagementPolicy of DM cluster StatefulSets
+	// +optional
+	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
 
 	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
 	// domains. Scheduler will schedule pods in a way which abides by the constraints.
@@ -2098,7 +2177,9 @@ type MasterSpec struct {
 
 	// Config is the Configuration of dm-master-servers
 	// +optional
-	Config *MasterConfig `json:"config,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Config *MasterConfigWraper `json:"config,omitempty"`
 }
 
 type MasterServiceSpec struct {
@@ -2158,11 +2239,17 @@ type WorkerSpec struct {
 
 	// Config is the Configuration of dm-worker-servers
 	// +optional
-	Config *WorkerConfig `json:"config,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Config *WorkerConfigWraper `json:"config,omitempty"`
 
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
+
+	// Failover is the configurations of failover
+	// +optional
+	Failover *Failover `json:"failover,omitempty"`
 }
 
 // DMClusterCondition is dm cluster condition
@@ -2240,6 +2327,7 @@ type WorkerStatus struct {
 	StatefulSet    *apps.StatefulSetStatus        `json:"statefulSet,omitempty"`
 	Members        map[string]WorkerMember        `json:"members,omitempty"`
 	FailureMembers map[string]WorkerFailureMember `json:"failureMembers,omitempty"`
+	FailoverUID    types.UID                      `json:"failoverUID,omitempty"`
 	Image          string                         `json:"image,omitempty"`
 }
 
@@ -2285,4 +2373,13 @@ type TopologySpreadConstraint struct {
 	// LabelSelector is generated by component type
 	// See pkg/apis/pingcap/v1alpha1/tidbcluster_component.go#TopologySpreadConstraints()
 	TopologyKey string `json:"topologyKey"`
+}
+
+// Failover contains the failover specification.
+// +k8s:openapi-gen=true
+type Failover struct {
+	// RecoverByUID indicates that TiDB Operator will recover the failover by this UID,
+	// it takes effect only when set `spec.recoverFailover=false`
+	// +optional
+	RecoverByUID types.UID `json:"recoverByUID,omitempty"`
 }

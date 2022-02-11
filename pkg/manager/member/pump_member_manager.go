@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -26,15 +27,17 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -102,7 +105,7 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return err
 	}
 	if notFound {
-		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)
+		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err
 		}
@@ -124,7 +127,7 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return nil
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdatePumpSTS", newSet, oldSet)
 }
 
 func (p *pumpMemberManager) buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterface) (client binlogClient, err error) {
@@ -138,8 +141,12 @@ func (p *pumpMemberManager) buildBinlogClient(tc *v1alpha1.TidbCluster, control 
 func buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterface) (client *binlog.Client, err error) {
 	var endpoints []string
 	var tlsConfig *tls.Config
-	if tc.HeterogeneousWithoutLocalPD() {
-		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		// connect to pd of other cluster and use own cert
+		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled(),
+			pdapi.TLSCertFromTC(pdapi.Namespace(tc.Namespace), tc.Name),
+			pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
+		)
 	} else {
 		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 	}
@@ -147,7 +154,12 @@ func buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterfac
 		return nil, err
 	}
 
-	client, err = binlog.NewBinlogClient(endpoints, tlsConfig)
+	// support x-k8s tidbcluster without local pd
+	for _, pdMember := range tc.Status.PD.PeerMembers {
+		endpoints = append(endpoints, pdMember.ClientURL)
+	}
+
+	client, err = binlog.NewBinlogClient(endpoints, tlsConfig, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -243,12 +255,12 @@ func (m *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv1.
 
 	var inUseName string
 	if set != nil {
-		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
 		})
 	}
 
-	err = updateConfigMapIfNeed(m.deps.ConfigMapLister, basePumpSpec.ConfigUpdateStrategy(), inUseName, newCm)
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, basePumpSpec.ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -282,23 +294,25 @@ func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 
 // getNewPumpConfigMap returns a configMap for pump
 func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	if tc.Spec.Pump == nil {
-		return nil, nil
-	}
 	spec := tc.Spec.Pump
 	objMeta, _ := getPumpMeta(tc, controller.PumpMemberName)
 
-	if tc.IsTLSClusterEnabled() {
-		if spec.Config == nil {
-			spec.Config = config.New(map[string]interface{}{})
-		}
-
-		spec.Config.Set("security.ssl-ca", path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey))
-		spec.Config.Set("security.ssl-cert", path.Join(pumpCertPath, corev1.TLSCertKey))
-		spec.Config.Set("security.ssl-key", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))
+	var cfg *config.GenericConfig
+	if spec.Config != nil {
+		cfg = spec.Config.DeepCopy()
 	}
 
-	confText, err := spec.Config.MarshalTOML()
+	if tc.IsTLSClusterEnabled() {
+		if cfg == nil {
+			cfg = config.New(map[string]interface{}{})
+		}
+
+		cfg.Set("security.ssl-ca", path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey))
+		cfg.Set("security.ssl-cert", path.Join(pumpCertPath, corev1.TLSCertKey))
+		cfg.Set("security.ssl-key", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))
+	}
+
+	confText, err := cfg.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}
@@ -503,9 +517,16 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		scheme = "https"
 	}
 
+	pdDomain := controller.PDMemberName(tc.Name)
+	if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
+		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name)
+	}
+	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, pdDomain)
+
 	return RenderPumpStartScript(&PumpStartScriptModel{
 		Scheme:        scheme,
 		ClusterName:   tc.Name,
+		PDAddr:        pdAddr,
 		LogLevel:      getPumpLogLevel(tc),
 		ClusterDomain: tc.Spec.ClusterDomain,
 		Namespace:     tc.GetNamespace(),
@@ -533,7 +554,7 @@ func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
 }
 
 func (m *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
-	if statefulSetIsUpgrading(set) {
+	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}
 	selector, err := label.New().

@@ -10,7 +10,7 @@ variable "bastion_cpu_core_count" {
 
 variable "operator_version" {
   type    = string
-  default = "v1.2.4"
+  default = "v1.3.0-beta.1"
 }
 
 variable "operator_helm_values" {
@@ -36,7 +36,7 @@ variable "cluster_name" {
 
 variable "tidb_version" {
   description = "TiDB cluster version"
-  default     = "v5.2.1"
+  default     = "v5.3.0"
 }
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"

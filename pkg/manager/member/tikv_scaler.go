@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
@@ -106,11 +106,6 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 
 	if pass, err := s.preCheckUpStores(tc, podName); !pass {
 		return err
-	}
-
-	if s.deps.CLIConfig.PodWebhookEnabled {
-		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-		return nil
 	}
 
 	// call PD API to delete the store of the TiKV Pod to be scaled in

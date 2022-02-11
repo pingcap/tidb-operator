@@ -1101,7 +1101,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			sa := getMonitorPrometheusContainer(&tt.monitor, &tt.cluster, 0)
+			sa := getMonitorPrometheusContainer(&tt.monitor, 0)
 			if tt.expected == nil {
 				g.Expect(sa).To(BeNil())
 				return
@@ -1253,7 +1253,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			sa := getMonitorGrafanaContainer(&tt.secret, &tt.monitor, &tt.cluster)
+			sa := getMonitorGrafanaContainer(&tt.secret, &tt.monitor)
 			if tt.expected == nil {
 				g.Expect(sa).To(BeNil())
 				return

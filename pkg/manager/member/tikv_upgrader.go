@@ -21,10 +21,12 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
@@ -74,14 +76,16 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
 	}
 
-	if *oldSet.Spec.Replicas < 2 {
+	tc, _ := meta.(*v1alpha1.TidbCluster)
+
+	// upgrade tikv without evicting leader when only one tikv is exist
+	// NOTE: If `TiKVStatus.Synced`` is false, it's acceptable to use old record about peer stores
+	if *oldSet.Spec.Replicas < 2 && len(tc.Status.TiKV.PeerStores) == 0 {
 		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for tc %s/%s", ns, tcName)
 		status.Phase = v1alpha1.UpgradePhase
-		setUpgradePartition(newSet, 0)
+		mngerutils.SetUpgradePartition(newSet, 0)
 		return nil
 	}
-
-	tc, _ := meta.(*v1alpha1.TidbCluster)
 
 	if !status.Synced {
 		return fmt.Errorf("cluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
@@ -106,13 +110,13 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return nil
 	}
 
-	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
 		store := getStoreByOrdinal(meta.GetName(), *status, i)
 		if store == nil {
-			setUpgradePartition(newSet, i)
+			mngerutils.SetUpgradePartition(newSet, i)
 			continue
 		}
 		podName := TikvPodName(tcName, i)
@@ -134,23 +138,15 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
 
-			if !u.deps.CLIConfig.PodWebhookEnabled {
-				// If pods recreated successfully, endEvictLeader for the store on this Pod.
-				storeID, err := strconv.ParseUint(store.ID, 10, 64)
-				if err != nil {
-					return err
-				}
-				if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
-					return err
-				}
+			// If pods recreated successfully, endEvictLeader for the store on this Pod.
+			storeID, err := strconv.ParseUint(store.ID, 10, 64)
+			if err != nil {
+				return err
 			}
-
+			if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
+				return err
+			}
 			continue
-		}
-
-		if u.deps.CLIConfig.PodWebhookEnabled {
-			setUpgradePartition(newSet, i)
-			return nil
 		}
 
 		return u.upgradeTiKVPod(tc, i, newSet)
@@ -168,27 +164,25 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 		return fmt.Errorf("upgradeTiKVPod: failed to get pods %s for cluster %s/%s, error: %s", upgradePodName, ns, tcName, err)
 	}
 
-	for _, store := range tc.Status.TiKV.Stores {
-		if store.PodName == upgradePodName {
-			storeID, err := strconv.ParseUint(store.ID, 10, 64)
-			if err != nil {
-				return err
-			}
-			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
-			if !evicting {
-				return u.beginEvictLeader(tc, storeID, upgradePod)
-			}
-
-			if u.readyToUpgrade(upgradePod, tc) {
-				setUpgradePartition(newSet, ordinal)
-				return nil
-			}
-
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
+	storeID, err := TiKVStoreIDFromStatus(tc, upgradePodName)
+	if err != nil {
+		if err == ErrNotFoundStoreID {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
 		}
+		return err
 	}
 
-	return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
+	_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
+	if !evicting {
+		return u.beginEvictLeader(tc, storeID, upgradePod)
+	}
+
+	if u.readyToUpgrade(upgradePod, tc) {
+		mngerutils.SetUpgradePartition(newSet, ordinal)
+		return nil
+	}
+
+	return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
 }
 
 func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {

@@ -154,6 +154,9 @@ const (
 	// DMWorkerLabelVal is dm-worker label value
 	DMWorkerLabelVal string = "dm-worker"
 
+	// NGMonitorLabelVal is ng-monitoring label value
+	NGMonitorLabelVal string = "ng-monitoring"
+
 	// PrometheusVal is Prometheus label value
 	PrometheusVal string = "prometheus"
 
@@ -225,6 +228,13 @@ func NewMonitor() Label {
 	return Label{
 		// NameLabelKey is used to be compatible with helm monitor
 		NameLabelKey:      "tidb-cluster",
+		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
+func NewTiDBNGMonitoring() Label {
+	return Label{
+		NameLabelKey:      "tidb-ng-monitoring",
 		ManagedByLabelKey: TiDBOperator,
 	}
 }
@@ -375,6 +385,16 @@ func (l Label) Prometheus() Label {
 // Grafana assigns grafana to app key in the label
 func (l Label) Grafana() Label {
 	return l.Application(GrafanaVal)
+}
+
+// NGMonitoring assigns ng monitoring to component key in label
+func (l Label) NGMonitoring() Label {
+	return l.Component(NGMonitorLabelVal)
+}
+
+// IsNGMonitoring returns whether label is a NGMonitoring component
+func (l Label) IsNGMonitoring() bool {
+	return l[ComponentLabelKey] == NGMonitorLabelVal
 }
 
 // IsMonitor returns whether label is a Monitor component
