@@ -601,7 +601,7 @@ func installHeterogeneousTiDBComponentsCertificates(ns, tcName string, clusterRe
 
 func InstallXK8sTiDBComponentsCertificates(ns, tcName, clusterDomain string, exceptPD bool) error {
 	if !exceptPD {
-		err := installCert(tidbComponentsOnlyPDCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
+		err := installCert(tidbComponentsOnlyPDCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, "." + clusterDomain})
 		if err != nil {
 			return err
 		}
