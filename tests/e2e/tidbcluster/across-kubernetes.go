@@ -675,6 +675,7 @@ func GetTCForAcrossKubernetes(ns, name, version, clusterDomain string, joinTC *v
 	tc.Spec.TiFlash.Replicas = 1
 	tc.Spec.TiCDC.Replicas = 1
 	tc.Spec.Pump.Replicas = 1
+	tc.Spec.AcrossK8s = true
 
 	tc.Spec.ClusterDomain = clusterDomain
 	if joinTC != nil {

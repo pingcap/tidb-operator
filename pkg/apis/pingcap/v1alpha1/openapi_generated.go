@@ -11904,6 +11904,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"acrossK8s": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AcrossK8s indicates whether deploy TiDB cluster across multiple Kubernetes clusters",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"cluster": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.",
