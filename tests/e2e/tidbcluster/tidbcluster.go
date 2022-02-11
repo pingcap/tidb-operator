@@ -1380,19 +1380,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				err = InstallTiDBComponentsCertificates(ns, tcName)
 				framework.ExpectNoError(err, "failed to install tidb components certificates")
 
-				ginkgo.By("Removing ca.crt in tidb-client-secret")
-				caSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: fmt.Sprintf("%s-tidb-client-secret", tcName)}}
-				err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
-					err := genericCli.Get(context.TODO(), ctrlCli.ObjectKeyFromObject(caSecret), caSecret)
-					if err != nil {
-						return false, nil
-					}
-					return true, nil
-				})
-				framework.ExpectNoError(err, "failed to get tidb-client-secret")
-				delete(caSecret.Data, "ca.crt")
-				err = genericCli.Update(context.TODO(), caSecret)
-				framework.ExpectNoError(err, "failed to update tidb-client-secret with ca.crt deleted")
+				if sc.skipCA {
+					ginkgo.By("Removing ca.crt in tidb-client-secret, dashboard and tidbInitializer client certificate")
+					err = removeCACertFromSecret(genericCli, ns, fmt.Sprintf("%s-tidb-client-secret", tcName))
+					framework.ExpectNoError(err, "failed to update tidb-client-secret with ca.crt deleted")
+					err = removeCACertFromSecret(genericCli, ns, fmt.Sprintf("%s-dashboard-tls", tcName))
+					framework.ExpectNoError(err, "failed to update dashboard-tls secret with ca.crt deleted")
+					err = removeCACertFromSecret(genericCli, ns, fmt.Sprintf("%s-initializer-tls", tcName))
+					framework.ExpectNoError(err, "failed to update initializer-tls secret with ca.crt deleted")
+				}
 
 				ginkgo.By("Creating tidb cluster with TLS enabled")
 				dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
@@ -3662,4 +3658,22 @@ func checkInitializerCustomLabelAndAnn(ti *v1alpha1.TidbInitializer, c clientset
 		_, ok = pod.Annotations[fixture.ClusterCustomKey]
 		framework.ExpectEqual(ok, true)
 	}
+}
+
+func removeCACertFromSecret(cli ctrlCli.Client, namespace, name string) error {
+	caSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name}}
+	var lastErr error
+	err := wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+		err := cli.Get(context.TODO(), ctrlCli.ObjectKeyFromObject(caSecret), caSecret)
+		if err != nil {
+			lastErr = err
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("%s, last error: %v", err, lastErr)
+	}
+	delete(caSecret.Data, "ca.crt")
+	return cli.Update(context.TODO(), caSecret)
 }

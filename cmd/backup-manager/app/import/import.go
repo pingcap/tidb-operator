@@ -107,7 +107,7 @@ func (ro *Options) loadTidbClusterData(ctx context.Context, restorePath string, 
 	}
 
 	if ro.TLSClient {
-		if !ro.InsecureSkipVerify {
+		if !ro.SkipClientCA {
 			args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		}
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)))
