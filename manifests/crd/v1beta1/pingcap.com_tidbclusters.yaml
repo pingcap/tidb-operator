@@ -85,6 +85,8 @@ spec:
           type: object
         spec:
           properties:
+            acrossK8s:
+              type: boolean
             affinity:
               properties:
                 nodeAffinity:

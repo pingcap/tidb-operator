@@ -286,6 +286,10 @@ type TidbClusterSpec struct {
 	// +optional
 	ClusterDomain string `json:"clusterDomain,omitempty"`
 
+	// AcrossK8s indicates whether deploy TiDB cluster across multiple Kubernetes clusters
+	// +optional
+	AcrossK8s bool `json:"acrossK8s,omitempty"`
+
 	// Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.
 	// +optional
 	Cluster *TidbClusterRef `json:"cluster,omitempty"`
