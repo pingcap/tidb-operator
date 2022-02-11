@@ -409,7 +409,7 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 	return job, nil
 }
 
-func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, insecure bool) (*corev1.ConfigMap, error) {
+func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, skipCA bool) (*corev1.ConfigMap, error) {
 	var initSQL, passwdSet bool
 
 	permitHost := ti.GetPermitHost()
@@ -436,7 +436,7 @@ func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, i
 	}
 	if tlsClientEnabled {
 		initModel.TLS = true
-		initModel.SkipCA = insecure
+		initModel.SkipCA = skipCA
 		initModel.CAPath = path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)
 		initModel.CertPath = path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)
 		initModel.KeyPath = path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)
