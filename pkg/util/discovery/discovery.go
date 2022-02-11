@@ -59,8 +59,8 @@ func IsAPIGroupSupported(discoveryCli discovery.DiscoveryInterface, group string
 // IsAPIGroupVersionResourceSupported checks if given groupVersion and resource is supported by the cluster.
 //
 // you can exec `kubectl api-resources` to find groupVersion and resource.
-func IsAPIGroupVersionResourceSupported(discoveryCli discovery.DiscoveryInterface, groupversion string, resource string) (bool, error) {
-	apiResourceList, err := discoveryCli.ServerResourcesForGroupVersion(groupversion)
+func IsAPIGroupVersionResourceSupported(discoveryCli discovery.DiscoveryInterface, groupVersion string, resource string) (bool, error) {
+	apiResourceList, err := discoveryCli.ServerResourcesForGroupVersion(groupVersion)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return false, nil
