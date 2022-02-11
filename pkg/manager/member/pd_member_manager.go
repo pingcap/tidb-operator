@@ -216,11 +216,17 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	}
 
 	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
-	if !tc.Status.PD.Synced && !templateEqual(newPDSet, oldPDSet) && (NeedForceUpgrade(tc.Annotations) || *oldPDSet.Spec.Replicas < 2) {
-		tc.Status.PD.Phase = v1alpha1.UpgradePhase
-		mngerutils.SetUpgradePartition(newPDSet, 0)
-		errSTS := mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
-		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+	if !tc.Status.PD.Synced && !templateEqual(newPDSet, oldPDSet) {
+		// upgrade forcedly only when `Synced` is false, because unable to upgrade gracefully
+		forceUpgradeAnnoSet := NeedForceUpgrade(tc.Annotations)
+		onlyOnePD := *oldPDSet.Spec.Replicas < 2 && len(tc.Status.PD.PeerMembers) == 0 // it's acceptable to use old record about peer members
+
+		if forceUpgradeAnnoSet || onlyOnePD {
+			tc.Status.PD.Phase = v1alpha1.UpgradePhase
+			mngerutils.SetUpgradePartition(newPDSet, 0)
+			errSTS := mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+		}
 	}
 
 	// Scaling takes precedence over upgrading because:

@@ -862,6 +862,11 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.DNSConfig != nil {
+		in, out := &in.DNSConfig, &out.DNSConfig
+		*out = new(v1.PodDNSConfig)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.TerminationGracePeriodSeconds != nil {
 		in, out := &in.TerminationGracePeriodSeconds, &out.TerminationGracePeriodSeconds
 		*out = new(int64)
@@ -1149,6 +1154,11 @@ func (in *DMClusterSpec) DeepCopyInto(out *DMClusterSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.DNSConfig != nil {
+		in, out := &in.DNSConfig, &out.DNSConfig
+		*out = new(v1.PodDNSConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.PodSecurityContext != nil {
 		in, out := &in.PodSecurityContext, &out.PodSecurityContext
@@ -8400,6 +8410,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.DNSConfig != nil {
+		in, out := &in.DNSConfig, &out.DNSConfig
+		*out = new(v1.PodDNSConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Services != nil {
 		in, out := &in.Services, &out.Services

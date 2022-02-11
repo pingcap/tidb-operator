@@ -1575,6 +1575,12 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -1621,7 +1627,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
 	}
 }
 
@@ -1921,6 +1927,12 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"podSecurityContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PodSecurityContext of the component",
@@ -1966,7 +1978,7 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMDiscoverySpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMDiscoverySpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 
@@ -3467,6 +3479,12 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -3596,7 +3614,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -3885,6 +3903,12 @@ func schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref common.ReferenceCallb
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -3992,7 +4016,7 @@ func schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -5008,6 +5032,12 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -5178,7 +5208,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -5813,6 +5843,12 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -5922,7 +5958,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -7187,6 +7223,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -7323,7 +7365,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CDCConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CDCConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -8003,6 +8045,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -8203,7 +8251,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBInitializer", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBProbe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Lifecycle", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBInitializer", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBProbe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Lifecycle", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -8458,6 +8506,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -8612,7 +8666,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Failover", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitContainerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageClaim", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Failover", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitContainerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageClaim", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -10769,6 +10823,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -10994,7 +11054,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Failover", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Failover", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -11881,6 +11941,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"timezone": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time zone of TiDB cluster Pods Optional: Defaults to UTC",
@@ -11967,7 +12033,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 
@@ -12894,6 +12960,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoringSpec(ref common.ReferenceC
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -12981,7 +13053,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoringSpec(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.NGMonitoringSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.NGMonitoringSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
 	}
 }
 
@@ -13367,6 +13439,12 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 							},
 						},
 					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -13503,7 +13581,7 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Failover", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerConfigWraper", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Failover", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerConfigWraper", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 

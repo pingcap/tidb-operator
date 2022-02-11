@@ -326,6 +326,108 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			err = wait.PollImmediate(time.Second*15, time.Minute*10, tidbIsTLSEnabled(fw, c, ns2, tcName2, ""))
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName2)
 		})
+
+		ginkgo.Context("[Without Local PD]", func() {
+			type subcase struct {
+				name     string
+				changeFn func(tc1 *v1alpha1.TidbCluster, tc2 *v1alpha1.TidbCluster)
+			}
+
+			cases := []subcase{
+				{
+					name:     "all components",
+					changeFn: nil,
+				},
+				{
+					name: "only tidb",
+					changeFn: func(tc1, tc2 *v1alpha1.TidbCluster) {
+						tc2.Spec.TiKV = nil
+						tc2.Spec.TiFlash = nil
+						tc2.Spec.TiCDC = nil
+						tc2.Spec.Pump = nil
+					},
+				},
+				{
+					name: "only tikv",
+					changeFn: func(tc1, tc2 *v1alpha1.TidbCluster) {
+						tc2.Spec.TiDB = nil
+						tc2.Spec.TiFlash = nil
+						tc2.Spec.TiCDC = nil
+						tc2.Spec.Pump = nil
+					},
+				},
+				{
+					name: "only tiflash",
+					changeFn: func(tc1, tc2 *v1alpha1.TidbCluster) {
+						tc2.Spec.TiDB = nil
+						tc2.Spec.TiKV = nil
+						tc2.Spec.TiCDC = nil
+						tc2.Spec.Pump = nil
+					},
+				},
+				{
+					name: "only ticdc",
+					changeFn: func(tc1, tc2 *v1alpha1.TidbCluster) {
+						tc2.Spec.TiDB = nil
+						tc2.Spec.TiKV = nil
+						tc2.Spec.TiFlash = nil
+						tc2.Spec.Pump = nil
+					},
+				},
+				{
+					name: "only pump",
+					changeFn: func(tc1, tc2 *v1alpha1.TidbCluster) {
+						tc2.Spec.TiDB = nil
+						tc2.Spec.TiKV = nil
+						tc2.Spec.TiFlash = nil
+						tc2.Spec.TiCDC = nil
+					},
+				},
+			}
+
+			for _, sc := range cases {
+				ginkgo.It(fmt.Sprintf("Deploy cluster and cluster-2 deploys %s", sc.name), func() {
+					ns1, ns2 := namespaces[0], namespaces[1]
+					tc1 := GetTCForAcrossKubernetes(ns1, "basic-1", version, clusterDomain, nil)
+					tc2 := GetTCForAcrossKubernetes(ns2, "basic-2-without-pd", version, clusterDomain, tc1)
+					tc2.Spec.PD = nil
+
+					if sc.changeFn != nil {
+						sc.changeFn(tc1, tc2)
+					}
+
+					ginkgo.By("Deploy all clusters and wait status to be ready")
+					MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2}, false)
+
+					ginkgo.By("Check deploy status of all clusters")
+					err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
+					framework.ExpectNoError(err, "failed to check status")
+				})
+
+				ginkgo.It(fmt.Sprintf("Deploy cluster with TLS-enabled and cluster-2 deploys %s", sc.name), func() {
+					ns1, ns2 := namespaces[0], namespaces[1]
+					tcName1, tcName2 := "tls-cluster-1", "tls-cluster-2-without-pd"
+					tc1 := GetTCForAcrossKubernetes(ns1, tcName1, version, clusterDomain, nil)
+					tc2 := GetTCForAcrossKubernetes(ns2, tcName2, version, clusterDomain, tc1)
+					tc2.Spec.PD = nil
+
+					if sc.changeFn != nil {
+						sc.changeFn(tc1, tc2)
+					}
+
+					ginkgo.By("Prepare TLS resources for clusters")
+					MustPrepareXK8sTLSResources(genericCli, tc1, []*v1alpha1.TidbCluster{tc2})
+
+					ginkgo.By("Deploy all clusters and wait status to be ready")
+					MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2}, true)
+
+					ginkgo.By("Check deploy status of all clusters")
+					err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
+					framework.ExpectNoError(err, "failed to check status")
+				})
+			}
+
+		})
 	})
 
 	ginkgo.Describe("[Failover]", func() {
@@ -621,7 +723,9 @@ func MustPrepareXK8sTLSResources(cli ctrlCli.Client, initialTC *v1alpha1.TidbClu
 
 func MustCreateXK8sTCWithComponentsReady(cli ctrlCli.Client, oa *tests.OperatorActions, tidbclusters []*v1alpha1.TidbCluster, tlsEnabled bool) {
 	for _, tc := range tidbclusters {
-		tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: tlsEnabled}
+		if tc.Spec.TiDB != nil {
+			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: tlsEnabled}
+		}
 		tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: tlsEnabled}
 		err := cli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
@@ -635,12 +739,18 @@ func MustCreateXK8sTCWithComponentsReady(cli ctrlCli.Client, oa *tests.OperatorA
 }
 
 func CheckClusterDomainEffectWithTimeout(cli versioned.Interface, tidbclusters []*v1alpha1.TidbCluster, interval time.Duration, timeout time.Duration) error {
-	return wait.PollImmediate(interval, timeout, func() (done bool, err error) {
+	var lastErr error
+	err := wait.PollImmediate(interval, timeout, func() (done bool, err error) {
 		if err := CheckClusterDomainEffect(cli, tidbclusters); err != nil {
+			lastErr = err
 			return false, nil
 		}
 		return true, nil
 	})
+	if err != nil {
+		return fmt.Errorf("%s, last error: %v", err, lastErr)
+	}
+	return nil
 }
 
 func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.TidbCluster) error {
@@ -682,7 +792,7 @@ func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.
 
 				// check if member exist in other tc
 				for _, othertc := range tidbclusters {
-					if othertc == tc {
+					if othertc == tc || othertc.Spec.PD == nil {
 						continue
 					}
 					exist := false
@@ -709,7 +819,7 @@ func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.
 
 				// check if store exist in other tc
 				for _, othertc := range tidbclusters {
-					if othertc == tc {
+					if othertc == tc || othertc.Spec.TiKV == nil {
 						continue
 					}
 					exist := false
@@ -738,7 +848,7 @@ func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.
 
 				// check if store exist in other tc
 				for _, othertc := range tidbclusters {
-					if othertc == tc {
+					if othertc == tc || othertc.Spec.TiFlash == nil {
 						continue
 					}
 					exist := false
@@ -773,7 +883,7 @@ func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.
 			// check if member exist in other tc
 			for _, ownMember := range ownMembers {
 				for _, othertc := range tidbclusters {
-					if othertc == tc {
+					if othertc == tc || othertc.Spec.Pump == nil {
 						continue
 					}
 					exist := false

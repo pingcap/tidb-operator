@@ -1851,6 +1851,26 @@ spec:
                     type: object
                   configUpdateStrategy:
                     type: string
+                  dnsConfig:
+                    properties:
+                      nameservers:
+                        items:
+                          type: string
+                        type: array
+                      options:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      searches:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   env:
                     items:
                       properties:
@@ -2597,6 +2617,26 @@ spec:
                     x-kubernetes-list-type: map
                   version:
                     type: string
+                type: object
+              dnsConfig:
+                properties:
+                  nameservers:
+                    items:
+                      type: string
+                    type: array
+                  options:
+                    items:
+                      properties:
+                        name:
+                          type: string
+                        value:
+                          type: string
+                      type: object
+                    type: array
+                  searches:
+                    items:
+                      type: string
+                    type: array
                 type: object
               enablePVReclaim:
                 type: boolean
@@ -4131,6 +4171,26 @@ spec:
                     type: string
                   dataSubDir:
                     type: string
+                  dnsConfig:
+                    properties:
+                      nameservers:
+                        items:
+                          type: string
+                        type: array
+                      options:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      searches:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   env:
                     items:
                       properties:
@@ -6554,6 +6614,26 @@ spec:
                     type: string
                   dataSubDir:
                     type: string
+                  dnsConfig:
+                    properties:
+                      nameservers:
+                        items:
+                          type: string
+                        type: array
+                      options:
+                        items:
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      searches:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   env:
                     items:
                       properties:

@@ -171,7 +171,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 
 	oldSet := oldSetTmp.DeepCopy()
 
-	if err := m.syncTidbClusterStatus(tc, oldSet); err != nil {
+	if err := m.syncTiKVClusterStatus(tc, oldSet); err != nil {
 		return err
 	}
 
@@ -716,8 +716,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
 
-	if tc.HeterogeneousWithoutLocalPD() {
-		// TODO: for across k8s cluster, the start script do not support it now.
+	if tc.HeterogeneousWithLocal() && tc.WithoutLocalPD() {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
 		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
@@ -743,7 +742,7 @@ func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 	return label.New().Instance(instanceName).TiKV()
 }
 
-func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	if set == nil {
 		// skip if not created yet
 		return nil
