@@ -236,7 +236,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 	podSpec.ServiceAccountName = meta.Name
 
 	podSpec.Volumes = append(podSpec.Volumes, baseSpec.AdditionalVolumes()...)
-	if tc, ok := obj.(*v1alpha1.TidbCluster); ok && tc.IsTLSClusterEnabled() {
+	if tc, ok := obj.(*v1alpha1.TidbCluster); ok && tc.IsTLSClusterEnabled() && !tc.WithoutLocalPD() {
 		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
 			Name: "pd-tls",
 			VolumeSource: corev1.VolumeSource{
