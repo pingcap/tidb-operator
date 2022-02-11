@@ -120,7 +120,7 @@ spec:
     group: cert-manager.io
 `
 
-var tidbComponentsCertificatesTmpl = `
+var tidbComponentsOnlyPDCertificatesTmpl = `
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
@@ -153,7 +153,9 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
----
+`
+
+var tidbComponentsExceptPDCertificatesTmpl = `
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
@@ -582,15 +584,29 @@ func InstallXK8sTiDBCertificates(ns, tcName, clusterDomain string) error {
 }
 
 func InstallTiDBComponentsCertificates(ns, tcName string) error {
-	return installCert(tidbComponentsCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
+	err := installCert(tidbComponentsOnlyPDCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
+	if err != nil {
+		return err
+	}
+	return installCert(tidbComponentsExceptPDCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
 }
 
 func installHeterogeneousTiDBComponentsCertificates(ns, tcName string, clusterRef string) error {
-	return installCert(tidbComponentsCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, clusterRef}, ""})
+	err := installCert(tidbComponentsOnlyPDCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, clusterRef}, ""})
+	if err != nil {
+		return err
+	}
+	return installCert(tidbComponentsExceptPDCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, clusterRef}, ""})
 }
 
-func InstallXK8sTiDBComponentsCertificates(ns, tcName, clusterDomain string) error {
-	return installCert(tidbComponentsCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, "." + clusterDomain})
+func InstallXK8sTiDBComponentsCertificates(ns, tcName, clusterDomain string, exceptPD bool) error {
+	if !exceptPD {
+		err := installCert(tidbComponentsOnlyPDCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, ""})
+		if err != nil {
+			return err
+		}
+	}
+	return installCert(tidbComponentsExceptPDCertificatesTmpl, tcCertTmplMeta{tcTmplMeta{ns, tcName, tcName}, "." + clusterDomain})
 }
 
 func installTiDBInitializerCertificates(ns, tcName string) error {
