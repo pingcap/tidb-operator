@@ -41,6 +41,7 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -75,6 +76,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/klog/v2"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
@@ -3694,6 +3696,62 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		err = checkErr
 	}
 
+	return err
+}
+
+func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.TidbCluster, fw portforward.PortForward, timeout, pollInterval time.Duration) error {
+	var checkErr, err error
+	ns := tc.Namespace
+	tcName := tc.Name
+	var localHost string
+	var localPort uint16
+	var cancel context.CancelFunc
+	if fw != nil {
+		localHost, localPort, cancel, err = portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), 4000)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+	}
+	err = wait.Poll(timeout, pollInterval, func() (done bool, err error) {
+		randomPasswordTc, err := oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
+		if err != nil {
+			checkErr = fmt.Errorf("failed to get TidbCluster[%s:%s], error:%v", ns, tcName, err)
+			return false, nil
+		}
+		if randomPasswordTc.Status.TiDB.PasswordInitialized != nil && *randomPasswordTc.Status.TiDB.PasswordInitialized {
+			secretName := controller.TiDBInitSecret(randomPasswordTc.Name)
+			passwordSecret, err := oa.kubeCli.CoreV1().Secrets(ns).Get(context.TODO(), secretName, metav1.GetOptions{})
+			if err != nil {
+				checkErr = fmt.Errorf("failed to get secret %s for cluster %s/%s, err: %s", secretName, ns, tcName, err)
+				return false, nil
+			}
+			password := string(passwordSecret.Data[constants.TidbRootKey])
+			var dsn string
+			if fw != nil {
+				dsn = fmt.Sprintf("root:%s@tcp(%s:%d)/?charset=utf8mb4,utf8&multiStatements=true", password, localHost, localPort)
+			} else {
+				dsn = util.GetDSN(randomPasswordTc, password)
+			}
+			klog.Errorf("tc[%s:%s] random password dsn:%s", tc.Namespace, tc.Name, dsn)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_, err = util.OpenDB(ctx, dsn)
+			if err != nil {
+				if ctx.Err() != nil {
+					checkErr = fmt.Errorf("can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s, context error: %s", ns, randomPasswordTc.Name, err, ctx.Err())
+				} else {
+					checkErr = fmt.Errorf("can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s", ns, randomPasswordTc.Name, err)
+				}
+				return false, err
+			}
+			return true, nil
+		}
+		return false, nil
+	})
+	if err == wait.ErrWaitTimeout {
+		return checkErr
+	}
 	return err
 }
 
