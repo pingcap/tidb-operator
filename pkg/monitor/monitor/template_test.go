@@ -751,13 +751,13 @@ remote_write:
     target_label: node
     replacement: $1
     action: replace
-rule_files:
-- /prometheus-rules/rules/*.rules.yml
 alerting:
   alertmanagers:
   - static_configs:
     - targets:
       - alert-url
+rule_files:
+- /prometheus-rules/rules/*.rules.yml
 `
 	url, _ := client.ParseHostURL("http://localhost:1234")
 	regex, _ := config.NewRegexp("(.+)")

@@ -479,6 +479,9 @@ func addAlertManagerUrl(cfg yaml.MapSlice, cmodel *MonitorConfigModel) yaml.MapS
 
 func RenderPrometheusConfig(model *MonitorConfigModel) (yaml.MapSlice, error) {
 	cfg := newPrometheusConfig(model)
+	if len(model.AlertmanagerURL) > 0 {
+		cfg = addAlertManagerUrl(cfg, model)
+	}
 	rulesPath := []string{
 		"/prometheus-rules/rules/*.rules.yml",
 	}
@@ -491,9 +494,6 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (yaml.MapSlice, error) {
 		Key:   "rule_files",
 		Value: rulesPath,
 	})
-	if len(model.AlertmanagerURL) > 0 {
-		cfg = addAlertManagerUrl(cfg, model)
-	}
 
 	return cfg, nil
 }
