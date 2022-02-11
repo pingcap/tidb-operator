@@ -939,10 +939,10 @@ func (tc *TidbCluster) WithoutLocalPD() bool {
 	return tc.Spec.PD == nil
 }
 
-func (tc *TidbCluster) HeterogeneousWithRemote() bool {
-	return tc.Heterogeneous() && tc.Spec.Cluster.ClusterDomain != ""
+func (tc *TidbCluster) WithoutLocalTiDB() bool {
+	return tc.Spec.TiDB == nil
 }
 
-func (tc *TidbCluster) HeterogeneousWithLocal() bool {
-	return tc.Heterogeneous() && tc.Spec.Cluster.ClusterDomain == ""
+func (tc *TidbCluster) AcrossK8s() bool {
+	return tc.Spec.AcrossK8s
 }
