@@ -141,8 +141,12 @@ func (p *pumpMemberManager) buildBinlogClient(tc *v1alpha1.TidbCluster, control 
 func buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterface) (client *binlog.Client, err error) {
 	var endpoints []string
 	var tlsConfig *tls.Config
-	if tc.HeterogeneousWithoutLocalPD() {
-		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		// connect to pd of other cluster and use own cert
+		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled(),
+			pdapi.TLSCertFromTC(pdapi.Namespace(tc.Namespace), tc.Name),
+			pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
+		)
 	} else {
 		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 	}
@@ -513,12 +517,25 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		scheme = "https"
 	}
 
+	pdDomain := controller.PDMemberName(tc.Name)
+	if tc.AcrossK8s() {
+		pdDomain = controller.PDMemberName(tc.Name) // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
+	}
+
+	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, pdDomain)
+
 	return RenderPumpStartScript(&PumpStartScriptModel{
-		Scheme:        scheme,
-		ClusterName:   tc.Name,
-		LogLevel:      getPumpLogLevel(tc),
-		ClusterDomain: tc.Spec.ClusterDomain,
-		Namespace:     tc.GetNamespace(),
+		CommonModel: CommonModel{
+			AcrossK8s:     tc.AcrossK8s(),
+			ClusterDomain: tc.Spec.ClusterDomain,
+		},
+		Scheme:      scheme,
+		ClusterName: tc.Name,
+		PDAddr:      pdAddr,
+		LogLevel:    getPumpLogLevel(tc),
+		Namespace:   tc.GetNamespace(),
 	})
 }
 

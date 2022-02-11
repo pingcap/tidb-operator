@@ -574,6 +574,43 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
+			name: "can't fast evict leaders when current TiKV Stores are less than 2 but peer stores is exist",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiKV.Synced = false
+				tc.Status.TiKV.StatefulSet.Replicas = 1
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 1
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
+				tc.Status.TiKV.PeerStores = map[string]v1alpha1.TiKVStore{"peer-0": {ID: "peer-0", State: v1alpha1.TiKVStateUp}}
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				oldSet.Status.CurrentReplicas = 1
+				oldSet.Status.UpdatedReplicas = 1
+				oldSet.Spec.Replicas = pointer.Int32Ptr(1)
+				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(2)
+			},
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					if pod.GetName() == TikvPodName(upgradeTcName, 0) {
+						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
+					}
+				}
+			},
+			beginEvictLeaderErr: false,
+			endEvictLeaderErr:   false,
+			updatePodErr:        false,
+			podName:             "upgrader-tikv-0",
+			leaderCount:         10,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).Should(HaveOccurred())
+				g.Expect(err.Error()).Should(ContainSubstring("can not to be upgraded"))
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
+			},
+		},
+		{
 			name: "end leader evict failed",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase

@@ -14,20 +14,23 @@
 package member
 
 import (
+	"context"
 	"crypto/tls"
+	"database/sql"
 	"fmt"
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
-
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -39,6 +42,9 @@ import (
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
+
+	// for sql/driver
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
@@ -105,6 +111,10 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		if err := m.checkTLSClientCert(tc); err != nil {
 			return err
 		}
+	}
+
+	if tc.NeedToSyncTiDBInitializer() {
+		m.syncInitializer(tc)
 	}
 
 	// Sync TiDB StatefulSet
@@ -243,6 +253,110 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	}
 
 	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiDBSTS", newTiDBSet, oldTiDBSet)
+}
+
+func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
+	// set random password
+	ns := tc.Namespace
+	tcName := tc.Name
+	//check endpoints ready
+	isTiDBReady := false
+	eps, epErr := m.deps.EndpointLister.Endpoints(ns).Get(controller.TiDBMemberName(tcName))
+	if epErr != nil {
+		klog.Errorf("Failed to get endpoints %s for cluster %s/%s, err: %s", controller.TiDBMemberName(tcName), ns, tcName, epErr)
+		return
+	}
+	// TiDB service has endpoints
+	if eps != nil && len(eps.Subsets[0].Addresses) > 0 {
+		isTiDBReady = true
+	}
+
+	if !isTiDBReady {
+		klog.Infof("Wait for TiDB ready for cluster %s/%s", ns, tcName)
+		return
+	}
+	// sync password secret
+	var password string
+	secretName := controller.TiDBInitSecret(tcName)
+	secret, err := m.deps.SecretLister.Secrets(ns).Get(secretName)
+	passwordSecretExist := true
+	if err != nil {
+		if errors.IsNotFound(err) {
+			passwordSecretExist = false
+		} else {
+			klog.Errorf("Failed to get secret %s for cluster %s/%s, err: %s", secretName, ns, tcName, epErr)
+			return
+		}
+	}
+
+	if !passwordSecretExist {
+		klog.Infof("Create random password secret for cluster %s/%s", ns, tcName)
+		var secret *corev1.Secret
+		secret, password = m.buildRandomPasswordSecret(tc)
+		err := m.deps.TypedControl.Create(tc, secret)
+		if err != nil {
+			klog.Errorf("Failed to create secret %s for cluster %s:%s, err: %s", secretName, ns, tcName, err)
+			return
+		}
+	} else {
+		password = string(secret.Data[constants.TidbRootKey])
+	}
+	// init password
+	var db *sql.DB
+	dsn := util.GetDSN(tc, "")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	db, err = util.OpenDB(ctx, dsn)
+
+	if err != nil {
+		if strings.Contains(fmt.Sprint(err), "Access denied") {
+			klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s", ns, tcName, err)
+			val := true
+			tc.Status.TiDB.PasswordInitialized = &val
+			return
+		}
+		if ctx.Err() != nil {
+			klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s, context error: %s", ns, tcName, err, ctx.Err())
+		} else {
+			klog.Errorf("Can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s", ns, tcName, err)
+		}
+		return
+	} else {
+		klog.Infof("Set random password for cluster %s/%s", ns, tcName)
+		defer func(db *sql.DB) {
+			err := db.Close()
+			if err != nil {
+				klog.Errorf("Closed db connection for TiDB cluster %s/%s, err: %v", ns, tcName, err)
+			}
+		}(db)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		err = util.SetPassword(ctx, db, password)
+		if err != nil {
+			klog.Errorf("Fail to set TiDB password for TiDB cluster %s/%s, err: %s", ns, tcName, err)
+			return
+		}
+		val := true
+		tc.Status.TiDB.PasswordInitialized = &val
+		klog.Infof("Set password successfully for TiDB cluster %s/%s", ns, tcName)
+	}
+}
+
+func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) (*corev1.Secret, string) {
+
+	s := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            controller.TiDBInitSecret(tc.Name),
+			Namespace:       tc.Namespace,
+			Labels:          label.New().Instance(tc.Name).Labels(),
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+	}
+	password := util.FixedLengthRandomPasswordBytes()
+	s.Data = map[string][]byte{
+		constants.TidbRootKey: password,
+	}
+	return s, string(password)
 }
 
 func (m *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
@@ -400,17 +514,20 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	plugins := tc.Spec.TiDB.Plugins
 	tidbStartScriptModel := &TidbStartScriptModel{
+		CommonModel: CommonModel{
+			AcrossK8s:     tc.AcrossK8s(),
+			ClusterDomain: tc.Spec.ClusterDomain,
+		},
 		EnablePlugin:    len(plugins) > 0,
 		PluginDirectory: "/plugins",
 		PluginList:      strings.Join(plugins, ","),
-		ClusterDomain:   tc.Spec.ClusterDomain,
 	}
 
-	if tc.HeterogeneousWithoutLocalPD() {
-		// FIXME: not work for across k8s cluster without local pd
-		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
-	} else {
-		tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
+	tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
+	if tc.AcrossK8s() {
+		tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
 	}
 
 	startScript, err := RenderTiDBStartScript(tidbStartScriptModel)

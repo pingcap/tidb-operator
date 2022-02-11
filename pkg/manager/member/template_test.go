@@ -25,6 +25,7 @@ func TestRenderTiDBInitStartScript(t *testing.T) {
 		name          string
 		path          string
 		clusterDomain string
+		acrossK8s     bool
 		result        string
 	}{
 		{
@@ -83,9 +84,10 @@ exec /tidb-server ${ARGS}
 `,
 		},
 		{
-			name:          "basic with cluster domain",
+			name:          "heterogeneous across k8s",
 			path:          "cluster01-pd:2379",
 			clusterDomain: "test.com",
+			acrossK8s:     true,
 			result: `#!/bin/sh
 
 # This script is used to start tidb containers in kubernetes cluster
@@ -151,9 +153,12 @@ exec /tidb-server ${ARGS}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			model := TidbStartScriptModel{
-				EnablePlugin:  false,
-				ClusterDomain: tt.clusterDomain,
-				Path:          "cluster01-pd:2379",
+				CommonModel: CommonModel{
+					AcrossK8s:     tt.acrossK8s,
+					ClusterDomain: tt.clusterDomain,
+				},
+				EnablePlugin: false,
+				Path:         "cluster01-pd:2379",
 			}
 			script, err := RenderTiDBStartScript(&model)
 			if err != nil {
@@ -174,6 +179,7 @@ func TestRenderTiKVStartScript(t *testing.T) {
 		dataSubDir          string
 		result              string
 		clusterDomain       string
+		acrossK8s           bool
 	}{
 		{
 			name:                "disable AdvertiseAddr",
@@ -338,11 +344,12 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name:                "non-empty clusterDomain",
+			name:                "heterogeneous across k8s",
 			enableAdvertiseAddr: true,
 			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc.cluster.local",
 			dataSubDir:          "data",
 			clusterDomain:       "cluster.local",
+			acrossK8s:           true,
 			result: `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
@@ -408,11 +415,14 @@ exec /tikv-server ${ARGS}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			model := TiKVStartScriptModel{
+				CommonModel: CommonModel{
+					AcrossK8s:     tt.acrossK8s,
+					ClusterDomain: tt.clusterDomain,
+				},
 				PDAddress:                 "http://${CLUSTER_NAME}-pd:2379",
 				EnableAdvertiseStatusAddr: tt.enableAdvertiseAddr,
 				AdvertiseStatusAddr:       tt.advertiseAddr,
 				DataDir:                   filepath.Join(tikvDataVolumeMountPath, tt.dataSubDir),
-				ClusterDomain:             tt.clusterDomain,
 			}
 			script, err := RenderTiKVStartScript(&model)
 			if err != nil {
@@ -430,8 +440,9 @@ func TestRenderPDStartScript(t *testing.T) {
 		name          string
 		scheme        string
 		dataSubDir    string
-		result        string
 		clusterDomain string
+		acrossK8s     bool
+		result        string
 	}{
 		{
 			name:   "https scheme",
@@ -720,8 +731,11 @@ exec /pd-server ${ARGS}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			model := PDStartScriptModel{
-				DataDir:       filepath.Join(pdDataVolumeMountPath, tt.dataSubDir),
-				ClusterDomain: tt.clusterDomain,
+				CommonModel: CommonModel{
+					AcrossK8s:     tt.acrossK8s,
+					ClusterDomain: tt.clusterDomain,
+				},
+				DataDir: filepath.Join(pdDataVolumeMountPath, tt.dataSubDir),
 			}
 			script, err := RenderPDStartScript(&model)
 			if err != nil {
@@ -739,15 +753,18 @@ func TestRenderPumpStartScript(t *testing.T) {
 		name          string
 		scheme        string
 		clusterName   string
+		pdAddr        string
 		LogLevel      string
 		Namespace     string
 		clusterDomain string
+		acrossK8s     bool
 		result        string
 	}{
 		{
 			name:          "basic",
 			scheme:        "http",
 			clusterName:   "demo",
+			pdAddr:        "http://demo-pd:2379",
 			LogLevel:      "INFO",
 			Namespace:     "demo-ns",
 			clusterDomain: "",
@@ -767,14 +784,74 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "basic with cluster domain",
+			name:          "heterogeneous across k8s",
 			scheme:        "http",
 			clusterName:   "demo",
+			pdAddr:        "http://demo-pd:2379",
 			LogLevel:      "INFO",
 			Namespace:     "demo-ns",
 			clusterDomain: "demo.com",
+			acrossK8s:     true,
 			result: `
 pd_url="http://demo-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="demo-discovery.demo-ns:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
+pd_url=$result
+
+set -euo pipefail
+
+/pump \
+-pd-urls=$pd_url \
+-L=INFO \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc.demo.com:8250 \
+-config=/etc/pump/pump.toml \
+-data-dir=/data \
+-log-file=
+
+if [ $? == 0 ]; then
+    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
+    tail -f /dev/null
+fi`,
+		},
+		{
+			name:          "specify pd addr",
+			scheme:        "http",
+			clusterName:   "demo",
+			pdAddr:        "http://target-pd:2379",
+			LogLevel:      "INFO",
+			Namespace:     "demo-ns",
+			clusterDomain: "",
+			result: `set -euo pipefail
+
+/pump \
+-pd-urls=http://target-pd:2379 \
+-L=INFO \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump:8250 \
+-config=/etc/pump/pump.toml \
+-data-dir=/data \
+-log-file=
+
+if [ $? == 0 ]; then
+    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
+    tail -f /dev/null
+fi`,
+		},
+		{
+			name:          "specify pd addr when heterogeneous across k8s",
+			scheme:        "http",
+			clusterName:   "demo",
+			pdAddr:        "http://target-pd:2379",
+			LogLevel:      "INFO",
+			Namespace:     "demo-ns",
+			clusterDomain: "demo.com",
+			acrossK8s:     true,
+			result: `
+pd_url="http://target-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="demo-discovery.demo-ns:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
@@ -804,11 +881,15 @@ fi`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			model := PumpStartScriptModel{
-				Scheme:        tt.scheme,
-				ClusterName:   tt.clusterName,
-				LogLevel:      tt.LogLevel,
-				Namespace:     tt.Namespace,
-				ClusterDomain: tt.clusterDomain,
+				CommonModel: CommonModel{
+					AcrossK8s:     tt.acrossK8s,
+					ClusterDomain: tt.clusterDomain,
+				},
+				Scheme:      tt.scheme,
+				ClusterName: tt.clusterName,
+				PDAddr:      tt.pdAddr,
+				LogLevel:    tt.LogLevel,
+				Namespace:   tt.Namespace,
 			}
 			script, err := RenderPumpStartScript(&model)
 			if err != nil {

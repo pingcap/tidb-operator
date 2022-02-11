@@ -262,6 +262,10 @@ type TidbClusterSpec struct {
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
 	// Time zone of TiDB cluster Pods
 	// Optional: Defaults to UTC
 	// +optional
@@ -281,6 +285,10 @@ type TidbClusterSpec struct {
 	// Optional: Defaults to ""
 	// +optional
 	ClusterDomain string `json:"clusterDomain,omitempty"`
+
+	// AcrossK8s indicates whether deploy TiDB cluster across multiple Kubernetes clusters
+	// +optional
+	AcrossK8s bool `json:"acrossK8s,omitempty"`
 
 	// Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.
 	// +optional
@@ -776,6 +784,15 @@ type TiDBSpec struct {
 	// the default behavior is like setting type as "tcp"
 	// +optional
 	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
+
+	// Initializer is the init configurations of TiDB
+	//
+	// +optional
+	Initializer *TiDBInitializer `json:"initializer,omitempty"`
+}
+
+type TiDBInitializer struct {
+	CreatePassword bool `json:"createPassword,omitempty"`
 }
 
 const (
@@ -965,6 +982,10 @@ type ComponentSpec struct {
 	// Additional volume mounts of component pod.
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
 	// Value must be non-negative integer. The value zero indicates delete immediately.
 	// If this value is nil, the default grace period will be used instead.
@@ -1133,6 +1154,7 @@ type TiDBStatus struct {
 	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
 	Image                    string                       `json:"image,omitempty"`
+	PasswordInitialized      *bool                        `json:"passwordInitialized,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -2072,6 +2094,10 @@ type DMClusterSpec struct {
 	// Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional
