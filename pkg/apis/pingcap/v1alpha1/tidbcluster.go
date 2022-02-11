@@ -732,6 +732,10 @@ func (tc *TidbCluster) IsTLSClusterEnabled() bool {
 	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
 }
 
+func (tc *TidbCluster) NeedToSyncTiDBInitializer() bool {
+	return tc.Spec.TiDB != nil && tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && tc.Status.TiDB.PasswordInitialized == nil
+}
+
 func (tc *TidbCluster) Scheme() string {
 	if tc.IsTLSClusterEnabled() {
 		return "https"
@@ -927,6 +931,18 @@ func (tc *TidbCluster) TiCDCLogLevel() string {
 	return "info"
 }
 
-func (tc *TidbCluster) HeterogeneousWithoutLocalPD() bool {
-	return tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 && tc.Spec.PD == nil
+func (tc *TidbCluster) Heterogeneous() bool {
+	return tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0
+}
+
+func (tc *TidbCluster) WithoutLocalPD() bool {
+	return tc.Spec.PD == nil
+}
+
+func (tc *TidbCluster) WithoutLocalTiDB() bool {
+	return tc.Spec.TiDB == nil
+}
+
+func (tc *TidbCluster) AcrossK8s() bool {
+	return tc.Spec.AcrossK8s
 }

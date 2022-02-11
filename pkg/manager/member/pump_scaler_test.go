@@ -25,31 +25,39 @@ func TestPumpAdvertiseAddr(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type Case struct {
-		clusterName string
-		domain      string
-		result      string
+		name string
+
+		model  *PumpStartScriptModel
+		result string
 	}
 
 	tests := []Case{
 		{
-			clusterName: "cname",
-			result:      "pod.cname-pump:8250",
+			name: "parse addr from basic startup script",
+			model: &PumpStartScriptModel{
+				ClusterName: "cname",
+				Namespace:   "ns",
+			},
+			result: "pod.cname-pump:8250",
 		},
 		{
-			clusterName: "cname",
-			domain:      "cluster.local",
-			result:      "pod.cname-pump.ns.svc.cluster.local:8250",
+			name: "parse addr from heterogeneous startup script",
+			model: &PumpStartScriptModel{
+				CommonModel: CommonModel{
+					AcrossK8s:     true,
+					ClusterDomain: "cluster.local",
+				},
+				ClusterName: "cname",
+				Namespace:   "ns",
+			},
+			result: "pod.cname-pump.ns.svc.cluster.local:8250",
 		},
 	}
 
 	for _, test := range tests {
-		model := &PumpStartScriptModel{
-			ClusterName:   test.clusterName,
-			ClusterDomain: test.domain,
-			Namespace:     "ns",
-		}
+		t.Logf("test case: %s", test.name)
 
-		data, err := RenderPumpStartScript(model)
+		data, err := RenderPumpStartScript(test.model)
 		g.Expect(err).Should(BeNil())
 
 		pod := &corev1.Pod{

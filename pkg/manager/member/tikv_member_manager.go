@@ -171,7 +171,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 
 	oldSet := oldSetTmp.DeepCopy()
 
-	if err := m.syncTidbClusterStatus(tc, oldSet); err != nil {
+	if err := m.syncTiKVClusterStatus(tc, oldSet); err != nil {
 		return err
 	}
 
@@ -707,21 +707,25 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	scriptModel := &TiKVStartScriptModel{
+		CommonModel: CommonModel{
+			AcrossK8s:     tc.AcrossK8s(),
+			ClusterDomain: tc.Spec.ClusterDomain,
+		},
 		EnableAdvertiseStatusAddr: false,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
-		ClusterDomain:             tc.Spec.ClusterDomain,
 	}
 	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
 		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc" + controller.FormatClusterDomain(tc.Spec.ClusterDomain)
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
 
-	if tc.HeterogeneousWithoutLocalPD() {
-		// TODO: for across k8s cluster, the start script do not support it now.
-		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
-	} else {
-		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
+	scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
+	if tc.AcrossK8s() {
+		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
 	}
+
 	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
 	if err != nil {
 		return nil, err
@@ -743,7 +747,7 @@ func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 	return label.New().Instance(instanceName).TiKV()
 }
 
-func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	if set == nil {
 		// skip if not created yet
 		return nil

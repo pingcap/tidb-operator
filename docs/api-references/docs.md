@@ -896,6 +896,20 @@ Optional: Defaults to UTC</p>
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -1687,6 +1701,20 @@ Can be overrode by labels in the specific component spec.</p>
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timezone</code></br>
 <em>
 string
@@ -1734,6 +1762,18 @@ string
 <em>(Optional)</em>
 <p>ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
 Optional: Defaults to &ldquo;&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>acrossK8s</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AcrossK8s indicates whether deploy TiDB cluster across multiple Kubernetes clusters</p>
 </td>
 </tr>
 <tr>
@@ -4483,6 +4523,20 @@ Note that the following env names cannot be used and will be overridden by TiDB 
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>terminationGracePeriodSeconds</code></br>
 <em>
 int64
@@ -5260,6 +5314,20 @@ Optional: Defaults to UTC</p>
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
 </td>
 </tr>
 <tr>
@@ -14624,6 +14692,33 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
+<h3 id="tidbinitializer">TiDBInitializer</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>createPassword</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tidbmember">TiDBMember</h3>
 <p>
 (<em>Appears on:</em>
@@ -15140,6 +15235,20 @@ TiDBProbe
 the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>initializer</code></br>
+<em>
+<a href="#tidbinitializer">
+TiDBInitializer
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Initializer is the init configurations of TiDB</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbstatus">TiDBStatus</h3>
@@ -15221,6 +15330,16 @@ int32
 <code>image</code></br>
 <em>
 string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>passwordInitialized</code></br>
+<em>
+bool
 </em>
 </td>
 <td>
@@ -21137,6 +21256,20 @@ Can be overrode by labels in the specific component spec.</p>
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timezone</code></br>
 <em>
 string
@@ -21184,6 +21317,18 @@ string
 <em>(Optional)</em>
 <p>ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
 Optional: Defaults to &ldquo;&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>acrossK8s</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AcrossK8s indicates whether deploy TiDB cluster across multiple Kubernetes clusters</p>
 </td>
 </tr>
 <tr>

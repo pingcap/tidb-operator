@@ -76,14 +76,16 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
 	}
 
-	if *oldSet.Spec.Replicas < 2 {
+	tc, _ := meta.(*v1alpha1.TidbCluster)
+
+	// upgrade tikv without evicting leader when only one tikv is exist
+	// NOTE: If `TiKVStatus.Synced`` is false, it's acceptable to use old record about peer stores
+	if *oldSet.Spec.Replicas < 2 && len(tc.Status.TiKV.PeerStores) == 0 {
 		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for tc %s/%s", ns, tcName)
 		status.Phase = v1alpha1.UpgradePhase
 		mngerutils.SetUpgradePartition(newSet, 0)
 		return nil
 	}
-
-	tc, _ := meta.(*v1alpha1.TidbCluster)
 
 	if !status.Synced {
 		return fmt.Errorf("cluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
