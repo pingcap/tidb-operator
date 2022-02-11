@@ -14,6 +14,8 @@
 package v1alpha1
 
 import (
+	"time"
+
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
@@ -533,17 +535,15 @@ type QueueConfig struct {
 	// Maximum number of samples per send.
 	MaxSamplesPerSend int `json:"maxSamplesPerSend,omitempty"`
 
-	// BatchSendDeadline is the maximum time a sample will wait in buffer.
-	BatchSendDeadline string `json:"batchSendDeadline,omitempty"`
+	// Maximum time sample will wait in buffer.
+	BatchSendDeadline *time.Duration `json:"batchSendDeadline,omitempty"`
 
-	// MaxRetries is the maximum number of times to retry a batch on recoverable errors.
+	// Max number of times to retry a batch on recoverable errors.
 	MaxRetries int `json:"maxRetries,omitempty"`
 
-	// MinBackoff is the initial retry delay. Gets doubled for every retry.
-	MinBackoff string `json:"minBackoff,omitempty"`
-
-	// MaxBackoff is the maximum retry delay.
-	MaxBackoff string `json:"maxBackoff,omitempty"`
+	// On recoverable errors, backoff exponentially.
+	MinBackoff *time.Duration `json:"minBackoff,omitempty"`
+	MaxBackoff *time.Duration `json:"maxBackoff,omitempty"`
 }
 
 func (tm *TidbMonitor) GetShards() int32 {

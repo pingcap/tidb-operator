@@ -11731,11 +11731,11 @@ int
 <td>
 <code>batchSendDeadline</code></br>
 <em>
-string
+time.Duration
 </em>
 </td>
 <td>
-<p>BatchSendDeadline is the maximum time a sample will wait in buffer.</p>
+<p>Maximum time sample will wait in buffer.</p>
 </td>
 </tr>
 <tr>
@@ -11746,29 +11746,28 @@ int
 </em>
 </td>
 <td>
-<p>MaxRetries is the maximum number of times to retry a batch on recoverable errors.</p>
+<p>Max number of times to retry a batch on recoverable errors.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>minBackoff</code></br>
 <em>
-string
+time.Duration
 </em>
 </td>
 <td>
-<p>MinBackoff is the initial retry delay. Gets doubled for every retry.</p>
+<p>On recoverable errors, backoff exponentially.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>maxBackoff</code></br>
 <em>
-string
+time.Duration
 </em>
 </td>
 <td>
-<p>MaxBackoff is the maximum retry delay.</p>
 </td>
 </tr>
 </tbody>

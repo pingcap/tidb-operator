@@ -1481,8 +1481,6 @@ remote_write:
     replacement: $1
     action: replace
 rule_files:
-- /prometheus-rules/rules/*.rules.yml
-rule_files:
 - /prometheus-external-rules/*.rules.yml
 `
 	url, _ := client.ParseHostURL("http://localhost:1234")
@@ -2230,6 +2228,8 @@ scrape_configs:
   - source_labels: [__tmp_hash]
     regex: $(SHARD)
     action: keep
+rule_files:
+- /prometheus-rules/rules/*.rules.yml
 `
 	model := &MonitorConfigModel{
 		ClusterInfos: []ClusterRegexInfo{

@@ -1694,11 +1694,13 @@ spec:
                       queueConfig:
                         properties:
                           batchSendDeadline:
-                            type: string
+                            format: int64
+                            type: integer
                           capacity:
                             type: integer
                           maxBackoff:
-                            type: string
+                            format: int64
+                            type: integer
                           maxRetries:
                             type: integer
                           maxSamplesPerSend:
@@ -1706,7 +1708,8 @@ spec:
                           maxShards:
                             type: integer
                           minBackoff:
-                            type: string
+                            format: int64
+                            type: integer
                           minShards:
                             type: integer
                         type: object

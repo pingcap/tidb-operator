@@ -479,32 +479,20 @@ func addAlertManagerUrl(cfg yaml.MapSlice, cmodel *MonitorConfigModel) yaml.MapS
 
 func RenderPrometheusConfig(model *MonitorConfigModel) (yaml.MapSlice, error) {
 	cfg := newPrometheusConfig(model)
-	if len(model.AlertmanagerURL) > 0 {
-		cfg = append(cfg, yaml.MapItem{
-			Key: "rule_files",
-			Value: []string{
-				"/prometheus-rules/rules/*.rules.yml",
-			},
-		})
-		cfg = addAlertManagerUrl(cfg, model)
-
-	} else if model.EnableAlertRules {
-		// Add alert rules when `EnableAlertRules` enabled even if AlertManager not configured.
-		cfg = append(cfg, yaml.MapItem{
-			Key: "rule_files",
-			Value: []string{
-				"/prometheus-rules/rules/*.rules.yml",
-			},
-		})
-
+	rulesPath := []string{
+		"/prometheus-rules/rules/*.rules.yml",
 	}
 	if model.EnableExternalRuleConfigs {
-		cfg = append(cfg, yaml.MapItem{
-			Key: "rule_files",
-			Value: []string{
-				"/prometheus-external-rules/*.rules.yml",
-			},
-		})
+		rulesPath = []string{
+			"/prometheus-external-rules/*.rules.yml",
+		}
+	}
+	cfg = append(cfg, yaml.MapItem{
+		Key:   "rule_files",
+		Value: rulesPath,
+	})
+	if len(model.AlertmanagerURL) > 0 {
+		cfg = addAlertManagerUrl(cfg, model)
 	}
 
 	return cfg, nil
