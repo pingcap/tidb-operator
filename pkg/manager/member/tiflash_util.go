@@ -158,9 +158,19 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 
 		// flash
 		tidbStatusAddr := fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(name), ns)
-		if tc.Heterogeneous() && tc.WithoutLocalTiDB() {
-			tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080",
-				controller.TiDBMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+		if tc.WithoutLocalTiDB() {
+			// TODO: support first cluster which don't contain TiDB when deploy cluster across mutli Kubernete clusters
+			if tc.Heterogeneous() {
+				if tc.AcrossK8s() {
+					// use headless service of TiDB in reference cluster
+					tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080",
+						controller.TiDBPeerMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+				} else {
+					// use service of TiDB in reference cluster
+					tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080",
+						controller.TiDBMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+				}
+			}
 		}
 		common.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
 		common.SetIfNil("flash.service_addr", "0.0.0.0:3930")
@@ -313,7 +323,7 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	config.SetIfNil("https_port", int64(8123))
 	config.SetIfNil("http_port", int64(8123))
 	config.SetIfNil("interserver_http_port", int64(9009))
-	setTiFlashFlashConfigDefault(config, ref, clusterName, ns, clusterDomain, noLocalTiDB)
+	setTiFlashFlashConfigDefault(config, ref, clusterName, ns, clusterDomain, noLocalTiDB, acrossK8s)
 	setTiFlashLoggerConfigDefault(config)
 	setTiFlashApplicationConfigDefault(config)
 
@@ -342,12 +352,19 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	config.SetIfNil("profiles.default.use_uncompressed_cache", int64(0))
 }
 
-func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain string, noLocalTiDB bool) {
-	var tidbStatusAddr string
-	if ref != nil && noLocalTiDB {
-		tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080", controller.TiDBMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
-	} else {
-		tidbStatusAddr = fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(clusterName), ns)
+func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain string, noLocalTiDB, acrossK8s bool) {
+	tidbStatusAddr := fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(clusterName), ns)
+	if noLocalTiDB {
+		// TODO: support first cluster without TiDB when deploy cluster across mutli Kubernete clusters
+		if ref != nil {
+			if acrossK8s {
+				// use headless service of TiDB in reference cluster
+				tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080", controller.TiDBPeerMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+			} else {
+				// use service of TiDB in reference cluster
+				tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080", controller.TiDBMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+			}
+		}
 	}
 
 	config.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
