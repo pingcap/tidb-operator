@@ -717,7 +717,7 @@ func MustPrepareXK8sTLSResources(cli ctrlCli.Client, initialTC *v1alpha1.TidbClu
 		err := InstallXK8sTiDBCertificates(tc.Namespace, tc.Name, tc.Spec.ClusterDomain)
 		framework.ExpectNoError(err, "failed to install tidb server and client certificate for cluster: %q", tc.Name)
 
-		err = InstallXK8sTiDBComponentsCertificates(tc.Namespace, tc.Name, tc.Spec.ClusterDomain)
+		err = InstallXK8sTiDBComponentsCertificates(tc.Namespace, tc.Name, tc.Spec.ClusterDomain, tc.Spec.PD == nil)
 		framework.ExpectNoError(err, "failed to install tidb components certificates for cluster: %q", tc.Name)
 	}
 }
