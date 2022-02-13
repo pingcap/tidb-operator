@@ -88,7 +88,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
-		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -221,19 +221,19 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	// wait both tidbcluster ready
 	err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
 	framework.ExpectNoError(err, "failed to wait for TidbCluster tcFrom ready")
-	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBLatest)
+	blockWriterFrom := newBlockWriterPodConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBLatest)
 
 	err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
 	framework.ExpectNoError(err, "failed to wait for TidbCluster tcTo ready")
-	clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBLatest)
+	blockWriterTo := newBlockWriterPodConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBLatest)
 
 	// import some data to sql with blockwriter
-	ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
-	oa.BeginInsertDataToOrDie(&clusterFrom)
+	ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", blockWriterFrom.ClusterName))
+	oa.BeginInsertDataToOrDieInfo(&blockWriterFrom)
 	err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "sbtest", "block_writer"))
-	framework.ExpectNoError(err, "failed to insert data into cluster clusterFrom: %v", clusterFrom)
-	ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterFrom.ClusterName))
-	oa.StopInsertDataTo(&clusterFrom)
+	framework.ExpectNoError(err, "failed to insert data into cluster clusterFrom: %v", blockWriterFrom)
+	ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", blockWriterFrom.ClusterName))
+	oa.StopInsertDataToInfo(&blockWriterFrom)
 
 	// prepare for create backup/restore CRD
 	backupRole := fixture.GetBackupRole(tcFrom, serviceAccountName)
@@ -255,7 +255,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	_, err = c.CoreV1().Secrets(ns).Create(context.TODO(), storageSecret, metav1.CreateOptions{})
 	framework.ExpectNoError(err, "failed to create storage secrets in ns %s, %v", ns, storageSecret)
 
-	ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
+	ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", blockWriterFrom.ClusterName))
 	// create backup CRD to process backup
 	backup := storage.ProvideBackup(tcFrom, backupSecret, brType)
 	if tlsEnabled {
@@ -305,7 +305,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	})
 	framework.ExpectNoError(err, "failed to check backup is")
 
-	ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
+	ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", blockWriterTo.ClusterName))
 	// create restore CR to process restore
 	restore, err := storage.ProvideRestore(tcTo, restoreSecret, brType)
 	framework.ExpectNoError(err, "failed to create restore in TidbCluster %s", tcTo)
@@ -335,9 +335,9 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	})
 	framework.ExpectNoError(err, "failed to check restore")
 
-	ginkgo.By(fmt.Sprintf("Check the correctness of cluster %q and %q", clusterFrom.ClusterName, clusterTo.ClusterName))
-	isSame, err := oa.DataIsTheSameAs(&clusterFrom, &clusterTo)
-	framework.ExpectNoError(err, "failed to check the correctness of cluster %q and %q", clusterFrom.ClusterName, clusterTo.ClusterName)
+	ginkgo.By(fmt.Sprintf("Check the correctness of cluster %q and %q", blockWriterFrom.ClusterName, blockWriterTo.ClusterName))
+	isSame, err := oa.DataIsTheSameAsInfo(&blockWriterFrom, &blockWriterTo)
+	framework.ExpectNoError(err, "failed to check the correctness of cluster %q and %q", blockWriterFrom.ClusterName, blockWriterTo.ClusterName)
 	if !isSame {
 		framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
 	}

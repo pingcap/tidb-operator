@@ -48,7 +48,7 @@ type DrainerConfig struct {
 	TLSCluster bool
 }
 
-func (d *DrainerConfig) DrainerHelmString(m map[string]string, source *TidbClusterConfig) string {
+func (d *DrainerConfig) DrainerHelmString(m map[string]string, source *SourceTidbClusterConfig) string {
 
 	set := map[string]string{
 		"clusterName":    source.ClusterName,

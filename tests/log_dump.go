@@ -15,77 +15,13 @@ package tests
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-func (oa *OperatorActions) DumpAllLogs(operatorInfo *OperatorConfig, testClusters []*TidbClusterConfig) error {
-	logPath := fmt.Sprintf("/%s/%s", oa.cfg.LogDir, "operator-stability")
-	if _, err := os.Stat(logPath); os.IsNotExist(err) {
-		err = os.MkdirAll(logPath, os.ModePerm)
-		if err != nil {
-			return err
-		}
-	}
-
-	// dump all resources info
-	resourceLogFile, err := os.Create(filepath.Join(logPath, "resources"))
-	if err != nil {
-		return err
-	}
-	defer resourceLogFile.Close()
-	resourceWriter := bufio.NewWriter(resourceLogFile)
-	dumpLog("kubectl get po -owide -n kube-system", resourceWriter)
-	dumpLog(fmt.Sprintf("kubectl get po -owide -n %s", operatorInfo.Namespace), resourceWriter)
-	dumpLog("kubectl get pv", resourceWriter)
-	dumpLog("kubectl get pv -oyaml", resourceWriter)
-	dumpedNamespace := map[string]bool{}
-	for _, testCluster := range testClusters {
-		if _, exist := dumpedNamespace[testCluster.Namespace]; !exist {
-			dumpLog(fmt.Sprintf("kubectl get po,pvc,svc,cm,cronjobs,jobs,statefulsets,tidbclusters -owide -n %s", testCluster.Namespace), resourceWriter)
-			dumpLog(fmt.Sprintf("kubectl get po,pvc,svc,cm,cronjobs,jobs,statefulsets,tidbclusters -n %s -oyaml", testCluster.Namespace), resourceWriter)
-			dumpedNamespace[testCluster.Namespace] = true
-		}
-	}
-
-	// dump operator components's log
-	operatorPods, err := oa.kubeCli.CoreV1().Pods(operatorInfo.Namespace).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for _, pod := range operatorPods.Items {
-		err := DumpPod(logPath, &pod)
-		if err != nil {
-			return err
-		}
-	}
-
-	// dump all test clusters's logs
-	dumpedNamespace = map[string]bool{}
-	for _, testCluster := range testClusters {
-		if _, exist := dumpedNamespace[testCluster.Namespace]; !exist {
-			clusterPodList, err := oa.kubeCli.CoreV1().Pods(testCluster.Namespace).List(context.TODO(), metav1.ListOptions{})
-			if err != nil {
-				return err
-			}
-			for _, pod := range clusterPodList.Items {
-				err := DumpPod(logPath, &pod)
-				if err != nil {
-					return err
-				}
-			}
-			dumpedNamespace[testCluster.Namespace] = true
-		}
-	}
-
-	return nil
-}
 
 // DumpPod dumps logs for a pod.
 func DumpPod(logPath string, pod *corev1.Pod) error {

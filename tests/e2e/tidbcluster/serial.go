@@ -131,7 +131,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				WebhookEnabled:    true,
 				StsWebhookEnabled: true,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
@@ -233,7 +233,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				SchedulerReplicas:         tests.IntPtr(0),
 				ControllerManagerReplicas: tests.IntPtr(0),
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
@@ -429,7 +429,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				Image:           fmt.Sprintf("pingcap/tidb-operator:%s", operatorVersion),
 				ImagePullPolicy: v1.PullIfNotPresent,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.DeployReleasedCRDOrDie(operatorVersion)
@@ -621,7 +621,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				Tag:             cfg.OperatorTag,
 				ImagePullPolicy: v1.PullIfNotPresent,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.InstallCRDOrDie(ocfg)
 			ginkgo.By("Installing tidb-operator")
@@ -829,7 +829,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				Tag:         operatorVersion,
 				Image:       fmt.Sprintf("pingcap/tidb-operator:%s", operatorVersion),
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.DeployReleasedCRDOrDie(operatorVersion)

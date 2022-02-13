@@ -116,7 +116,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
-		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -139,7 +139,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				LogLevel:    "4",
 				TestMode:    true,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
@@ -591,7 +591,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					"controllerManager.tiflashFailoverPeriod": failoverPeriod.String(),
 				},
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
@@ -1008,7 +1008,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					"AdvancedStatefulSet=true",
 				},
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie(ocfg)
