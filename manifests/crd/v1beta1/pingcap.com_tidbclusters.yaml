@@ -12203,6 +12203,8 @@ spec:
                       type: boolean
                     enabled:
                       type: boolean
+                    skipInternalClientCA:
+                      type: boolean
                   type: object
                 tolerations:
                   items:
