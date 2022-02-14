@@ -466,15 +466,15 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, namespa
 		}
 
 		ginkgo.By("Installing tidb components certificates")
-		err = e2etc.InstallXK8sTiDBComponentsCertificates(ns1, name, clusterDomain)
+		err = e2etc.InstallXK8sTiDBComponentsCertificates(ns1, name, clusterDomain, false)
 		if err != nil {
 			return err
 		}
-		err = e2etc.InstallXK8sTiDBComponentsCertificates(ns2, name, clusterDomain)
+		err = e2etc.InstallXK8sTiDBComponentsCertificates(ns2, name, clusterDomain, false)
 		if err != nil {
 			return err
 		}
-		err = e2etc.InstallXK8sTiDBComponentsCertificates(ns3, name, clusterDomain)
+		err = e2etc.InstallXK8sTiDBComponentsCertificates(ns3, name, clusterDomain, false)
 		if err != nil {
 			return err
 		}
