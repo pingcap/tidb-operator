@@ -107,7 +107,9 @@ func (ro *Options) loadTidbClusterData(ctx context.Context, restorePath string, 
 	}
 
 	if ro.TLSClient {
-		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)))
+		if !ro.SkipClientCA {
+			args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)))
+		}
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}

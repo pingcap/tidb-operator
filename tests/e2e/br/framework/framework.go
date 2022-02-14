@@ -124,7 +124,7 @@ func (f *Framework) BeforeEach() {
 		f.RESTMapper.Reset()
 
 		f.YAMLClient = yamlutil.New(f.DynamicClient, f.RESTMapper)
-		f.TLSManager = tlsutil.New(f.YAMLClient)
+		f.TLSManager = tlsutil.New(f.YAMLClient, f.GenericClient)
 
 		f.PortForwarder, err = portforward.NewPortForwarderForConfig(config)
 		if err != nil {

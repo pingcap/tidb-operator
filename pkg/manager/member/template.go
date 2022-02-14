@@ -373,7 +373,9 @@ port = 4000
 retry_count = 0
 for i in range(0, 10):
     try:
-{{- if .TLS }}
+{{- if and .TLS .SkipCA }}
+        conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
+{{- else if .TLS }}
         conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
 {{- else }}
         conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, charset='utf8mb4')
@@ -420,6 +422,7 @@ type TiDBInitStartScriptModel struct {
 	PasswordSet bool
 	InitSQL     bool
 	TLS         bool
+	SkipCA      bool
 	CAPath      string
 	CertPath    string
 	KeyPath     string
