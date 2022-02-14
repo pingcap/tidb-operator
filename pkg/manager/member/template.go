@@ -151,6 +151,11 @@ encoded_domain_url=` + "`" + `echo ${domain}:2380 | base64 | tr "\n" " " | sed "
 elapseTime=0
 period=1
 threshold=30
+nslookup_args="${domain}"
+if [ -n "${NSLOOKUP_NAMESERVER}" ]; then
+    echo "Using name server: ${NSLOOKUP_NAMESERVER}"
+    nslookup_args="${nslookup_args} ${NSLOOKUP_NAMESERVER}"
+fi
 while true; do
 sleep ${period}
 elapseTime=$(( elapseTime+period ))
@@ -161,7 +166,7 @@ echo "waiting for pd cluster ready timeout" >&2
 exit 1
 fi
 
-if nslookup ${domain} 2>/dev/null
+if nslookup ${nslookup_args} 2>/dev/null
 then
 echo "nslookup domain ${domain}.svc success"
 break
