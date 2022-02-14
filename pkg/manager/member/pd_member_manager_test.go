@@ -2081,6 +2081,63 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "tidb version nightly, tidb client tls is enabled and skip ca is configured",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-nightly",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:nightly",
+						},
+						Config: v1alpha1.NewPDConfig(),
+					},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled:              true,
+							SkipInternalClientCA: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-nightly-pd",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "tls-nightly",
+						"app.kubernetes.io/component":  "pd",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "tls-nightly",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file": `[dashboard]
+  tidb-cert-path = "/var/lib/tidb-client-tls/tls.crt"
+  tidb-key-path = "/var/lib/tidb-client-tls/tls.key"
+`,
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
