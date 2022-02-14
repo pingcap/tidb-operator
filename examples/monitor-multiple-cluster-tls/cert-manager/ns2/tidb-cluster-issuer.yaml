@@ -1,4 +1,4 @@
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: ns2-selfsigned-ca-issuer
@@ -6,7 +6,7 @@ metadata:
 spec:
   selfSigned: {}
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: ns2-ca
@@ -19,7 +19,7 @@ spec:
     name: ns2-selfsigned-ca-issuer
     kind: Issuer
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: ns2-tidb-issuer
