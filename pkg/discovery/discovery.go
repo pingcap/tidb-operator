@@ -114,8 +114,8 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
-		// Initialize the PD cluster with the FQDN format service record if deploy across k8s.
-		if tc.AcrossK8s() {
+		// Initialize the PD cluster with the FQDN format service record if deploy across k8s or tc.Spec.ClusterDomain is set
+		if tc.AcrossK8s() || tc.Spec.ClusterDomain != "" {
 			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
 		}
 		// Initialize the PD cluster in the normal format service record.
