@@ -62,6 +62,13 @@ func SpecifyClient(clientURL, clientKey string) Option {
 	}
 }
 
+// UseHeadlessService indicates that the clients use headless service to connect to PD.
+func UseHeadlessService(headless bool) Option {
+	return func(c *clientConfig) {
+		c.headlessSvc = headless
+	}
+}
+
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
@@ -74,6 +81,7 @@ type PDControlInterface interface {
 
 type clientConfig struct {
 	clusterDomain string
+	headlessSvc   bool // use headless service to connect, default to use service
 
 	// clientURL is PD/Etcd addr. If it is empty, will generate from target TC
 	clientURL string
@@ -103,7 +111,7 @@ func (c *clientConfig) completeForPDClient(namespace Namespace, tcName string) {
 	}
 
 	if c.clientURL == "" {
-		c.clientURL = genClientUrl(namespace, tcName, scheme, c.clusterDomain)
+		c.clientURL = genClientUrl(namespace, tcName, scheme, c.clusterDomain, c.headlessSvc)
 	}
 	if c.clientKey == "" {
 		c.clientKey = genClientKey(scheme, namespace, tcName, c.clusterDomain)
@@ -120,7 +128,7 @@ func (c *clientConfig) completeForEtcdClient(namespace Namespace, tcName string)
 	}
 
 	if c.clientURL == "" {
-		c.clientURL = genEtcdClientUrl(namespace, tcName, c.clusterDomain)
+		c.clientURL = genEtcdClientUrl(namespace, tcName, c.clusterDomain, c.headlessSvc)
 	}
 	if c.clientKey == "" {
 		c.clientKey = genEtcdClientKey(namespace, tcName, c.clusterDomain, c.tlsEnable)
@@ -241,26 +249,37 @@ func genClientKey(scheme string, namespace Namespace, clusterName string, cluste
 }
 
 func genEtcdClientKey(namespace Namespace, clusterName string, clusterDomain string, tlsEnabled bool) string {
-	return fmt.Sprintf("%s.%s.%v", clusterName, string(namespace), tlsEnabled)
+	if len(clusterDomain) == 0 {
+		return fmt.Sprintf("%s.%s.%v", clusterName, string(namespace), tlsEnabled)
+	}
+	return fmt.Sprintf("%s.%s.%s.%v", clusterName, string(namespace), clusterDomain, tlsEnabled)
 }
 
 // genClientUrl builds the url of cluster pd client
-func genClientUrl(namespace Namespace, clusterName string, scheme string, clusterDomain string) string {
+func genClientUrl(namespace Namespace, clusterName string, scheme string, clusterDomain string, headlessSvc bool) string {
+	svc := "pd"
+	if headlessSvc {
+		svc = "pd-peer"
+	}
 	if len(namespace) == 0 {
-		return fmt.Sprintf("%s://%s-pd:2379", scheme, clusterName)
+		return fmt.Sprintf("%s://%s-%s:2379", scheme, clusterName, svc)
 	}
 	if len(clusterDomain) == 0 {
-		return fmt.Sprintf("%s://%s-pd.%s:2379", scheme, clusterName, string(namespace))
+		return fmt.Sprintf("%s://%s-%s.%s:2379", scheme, clusterName, svc, string(namespace))
 	}
-	return fmt.Sprintf("%s://%s-pd-peer.%s.svc.%s:2379", scheme, clusterName, string(namespace), clusterDomain)
+	return fmt.Sprintf("%s://%s-%s.%s.svc.%s:2379", scheme, clusterName, svc, string(namespace), clusterDomain)
 }
 
 // genEtcdClientUrl builds the url of cluster pd etcd client
-func genEtcdClientUrl(namespace Namespace, clusterName, clusterDomain string) string {
-	if clusterDomain == "" {
-		return fmt.Sprintf("%s-pd.%s:2379", clusterName, string(namespace))
+func genEtcdClientUrl(namespace Namespace, clusterName, clusterDomain string, headlessSvc bool) string {
+	svc := "pd"
+	if headlessSvc {
+		svc = "pd-peer"
 	}
-	return fmt.Sprintf("%s-pd-peer.%s.svc.%s:2379", clusterName, string(namespace), clusterDomain)
+	if clusterDomain == "" {
+		return fmt.Sprintf("%s-%s.%s:2379", clusterName, svc, string(namespace))
+	}
+	return fmt.Sprintf("%s-%s.%s.svc.%s:2379", clusterName, svc, string(namespace), clusterDomain)
 }
 
 // FakePDControl implements a fake version of PDControlInterface.
