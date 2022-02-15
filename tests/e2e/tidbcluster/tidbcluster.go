@@ -1883,6 +1883,64 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			})
 			framework.ExpectNoError(err, "failed to wait heterogeneous tc to join origin tc")
 		})
+
+		ginkgo.It("should join cluster with setting cluster domain", func() {
+			// Create TidbCluster with NodePort to check whether node port would change
+			ginkgo.By("Deploy origin tc")
+			originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBLatest)
+			originTc.Spec.PD.Replicas = 1
+			originTc.Spec.TiKV.Replicas = 1
+			originTc.Spec.TiDB.Replicas = 1
+			err := genericCli.Create(context.TODO(), originTc)
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+			ginkgo.By("Deploy heterogeneous tc")
+			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBLatest)
+			heterogeneousTc = fixture.AddTiFlashForTidbCluster(heterogeneousTc)
+			heterogeneousTc = fixture.AddPumpForTidbCluster(heterogeneousTc)
+			heterogeneousTc = fixture.AddTiCDCForTidbCluster(heterogeneousTc)
+			heterogeneousTc.Spec.PD = nil
+			heterogeneousTc.Spec.TiKV.Replicas = 1
+			heterogeneousTc.Spec.TiDB.Replicas = 1
+			heterogeneousTc.Spec.TiFlash.Replicas = 1
+			heterogeneousTc.Spec.Pump.Replicas = 1
+			heterogeneousTc.Spec.TiCDC.Replicas = 1
+			heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+				Name: originTc.Name,
+			}
+			heterogeneousTc.Spec.ClusterDomain = "cluster.local"
+
+			err = genericCli.Create(context.TODO(), heterogeneousTc)
+			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
+			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
+
+			ginkgo.By("Wait for heterogeneous tc to join origin tc")
+			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+				var err error
+				if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
+					log.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
+					return false, nil
+				}
+				log.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
+				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, originTc.Name, false)
+				framework.ExpectNoError(err, "create pdClient error")
+				defer cancel()
+				storeInfo, err := pdClient.GetStores()
+				if err != nil {
+					log.Logf("failed to get stores, %v", err)
+				}
+				if storeInfo.Count != 3 {
+					log.Logf("failed to check stores (current: %d)", storeInfo.Count)
+					return false, nil
+				}
+				log.Logf("check heterogeneous tc successfully")
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait heterogeneous tc to join origin tc")
+		})
 	})
 
 	ginkgo.Context("[Feature: CDC]", func() {

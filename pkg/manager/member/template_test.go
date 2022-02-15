@@ -84,7 +84,63 @@ exec /tidb-server ${ARGS}
 `,
 		},
 		{
-			name:          "heterogeneous across k8s",
+			name:          "non-empty cluster domain",
+			path:          "cluster01-pd:2379",
+			clusterDomain: "test.com",
+			acrossK8s:     false,
+			result: `#!/bin/sh
+
+# This script is used to start tidb containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+ARGS="--store=tikv \
+--advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.test.com \
+--host=0.0.0.0 \
+--path=cluster01-pd:2379 \
+--config=/etc/tidb/tidb.toml
+"
+
+if [[ X${BINLOG_ENABLED:-} == Xtrue ]]
+then
+    ARGS="${ARGS} --enable-binlog=true"
+fi
+
+SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
+if [[ ! -z "${SLOW_LOG_FILE}" ]]
+then
+    ARGS="${ARGS} --log-slow-query=${SLOW_LOG_FILE:-}"
+fi
+
+echo "start tidb-server ..."
+echo "/tidb-server ${ARGS}"
+exec /tidb-server ${ARGS}
+`,
+		},
+		{
+			name:          "across k8s with setting cluster domain",
 			path:          "cluster01-pd:2379",
 			clusterDomain: "test.com",
 			acrossK8s:     true,
@@ -126,6 +182,71 @@ done
 
 ARGS="--store=tikv \
 --advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.test.com \
+--host=0.0.0.0 \
+--path=${result} \
+
+--config=/etc/tidb/tidb.toml
+"
+
+if [[ X${BINLOG_ENABLED:-} == Xtrue ]]
+then
+    ARGS="${ARGS} --enable-binlog=true"
+fi
+
+SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
+if [[ ! -z "${SLOW_LOG_FILE}" ]]
+then
+    ARGS="${ARGS} --log-slow-query=${SLOW_LOG_FILE:-}"
+fi
+
+echo "start tidb-server ..."
+echo "/tidb-server ${ARGS}"
+exec /tidb-server ${ARGS}
+`,
+		},
+		{
+			name:          "across k8s without setting cluster domain",
+			path:          "cluster01-pd:2379",
+			clusterDomain: "",
+			acrossK8s:     true,
+			result: `#!/bin/sh
+
+# This script is used to start tidb containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+pd_url="cluster01-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
+ARGS="--store=tikv \
+--advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc \
 --host=0.0.0.0 \
 --path=${result} \
 
@@ -344,7 +465,62 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name:                "heterogeneous across k8s",
+			name:                "set cluster domain",
+			enableAdvertiseAddr: false,
+			advertiseAddr:       "",
+			clusterDomain:       "cluster.local",
+			acrossK8s:           false,
+			result: `#!/bin/sh
+
+# This script is used to start tikv containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+	echo "entering debug mode."
+	tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+ARGS="--pd=http://${CLUSTER_NAME}-pd:2379 \
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:20160 \
+--addr=0.0.0.0:20160 \
+--status-addr=0.0.0.0:20180 \
+--data-dir=/var/lib/tikv \
+--capacity=${CAPACITY} \
+--config=/etc/tikv/tikv.toml
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tikv-server ..."
+echo "/tikv-server ${ARGS}"
+exec /tikv-server ${ARGS}
+`,
+		},
+		{
+			name:                "across k8s with setting cluster domain",
 			enableAdvertiseAddr: true,
 			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc.cluster.local",
 			dataSubDir:          "data",
@@ -395,6 +571,73 @@ ARGS="--pd=${result} \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \
 --advertise-status-addr=test-tikv-1.test-tikv-peer.namespace.svc.cluster.local:20180 \
+--data-dir=/var/lib/tikv/data \
+--capacity=${CAPACITY} \
+--config=/etc/tikv/tikv.toml
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tikv-server ..."
+echo "/tikv-server ${ARGS}"
+exec /tikv-server ${ARGS}
+`,
+		},
+		{
+			name:                "across k8s without setting cluster domain",
+			enableAdvertiseAddr: true,
+			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc",
+			dataSubDir:          "data",
+			clusterDomain:       "",
+			acrossK8s:           true,
+			result: `#!/bin/sh
+
+# This script is used to start tikv containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+	echo "entering debug mode."
+	tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+pd_url="http://${CLUSTER_NAME}-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
+
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
+ARGS="--pd=${result} \
+
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
+--addr=0.0.0.0:20160 \
+--status-addr=0.0.0.0:20180 \
+--advertise-status-addr=test-tikv-1.test-tikv-peer.namespace.svc:20180 \
 --data-dir=/var/lib/tikv/data \
 --capacity=${CAPACITY} \
 --config=/etc/tikv/tikv.toml
@@ -726,6 +969,198 @@ echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `,
 		},
+		{
+			name:          "across k8s without setting cluster domain",
+			scheme:        "http",
+			dataSubDir:    "data",
+			acrossK8s:     true,
+			clusterDomain: "",
+			result: `#!/bin/sh
+
+# This script is used to start pd containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+# the general form of variable PEER_SERVICE_NAME is: "<clusterName>-pd-peer"
+cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'` + "`" + `
+domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
+discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
+encoded_domain_url=` + "`" + `echo ${domain}:2380 | base64 | tr "\n" " " | sed "s/ //g"` + "`" + `
+elapseTime=0
+period=1
+threshold=30
+while true; do
+sleep ${period}
+elapseTime=$(( elapseTime+period ))
+
+if [[ ${elapseTime} -ge ${threshold} ]]
+then
+echo "waiting for pd cluster ready timeout" >&2
+exit 1
+fi
+
+if nslookup ${domain} 2>/dev/null
+then
+echo "nslookup domain ${domain}.svc success"
+break
+else
+echo "nslookup domain ${domain} failed" >&2
+fi
+done
+
+ARGS="--data-dir=/var/lib/pd/data \
+--name=${domain} \
+--peer-urls=://0.0.0.0:2380 \
+--advertise-peer-urls=://${domain}:2380 \
+--client-urls=://0.0.0.0:2379 \
+--advertise-client-urls=://${domain}:2379 \
+--config=/etc/pd/pd.toml \
+"
+
+if [[ -f /var/lib/pd/data/join ]]
+then
+# The content of the join file is:
+#   demo-pd-0=http://demo-pd-0.demo-pd-peer.demo.svc:2380,demo-pd-1=http://demo-pd-1.demo-pd-peer.demo.svc:2380
+# The --join args must be:
+#   --join=http://demo-pd-0.demo-pd-peer.demo.svc:2380,http://demo-pd-1.demo-pd-peer.demo.svc:2380
+join=` + "`" + `cat /var/lib/pd/data/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=${join%,}
+ARGS="${ARGS} --join=${join}"
+elif [[ ! -d /var/lib/pd/data/member/wal ]]
+then
+until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for discovery service to return start args ..."
+sleep $((RANDOM % 5))
+done
+ARGS="${ARGS}${result}"
+fi
+
+echo "starting pd-server ..."
+sleep $((RANDOM % 10))
+echo "/pd-server ${ARGS}"
+exec /pd-server ${ARGS}
+`,
+		},
+		{
+			name:          "across k8s with setting cluster domain",
+			scheme:        "http",
+			dataSubDir:    "data",
+			acrossK8s:     true,
+			clusterDomain: "cluster.local",
+			result: `#!/bin/sh
+
+# This script is used to start pd containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+# the general form of variable PEER_SERVICE_NAME is: "<clusterName>-pd-peer"
+cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'` + "`" + `
+domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local"
+discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
+encoded_domain_url=` + "`" + `echo ${domain}:2380 | base64 | tr "\n" " " | sed "s/ //g"` + "`" + `
+elapseTime=0
+period=1
+threshold=30
+while true; do
+sleep ${period}
+elapseTime=$(( elapseTime+period ))
+
+if [[ ${elapseTime} -ge ${threshold} ]]
+then
+echo "waiting for pd cluster ready timeout" >&2
+exit 1
+fi
+
+if nslookup ${domain} 2>/dev/null
+then
+echo "nslookup domain ${domain}.svc success"
+break
+else
+echo "nslookup domain ${domain} failed" >&2
+fi
+done
+
+ARGS="--data-dir=/var/lib/pd/data \
+--name=${domain} \
+--peer-urls=://0.0.0.0:2380 \
+--advertise-peer-urls=://${domain}:2380 \
+--client-urls=://0.0.0.0:2379 \
+--advertise-client-urls=://${domain}:2379 \
+--config=/etc/pd/pd.toml \
+"
+
+if [[ -f /var/lib/pd/data/join ]]
+then
+# The content of the join file is:
+#   demo-pd-0=http://demo-pd-0.demo-pd-peer.demo.svc:2380,demo-pd-1=http://demo-pd-1.demo-pd-peer.demo.svc:2380
+# The --join args must be:
+#   --join=http://demo-pd-0.demo-pd-peer.demo.svc:2380,http://demo-pd-1.demo-pd-peer.demo.svc:2380
+join=` + "`" + `cat /var/lib/pd/data/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=${join%,}
+ARGS="${ARGS} --join=${join}"
+elif [[ ! -d /var/lib/pd/data/member/wal ]]
+then
+until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for discovery service to return start args ..."
+sleep $((RANDOM % 5))
+done
+ARGS="${ARGS}${result}"
+fi
+
+echo "starting pd-server ..."
+sleep $((RANDOM % 10))
+echo "/pd-server ${ARGS}"
+exec /pd-server ${ARGS}
+`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -784,7 +1219,31 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "heterogeneous across k8s",
+			name:          "non-empty cluster domain",
+			scheme:        "http",
+			clusterName:   "demo",
+			pdAddr:        "http://demo-pd:2379",
+			LogLevel:      "INFO",
+			Namespace:     "demo-ns",
+			clusterDomain: "demo.com",
+			acrossK8s:     false,
+			result: `set -euo pipefail
+
+/pump \
+-pd-urls=http://demo-pd:2379 \
+-L=INFO \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc.demo.com:8250 \
+-config=/etc/pump/pump.toml \
+-data-dir=/data \
+-log-file=
+
+if [ $? == 0 ]; then
+    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
+    tail -f /dev/null
+fi`,
+		},
+		{
+			name:          "across k8s with setting cluster domain",
 			scheme:        "http",
 			clusterName:   "demo",
 			pdAddr:        "http://demo-pd:2379",
@@ -809,6 +1268,41 @@ set -euo pipefail
 -pd-urls=$pd_url \
 -L=INFO \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc.demo.com:8250 \
+-config=/etc/pump/pump.toml \
+-data-dir=/data \
+-log-file=
+
+if [ $? == 0 ]; then
+    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
+    tail -f /dev/null
+fi`,
+		},
+		{
+			name:          "across k8s without setting cluster domain",
+			scheme:        "http",
+			clusterName:   "demo",
+			pdAddr:        "http://demo-pd:2379",
+			LogLevel:      "INFO",
+			Namespace:     "demo-ns",
+			clusterDomain: "",
+			acrossK8s:     true,
+			result: `
+pd_url="http://demo-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="demo-discovery.demo-ns:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+
+pd_url=$result
+
+set -euo pipefail
+
+/pump \
+-pd-urls=$pd_url \
+-L=INFO \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc:8250 \
 -config=/etc/pump/pump.toml \
 -data-dir=/data \
 -log-file=

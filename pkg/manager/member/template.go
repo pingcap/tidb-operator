@@ -177,7 +177,7 @@ fi {{- else}}{{.CheckDomainScript}}{{end}}
 done
 
 ARGS="--data-dir={{ .DataDir }} \
---name={{- if .ClusterDomain }}${domain}{{- else }}${POD_NAME}{{- end }} \
+--name={{- if or .AcrossK8s .ClusterDomain }}${domain}{{- else }}${POD_NAME}{{- end }} \
 --peer-urls={{ .Scheme }}://0.0.0.0:2380 \
 --advertise-peer-urls={{ .Scheme }}://${domain}:2380 \
 --client-urls={{ .Scheme }}://0.0.0.0:2379 \
@@ -357,6 +357,9 @@ type PumpStartScriptModel struct {
 func (pssm *PumpStartScriptModel) FormatPumpZone() string {
 	if pssm.ClusterDomain != "" {
 		return fmt.Sprintf(".%s.svc.%s", pssm.Namespace, pssm.ClusterDomain)
+	}
+	if pssm.ClusterDomain == "" && pssm.AcrossK8s {
+		return fmt.Sprintf(".%s.svc", pssm.Namespace)
 	}
 	return ""
 }
