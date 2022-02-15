@@ -152,7 +152,8 @@ elapseTime=0
 period=1
 threshold=30
 nslookup_args="${domain}"
-if [ -n "${NSLOOKUP_NAMESERVER}" ]; then
+# Check if NSLOOKUP_NAMESERVER is defined
+if [ ${NSLOOKUP_NAMESERVER:-unset} != "unset" ]; then
     echo "Using name server: ${NSLOOKUP_NAMESERVER}"
     nslookup_args="${nslookup_args} ${NSLOOKUP_NAMESERVER}"
 fi
