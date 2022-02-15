@@ -46,7 +46,7 @@ spec:
     #  requests:
     #    cpu: 50m
     #    memory: 64Mi
-    version: v5.3.0
+    version: v5.4.0
   kubePrometheusURL: ""
   nodeSelector: {}
   persistent: true
