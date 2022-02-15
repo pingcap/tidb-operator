@@ -39,3 +39,5 @@ find ./charts -name "*\.yaml"| xargs $SED_BIN -i "s/$TIDB_OLD/$TIDB_NEW/g"
 $SED_BIN -i "s/$TIDB_OLD/$TIDB_NEW/g" images/tidb-backup-manager/Dockerfile
 
 find ./examples -name "*\.yaml"| xargs $SED_BIN -i "s/$DM_OLD/$DM_NEW/g"
+
+find ./ -name "*\.mod" | xargs $SED_BIN -i -E "s/(github.com\/pingcap\/tidb-operator\/.+) ($OPERATOR_OLD)/\1 $OPERATOR_NEW/g"
