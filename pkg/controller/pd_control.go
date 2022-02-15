@@ -24,6 +24,7 @@ func GetPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.Tid
 		return pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled(),
 			pdapi.TLSCertFromTC(pdapi.Namespace(tc.GetNamespace()), tc.GetName()),
 			pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
+			pdapi.UseHeadlessService(tc.Spec.AcrossK8s),
 		)
 	}
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
