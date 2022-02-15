@@ -2411,6 +2411,8 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
+                startUpScriptVersion:
+                  type: string
                 statefulSetUpdateStrategy:
                   type: string
                 storageClassName:
@@ -13813,136 +13815,9 @@ spec:
                     - name
                     - mountPath
                     type: object
-<<<<<<< HEAD
                   type: array
                 additionalVolumes:
                   items:
-=======
-                  serviceAccount:
-                    type: string
-                  startUpScriptVersion:
-                    enum:
-                    - ""
-                    - v1
-                    type: string
-                  statefulSetUpdateStrategy:
-                    type: string
-                  storageClassName:
-                    type: string
-                  storageVolumes:
-                    items:
-                      properties:
-                        mountPath:
-                          type: string
-                        name:
-                          type: string
-                        storageClassName:
-                          type: string
-                        storageSize:
-                          type: string
-                      required:
-                      - name
-                      - storageSize
-                      type: object
-                    type: array
-                  terminationGracePeriodSeconds:
-                    format: int64
-                    type: integer
-                  tlsClientSecretName:
-                    type: string
-                  tolerations:
-                    items:
-                      properties:
-                        effect:
-                          type: string
-                        key:
-                          type: string
-                        operator:
-                          type: string
-                        tolerationSeconds:
-                          format: int64
-                          type: integer
-                        value:
-                          type: string
-                      type: object
-                    type: array
-                  topologySpreadConstraints:
-                    items:
-                      properties:
-                        topologyKey:
-                          type: string
-                      required:
-                      - topologyKey
-                      type: object
-                    type: array
-                    x-kubernetes-list-map-keys:
-                    - topologyKey
-                    x-kubernetes-list-type: map
-                  version:
-                    type: string
-                required:
-                - replicas
-                type: object
-              pdAddresses:
-                items:
-                  type: string
-                type: array
-              podManagementPolicy:
-                type: string
-              podSecurityContext:
-                properties:
-                  fsGroup:
-                    format: int64
-                    type: integer
-                  fsGroupChangePolicy:
-                    type: string
-                  runAsGroup:
-                    format: int64
-                    type: integer
-                  runAsNonRoot:
-                    type: boolean
-                  runAsUser:
-                    format: int64
-                    type: integer
-                  seLinuxOptions:
-                    properties:
-                      level:
-                        type: string
-                      role:
-                        type: string
-                      type:
-                        type: string
-                      user:
-                        type: string
-                    type: object
-                  seccompProfile:
-                    properties:
-                      localhostProfile:
-                        type: string
-                      type:
-                        type: string
-                    required:
-                    - type
-                    type: object
-                  supplementalGroups:
-                    items:
-                      format: int64
-                      type: integer
-                    type: array
-                  sysctls:
-                    items:
-                      properties:
-                        name:
-                          type: string
-                        value:
-                          type: string
-                      required:
-                      - name
-                      - value
-                      type: object
-                    type: array
-                  windowsOptions:
->>>>>>> ea8e7872d... Add startUpScriptVersion for pd spec (#4379)
                     properties:
                       awsElasticBlockStore:
                         properties:
