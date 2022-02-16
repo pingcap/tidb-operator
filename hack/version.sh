@@ -15,6 +15,8 @@
 
 set -euo pipefail
 
+echo "test"
+
 # -----------------------------------------------------------------------------
 # Version management helpers.  These functions help to set the
 # following variables:
