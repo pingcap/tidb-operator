@@ -132,13 +132,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	// basic deploy, scale out, scale in, change configuration tests
-	ginkgo.Describe("when using version", func() {
+	ginkgo.Context("[TiDBCluster: Basic]", func() {
 		versions := []string{utilimage.TiDBV3, utilimage.TiDBLatest}
 		versions = append(versions, utilimage.TiDBPreviousVersions...)
 		for _, version := range versions {
 			version := version
 			versionDashed := strings.ReplaceAll(version, ".", "-")
-			ginkgo.Context(version, func() {
+			ginkgo.Context(fmt.Sprintf("[Version: %s]", version), func() {
 				ginkgo.It("should scale out tc successfully", func() {
 					ginkgo.By("Deploy a basic tc")
 					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
@@ -1095,6 +1095,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
+			ginkgo.By("Ensure configs of all components are not changed")
+			newTC, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+			tc.Spec.TiDB.Config.Set("log.file.max-backups", int64(3))
+			framework.ExpectNoError(err, "failed to get TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.PD.Config, tc.Spec.PD.Config, "pd config isn't equal of TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.TiKV.Config, tc.Spec.TiKV.Config, "tikv config isn't equal of TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.TiDB.Config, tc.Spec.TiDB.Config, "tidb config isn't equal of TidbCluster: %s", tc.Name)
+			framework.ExpectEqual(newTC.Spec.Pump.Config, tc.Spec.Pump.Config, "pump config isn't equal of TidbCluster: %s", tc.Name)
+
 			ginkgo.By("Ensure Dashboard use custom secret")
 			foundSecretName := false
 			pdSts, err := stsGetter.StatefulSets(ns).Get(controller.PDMemberName(tcName), metav1.GetOptions{})
@@ -1705,7 +1714,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out TiCDC", ns, fromTc.Name)
 
 			ginkgo.By("Check PVCs are recreated for newly scaled out TiCDC")
-			err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
 				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(metav1.ListOptions{LabelSelector: pvcSelector.String()})
 				framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 				if len(pvcs.Items) == 0 {
@@ -1714,9 +1723,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				for _, pvc := range pvcs.Items {
 					annotations := pvc.GetObjectMeta().GetAnnotations()
-					log.Logf("pvc annotations: %+v", annotations)
-					_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
-					framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+					v, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+					if ok {
+						log.Logf("PVC %s/%s also have annotation tidb.pingcap.com/pvc-defer-deleting=%s", pvc.GetNamespace(), pvc.GetName(), v)
+						return false, nil
+					}
 					pvcUIDString := pvcUIDs[pvc.Name]
 					framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
 				}
@@ -1852,9 +1863,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			for _, pvc := range pvcs.Items {
 				annotations := pvc.GetObjectMeta().GetAnnotations()
-				log.Logf("pvc annotations: %+v", annotations)
-				_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
-				framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+				v, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
+				if ok {
+					log.Logf("PVC %s/%s also have annotation tidb.pingcap.com/pvc-defer-deleting=%s", pvc.GetNamespace(), pvc.GetName(), v)
+					return false, nil
+				}
 				pvcUIDString := pvcUIDs[pvc.Name]
 				framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
 			}
@@ -2235,7 +2248,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
 		// when scale-in, replica is first set to 5 and changed to 3
 		// when scale-out, replica is first set to 3 and changed to 5
-		ginkgo.Context("while concurrently scale PD", func() {
+		utilginkgo.ContextWhenFocus("while concurrently scale PD", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
 				op := op
@@ -2298,7 +2311,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 
 		// similar to PD scale-in/scale-out case above, need to check no evict leader scheduler left
-		ginkgo.Context("while concurrently scale TiKV", func() {
+		utilginkgo.ContextWhenFocus("while concurrently scale TiKV", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
 				op := op

@@ -50,10 +50,10 @@ type ticdcMemberManager struct {
 }
 
 func getTiCDCConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	config := tc.Spec.TiCDC.Config
-	if config == nil {
+	if tc.Spec.TiCDC.Config == nil {
 		return nil, nil
 	}
+	config := tc.Spec.TiCDC.Config.DeepCopy()
 
 	confText, err := config.MarshalTOML()
 	if err != nil {
@@ -197,7 +197,7 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	return UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSts, oldSts)
+	return UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCDCSTS", newSts, oldSts)
 }
 
 func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) error {

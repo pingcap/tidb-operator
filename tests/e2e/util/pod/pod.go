@@ -35,15 +35,24 @@ func PodsAreChanged(c kubernetes.Interface, pods []v1.Pod) wait.ConditionFunc {
 				}
 				return false, err
 			}
-			if podNew.UID != pod.UID {
-				return true, nil
-			}
-			if !apiequality.Semantic.DeepEqual(pod.Spec, podNew.Spec) {
+			changed := IsPodsChanged(pod, *podNew)
+			if changed {
 				return true, nil
 			}
 		}
 		return false, nil
 	}
+}
+
+func IsPodsChanged(old v1.Pod, cur v1.Pod) bool {
+	if cur.UID != old.UID {
+		return true
+	}
+	if !apiequality.Semantic.DeepEqual(cur.Spec, old.Spec) {
+		return true
+	}
+
+	return false
 }
 
 // WaitForPodsAreChanged waits for given pods are changed.

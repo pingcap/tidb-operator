@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/label"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -1165,6 +1166,186 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 			},
 			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
 		},
+		{
+			name: "dm-master init containers",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							InitContainers: []corev1.Container{{Name: "init-container"}},
+						},
+					},
+					Worker: &v1alpha1.WorkerSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.InitContainers).Should(HaveLen(1))
+				g.Expect(sts.Spec.Template.Spec.InitContainers[0].Name).Should(Equal("init-container"))
+			},
+		},
+		{
+			name: "dm-master additionalVolumeMounts",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							AdditionalVolumeMounts: []corev1.VolumeMount{{Name: "additional-volume-mount"}},
+						},
+					},
+					Worker: &v1alpha1.WorkerSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				found := false
+				for _, vm := range sts.Spec.Template.Spec.Containers[0].VolumeMounts {
+					if vm.Name == "additional-volume-mount" {
+						found = true
+					}
+				}
+				g.Expect(found).To(BeTrue())
+			},
+		},
+		{
+			name: "dm-master TerminationGracePeriodSeconds",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							TerminationGracePeriodSeconds: pointer.Int64Ptr(123),
+						},
+					},
+					Worker: &v1alpha1.WorkerSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				var expect = int64(123)
+				g.Expect(sts.Spec.Template.Spec.TerminationGracePeriodSeconds).To(Equal(&expect))
+			},
+		},
+		{
+			name: "dm-master without component spec fields",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					ImagePullSecrets:          []corev1.LocalObjectReference{{Name: "image-pull-secret"}},
+					HostNetwork:               pointer.BoolPtr(true),
+					Affinity:                  &corev1.Affinity{NodeAffinity: &corev1.NodeAffinity{}},
+					PriorityClassName:         pointer.StringPtr("priority-class"),
+					SchedulerName:             "custom-scheduler",
+					NodeSelector:              map[string]string{"k1": "v1"},
+					Annotations:               map[string]string{"k1": "v1"},
+					Labels:                    map[string]string{"k1": "v1"},
+					Tolerations:               []corev1.Toleration{{Key: "toleration-key"}},
+					PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)},
+					StatefulSetUpdateStrategy: apps.OnDeleteStatefulSetStrategyType,
+					Master:                    v1alpha1.MasterSpec{},
+					Worker:                    &v1alpha1.WorkerSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				podTemp := sts.Spec.Template
+				podSpec := sts.Spec.Template.Spec
+				g.Expect(podSpec.ImagePullSecrets).To(Equal([]corev1.LocalObjectReference{{Name: "image-pull-secret"}}))
+				g.Expect(podSpec.HostNetwork).To(BeTrue())
+				g.Expect(podSpec.Affinity.NodeAffinity).NotTo(BeNil())
+				g.Expect(podSpec.PriorityClassName).To(Equal("priority-class"))
+				g.Expect(podSpec.SchedulerName).To(Equal("custom-scheduler"))
+				g.Expect(podSpec.NodeSelector).To(Equal(map[string]string{"k1": "v1"}))
+				g.Expect(podTemp.Annotations).To(Equal(map[string]string{"k1": "v1",
+					"prometheus.io/port":   "8261",
+					"prometheus.io/scrape": "true",
+					"prometheus.io/path":   "/metrics"}))
+				g.Expect(podTemp.Labels).To(Equal(map[string]string{"k1": "v1",
+					"app.kubernetes.io/name":       "dm-cluster",
+					"app.kubernetes.io/managed-by": "tidb-operator",
+					"app.kubernetes.io/instance":   "dc",
+					"app.kubernetes.io/component":  "dm-master"}))
+				g.Expect(podSpec.Tolerations).To(Equal([]corev1.Toleration{{Key: "toleration-key"}}))
+				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)}))
+				g.Expect(sts.Spec.UpdateStrategy.Type).To(Equal(apps.OnDeleteStatefulSetStrategyType))
+			},
+		},
+		{
+			name: "dm-master with component spec fields",
+			dc: v1alpha1.DMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "dc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.DMClusterSpec{
+					ImagePullSecrets:          []corev1.LocalObjectReference{{Name: "cluster-level-secret"}},
+					HostNetwork:               pointer.BoolPtr(false),
+					Affinity:                  &corev1.Affinity{NodeAffinity: &corev1.NodeAffinity{}},
+					PriorityClassName:         pointer.StringPtr("cluster-level-priority"),
+					SchedulerName:             "cluster-level-scheduler",
+					NodeSelector:              map[string]string{"k1": "v1", "k2": "v2a"},
+					Annotations:               map[string]string{"k1": "v1", "k2": "v2a"},
+					Labels:                    map[string]string{"k1": "v1", "k2": "v2a"},
+					Tolerations:               []corev1.Toleration{{Key: "cluster-level-toleration-key"}},
+					PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(123)},
+					StatefulSetUpdateStrategy: apps.OnDeleteStatefulSetStrategyType,
+					Master: v1alpha1.MasterSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ImagePullSecrets:          []corev1.LocalObjectReference{{Name: "component-level-secret"}},
+							HostNetwork:               pointer.BoolPtr(true),
+							Affinity:                  &corev1.Affinity{PodAffinity: &corev1.PodAffinity{}},
+							PriorityClassName:         pointer.StringPtr("component-level-priority"),
+							SchedulerName:             pointer.StringPtr("component-level-scheduler"),
+							NodeSelector:              map[string]string{"k2": "v2b", "k3": "v3"},
+							Annotations:               map[string]string{"k2": "v2b", "k3": "v3"},
+							Labels:                    map[string]string{"k2": "v2b", "k3": "v3"},
+							Tolerations:               []corev1.Toleration{{Key: "component-level-toleration-key"}},
+							PodSecurityContext:        &corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(456)},
+							StatefulSetUpdateStrategy: apps.RollingUpdateStatefulSetStrategyType,
+						},
+					},
+					Worker: &v1alpha1.WorkerSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				podTemp := sts.Spec.Template
+				podSpec := sts.Spec.Template.Spec
+				g.Expect(podSpec.ImagePullSecrets).To(Equal([]corev1.LocalObjectReference{{Name: "component-level-secret"}}))
+				g.Expect(podSpec.HostNetwork).To(BeTrue())
+				g.Expect(podSpec.Affinity.NodeAffinity).To(BeNil())
+				g.Expect(podSpec.Affinity.PodAffinity).NotTo(BeNil())
+				g.Expect(podSpec.PriorityClassName).To(Equal("component-level-priority"))
+				g.Expect(podSpec.SchedulerName).To(Equal("component-level-scheduler"))
+				g.Expect(podSpec.NodeSelector).To(Equal(map[string]string{"k1": "v1", "k2": "v2b", "k3": "v3"}))
+				g.Expect(podTemp.Annotations).To(Equal(map[string]string{"k1": "v1", "k2": "v2b", "k3": "v3",
+					"prometheus.io/port":   "8261",
+					"prometheus.io/scrape": "true",
+					"prometheus.io/path":   "/metrics"}))
+				g.Expect(podTemp.Labels).To(Equal(map[string]string{"k1": "v1", "k2": "v2b", "k3": "v3",
+					"app.kubernetes.io/name":       "dm-cluster",
+					"app.kubernetes.io/managed-by": "tidb-operator",
+					"app.kubernetes.io/instance":   "dc",
+					"app.kubernetes.io/component":  "dm-master"}))
+				g.Expect(podSpec.Tolerations).To(Equal([]corev1.Toleration{{Key: "component-level-toleration-key"}}))
+				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{RunAsUser: pointer.Int64Ptr(456)}))
+				g.Expect(sts.Spec.UpdateStrategy.Type).To(Equal(apps.RollingUpdateStatefulSetStrategyType))
+			},
+		},
 		// TODO add more tests
 	}
 
@@ -1345,7 +1526,6 @@ ssl-key = "/var/lib/dm-master-tls/tls.key"
 			g.Expect(err).To(Succeed())
 			// startup-script is better to be tested in e2e
 			tt.expected.Data["startup-script"] = cm.Data["startup-script"]
-			g.Expect(AddConfigMapDigestSuffix(tt.expected)).To(Succeed())
 			if diff := cmp.Diff(*tt.expected, *cm); diff != "" {
 				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}

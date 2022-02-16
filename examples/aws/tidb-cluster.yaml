@@ -3,24 +3,26 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v5.2.1
+  version: v5.3.0
   timezone: UTC
   configUpdateStrategy: RollingUpdate
   pvReclaimPolicy: Retain
-  schedulerName: tidb-scheduler
+  schedulerName: default-scheduler
+  topologySpreadConstraints:
+  - topologyKey: topology.kubernetes.io/zone
   enableDynamicConfiguration: true
   pd:
     baseImage: pingcap/pd
+    maxFailoverCount: 0
     replicas: 3
     requests:
       storage: "10Gi"
-    config:
-      log:
-        level: info
-      replication:
-        location-labels:
-        - zone
-        max-replicas: 3
+    config: |
+      [dashboard]
+        internal-proxy = true
+      [replication]
+        location-labels = ["topology.kubernetes.io/zone", "kubernetes.io/hostname"]
+        max-replicas = 3
     nodeSelector:
       dedicated: pd
     tolerations:
@@ -28,8 +30,19 @@ spec:
       key: dedicated
       operator: Equal
       value: pd
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - pd
+          topologyKey: kubernetes.io/hostname
   tikv:
     baseImage: pingcap/tikv
+    maxFailoverCount: 0
     replicas: 3
     requests:
       storage: "100Gi"
@@ -41,8 +54,19 @@ spec:
       key: dedicated
       operator: Equal
       value: tikv
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - tikv
+          topologyKey: kubernetes.io/hostname
   tidb:
     baseImage: pingcap/tidb
+    maxFailoverCount: 0
     replicas: 2
     service:
       annotations:
@@ -53,12 +77,9 @@ spec:
       exposeStatus: true
       externalTrafficPolicy: Local
       type: LoadBalancer
-    config:
-      log:
-        level: info
-      performance:
-        max-procs: 0
-        tcp-keep-alive: true
+    config: |
+      [performance]
+        tcp-keep-alive = true
     annotations:
       tidb.pingcap.com/sysctl-init: "true"
     podSecurityContext:
@@ -77,3 +98,13 @@ spec:
       key: dedicated
       operator: Equal
       value: tidb
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - tidb
+          topologyKey: kubernetes.io/hostname
