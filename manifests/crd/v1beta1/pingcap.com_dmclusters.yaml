@@ -1870,6 +1870,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -2636,6 +2638,8 @@ spec:
                     type: string
                   type: array
               type: object
+            dnsPolicy:
+              type: string
             enablePVReclaim:
               type: boolean
             hostNetwork:
@@ -4186,6 +4190,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -6625,6 +6631,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
