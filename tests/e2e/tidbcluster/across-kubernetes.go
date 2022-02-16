@@ -155,7 +155,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, false)
 
 			ginkgo.By("Check deploy status of all clusters")
-			err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
+			err := CheckStatusWhenAcrossK8sWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "failed to check status")
 		})
 
@@ -222,7 +222,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, false)
 
 			ginkgo.By("Check status over all clusters")
-			err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
+			err := CheckStatusWhenAcrossK8sWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "failed to check status")
 		})
 
@@ -276,7 +276,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc2, tc3}, false)
 
 			ginkgo.By("Deploy status of all clusters")
-			err = CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
+			err = CheckStatusWhenAcrossK8sWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "failed to check status")
 		})
 
@@ -317,7 +317,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectEqual(foundSecretName, true)
 
 			ginkgo.By("Check deploy status over all clusters")
-			err = CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
+			err = CheckStatusWhenAcrossK8sWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "failed to check status")
 
 			ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")
@@ -325,6 +325,23 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName1)
 			err = wait.PollImmediate(time.Second*15, time.Minute*10, tidbIsTLSEnabled(fw, c, ns2, tcName2, ""))
 			framework.ExpectNoError(err, "connect to TLS tidb %s timeout", tcName2)
+		})
+
+		ginkgo.It("Deploy cluster without setting cluster domain across kubernetes", func() {
+			ns1 := namespaces[0]
+			ns2 := namespaces[1]
+			ns3 := namespaces[2]
+
+			tc1 := GetTCForAcrossKubernetes(ns1, "without-cluster-domain-1", version, "", nil)
+			tc2 := GetTCForAcrossKubernetes(ns2, "without-cluster-domain-2", version, "", tc1)
+			tc3 := GetTCForAcrossKubernetes(ns3, "without-cluster-domain-3", version, "", tc1)
+
+			ginkgo.By("Deploy all clusters and wait status to be ready")
+			MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, false)
+
+			ginkgo.By("Check deploy status of all clusters")
+			err := CheckStatusWhenAcrossK8sWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
+			framework.ExpectNoError(err, "failed to check status")
 		})
 
 		ginkgo.Context("[Without Local PD]", func() {
@@ -400,7 +417,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 					MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2}, false)
 
 					ginkgo.By("Check deploy status of all clusters")
-					err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
+					err := CheckStatusWhenAcrossK8sWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
 					framework.ExpectNoError(err, "failed to check status")
 				})
 
@@ -422,12 +439,13 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 					MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2}, true)
 
 					ginkgo.By("Check deploy status of all clusters")
-					err := CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
+					err := CheckStatusWhenAcrossK8sWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
 					framework.ExpectNoError(err, "failed to check status")
 				})
 			}
 
 		})
+
 	})
 
 	ginkgo.Describe("[Failover]", func() {
@@ -565,7 +583,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "%q cluster not healthy after cluster %q fail", tcName1, tcName2)
 			err = oa.WaitForTidbClusterReady(tc3, 10*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "%q cluster not healthy after cluster %q fail", tcName3, tcName2)
-			err = CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc3}, 5*time.Second, 3*time.Minute)
+			err = CheckStatusWhenAcrossK8sWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc3}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "failed to check status after cluster %q fail", tcName2)
 
 			ginkgo.By("Check functionality of other clusters by querying tidb")
@@ -629,7 +647,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Join cluster-2 into cluster-1 when pd running normally")
 			err = oa.WaitForTidbClusterReady(tc2, 10*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "waiting for %q ready", tcName2)
-			err = CheckClusterDomainEffectWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
+			err = CheckStatusWhenAcrossK8sWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
 			framework.ExpectNoError(err, "%q failed to join into %q", tcName2, tcName1)
 		})
 	})
@@ -739,10 +757,10 @@ func MustCreateXK8sTCWithComponentsReady(cli ctrlCli.Client, oa *tests.OperatorA
 	}
 }
 
-func CheckClusterDomainEffectWithTimeout(cli versioned.Interface, tidbclusters []*v1alpha1.TidbCluster, interval time.Duration, timeout time.Duration) error {
+func CheckStatusWhenAcrossK8sWithTimeout(cli versioned.Interface, tidbclusters []*v1alpha1.TidbCluster, interval time.Duration, timeout time.Duration) error {
 	var lastErr error
 	err := wait.PollImmediate(interval, timeout, func() (done bool, err error) {
-		if err := CheckClusterDomainEffect(cli, tidbclusters); err != nil {
+		if err := CheckStatusWhenAcrossK8s(cli, tidbclusters); err != nil {
 			lastErr = err
 			return false, nil
 		}
@@ -754,9 +772,9 @@ func CheckClusterDomainEffectWithTimeout(cli versioned.Interface, tidbclusters [
 	return nil
 }
 
-func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.TidbCluster) error {
+func CheckStatusWhenAcrossK8s(cli versioned.Interface, tidbclusters []*v1alpha1.TidbCluster) error {
 	// we use deploy cluster in multi namespace to mock deploying across kubernetes,
-	// so we need to check status of tc to ensure `clusterDomain` is effect.
+	// so we need to check status of tc to ensure `acrossK8s` is effect.
 
 	for i := range tidbclusters {
 		tc, err := cli.PingcapV1alpha1().TidbClusters(tidbclusters[i].Namespace).
@@ -769,10 +787,14 @@ func CheckClusterDomainEffect(cli versioned.Interface, tidbclusters []*v1alpha1.
 	}
 
 	for _, tc := range tidbclusters {
-		pdNameSuffix := fmt.Sprintf("%s-pd-peer.%s.svc.%s", tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
-		tikvIPSuffix := fmt.Sprintf("%s-tikv-peer.%s.svc.%s", tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
-		tiflashIPSuffix := fmt.Sprintf("%s-tiflash-peer.%s.svc.%s", tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
-		pumpHostSuffix := fmt.Sprintf("%s-pump.%s.svc.%s", tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
+		clusterDomainSuffix := ""
+		if tc.Spec.ClusterDomain != "" {
+			clusterDomainSuffix = fmt.Sprintf(".%s", tc.Spec.ClusterDomain)
+		}
+		pdNameSuffix := fmt.Sprintf("%s-pd-peer.%s.svc%s", tc.Name, tc.Namespace, clusterDomainSuffix)
+		tikvIPSuffix := fmt.Sprintf("%s-tikv-peer.%s.svc%s", tc.Name, tc.Namespace, clusterDomainSuffix)
+		tiflashIPSuffix := fmt.Sprintf("%s-tiflash-peer.%s.svc%s", tc.Name, tc.Namespace, clusterDomainSuffix)
+		pumpHostSuffix := fmt.Sprintf("%s-pump.%s.svc%s", tc.Name, tc.Namespace, clusterDomainSuffix)
 
 		// pd
 		if tc.Spec.PD != nil && tc.Spec.PD.Replicas != 0 {
