@@ -5,7 +5,7 @@ metadata:
     tikv.tidb.pingcap.com/delete-slots: '[1]'
   name: asts
 spec:
-  version: v5.0.4
+  version: v5.0.6
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true

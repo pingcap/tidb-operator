@@ -12,7 +12,7 @@ variable "image_id" {
 
 variable "tidb_version" {
   description = "TiDB cluster version"
-  default     = "v5.0.4"
+  default     = "v5.0.6"
 }
 
 variable "tidb_cluster_chart_version" {
