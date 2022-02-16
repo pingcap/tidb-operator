@@ -2411,6 +2411,8 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
+                startUpScriptVersion:
+                  type: string
                 statefulSetUpdateStrategy:
                   type: string
                 storageClassName:
