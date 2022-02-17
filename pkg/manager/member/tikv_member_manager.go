@@ -597,7 +597,6 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	podSpec := baseTiKVSpec.BuildPodSpec()
 	if baseTiKVSpec.HostNetwork() {
-		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{

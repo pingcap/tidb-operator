@@ -526,7 +526,6 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 	}
 	podSpec := baseTiFlashSpec.BuildPodSpec()
 	if baseTiFlashSpec.HostNetwork() {
-		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{
