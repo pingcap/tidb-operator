@@ -377,10 +377,6 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 
 	// features
 
-	// hostnework
-	if spec.HostNetwork() {
-		builder.PodTemplateSpecBuilder().RunInHostNetwork()
-	}
 	// downward
 	builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddEnvs(spec.Env()...)
 	builder.PodTemplateSpecBuilder().AddLabels(spec.Labels())

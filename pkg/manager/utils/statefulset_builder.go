@@ -95,11 +95,6 @@ func (b *PodTemplateSpecBuilder) AddAnnotations(annos map[string]string) {
 	b.prototype.Annotations = util.CombineStringMap(b.prototype.Annotations, annos)
 }
 
-func (b *PodTemplateSpecBuilder) RunInHostNetwork() {
-	b.prototype.Spec.HostNetwork = true
-	b.prototype.Spec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
-}
-
 type StatefulSetBuilder struct {
 	prototype *apps.StatefulSet
 }
