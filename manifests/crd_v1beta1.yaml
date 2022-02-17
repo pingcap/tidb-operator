@@ -4642,6 +4642,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -5408,6 +5410,8 @@ spec:
                     type: string
                   type: array
               type: object
+            dnsPolicy:
+              type: string
             enablePVReclaim:
               type: boolean
             hostNetwork:
@@ -6958,6 +6962,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -9397,6 +9403,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -13921,6 +13929,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -14687,6 +14697,8 @@ spec:
                     type: string
                   type: array
               type: object
+            dnsPolicy:
+              type: string
             enableDynamicConfiguration:
               type: boolean
             enablePVReclaim:
@@ -16252,6 +16264,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 enableDashboardInternalProxy:
                   type: boolean
                 env:
@@ -18663,6 +18677,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -20969,6 +20985,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -23278,6 +23296,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -25801,6 +25821,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -28166,6 +28188,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 enableNamedStatusPort:
                   type: boolean
                 env:
@@ -33741,6 +33765,8 @@ spec:
                     type: string
                   type: array
               type: object
+            dnsPolicy:
+              type: string
             env:
               items:
                 properties:
@@ -35894,6 +35920,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:

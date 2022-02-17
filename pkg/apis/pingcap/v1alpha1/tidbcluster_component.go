@@ -85,6 +85,7 @@ type componentAccessorImpl struct {
 	clusterLabels             map[string]string
 	tolerations               []corev1.Toleration
 	dnsConfig                 *corev1.PodDNSConfig
+	dnsPolicy                 corev1.DNSPolicy
 	configUpdateStrategy      ConfigUpdateStrategy
 	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
 	podManagementPolicy       apps.PodManagementPolicyType
@@ -219,11 +220,18 @@ func (a *componentAccessorImpl) Tolerations() []corev1.Toleration {
 }
 
 func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
-	dnsPolicy := corev1.DNSClusterFirst // same as kubernetes default
-	if a.HostNetwork() {
-		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+	if a.ComponentSpec != nil && a.ComponentSpec.DNSPolicy != "" {
+		return a.ComponentSpec.DNSPolicy
 	}
-	return dnsPolicy
+
+	if a.dnsPolicy != "" {
+		return a.dnsPolicy
+	}
+
+	if a.HostNetwork() {
+		return corev1.DNSClusterFirstWithHostNet
+	}
+	return corev1.DNSClusterFirst // same as kubernetes default
 }
 
 func (a *componentAccessorImpl) DNSConfig() *corev1.PodDNSConfig {

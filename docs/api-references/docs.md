@@ -910,6 +910,20 @@ Kubernetes core/v1.PodDNSConfig
 </tr>
 <tr>
 <td>
+<code>dnsPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#dnspolicy-v1-core">
+Kubernetes core/v1.DNSPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSPolicy Specifies the DNSPolicy parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -1711,6 +1725,20 @@ Kubernetes core/v1.PodDNSConfig
 <td>
 <em>(Optional)</em>
 <p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#dnspolicy-v1-core">
+Kubernetes core/v1.DNSPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSPolicy Specifies the DNSPolicy parameters of a pod.</p>
 </td>
 </tr>
 <tr>
@@ -4537,6 +4565,20 @@ Kubernetes core/v1.PodDNSConfig
 </tr>
 <tr>
 <td>
+<code>dnsPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#dnspolicy-v1-core">
+Kubernetes core/v1.DNSPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSPolicy Specifies the DNSPolicy parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>terminationGracePeriodSeconds</code></br>
 <em>
 int64
@@ -5328,6 +5370,20 @@ Kubernetes core/v1.PodDNSConfig
 <td>
 <em>(Optional)</em>
 <p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#dnspolicy-v1-core">
+Kubernetes core/v1.DNSPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSPolicy Specifies the DNSPolicy parameters of a pod.</p>
 </td>
 </tr>
 <tr>
@@ -21372,6 +21428,20 @@ Kubernetes core/v1.PodDNSConfig
 <td>
 <em>(Optional)</em>
 <p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#dnspolicy-v1-core">
+Kubernetes core/v1.DNSPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSPolicy Specifies the DNSPolicy parameters of a pod.</p>
 </td>
 </tr>
 <tr>

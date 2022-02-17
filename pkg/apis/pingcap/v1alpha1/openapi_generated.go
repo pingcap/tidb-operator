@@ -1581,6 +1581,13 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
 						},
 					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -1931,6 +1938,13 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 						SchemaProps: spec.SchemaProps{
 							Description: "DNSConfig Specifies the DNS parameters of a pod.",
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"podSecurityContext": {
@@ -3485,6 +3499,13 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
 						},
 					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -3907,6 +3928,13 @@ func schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref common.ReferenceCallb
 						SchemaProps: spec.SchemaProps{
 							Description: "DNSConfig Specifies the DNS parameters of a pod.",
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"terminationGracePeriodSeconds": {
@@ -5038,6 +5066,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
 						},
 					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -5847,6 +5882,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "DNSConfig Specifies the DNS parameters of a pod.",
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"terminationGracePeriodSeconds": {
@@ -7228,6 +7270,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
 						},
 					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -8050,6 +8099,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
 						},
 					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -8516,6 +8572,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 						SchemaProps: spec.SchemaProps{
 							Description: "DNSConfig Specifies the DNS parameters of a pod.",
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"terminationGracePeriodSeconds": {
@@ -10835,6 +10898,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
 						},
 					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -11953,6 +12023,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
 						},
 					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"timezone": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time zone of TiDB cluster Pods Optional: Defaults to UTC",
@@ -12979,6 +13056,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoringSpec(ref common.ReferenceC
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
 						},
 					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"terminationGracePeriodSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
@@ -13456,6 +13540,13 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 						SchemaProps: spec.SchemaProps{
 							Description: "DNSConfig Specifies the DNS parameters of a pod.",
 							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"terminationGracePeriodSeconds": {

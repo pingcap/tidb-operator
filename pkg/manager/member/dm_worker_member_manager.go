@@ -473,7 +473,6 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 
 	podSpec := baseWorkerSpec.BuildPodSpec()
 	if baseWorkerSpec.HostNetwork() {
-		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{
