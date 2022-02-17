@@ -266,6 +266,10 @@ type TidbClusterSpec struct {
 	// +optional
 	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
 
+	// DNSPolicy Specifies the DNSPolicy parameters of a pod.
+	// +optional
+	DNSPolicy corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
+
 	// Time zone of TiDB cluster Pods
 	// Optional: Defaults to UTC
 	// +optional
@@ -985,6 +989,10 @@ type ComponentSpec struct {
 	// DNSConfig Specifies the DNS parameters of a pod.
 	// +optional
 	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
+	// DNSPolicy Specifies the DNSPolicy parameters of a pod.
+	// +optional
+	DNSPolicy corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
 
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
 	// Value must be non-negative integer. The value zero indicates delete immediately.
@@ -2103,6 +2111,10 @@ type DMClusterSpec struct {
 	// DNSConfig Specifies the DNS parameters of a pod.
 	// +optional
 	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
+	// DNSPolicy Specifies the DNSPolicy parameters of a pod.
+	// +optional
+	DNSPolicy corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional
