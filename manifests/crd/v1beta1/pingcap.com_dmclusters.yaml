@@ -1850,6 +1850,28 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -2596,6 +2618,28 @@ spec:
                 version:
                   type: string
               type: object
+            dnsConfig:
+              properties:
+                nameservers:
+                  items:
+                    type: string
+                  type: array
+                options:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    type: object
+                  type: array
+                searches:
+                  items:
+                    type: string
+                  type: array
+              type: object
+            dnsPolicy:
+              type: string
             enablePVReclaim:
               type: boolean
             hostNetwork:
@@ -4125,6 +4169,28 @@ spec:
                 configUpdateStrategy:
                   type: string
                 dataSubDir:
+                  type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                dnsPolicy:
                   type: string
                 env:
                   items:
@@ -6545,6 +6611,28 @@ spec:
                   type: string
                 dataSubDir:
                   type: string
+                dnsConfig:
+                  properties:
+                    nameservers:
+                      items:
+                        type: string
+                      type: array
+                    options:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    searches:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                dnsPolicy:
+                  type: string
                 env:
                   items:
                     properties:
@@ -6605,6 +6693,11 @@ spec:
                     - name
                     type: object
                   type: array
+                failover:
+                  properties:
+                    recoverByUID:
+                      type: string
+                  type: object
                 hostNetwork:
                   type: boolean
                 image:
@@ -7468,6 +7561,8 @@ spec:
               type: object
             worker:
               properties:
+                failoverUID:
+                  type: string
                 failureMembers:
                   additionalProperties:
                     properties:

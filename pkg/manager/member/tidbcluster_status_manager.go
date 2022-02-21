@@ -103,8 +103,13 @@ func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) err
 	var pdEtcdClient pdapi.PDEtcdClient
 	var err error
 
-	if tc.HeterogeneousWithoutLocalPD() {
-		pdEtcdClient, err = m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		// connect to pd of other cluster and use own cert
+		pdEtcdClient, err = m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled(),
+			pdapi.TLSCertFromTC(pdapi.Namespace(tc.Namespace), tc.Name),
+			pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
+			pdapi.UseHeadlessService(tc.Spec.AcrossK8s),
+		)
 	} else {
 		pdEtcdClient, err = m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 	}

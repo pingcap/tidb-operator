@@ -20,11 +20,11 @@ import (
 
 // GetPDClientFromService gets the pd client from the TidbCluster
 func GetPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
-	if tc.HeterogeneousWithoutLocalPD() {
-		// TODO: to support across k8s cluster without local pd
+	if tc.Heterogeneous() && tc.WithoutLocalPD() {
 		return pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled(),
 			pdapi.TLSCertFromTC(pdapi.Namespace(tc.GetNamespace()), tc.GetName()),
 			pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
+			pdapi.UseHeadlessService(tc.Spec.AcrossK8s),
 		)
 	}
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())

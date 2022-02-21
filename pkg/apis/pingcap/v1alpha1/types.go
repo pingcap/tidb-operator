@@ -262,6 +262,14 @@ type TidbClusterSpec struct {
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
+	// DNSPolicy Specifies the DNSPolicy parameters of a pod.
+	// +optional
+	DNSPolicy corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
+
 	// Time zone of TiDB cluster Pods
 	// Optional: Defaults to UTC
 	// +optional
@@ -281,6 +289,10 @@ type TidbClusterSpec struct {
 	// Optional: Defaults to ""
 	// +optional
 	ClusterDomain string `json:"clusterDomain,omitempty"`
+
+	// AcrossK8s indicates whether deploy TiDB cluster across multiple Kubernetes clusters
+	// +optional
+	AcrossK8s bool `json:"acrossK8s,omitempty"`
 
 	// Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.
 	// +optional
@@ -438,6 +450,10 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+	// Start up script version
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1"
+	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
@@ -518,6 +534,10 @@ type TiKVSpec struct {
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
 
+	// Failover is the configurations of failover
+	// +optional
+	Failover *Failover `json:"failover,omitempty"`
+
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
@@ -590,6 +610,10 @@ type TiFlashSpec struct {
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
+
+	// Failover is the configurations of failover
+	// +optional
+	Failover *Failover `json:"failover,omitempty"`
 }
 
 // TiCDCSpec contains details of TiCDC members
@@ -764,6 +788,15 @@ type TiDBSpec struct {
 	// the default behavior is like setting type as "tcp"
 	// +optional
 	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
+
+	// Initializer is the init configurations of TiDB
+	//
+	// +optional
+	Initializer *TiDBInitializer `json:"initializer,omitempty"`
+}
+
+type TiDBInitializer struct {
+	CreatePassword bool `json:"createPassword,omitempty"`
 }
 
 const (
@@ -953,6 +986,14 @@ type ComponentSpec struct {
 	// Additional volume mounts of component pod.
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
+	// DNSPolicy Specifies the DNSPolicy parameters of a pod.
+	// +optional
+	DNSPolicy corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
+
 	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
 	// Value must be non-negative integer. The value zero indicates delete immediately.
 	// If this value is nil, the default grace period will be used instead.
@@ -1121,6 +1162,7 @@ type TiDBStatus struct {
 	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
 	Image                    string                       `json:"image,omitempty"`
+	PasswordInitialized      *bool                        `json:"passwordInitialized,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -1167,6 +1209,7 @@ type TiKVStatus struct {
 	PeerStores      map[string]TiKVStore          `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore          `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore   `json:"failureStores,omitempty"`
+	FailoverUID     types.UID                     `json:"failoverUID,omitempty"`
 	Image           string                        `json:"image,omitempty"`
 	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
 }
@@ -1180,6 +1223,7 @@ type TiFlashStatus struct {
 	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
+	FailoverUID     types.UID                   `json:"failoverUID,omitempty"`
 	Image           string                      `json:"image,omitempty"`
 }
 
@@ -1262,10 +1306,15 @@ type TiDBTLSClient struct {
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
 
-	// DisableClientAuthn will skip client authentication from the TiDB server.
+	// DisableClientAuthn will skip client's certificate validation from the TiDB server.
 	// Optional: defaults to false
 	// +optional
 	DisableClientAuthn bool `json:"disableClientAuthn,omitempty"`
+
+	// SkipInternalClientCA will skip TiDB server's certificate validation for internal components like Initializer, Dashboard, etc.
+	// Optional: defaults to false
+	// +optional
+	SkipInternalClientCA bool `json:"skipInternalClientCA,omitempty"`
 }
 
 // TLSCluster can enable mutual TLS connection between TiDB cluster components
@@ -2059,6 +2108,14 @@ type DMClusterSpec struct {
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
+	// DNSConfig Specifies the DNS parameters of a pod.
+	// +optional
+	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
+	// DNSPolicy Specifies the DNSPolicy parameters of a pod.
+	// +optional
+	DNSPolicy corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
+
 	// PodSecurityContext of the component
 	// +optional
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
@@ -2210,6 +2267,10 @@ type WorkerSpec struct {
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
+
+	// Failover is the configurations of failover
+	// +optional
+	Failover *Failover `json:"failover,omitempty"`
 }
 
 // DMClusterCondition is dm cluster condition
@@ -2287,6 +2348,7 @@ type WorkerStatus struct {
 	StatefulSet    *apps.StatefulSetStatus        `json:"statefulSet,omitempty"`
 	Members        map[string]WorkerMember        `json:"members,omitempty"`
 	FailureMembers map[string]WorkerFailureMember `json:"failureMembers,omitempty"`
+	FailoverUID    types.UID                      `json:"failoverUID,omitempty"`
 	Image          string                         `json:"image,omitempty"`
 }
 
@@ -2332,4 +2394,13 @@ type TopologySpreadConstraint struct {
 	// LabelSelector is generated by component type
 	// See pkg/apis/pingcap/v1alpha1/tidbcluster_component.go#TopologySpreadConstraints()
 	TopologyKey string `json:"topologyKey"`
+}
+
+// Failover contains the failover specification.
+// +k8s:openapi-gen=true
+type Failover struct {
+	// RecoverByUID indicates that TiDB Operator will recover the failover by this UID,
+	// it takes effect only when set `spec.recoverFailover=false`
+	// +optional
+	RecoverByUID types.UID `json:"recoverByUID,omitempty"`
 }

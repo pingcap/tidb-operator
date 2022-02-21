@@ -182,7 +182,7 @@ func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMC
 		m.failover.RemoveUndesiredFailures(dc)
 	}
 	if len(dc.Status.Worker.FailureMembers) > 0 &&
-		dc.Spec.Worker.RecoverFailover &&
+		(dc.Spec.Worker.RecoverFailover || dc.Status.Worker.FailoverUID == dc.GetWorkerRecoverByUID()) &&
 		shouldRecoverDM(dc, label.DMWorkerLabelVal, m.deps.PodLister) {
 		m.failover.Recover(dc)
 	}
@@ -473,7 +473,6 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 
 	podSpec := baseWorkerSpec.BuildPodSpec()
 	if baseWorkerSpec.HostNetwork() {
-		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{

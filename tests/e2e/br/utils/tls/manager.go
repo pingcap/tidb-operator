@@ -15,12 +15,18 @@ package tls
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	yamlutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/yaml"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -121,14 +127,17 @@ type Manager interface {
 	CreateTLSForTidbCluster(tc *v1alpha1.TidbCluster) error
 }
 
-func New(c yamlutil.Interface) Manager {
+func New(c yamlutil.Interface, cli ctrlCli.Client) Manager {
 	return &manager{
-		c: c,
+		c:   c,
+		cli: cli,
 	}
 }
 
 type manager struct {
 	c yamlutil.Interface
+	// cli is used to interact with objects rather yaml.
+	cli ctrlCli.Client
 }
 
 func (m *manager) CreateTLSForTidbCluster(tc *v1alpha1.TidbCluster) error {
@@ -141,6 +150,12 @@ func (m *manager) CreateTLSForTidbCluster(tc *v1alpha1.TidbCluster) error {
 		if err := m.createCert(tidbClientCert(tc)); err != nil {
 			return err
 		}
+		if tidbSpec.TLSClient.SkipInternalClientCA {
+			if err := m.removeCACertFromSecret(tc.Namespace, util.TiDBClientTLSSecretName(tc.Name)); err != nil {
+				return err
+			}
+		}
+
 		if err := m.createCert(tidbServerCert(tc)); err != nil {
 			return err
 		}
@@ -207,6 +222,24 @@ func (m *manager) createCA(ns, name string) error {
 
 func (m *manager) createCert(cert *TLSCert) error {
 	return m.createFromTemplate(certTmpl, cert)
+}
+
+func (m *manager) removeCACertFromSecret(namespace, name string) error {
+	caSecret := &v1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name}}
+	var lastErr error
+	err := wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+		err := m.cli.Get(context.TODO(), ctrlCli.ObjectKeyFromObject(caSecret), caSecret)
+		if err != nil {
+			lastErr = err
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("%s, last error: %v", err, lastErr)
+	}
+	delete(caSecret.Data, "ca.crt")
+	return m.cli.Update(context.TODO(), caSecret)
 }
 
 func tidbClientCert(tc *v1alpha1.TidbCluster) *TLSCert {

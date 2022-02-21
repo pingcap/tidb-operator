@@ -345,6 +345,11 @@ func DMWorkerPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-dm-worker-peer", clusterName)
 }
 
+// TiDBInitSecret returns tidb init secret name
+func TiDBInitSecret(clusterName string) string {
+	return fmt.Sprintf("%s-init", clusterName)
+}
+
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{
@@ -365,6 +370,10 @@ func FormatClusterDomain(clusterDomain string) string {
 		return ""
 	}
 	return "." + clusterDomain
+}
+
+func PDPeerFullyDomain(name, ns, clusterDomain string) string {
+	return fmt.Sprintf("%s.%s.svc%s", PDPeerMemberName(name), ns, FormatClusterDomain(clusterDomain))
 }
 
 // AnnAdditionalProm adds additional prometheus scarping configuration annotation for the pod

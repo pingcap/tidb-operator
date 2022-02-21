@@ -268,6 +268,129 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 
 }
 
+func TestChoosePDToTransferFromMembers(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name             string
+		changeFn         func(*v1alpha1.TidbCluster, *apps.StatefulSet)
+		ordinal          int32
+		expectTargetName string
+	}
+
+	cases := []testcase{
+		{
+			name: "ordinal is max",
+			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+			},
+			ordinal:          2,
+			expectTargetName: "upgrader-pd-0",
+		},
+		{
+			name: "ordinal is max but min ordinal pod is unhealthy",
+			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+			},
+			ordinal:          2,
+			expectTargetName: "upgrader-pd-1",
+		},
+		{
+			name: "ordinal is max but others are unhealthy",
+			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+			},
+			ordinal:          2,
+			expectTargetName: "",
+		},
+		{
+			name: "ordinal is mid",
+			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+			},
+			ordinal:          1,
+			expectTargetName: "upgrader-pd-2",
+		},
+		{
+			name: "ordinal is mid but max ordinal pod is unhealthy",
+			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+			},
+			ordinal:          1,
+			expectTargetName: "upgrader-pd-0",
+		},
+		{
+			name: "ordinal is mid but others are unhealthy",
+			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+			},
+			ordinal:          1,
+			expectTargetName: "",
+		},
+		{
+			name: "ordinal is min",
+			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+			},
+			ordinal:          0,
+			expectTargetName: "upgrader-pd-2",
+		},
+		{
+			name: "ordinal is min but max ordinal pod is unhealthy",
+			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+			},
+			ordinal:          0,
+			expectTargetName: "upgrader-pd-1",
+		},
+		{
+			name: "ordinal is min but others are unhealthy",
+			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+			},
+			ordinal:          0,
+			expectTargetName: "",
+		},
+	}
+
+	for _, testcase := range cases {
+		t.Logf("testcase: %s", testcase.name)
+
+		oriTC := newTidbClusterForPDUpgrader()
+		oriNewSet := newStatefulSetForPDUpgrader()
+		if testcase.changeFn != nil {
+			testcase.changeFn(oriTC, oriNewSet)
+		}
+
+		tc := oriTC.DeepCopy()
+		newSet := oriNewSet.DeepCopy()
+		ordinal := testcase.ordinal
+
+		targetName := choosePDToTransferFromMembers(tc, newSet, ordinal)
+		g.Expect(targetName).Should(Equal(testcase.expectTargetName))
+		g.Expect(tc).Should(Equal(oriTC))
+		g.Expect(newSet).Should(Equal(oriNewSet))
+	}
+}
+
 func newPDUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
 	fakeDeps := controller.NewFakeDependencies()
 	pdUpgrader := &pdUpgrader{deps: fakeDeps}

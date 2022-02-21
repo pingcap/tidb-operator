@@ -34,6 +34,8 @@ func buildTiDBNGMonitoringComponentAccessor(c Component, tngm *TidbNGMonitoring,
 		configUpdateStrategy:      ConfigUpdateStrategyRollingUpdate,
 		podSecurityContext:        commonSpec.PodSecurityContext,
 		topologySpreadConstraints: commonSpec.TopologySpreadConstraints,
+		dnsConfig:                 commonSpec.DNSConfig,
+		dnsPolicy:                 commonSpec.DNSPolicy,
 
 		ComponentSpec: componentSpec,
 	}

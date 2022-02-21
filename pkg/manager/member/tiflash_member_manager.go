@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	//find a better way to manage store only managed by tiflash in Operator
+	// find a better way to manage store only managed by tiflash in Operator
 	tiflashStoreLimitPattern = `%s-tiflash-\d+\.%s-tiflash-peer\.%s\.svc%s:\d+`
 	tiflashCertPath          = "/var/lib/tiflash-tls"
 	tiflashCertVolumeName    = "tiflash-tls"
@@ -176,7 +176,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		m.failover.RemoveUndesiredFailures(tc)
 	}
 	if len(tc.Status.TiFlash.FailureStores) > 0 &&
-		tc.Spec.TiFlash.RecoverFailover &&
+		(tc.Spec.TiFlash.RecoverFailover || tc.Status.TiFlash.FailoverUID == tc.Spec.TiFlash.GetRecoverByUID()) &&
 		shouldRecover(tc, label.TiFlashLabelVal, m.deps.PodLister) {
 		m.failover.Recover(tc)
 	}
@@ -229,7 +229,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiFlashSTS", newSet, oldSet)
 }
 
 func (m *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -401,8 +401,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	}
 	script := "set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml"
 
-	// TODO: for across k8s cluster without local PD, the script here do not support this now.
-	if len(tc.Spec.ClusterDomain) > 0 {
+	if tc.AcrossK8s() {
 		var pdAddr string
 		if tc.IsTLSClusterEnabled() {
 			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
@@ -527,7 +526,6 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 	}
 	podSpec := baseTiFlashSpec.BuildPodSpec()
 	if baseTiFlashSpec.HostNetwork() {
-		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{
@@ -674,7 +672,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		tc.Status.TiFlash.Synced = false
-		klog.Warningf("Fail to GetStores for TidbCluster %s/%s", tc.Namespace, tc.Name)
+		klog.Warningf("Fail to GetStores for TidbCluster %s/%s: %s", tc.Namespace, tc.Name, err)
 		return err
 	}
 
@@ -707,7 +705,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		}
 	}
 
-	//this returns all tombstone stores
+	// this returns all tombstone stores
 	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
 	if err != nil {
 		tc.Status.TiFlash.Synced = false

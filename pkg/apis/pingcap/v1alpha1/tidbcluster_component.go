@@ -84,6 +84,8 @@ type componentAccessorImpl struct {
 	clusterAnnotations        map[string]string
 	clusterLabels             map[string]string
 	tolerations               []corev1.Toleration
+	dnsConfig                 *corev1.PodDNSConfig
+	dnsPolicy                 corev1.DNSPolicy
 	configUpdateStrategy      ConfigUpdateStrategy
 	statefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType
 	podManagementPolicy       apps.PodManagementPolicyType
@@ -218,11 +220,25 @@ func (a *componentAccessorImpl) Tolerations() []corev1.Toleration {
 }
 
 func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
-	dnsPolicy := corev1.DNSClusterFirst // same as kubernetes default
-	if a.HostNetwork() {
-		dnsPolicy = corev1.DNSClusterFirstWithHostNet
+	if a.ComponentSpec != nil && a.ComponentSpec.DNSPolicy != "" {
+		return a.ComponentSpec.DNSPolicy
 	}
-	return dnsPolicy
+
+	if a.dnsPolicy != "" {
+		return a.dnsPolicy
+	}
+
+	if a.HostNetwork() {
+		return corev1.DNSClusterFirstWithHostNet
+	}
+	return corev1.DNSClusterFirst // same as kubernetes default
+}
+
+func (a *componentAccessorImpl) DNSConfig() *corev1.PodDNSConfig {
+	if a.ComponentSpec == nil || a.ComponentSpec.DNSConfig == nil {
+		return a.dnsConfig
+	}
+	return a.ComponentSpec.DNSConfig
 }
 
 func (a *componentAccessorImpl) ConfigUpdateStrategy() ConfigUpdateStrategy {
@@ -251,6 +267,7 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 		SecurityContext:           a.PodSecurityContext(),
 		TopologySpreadConstraints: a.TopologySpreadConstraints(),
 		DNSPolicy:                 a.DnsPolicy(),
+		DNSConfig:                 a.DNSConfig(),
 	}
 	if a.PriorityClassName() != nil {
 		spec.PriorityClassName = *a.PriorityClassName()
@@ -383,6 +400,8 @@ func buildTidbClusterComponentAccessor(c Component, tc *TidbCluster, componentSp
 		clusterLabels:             spec.Labels,
 		clusterAnnotations:        spec.Annotations,
 		tolerations:               spec.Tolerations,
+		dnsConfig:                 spec.DNSConfig,
+		dnsPolicy:                 spec.DNSPolicy,
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
 		podManagementPolicy:       spec.PodManagementPolicy,
@@ -409,6 +428,8 @@ func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *
 		clusterLabels:             spec.Labels,
 		clusterAnnotations:        spec.Annotations,
 		tolerations:               spec.Tolerations,
+		dnsConfig:                 spec.DNSConfig,
+		dnsPolicy:                 spec.DNSPolicy,
 		configUpdateStrategy:      spec.ConfigUpdateStrategy,
 		statefulSetUpdateStrategy: spec.StatefulSetUpdateStrategy,
 		podManagementPolicy:       spec.PodManagementPolicy,

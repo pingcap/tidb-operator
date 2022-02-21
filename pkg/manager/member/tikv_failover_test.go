@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 )
 
@@ -51,6 +52,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(2))
+				g.Expect(tc.Status.TiKV.FailoverUID).NotTo(BeEmpty())
 			},
 		},
 		{
@@ -64,6 +66,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.FailoverUID).To(BeEmpty())
 			},
 		},
 		{
@@ -81,6 +84,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.FailoverUID).To(BeEmpty())
 			},
 		},
 		{
@@ -97,6 +101,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(0))
+				g.Expect(tc.Status.TiKV.FailoverUID).To(BeEmpty())
 			},
 		},
 		{
@@ -120,6 +125,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(1))
+				g.Expect(tc.Status.TiKV.FailoverUID).NotTo(BeEmpty())
 			},
 		},
 		{
@@ -157,6 +163,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(3))
+				g.Expect(tc.Status.TiKV.FailoverUID).NotTo(BeEmpty())
 			},
 		},
 		{
@@ -194,6 +201,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(3))
+				g.Expect(tc.Status.TiKV.FailoverUID).NotTo(BeEmpty())
 			},
 		},
 		{
@@ -235,6 +243,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(3))
+				g.Expect(tc.Status.TiKV.FailoverUID).NotTo(BeEmpty())
 			},
 		},
 		{
@@ -277,6 +286,31 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
 				g := NewGomegaWithT(t)
 				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(3))
+				g.Expect(tc.Status.TiKV.FailoverUID).To(BeEmpty())
+			},
+		},
+		{
+			name: "already have failoverUID",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.FailoverUID = "failover-uid-test"
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"1": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-1",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+					},
+					"2": {
+						State:              v1alpha1.TiKVStateDown,
+						PodName:            "tikv-2",
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+					},
+				}
+			},
+			err: false,
+			expectFn: func(t *testing.T, tc *v1alpha1.TidbCluster) {
+				g := NewGomegaWithT(t)
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(2))
+				g.Expect(tc.Status.TiKV.FailoverUID).To(Equal(types.UID("failover-uid-test")))
 			},
 		},
 	}

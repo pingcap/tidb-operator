@@ -199,7 +199,7 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSts, oldSts)
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCDCSTS", newSts, oldSts)
 }
 
 func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) error {
@@ -354,15 +354,21 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		vols      []corev1.Volume
 	)
 
+	scheme := "http"
+	if tc.IsTLSClusterEnabled() {
+		scheme = "https"
+	}
+	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Name))
+	if tc.AcrossK8s() {
+		pdAddr = "${result}" // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		pdAddr = fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
+	}
+
 	if tc.IsTLSClusterEnabled() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--key=%s", path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey)))
-		if tc.Spec.ClusterDomain == "" {
-			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=https://%s-pd:2379", tcName))
-		} else {
-			cmdArgs = append(cmdArgs, "--pd=${result}")
-		}
 
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name:      ticdcCertVolumeMount,
@@ -387,13 +393,8 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 				},
 			},
 		})
-	} else {
-		if tc.Spec.ClusterDomain == "" {
-			cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=http://%s-pd:2379", tcName))
-		} else {
-			cmdArgs = append(cmdArgs, "--pd=${result}")
-		}
 	}
+	cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=%s", pdAddr))
 
 	if cm != nil {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--config=%s", "/etc/ticdc/ticdc.toml"))
@@ -406,12 +407,13 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 
 	var script string
 
-	if tc.Spec.ClusterDomain != "" {
+	if tc.AcrossK8s() {
 		var pdAddr string
+		pdDomain := controller.PDMemberName(tcName)
 		if tc.IsTLSClusterEnabled() {
-			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
+			pdAddr = fmt.Sprintf("https://%s:2379", pdDomain)
 		} else {
-			pdAddr = fmt.Sprintf("http://%s-pd:2379", tcName)
+			pdAddr = fmt.Sprintf("http://%s:2379", pdDomain)
 		}
 
 		str := `set -uo pipefail
