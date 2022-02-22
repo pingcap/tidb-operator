@@ -149,7 +149,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		}
 		// check "raft.kvstore_path" to be compatible with old version
 		if common.Get("raft.kvstore_path") == nil {
-			common.SetIfNil("storage.raft.dir", "/data0/kvstore")
+			common.SetIfNil("storage.raft.dir", []string{"/data0/kvstore"})
 		}
 
 		// port
