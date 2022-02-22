@@ -97,8 +97,8 @@ backend: local
 
 # For `local` backend, an extra PV is needed for local KV sorting.
 sortedKV: {}
-#  storageClassName: local-storage
-#  storage: 100Gi
+storageClassName: local-storage
+storage: 100Gi
 
 # Specify a Service Account for lightning
 # serviceAccount:
