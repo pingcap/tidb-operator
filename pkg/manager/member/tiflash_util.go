@@ -151,6 +151,8 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		if common.Get("raft.kvstore_path") == nil {
 			common.SetIfNil("storage.raft.dir", []string{"/data0/kvstore"})
 		}
+		// workaround for issue #4091 about v5.4.0 TiFlash
+		common.SetIfNil("tmp_path", "/data0/tmp")
 
 		// port
 		common.SetIfNil("tcp_port", int64(9000))
