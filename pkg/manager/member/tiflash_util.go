@@ -137,7 +137,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 	{
 		// storage
 		// check "path" to be compatible with old version
-		if common.Get("path") == nil && common.Get("storage") == nil {
+		if common.Get("path") == nil && common.Get("storage.main.dir") == nil {
 			paths := []string{}
 			for i := range tc.Spec.TiFlash.StorageClaims {
 				paths = append(paths, fmt.Sprintf("/data%d/db", i))
