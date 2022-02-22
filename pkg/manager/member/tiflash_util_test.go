@@ -1531,7 +1531,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					  [storage.main]
 						dir = ["/data0/db"]
 					  [storage.raft]
-						dir = "/data0/kvstore"`,
+						dir = ["/data0/kvstore"]`,
 				expectProxyCfg: `
 					log-level = "info"
 
@@ -1572,7 +1572,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					  [storage.main]
 						dir = ["/data0/db"]
 					  [storage.raft]
-						dir = "/data0/kvstore"`,
+						dir = ["/data0/kvstore"]`,
 				expectProxyCfg: `
 					log-level = "info"
 					[security]
@@ -1621,7 +1621,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					  [storage.main]
 						dir = ["/data0/db"]
 					  [storage.raft]
-						dir = "/data0/kvstore"`,
+						dir = ["/data0/kvstore"]`,
 				expectProxyCfg: `
 					log-level = "info"
 					[security]
@@ -1670,7 +1670,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					  [storage.main]
 						dir = ["/data0/db","/data1/db"]
 					  [storage.raft]
-						dir = "/data0/kvstore"`,
+						dir = ["/data0/kvstore"]`,
 				expectProxyCfg: `
 					log-level = "info"
 
@@ -1709,7 +1709,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					  [storage.main]
 						dir = ["/data0/db"]
 					  [storage.raft]
-						dir = "/data0/kvstore"`,
+						dir = ["/data0/kvstore"]`,
 				expectProxyCfg: `
 					log-level = "info"
 
@@ -1746,7 +1746,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					  [storage.main]
 						dir = ["/data0/db"]
 					  [storage.raft]
-						dir = "/data0/kvstore"`,
+						dir = ["/data0/kvstore"]`,
 				expectProxyCfg: `
 					log-level = "info"
 
@@ -1786,7 +1786,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					  [storage.main]
 						dir = ["/data0/db"]
 					  [storage.raft]
-						dir = "/data0/kvstore"`,
+						dir = ["/data0/kvstore"]`,
 				expectProxyCfg: `
 					log-level = "info"
 
@@ -1826,7 +1826,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					  [storage.main]
 						dir = ["/data0/db"]
 					  [storage.raft]
-						dir = "/data0/kvstore"`,
+						dir = ["/data0/kvstore"]`,
 				expectProxyCfg: `
 					log-level = "info"
 
