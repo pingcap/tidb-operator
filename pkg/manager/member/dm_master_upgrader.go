@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -24,6 +23,7 @@ import (
 
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog/v2"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type masterUpgrader struct {
