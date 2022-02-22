@@ -96,7 +96,7 @@ affinity: {}
 backend: local
 
 # For `local` backend, an extra PV is needed for local KV sorting.
-sortedKV: {}
+sortedKV:
   storageClassName: local-storage
   storage: 100Gi
 
