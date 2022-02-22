@@ -1512,6 +1512,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					http_port = 8123
 					tcp_port = 9000
+					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
@@ -1549,6 +1550,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					https_port = 8123
 					tcp_port_secure = 9000
+					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
@@ -1597,6 +1599,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					https_port = 8123
 					tcp_port_secure = 9000
+					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
@@ -1651,6 +1654,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					http_port = 8123
 					tcp_port = 9000
+					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
@@ -1690,6 +1694,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					http_port = 8123
 					tcp_port = 9000
+					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
 					  tidb_status_addr = "cluster-1-tidb.default.svc:10080"
@@ -1727,6 +1732,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					http_port = 8123
 					tcp_port = 9000
+					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
@@ -1767,6 +1773,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					http_port = 8123
 					tcp_port = 9000
+					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
@@ -1807,6 +1814,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					http_port = 8123
 					tcp_port = 9000
+					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
 					  tidb_status_addr = "cluster-1-tidb-peer.default.svc:10080"
