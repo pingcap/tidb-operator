@@ -119,7 +119,7 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	memberID := labels[label.MemberIDLabelKey]
 	storeID := labels[label.StoreIDLabelKey]
 
-	pdClient := GetPDClientFromService(c.pdControl, tc)
+	pdClient := GetPDClient(c.pdControl, tc)
 
 	if labels[label.ClusterIDLabelKey] == "" {
 		cluster, err := pdClient.GetCluster()

@@ -198,10 +198,6 @@ func testPodTemplateSpecBuilderBasicFn(t *testing.T, builder *PodTemplateSpecBui
 	g.Expect(builder.prototype.Spec.Volumes).Should(HaveLen(2))
 	g.Expect(builder.prototype.Spec.Volumes[0]).Should(Equal(*vol1))
 	g.Expect(builder.prototype.Spec.Volumes[1]).Should(Equal(*vol2))
-
-	// RunInHostNetwork
-	builder.RunInHostNetwork()
-	g.Expect(builder.prototype.Spec.DNSPolicy).Should(Equal(corev1.DNSClusterFirstWithHostNet))
 }
 
 func testContainerBuilderBasicFn(t *testing.T, builder *ContainerBuilder) {

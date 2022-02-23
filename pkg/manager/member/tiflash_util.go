@@ -137,7 +137,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 	{
 		// storage
 		// check "path" to be compatible with old version
-		if common.Get("path") == nil && common.Get("storage") == nil {
+		if common.Get("path") == nil && common.Get("storage.main.dir") == nil {
 			paths := []string{}
 			for i := range tc.Spec.TiFlash.StorageClaims {
 				paths = append(paths, fmt.Sprintf("/data%d/db", i))
@@ -149,8 +149,10 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		}
 		// check "raft.kvstore_path" to be compatible with old version
 		if common.Get("raft.kvstore_path") == nil {
-			common.SetIfNil("storage.raft.dir", "/data0/kvstore")
+			common.SetIfNil("storage.raft.dir", []string{"/data0/kvstore"})
 		}
+		// workaround for issue #4091 about v5.4.0 TiFlash
+		common.SetIfNil("tmp_path", "/data0/tmp")
 
 		// port
 		common.SetIfNil("tcp_port", int64(9000))
