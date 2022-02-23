@@ -263,7 +263,7 @@ func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbClu
 		time.Sleep(5 * time.Second)
 	}
 
-	err := controller.GetPDClientFromService(deps.PDControl, tc).EndEvictLeader(storeID)
+	err := controller.GetPDClient(deps.PDControl, tc).EndEvictLeader(storeID)
 	if err != nil {
 		klog.Errorf("tikv: failed to end evict leader for store: %d of %s/%s, error: %v", storeID, tc.Namespace, tc.Name, err)
 		return err
