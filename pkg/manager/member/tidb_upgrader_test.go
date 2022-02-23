@@ -84,9 +84,8 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			getLastAppliedConfigErr: false,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(0)))
 			},
-			errorExpect: true,
 		},
 		{
 			name: "modify oldSet update strategy to OnDelete",
@@ -327,6 +326,13 @@ func getTiDBPods() []*corev1.Pod {
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
+			},
 		},
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
@@ -334,6 +340,13 @@ func getTiDBPods() []*corev1.Pod {
 				Name:      tidbPodName(upgradeTcName, 1),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lu,
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
 			},
 		},
 	}

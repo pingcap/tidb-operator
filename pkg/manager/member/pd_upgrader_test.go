@@ -97,11 +97,11 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changeOldSet:      nil,
 			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
+				g.Expect(err).NotTo(HaveOccurred())
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
 		{
@@ -206,7 +206,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changePods:        nil,
 			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err.Error()).To(Equal(fmt.Sprintf("tidbcluster: [%s/%s]'s upgraded pd pod: [%s] is not ready", metav1.NamespaceDefault, upgradeTcName, PdPodName(upgradeTcName, 2))))
+				g.Expect(err.Error()).To(Equal(fmt.Sprintf("tidbcluster: [default/upgrader]'s pd upgraded pod: [%s] is not ready", PdPodName(upgradeTcName, 2))))
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
@@ -498,6 +498,13 @@ func getPods() []*corev1.Pod {
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
+			},
 		},
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
@@ -506,6 +513,13 @@ func getPods() []*corev1.Pod {
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
+			},
 		},
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
@@ -513,6 +527,13 @@ func getPods() []*corev1.Pod {
 				Name:      PdPodName(upgradeTcName, 2),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lu,
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
 			},
 		},
 	}
