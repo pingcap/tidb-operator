@@ -940,7 +940,7 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 							Port:       2379,
 							TargetPort: intstr.FromInt(2379),
 							Protocol:   corev1.ProtocolTCP,
-				},
+						},
 					},
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
