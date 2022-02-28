@@ -28,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -179,22 +180,36 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
+	tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
+	if err != nil {
+		klog.V(4).Infof("failed to get tc, skip sync tc %q", ns+"/"+tcName)
+		return reconcile.Result{}, nil
+	}
+
+	// filter out pods not belong to this cluster
+	if c.deps.CLIConfig.Selector != "" {
+		selector, err := labels.Parse(c.deps.CLIConfig.Selector)
+		if err != nil {
+			klog.V(4).Infof("failed to parse selector %s, skip sync tc %q", c.deps.CLIConfig.Selector, ns+"/"+tcName)
+			return reconcile.Result{}, nil
+		}
+
+		if selector.Matches(labels.Set(tc.Labels)) {
+			klog.V(4).Infof("filter by selector %s, skip sync tc %q", c.deps.CLIConfig.Selector, ns+"/"+tcName)
+			return reconcile.Result{}, nil
+		}
+	}
+
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing TidbCluster pod %q (%v)", key, time.Since(startTime))
 	}()
 
+	tc = tc.DeepCopy()
 	component := pod.Labels[label.ComponentLabelKey]
 	ctx := context.Background()
 	switch component {
 	case label.TiKVLabelVal:
-		tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
-		if err != nil {
-			klog.V(4).Infof("skip sync because failed to get tc %q", ns+"/"+tcName)
-			return reconcile.Result{}, nil
-		}
-		tc = tc.DeepCopy()
-
 		return c.syncTiKVPod(ctx, pod, tc)
 	default:
 		return reconcile.Result{}, nil
