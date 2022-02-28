@@ -190,7 +190,8 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	case label.TiKVLabelVal:
 		tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
 		if err != nil {
-			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tc %q", ns+"/"+tcName)
+			klog.V(4).Infof("skip sync because failed to get tc %q", ns+"/"+tcName)
+			return reconcile.Result{}, nil
 		}
 		tc = tc.DeepCopy()
 
