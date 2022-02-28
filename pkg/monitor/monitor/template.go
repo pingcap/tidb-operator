@@ -15,14 +15,13 @@ package monitor
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/util"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
-	"gopkg.in/yaml.v2"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
 	"path"
 	"strings"
+
+	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/prometheus/common/model"
+	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -40,21 +39,21 @@ const (
 )
 
 var (
-	truePattern      config.Regexp
-	allMatchPattern  config.Regexp
-	portPattern      config.Regexp
-	tikvPattern      config.Regexp
-	pdPattern        config.Regexp
-	tidbPattern      config.Regexp
-	addressPattern   config.Regexp
-	tiflashPattern   config.Regexp
-	pumpPattern      config.Regexp
-	drainerPattern   config.Regexp
-	cdcPattern       config.Regexp
-	importerPattern  config.Regexp
-	lightningPattern config.Regexp
-	dmWorkerPattern  config.Regexp
-	dmMasterPattern  config.Regexp
+	truePattern      string
+	allMatchPattern  string
+	portPattern      string
+	tikvPattern      string
+	pdPattern        string
+	tidbPattern      string
+	addressPattern   string
+	tiflashPattern   string
+	pumpPattern      string
+	drainerPattern   string
+	cdcPattern       string
+	importerPattern  string
+	lightningPattern string
+	dmWorkerPattern  string
+	dmMasterPattern  string
 	dashBoardConfig  = `{
     "apiVersion": 1,
     "providers": [
@@ -73,67 +72,22 @@ var (
 )
 
 func init() {
-	var err error
-	truePattern, err = config.NewRegexp("true")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	allMatchPattern, err = config.NewRegexp("(.+)")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	portPattern, err = config.NewRegexp("([^:]+)(?::\\d+)?;(\\d+)")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	tikvPattern, err = config.NewRegexp("tikv")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	pdPattern, err = config.NewRegexp("pd")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	tidbPattern, err = config.NewRegexp("tidb")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	addressPattern, err = config.NewRegexp("(.+);(.+);(.+);(.+)")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	tiflashPattern, err = config.NewRegexp("tiflash")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	pumpPattern, err = config.NewRegexp("pump")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	drainerPattern, err = config.NewRegexp("drainer")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	cdcPattern, err = config.NewRegexp("ticdc")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	importerPattern, err = config.NewRegexp("importer")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	lightningPattern, err = config.NewRegexp("tidb-lightning")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	dmWorkerPattern, err = config.NewRegexp(dmWorker)
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	dmMasterPattern, err = config.NewRegexp(dmMaster)
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
+	truePattern = "true"
+	allMatchPattern = "(.+)"
+	portPattern = "([^:]+)(?::\\d+)?;(\\d+)"
+	tikvPattern = "tikv"
+	pdPattern = "pd"
+	tidbPattern = "tidb"
+	addressPattern = "(.+);(.+);(.+);(.+)"
+	tiflashPattern = "tiflash"
+	pumpPattern = "pump"
+	drainerPattern = "drainer"
+	cdcPattern = "ticdc"
+	importerPattern = "importer"
+	lightningPattern = "tidb-lightning"
+	dmWorkerPattern = dmWorker
+	dmMasterPattern = dmMaster
+
 }
 
 type MonitorConfigModel struct {
@@ -216,7 +170,7 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 		return f()
 	case "tiflash-proxy":
 		return yaml.MapSlice{
-			{Key: "action", Value: config.RelabelReplace},
+			{Key: "action", Value: "replace"},
 			{Key: "regex", Value: addressPattern},
 			{Key: "replacement", Value: "$1.$2-tiflash-peer.$3:$4"},
 			{Key: "target_label", Value: "__address__"},
@@ -228,7 +182,7 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 
 	case "pump":
 		return yaml.MapSlice{
-			{Key: "action", Value: config.RelabelReplace},
+			{Key: "action", Value: "replace"},
 			{Key: "regex", Value: addressPattern},
 			{Key: "replacement", Value: "$1.$2-pump.$3:$4"},
 			{Key: "target_label", Value: "__address__"},
@@ -241,7 +195,7 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 		}
 	case "importer":
 		return yaml.MapSlice{
-			{Key: "action", Value: config.RelabelReplace},
+			{Key: "action", Value: "replace"},
 			{Key: "regex", Value: addressPattern},
 			{Key: "replacement", Value: "$1.$2-importer.$3:$4"},
 			{Key: "target_label", Value: "__address__"},
@@ -254,7 +208,7 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 		}
 	case "drainer":
 		return yaml.MapSlice{
-			{Key: "action", Value: config.RelabelReplace},
+			{Key: "action", Value: "replace"},
 			{Key: "regex", Value: addressPattern},
 			{Key: "replacement", Value: "$1.$2.$3:$4"},
 			{Key: "target_label", Value: "__address__"},
@@ -267,7 +221,7 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 		}
 	case "lightning":
 		return yaml.MapSlice{
-			{Key: "action", Value: config.RelabelReplace},
+			{Key: "action", Value: "replace"},
 			{Key: "regex", Value: addressPattern},
 			{Key: "replacement", Value: "$2.$3:$4"},
 			{Key: "target_label", Value: "__address__"},
@@ -284,7 +238,7 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 				"__address__",
 				portLabel,
 			}},
-			{Key: "action", Value: config.RelabelReplace},
+			{Key: "action", Value: "replace"},
 			{Key: "regex", Value: portPattern},
 			{Key: "replacement", Value: "$1:$2"},
 			{Key: "target_label", Value: "__address__"},
@@ -293,7 +247,7 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 	}
 }
 
-func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig yaml.MapSlice) []yaml.MapSlice {
+func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigModel, addressRelabelConfig yaml.MapSlice) []yaml.MapSlice {
 	var scrapeJobs []yaml.MapSlice
 	var currCluster []ClusterRegexInfo
 
@@ -304,16 +258,9 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 	}
 
 	for _, cluster := range currCluster {
-		clusterTargetPattern, err := config.NewRegexp(cluster.Name)
-		if err != nil {
-			klog.Errorf("generate scrapeJob[%s] clusterName:%s error:%v", jobName, cluster.Name, err)
-			continue
-		}
-		nsTargetPattern, err := config.NewRegexp(cluster.Namespace)
-		if err != nil {
-			klog.Errorf("generate scrapeJob[%s] clusterName:%s namespace:%s error:%v", jobName, cluster.Name, cluster.Namespace, err)
-			continue
-		}
+		clusterTargetPattern := cluster.Name
+
+		nsTargetPattern := cluster.Namespace
 
 		schemeRelabelConfig := yaml.MapItem{
 			Key:   "scheme",
@@ -532,13 +479,14 @@ func addAlertManagerUrl(cfg yaml.MapSlice, cmodel *MonitorConfigModel) yaml.MapS
 		Value: yaml.MapSlice{
 			{
 				Key: "alertmanagers",
-				Value: []*config.AlertmanagerConfig{
+				Value: []yaml.MapSlice{
 					{
-						ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
-							StaticConfigs: []*config.TargetGroup{
+						{
+							Key: "static_configs", Value: []yaml.MapSlice{
 								{
-									Targets: []model.LabelSet{
-										{model.AddressLabel: model.LabelValue(cmodel.AlertmanagerURL)},
+									{
+										Key:   "targets",
+										Value: []string{cmodel.AlertmanagerURL},
 									},
 								},
 							},
@@ -573,11 +521,8 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (yaml.MapSlice, error) {
 }
 
 func appendShardingRelabelConfigRules(relabelConfigs []yaml.MapSlice, shard uint64) []yaml.MapSlice {
-	shardsPattern, err := config.NewRegexp("$(SHARD)")
-	if err != nil {
-		klog.Errorf("Generate pattern for shard %d error: %v", shard, err)
-		return relabelConfigs
-	}
+	shardsPattern := "$(SHARD)"
+
 	return append(relabelConfigs, yaml.MapSlice{
 
 		{Key: "source_labels", Value: []string{"__address__"}},

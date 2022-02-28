@@ -18,14 +18,10 @@ import (
 	"path"
 	"testing"
 	"text/template"
-	"time"
 
-	"github.com/docker/docker/client"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -961,7 +957,9 @@ remote_write:
 - url: http://localhost:1234
   remote_timeout: 15s
   write_relabel_configs:
-  - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels:
+    - __address__
+    - __meta_kubernetes_pod_annotation_prometheus_io_port
     separator: ;
     regex: (.+)
     target_label: node
@@ -975,8 +973,8 @@ alerting:
 rule_files:
 - /prometheus-rules/rules/*.rules.yml
 `
-	url, _ := client.ParseHostURL("http://localhost:1234")
-	regex, _ := config.NewRegexp("(.+)")
+	url := "http://localhost:1234"
+	regex := "(.+)"
 	model := &MonitorConfigModel{
 		ClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
@@ -987,21 +985,45 @@ rule_files:
 		AlertmanagerURL: "alert-url",
 		RemoteWriteCfg: &yaml.MapItem{
 			Key: "remote_write",
-			Value: []*config.RemoteWriteConfig{
+			Value: []yaml.MapSlice{
 				{
-					URL:           &config.URL{URL: url},
-					RemoteTimeout: model.Duration(15 * time.Second),
-					WriteRelabelConfigs: []*config.RelabelConfig{
-						{
-							SourceLabels: model.LabelNames{
-								"__address__",
-								portLabel,
+					{
+						Key:   "url",
+						Value: url,
+					},
+					{
+						Key:   "remote_timeout",
+						Value: "15s",
+					},
+					{
+						Key: "write_relabel_configs",
+						Value: []yaml.MapSlice{
+							{
+								{
+									Key:   "source_labels",
+									Value: []string{"__address__", portLabel},
+								},
+								{
+									Key:   "separator",
+									Value: ";",
+								},
+								{
+									Key:   "regex",
+									Value: regex,
+								},
+								{
+									Key:   "target_label",
+									Value: "node",
+								},
+								{
+									Key:   "replacement",
+									Value: "$1",
+								},
+								{
+									Key:   "action",
+									Value: "replace",
+								},
 							},
-							Separator:   ";",
-							Regex:       regex,
-							TargetLabel: "node",
-							Replacement: "$1",
-							Action:      "replace",
 						},
 					},
 				},
@@ -1906,7 +1928,9 @@ remote_write:
 - url: http://localhost:1234
   remote_timeout: 15s
   write_relabel_configs:
-  - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  - source_labels:
+    - __address__
+    - __meta_kubernetes_pod_annotation_prometheus_io_port
     separator: ;
     regex: (.+)
     target_label: node
@@ -1915,8 +1939,8 @@ remote_write:
 rule_files:
 - /prometheus-external-rules/*.rules.yml
 `
-	url, _ := client.ParseHostURL("http://localhost:1234")
-	regex, _ := config.NewRegexp("(.+)")
+	url := "http://localhost:1234"
+	regex := "(.+)"
 	model := &MonitorConfigModel{
 		ClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
@@ -1928,21 +1952,45 @@ rule_files:
 		EnableExternalRuleConfigs: true,
 		RemoteWriteCfg: &yaml.MapItem{
 			Key: "remote_write",
-			Value: []*config.RemoteWriteConfig{
+			Value: []yaml.MapSlice{
 				{
-					URL:           &config.URL{URL: url},
-					RemoteTimeout: model.Duration(15 * time.Second),
-					WriteRelabelConfigs: []*config.RelabelConfig{
-						{
-							SourceLabels: model.LabelNames{
-								"__address__",
-								portLabel,
+					{
+						Key:   "url",
+						Value: url,
+					},
+					{
+						Key:   "remote_timeout",
+						Value: "15s",
+					},
+					{
+						Key: "write_relabel_configs",
+						Value: []yaml.MapSlice{
+							{
+								{
+									Key:   "source_labels",
+									Value: []string{"__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"},
+								},
+								{
+									Key:   "separator",
+									Value: ";",
+								},
+								{
+									Key:   "regex",
+									Value: regex,
+								},
+								{
+									Key:   "target_label",
+									Value: "node",
+								},
+								{
+									Key:   "replacement",
+									Value: "$1",
+								},
+								{
+									Key:   "action",
+									Value: "replace",
+								},
 							},
-							Separator:   ";",
-							Regex:       regex,
-							TargetLabel: "node",
-							Replacement: "$1",
-							Action:      "replace",
 						},
 					},
 				},
