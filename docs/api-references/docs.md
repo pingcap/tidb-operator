@@ -12042,6 +12042,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>The name of the remote write queue, must be unique if specified. The
 name is used in metrics and logging in order to differentiate queues.
 Only valid in Prometheus versions 2.15.0 and newer.</p>

@@ -440,6 +440,7 @@ type RemoteWriteSpec struct {
 	// The name of the remote write queue, must be unique if specified. The
 	// name is used in metrics and logging in order to differentiate queues.
 	// Only valid in Prometheus versions 2.15.0 and newer.
+	// +optional
 	Name string `json:"name,omitempty"`
 	// +optional
 	RemoteTimeout *model.Duration `json:"remoteTimeout,omitempty"`

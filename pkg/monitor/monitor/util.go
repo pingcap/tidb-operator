@@ -15,7 +15,6 @@ package monitor
 
 import (
 	"fmt"
-
 	"path"
 	"sort"
 	"strconv"
@@ -1486,11 +1485,11 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 			{Key: "remote_timeout", Value: spec.RemoteTimeout},
 		}
 
-		if len(spec.Headers) > 0 && version.GreaterThan(semver.MustParse("2.25.0")) {
+		if len(spec.Headers) > 0 && GreaterThanOrEqual(version, semver.MustParse("2.25.0")) {
 			cfg = append(cfg, yaml.MapItem{Key: "headers", Value: stringMapToMapSlice(spec.Headers)})
 		}
 
-		if spec.Name != "" && version.GreaterThan(semver.MustParse("2.15.0")) {
+		if spec.Name != "" && GreaterThanOrEqual(version, semver.MustParse("2.25.0")) {
 			cfg = append(cfg, yaml.MapItem{Key: "name", Value: spec.Name})
 		}
 
@@ -1594,7 +1593,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 			cfg = append(cfg, yaml.MapItem{Key: "queue_config", Value: queueConfig})
 		}
 
-		if spec.MetadataConfig != nil && version.GreaterThan(semver.MustParse("2.23.0")) {
+		if spec.MetadataConfig != nil && GreaterThanOrEqual(version, semver.MustParse("2.23.0")) {
 			metadataConfig := yaml.MapSlice{}
 			metadataConfig = append(metadataConfig, yaml.MapItem{Key: "send", Value: spec.MetadataConfig.Send})
 			if spec.MetadataConfig.SendInterval != "" {
@@ -1612,6 +1611,9 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 	}, nil
 }
 
+func GreaterThanOrEqual(left *semver.Version, right *semver.Version) bool {
+	return left.GreaterThan(right) || left.Equal(right)
+}
 func stringMapToMapSlice(m map[string]string) yaml.MapSlice {
 	res := yaml.MapSlice{}
 	ks := make([]string, 0)
