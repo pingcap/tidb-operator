@@ -28,7 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -184,20 +183,6 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	if err != nil {
 		klog.V(4).Infof("failed to get tc, skip sync tc %q", ns+"/"+tcName)
 		return reconcile.Result{}, nil
-	}
-
-	// filter out pods not belong to this cluster
-	if c.deps.CLIConfig.Selector != "" {
-		selector, err := labels.Parse(c.deps.CLIConfig.Selector)
-		if err != nil {
-			klog.V(4).Infof("failed to parse selector %s, skip sync tc %q", c.deps.CLIConfig.Selector, ns+"/"+tcName)
-			return reconcile.Result{}, nil
-		}
-
-		if selector.Matches(labels.Set(tc.Labels)) {
-			klog.V(4).Infof("filter by selector %s, skip sync tc %q", c.deps.CLIConfig.Selector, ns+"/"+tcName)
-			return reconcile.Result{}, nil
-		}
 	}
 
 	startTime := time.Now()
