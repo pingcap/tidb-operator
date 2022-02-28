@@ -184,13 +184,13 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 		klog.V(4).Infof("failed to get tc, skip sync tc %q", ns+"/"+tcName)
 		return reconcile.Result{}, nil
 	}
+	tc = tc.DeepCopy()
 
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing TidbCluster pod %q (%v)", key, time.Since(startTime))
 	}()
 
-	tc = tc.DeepCopy()
 	component := pod.Labels[label.ComponentLabelKey]
 	ctx := context.Background()
 	switch component {
