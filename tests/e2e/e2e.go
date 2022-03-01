@@ -312,7 +312,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
 		ginkgo.By("Installing CRDs")
 		oa.CleanCRDOrDie()
-		oa.InstallCRDOrDie(ocfg)
+		oa.CreateCRDOrDie(ocfg)
 		ginkgo.By("Installing tidb-operator")
 		oa.CleanOperatorOrDie(ocfg)
 		oa.DeployOperatorOrDie(ocfg)
