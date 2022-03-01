@@ -22,6 +22,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/kubernetes/test/e2e/framework"
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
@@ -60,4 +62,23 @@ func IsPodsChanged(old v1.Pod, cur v1.Pod) bool {
 // It returns wait.ErrWaitTimeout if the given pods are not changed in specified timeout.
 func WaitForPodsAreChanged(c kubernetes.Interface, pods []v1.Pod, timeout time.Duration) error {
 	return wait.PollImmediate(time.Second*5, timeout, PodsAreChanged(c, pods))
+}
+
+func ListPods(labelSelector string, ns string, c clientset.Interface) ([]v1.Pod, error) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+	podList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return podList.Items, nil
+}
+
+func MustListPods(labelSelector string, ns string, c clientset.Interface) []v1.Pod {
+	pods, err := ListPods(labelSelector, ns, c)
+	framework.ExpectNoError(err, "failed to list pods in ns %s with selector %v", ns, labelSelector)
+
+	return pods
 }
