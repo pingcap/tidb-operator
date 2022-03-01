@@ -27,14 +27,14 @@ import (
 )
 
 var (
-	TiDBPreviousVersions []string = []string{"v4.0.16", "v5.0.6", "v5.1.3", "v5.2.3"}
+	TiDBPreviousVersions []string = []string{"v4.0.16", "v5.0.6", "v5.1.4", "v5.2.3"}
 )
 
 const (
 	// TiDB Version
 	TiDBV3             = "v3.0.20"
-	TiDBLatestPrev     = "v5.2.3"
-	TiDBLatest         = "v5.3.0"
+	TiDBLatestPrev     = "v5.3.0"
+	TiDBLatest         = "v5.4.0"
 	TiDBNightlyVersion = "nightly"
 	// specific version
 	TiDBV4x0x9 = "v4.0.9"
@@ -55,7 +55,7 @@ const (
 	DMV2                          = TiDBLatest
 	DMMonitorInitializerImage     = "pingcap/dm-monitor-initializer"
 	DMMonitorInitializerVersion   = DMV2
-	TiDBNGMonitoringLatest        = "v5.4.0-pre" // TODO: change it after release
+	TiDBNGMonitoringLatest        = "v5.4.0"
 )
 
 func ListImages() []string {
