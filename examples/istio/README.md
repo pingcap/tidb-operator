@@ -1,4 +1,4 @@
-# A Basic TiDB cluster with monitoring
+# A TiDB cluster with monitoring in an Istio enabled kubernetes cluster
 
 > **Note:**
 >
