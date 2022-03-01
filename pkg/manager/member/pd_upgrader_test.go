@@ -41,6 +41,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		changePods        func(pods []*corev1.Pod)
 		changeOldSet      func(set *apps.StatefulSet)
 		transferLeaderErr bool
+		isSetPodNotReady  bool
 		errExpectFn       func(*GomegaWithT, error)
 		expectFn          func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
 	}
@@ -102,6 +103,26 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
+			},
+		},
+		{
+			name: "normal upgrade with notReady pod",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Synced = true
+			},
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					pod.Status = *new(corev1.PodStatus)
+				}
+			},
+			changeOldSet:      nil,
+			transferLeaderErr: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
 			},
 		},
 		{

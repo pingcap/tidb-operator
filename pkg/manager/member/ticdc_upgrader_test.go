@@ -37,6 +37,7 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 		name         string
 		changeFn     func(*v1alpha1.TidbCluster)
 		invalidPod   bool
+		changePods   func(pods []*corev1.Pod)
 		missPod      bool
 		errorExpect  bool
 		changeOldSet func(set *apps.StatefulSet)
@@ -56,6 +57,9 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 		}
 		if test.missPod {
 			pods = pods[:0]
+		}
+		if test.changePods != nil {
+			test.changePods(pods)
 		}
 		for _, pod := range pods {
 			podInformer.Informer().GetIndexer().Add(pod)
@@ -83,6 +87,18 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(0)))
+			},
+		},
+		{
+			name: "normal with pod notReady",
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					pod.Status = *new(corev1.PodStatus)
+				}
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 			errorExpect: true,
 		},

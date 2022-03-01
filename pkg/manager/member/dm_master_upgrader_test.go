@@ -106,6 +106,26 @@ func TestMasterUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
+			name: "normal upgrade with notReady pod",
+			changeFn: func(dc *v1alpha1.DMCluster) {
+				dc.Status.Master.Synced = true
+			},
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					pod.Status = *new(corev1.PodStatus)
+				}
+			},
+			changeOldSet:      nil,
+			transferLeaderErr: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, dc *v1alpha1.DMCluster, newSet *apps.StatefulSet) {
+				g.Expect(dc.Status.Master.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
+			},
+		},
+		{
 			name: "modify oldSet update strategy to OnDelete",
 			changeFn: func(dc *v1alpha1.DMCluster) {
 				dc.Status.Master.Synced = true
