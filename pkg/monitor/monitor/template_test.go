@@ -2913,8 +2913,6 @@ scrape_configs:
     - __tmp_hash
     regex: $(SHARD)
     action: keep
-rule_files:
-- /prometheus-rules/rules/*.rules.yml
 `
 	model := &MonitorConfigModel{
 		ClusterInfos: []ClusterRegexInfo{
