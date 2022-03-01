@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -456,93 +455,77 @@ func (oa *OperatorActions) CleanCRDOrDie() {
 	}
 }
 
-func (oa *OperatorActions) CreateOrReplaceCRD(isCRDV1Supported bool) {
-	files := map[string]struct{}{}
-	if isCRDV1Supported {
-		crdList, err := oa.apiExtCli.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
-		framework.ExpectNoError(err, "failed to list CRD")
-		for _, crd := range crdList.Items {
-			if !strings.HasSuffix(crd.Name, ".pingcap.com") {
-				framework.Logf("CRD %q ignored", crd.Name)
-				continue
-			}
-			files[crd.Spec.Group+"_"+crd.Spec.Names.Plural+".yaml"] = struct{}{}
-		}
-		oa.createOrReplaceCRD("v1", files)
-	} else {
-		crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
-		framework.ExpectNoError(err, "failed to list CRD")
-		for _, crd := range crdList.Items {
-			if !strings.HasSuffix(crd.Name, ".pingcap.com") {
-				framework.Logf("CRD %q ignored", crd.Name)
-				continue
-			}
-			files[crd.Spec.Group+"_"+crd.Spec.Names.Plural+".yaml"] = struct{}{}
-		}
-		oa.createOrReplaceCRD("v1beta1", files)
+func (oa *OperatorActions) ReplaceCRDOrDie(info *OperatorConfig) {
+	files, err := oa.crdFiles(info)
+	framework.ExpectNoError(err, "failed to get CRD files")
+
+	for _, file := range files {
+		framework.RunKubectl("", "create", "-f", file) // exec `create` command to create new CRD
+		oa.RunKubectlOrDie("replace", "-f", file)
 	}
+
+	oa.waitForCRDsReady()
 }
 
-func (oa *OperatorActions) createOrReplaceCRD(version string, files map[string]struct{}) {
-	filepath.Walk(oa.manifestPath(filepath.Join("e2e/crd", version)), func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		if _, ok := files[info.Name()]; ok {
-			oa.RunKubectlOrDie("replace", "-f", path)
-		} else {
-			oa.RunKubectlOrDie("create", "-f", path)
-		}
-		return nil
-	})
+func (oa *OperatorActions) CreateCRDOrDie(info *OperatorConfig) {
+	files, err := oa.crdFiles(info)
+	framework.ExpectNoError(err, "failed to get CRD files")
+
+	for _, file := range files {
+		oa.RunKubectlOrDie("create", "-f", file)
+	}
+
+	oa.waitForCRDsReady()
 }
 
-// InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
-func (oa *OperatorActions) InstallCRDOrDie(info *OperatorConfig) {
-	isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1")
-	if err != nil {
-		log.Failf(err.Error())
-	}
-	if info.Enabled(features.AdvancedStatefulSet) {
-		if isSupported {
-			oa.RunKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
-		} else {
-			oa.RunKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
-		}
-	}
-	// replace crd to avoid problem of too big annotation
-	oa.CreateOrReplaceCRD(isSupported)
-	oa.RunKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
-	log.Logf("Wait for all CRDs are established")
-	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
-	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
-	log.Logf("force sync kubectl cache")
-	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
-	if _, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput(); err != nil {
-		log.Failf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
-	}
-}
-
-func (oa *OperatorActions) DeployReleasedCRDOrDie(version string) {
+func (oa *OperatorActions) CreateReleasedCRDOrDie(version string) {
 	url := fmt.Sprintf("https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml", version)
+
+	var lastErr error
 	err := wait.PollImmediate(time.Second*10, time.Minute, func() (bool, error) {
-		_, err := framework.RunKubectl("", "apply", "-f", url)
+		_, err := framework.RunKubectl("", "create", "-f", url)
 		if err != nil {
+			lastErr = err
 			return false, nil
 		}
 		return true, nil
 	})
-	framework.ExpectNoError(err, "failed to apply CRD of version %s", version)
-	log.Logf("Wait for all CRDs are established")
-	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
-	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
-	log.Logf("force sync kubectl cache")
-	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
-	_, err = exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput()
+	framework.ExpectNoError(err, "failed to create CRD of version %s: %s", version, lastErr)
+
+	oa.waitForCRDsReady()
+}
+
+func (oa *OperatorActions) crdFiles(info *OperatorConfig) ([]string, error) {
+	supportV1, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1")
 	if err != nil {
+		return nil, err
+	}
+
+	crdFile := oa.manifestPath("e2e/crd.yaml")
+	astsCRDFile := oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml")
+	if !supportV1 {
+		crdFile = oa.manifestPath("e2e/crd_v1beta1.yaml")
+		astsCRDFile = oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml")
+	}
+
+	files := []string{
+		crdFile,
+	}
+	if info.Enabled("advanced-statefulset") {
+		files = append(files, astsCRDFile)
+	}
+
+	return files, nil
+}
+
+func (oa *OperatorActions) waitForCRDsReady() {
+	framework.Logf("Wait for all CRDs are established")
+	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
+
+	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
+	framework.Logf("force sync kubectl cache")
+	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
+	if _, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput(); err != nil {
 		log.Failf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
 	}
 }

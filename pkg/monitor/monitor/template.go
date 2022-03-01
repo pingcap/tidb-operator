@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	truePattern      string
+	truePattern = "true"
 	allMatchPattern  string
 	portPattern      string
 	tikvPattern      string
@@ -316,7 +316,7 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 
 		}
 
-		scrapeconfig := yaml.MapSlice{
+		scrapeConfig := yaml.MapSlice{
 			{Key: "job_name", Value: fmt.Sprintf("%s-%s-%s", cluster.Namespace, cluster.Name, jobName)},
 			{Key: "honor_labels", Value: true},
 			{Key: "scrape_interval", Value: "15s"},
