@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	truePattern = "true"
+	truePattern      = "true"
 	allMatchPattern  string
 	portPattern      string
 	tikvPattern      string
@@ -458,8 +458,8 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 		)
 
 		relabelConfigs = appendShardingRelabelConfigRules(relabelConfigs, uint64(cmodel.shards))
-		scrapeconfig = append(scrapeconfig, yaml.MapItem{Key: "relabel_configs", Value: relabelConfigs})
-		scrapeJobs = append(scrapeJobs, scrapeconfig)
+		scrapeConfig = append(scrapeConfig, yaml.MapItem{Key: "relabel_configs", Value: relabelConfigs})
+		scrapeJobs = append(scrapeJobs, scrapeConfig)
 
 	}
 	return scrapeJobs
@@ -501,30 +501,36 @@ func addAlertManagerUrl(cfg yaml.MapSlice, cmodel *MonitorConfigModel) yaml.MapS
 
 func RenderPrometheusConfig(model *MonitorConfigModel) (yaml.MapSlice, error) {
 	cfg := newPrometheusConfig(model)
+	var rulesPath []string
 	if len(model.AlertmanagerURL) > 0 {
 		cfg = addAlertManagerUrl(cfg, model)
+		rulesPath = []string{
+			"/prometheus-rules/rules/*.rules.yml",
+		}
 	}
-	rulesPath := []string{
-		"/prometheus-rules/rules/*.rules.yml",
+	if model.EnableAlertRules {
+		// Add alert rules when `EnableAlertRules` enabled even if AlertManager not configured.
+		rulesPath = []string{
+			"/prometheus-rules/rules/*.rules.yml",
+		}
 	}
 	if model.EnableExternalRuleConfigs {
 		rulesPath = []string{
 			"/prometheus-external-rules/*.rules.yml",
 		}
 	}
-	cfg = append(cfg, yaml.MapItem{
-		Key:   "rule_files",
-		Value: rulesPath,
-	})
-
+	if rulesPath != nil {
+		cfg = append(cfg, yaml.MapItem{
+			Key:   "rule_files",
+			Value: rulesPath,
+		})
+	}
 	return cfg, nil
 }
 
 func appendShardingRelabelConfigRules(relabelConfigs []yaml.MapSlice, shard uint64) []yaml.MapSlice {
 	shardsPattern := "$(SHARD)"
-
 	return append(relabelConfigs, yaml.MapSlice{
-
 		{Key: "source_labels", Value: []string{"__address__"}},
 		{Key: "action", Value: "hashmod"},
 		{Key: "target_label", Value: "__tmp_hash"},
@@ -535,5 +541,4 @@ func appendShardingRelabelConfigRules(relabelConfigs []yaml.MapSlice, shard uint
 		{Key: "action", Value: "keep"},
 	},
 	)
-
 }

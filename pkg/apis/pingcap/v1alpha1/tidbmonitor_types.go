@@ -453,7 +453,6 @@ type RemoteWriteSpec struct {
 	// File to read bearer token for remote write.
 	// +optional
 	BearerToken string `json:"bearerToken,omitempty"`
-	// +optional
 	// File to read bearer token for remote write.
 	// +optional
 	BearerTokenFile string `json:"bearerTokenFile,omitempty"`

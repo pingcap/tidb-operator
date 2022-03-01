@@ -1562,7 +1562,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 				queueConfig = append(queueConfig, yaml.MapItem{Key: "capacity", Value: spec.QueueConfig.Capacity})
 			}
 
-			if version.GreaterThan(semver.MustParse("2.6.0")) && spec.QueueConfig.MinShards != int(0) {
+			if GreaterThanOrEqual(version, semver.MustParse("2.6.0")) && spec.QueueConfig.MinShards != int(0) {
 				queueConfig = append(queueConfig, yaml.MapItem{Key: "min_shards", Value: spec.QueueConfig.MinShards})
 			}
 
@@ -1614,6 +1614,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 func GreaterThanOrEqual(left *semver.Version, right *semver.Version) bool {
 	return left.GreaterThan(right) || left.Equal(right)
 }
+
 func stringMapToMapSlice(m map[string]string) yaml.MapSlice {
 	res := yaml.MapSlice{}
 	ks := make([]string, 0)
