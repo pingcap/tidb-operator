@@ -1,7 +1,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: "local-storage"
+  name: "monitoring-storage"
 provisioner: "kubernetes.io/no-provisioner"
 volumeBindingMode: "WaitForFirstConsumer"
 ---
@@ -36,15 +36,15 @@ data:
   nodeLabelsForPV: |
     - kubernetes.io/hostname
   storageClassMap: |
-    shared-ssd-storage:
-      hostDir: /mnt/sharedssd
-      mountDir: /mnt/sharedssd
     ssd-storage:
       hostDir: /mnt/ssd
       mountDir: /mnt/ssd
-    local-storage:
-      hostDir: /mnt/disks
-      mountDir: /mnt/disks
+    shared-ssd-storage:
+      hostDir: /mnt/sharedssd
+      mountDir: /mnt/sharedssd
+    monitoring-storage:
+      hostDir: /mnt/monitoring
+      mountDir: /mnt/monitoring
     backup-storage:
       hostDir: /mnt/backup
       mountDir: /mnt/backup
@@ -99,11 +99,11 @@ spec:
             - mountPath: /mnt/sharedssd
               name: local-sharedssd
               mountPropagation: "HostToContainer"
-            - mountPath: /mnt/disks
-              name: local-disks
-              mountPropagation: "HostToContainer"
             - mountPath: /mnt/backup
               name: local-backup
+              mountPropagation: "HostToContainer"
+            - mountPath: /mnt/monitoring
+              name: local-monitoring
               mountPropagation: "HostToContainer"            
       volumes:
         - name: provisioner-config
@@ -115,12 +115,12 @@ spec:
         - name: local-sharedssd
           hostPath:
             path: /mnt/sharedssd
-        - name: local-disks
-          hostPath:
-            path: /mnt/disks
         - name: local-backup
           hostPath:
             path: /mnt/backup
+        - name: local-monitoring
+          hostPath:
+            path: /mnt/monitoring
 ---
 apiVersion: v1
 kind: ServiceAccount
