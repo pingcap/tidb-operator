@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	truePattern      string
+	truePattern = "true"
 	allMatchPattern  string
 	portPattern      string
 	tikvPattern      string
