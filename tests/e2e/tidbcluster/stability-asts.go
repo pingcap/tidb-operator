@@ -122,7 +122,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
-			oa.InstallCRDOrDie(ocfg)
+			oa.CreateCRDOrDie(ocfg)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
@@ -330,7 +330,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 		ginkgo.By("Installing CRDs")
 		oa.CleanCRDOrDie()
-		oa.InstallCRDOrDie(ocfg)
+		oa.CreateCRDOrDie(ocfg)
 		ginkgo.By("Installing tidb-operator without AdvancedStatefulSet feature")
 		oa.CleanOperatorOrDie(ocfg)
 		oa.DeployOperatorOrDie(ocfg)
@@ -370,7 +370,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			"StableScheduling=true",
 			"AdvancedStatefulSet=true",
 		}
-		oa.InstallCRDOrDie(ocfg)
+		oa.ReplaceCRDOrDie(ocfg)
 		oa.UpgradeOperatorOrDie(ocfg)
 
 		ginkgo.By("Wait for the advanced statefulsets are created and Kubernetes statfulsets are deleted")
@@ -422,7 +422,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 		ginkgo.By("Installing CRDs")
 		oa.CleanCRDOrDie()
-		oa.InstallCRDOrDie(ocfg)
+		oa.ReplaceCRDOrDie(ocfg)
 		ginkgo.By("Installing tidb-operator without AdvancedStatefulSet feature")
 		oa.CleanOperatorOrDie(ocfg)
 		oa.DeployOperatorOrDie(ocfg)
