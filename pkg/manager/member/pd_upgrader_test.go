@@ -41,7 +41,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		changePods        func(pods []*corev1.Pod)
 		changeOldSet      func(set *apps.StatefulSet)
 		transferLeaderErr bool
-		isSetPodNotReady  bool
 		errExpectFn       func(*GomegaWithT, error)
 		expectFn          func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
 	}
