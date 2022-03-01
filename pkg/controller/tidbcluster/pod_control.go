@@ -182,10 +182,10 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			klog.V(4).Infof("tc is not found, so skip sync tc %q", ns+"/"+tcName)
+			klog.V(4).Infof("TidbCluster %q is not found, skip sync the Pod %s", ns+"/"+tcName, name)
 			return reconcile.Result{}, nil
 		}
-		return reconcile.Result{}, err
+		return reconcile.Result{}, perrors.Annotatef(err, "failed to get TidbCluster %q", ns+"/"+tcName)
 	}
 	tc = tc.DeepCopy()
 
