@@ -40,20 +40,20 @@ const (
 
 var (
 	truePattern      = "true"
-	allMatchPattern  string
-	portPattern      string
-	tikvPattern      string
-	pdPattern        string
-	tidbPattern      string
-	addressPattern   string
-	tiflashPattern   string
-	pumpPattern      string
-	drainerPattern   string
-	cdcPattern       string
-	importerPattern  string
-	lightningPattern string
-	dmWorkerPattern  string
-	dmMasterPattern  string
+	allMatchPattern  = "(.+)"
+	portPattern      = "([^:]+)(?::\\d+)?;(\\d+)"
+	tikvPattern      = "tikv"
+	pdPattern        = "pd"
+	tidbPattern      = "tidb"
+	addressPattern   = "(.+);(.+);(.+);(.+)"
+	tiflashPattern   = "tiflash"
+	pumpPattern      = "pump"
+	drainerPattern   = "drainer"
+	cdcPattern       = "ticdc"
+	importerPattern  = "importer"
+	lightningPattern = "tidb-lightning"
+	dmWorkerPattern  = dmWorker
+	dmMasterPattern  = dmMaster
 	dashBoardConfig  = `{
     "apiVersion": 1,
     "providers": [
@@ -70,25 +70,6 @@ var (
     ]
 }`
 )
-
-func init() {
-	truePattern = "true"
-	allMatchPattern = "(.+)"
-	portPattern = "([^:]+)(?::\\d+)?;(\\d+)"
-	tikvPattern = "tikv"
-	pdPattern = "pd"
-	tidbPattern = "tidb"
-	addressPattern = "(.+);(.+);(.+);(.+)"
-	tiflashPattern = "tiflash"
-	pumpPattern = "pump"
-	drainerPattern = "drainer"
-	cdcPattern = "ticdc"
-	importerPattern = "importer"
-	lightningPattern = "tidb-lightning"
-	dmWorkerPattern = dmWorker
-	dmMasterPattern = dmMaster
-
-}
 
 type MonitorConfigModel struct {
 	AlertmanagerURL           string
