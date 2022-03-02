@@ -91,7 +91,7 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 			{
 				APIGroups: []string{corev1.GroupName},
 				Resources: []string{"secrets"},
-				Verbs:     []string{"get", "list"},
+				Verbs:     []string{"get", "list", "watch"},
 			},
 		},
 	})
