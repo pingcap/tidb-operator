@@ -179,6 +179,16 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
+	tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.V(4).Infof("TidbCluster %q is not found, skip sync the Pod %s", ns+"/"+tcName, name)
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, perrors.Annotatef(err, "failed to get TidbCluster %q", ns+"/"+tcName)
+	}
+	tc = tc.DeepCopy()
+
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing TidbCluster pod %q (%v)", key, time.Since(startTime))
@@ -188,12 +198,6 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	ctx := context.Background()
 	switch component {
 	case label.TiKVLabelVal:
-		tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
-		if err != nil {
-			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tc %q", ns+"/"+tcName)
-		}
-		tc = tc.DeepCopy()
-
 		return c.syncTiKVPod(ctx, pod, tc)
 	default:
 		return reconcile.Result{}, nil
