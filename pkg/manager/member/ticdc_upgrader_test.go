@@ -37,6 +37,7 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 		name         string
 		changeFn     func(*v1alpha1.TidbCluster)
 		invalidPod   bool
+		changePods   func(pods []*corev1.Pod)
 		missPod      bool
 		errorExpect  bool
 		changeOldSet func(set *apps.StatefulSet)
@@ -56,6 +57,9 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 		}
 		if test.missPod {
 			pods = pods[:0]
+		}
+		if test.changePods != nil {
+			test.changePods(pods)
 		}
 		for _, pod := range pods {
 			podInformer.Informer().GetIndexer().Add(pod)
@@ -84,6 +88,19 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(0)))
 			},
+		},
+		{
+			name: "normal with pod notReady",
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					pod.Status = *new(corev1.PodStatus)
+				}
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
+			},
+			errorExpect: true,
 		},
 		{
 			name: "modify oldSet update strategy to OnDelete",
@@ -384,6 +401,13 @@ func getTiCDCPods() []*corev1.Pod {
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
+			},
 		},
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
@@ -391,6 +415,13 @@ func getTiCDCPods() []*corev1.Pod {
 				Name:      ticdcPodName(upgradeTcName, 1),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lu,
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
 			},
 		},
 	}
