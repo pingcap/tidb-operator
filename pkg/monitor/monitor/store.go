@@ -70,7 +70,7 @@ func (s *Store) AddBasicAuth(ns string, ba *v1alpha1.BasicAuth, key string) erro
 	}
 
 	s.BasicAuthAssets[key] = BasicAuthCredentials{
-		Username: string(password.Data[ba.Username.Name]),
+		Username: string(password.Data[ba.Username.Key]),
 		Password: string(username.Data[ba.Password.Key]),
 	}
 
