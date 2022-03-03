@@ -42,6 +42,38 @@ INSERT INTO %s (raw_bytes) VALUES %s;
 `
 )
 
+type option func(bw *blockWriter)
+
+func WithTableNum(tableNum int) option {
+	return func(bw *blockWriter) {
+		bw.tableNum = tableNum
+	}
+}
+
+func WithRecordNum(recordNum int) option {
+	return func(bw *blockWriter) {
+		bw.recordNum = recordNum
+	}
+}
+
+func WithGenTableName(genTableName func(nr int) string) option {
+	return func(bw *blockWriter) {
+		bw.genTableName = genTableName
+	}
+}
+
+func WithBatchNum(batchNum int) option {
+	return func(bw *blockWriter) {
+		bw.batchNum = batchNum
+	}
+}
+
+func WithBatchSize(batchSize int) option {
+	return func(bw *blockWriter) {
+		bw.batchSize = batchSize
+	}
+}
+
 type BlockWriter interface {
 	Write(ctx context.Context, dsn string) error
 }
@@ -49,24 +81,23 @@ type BlockWriter interface {
 type blockWriter struct {
 	tableNum  int
 	recordNum int
+	batchNum  int
+	batchSize int
 
 	genTableName func(nr int) string
 }
 
-func NewDefault() BlockWriter {
-	return New(defaultTableNum, defaultRecordNum, nil)
-}
-
-func New(tableNum, recordNum int, genTableName func(nr int) string) BlockWriter {
-
+func New(opts ...option) BlockWriter {
 	bw := &blockWriter{
-		tableNum:     tableNum,
-		recordNum:    recordNum,
-		genTableName: genTableName,
+		tableNum:     defaultTableNum,
+		recordNum:    defaultRecordNum,
+		batchNum:     defaultBatchNum,
+		batchSize:    defaultBatchSize,
+		genTableName: genTableNameDefault,
 	}
 
-	if bw.genTableName == nil {
-		bw.genTableName = genTableNameDefault
+	for _, opt := range opts {
+		opt(bw)
 	}
 
 	return bw
@@ -100,9 +131,9 @@ func (bw *blockWriter) Write(ctx context.Context, dsn string) error {
 			defer conn.Close()
 
 			for k := 0; k < bw.recordNum; k++ {
-				values := make([]string, defaultBatchNum)
-				for k := 0; k < defaultBatchNum; k++ {
-					blockData := util.RandString(defaultBatchSize)
+				values := make([]string, bw.batchNum)
+				for k := 0; k < bw.batchNum; k++ {
+					blockData := util.RandString(bw.batchSize)
 					values[k] = fmt.Sprintf("('%s')", blockData)
 				}
 				expr := fmt.Sprintf(insertExpr, bw.genTableName(index), strings.Join(values, ","))

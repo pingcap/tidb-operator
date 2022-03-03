@@ -704,11 +704,14 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				dbName := "test"
 				tables := []string{"test_0", "test_1", "test_2"}
 				recordCount := 30
-				expectCount := 3000
-				genTableName := func(nr int) string {
-					return tables[nr]
-				}
-				bw := blockwriter.New(len(tables), recordCount, genTableName)
+				batchCount := 100
+				expectCount := recordCount * batchCount
+				bw := blockwriter.New(blockwriter.WithTableNum(len(tables)),
+					blockwriter.WithRecordNum(recordCount),
+					blockwriter.WithBatchSize(batchCount),
+					blockwriter.WithGenTableName(func(nr int) string {
+						return tables[nr]
+					}))
 
 				tcName := fmt.Sprintf("upgrade-operator-from-%s", strings.ReplaceAll(operatorVersion, ".", "x"))
 				tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)

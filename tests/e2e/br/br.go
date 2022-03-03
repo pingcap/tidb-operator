@@ -208,7 +208,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 		ginkgo.By("Write data into backup TiDB cluster")
 		backupDSN := getDefaultDSN(backupHost, dbName)
-		err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+		err = blockwriter.New().Write(context.Background(), backupDSN)
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Create RBAC for backup and restore")
@@ -347,7 +347,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Write data into backup TiDB cluster")
 			backupDSN := getDefaultDSN(backupHost, dbName)
-			err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+			err = blockwriter.New().Write(context.Background(), backupDSN)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Create RBAC for backup and restore")
