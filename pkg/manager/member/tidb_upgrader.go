@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog/v2"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type tidbUpgrader struct {
@@ -99,6 +100,9 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		}
 
 		if revision == tc.Status.TiDB.StatefulSet.UpdateRevision {
+			if !podutil.IsPodReady(pod) {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tidb pod: [%s] is not ready", ns, tcName, podName)
+			}
 			if member, exist := tc.Status.TiDB.Members[podName]; !exist || !member.Health {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pod: [%s] is not ready", ns, tcName, podName)
 			}

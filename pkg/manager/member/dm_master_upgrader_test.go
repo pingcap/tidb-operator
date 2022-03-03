@@ -106,6 +106,26 @@ func TestMasterUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
+			name: "normal upgrade with notReady pod",
+			changeFn: func(dc *v1alpha1.DMCluster) {
+				dc.Status.Master.Synced = true
+			},
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					pod.Status = *new(corev1.PodStatus)
+				}
+			},
+			changeOldSet:      nil,
+			transferLeaderErr: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, dc *v1alpha1.DMCluster, newSet *apps.StatefulSet) {
+				g.Expect(dc.Status.Master.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
+			},
+		},
+		{
 			name: "modify oldSet update strategy to OnDelete",
 			changeFn: func(dc *v1alpha1.DMCluster) {
 				dc.Status.Master.Synced = true
@@ -370,6 +390,13 @@ func getMasterPods() []*corev1.Pod {
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
+			},
 		},
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
@@ -378,6 +405,13 @@ func getMasterPods() []*corev1.Pod {
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
+			},
 		},
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
@@ -385,6 +419,13 @@ func getMasterPods() []*corev1.Pod {
 				Name:      DMMasterPodName(upgradeTcName, 2),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lu,
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
 			},
 		},
 	}

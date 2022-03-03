@@ -36,6 +36,7 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 	type testcase struct {
 		name                    string
 		changeFn                func(*v1alpha1.TidbCluster)
+		changePods              func(pods []*corev1.Pod)
 		getLastAppliedConfigErr bool
 		errorExpect             bool
 		changeOldSet            func(set *apps.StatefulSet)
@@ -50,6 +51,9 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			test.changeFn(tc)
 		}
 		pods := getTiDBPods()
+		if test.changePods != nil {
+			test.changePods(pods)
+		}
 		for _, pod := range pods {
 			podInformer.Informer().GetIndexer().Add(pod)
 		}
@@ -86,6 +90,24 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(0)))
 			},
+		},
+		{
+			name: "normal with notReady pod",
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					pod.Status = *new(corev1.PodStatus)
+				}
+			},
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+			},
+			getLastAppliedConfigErr: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
+			},
+			errorExpect: true,
 		},
 		{
 			name: "modify oldSet update strategy to OnDelete",
@@ -326,6 +348,13 @@ func getTiDBPods() []*corev1.Pod {
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lc,
 			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
+			},
 		},
 		{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
@@ -333,6 +362,13 @@ func getTiDBPods() []*corev1.Pod {
 				Name:      tidbPodName(upgradeTcName, 1),
 				Namespace: corev1.NamespaceDefault,
 				Labels:    lu,
+			},
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue},
+				},
 			},
 		},
 	}
