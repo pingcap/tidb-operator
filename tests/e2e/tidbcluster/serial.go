@@ -765,6 +765,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				})
 				framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
 				err = oa.WaitForTidbClusterReady(tc, 7*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "waiting for cluster %q ready", tcName)
 
 				// reopen db after upgrade
 				dsn2, fwcancel2, err := utiltidb.PortForwardAndGetTiDBDSN(fw, ns, tcName, "root", "", dbName)
