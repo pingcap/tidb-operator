@@ -93,7 +93,7 @@ type PDClient interface {
 }
 
 var (
-	healthPrefix           = "pd/health"
+	healthPrefix           = "pd/api/v1/health"
 	membersPrefix          = "pd/api/v1/members"
 	storesPrefix           = "pd/api/v1/stores"
 	storePrefix            = "pd/api/v1/store"
