@@ -773,7 +773,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				db2 := utildb.NewDatabaseOrDie(dsn2)
 				defer db2.Close()
 
-				ginkgo.By("Ensure records in table 0 have not changed after upgrading TiDB Operator")
+				ginkgo.By("Ensure records in table 0 and table 1 have not changed after upgrading TiDB Operator")
 				EnsureRecordsNotChangedForTables(db2, "tiflash", dbName, tables[0:2], expectCount)
 				EnsureRecordsNotChangedForTables(db2, "tikv", dbName, tables[0:2], expectCount)
 
