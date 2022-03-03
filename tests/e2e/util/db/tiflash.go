@@ -49,17 +49,13 @@ func (a *TiFlashAction) QueryReplication(db, table string) (*TiFlashReplication,
 	sql := fmt.Sprintf("SELECT %s FROM information_schema.tiflash_replica WHERE TABLE_SCHEMA='%s' and TABLE_NAME='%s';",
 		strings.Join(columns, ","), db, table)
 
-	row := a.driver().QueryRow(sql)
-	if row.Err() != nil {
-		return nil, row.Err()
-	}
-
 	var (
 		replicaCount int
 		available    bool
 		progress     float32
 	)
 
+	row := a.driver().QueryRow(sql)
 	err := row.Scan(&replicaCount, &available, &progress)
 	if err != nil {
 		return nil, err
