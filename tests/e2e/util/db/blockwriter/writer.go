@@ -74,6 +74,7 @@ func WithBatchSize(batchSize int) option {
 	}
 }
 
+// BlockWriter write test data to a database.
 type BlockWriter interface {
 	Write(ctx context.Context, dsn string) error
 }
