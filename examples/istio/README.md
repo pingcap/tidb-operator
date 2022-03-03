@@ -28,6 +28,8 @@ The following steps will create a TiDB cluster with monitoring, the monitoring d
 
 ## Disable MTLS
 
+Replace `<namespace>` with your namespace in `disable-mtls.yaml` and apply it.
+
 ```bash
 > kubectl -n <namespace> apply -f disable-mtls.yaml
 ```
