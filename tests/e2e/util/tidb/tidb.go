@@ -27,7 +27,7 @@ import (
 
 var dummyCancel = func() {}
 
-// GetTiDBDSN returns a DSN to use
+// PortForwardAndGetTiDBDSN create a portforward for TiDB and return its DSN
 func PortForwardAndGetTiDBDSN(fw portforward.PortForward, ns, tc, user, password, database string) (string, context.CancelFunc, error) {
 	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tc)), 4000)
 	if err != nil {
@@ -97,14 +97,4 @@ func TiDBIsInserted(fw portforward.PortForward, ns, tc, user, password, dbName, 
 
 		return true, nil
 	}
-}
-
-func ExecSQL(dataSourceName, query string) (sql.Result, error) {
-	db, err := sql.Open("mysql", dataSourceName)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	return db.Exec(query)
 }
