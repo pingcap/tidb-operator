@@ -15,7 +15,6 @@ package monitor
 
 import (
 	"bytes"
-	"gopkg.in/yaml.v2"
 	"testing"
 	"text/template"
 	"time"
@@ -24,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/prometheus/common/model"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
