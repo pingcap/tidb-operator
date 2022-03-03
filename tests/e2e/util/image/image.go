@@ -32,7 +32,6 @@ var (
 
 const (
 	// TiDB Version
-	TiDBV3             = "v3.0.20"
 	TiDBLatestPrev     = "v5.2.3"
 	TiDBLatest         = "v5.3.0"
 	TiDBNightlyVersion = "nightly"
@@ -61,7 +60,6 @@ const (
 func ListImages() []string {
 	images := []string{}
 	versions := make([]string, 0)
-	versions = append(versions, TiDBV3)
 	versions = append(versions, TiDBPreviousVersions...)
 	versions = append(versions, TiDBLatestPrev)
 	versions = append(versions, TiDBLatest)
