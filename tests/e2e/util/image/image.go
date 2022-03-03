@@ -40,6 +40,7 @@ const (
 	TiDBV4x0x9 = "v4.0.9"
 	TiDBV5x0x0 = "v5.0.0"
 	TiDBV5x0x2 = "v5.0.2"
+	TiDBV5x3   = "v5.3.0"
 
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.27.1"

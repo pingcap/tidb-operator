@@ -697,7 +697,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 			ginkgo.It("should not change old TidbCluster", func() {
 				tcName := fmt.Sprintf("upgrade-operator-from-%s", strings.ReplaceAll(operatorVersion, ".", "x"))
-				tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
+				tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5x3)
 				tc = fixture.AddTiFlashForTidbCluster(tc)
 				tc = fixture.AddTiCDCForTidbCluster(tc)
 				tc = fixture.AddPumpForTidbCluster(tc)
