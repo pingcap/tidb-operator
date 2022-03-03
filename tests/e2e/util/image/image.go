@@ -61,7 +61,6 @@ const (
 func ListImages() []string {
 	images := []string{}
 	versions := make([]string, 0)
-	versions = append(versions, TiDBV3)
 	versions = append(versions, TiDBPreviousVersions...)
 	versions = append(versions, TiDBLatestPrev)
 	versions = append(versions, TiDBLatest)
