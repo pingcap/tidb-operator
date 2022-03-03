@@ -3,7 +3,6 @@ apiVersion: "security.istio.io/v1beta1"
 kind: "PeerAuthentication"
 metadata:
   name: "ns-disable-mtls-pa"
-  namespace: "<namespace>"
 spec:
   mtls:
     mode: DISABLE
