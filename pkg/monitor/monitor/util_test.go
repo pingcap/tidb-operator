@@ -14,7 +14,11 @@
 package monitor
 
 import (
+	"bytes"
+	"gopkg.in/yaml.v2"
 	"testing"
+	"text/template"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
@@ -27,12 +31,81 @@ import (
 )
 
 func TestGenerateRemoteWrite(t *testing.T) {
+	g := NewGomegaWithT(t)
+	expectedContentTpl := `key: remote_write
+value:
+- url: http://127.0.0.1/a/b/c
+  remote_timeout: 30s
+  write_relabel_configs:
+  - source_labels:
+    - test1
+    - test2
+    target_label: target_label
+    regex: ','
+    replacement: replace
+    action: test
+  bearer_token: /test/file
+  bearer_token_file: /test/file1
+  proxy_url: test1
+  queue_config:
+    capacity: 1
+    min_shards: 1
+    max_shards: 1
+    max_samples_per_send: 1
+    batch_send_deadline: 10s
+    max_retries: 3
+    min_backoff: 10s
+    max_backoff: 10s
+`
 	url := "http://127.0.0.1/a/b/c"
+	remoteTimeout := model.Duration(30 * time.Second)
+	testTime := time.Duration(10 * time.Second)
 	monitor := v1alpha1.TidbMonitor{
 		Spec: v1alpha1.TidbMonitorSpec{
 			Prometheus: v1alpha1.PrometheusSpec{
 				RemoteWrite: []*v1alpha1.RemoteWriteSpec{
-					{URL: url},
+					{
+						URL:           url,
+						Name:          "test",
+						RemoteTimeout: &remoteTimeout,
+						WriteRelabelConfigs: []v1alpha1.RelabelConfig{
+							{
+								SourceLabels: []model.LabelName{"test1", "test2"},
+								Regex:        ",",
+								Replacement:  "replace",
+								TargetLabel:  "target_label",
+								Action:       "test",
+							},
+						},
+						BasicAuth: &v1alpha1.BasicAuth{
+							Password: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "password"},
+								Key:                  "password",
+							},
+							Username: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "username"},
+								Key:                  "username",
+							},
+						},
+						BearerToken:     "/test/file",
+						BearerTokenFile: "/test/file1",
+						ProxyURL:        pointer.StringPtr("test1"),
+						TLSConfig: &v1alpha1.TLSConfig{
+							CAFile:   "/test/ca.pem",
+							CertFile: "/test/cert.key",
+							KeyFile:  "/test/key",
+						},
+						QueueConfig: &v1alpha1.QueueConfig{
+							Capacity:          1,
+							MinShards:         1,
+							MaxShards:         1,
+							MaxSamplesPerSend: 1,
+							BatchSendDeadline: &testTime,
+							MaxRetries:        3,
+							MinBackoff:        &testTime,
+							MaxBackoff:        &testTime,
+						},
+					},
 				},
 				MonitorContainer: v1alpha1.MonitorContainer{
 					Version: "v2.22.2",
@@ -40,11 +113,20 @@ func TestGenerateRemoteWrite(t *testing.T) {
 			},
 		},
 	}
-	remoteWriteConfig, err := generateRemoteWrite(&monitor, nil)
-	if err != nil {
-		t.Errorf("unexpected remoteWriteConfig %v", remoteWriteConfig)
+	store := &Store{
+		secretLister: nil,
+		TLSAssets:    make(map[TLSAssetKey]TLSAsset),
 	}
+	remoteWriteConfig, err := generateRemoteWrite(&monitor, store)
+	g.Expect(err).NotTo(HaveOccurred())
 
+	prometheusYaml, err := yaml.Marshal(remoteWriteConfig)
+	g.Expect(err).NotTo(HaveOccurred())
+	yaml := string(prometheusYaml)
+	expectedContentParsed := template.Must(template.New("remoteWrite").Parse(expectedContentTpl))
+	var expectedContentBytes bytes.Buffer
+	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
+	g.Expect(yaml).Should(Equal(expectedContentBytes.String()))
 }
 
 func TestGetMonitorConfigMap(t *testing.T) {
