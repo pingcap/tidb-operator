@@ -30,7 +30,7 @@ const (
 	defaultBatchSize = 1024
 
 	createTableExpr = `
-CREATE TABLE IF NOT EXISTS block_writer%d (
+CREATE TABLE IF NOT EXISTS %s (
     id BIGINT NOT NULL AUTO_INCREMENT,
     raw_bytes BLOB NOT NULL,
     PRIMARY KEY (id)
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS block_writer%d (
 `
 
 	insertExpr = `
-INSERT INTO block_writer%d (raw_bytes) VALUES %s;
+INSERT INTO %s (raw_bytes) VALUES %s;
 `
 )
 
@@ -49,17 +49,27 @@ type BlockWriter interface {
 type blockWriter struct {
 	tableNum  int
 	recordNum int
+
+	genTableName func(nr int) string
 }
 
 func NewDefault() BlockWriter {
-	return New(defaultTableNum, defaultRecordNum)
+	return New(defaultTableNum, defaultRecordNum, nil)
 }
 
-func New(tableNum, recordNum int) BlockWriter {
-	return &blockWriter{
-		tableNum:  tableNum,
-		recordNum: recordNum,
+func New(tableNum, recordNum int, genTableName func(nr int) string) BlockWriter {
+
+	bw := &blockWriter{
+		tableNum:     tableNum,
+		recordNum:    recordNum,
+		genTableName: genTableName,
 	}
+
+	if bw.genTableName == nil {
+		bw.genTableName = genTableNameDefault
+	}
+
+	return bw
 }
 
 func (bw *blockWriter) Write(ctx context.Context, dsn string) error {
@@ -67,9 +77,10 @@ func (bw *blockWriter) Write(ctx context.Context, dsn string) error {
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	for i := 0; i < bw.tableNum; i++ {
-		expr := fmt.Sprintf(createTableExpr, i)
+		expr := fmt.Sprintf(createTableExpr, bw.genTableName(i))
 		if _, err := db.Exec(expr); err != nil {
 			return err
 		}
@@ -78,9 +89,8 @@ func (bw *blockWriter) Write(ctx context.Context, dsn string) error {
 	errors := []error{}
 	wg := sync.WaitGroup{}
 	for i := 0; i < bw.tableNum; i++ {
-		index := i
 		wg.Add(1)
-		go func() {
+		go func(index int) {
 			defer wg.Done()
 			conn, err := db.Conn(ctx)
 			if err != nil {
@@ -95,18 +105,22 @@ func (bw *blockWriter) Write(ctx context.Context, dsn string) error {
 					blockData := util.RandString(defaultBatchSize)
 					values[k] = fmt.Sprintf("('%s')", blockData)
 				}
-				expr := fmt.Sprintf(insertExpr, index, strings.Join(values, ","))
+				expr := fmt.Sprintf(insertExpr, bw.genTableName(index), strings.Join(values, ","))
 
 				if _, err := conn.ExecContext(ctx, expr); err != nil {
 					errors = append(errors, err)
 					break
 				}
 			}
-		}()
+		}(i)
 	}
 	wg.Wait()
 	if len(errors) != 0 {
 		return fmt.Errorf("write errors: %v", errors)
 	}
 	return nil
+}
+
+func genTableNameDefault(nr int) string {
+	return fmt.Sprintf("block_writer%d", nr)
 }
