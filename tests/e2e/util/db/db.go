@@ -29,6 +29,7 @@ func (a *baseAction) driver() *sql.DB {
 	return a.db.driver
 }
 
+// Database is a wrapper of sql.DB in order to provide some common fuction for TiDB.
 type Database struct {
 	dsn    string
 	driver *sql.DB
@@ -54,6 +55,7 @@ func NewDatabase(dataSourceName string) (*Database, error) {
 	return db, nil
 }
 
+// QueryInSession creates a new session and call the query function.
 func (d *Database) QueryInSession(query func(s *Session)) error {
 	s, err := d.Session()
 	if err != nil {
@@ -66,6 +68,7 @@ func (d *Database) QueryInSession(query func(s *Session)) error {
 	return nil
 }
 
+// Session creates a new session.
 func (d *Database) Session() (*Session, error) {
 	conn, err := d.driver.Conn(context.TODO())
 	if err != nil {
@@ -77,6 +80,7 @@ func (d *Database) Session() (*Session, error) {
 	}, nil
 }
 
+// TiFlashAction create a TiFlashAction
 func (d *Database) TiFlashAction() *TiFlashAction {
 	return &TiFlashAction{
 		baseAction: &baseAction{

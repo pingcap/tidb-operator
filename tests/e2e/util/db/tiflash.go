@@ -36,12 +36,14 @@ type TiFlashAction struct {
 	*baseAction
 }
 
+// CreateReplicas create TiFLash replicas for a table
 func (a *TiFlashAction) CreateReplicas(db, table string, count int) error {
 	sql := fmt.Sprintf("ALTER TABLE %s.%s SET TIFLASH REPLICA %d;", db, table, count)
 	_, err := a.driver().Exec(sql)
 	return err
 }
 
+// QueryReplication query replication progress
 func (a *TiFlashAction) QueryReplication(db, table string) (*TiFlashReplication, error) {
 	columns := []string{"REPLICA_COUNT", "AVAILABLE", "PROGRESS"}
 	sql := fmt.Sprintf("SELECT %s FROM information_schema.tiflash_replica WHERE TABLE_SCHEMA='%s' and TABLE_NAME='%s';",

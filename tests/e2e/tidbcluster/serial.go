@@ -700,7 +700,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				operatorVersion = OperatorPrevMajorVersion
 			})
 
-			ginkgo.It("should not trigger rolling-update", func() {
+			ginkgo.It("should not trigger rolling-update and database work fine", func() {
 				dbName := "test"
 				tables := []string{"test_0", "test_1", "test_2"}
 				recordCount := 30
@@ -728,11 +728,11 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				selector := MustGetLabelSelectorForComponents(tcName, label.DiscoveryLabelVal) // ingore discovery
 				pods := utilpod.MustListPods(selector.String(), ns, c)
 
-				ginkgo.By("Create portforward for TiDB")
 				dsn, fwcancel, err := utiltidb.PortForwardAndGetTiDBDSN(fw, ns, tcName, "root", "", dbName)
 				framework.ExpectNoError(err, "failed to get dsn")
 				defer fwcancel()
 				db := utildb.NewDatabaseOrDie(dsn)
+				defer db.Close()
 
 				ginkgo.By("Prepare data in database")
 				err = bw.Write(context.Background(), dsn)
@@ -766,12 +766,19 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
 				err = oa.WaitForTidbClusterReady(tc, 7*time.Minute, 5*time.Second)
 
+				// reopen db after upgrade
+				dsn2, fwcancel2, err := utiltidb.PortForwardAndGetTiDBDSN(fw, ns, tcName, "root", "", dbName)
+				framework.ExpectNoError(err, "failed to get dsn")
+				defer fwcancel2()
+				db2 := utildb.NewDatabaseOrDie(dsn2)
+				defer db2.Close()
+
 				ginkgo.By("Ensure records in table 0 have not changed after upgrading TiDB Operator")
-				EnsureRecordsNotChangedForTables(db, "tiflash", dbName, tables[0:2], expectCount)
-				EnsureRecordsNotChangedForTables(db, "tikv", dbName, tables[0:2], expectCount)
+				EnsureRecordsNotChangedForTables(db2, "tiflash", dbName, tables[0:2], expectCount)
+				EnsureRecordsNotChangedForTables(db2, "tikv", dbName, tables[0:2], expectCount)
 
 				ginkgo.By("Create TiFlash replicas for table 2 and ensure it is ready")
-				MustCreateTiFlashReplicationForTable(db, dbName, tables[2], expectCount)
+				MustCreateTiFlashReplicationForTable(db2, dbName, tables[2], expectCount)
 			})
 		})
 
@@ -897,6 +904,7 @@ func MustGetLabelSelectorForComponents(tcName string, filterComponents ...string
 	return selector.Add(*r)
 }
 
+// MustCreateTiFlashReplicationForTable create TiFLash replication and ensure it is ready
 func MustCreateTiFlashReplicationForTable(db *utildb.Database, dbName string, table string, expectCount int) {
 	err := utildb.CreateTiFlashReplicationAndWaitToComplete(db.TiFlashAction(), dbName, table, 1, time.Minute)
 	framework.ExpectNoError(err, "failed to create TiFlash replication for %s", table)
@@ -905,6 +913,7 @@ func MustCreateTiFlashReplicationForTable(db *utildb.Database, dbName string, ta
 	framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", table, "tiflash")
 }
 
+// EnsureRecordsNotChangedForTables ensure records not changed for tables
 func EnsureRecordsNotChangedForTables(db *utildb.Database, engine string, dbName string, tables []string, expectCount int) {
 	for _, table := range tables {
 		count, err := utildb.Count(db, engine, dbName, table)

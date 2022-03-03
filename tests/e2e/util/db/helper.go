@@ -23,7 +23,7 @@ import (
 
 // CreateTiFlashReplicationAndWaitToComplete create TiFlash replication and wait it to complete.
 //
-// TODO: support to replica is 0.
+// TODO: support to set replica to 0.
 func CreateTiFlashReplicationAndWaitToComplete(a *TiFlashAction, db, table string, replicaCount int, timeout time.Duration) error {
 	err := a.CreateReplicas(db, table, replicaCount)
 	if err != nil {
@@ -52,12 +52,13 @@ func CreateTiFlashReplicationAndWaitToComplete(a *TiFlashAction, db, table strin
 	return nil
 }
 
+// Count count the number of rows in a table.
 func Count(db *Database, engine string, dbName string, tableName string) (int, error) {
 	var cnt int
 	var queryErr error
 	query := func(s *Session) {
 		if engine != "" {
-			if queryErr = s.UseEngine(context.Background(), engine); queryErr != nil {
+			if queryErr = s.SetEngine(context.Background(), engine); queryErr != nil {
 				return
 			}
 		}

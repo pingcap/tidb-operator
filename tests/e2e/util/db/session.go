@@ -24,16 +24,19 @@ type Session struct {
 	conn *sql.Conn
 }
 
-func (s *Session) UseEngine(ctx context.Context, engines ...string) error {
+// SetEngine set the storage engine of the database.
+func (s *Session) SetEngine(ctx context.Context, engines ...string) error {
 	sql := fmt.Sprintf(`set SESSION tidb_isolation_read_engines = "%s";`, strings.Join(engines, ","))
 	_, err := s.conn.ExecContext(ctx, sql)
 	return err
 }
 
+// Close the connection.
 func (s *Session) Close() error {
 	return s.conn.Close()
 }
 
+// Count the number of rows in the table.
 func (s *Session) Count(ctx context.Context, dbName string, table string) (int, error) {
 	sql := fmt.Sprintf("SELECT count(*) FROM %s.%s", dbName, table)
 
