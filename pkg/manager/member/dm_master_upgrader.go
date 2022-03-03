@@ -23,6 +23,7 @@ import (
 
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog/v2"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type masterUpgrader struct {
@@ -91,6 +92,9 @@ func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.St
 		}
 
 		if revision == dc.Status.Master.StatefulSet.UpdateRevision {
+			if !podutil.IsPodReady(pod) {
+				return controller.RequeueErrorf("dmcluster: [%s/%s]'s upgraded dm pod: [%s] is not ready", ns, dcName, podName)
+			}
 			if member, exist := dc.Status.Master.Members[podName]; !exist || !member.Health {
 				return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master upgraded pod: [%s] is not ready", ns, dcName, podName)
 			}
