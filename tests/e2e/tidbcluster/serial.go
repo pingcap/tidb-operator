@@ -739,11 +739,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				framework.ExpectNoError(err, "failed to write data")
 
 				ginkgo.By("Create TiFlash replicas for table 0 and ensure it is ready")
-				err = utildb.CreateTiFlashReplicationAndWaitToComplete(db.TiFlashAction(), dbName, tables[0], 1, time.Minute)
-				framework.ExpectNoError(err, "failed to create TiFlash replication for %s", tables[0])
-				count, err := utildb.Count(db, "tiflash", dbName, tables[0])
-				framework.ExpectNoError(err, "failed to count records in %s by using %s", tables[0], "tiflash")
-				framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", tables[0], "tiflash")
+				MustCreateTiFlashReplicationForTable(db, dbName, tables[0], expectCount)
 
 				ginkgo.By("Upgrade TiDB Operator and CRDs to current version")
 				ocfg.Tag = cfg.OperatorTag
@@ -756,18 +752,11 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
 
 				ginkgo.By("Ensure records in table 0 have not changed after upgrading TiDB Operator")
-				for _, engine := range []string{"tiflash", "tikv"} {
-					count, err = utildb.Count(db, engine, dbName, tables[0])
-					framework.ExpectNoError(err, "failed to count records by using %s", engine)
-					framework.ExpectEqual(count, expectCount, "count of records in table 0 changed by using %s", engine)
-				}
+				EnsureRecordsNotChangedForTables(db, "tiflash", dbName, tables[0:1], expectCount)
+				EnsureRecordsNotChangedForTables(db, "tikv", dbName, tables[0:1], expectCount)
 
 				ginkgo.By("Create TiFlash replicas for table 1 and ensure it is ready")
-				err = utildb.CreateTiFlashReplicationAndWaitToComplete(db.TiFlashAction(), dbName, tables[1], 1, time.Minute)
-				framework.ExpectNoError(err, "failed to create TiFlash replication for %s", tables[1])
-				count, err = utildb.Count(db, "tiflash", dbName, tables[1])
-				framework.ExpectNoError(err, "failed to count records in %s by using %s", tables[1], "tiflash")
-				framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", tables[1], "tiflash")
+				MustCreateTiFlashReplicationForTable(db, dbName, tables[1], expectCount)
 
 				ginkgo.By("Update TiDB cluster to latest version")
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -778,20 +767,11 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				err = oa.WaitForTidbClusterReady(tc, 7*time.Minute, 5*time.Second)
 
 				ginkgo.By("Ensure records in table 0 have not changed after upgrading TiDB Operator")
-				for _, table := range tables[0:2] {
-					for _, engine := range []string{"tiflash", "tikv"} {
-						count, err = utildb.Count(db, engine, dbName, table)
-						framework.ExpectNoError(err, "failed to count records in %s by using %s", table, engine)
-						framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", table, engine)
-					}
-				}
+				EnsureRecordsNotChangedForTables(db, "tiflash", dbName, tables[0:2], expectCount)
+				EnsureRecordsNotChangedForTables(db, "tikv", dbName, tables[0:2], expectCount)
 
 				ginkgo.By("Create TiFlash replicas for table 2 and ensure it is ready")
-				err = utildb.CreateTiFlashReplicationAndWaitToComplete(db.TiFlashAction(), dbName, tables[2], 1, time.Minute)
-				framework.ExpectNoError(err, "failed to create TiFlash replication for %s", tables[2])
-				count, err = utildb.Count(db, "tiflash", dbName, tables[2])
-				framework.ExpectNoError(err, "failed to count records in %s by using %s", tables[2], "tiflash")
-				framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", tables[2], "tiflash")
+				MustCreateTiFlashReplicationForTable(db, dbName, tables[2], expectCount)
 			})
 		})
 
@@ -915,4 +895,20 @@ func MustGetLabelSelectorForComponents(tcName string, filterComponents ...string
 	framework.ExpectNoError(err, "failed to create label requirement")
 
 	return selector.Add(*r)
+}
+
+func MustCreateTiFlashReplicationForTable(db *utildb.Database, dbName string, table string, expectCount int) {
+	err := utildb.CreateTiFlashReplicationAndWaitToComplete(db.TiFlashAction(), dbName, table, 1, time.Minute)
+	framework.ExpectNoError(err, "failed to create TiFlash replication for %s", table)
+	count, err := utildb.Count(db, "tiflash", dbName, table)
+	framework.ExpectNoError(err, "failed to count records in %s by using %s", table, "tiflash")
+	framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", table, "tiflash")
+}
+
+func EnsureRecordsNotChangedForTables(db *utildb.Database, engine string, dbName string, tables []string, expectCount int) {
+	for _, table := range tables {
+		count, err := utildb.Count(db, engine, dbName, table)
+		framework.ExpectNoError(err, "failed to count records in %s by using %s", table, engine)
+		framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", table, engine)
+	}
 }
