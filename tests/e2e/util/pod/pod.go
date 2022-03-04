@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/e2e/framework/log"
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
@@ -40,6 +41,7 @@ func PodsAreChanged(c kubernetes.Interface, pods []v1.Pod) wait.ConditionFunc {
 			}
 			changed := IsPodsChanged(pod, *podNew)
 			if changed {
+				log.Logf("Pod %s/%s is changed", pod.Namespace, pod.Name)
 				return true, nil
 			}
 		}
