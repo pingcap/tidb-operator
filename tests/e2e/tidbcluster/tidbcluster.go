@@ -210,7 +210,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				})
 
 				// only test with the latest version for avoid too much cases.
-				if version == versions[len(versions)-1] {
+				if version == utilimage.TiDBLatest {
 					ginkgo.It("should enable and disable binlog normal", func() {
 						ginkgo.By("Deploy a basic tc")
 						tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
