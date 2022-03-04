@@ -33,13 +33,8 @@ var (
 const (
 	// TiDB Version
 	TiDBV3             = "v3.0.20"
-<<<<<<< HEAD
-	TiDBLatestPrev     = "v5.2.3"
-	TiDBLatest         = "v5.3.0"
-=======
 	TiDBLatestPrev     = "v5.3.0"
 	TiDBLatest         = "v5.4.0"
->>>>>>> 935aae463... upgrade tidb version in e2e (#4452)
 	TiDBNightlyVersion = "nightly"
 	// specific version
 	TiDBV4x0x9 = "v4.0.9"
