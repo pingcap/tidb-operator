@@ -302,7 +302,6 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 			{Key: "honor_labels", Value: true},
 			{Key: "scrape_interval", Value: "15s"},
 			schemeRelabelConfig,
-
 			{Key: "kubernetes_sd_configs", Value: []yaml.MapSlice{
 				{
 					{
@@ -323,14 +322,12 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 						},
 					},
 				},
-			},
-			},
+			}},
 			{Key: "tls_config", Value: tlsConfigRelabelConfig},
 		}
 
 		relabelConfigs := []yaml.MapSlice{}
 		relabelConfigs = append(relabelConfigs, yaml.MapSlice{
-
 			{Key: "source_labels", Value: []string{instanceLabel}},
 			{Key: "action", Value: "keep"},
 			{Key: "regex", Value: clusterTargetPattern},
@@ -414,7 +411,6 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 						instanceLabel,
 					},
 				},
-
 				{
 					Key: "separator", Value: "-",
 				},

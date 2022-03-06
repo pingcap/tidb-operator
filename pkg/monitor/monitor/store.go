@@ -36,8 +36,9 @@ type Store struct {
 // NewStore returns an empty assetStore.
 func NewStore(secretLister corelisterv1.SecretLister) *Store {
 	return &Store{
-		secretLister: secretLister,
-		TLSAssets:    make(map[TLSAssetKey]TLSAsset),
+		secretLister:    secretLister,
+		TLSAssets:       make(map[TLSAssetKey]TLSAsset),
+		BasicAuthAssets: make(map[string]BasicAuthCredentials),
 	}
 }
 
@@ -60,18 +61,26 @@ func (s *Store) AddBasicAuth(ns string, ba *v1alpha1.BasicAuth, key string) erro
 		return nil
 	}
 
+	username, err := s.secretLister.Secrets(ns).Get(ba.Username.Name)
+	if err != nil || username == nil {
+		return fmt.Errorf("get secret [%s/%s] failed, err: %v", ns, ba.Username.Name, err)
+	}
+
 	password, err := s.secretLister.Secrets(ns).Get(ba.Password.Name)
 	if err != nil {
 		return fmt.Errorf("get secret [%s/%s] failed, err: %v", ns, ba.Password.Name, err)
 	}
-	username, err := s.secretLister.Secrets(ns).Get(ba.Username.Name)
-	if err != nil {
-		return fmt.Errorf("get secret [%s/%s] failed, err: %v", ns, ba.Username.Name, err)
+
+	if _, ok := username.Data[ba.Username.Key]; !ok {
+		return fmt.Errorf("secret:[%s/%s] not contain key:[%s]", username.Namespace, username.Name, ba.Username.Key)
 	}
 
+	if _, ok := password.Data[ba.Password.Key]; !ok {
+		return fmt.Errorf("secret:[%s/%s] not contain key:[%s]", password.Namespace, password.Name, ba.Password.Key)
+	}
 	s.BasicAuthAssets[key] = BasicAuthCredentials{
-		Username: string(password.Data[ba.Username.Key]),
-		Password: string(username.Data[ba.Password.Key]),
+		Username: string(username.Data[ba.Username.Key]),
+		Password: string(password.Data[ba.Password.Key]),
 	}
 
 	return nil
