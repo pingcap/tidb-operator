@@ -15,6 +15,7 @@ package monitor
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -120,6 +121,81 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 	}
 
 	tests := []testcase{
+		{
+			name: "tidbmonitor with remote write configuration",
+			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
+				secret := &v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "auth",
+						Namespace: monitor.Namespace,
+					},
+					Data: map[string][]byte{
+						"password": []byte("password"),
+						"username": []byte("username"),
+					},
+				}
+				err := tmm.deps.SecretControl.Create(monitor.Namespace, secret)
+				g.Expect(err).NotTo(HaveOccurred())
+
+				url := "http://127.0.0.1/a/b/c"
+				remoteTimeout := model.Duration(30 * time.Second)
+				testTime := 10 * time.Second
+				monitor.Spec.Prometheus.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
+					{
+						URL:           url,
+						Name:          "test",
+						RemoteTimeout: &remoteTimeout,
+						WriteRelabelConfigs: []v1alpha1.RelabelConfig{
+							{
+								SourceLabels: []model.LabelName{"test1", "test2"},
+								Regex:        ",",
+								Replacement:  "replace",
+								TargetLabel:  "target_label",
+								Action:       "test",
+							},
+						},
+						BasicAuth: &v1alpha1.BasicAuth{
+							Password: v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{Name: "auth"},
+								Key:                  "password",
+							},
+							Username: v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{Name: "auth"},
+								Key:                  "username",
+							},
+						},
+						BearerToken:     "/test/file",
+						BearerTokenFile: "/test/file1",
+						ProxyURL:        pointer.StringPtr("test1"),
+						TLSConfig: &v1alpha1.TLSConfig{
+							CAFile:   "/test/ca.pem",
+							CertFile: "/test/cert.key",
+							KeyFile:  "/test/key",
+						},
+						QueueConfig: &v1alpha1.QueueConfig{
+							Capacity:          1,
+							MinShards:         1,
+							MaxShards:         1,
+							MaxSamplesPerSend: 1,
+							BatchSendDeadline: &testTime,
+							MaxRetries:        3,
+							MinBackoff:        &testTime,
+							MaxBackoff:        &testTime,
+						},
+						MetadataConfig: &v1alpha1.MetadataConfig{
+							Send:         true,
+							SendInterval: "10s",
+						},
+					},
+				}
+			},
+			errExpectFn: func(g *GomegaWithT, err error, tmm *MonitorManager, tm *v1alpha1.TidbMonitor) {
+				errExpectRequeuefunc(g, err, tmm, tm)
+			},
+			stsCreated:    true,
+			svcCreated:    true,
+			volumeCreated: false,
+		},
 		{
 			name: "tidbmonitor spec prometheus config reloader",
 			prepare: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
