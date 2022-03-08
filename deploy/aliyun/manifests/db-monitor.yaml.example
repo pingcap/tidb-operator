@@ -80,6 +80,9 @@ spec:
       portName: tcp-reloader
       type: NodePort
     version: v1.0.1
+  prometheusReloader:
+    baseImage: quay.io/prometheus-operator/prometheus-config-reloader
+    version: v0.49.0
   storage: 100Gi
   storageClassName: alicloud-disk-available
   tolerations: []
