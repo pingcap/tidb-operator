@@ -14,13 +14,19 @@
 package controller
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	coreinformers "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/kubernetes"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 )
 
@@ -28,18 +34,23 @@ import (
 type SecretControlInterface interface {
 	Load(ns string, secretName string) ([]byte, []byte, error)
 	Check(ns string, secretName string) bool
+	Create(ns string, secret *v1.Secret) error
 }
 
 type realSecretControl struct {
+	kubeCli      kubernetes.Interface
 	secretLister corelisterv1.SecretLister
+	recorder     record.EventRecorder
 }
 
 // NewRealSecretControl creates a new SecretControlInterface
 func NewRealSecretControl(
-	secretLister corelisterv1.SecretLister,
+	kubeCli kubernetes.Interface, secretLister corelisterv1.SecretLister, recorder record.EventRecorder,
 ) SecretControlInterface {
 	return &realSecretControl{
+		kubeCli:      kubeCli,
 		secretLister: secretLister,
+		recorder:     recorder,
 	}
 }
 
@@ -101,16 +112,53 @@ func (c *realSecretControl) Check(ns string, secretName string) bool {
 	return true
 }
 
-var _ SecretControlInterface = &realSecretControl{}
+// Create create secret
+func (c *realSecretControl) Create(ns string, secret *v1.Secret) error {
+	_, err := c.kubeCli.CoreV1().Secrets(ns).Create(context.TODO(), secret, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
 
-type FakeSecretControl struct {
-	realSecretControl
+	return nil
 }
 
-func NewFakeSecretControl(
-	secretLister corelisterv1.SecretLister,
-) SecretControlInterface {
-	return &realSecretControl{
-		secretLister: secretLister,
+var _ SecretControlInterface = &realSecretControl{}
+
+// FakeSecretControl is a fake SecretControlInterface
+type FakeSecretControl struct {
+	SecretLister        corelisterv1.SecretLister
+	SecretIndexer       cache.Indexer
+	createSecretTracker RequestTracker
+}
+
+// NewFakeSecretControl returns a FakeSecretControl
+func NewFakeSecretControl(secretInformer coreinformers.SecretInformer) *FakeSecretControl {
+	return &FakeSecretControl{
+		secretInformer.Lister(),
+		secretInformer.Informer().GetIndexer(),
+		RequestTracker{},
 	}
+}
+
+func (c *FakeSecretControl) Create(ns string, secret *v1.Secret) error {
+	defer c.createSecretTracker.Inc()
+	if c.createSecretTracker.ErrorReady() {
+		defer c.createSecretTracker.Reset()
+		return c.createSecretTracker.GetError()
+	}
+
+	err := c.SecretIndexer.Add(secret)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *FakeSecretControl) Load(ns string, secretName string) ([]byte, []byte, error) {
+
+	return nil, nil, nil
+}
+
+func (c *FakeSecretControl) Check(ns string, secretName string) bool {
+	return true
 }
