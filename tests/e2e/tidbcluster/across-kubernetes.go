@@ -483,7 +483,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "deleting sts of tikv for %q", tcName1)
 
 			ginkgo.By("Waiting for tikv pod to be unavailable")
-			err = utiltc.WaitForTidbClusterCondition(cli, tc1.Namespace, tc1.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+			err = utiltc.WaitForTCCondition(cli, tc1.Namespace, tc1.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
 				down := true
 				for _, store := range tc.Status.TiKV.Stores {
 					down = down && (store.State == "Disconnected" || store.State == v1alpha1.TiKVStateDown)
@@ -524,7 +524,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "deleting sts of tikv for %q", tcName1)
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
-			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*10, func(tc *v1alpha1.TidbCluster) (bool, error) {
+			err = utiltc.WaitForTCCondition(cli, ns1, tcName1, time.Minute*10, func(tc *v1alpha1.TidbCluster) (bool, error) {
 				healthy := false
 				for _, member := range tc.Status.PD.Members {
 					healthy = healthy || member.Health
@@ -616,7 +616,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "updating pd with an inexistent image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
-			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+			err = utiltc.WaitForTCCondition(cli, ns1, tcName1, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
 				healthy := false
 				for _, member := range tc.Status.PD.Members {
 					healthy = healthy || member.Health
