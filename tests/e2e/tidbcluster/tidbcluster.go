@@ -2645,19 +2645,21 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
 		// when scale-in, replica is first set to 5 and changed to 3
 		// when scale-out, replica is first set to 3 and changed to 5
-		utilginkgo.ContextWhenFocus("while concurrently scale PD", func() {
+		ginkgo.Context("while concurrently scale PD", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
 				op := op
 				ginkgo.It(op, func() {
-					ginkgo.By("Deploy initial tc")
+					initialReplicas, expectedReplicas := int32(3), int32(5)
+					if op == "in" {
+						initialReplicas, expectedReplicas = expectedReplicas, initialReplicas
+					}
+
 					tcName := fmt.Sprintf("scale-%s-pd-concurrently", op)
 					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)
-					if op == "in" {
-						tc.Spec.PD.Replicas = 5
-					} else {
-						tc.Spec.PD.Replicas = 3
-					}
+					tc.Spec.PD.Replicas = initialReplicas
+
+					ginkgo.By("Deploy initial tc")
 					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 					ginkgo.By("Upgrade PD version")
@@ -2668,47 +2670,28 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "failed to update PD version to %q", utilimage.TiDBLatest)
 
 					ginkgo.By(fmt.Sprintf("Wait for PD phase is %q", v1alpha1.UpgradePhase))
-					err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
-						tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
-						if err != nil {
-							log.Logf("failed to get TidbCluster %s/%s: %v", ns, tcName, err)
-							return false, nil
-						}
-						if tc.Status.PD.Phase != v1alpha1.UpgradePhase {
-							log.Logf("tc.Status.PD.Phase = %q, not %q yet", tc.Status.PD.Phase, v1alpha1.UpgradePhase)
-							return false, nil
-						}
-						return true, nil
-					})
-					framework.ExpectNoError(err, "failed to wait for PD phase")
+					utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute)
 
 					ginkgo.By(fmt.Sprintf("Scale %s PD while in %q phase", op, v1alpha1.UpgradePhase))
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-						if op == "in" {
-							tc.Spec.PD.Replicas = 3
-						} else {
-							tc.Spec.PD.Replicas = 5
-						}
+						tc.Spec.PD.Replicas = expectedReplicas
 						return nil
 					})
 					framework.ExpectNoError(err, "failed to scale %s PD", op)
+
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", ns, tc.Name)
 
 					ginkgo.By("Check PD replicas")
 					tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
 					framework.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", ns, tcName, err)
-					if op == "in" {
-						framework.ExpectEqual(int(tc.Spec.PD.Replicas), 3)
-					} else {
-						framework.ExpectEqual(int(tc.Spec.PD.Replicas), 5)
-					}
+					framework.ExpectEqual(tc.Spec.PD.Replicas, expectedReplicas)
 				})
 			}
 		})
 
 		// similar to PD scale-in/scale-out case above, need to check no evict leader scheduler left
-		utilginkgo.ContextWhenFocus("while concurrently scale TiKV", func() {
+		ginkgo.Context("while concurrently scale TiKV", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
 				op := op
@@ -2742,9 +2725,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale %s TiKV", op)
 
-					ginkgo.By("Wait for TiKV to be in ScalePhase")
-					utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.ScalePhase, 3*time.Minute)
-					log.Logf("TiKV is in ScalePhase")
+					if op == "in" {
+						// wait only when scale-in, because scale-out is fast so that we maybe can't catch ScalePhase
+						ginkgo.By("Wait for TiKV to be in ScalePhase")
+						utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.ScalePhase, 3*time.Minute)
+					}
 
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
