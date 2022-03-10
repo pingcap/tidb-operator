@@ -97,8 +97,8 @@ func NewConstraint(op Operation, version string) (*Constraint, error) {
 //
 // Latest or nightly version is larger than any version
 func (c *Constraint) Check(version string) (bool, error) {
-	if isLastest(version) {
-		return compareLastest(c.op), nil
+	if isLatest(version) {
+		return compareLatest(c.op), nil
 	}
 
 	ver, err := semver.NewVersion(version)
@@ -127,7 +127,7 @@ func validateOperation(op Operation) error {
 	return fmt.Errorf("not support operation %s", op)
 }
 
-func isLastest(version string) bool {
+func isLatest(version string) bool {
 	switch version {
 	case "latest", "nightly":
 		return true
@@ -136,7 +136,7 @@ func isLastest(version string) bool {
 	return false
 }
 
-func compareLastest(op Operation) bool {
+func compareLatest(op Operation) bool {
 	// latest is greater than any version
 	switch op {
 	case Greater, GreaterOrEqual:
