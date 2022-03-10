@@ -172,6 +172,7 @@ type Controls struct {
 	CDCControl         TiCDCControlInterface
 	TiDBControl        TiDBControlInterface
 	BackupControl      BackupControlInterface
+	SecretControl      SecretControlInterface
 }
 
 // Dependencies is used to store all shared dependent resources to avoid
@@ -266,6 +267,7 @@ func newRealControls(
 		CDCControl:         NewDefaultTiCDCControl(secretLister),
 		TiDBControl:        NewDefaultTiDBControl(secretLister),
 		BackupControl:      NewRealBackupControl(clientset, recorder),
+		SecretControl:      NewRealSecretControl(kubeClientset, secretLister, recorder),
 	}
 }
 
@@ -415,6 +417,7 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		CDCControl:         NewFakeTiCDCControl(),
 		TiDBControl:        NewFakeTiDBControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		BackupControl:      NewFakeBackupControl(informerFactory.Pingcap().V1alpha1().Backups()),
+		SecretControl:      NewFakeSecretControl(kubeInformerFactory.Core().V1().Secrets()),
 	}
 }
 

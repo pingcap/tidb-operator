@@ -16,6 +16,7 @@ package monitor
 import (
 	"fmt"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
@@ -27,15 +28,17 @@ import (
 //
 // Store doesn't support concurrent access.
 type Store struct {
-	secretLister corelisterv1.SecretLister
-	TLSAssets    map[TLSAssetKey]TLSAsset
+	secretLister    corelisterv1.SecretLister
+	TLSAssets       map[TLSAssetKey]TLSAsset
+	BasicAuthAssets map[string]BasicAuthCredentials
 }
 
 // NewStore returns an empty assetStore.
 func NewStore(secretLister corelisterv1.SecretLister) *Store {
 	return &Store{
-		secretLister: secretLister,
-		TLSAssets:    make(map[TLSAssetKey]TLSAsset),
+		secretLister:    secretLister,
+		TLSAssets:       make(map[TLSAssetKey]TLSAsset),
+		BasicAuthAssets: make(map[string]BasicAuthCredentials),
 	}
 }
 
@@ -49,6 +52,37 @@ func (s *Store) addTLSAssets(ns string, secretName string) error {
 	for key, value := range secret.Data {
 		s.TLSAssets[TLSAssetKey{"secret", secret.Namespace, secret.Name, key}] = TLSAsset(value)
 	}
+	return nil
+}
+
+// AddBasicAuth processes the given *BasicAuth and adds the referenced credentials to the store.
+func (s *Store) AddBasicAuth(ns string, ba *v1alpha1.BasicAuth, key string) error {
+	if ba == nil {
+		return nil
+	}
+
+	username, err := s.secretLister.Secrets(ns).Get(ba.Username.Name)
+	if err != nil || username == nil {
+		return fmt.Errorf("get secret [%s/%s] failed, err: %v", ns, ba.Username.Name, err)
+	}
+
+	password, err := s.secretLister.Secrets(ns).Get(ba.Password.Name)
+	if err != nil {
+		return fmt.Errorf("get secret [%s/%s] failed, err: %v", ns, ba.Password.Name, err)
+	}
+
+	if _, ok := username.Data[ba.Username.Key]; !ok {
+		return fmt.Errorf("secret:[%s/%s] not contain key:[%s]", username.Namespace, username.Name, ba.Username.Key)
+	}
+
+	if _, ok := password.Data[ba.Password.Key]; !ok {
+		return fmt.Errorf("secret:[%s/%s] not contain key:[%s]", password.Namespace, password.Name, ba.Password.Key)
+	}
+	s.BasicAuthAssets[key] = BasicAuthCredentials{
+		Username: string(username.Data[ba.Username.Key]),
+		Password: string(password.Data[ba.Password.Key]),
+	}
+
 	return nil
 }
 
@@ -67,4 +101,9 @@ type TLSAsset string
 // String implements the fmt.Stringer interface.
 func (k TLSAssetKey) String() string {
 	return fmt.Sprintf("%s_%s_%s_%s", k.from, k.ns, k.name, k.key)
+}
+
+type BasicAuthCredentials struct {
+	Username string
+	Password string
 }

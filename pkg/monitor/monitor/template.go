@@ -17,14 +17,11 @@ import (
 	"fmt"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
 )
 
 const (
@@ -42,21 +39,21 @@ const (
 )
 
 var (
-	truePattern      config.Regexp
-	allMatchPattern  config.Regexp
-	portPattern      config.Regexp
-	tikvPattern      config.Regexp
-	pdPattern        config.Regexp
-	tidbPattern      config.Regexp
-	addressPattern   config.Regexp
-	tiflashPattern   config.Regexp
-	pumpPattern      config.Regexp
-	drainerPattern   config.Regexp
-	cdcPattern       config.Regexp
-	importerPattern  config.Regexp
-	lightningPattern config.Regexp
-	dmWorkerPattern  config.Regexp
-	dmMasterPattern  config.Regexp
+	truePattern      = "true"
+	allMatchPattern  = "(.+)"
+	portPattern      = "([^:]+)(?::\\d+)?;(\\d+)"
+	tikvPattern      = "tikv"
+	pdPattern        = "pd"
+	tidbPattern      = "tidb"
+	addressPattern   = "(.+);(.+);(.+);(.+)"
+	tiflashPattern   = "tiflash"
+	pumpPattern      = "pump"
+	drainerPattern   = "drainer"
+	cdcPattern       = "ticdc"
+	importerPattern  = "importer"
+	lightningPattern = "tidb-lightning"
+	dmWorkerPattern  = dmWorker
+	dmMasterPattern  = dmMaster
 	dashBoardConfig  = `{
     "apiVersion": 1,
     "providers": [
@@ -74,76 +71,12 @@ var (
 }`
 )
 
-func init() {
-	var err error
-	truePattern, err = config.NewRegexp("true")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	allMatchPattern, err = config.NewRegexp("(.+)")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	portPattern, err = config.NewRegexp("([^:]+)(?::\\d+)?;(\\d+)")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	tikvPattern, err = config.NewRegexp("tikv")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	pdPattern, err = config.NewRegexp("pd")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	tidbPattern, err = config.NewRegexp("tidb")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	addressPattern, err = config.NewRegexp("(.+);(.+);(.+);(.+)")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	tiflashPattern, err = config.NewRegexp("tiflash")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	pumpPattern, err = config.NewRegexp("pump")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	drainerPattern, err = config.NewRegexp("drainer")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	cdcPattern, err = config.NewRegexp("ticdc")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	importerPattern, err = config.NewRegexp("importer")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	lightningPattern, err = config.NewRegexp("tidb-lightning")
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	dmWorkerPattern, err = config.NewRegexp(dmWorker)
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-	dmMasterPattern, err = config.NewRegexp(dmMaster)
-	if err != nil {
-		klog.Fatalf("monitor regex template parse error,%v", err)
-	}
-}
-
 type MonitorConfigModel struct {
 	AlertmanagerURL           string
 	ClusterInfos              []ClusterRegexInfo
 	DMClusterInfos            []ClusterRegexInfo
 	ExternalLabels            model.LabelSet
-	RemoteWriteConfigs        []*config.RemoteWriteConfig
+	RemoteWriteCfg            *yaml.MapItem
 	EnableAlertRules          bool
 	EnableExternalRuleConfigs bool
 	shards                    int32
@@ -156,8 +89,8 @@ type ClusterRegexInfo struct {
 	enableTLS bool
 }
 
-func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
-	var scrapeJobs []*config.ScrapeConfig
+func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
+	var scrapeJobs []yaml.MapSlice
 	scrapeJobs = append(scrapeJobs, scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfigByComponent("pd"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfigByComponent("tikv"))...)
@@ -170,35 +103,37 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 	scrapeJobs = append(scrapeJobs, scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob(dmWorker, dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent(dmWorker))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob(dmMaster, dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent(dmMaster))...)
-	var c = config.Config{
-		GlobalConfig: config.GlobalConfig{
-			ScrapeInterval:     model.Duration(15 * time.Second),
-			EvaluationInterval: model.Duration(15 * time.Second),
-			ExternalLabels:     cmodel.ExternalLabels,
-		},
-		ScrapeConfigs:      scrapeJobs,
-		RemoteWriteConfigs: cmodel.RemoteWriteConfigs,
+	cfg := yaml.MapSlice{}
+	globalItems := yaml.MapSlice{
+		{Key: "evaluation_interval", Value: "15s"},
+		{Key: "scrape_interval", Value: "15s"},
+		{Key: "external_labels", Value: cmodel.ExternalLabels},
 	}
-	return &c
+	cfg = append(cfg, yaml.MapItem{Key: "global", Value: globalItems})
+	cfg = append(cfg, yaml.MapItem{Key: "scrape_configs", Value: scrapeJobs})
+	if cmodel.RemoteWriteCfg != nil {
+		cfg = append(cfg, *cmodel.RemoteWriteCfg)
+	}
+
+	return cfg
 }
 
-func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
+func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 	kind = strings.ToLower(kind)
 	replacement := fmt.Sprintf("$1.$2-%s-peer.$3:$4", kind)
-	f := func() *config.RelabelConfig {
-		return &config.RelabelConfig{
-			Action:      config.RelabelReplace,
-			Regex:       addressPattern,
-			Replacement: replacement,
-			TargetLabel: "__address__",
-			SourceLabels: model.LabelNames{
-				podNameLabel,
+	f := func() yaml.MapSlice {
+		return yaml.MapSlice{
+			{Key: "action", Value: "replace"},
+			{Key: "regex", Value: addressPattern},
+			{Key: "replacement", Value: replacement},
+			{Key: "target_label", Value: "__address__"},
+			{Key: "source_labels", Value: []string{podNameLabel,
 				instanceLabel,
 				namespaceLabel,
-				portLabel,
-			},
+				portLabel}},
 		}
 	}
+
 	switch strings.ToLower(kind) {
 	case "pd":
 		return f()
@@ -215,86 +150,86 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 	case dmMaster:
 		return f()
 	case "tiflash-proxy":
-		return &config.RelabelConfig{
-			Action:      config.RelabelReplace,
-			Regex:       addressPattern,
-			Replacement: "$1.$2-tiflash-peer.$3:$4",
-			TargetLabel: "__address__",
-			SourceLabels: model.LabelNames{
-				podNameLabel,
+		return yaml.MapSlice{
+			{Key: "action", Value: "replace"},
+			{Key: "regex", Value: addressPattern},
+			{Key: "replacement", Value: "$1.$2-tiflash-peer.$3:$4"},
+			{Key: "target_label", Value: "__address__"},
+			{Key: "source_labels", Value: []string{podNameLabel,
 				instanceLabel,
 				namespaceLabel,
-				model.LabelName(fmt.Sprintf(additionalPortLabelPattern, "tiflash_proxy")),
-			},
+				fmt.Sprintf(additionalPortLabelPattern, "tiflash_proxy")}},
 		}
+
 	case "pump":
-		return &config.RelabelConfig{
-			Action:      config.RelabelReplace,
-			Regex:       addressPattern,
-			Replacement: "$1.$2-pump.$3:$4",
-			TargetLabel: "__address__",
-			SourceLabels: model.LabelNames{
+		return yaml.MapSlice{
+			{Key: "action", Value: "replace"},
+			{Key: "regex", Value: addressPattern},
+			{Key: "replacement", Value: "$1.$2-pump.$3:$4"},
+			{Key: "target_label", Value: "__address__"},
+			{Key: "source_labels", Value: []string{
 				podNameLabel,
 				instanceLabel,
 				namespaceLabel,
 				portLabel,
-			},
+			}},
 		}
 	case "importer":
-		return &config.RelabelConfig{
-			Action:      config.RelabelReplace,
-			Regex:       addressPattern,
-			Replacement: "$1.$2-importer.$3:$4",
-			TargetLabel: "__address__",
-			SourceLabels: model.LabelNames{
+		return yaml.MapSlice{
+			{Key: "action", Value: "replace"},
+			{Key: "regex", Value: addressPattern},
+			{Key: "replacement", Value: "$1.$2-importer.$3:$4"},
+			{Key: "target_label", Value: "__address__"},
+			{Key: "source_labels", Value: []string{
 				podNameLabel,
 				instanceLabel,
 				namespaceLabel,
 				portLabel,
-			},
+			}},
 		}
 	case "drainer":
-		return &config.RelabelConfig{
-			Action:      config.RelabelReplace,
-			Regex:       addressPattern,
-			Replacement: "$1.$2.$3:$4",
-			TargetLabel: "__address__",
-			SourceLabels: model.LabelNames{
+		return yaml.MapSlice{
+			{Key: "action", Value: "replace"},
+			{Key: "regex", Value: addressPattern},
+			{Key: "replacement", Value: "$1.$2.$3:$4"},
+			{Key: "target_label", Value: "__address__"},
+			{Key: "source_labels", Value: []string{
 				podNameLabel,
 				nameLabel,
 				namespaceLabel,
 				portLabel,
-			},
+			}},
 		}
 	case "lightning":
-		return &config.RelabelConfig{
-			Action:      config.RelabelReplace,
-			Regex:       addressPattern,
-			Replacement: "$2.$3:$4",
-			TargetLabel: "__address__",
-			SourceLabels: model.LabelNames{
+		return yaml.MapSlice{
+			{Key: "action", Value: "replace"},
+			{Key: "regex", Value: addressPattern},
+			{Key: "replacement", Value: "$2.$3:$4"},
+			{Key: "target_label", Value: "__address__"},
+			{Key: "source_labels", Value: []string{
 				podNameLabel,
 				nameLabel,
 				namespaceLabel,
 				portLabel,
-			},
+			}},
 		}
 	default:
-		return &config.RelabelConfig{
-			SourceLabels: model.LabelNames{
+		return yaml.MapSlice{
+			{Key: "source_labels", Value: []string{
 				"__address__",
 				portLabel,
-			},
-			Action:      config.RelabelReplace,
-			Regex:       portPattern,
-			Replacement: "$1:$2",
-			TargetLabel: "__address__",
+			}},
+			{Key: "action", Value: "replace"},
+			{Key: "regex", Value: portPattern},
+			{Key: "replacement", Value: "$1:$2"},
+			{Key: "target_label", Value: "__address__"},
 		}
+
 	}
 }
 
-func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig *config.RelabelConfig) []*config.ScrapeConfig {
-	var scrapeJobs []*config.ScrapeConfig
+func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigModel, addressRelabelConfig yaml.MapSlice) []yaml.MapSlice {
+	var scrapeJobs []yaml.MapSlice
 	var currCluster []ClusterRegexInfo
 
 	if isDMJob(jobName) {
@@ -304,138 +239,204 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 	}
 
 	for _, cluster := range currCluster {
-		clusterTargetPattern, err := config.NewRegexp(cluster.Name)
-		if err != nil {
-			klog.Errorf("generate scrapeJob[%s] clusterName:%s error:%v", jobName, cluster.Name, err)
-			continue
+		clusterTargetPattern := cluster.Name
+
+		nsTargetPattern := cluster.Namespace
+
+		schemeRelabelConfig := yaml.MapItem{
+			Key:   "scheme",
+			Value: "http",
 		}
-		nsTargetPattern, err := config.NewRegexp(cluster.Namespace)
-		if err != nil {
-			klog.Errorf("generate scrapeJob[%s] clusterName:%s namespace:%s error:%v", jobName, cluster.Name, cluster.Namespace, err)
-			continue
+		tlsConfigRelabelConfig := yaml.MapSlice{
+			{
+				Key:   "insecure_skip_verify",
+				Value: true,
+			},
 		}
 
-		scrapeconfig := &config.ScrapeConfig{
-			JobName:        fmt.Sprintf("%s-%s-%s", cluster.Namespace, cluster.Name, jobName),
-			ScrapeInterval: model.Duration(15 * time.Second),
-			Scheme:         "http",
-			HonorLabels:    true,
-			ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
-				KubernetesSDConfigs: []*config.KubernetesSDConfig{
-					{
-						Role: "pod",
-						NamespaceDiscovery: config.KubernetesNamespaceDiscovery{
-							Names: []string{cluster.Namespace},
-						},
-					},
-				},
-			},
-			HTTPClientConfig: config.HTTPClientConfig{
-				TLSConfig: config.TLSConfig{
-					InsecureSkipVerify: true,
-				},
-			},
-			RelabelConfigs: []*config.RelabelConfig{
-				{
-					SourceLabels: model.LabelNames{
-						instanceLabel,
-					},
-					Action: config.RelabelKeep,
-					Regex:  clusterTargetPattern,
-				},
-				{
-					SourceLabels: model.LabelNames{
-						namespaceLabel,
-					},
-					Action: config.RelabelKeep,
-					Regex:  nsTargetPattern,
-				},
-				{
-					SourceLabels: model.LabelNames{
-						scrapeLabel,
-					},
-					Action: config.RelabelKeep,
-					Regex:  truePattern,
-				},
-				{
-					SourceLabels: model.LabelNames{
-						componentLabel,
-					},
-					Action: config.RelabelKeep,
-					Regex:  componentPattern,
-				},
-				addressRelabelConfig,
-				{
-					SourceLabels: model.LabelNames{
-						namespaceLabel,
-					},
-					Action:      config.RelabelReplace,
-					TargetLabel: "kubernetes_namespace",
-				},
-				{
-					SourceLabels: model.LabelNames{
-						instanceLabel,
-					},
-					Action:      config.RelabelReplace,
-					TargetLabel: "cluster",
-				},
-				{
-					SourceLabels: model.LabelNames{
-						podNameLabel,
-					},
-					Action:      config.RelabelReplace,
-					TargetLabel: "instance",
-				},
-				{
-					SourceLabels: model.LabelNames{
-						componentLabel,
-					},
-					Action:      config.RelabelReplace,
-					TargetLabel: "component",
-				},
-				{
-					SourceLabels: model.LabelNames{
-						namespaceLabel,
-						instanceLabel,
-					},
-					Separator:   "-",
-					TargetLabel: "tidb_cluster",
-				},
-				{
-					SourceLabels: model.LabelNames{
-						metricsPathLabel,
-					},
-					Action:      config.RelabelReplace,
-					TargetLabel: "__metrics_path__",
-					Regex:       allMatchPattern,
-				},
-			},
-		}
-		scrapeconfig.RelabelConfigs = appendShardingRelabelConfigRules(scrapeconfig.RelabelConfigs, uint64(cmodel.shards))
 		if cluster.enableTLS && !isDMJob(jobName) {
-			scrapeconfig.Scheme = "https"
+			schemeRelabelConfig.Value = "https"
 			// lightning does not need to authenticate the access of other components,
 			// so there is no need to enable mtls for the time being.
 			if jobName != "lightning" {
 				tcTlsSecretName := util.ClusterClientTLSSecretName(cluster.Name)
-				scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-					CAFile:   path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
-					CertFile: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.TLSCertKey}.String()),
-					KeyFile:  path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
+				tlsConfigRelabelConfig = yaml.MapSlice{
+					yaml.MapItem{
+						Key:   "ca_file",
+						Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
+					},
+					yaml.MapItem{
+						Key:   "cert_file",
+						Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.TLSCertKey}.String()),
+					},
+					yaml.MapItem{
+						Key:   "key_file",
+						Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, tcTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
+					},
 				}
 			}
 		}
 
 		if cluster.enableTLS && isDMJob(jobName) {
-			scrapeconfig.Scheme = "https"
+			schemeRelabelConfig.Value = "https"
 			dmTlsSecretName := util.DMClientTLSSecretName(cluster.Name)
-			scrapeconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-				CAFile:   path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
-				CertFile: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSCertKey}.String()),
-				KeyFile:  path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
+			tlsConfigRelabelConfig = yaml.MapSlice{
+				yaml.MapItem{
+					Key:   "ca_file",
+					Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
+				},
+				yaml.MapItem{
+					Key:   "cert_file",
+					Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSCertKey}.String()),
+				},
+				yaml.MapItem{
+					Key:   "key_file",
+					Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
+				},
 			}
+
 		}
-		scrapeJobs = append(scrapeJobs, scrapeconfig)
+
+		scrapeConfig := yaml.MapSlice{
+			{Key: "job_name", Value: fmt.Sprintf("%s-%s-%s", cluster.Namespace, cluster.Name, jobName)},
+			{Key: "honor_labels", Value: true},
+			{Key: "scrape_interval", Value: "15s"},
+			schemeRelabelConfig,
+			{Key: "kubernetes_sd_configs", Value: []yaml.MapSlice{
+				{
+					{
+						Key:   "api_server",
+						Value: nil,
+					},
+					{
+						Key:   "role",
+						Value: "pod",
+					},
+					{
+						Key: "namespaces",
+						Value: yaml.MapSlice{
+							{
+								Key:   "names",
+								Value: []string{cluster.Namespace},
+							},
+						},
+					},
+				},
+			}},
+			{Key: "tls_config", Value: tlsConfigRelabelConfig},
+		}
+
+		relabelConfigs := []yaml.MapSlice{}
+		relabelConfigs = append(relabelConfigs, yaml.MapSlice{
+			{Key: "source_labels", Value: []string{instanceLabel}},
+			{Key: "action", Value: "keep"},
+			{Key: "regex", Value: clusterTargetPattern},
+		},
+			yaml.MapSlice{
+				{Key: "source_labels", Value: []string{namespaceLabel}},
+				{Key: "action", Value: "keep"},
+				{Key: "regex", Value: nsTargetPattern},
+			},
+			yaml.MapSlice{
+				{
+					Key: "source_labels", Value: []string{scrapeLabel},
+				},
+				{
+					Key: "action", Value: "keep",
+				},
+				{
+					Key: "regex", Value: truePattern,
+				},
+			},
+			yaml.MapSlice{
+				{
+					Key: "source_labels", Value: []string{componentLabel},
+				},
+				{
+					Key: "action", Value: "keep",
+				},
+				{
+					Key: "regex", Value: componentPattern,
+				},
+			},
+			addressRelabelConfig,
+			yaml.MapSlice{
+				{
+					Key: "source_labels", Value: []string{namespaceLabel},
+				},
+				{
+					Key: "action", Value: "replace",
+				},
+				{
+					Key: "target_label", Value: "kubernetes_namespace",
+				},
+			},
+			yaml.MapSlice{
+				{
+					Key: "source_labels", Value: []string{instanceLabel},
+				},
+				{
+					Key: "action", Value: "replace",
+				},
+				{
+					Key: "target_label", Value: "cluster",
+				},
+			},
+			yaml.MapSlice{
+				{
+					Key: "source_labels", Value: []string{podNameLabel},
+				},
+				{
+					Key: "action", Value: "replace",
+				},
+				{
+					Key: "target_label", Value: "instance",
+				},
+			},
+			yaml.MapSlice{
+				{
+					Key: "source_labels", Value: []string{componentLabel},
+				},
+				{
+					Key: "action", Value: "replace",
+				},
+				{
+					Key: "target_label", Value: "component",
+				},
+			},
+			yaml.MapSlice{
+				{
+					Key: "source_labels", Value: []string{
+						namespaceLabel,
+						instanceLabel,
+					},
+				},
+				{
+					Key: "separator", Value: "-",
+				},
+				{
+					Key: "target_label", Value: "tidb_cluster",
+				},
+			},
+			yaml.MapSlice{
+				{
+					Key: "source_labels", Value: []string{metricsPathLabel},
+				},
+				{
+					Key: "action", Value: "replace",
+				},
+				{
+					Key: "target_label", Value: "__metrics_path__",
+				},
+				{
+					Key: "regex", Value: allMatchPattern,
+				},
+			},
+		)
+
+		relabelConfigs = appendShardingRelabelConfigRules(relabelConfigs, uint64(cmodel.shards))
+		scrapeConfig = append(scrapeConfig, yaml.MapItem{Key: "relabel_configs", Value: relabelConfigs})
+		scrapeJobs = append(scrapeJobs, scrapeConfig)
 
 	}
 	return scrapeJobs
@@ -449,73 +450,72 @@ func isDMJob(jobName string) bool {
 	return false
 }
 
-func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
-	pc.AlertingConfig = config.AlertingConfig{
-		AlertmanagerConfigs: []*config.AlertmanagerConfig{
+func addAlertManagerUrl(cfg yaml.MapSlice, cmodel *MonitorConfigModel) yaml.MapSlice {
+	cfg = append(cfg, yaml.MapItem{
+		Key: "alerting",
+		Value: yaml.MapSlice{
 			{
-				ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
-					StaticConfigs: []*config.TargetGroup{
+				Key: "alertmanagers",
+				Value: []yaml.MapSlice{
+					{
 						{
-							Targets: []model.LabelSet{
-								{model.AddressLabel: model.LabelValue(cmodel.AlertmanagerURL)},
+							Key: "static_configs", Value: []yaml.MapSlice{
+								{
+									{
+										Key:   "targets",
+										Value: []string{cmodel.AlertmanagerURL},
+									},
+								},
 							},
 						},
 					},
 				},
 			},
 		},
-	}
+	})
+	return cfg
 }
 
-func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
-	pc := newPrometheusConfig(model)
+func RenderPrometheusConfig(model *MonitorConfigModel) (yaml.MapSlice, error) {
+	cfg := newPrometheusConfig(model)
+	var rulesPath []string
 	if len(model.AlertmanagerURL) > 0 {
-		addAlertManagerUrl(pc, model)
-		pc.RuleFiles = []string{
+		cfg = addAlertManagerUrl(cfg, model)
+		rulesPath = []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		}
-	} else if model.EnableAlertRules {
+	}
+	if model.EnableAlertRules {
 		// Add alert rules when `EnableAlertRules` enabled even if AlertManager not configured.
-		pc.RuleFiles = []string{
+		rulesPath = []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		}
-
 	}
 	if model.EnableExternalRuleConfigs {
-		pc.RuleFiles = []string{
+		rulesPath = []string{
 			"/prometheus-external-rules/*.rules.yml",
 		}
 	}
-
-	bs, err := yaml.Marshal(pc)
-	if err != nil {
-		return "", err
+	if rulesPath != nil {
+		cfg = append(cfg, yaml.MapItem{
+			Key:   "rule_files",
+			Value: rulesPath,
+		})
 	}
-	return string(bs), nil
+	return cfg, nil
 }
 
-func appendShardingRelabelConfigRules(relabelConfigs []*config.RelabelConfig, shard uint64) []*config.RelabelConfig {
-	shardsPattern, err := config.NewRegexp("$(SHARD)")
-	if err != nil {
-		klog.Errorf("Generate pattern for shard %d error: %v", shard, err)
-		return relabelConfigs
-	}
-	return append(relabelConfigs, &config.RelabelConfig{
-
-		SourceLabels: model.LabelNames{
-			"__address__",
-		},
-		Action:      config.RelabelHashMod,
-		TargetLabel: "__tmp_hash",
-		Modulus:     shard,
-	}, &config.RelabelConfig{
-
-		SourceLabels: model.LabelNames{
-			"__tmp_hash",
-		},
-		Regex: shardsPattern,
-
-		Action: config.RelabelKeep,
+func appendShardingRelabelConfigRules(relabelConfigs []yaml.MapSlice, shard uint64) []yaml.MapSlice {
+	shardsPattern := "$(SHARD)"
+	return append(relabelConfigs, yaml.MapSlice{
+		{Key: "source_labels", Value: []string{"__address__"}},
+		{Key: "action", Value: "hashmod"},
+		{Key: "target_label", Value: "__tmp_hash"},
+		{Key: "modulus", Value: shard},
+	}, yaml.MapSlice{
+		{Key: "source_labels", Value: []string{"__tmp_hash"}},
+		{Key: "regex", Value: shardsPattern},
+		{Key: "action", Value: "keep"},
 	},
 	)
 }
