@@ -15,19 +15,19 @@ package monitor
 
 import (
 	"fmt"
-	"net/url"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	semver "github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
+	"gopkg.in/yaml.v2"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -150,7 +150,7 @@ func getAlertManagerRulesVersion(monitor *v1alpha1.TidbMonitor) string {
 
 // getPromConfigMap generate the Prometheus config for TidbMonitor,
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
-func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []ClusterRegexInfo, dmClusterInfos []ClusterRegexInfo, shard int32) (*core.ConfigMap, error) {
+func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []ClusterRegexInfo, dmClusterInfos []ClusterRegexInfo, shard int32, store *Store) (*core.ConfigMap, error) {
 	model := &MonitorConfigModel{
 		AlertmanagerURL:  "",
 		ClusterInfos:     monitorClusterInfos,
@@ -160,21 +160,26 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 		shards:           shard,
 	}
 
-	if len(monitor.Spec.Prometheus.RemoteWrite) > 0 {
-		model.RemoteWriteConfigs = generateRemoteWrite(monitor)
-	}
-
 	if monitor.Spec.AlertmanagerURL != nil {
 		model.AlertmanagerURL = *monitor.Spec.AlertmanagerURL
 	}
 	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
 		model.EnableExternalRuleConfigs = true
 	}
+
+	remoteWriteCfg, err := generateRemoteWrite(monitor, store)
+	if err != nil {
+		return nil, err
+	}
+	model.RemoteWriteCfg = &remoteWriteCfg
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err
 	}
-
+	prometheusYaml, err := yaml.Marshal(content)
+	if err != nil {
+		return nil, err
+	}
 	cm := &core.ConfigMap{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetPromConfigMapName(monitor),
@@ -183,7 +188,7 @@ func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []Clust
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Data: map[string]string{
-			"prometheus.yml": content,
+			"prometheus.yml": string(prometheusYaml),
 		},
 	}
 	return cm, nil
@@ -1462,90 +1467,166 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 	return m
 }
 
-func generateRemoteWrite(monitor *v1alpha1.TidbMonitor) []*config.RemoteWriteConfig {
-	var remoteWriteConfigs []*config.RemoteWriteConfig
-	for _, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
-		url, err := url.Parse(remoteWrite.URL)
-		if err != nil {
-			klog.Errorf("remote write url[%s] config fail to parse, err:%v", remoteWrite.URL, err)
-			continue
-		}
-		httpClientConfig := config.HTTPClientConfig{
-			BearerTokenFile: remoteWrite.BearerTokenFile,
-		}
-		if remoteWrite.TLSConfig != nil {
-			httpClientConfig.TLSConfig = config.TLSConfig{
-				CAFile:             remoteWrite.TLSConfig.CAFile,
-				CertFile:           remoteWrite.TLSConfig.CertFile,
-				KeyFile:            remoteWrite.TLSConfig.KeyFile,
-				ServerName:         remoteWrite.TLSConfig.ServerName,
-				InsecureSkipVerify: remoteWrite.TLSConfig.InsecureSkipVerify,
-			}
-		}
-		var writeRelabelConfigs []*config.RelabelConfig
-		for _, writeRelabelConfig := range remoteWrite.WriteRelabelConfigs {
-			relabelConfig := &config.RelabelConfig{}
-			if len(writeRelabelConfig.SourceLabels) > 0 {
-				relabelConfig.SourceLabels = writeRelabelConfig.SourceLabels
-			}
-			if writeRelabelConfig.Separator != "" {
-				relabelConfig.Separator = writeRelabelConfig.Separator
-			}
-			if writeRelabelConfig.TargetLabel != "" {
-				relabelConfig.TargetLabel = writeRelabelConfig.TargetLabel
-			}
-			if writeRelabelConfig.Regex != "" {
-				regex, err := config.NewRegexp(writeRelabelConfig.Regex)
-				if err != nil {
-					continue
-				}
-				relabelConfig.Regex = regex
-			}
-			if writeRelabelConfig.Modulus != uint64(0) {
-				relabelConfig.Modulus = writeRelabelConfig.Modulus
-			}
-			if writeRelabelConfig.Replacement != "" {
-				relabelConfig.Replacement = writeRelabelConfig.Replacement
-			}
-			if writeRelabelConfig.Action != "" {
-				relabelConfig.Action = writeRelabelConfig.Action
-			}
-			writeRelabelConfigs = append(writeRelabelConfigs, relabelConfig)
-		}
-
-		remoteWriteConfig := &config.RemoteWriteConfig{
-			URL:                 &config.URL{URL: url},
-			RemoteTimeout:       remoteWrite.RemoteTimeout,
-			WriteRelabelConfigs: writeRelabelConfigs,
-			HTTPClientConfig:    httpClientConfig,
-		}
-		if remoteWrite.QueueConfig != nil {
-			queueConfig := config.QueueConfig{}
-
-			if remoteWrite.QueueConfig.Capacity != 0 {
-				queueConfig.Capacity = remoteWrite.QueueConfig.Capacity
-			}
-			if remoteWrite.QueueConfig.MaxShards != 0 {
-				queueConfig.MaxShards = remoteWrite.QueueConfig.MaxShards
-			}
-			if remoteWrite.QueueConfig.MaxSamplesPerSend != 0 {
-				queueConfig.MaxSamplesPerSend = remoteWrite.QueueConfig.MaxSamplesPerSend
-			}
-			if remoteWrite.QueueConfig.BatchSendDeadline != time.Duration(0) {
-				queueConfig.BatchSendDeadline = remoteWrite.QueueConfig.BatchSendDeadline
-			}
-			if remoteWrite.QueueConfig.MaxRetries != 0 {
-				queueConfig.MaxRetries = remoteWrite.QueueConfig.MaxRetries
-			}
-			if remoteWrite.QueueConfig.MinBackoff != time.Duration(0) {
-				queueConfig.MinBackoff = remoteWrite.QueueConfig.MinBackoff
-			}
-			if remoteWrite.QueueConfig.MaxBackoff != time.Duration(0) {
-				queueConfig.MaxBackoff = remoteWrite.QueueConfig.MaxBackoff
-			}
-			remoteWriteConfig.QueueConfig = queueConfig
-		}
-		remoteWriteConfigs = append(remoteWriteConfigs, remoteWriteConfig)
+func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapItem, error) {
+	cfgs := []yaml.MapSlice{}
+	version, err := semver.NewVersion(monitor.Spec.Prometheus.Version)
+	if err != nil {
+		return yaml.MapItem{}, err
 	}
-	return remoteWriteConfigs
+	for i, spec := range monitor.Spec.Prometheus.RemoteWrite {
+		//defaults
+		if spec.RemoteTimeout == nil {
+			duration := model.Duration(30 * time.Second)
+			spec.RemoteTimeout = &duration
+		}
+
+		cfg := yaml.MapSlice{
+			{Key: "url", Value: spec.URL},
+			{Key: "remote_timeout", Value: spec.RemoteTimeout},
+		}
+
+		if len(spec.Headers) > 0 && GreaterThanOrEqual(version, semver.MustParse("2.25.0")) {
+			cfg = append(cfg, yaml.MapItem{Key: "headers", Value: stringMapToMapSlice(spec.Headers)})
+		}
+
+		if spec.Name != "" && GreaterThanOrEqual(version, semver.MustParse("2.25.0")) {
+			cfg = append(cfg, yaml.MapItem{Key: "name", Value: spec.Name})
+		}
+
+		if spec.WriteRelabelConfigs != nil {
+			relabelings := []yaml.MapSlice{}
+			for _, c := range spec.WriteRelabelConfigs {
+				relabeling := yaml.MapSlice{}
+
+				if len(c.SourceLabels) > 0 {
+					relabeling = append(relabeling, yaml.MapItem{Key: "source_labels", Value: c.SourceLabels})
+				}
+
+				if c.Separator != "" {
+					relabeling = append(relabeling, yaml.MapItem{Key: "separator", Value: c.Separator})
+				}
+
+				if c.TargetLabel != "" {
+					relabeling = append(relabeling, yaml.MapItem{Key: "target_label", Value: c.TargetLabel})
+				}
+
+				if c.Regex != "" {
+					relabeling = append(relabeling, yaml.MapItem{Key: "regex", Value: c.Regex})
+				}
+
+				if c.Modulus != uint64(0) {
+					relabeling = append(relabeling, yaml.MapItem{Key: "modulus", Value: c.Modulus})
+				}
+
+				if c.Replacement != "" {
+					relabeling = append(relabeling, yaml.MapItem{Key: "replacement", Value: c.Replacement})
+				}
+
+				if c.Action != "" {
+					relabeling = append(relabeling, yaml.MapItem{Key: "action", Value: c.Action})
+				}
+				relabelings = append(relabelings, relabeling)
+			}
+
+			cfg = append(cfg, yaml.MapItem{Key: "write_relabel_configs", Value: relabelings})
+
+		}
+
+		if spec.BasicAuth != nil {
+			if s, ok := store.BasicAuthAssets[fmt.Sprintf("remoteWrite/%d", i)]; ok {
+				cfg = append(cfg, yaml.MapItem{
+					Key: "basic_auth", Value: yaml.MapSlice{
+						{Key: "username", Value: s.Username},
+						{Key: "password", Value: s.Password},
+					},
+				})
+			}
+		}
+
+		if spec.BearerToken != "" {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: spec.BearerToken})
+		}
+
+		if spec.BearerTokenFile != "" {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: spec.BearerTokenFile})
+		}
+
+		if spec.ProxyURL != nil {
+			cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: spec.ProxyURL})
+		}
+
+		if spec.QueueConfig != nil {
+			queueConfig := yaml.MapSlice{}
+
+			if spec.QueueConfig.Capacity != int(0) {
+				queueConfig = append(queueConfig, yaml.MapItem{Key: "capacity", Value: spec.QueueConfig.Capacity})
+			}
+
+			if GreaterThanOrEqual(version, semver.MustParse("2.6.0")) && spec.QueueConfig.MinShards != int(0) {
+				queueConfig = append(queueConfig, yaml.MapItem{Key: "min_shards", Value: spec.QueueConfig.MinShards})
+			}
+
+			if spec.QueueConfig.MaxShards != int(0) {
+				queueConfig = append(queueConfig, yaml.MapItem{Key: "max_shards", Value: spec.QueueConfig.MaxShards})
+			}
+
+			if spec.QueueConfig.MaxSamplesPerSend != int(0) {
+				queueConfig = append(queueConfig, yaml.MapItem{Key: "max_samples_per_send", Value: spec.QueueConfig.MaxSamplesPerSend})
+			}
+
+			if spec.QueueConfig.BatchSendDeadline != nil {
+				queueConfig = append(queueConfig, yaml.MapItem{Key: "batch_send_deadline", Value: spec.QueueConfig.BatchSendDeadline})
+			}
+
+			if spec.QueueConfig.MaxRetries != int(0) {
+				queueConfig = append(queueConfig, yaml.MapItem{Key: "max_retries", Value: spec.QueueConfig.MaxRetries})
+			}
+
+			if spec.QueueConfig.MinBackoff != nil {
+				queueConfig = append(queueConfig, yaml.MapItem{Key: "min_backoff", Value: spec.QueueConfig.MinBackoff})
+			}
+
+			if spec.QueueConfig.MaxBackoff != nil {
+				queueConfig = append(queueConfig, yaml.MapItem{Key: "max_backoff", Value: spec.QueueConfig.MaxBackoff})
+			}
+
+			cfg = append(cfg, yaml.MapItem{Key: "queue_config", Value: queueConfig})
+		}
+
+		if spec.MetadataConfig != nil && GreaterThanOrEqual(version, semver.MustParse("2.23.0")) {
+			metadataConfig := yaml.MapSlice{}
+			metadataConfig = append(metadataConfig, yaml.MapItem{Key: "send", Value: spec.MetadataConfig.Send})
+			if spec.MetadataConfig.SendInterval != "" {
+				metadataConfig = append(metadataConfig, yaml.MapItem{Key: "send_interval", Value: spec.MetadataConfig.SendInterval})
+			}
+			cfg = append(cfg, yaml.MapItem{Key: "metadata_config", Value: metadataConfig})
+		}
+
+		cfgs = append(cfgs, cfg)
+	}
+
+	return yaml.MapItem{
+		Key:   "remote_write",
+		Value: cfgs,
+	}, nil
+}
+
+func GreaterThanOrEqual(left *semver.Version, right *semver.Version) bool {
+	return left.GreaterThan(right) || left.Equal(right)
+}
+
+func stringMapToMapSlice(m map[string]string) yaml.MapSlice {
+	res := yaml.MapSlice{}
+	ks := make([]string, 0)
+
+	for k := range m {
+		ks = append(ks, k)
+	}
+	sort.Strings(ks)
+
+	for _, k := range ks {
+		res = append(res, yaml.MapItem{Key: k, Value: m[k]})
+	}
+
+	return res
 }
