@@ -75,28 +75,31 @@ func WaitForTidbClusterConditionReady(c versioned.Interface, ns, name string, ti
 	})
 }
 
+// MustWaitForComponentPhase wait a component to be in a specific phase
 func MustWaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType, phase v1alpha1.MemberPhase, timeout, pollInterval time.Duration) {
-	var err error
-	wait.Poll(pollInterval, timeout, func() (bool, error) {
-		tc, err := c.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
+	var lastPhase v1alpha1.MemberPhase
+	check := func(tc *v1alpha1.TidbCluster) bool {
 		switch comp {
 		case v1alpha1.PDMemberType:
-			if tc.Status.PD.Phase != phase {
-				return false, nil
-			}
+			lastPhase = tc.Status.PD.Phase
 		case v1alpha1.TiKVMemberType:
-			if tc.Status.TiKV.Phase != phase {
-				return false, nil
-			}
+			lastPhase = tc.Status.TiKV.Phase
 		case v1alpha1.TiDBMemberType:
-			if tc.Status.TiDB.Phase != phase {
-				return false, nil
-			}
+			lastPhase = tc.Status.TiDB.Phase
+		case v1alpha1.TiFlashMemberType:
+			lastPhase = tc.Status.TiFlash.Phase
+		case v1alpha1.TiCDCMemberType:
+			lastPhase = tc.Status.TiCDC.Phase
+		case v1alpha1.PumpMemberType:
+			lastPhase = tc.Status.Pump.Phase
 		}
-		return true, nil
-	})
-	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.%s.Phase to be %q", tc.Namespace, tc.Name, strings.ToUpper(string(comp)), phase)
+
+		return lastPhase == phase
+	}
+
+	err := WaitForTC(c, tc, check, timeout, pollInterval)
+	framework.ExpectNoError(err, "failed to wait for .Status.%s.Phase of tc %s/%s to be %s, last phase is %s",
+		comp, tc.Namespace, tc.Name, phase, lastPhase)
 }
 
 // MustCreateTCWithComponentsReady create TidbCluster and wait for components ready
@@ -107,45 +110,6 @@ func MustCreateTCWithComponentsReady(cli ctrlCli.Client, oa *tests.OperatorActio
 	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 }
 
-func MustWaitForPDPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, phase v1alpha1.MemberPhase, timeout, pollInterval time.Duration) {
-	var err error
-	wait.Poll(pollInterval, timeout, func() (bool, error) {
-		tc, err := c.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
-		if tc.Status.PD.Phase != phase {
-			return false, nil
-		}
-		return true, nil
-	})
-	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.PD.Phase to be %q", tc.Namespace, tc.Name, phase)
-}
-
-func MustWaitForTiKVPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, phase v1alpha1.MemberPhase, timeout, pollInterval time.Duration) {
-	var err error
-	wait.Poll(pollInterval, timeout, func() (bool, error) {
-		tc, err := c.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
-		if tc.Status.TiKV.Phase != phase {
-			return false, nil
-		}
-		return true, nil
-	})
-	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.TiKV.Phase to be %q", tc.Namespace, tc.Name, phase)
-}
-
-func MustWaitForTiDBPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, phase v1alpha1.MemberPhase, timeout, pollInterval time.Duration) {
-	var err error
-	wait.Poll(pollInterval, timeout, func() (bool, error) {
-		tc, err := c.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get TidbCluster: %v", err)
-		if tc.Status.TiDB.Phase != phase {
-			return false, nil
-		}
-		return true, nil
-	})
-	framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s .Status.TiDB.Phase to be %q", tc.Namespace, tc.Name, phase)
-}
-
 func MustPDHasScheduler(pdSchedulers []string, scheduler string) bool {
 	for _, s := range pdSchedulers {
 		if strings.Contains(s, scheduler) {
@@ -153,4 +117,18 @@ func MustPDHasScheduler(pdSchedulers []string, scheduler string) bool {
 		}
 	}
 	return false
+}
+
+func WaitForTC(c versioned.Interface, tc *v1alpha1.TidbCluster, check func(tc *v1alpha1.TidbCluster) bool, timeout, pollInterval time.Duration) error {
+	err := wait.Poll(pollInterval, timeout, func() (bool, error) {
+		tc, err := c.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		done := check(tc)
+		return done, nil
+	})
+
+	return err
 }

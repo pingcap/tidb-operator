@@ -2340,7 +2340,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to update components configuration")
 
 			ginkgo.By("Wait for PD to be in UpgradePhase")
-			utiltc.MustWaitForPDPhase(cli, tc, v1alpha1.UpgradePhase, 3*time.Minute, 10*time.Second)
+			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, 10*time.Second)
 			log.Logf("PD is in UpgradePhase")
 
 			ginkgo.By("Wait for tc ready")
@@ -2360,7 +2360,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			gomega.Expect(pdCm.Data["config-file"]).To(gomega.ContainSubstring("lease = 3"))
 
 			ginkgo.By("Wait for TiKV to be in UpgradePhase")
-			utiltc.MustWaitForTiKVPhase(cli, tc, v1alpha1.UpgradePhase, 3*time.Minute, 10*time.Second)
+			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.UpgradePhase, 3*time.Minute, 10*time.Second)
 			log.Logf("TiKV is in UpgradePhase")
 
 			ginkgo.By("Wait for tc ready")
@@ -2380,7 +2380,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			gomega.Expect(tikvCm.Data["config-file"]).To(gomega.ContainSubstring("status-thread-pool-size = 1"))
 
 			ginkgo.By("Wait for TiDB to be in UpgradePhase")
-			utiltc.MustWaitForTiDBPhase(cli, tc, v1alpha1.UpgradePhase, 3*time.Minute, 10*time.Second)
+			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiDBMemberType, v1alpha1.UpgradePhase, 3*time.Minute, 10*time.Second)
 			log.Logf("TiDB is in UpgradePhase")
 
 			ginkgo.By("Wait for tc ready")
@@ -2713,14 +2713,16 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			for _, op := range operation {
 				op := op
 				ginkgo.It(op, func() {
-					ginkgo.By("Deploy initial tc")
+					initialReplicas, expectedReplicas := int32(3), int32(4)
+					if op == "in" {
+						initialReplicas, expectedReplicas = expectedReplicas, initialReplicas
+					}
+
 					tcName := fmt.Sprintf("scale-%s-tikv-concurrently", op)
 					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)
-					if op == "in" {
-						tc.Spec.TiKV.Replicas = 4
-					} else {
-						tc.Spec.TiKV.Replicas = 3
-					}
+					tc.Spec.TiKV.Replicas = initialReplicas
+
+					ginkgo.By("Deploy initial tc")
 					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 					ginkgo.By("Upgrade TiKV version")
@@ -2731,52 +2733,31 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "failed to update TiKV version to %q", utilimage.TiDBLatest)
 
 					ginkgo.By(fmt.Sprintf("Wait for TiKV phase is %q", v1alpha1.UpgradePhase))
-					err = wait.PollImmediate(10*time.Second, 3*time.Minute, func() (bool, error) {
-						tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
-						if err != nil {
-							log.Logf("failed to get TidbCluster %s/%s: %v", ns, tcName, err)
-							return false, nil
-						}
-						if tc.Status.TiKV.Phase != v1alpha1.UpgradePhase {
-							log.Logf("tc.Status.TiKV.Phase = %q, not %q yet", tc.Status.TiKV.Phase, v1alpha1.UpgradePhase)
-							return false, nil
-						}
-						return true, nil
-					})
-					framework.ExpectNoError(err, "failed to wait for TiKV phase")
+					utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.UpgradePhase, 3*time.Minute, 10*time.Second)
 
 					ginkgo.By(fmt.Sprintf("Scale %s TiKV while in %q phase", op, v1alpha1.UpgradePhase))
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-						if op == "in" {
-							tc.Spec.TiKV.Replicas = 3
-						} else {
-							tc.Spec.TiKV.Replicas = 4
-						}
+						tc.Spec.TiKV.Replicas = expectedReplicas
 						return nil
 					})
 					framework.ExpectNoError(err, "failed to scale %s TiKV", op)
 
 					ginkgo.By("Wait for TiKV to be in ScalePhase")
-					utiltc.MustWaitForTiKVPhase(cli, tc, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
+					utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.ScalePhase, 3*time.Minute, 10*time.Second)
 					log.Logf("TiKV is in ScalePhase")
 
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", ns, tc.Name)
 
-					ginkgo.By("Check TiKV replicas")
+					ginkgo.By("Check if TiKV replicas is correct")
 					tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
-					framework.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", ns, tcName, err)
-					if op == "in" {
-						framework.ExpectEqual(int(tc.Spec.TiKV.Replicas), 3)
-					} else {
-						framework.ExpectEqual(int(tc.Spec.TiKV.Replicas), 4)
-					}
-					log.Logf("TiKV replicas number is correct")
+					framework.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", ns, tcName)
+					framework.ExpectEqual(tc.Spec.TiKV.Replicas, expectedReplicas, "TiKV replicas is not correct")
 
 					ginkgo.By("Check no evict leader scheduler left")
 					pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tc.Name, false)
-					framework.ExpectNoError(err, "create pdClient error")
+					framework.ExpectNoError(err, "fail to create proxied pdClient")
 					defer cancel()
 					err = wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
 						schedulers, err := pdClient.GetEvictLeaderSchedulers()
