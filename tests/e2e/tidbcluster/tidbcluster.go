@@ -3003,7 +3003,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					replicasLarge = 4
 					replicasSmall = 3
 				case v1alpha1.TiDBMemberType:
-					replicasLarge = 3
+					replicasLarge = 4
 					replicasSmall = 2
 				}
 				ginkgo.It(fmt.Sprintf("should work for %s", comp), func() {
@@ -3064,13 +3064,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					case v1alpha1.TiDBMemberType:
 						labelSelector = labels.SelectorFromSet(label.New().Instance(tc.Name).TiDB().Labels()).String()
 					}
-					listOptions := metav1.ListOptions{
-						LabelSelector: labelSelector,
-					}
-					pods, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
-					framework.ExpectNoError(err, "failed to list %s Pods with options: %+v", comp, listOptions)
-					framework.ExpectEqual(len(pods.Items), int(replicasSmall), "there should be %d %s Pods", replicasSmall, comp)
-					for _, pod := range pods.Items {
+					pods := utilpod.MustListPods(labelSelector, ns, c)
+					framework.ExpectEqual(len(pods), int(replicasSmall), "there should be %d %s Pods", replicasSmall, comp)
+					for _, pod := range pods {
 						// some pods may have multiple containers
 						wrongImage := true
 						for _, c := range pod.Spec.Containers {
@@ -3080,9 +3076,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 								break
 							}
 						}
-						if wrongImage {
-							log.Failf("%s Pod has wrong image, expected %s", comp, utilimage.TiDBLatest)
-						}
+						framework.ExpectEqual(wrongImage, false, "%s Pod has wrong image, expected %s", comp, utilimage.TiDBLatest)
 					}
 				})
 			}

@@ -272,17 +272,20 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 		return false, nil
 	}
 
-	c, found := getMemberContainer(ctu.kubeCli, ctu.tcStsGetter, ns, tc.Name, label.PDLabelVal)
-	if !found {
+	expectedImage := tc.PDImage()
+	containers, err := utilstatefulset.GetMemberContainersFromSts(ctu.kubeCli, ctu.tcStsGetter, ns, pdSetName, v1alpha1.PDMemberType)
+	if err != nil {
 		log.Logf("statefulset: %s/%s not found containers[name=pd] or pod %s-0",
 			ns, pdSetName, pdSetName)
 		return false, nil
 	}
 
-	if tc.PDImage() != c.Image {
-		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
-			ns, pdSetName, c.Image, tc.PDImage())
-		return false, nil
+	for _, container := range containers {
+		if container.Image != expectedImage {
+			log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
+				ns, pdSetName, container.Image, tc.PDImage())
+			return false, nil
+		}
 	}
 
 	for _, member := range tc.Status.PD.Members {
@@ -375,17 +378,20 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(obj runtime.Object) (bool, error) {
 		return false, nil
 	}
 
-	c, found := getStsContainer(ctu.kubeCli, tikvSet, label.TiKVLabelVal)
-	if !found {
+	expectedImage := image
+	containers, err := utilstatefulset.GetMemberContainersFromSts(ctu.kubeCli, ctu.tcStsGetter, ns, tikvSetName, v1alpha1.TiKVMemberType)
+	if err != nil {
 		log.Logf("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
 			ns, tikvSetName, tikvSetName)
 		return false, nil
 	}
 
-	if image != c.Image {
-		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
-			ns, tikvSetName, c.Image, image)
-		return false, nil
+	for _, container := range containers {
+		if container.Image != expectedImage {
+			log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
+				ns, tikvSetName, container.Image, image)
+			return false, nil
+		}
 	}
 
 	for _, store := range stores {
@@ -448,17 +454,20 @@ func (ctu *CrdTestUtil) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 		return false, nil
 	}
 
-	c, found := getMemberContainer(ctu.kubeCli, ctu.tcStsGetter, ns, tc.Name, label.TiDBLabelVal)
-	if !found {
-		log.Logf("statefulset: %s/%s not found containers[name=tidb] or pod %s-0",
+	expectedImage := tc.TiDBImage()
+	containers, err := utilstatefulset.GetMemberContainersFromSts(ctu.kubeCli, ctu.tcStsGetter, ns, tidbSetName, v1alpha1.TiDBMemberType)
+	if err != nil {
+		log.Logf("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
 			ns, tidbSetName, tidbSetName)
 		return false, nil
 	}
 
-	if tc.TiDBImage() != c.Image {
-		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
-			ns, tidbSetName, c.Image, tc.TiDBImage())
-		return false, nil
+	for _, container := range containers {
+		if container.Image != expectedImage {
+			log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
+				ns, tidbSetName, container.Image, tc.TiDBImage())
+			return false, nil
+		}
 	}
 
 	_, err = ctu.kubeCli.CoreV1().Services(ns).Get(context.TODO(), tidbSetName, metav1.GetOptions{})
@@ -521,18 +530,20 @@ func (ctu *CrdTestUtil) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 			ns, tiflashSetName, tiflashSet.Status.ReadyReplicas, tiflashSet.Status.Replicas)
 		return false, nil
 	}
-
-	c, found := getMemberContainer(ctu.kubeCli, ctu.tcStsGetter, ns, tc.Name, label.TiFlashLabelVal)
-	if !found {
+	expectedImage := tc.TiFlashImage()
+	containers, err := utilstatefulset.GetMemberContainersFromSts(ctu.kubeCli, ctu.tcStsGetter, ns, tiflashSetName, v1alpha1.TiFlashMemberType)
+	if err != nil {
 		log.Logf("statefulset: %s/%s not found containers[name=tiflash] or pod %s-0",
 			ns, tiflashSetName, tiflashSetName)
 		return false, nil
 	}
 
-	if tc.TiFlashImage() != c.Image {
-		log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=tiflash].image(%s) != %s",
-			ns, tiflashSetName, c.Image, tc.TiFlashImage())
-		return false, nil
+	for _, container := range containers {
+		if container.Image != expectedImage {
+			log.Logf("statefulset: %s/%s .spec.template.spec.containers[name=tiflash].image(%s) != %s",
+				ns, tiflashSetName, container.Image, tc.TiFlashImage())
+			return false, nil
+		}
 	}
 
 	for _, store := range tc.Status.TiFlash.Stores {
