@@ -1244,7 +1244,6 @@ type memberCheckContext struct {
 }
 
 func (oa *OperatorActions) IsMembersReady(obj metav1.Object, component v1alpha1.MemberType) error {
-	name := obj.GetName()
 	ns := obj.GetNamespace()
 
 	var (
@@ -1266,7 +1265,6 @@ func (oa *OperatorActions) IsMembersReady(obj metav1.Object, component v1alpha1.
 		return err
 	}
 
-	id := fmt.Sprintf("%s/%s", ns, name)
 	stsName := ctx.stsName
 	stsID := fmt.Sprintf("%s/%s", ns, ctx.stsName)
 
@@ -1292,13 +1290,13 @@ func (oa *OperatorActions) IsMembersReady(obj metav1.Object, component v1alpha1.
 	// check the status of component
 	err = ctx.checkComponent(obj, sts)
 	if err != nil {
-		return fmt.Errorf("%s members are not ready for tc %q: %s", component, id, stsID, err)
+		return fmt.Errorf("%s members are not ready: %s", component, err)
 	}
 
 	// check containers
 	containers, err := utilstatefulset.GetMemberContainersFromSts(oa.kubeCli, oa.tcStsGetter, ns, stsName, component)
 	if err != nil {
-		return fmt.Errorf("failed to get containers for tc %q: %s", id, err)
+		return fmt.Errorf("failed to get containers: %s", err)
 	}
 	for _, container := range containers {
 		if container.Image != ctx.expectedImage {
@@ -1358,7 +1356,9 @@ func (oa *OperatorActions) memberCheckContextForTC(tc *v1alpha1.TidbCluster, com
 		checkComponent = oa.isTiCDCMembersReady
 	case v1alpha1.PumpMemberType:
 		skip = tc.Spec.Pump == nil
-		expectedImage = *tc.PumpImage()
+		if !skip {
+			expectedImage = *tc.PumpImage()
+		}
 		services = []string{controller.PumpMemberName(name), controller.PumpPeerMemberName(name)}
 		checkComponent = oa.isPumpMembersReady
 	default:
@@ -3603,7 +3603,7 @@ func (oa *OperatorActions) WaitForDmClusterReady(dc *v1alpha1.DMCluster, timeout
 
 		for _, component := range components {
 			if err := oa.IsMembersReady(local, component); err != nil {
-				checkErr = fmt.Errorf("%s members for tc %q are not ready: %v", component, dc.Name, err)
+				checkErr = fmt.Errorf("%s members for dc %q are not ready: %v", component, dc.Name, err)
 				return false, nil
 			}
 		}
