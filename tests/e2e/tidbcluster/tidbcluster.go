@@ -2748,7 +2748,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						schedulers, err := pdClient.GetEvictLeaderSchedulers()
 						framework.ExpectNoError(err, "failed to get evict leader schedulers")
 						if len(schedulers) != 0 {
-							log.Logf("there are %d evict leader left, expect 0", len(schedulers))
+							log.Logf("there are %d evict leader left: %v", len(schedulers), schedulers)
 							return false, nil
 						}
 						return true, nil
