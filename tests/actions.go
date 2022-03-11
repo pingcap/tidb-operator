@@ -1352,7 +1352,7 @@ func (oa *OperatorActions) memberCheckContextForTC(tc *v1alpha1.TidbCluster, com
 	case v1alpha1.TiCDCMemberType:
 		skip = tc.Spec.TiCDC == nil
 		expectedImage = tc.TiCDCImage()
-		services = []string{controller.TiCDCMemberName(name), controller.TiCDCPeerMemberName(name)}
+		services = []string{controller.TiCDCPeerMemberName(name)}
 		checkComponent = oa.isTiCDCMembersReady
 	case v1alpha1.PumpMemberType:
 		skip = tc.Spec.Pump == nil
