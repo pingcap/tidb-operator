@@ -2,7 +2,6 @@
 
 This document is to show how to integrate TidbMonitor with [Thanos](https://thanos.io/tip/thanos/design.md/).
 
-
 ## Install TidbMonitor
 
 The following commands is assumed to be executed in this directory.
@@ -25,7 +24,7 @@ If you need to store historical data, you can create the corresponding secret an
 > kubectl -n <namespace> apply -f objectstorage-secret.yaml
 ```
 
-```
+```yaml
 apiVersion: pingcap.com/v1alpha1
 kind: TidbMonitor
 metadata:
@@ -50,6 +49,7 @@ Install thanos query component to integrate tidbmonitor :
 ```bash
 > kubectl -n <namespace> apply -f thanos-query.yaml
 ```
+
 Explore the thanos query dashboards:
 
 ```bash
