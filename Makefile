@@ -52,35 +52,35 @@ controller-manager:
 ifeq ($(E2E),y)
 	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-controller-manager ./cmd/controller-manager
 else
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/$(GOARCH)/tidb-controller-manager cmd/controller-manager/main.go
 endif
 
 scheduler:
 ifeq ($(E2E),y)
 	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-scheduler ./cmd/scheduler
 else
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler cmd/scheduler/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/$(GOARCH)/tidb-scheduler cmd/scheduler/main.go
 endif
 
 discovery:
 ifeq ($(E2E),y)
 	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-discovery ./cmd/discovery
 else
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/$(GOARCH)/tidb-discovery cmd/discovery/main.go
 endif
 
 admission-webhook:
 ifeq ($(E2E),y)
 	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/tidb-admission-webhook ./cmd/admission-webhook
 else
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-webhook cmd/admission-webhook/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/$(GOARCH)/tidb-admission-webhook cmd/admission-webhook/main.go
 endif
 
 backup-manager:
 ifeq ($(E2E),y)
 	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-backup-manager/bin/tidb-backup-manager ./cmd/backup-manager
 else
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-backup-manager/bin/$(GOARCH)/tidb-backup-manager cmd/backup-manager/main.go
 endif
 
 ifeq ($(NO_BUILD),y)

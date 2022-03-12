@@ -26,11 +26,17 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
                     images.each {
                         stage("Build and push ${it} image") {
                             withDockerServer([uri: "${env.DOCKER_HOST}"]) {
-                                docker.build("pingcap/${it}:${RELEASE_TAG}", "images/${it}").push()
+                                sh """
+                                docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+                                docker buildx inspect builder
+                                if [ $? -ne 0]; then
+                                  docker buildx create --name builder --use
+                                fi
+                                docker buildx build --platform=linux/arm64,linux/amd64 --push -t pingcap/${it}:${RELEASE_TAG} images/${it}
+                                """
                                 withDockerRegistry([url: "https://registry.cn-beijing.aliyuncs.com", credentialsId: "ACR_TIDB_ACCOUNT"]) {
                                     sh """
-                                    docker tag pingcap/${it}:${RELEASE_TAG} registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG}
-                                    docker push registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG}
+                                    docker buildx build --platform=linux/arm64,linux/amd64 --push -t registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG} images/${it}
                                     """
                                 }
                             }
