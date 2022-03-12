@@ -42,8 +42,8 @@ ifeq ($(E2E),y)
 	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" -f images/tidb-operator/Dockerfile.e2e images/tidb-operator
 	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" -f images/tidb-backup-manager/Dockerfile.e2e images/tidb-backup-manager
 else
-	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" images/tidb-operator
-	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" images/tidb-backup-manager
+	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-operator
+	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-backup-manager
 endif
 
 build: controller-manager scheduler discovery admission-webhook backup-manager
@@ -92,7 +92,7 @@ endif
 ifeq ($(E2E),y)
 	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" -f images/tidb-backup-manager/Dockerfile.e2e images/tidb-backup-manager
 else
-	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" images/tidb-backup-manager
+	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-backup-manager
 endif
 
 e2e-docker-push: e2e-docker
