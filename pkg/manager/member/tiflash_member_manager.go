@@ -281,6 +281,12 @@ func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 					TargetPort: intstr.FromInt(int(20170)),
 					Protocol:   corev1.ProtocolTCP,
 				},
+				{
+					Name:       "metrics",
+					Port:       8234,
+					TargetPort: intstr.FromInt(int(8234)),
+					Protocol:   corev1.ProtocolTCP,
+				},
 			},
 			Selector:                 svcLabel,
 			PublishNotReadyAddresses: true,
