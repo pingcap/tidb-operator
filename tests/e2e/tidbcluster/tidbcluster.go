@@ -2883,7 +2883,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					replicasLarge = 4
 					replicasSmall = 3
 				case v1alpha1.TiDBMemberType:
-					replicasLarge = 3
+					replicasLarge = 4
 					replicasSmall = 2
 				}
 				ginkgo.It(fmt.Sprintf("should work for %s", comp), func() {
