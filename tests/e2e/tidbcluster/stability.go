@@ -884,14 +884,15 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			f.ExecCommandInContainer(podName, "tikv", "sh", "-c", "rm -rf /var/lib/tikv/*")
 
 			ginkgo.By("Waiting for the store to be in Down state")
-			err := utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				for _, store := range tc.Status.TiKV.Stores {
-					if store.PodName == podName && store.State == v1alpha1.TiKVStateDown {
-						return true, nil
+			err := utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, time.Second*10,
+				func(tc *v1alpha1.TidbCluster) (bool, error) {
+					for _, store := range tc.Status.TiKV.Stores {
+						if store.PodName == podName && store.State == v1alpha1.TiKVStateDown {
+							return true, nil
+						}
 					}
-				}
-				return false, nil
-			})
+					return false, nil
+				})
 			framework.ExpectNoError(err, "failed to wait for ")
 
 			ginkgo.By("Update TiKV configuration")
@@ -904,14 +905,15 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.ExpectNoError(err, "failed to update tikv configuration")
 
 			ginkgo.By("Waiting for the store to be put into failure stores")
-			err = utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				for _, failureStore := range tc.Status.TiKV.FailureStores {
-					if failureStore.PodName == podName {
-						return true, nil
+			err = utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, time.Second*10,
+				func(tc *v1alpha1.TidbCluster) (bool, error) {
+					for _, failureStore := range tc.Status.TiKV.FailureStores {
+						if failureStore.PodName == podName {
+							return true, nil
+						}
 					}
-				}
-				return false, nil
-			})
+					return false, nil
+				})
 			framework.ExpectNoError(err, "failed to wait for the store to be put into failure stores")
 
 			ginkgo.By("Waiting for the new pod to be created")
@@ -941,14 +943,15 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			f.ExecCommandInContainer(podName, "pd", "sh", "-c", "rm -rf /var/lib/pd/*")
 
 			ginkgo.By("Waiting for the pd to be in unhealthy state")
-			err := utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				for _, member := range tc.Status.PD.Members {
-					if member.Name == podName && !member.Health {
-						return true, nil
+			err := utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, time.Second*10,
+				func(tc *v1alpha1.TidbCluster) (bool, error) {
+					for _, member := range tc.Status.PD.Members {
+						if member.Name == podName && !member.Health {
+							return true, nil
+						}
 					}
-				}
-				return false, nil
-			})
+					return false, nil
+				})
 			framework.ExpectNoError(err, "failed to wait for the pd to be in unhealthy state")
 
 			ginkgo.By("Update PD configuration")
@@ -961,14 +964,15 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.ExpectNoError(err, "failed to update pd configuration")
 
 			ginkgo.By("Waiting for the pd to be put into failure members")
-			err = utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				for _, failureMember := range tc.Status.PD.FailureMembers {
-					if failureMember.PodName == podName {
-						return true, nil
+			err = utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, time.Second*10,
+				func(tc *v1alpha1.TidbCluster) (bool, error) {
+					for _, failureMember := range tc.Status.PD.FailureMembers {
+						if failureMember.PodName == podName {
+							return true, nil
+						}
 					}
-				}
-				return false, nil
-			})
+					return false, nil
+				})
 			framework.ExpectNoError(err, "failed to wait for the pd to be put into failure members")
 
 			ginkgo.By("Waiting for the new pod to be created")
@@ -1043,14 +1047,15 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			f.ExecCommandInContainer(podName, "tikv", "sh", "-c", "rm -rf /var/lib/tikv/*")
 
 			ginkgo.By("Waiting for the store to be put into failure stores")
-			err = utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				for _, failureStore := range tc.Status.TiKV.FailureStores {
-					if failureStore.PodName == podName {
-						return true, nil
+			err = utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, time.Second*10,
+				func(tc *v1alpha1.TidbCluster) (bool, error) {
+					for _, failureStore := range tc.Status.TiKV.FailureStores {
+						if failureStore.PodName == podName {
+							return true, nil
+						}
 					}
-				}
-				return false, nil
-			})
+					return false, nil
+				})
 			framework.ExpectNoError(err, "failed to wait for the store to be put into failure stores")
 
 			ginkgo.By("Waiting for the new pod to be created")
@@ -1079,15 +1084,16 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.ExpectNoError(err, "failed to wait for the failed pod %q to be gone", podName)
 
 			ginkgo.By("Waiting for the record of failed pod to be removed from failure stores")
-			err = utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				exist := false
-				for _, failureStore := range tc.Status.TiKV.FailureStores {
-					if failureStore.PodName == podName {
-						exist = true
+			err = utiltidbcluster.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, time.Second*10,
+				func(tc *v1alpha1.TidbCluster) (bool, error) {
+					exist := false
+					for _, failureStore := range tc.Status.TiKV.FailureStores {
+						if failureStore.PodName == podName {
+							exist = true
+						}
 					}
-				}
-				return !exist, nil
-			})
+					return !exist, nil
+				})
 			framework.ExpectNoError(err, "failed to wait for the record of failed pod to be removed from failure stores")
 
 			ginkgo.By("Waiting for the tidb cluster to become ready")

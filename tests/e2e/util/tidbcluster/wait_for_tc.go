@@ -26,10 +26,6 @@ import (
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
-var (
-	pollInterval = time.Second * 10
-)
-
 type TCCondition func(tc *v1alpha1.TidbCluster) (bool, error)
 
 // WaitForTCConditionReady waits for a TidbClusterCondition to be ready for at least minReadyDuration duration.
@@ -38,13 +34,13 @@ func WaitForTCConditionReady(c versioned.Interface, ns, name string, timeout tim
 		return IsTidbClusterAvailable(tc, minReadyDuration, time.Now()), nil
 	}
 
-	return WaitForTCCondition(c, ns, name, timeout, condition)
+	return WaitForTCCondition(c, ns, name, timeout, time.Second*10, condition)
 }
 
 // WaitForTCCondition waits for a TidbCluster to be matched to the given condition.
 //
 // If tc is not found, break the poll and return error
-func WaitForTCCondition(c versioned.Interface, tcNS string, tcName string, timeout time.Duration, condition TCCondition) error {
+func WaitForTCCondition(c versioned.Interface, tcNS string, tcName string, timeout, pollInterval time.Duration, condition TCCondition) error {
 	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		tc, err := c.PingcapV1alpha1().TidbClusters(tcNS).Get(context.TODO(), tcName, metav1.GetOptions{})
 		if err != nil {

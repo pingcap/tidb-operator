@@ -22,13 +22,15 @@ import (
 )
 
 // MustWaitForComponentPhase wait a component to be in a specific phase
-func MustWaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType, phase v1alpha1.MemberPhase, timeout time.Duration) {
-	lastPhase, err := WaitForComponentPhase(c, tc, comp, phase, timeout)
+func MustWaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType, phase v1alpha1.MemberPhase,
+	timeout, pollInterval time.Duration) {
+	lastPhase, err := WaitForComponentPhase(c, tc, comp, phase, timeout, pollInterval)
 	framework.ExpectNoError(err, "failed to wait for .Status.%s.Phase of tc %s/%s to be %s, last phase is %s",
 		comp, tc.Namespace, tc.Name, phase, lastPhase)
 }
 
-func WaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType, phase v1alpha1.MemberPhase, timeout time.Duration) (v1alpha1.MemberPhase, error) {
+func WaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType, phase v1alpha1.MemberPhase,
+	timeout, pollInterval time.Duration) (v1alpha1.MemberPhase, error) {
 	var lastPhase v1alpha1.MemberPhase
 	cond := func(tc *v1alpha1.TidbCluster) (bool, error) {
 		switch comp {
@@ -49,5 +51,5 @@ func WaitForComponentPhase(c versioned.Interface, tc *v1alpha1.TidbCluster, comp
 		return lastPhase == phase, nil
 	}
 
-	return lastPhase, WaitForTCCondition(c, tc.Namespace, tc.Name, timeout, cond)
+	return lastPhase, WaitForTCCondition(c, tc.Namespace, tc.Name, timeout, pollInterval, cond)
 }
