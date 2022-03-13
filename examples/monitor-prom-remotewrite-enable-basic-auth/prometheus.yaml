@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  labels:
+    prometheus: basic
+  name: basic
+  namespace: default
+spec:
+  image: quay.io/prometheus/prometheus:v2.33.4
+  containers:
+    - name: prometheus
+      readinessProbe:
+        failureThreshold: 500
+      args:
+        - --web.console.templates=/etc/prometheus/consoles
+        - --web.console.libraries=/etc/prometheus/console_libraries
+        - --config.file=/etc/prometheus/config_out/prometheus.env.yaml
+        - --storage.tsdb.path=/prometheus
+        - --storage.tsdb.retention.time=24h
+        - --web.enable-lifecycle
+        - --web.route-prefix=/
+        - --web.config.file=/etc/prometheus/web_config/web-config.yaml
+        - --web.enable-remote-write-receiver

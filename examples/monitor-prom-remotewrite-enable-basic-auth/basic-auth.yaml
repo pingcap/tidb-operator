@@ -1,0 +1,9 @@
+apiVersion: v1
+data:
+  username: YWRtaW4=
+  password: YWRtaW4=
+kind: Secret
+metadata:
+  name: basic-auth
+  namespace: default
+type: Opaque

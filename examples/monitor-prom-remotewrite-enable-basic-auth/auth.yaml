@@ -1,9 +1,0 @@
-apiVersion: v1
-data:
-  username: Zm9vOiRhcHIxJE9GRzNYeWJwJGNrTDBGSERBa29YWUlsSDkuY3lzVDAK
-  password: Zm9vOiRhcHIxJE9GRzNYeWJwJGNrTDBGSERBa29YWUlsSDkuY3lzVDAK
-kind: Secret
-metadata:
-  name: auth
-  namespace: default
-type: Opaque

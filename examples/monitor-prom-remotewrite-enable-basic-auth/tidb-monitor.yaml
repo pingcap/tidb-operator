@@ -7,15 +7,15 @@ spec:
   - name: basic
   prometheus:
     baseImage: prom/prometheus
-    version: v2.27.1
+    version: v2.33.4
     remoteWrite:
-      - url: "http://thanos-receiver-0.thanos-receiver.default.svc:19291/api/v1/receive"
+      - url: "http://test.prometheus.com:80/api/v1/write"
         basicAuth:
           username:
-            name: auth
-            key: password
+            name: basic-auth
+            key: username
           password:
-            name: auth
+            name: basic-auth
             key: password
         queueConfig:
           maxSamplesPerSend: 100
