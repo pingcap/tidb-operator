@@ -29,7 +29,7 @@ func (a *baseAction) driver() *sql.DB {
 	return a.db.driver
 }
 
-// Database is a wrapper of sql.DB in order to provide some common fuction for TiDB.
+// Database is a wrapper of sql.DB in order to provide some common fuction for test.
 type Database struct {
 	dsn    string
 	driver *sql.DB
@@ -48,9 +48,15 @@ func NewDatabase(dataSourceName string) (*Database, error) {
 
 	driver, err := sql.Open("mysql", dataSourceName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open db: %v", err)
 	}
 	db.driver = driver
+
+	// Ping to verify the data source name is valid
+	err = db.driver.Ping()
+	if err != nil {
+		return nil, fmt.Errorf("first ping failed: %v", err)
+	}
 
 	return db, nil
 }
