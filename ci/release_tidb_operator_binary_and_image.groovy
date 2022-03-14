@@ -27,10 +27,10 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
                         stage("Build and push ${it} image") {
                             withDockerServer([uri: "${env.DOCKER_HOST}"]) {
                                 sh """
-                                docker run --rm --privileged multiarch/qemu-user-static:6.1.0-8 --reset -p yes
-                                docker buildx inspect builder
+                                docker run --rm --privileged multiarch/qemu-user-static:6.1.0-8 --reset
+                                docker buildx inspect mybuilder
                                 if [ \$? -ne 0]; then
-                                  docker buildx create --name builder --use
+                                  docker buildx create --name mybuilder --platform=linux/arm64,linux/amd64 --use
                                 fi
                                 docker buildx build --platform=linux/arm64,linux/amd64 --push -t pingcap/${it}:${RELEASE_TAG} images/${it}
                                 """
