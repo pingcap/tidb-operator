@@ -27,6 +27,9 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
                         stage("Build and push ${it} image") {
                             withDockerServer([uri: "${env.DOCKER_HOST}"]) {
                                 sh """
+                                export DOCKER_CLI_EXPERIMENTAL=enabled
+                                docker buildx version
+                                docker info
                                 docker run --rm --privileged multiarch/qemu-user-static:6.1.0-8 --reset
                                 docker buildx inspect mybuilder
                                 if [ \$? -ne 0]; then
