@@ -28,13 +28,10 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
                             withDockerServer([uri: "${env.DOCKER_HOST}"]) {
                                 sh """
                                 export DOCKER_CLI_EXPERIMENTAL=enabled
-                                docker buildx version
-                                docker info
                                 docker run --rm --privileged multiarch/qemu-user-static:6.1.0-8 --reset
-                                docker buildx inspect mybuilder
-                                if [ \$? -ne 0]; then
-                                  docker buildx create --name mybuilder --platform=linux/arm64,linux/amd64 --use
-                                fi
+                                docker info
+                                docker buildx version
+                                docker buildx create --name mybuilder --platform=linux/arm64,linux/amd64 --use
                                 docker buildx build --platform=linux/arm64,linux/amd64 --push -t pingcap/${it}:${RELEASE_TAG} images/${it}
                                 """
                                 withDockerRegistry([url: "https://registry.cn-beijing.aliyuncs.com", credentialsId: "ACR_TIDB_ACCOUNT"]) {
