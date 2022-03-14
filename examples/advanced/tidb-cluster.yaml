@@ -851,7 +851,7 @@ spec:
   #     app.kubernetes.io/component: ticdc
   #   annotations:
   #     node.kubernetes.io/instance-type: some-vm-type
-  #   tolerations: {}
+  #   tolerations: []
   #   configUpdateStrategy: RollingUpdate
   #   statefulSetUpdateStrategy: RollingUpdate
   #   podSecurityContext: {}
@@ -866,7 +866,7 @@ spec:
   #     timezone: UTC
   #     gcTTL: 86400
   #     logLevel: info
-  #     logFile: /dev/stderr
+  #     logFile: cdc.log
   #   # TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
