@@ -121,7 +121,7 @@ Add hostAliases to tidbmonitor statefulset:
 ```bash
 > kubectl edit sts basic-monitor -n <namespace>
 Add dns `test.prometheus.com` and ingress nginx svc ip map to `hostAliases` field.
-For exmaple:
+For example:
       hostAliases:
       - hostnames:
         - test.prometheus.com
