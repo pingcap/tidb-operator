@@ -27,7 +27,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
                         stage("Build and push ${it} image") {
                             withDockerServer([uri: "${env.DOCKER_HOST}"]) {
                                 sh """
-                                docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+                                docker run --rm --privileged multiarch/qemu-user-static:6.1.0-8 --reset -p yes
                                 docker buildx inspect builder
                                 if [ $? -ne 0]; then
                                   docker buildx create --name builder --use
