@@ -3010,7 +3010,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					replicasLarge = 5
 					replicasSmall = 3
 				case v1alpha1.TiKVMemberType:
-					replicasLarge = 4
+					replicasLarge = 5
 					replicasSmall = 3
 				case v1alpha1.TiDBMemberType:
 					replicasLarge = 4

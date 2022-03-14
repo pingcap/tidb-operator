@@ -457,7 +457,7 @@ func (ctu *CrdTestUtil) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 	expectedImage := tc.TiDBImage()
 	containers, err := utilstatefulset.GetMemberContainersFromSts(ctu.kubeCli, ctu.tcStsGetter, ns, tidbSetName, v1alpha1.TiDBMemberType)
 	if err != nil {
-		log.Logf("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
+		log.Logf("statefulset: %s/%s not found containers[name=tidb] or pod %s-0",
 			ns, tidbSetName, tidbSetName)
 		return false, nil
 	}

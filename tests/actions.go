@@ -1276,7 +1276,7 @@ func (oa *OperatorActions) IsMembersReady(obj metav1.Object, component v1alpha1.
 	// check statefulset
 	sts, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to get sts %q: %s", sts, err)
+		return fmt.Errorf("failed to get sts %q: %s", stsID, err)
 	}
 
 	if sts.Status.CurrentRevision != sts.Status.UpdateRevision {
@@ -1320,7 +1320,6 @@ func (oa *OperatorActions) memberCheckContextForTC(tc *v1alpha1.TidbCluster, com
 	stsName := fmt.Sprintf("%s-%s", name, component)
 
 	var (
-		err            error
 		skip           bool
 		expectedImage  string
 		services       []string
@@ -1376,7 +1375,7 @@ func (oa *OperatorActions) memberCheckContextForTC(tc *v1alpha1.TidbCluster, com
 		},
 	}
 
-	return ctx, err
+	return ctx, nil
 }
 
 func (oa *OperatorActions) memberCheckContextForDC(dc *v1alpha1.DMCluster, component v1alpha1.MemberType) (*memberCheckContext, error) {
@@ -1384,7 +1383,6 @@ func (oa *OperatorActions) memberCheckContextForDC(dc *v1alpha1.DMCluster, compo
 	stsName := fmt.Sprintf("%s-%s", name, component)
 
 	var (
-		err            error
 		skip           bool
 		expectedImage  string
 		services       []string
@@ -1418,7 +1416,7 @@ func (oa *OperatorActions) memberCheckContextForDC(dc *v1alpha1.DMCluster, compo
 		},
 	}
 
-	return ctx, err
+	return ctx, nil
 }
 
 func (oa *OperatorActions) memberCheckContextForTNGM(tngm *v1alpha1.TidbNGMonitoring, component v1alpha1.MemberType) (*memberCheckContext, error) {
@@ -1426,7 +1424,6 @@ func (oa *OperatorActions) memberCheckContextForTNGM(tngm *v1alpha1.TidbNGMonito
 	stsName := fmt.Sprintf("%s-%s", name, component)
 
 	var (
-		err            error
 		skip           bool
 		expectedImage  string
 		services       []string
@@ -1454,7 +1451,7 @@ func (oa *OperatorActions) memberCheckContextForTNGM(tngm *v1alpha1.TidbNGMonito
 		},
 	}
 
-	return ctx, err
+	return ctx, nil
 }
 
 func (oa *OperatorActions) isPDMembersReady(tc *v1alpha1.TidbCluster, sts *v1.StatefulSet) error {
