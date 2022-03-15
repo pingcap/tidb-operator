@@ -27,21 +27,15 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
                         stage("Build and push ${it} image") {
                             withDockerServer([uri: "${env.DOCKER_HOST}"]) {
                                 sh """
-                                mkdir -p $HOME/.docker/cli-plugins/
-                                wget https://github.com/docker/buildx/releases/download/v0.8.0/buildx-v0.8.0.linux-amd64 -O $HOME/.docker/cli-plugins/docker-buildx
-                                chmod +x $HOME/.docker/cli-plugins/docker-buildx
-                                cp $HOME/.docker/cli-plugins/docker-buildx /usr/bin/buildx
-
-                                export DOCKER_CLI_EXPERIMENTAL=enabled
-                                docker version
-
+                                wget https://github.com/docker/buildx/releases/download/v0.8.0/buildx-v0.8.0.linux-amd64 -O /usr/bin/buildx
+                                chmod +x /usr/bin/buildx
                                 docker run --rm --privileged multiarch/qemu-user-static:6.1.0-8 --reset
-                                docker buildx create --name mybuilder --platform=linux/arm64,linux/amd64 --use
-                                docker buildx build --platform=linux/arm64,linux/amd64 --push -t pingcap/${it}:${RELEASE_TAG} images/${it}
+                                buildx create --name mybuilder --platform=linux/arm64,linux/amd64 --use
+                                buildx build --platform=linux/arm64,linux/amd64 --push -t pingcap/${it}:${RELEASE_TAG} images/${it}
                                 """
                                 withDockerRegistry([url: "https://registry.cn-beijing.aliyuncs.com", credentialsId: "ACR_TIDB_ACCOUNT"]) {
                                     sh """
-                                    docker buildx build --platform=linux/arm64,linux/amd64 --push -t registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG} images/${it}
+                                    buildx build --platform=linux/arm64,linux/amd64 --push -t registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG} images/${it}
                                     """
                                 }
                             }
