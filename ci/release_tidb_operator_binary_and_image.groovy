@@ -32,6 +32,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
                                 chmod +x $HOME/.docker/cli-plugins/docker-buildx
                                 cp $HOME/.docker/cli-plugins/docker-buildx /usr/bin/buildx
 
+                                export DOCKER_CLI_EXPERIMENTAL=enabled
                                 docker version
 
                                 docker run --rm --privileged multiarch/qemu-user-static:6.1.0-8 --reset
