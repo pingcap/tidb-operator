@@ -25,9 +25,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	e2etc "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/db/blockwriter"
 	utilginkgo "github.com/pingcap/tidb-operator/tests/e2e/util/ginkgo"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
@@ -208,7 +208,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 		ginkgo.By("Write data into backup TiDB cluster")
 		backupDSN := getDefaultDSN(backupHost, dbName)
-		err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+		err = blockwriter.New().Write(context.Background(), backupDSN)
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Create RBAC for backup and restore")
@@ -347,7 +347,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Write data into backup TiDB cluster")
 			backupDSN := getDefaultDSN(backupHost, dbName)
-			err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+			err = blockwriter.New().Write(context.Background(), backupDSN)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Create RBAC for backup and restore")

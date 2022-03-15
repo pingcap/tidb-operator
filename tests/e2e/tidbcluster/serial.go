@@ -24,20 +24,6 @@ import (
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/tests"
-	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
-	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
-	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
-	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
-	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -54,6 +40,24 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/tests"
+	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	utildb "github.com/pingcap/tidb-operator/tests/e2e/util/db"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/db/blockwriter"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 )
 
 const (
@@ -690,6 +694,139 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			})
 		})
 
+		ginkgo.Context("From prev major version", func() {
+
+			ginkgo.BeforeEach(func() {
+				operatorVersion = OperatorPrevMajorVersion
+			})
+
+			type testCase struct {
+				name string
+				tls  bool
+			}
+			cases := []testCase{
+				{
+					name: "should not trigger rolling-update and database work fine",
+					tls:  false,
+				},
+				{
+					name: "should not trigger rolling-update and database work fine with TLS-enabled",
+					tls:  true,
+				},
+			}
+
+			for i := range cases {
+				testcase := cases[i]
+				ginkgo.It(testcase.name, func() {
+					dbName := "test"
+					tables := []string{"test_0", "test_1", "test_2"}
+					recordCount := 30
+					batchCount := 100
+					expectCount := recordCount * batchCount
+					bw := blockwriter.New(blockwriter.WithTableNum(len(tables)),
+						blockwriter.WithRecordNum(recordCount),
+						blockwriter.WithBatchSize(batchCount),
+						blockwriter.WithGenTableName(func(nr int) string {
+							return tables[nr]
+						}))
+
+					tcName := fmt.Sprintf("upgrade-operator-from-%s", strings.ReplaceAll(operatorVersion, ".", "x"))
+					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)
+					tc = fixture.AddTiFlashForTidbCluster(tc)
+					tc = fixture.AddTiCDCForTidbCluster(tc)
+					tc = fixture.AddPumpForTidbCluster(tc)
+					tc.Spec.PD.Replicas = 1
+					tc.Spec.TiKV.Replicas = 1
+					tc.Spec.TiDB.Replicas = 1
+					tc.Spec.TiFlash.Replicas = 1
+
+					if testcase.tls {
+						tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+						tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+
+						ginkgo.By("Installing tidb CA certificate")
+						err := InstallTiDBIssuer(ns, tcName)
+						framework.ExpectNoError(err, "failed to install CA certificate")
+
+						ginkgo.By("Installing tidb server and client certificate")
+						err = InstallTiDBCertificates(ns, tcName)
+						framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+						ginkgo.By("Installing tidbInitializer client certificate")
+						err = installTiDBInitializerCertificates(ns, tcName)
+						framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+
+						ginkgo.By("Installing dashboard client certificate")
+						err = installPDDashboardCertificates(ns, tcName)
+						framework.ExpectNoError(err, "failed to install dashboard client certificate")
+
+						ginkgo.By("Installing tidb components certificates")
+						err = InstallTiDBComponentsCertificates(ns, tcName)
+						framework.ExpectNoError(err, "failed to install tidb components certificates")
+					}
+
+					ginkgo.By("Deploy original TiDB cluster with prev version")
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+					selector := MustGetLabelSelectorForComponents(tcName, label.DiscoveryLabelVal) // ingore discovery
+					pods := utilpod.MustListPods(selector.String(), ns, c)
+
+					dsn, fwcancel, err := utiltidb.PortForwardAndGetTiDBDSN(fw, ns, tcName, "root", "", dbName)
+					framework.ExpectNoError(err, "failed to get dsn")
+					defer fwcancel()
+					db := utildb.NewDatabaseOrDie(dsn)
+					defer db.Close()
+
+					ginkgo.By("Prepare data in database")
+					err = bw.Write(context.Background(), dsn)
+					framework.ExpectNoError(err, "failed to write data")
+
+					ginkgo.By("Create TiFlash replicas for table 0 and ensure it is ready")
+					MustCreateTiFlashReplicationForTable(db, dbName, tables[0], expectCount)
+
+					ginkgo.By("Upgrade TiDB Operator and CRDs to current version")
+					ocfg.Tag = cfg.OperatorTag
+					ocfg.Image = cfg.OperatorImage
+					oa.ReplaceCRDOrDie(ocfg)
+					oa.UpgradeOperatorOrDie(ocfg)
+
+					ginkgo.By("Wait for pods are not changed in 5 minutes")
+					err = utilpod.WaitForPodsAreChanged(c, pods, time.Minute*5)
+					framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
+
+					ginkgo.By("Ensure records in table 0 have not changed after upgrading TiDB Operator")
+					EnsureRecordsNotChangedForTables(db, "tiflash", dbName, tables[0:1], expectCount)
+					EnsureRecordsNotChangedForTables(db, "tikv", dbName, tables[0:1], expectCount)
+
+					ginkgo.By("Create TiFlash replicas for table 1 and ensure it is ready")
+					MustCreateTiFlashReplicationForTable(db, dbName, tables[1], expectCount)
+
+					ginkgo.By("Update TiDB cluster to latest version")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.Version = utilimage.TiDBLatest
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 7*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "waiting for cluster %q ready", tcName)
+
+					// reopen db after upgrade
+					dsn2, fwcancel2, err := utiltidb.PortForwardAndGetTiDBDSN(fw, ns, tcName, "root", "", dbName)
+					framework.ExpectNoError(err, "failed to get dsn")
+					defer fwcancel2()
+					db2 := utildb.NewDatabaseOrDie(dsn2)
+					defer db2.Close()
+
+					ginkgo.By("Ensure records in table 0 and table 1 have not changed after upgrading TiDB Operator")
+					EnsureRecordsNotChangedForTables(db2, "tiflash", dbName, tables[0:2], expectCount)
+					EnsureRecordsNotChangedForTables(db2, "tikv", dbName, tables[0:2], expectCount)
+
+					ginkgo.By("Create TiFlash replicas for table 2 and ensure it is ready")
+					MustCreateTiFlashReplicationForTable(db2, dbName, tables[2], expectCount)
+				})
+			}
+
+		})
+
 		ginkgo.Context("From v1.1.7", func() {
 			ginkgo.BeforeEach(func() {
 				operatorVersion = "v1.1.7"
@@ -810,4 +947,22 @@ func MustGetLabelSelectorForComponents(tcName string, filterComponents ...string
 	framework.ExpectNoError(err, "failed to create label requirement")
 
 	return selector.Add(*r)
+}
+
+// MustCreateTiFlashReplicationForTable create TiFLash replication and ensure it is ready
+func MustCreateTiFlashReplicationForTable(db *utildb.Database, dbName string, table string, expectCount int) {
+	err := utildb.CreateTiFlashReplicationAndWaitToComplete(db.TiFlashAction(), dbName, table, 1, time.Minute)
+	framework.ExpectNoError(err, "failed to create TiFlash replication for %s", table)
+	count, err := utildb.Count(db, "tiflash", dbName, table)
+	framework.ExpectNoError(err, "failed to count records in %s by using %s", table, "tiflash")
+	framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", table, "tiflash")
+}
+
+// EnsureRecordsNotChangedForTables ensure records not changed for tables
+func EnsureRecordsNotChangedForTables(db *utildb.Database, engine string, dbName string, tables []string, expectCount int) {
+	for _, table := range tables {
+		count, err := utildb.Count(db, engine, dbName, table)
+		framework.ExpectNoError(err, "failed to count records in %s by using %s", table, engine)
+		framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", table, engine)
+	}
 }

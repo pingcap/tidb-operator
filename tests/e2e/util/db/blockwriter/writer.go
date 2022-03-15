@@ -30,7 +30,7 @@ const (
 	defaultBatchSize = 1024
 
 	createTableExpr = `
-CREATE TABLE IF NOT EXISTS block_writer%d (
+CREATE TABLE IF NOT EXISTS %s (
     id BIGINT NOT NULL AUTO_INCREMENT,
     raw_bytes BLOB NOT NULL,
     PRIMARY KEY (id)
@@ -38,10 +38,43 @@ CREATE TABLE IF NOT EXISTS block_writer%d (
 `
 
 	insertExpr = `
-INSERT INTO block_writer%d (raw_bytes) VALUES %s;
+INSERT INTO %s (raw_bytes) VALUES %s;
 `
 )
 
+type option func(bw *blockWriter)
+
+func WithTableNum(tableNum int) option {
+	return func(bw *blockWriter) {
+		bw.tableNum = tableNum
+	}
+}
+
+func WithRecordNum(recordNum int) option {
+	return func(bw *blockWriter) {
+		bw.recordNum = recordNum
+	}
+}
+
+func WithGenTableName(genTableName func(nr int) string) option {
+	return func(bw *blockWriter) {
+		bw.genTableName = genTableName
+	}
+}
+
+func WithBatchNum(batchNum int) option {
+	return func(bw *blockWriter) {
+		bw.batchNum = batchNum
+	}
+}
+
+func WithBatchSize(batchSize int) option {
+	return func(bw *blockWriter) {
+		bw.batchSize = batchSize
+	}
+}
+
+// BlockWriter write test data to a database.
 type BlockWriter interface {
 	Write(ctx context.Context, dsn string) error
 }
@@ -49,17 +82,26 @@ type BlockWriter interface {
 type blockWriter struct {
 	tableNum  int
 	recordNum int
+	batchNum  int
+	batchSize int
+
+	genTableName func(nr int) string
 }
 
-func NewDefault() BlockWriter {
-	return New(defaultTableNum, defaultRecordNum)
-}
-
-func New(tableNum, recordNum int) BlockWriter {
-	return &blockWriter{
-		tableNum:  tableNum,
-		recordNum: recordNum,
+func New(opts ...option) BlockWriter {
+	bw := &blockWriter{
+		tableNum:     defaultTableNum,
+		recordNum:    defaultRecordNum,
+		batchNum:     defaultBatchNum,
+		batchSize:    defaultBatchSize,
+		genTableName: genTableNameDefault,
 	}
+
+	for _, opt := range opts {
+		opt(bw)
+	}
+
+	return bw
 }
 
 func (bw *blockWriter) Write(ctx context.Context, dsn string) error {
@@ -67,9 +109,10 @@ func (bw *blockWriter) Write(ctx context.Context, dsn string) error {
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	for i := 0; i < bw.tableNum; i++ {
-		expr := fmt.Sprintf(createTableExpr, i)
+		expr := fmt.Sprintf(createTableExpr, bw.genTableName(i))
 		if _, err := db.Exec(expr); err != nil {
 			return err
 		}
@@ -78,9 +121,8 @@ func (bw *blockWriter) Write(ctx context.Context, dsn string) error {
 	errors := []error{}
 	wg := sync.WaitGroup{}
 	for i := 0; i < bw.tableNum; i++ {
-		index := i
 		wg.Add(1)
-		go func() {
+		go func(index int) {
 			defer wg.Done()
 			conn, err := db.Conn(ctx)
 			if err != nil {
@@ -90,23 +132,27 @@ func (bw *blockWriter) Write(ctx context.Context, dsn string) error {
 			defer conn.Close()
 
 			for k := 0; k < bw.recordNum; k++ {
-				values := make([]string, defaultBatchNum)
-				for k := 0; k < defaultBatchNum; k++ {
-					blockData := util.RandString(defaultBatchSize)
+				values := make([]string, bw.batchNum)
+				for k := 0; k < bw.batchNum; k++ {
+					blockData := util.RandString(bw.batchSize)
 					values[k] = fmt.Sprintf("('%s')", blockData)
 				}
-				expr := fmt.Sprintf(insertExpr, index, strings.Join(values, ","))
+				expr := fmt.Sprintf(insertExpr, bw.genTableName(index), strings.Join(values, ","))
 
 				if _, err := conn.ExecContext(ctx, expr); err != nil {
 					errors = append(errors, err)
 					break
 				}
 			}
-		}()
+		}(i)
 	}
 	wg.Wait()
 	if len(errors) != 0 {
 		return fmt.Errorf("write errors: %v", errors)
 	}
 	return nil
+}
+
+func genTableNameDefault(nr int) string {
+	return fmt.Sprintf("block_writer%d", nr)
 }
