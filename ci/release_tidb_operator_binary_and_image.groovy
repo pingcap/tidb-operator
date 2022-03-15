@@ -34,12 +34,11 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
                         stage("Build and push ${it} image") {
                             withDockerServer([uri: "${env.DOCKER_HOST}"]) {
                                 sh """
-                                buildx ls
                                 buildx build --platform=linux/arm64,linux/amd64 --push -t pingcap/${it}:${RELEASE_TAG} images/${it}
                                 """
                                 withDockerRegistry([url: "https://registry.cn-beijing.aliyuncs.com", credentialsId: "ACR_TIDB_ACCOUNT"]) {
                                     sh """
-                                    buildx ls
+                                    buildx create --name mybuilder --platform=linux/arm64,linux/amd64 --use || true
                                     buildx build --platform=linux/arm64,linux/amd64 --push -t registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG} images/${it}
                                     """
                                 }
