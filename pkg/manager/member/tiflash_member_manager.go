@@ -287,6 +287,13 @@ func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 					TargetPort: intstr.FromInt(int(8234)),
 					Protocol:   corev1.ProtocolTCP,
 				},
+
+				{
+					Name:       "tiflash-proxy",
+					Port:       20292,
+					TargetPort: intstr.FromInt(int(20292)),
+					Protocol:   corev1.ProtocolTCP,
+				},
 			},
 			Selector:                 svcLabel,
 			PublishNotReadyAddresses: true,
