@@ -29,7 +29,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 						"""
 					}
 
-                    def images = ["tidb-operator", "tidb-backup-manager"]
+                    def images = ["tidb-backup-manager", "tidb-operator"]
                     images.each {
                         stage("Build and push ${it} image") {
                             withDockerServer([uri: "${env.DOCKER_HOST}"]) {
