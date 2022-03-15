@@ -3,7 +3,7 @@
 > **Note:**
 >
 > this example describe how to add basic authorization to tidbMonitor remoteWrite configuration.
-> we use prometheus as remote write receiver,the prometheus managed by [prometheus-operator](https://github.com/coreos/prometheus-operator).
+> we use Prometheus as the remote write receiver, the Prometheus managed by [prometheus-operator](https://github.com/coreos/prometheus-operator).
 > we will add authentication to the prometheus remote write receiver by ingress-nginx controller.
 
 **Prerequisites**: 
