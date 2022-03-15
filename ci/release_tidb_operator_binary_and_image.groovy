@@ -30,7 +30,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
                                 wget https://github.com/docker/buildx/releases/download/v0.8.0/buildx-v0.8.0.linux-amd64 -O /usr/bin/buildx
                                 chmod +x /usr/bin/buildx
                                 docker run --rm --privileged multiarch/qemu-user-static:6.1.0-8 --reset
-                                buildx create --name mybuilder --platform=linux/arm64,linux/amd64 --use
+                                buildx create --name mybuilder --platform=linux/arm64,linux/amd64 --use || true
                                 buildx build --platform=linux/arm64,linux/amd64 --push -t pingcap/${it}:${RELEASE_TAG} images/${it}
                                 """
                                 withDockerRegistry([url: "https://registry.cn-beijing.aliyuncs.com", credentialsId: "ACR_TIDB_ACCOUNT"]) {
