@@ -1,5 +1,5 @@
 {{- if .Values.admissionWebhook.create }}
-apiVersion: apiregistration.k8s.io/v1beta1
+apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
   name: v1alpha1.admission.tidb.pingcap.com
@@ -19,10 +19,10 @@ spec:
   group: admission.tidb.pingcap.com
   groupPriorityMinimum: 1000
   versionPriority: 15
+  version: v1alpha1
   service:
     name: tidb-admission-webhook
     namespace: {{ .Release.Namespace }}
-  version: v1alpha1
 ---
 {{- if .Values.admissionWebhook.validation.statefulSets }}
 apiVersion: admissionregistration.k8s.io/v1beta1
