@@ -1,4 +1,4 @@
-FROM pingcap/alpine-glibc:alpine-3.14
+FROM pingcap/alpine-glibc:alpine-3.14.3
 ARG RCLONE_VERSION=v1.51.0
 ARG SHUSH_VERSION=v1.4.0
 ARG TOOLKIT_V40=v4.0.9
