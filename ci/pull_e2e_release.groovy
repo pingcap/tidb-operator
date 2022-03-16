@@ -308,7 +308,9 @@ try {
                             sh """#!/bin/bash
                             set -eu
                             echo "info: building"
-                            make build e2e-build
+                            GOARCH=arm64 make build
+                            GOARCH=amd64 make build
+                            make e2e-build
                             if [ "${GIT_REF}" == "master" ]; then
                                 echo "info: run unit tests and report coverage results for master branch"
                                 make test GOFLAGS='-race' GO_COVER=y

@@ -123,7 +123,8 @@ try {
                         echo "info: run unit tests"
                         GOFLAGS='-race' make test
                         echo "info: building"
-                        make build
+                        GOARCH=amd64 make build
+                        GOARCH=arm64 make build
                         """
                     }
 
