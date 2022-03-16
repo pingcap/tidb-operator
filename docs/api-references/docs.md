@@ -896,6 +896,34 @@ Optional: Defaults to UTC</p>
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#dnspolicy-v1-core">
+Kubernetes core/v1.DNSPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSPolicy Specifies the DNSPolicy parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -1687,6 +1715,34 @@ Can be overrode by labels in the specific component spec.</p>
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#dnspolicy-v1-core">
+Kubernetes core/v1.DNSPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSPolicy Specifies the DNSPolicy parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timezone</code></br>
 <em>
 string
@@ -1734,6 +1790,18 @@ string
 <em>(Optional)</em>
 <p>ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
 Optional: Defaults to &ldquo;&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>acrossK8s</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AcrossK8s indicates whether deploy TiDB cluster across multiple Kubernetes clusters</p>
 </td>
 </tr>
 <tr>
@@ -4040,7 +4108,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Namespace is the namespace that TidbCluster object locates,
-default to the same namespace with TidbMonitor</p>
+default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring</p>
 </td>
 </tr>
 <tr>
@@ -4479,6 +4547,34 @@ Note that the following env names cannot be used and will be overridden by TiDB 
 </td>
 <td>
 <p>Additional volume mounts of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#dnspolicy-v1-core">
+Kubernetes core/v1.DNSPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSPolicy Specifies the DNSPolicy parameters of a pod.</p>
 </td>
 </tr>
 <tr>
@@ -5264,6 +5360,34 @@ Optional: Defaults to UTC</p>
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#dnspolicy-v1-core">
+Kubernetes core/v1.DNSPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSPolicy Specifies the DNSPolicy parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core">
@@ -6004,6 +6128,39 @@ SecretRef
 <em>(Optional)</em>
 <p>TLSSecret indicates the Secret which stores the TLS configuration. If set, the operator will use https
 to communicate to the external service</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="failover">Failover</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>, 
+<a href="#tikvspec">TiKVSpec</a>, 
+<a href="#workerspec">WorkerSpec</a>)
+</p>
+<p>
+<p>Failover contains the failover specification.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>recoverByUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverByUID indicates that TiDB Operator will recover the failover by this UID,
+it takes effect only when set <code>spec.recoverFailover=false</code></p>
 </td>
 </tr>
 </tbody>
@@ -7343,10 +7500,6 @@ Kubernetes core/v1.ResourceRequirements
 </table>
 <h3 id="masterconfig">MasterConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#masterspec">MasterSpec</a>)
-</p>
-<p>
 <p>MasterConfig is the configuration of dm-master-server</p>
 </p>
 <table>
@@ -7462,6 +7615,36 @@ DMExperimental
 <td>
 <em>(Optional)</em>
 <p>dm-master&rsquo;s experimental config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterconfigwraper">MasterConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterspec">MasterSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -7938,8 +8121,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#masterconfig">
-MasterConfig
+<a href="#masterconfigwraper">
+MasterConfigWraper
 </a>
 </em>
 </td>
@@ -8079,6 +8262,46 @@ string
 <p>
 <p>MemberType represents member type</p>
 </p>
+<h3 id="metadataconfig">MetadataConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#remotewritespec">RemoteWriteSpec</a>)
+</p>
+<p>
+<p>Configures the sending of series metadata to remote storage.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>send</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Whether metric metadata is sent to remote storage or not.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sendInterval</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>How frequently metric metadata is sent to remote storage.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="monitorcomponentaccessor">MonitorComponentAccessor</h3>
 <p>
 </p>
@@ -10165,6 +10388,18 @@ bool
 <p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>startUpScriptVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Start up script version</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -10191,6 +10426,7 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -11527,6 +11763,18 @@ int
 </tr>
 <tr>
 <td>
+<code>minShards</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>MinShards is the minimum number of shards, i.e. amount of concurrency.
+Only valid in Prometheus versions 2.6.0 and newer.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>maxShards</code></br>
 <em>
 int
@@ -11788,6 +12036,20 @@ string
 </tr>
 <tr>
 <td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The name of the remote write queue, must be unique if specified. The
+name is used in metrics and logging in order to differentiate queues.
+Only valid in Prometheus versions 2.15.0 and newer.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>remoteTimeout</code></br>
 <em>
 github.com/prometheus/common/model.Duration
@@ -11886,6 +12148,34 @@ QueueConfig
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>metadataConfig</code></br>
+<em>
+<a href="#metadataconfig">
+MetadataConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MetadataConfig configures the sending of series metadata to remote storage.
+Only valid in Prometheus versions 2.23.0 and newer.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>headers</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Custom HTTP headers to be sent along with each remote write request.
+Be aware that headers that are set by Prometheus itself can&rsquo;t be overwritten.
+Only valid in Prometheus versions 2.25.0 and newer.</p>
 </td>
 </tr>
 </tbody>
@@ -14552,6 +14842,33 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
+<h3 id="tidbinitializer">TiDBInitializer</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>createPassword</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tidbmember">TiDBMember</h3>
 <p>
 (<em>Appears on:</em>
@@ -15068,6 +15385,20 @@ TiDBProbe
 the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>initializer</code></br>
+<em>
+<a href="#tidbinitializer">
+TiDBInitializer
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Initializer is the init configurations of TiDB</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbstatus">TiDBStatus</h3>
@@ -15154,6 +15485,16 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>passwordInitialized</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbtlsclient">TiDBTLSClient</h3>
@@ -15206,7 +15547,20 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>DisableClientAuthn will skip client authentication from the TiDB server.
+<p>DisableClientAuthn will skip client&rsquo;s certificate validation from the TiDB server.
+Optional: defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>skipInternalClientCA</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SkipInternalClientCA will skip TiDB server&rsquo;s certificate validation for internal components like Initializer, Dashboard, etc.
 Optional: defaults to false</p>
 </td>
 </tr>
@@ -15528,6 +15882,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>RecoverFailover indicates that Operator can recover the failover Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failover</code></br>
+<em>
+<a href="#failover">
+Failover
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Failover is the configurations of failover</p>
 </td>
 </tr>
 </tbody>
@@ -19530,6 +19898,20 @@ bool
 </tr>
 <tr>
 <td>
+<code>failover</code></br>
+<em>
+<a href="#failover">
+Failover
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Failover is the configurations of failover</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>mountClusterClientSecret</code></br>
 <em>
 bool
@@ -19696,6 +20078,16 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
 <a href="#tikvfailurestore">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVFailureStore
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>failoverUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
 </em>
 </td>
 <td>
@@ -20645,7 +21037,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Namespace is the namespace that TidbCluster object locates,
-default to the same namespace with TidbMonitor</p>
+default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring</p>
 </td>
 </tr>
 <tr>
@@ -21027,6 +21419,34 @@ Can be overrode by labels in the specific component spec.</p>
 </tr>
 <tr>
 <td>
+<code>dnsConfig</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#poddnsconfig-v1-core">
+Kubernetes core/v1.PodDNSConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSConfig Specifies the DNS parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#dnspolicy-v1-core">
+Kubernetes core/v1.DNSPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSPolicy Specifies the DNSPolicy parameters of a pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timezone</code></br>
 <em>
 string
@@ -21074,6 +21494,18 @@ string
 <em>(Optional)</em>
 <p>ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
 Optional: Defaults to &ldquo;&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>acrossK8s</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AcrossK8s indicates whether deploy TiDB cluster across multiple Kubernetes clusters</p>
 </td>
 </tr>
 <tr>
@@ -22556,10 +22988,6 @@ Networks
 </table>
 <h3 id="workerconfig">WorkerConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#workerspec">WorkerSpec</a>)
-</p>
-<p>
 <p>WorkerConfig is the configuration of dm-worker-server</p>
 </p>
 <table>
@@ -22635,6 +23063,36 @@ DMSecurityConfig
 </p>
 <em>(Optional)</em>
 <p>dm-worker&rsquo;s security config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workerconfigwraper">WorkerConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#workerspec">WorkerSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -22871,8 +23329,8 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#workerconfig">
-WorkerConfig
+<a href="#workerconfigwraper">
+WorkerConfigWraper
 </a>
 </em>
 </td>
@@ -22891,6 +23349,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>RecoverFailover indicates that Operator can recover the failover Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failover</code></br>
+<em>
+<a href="#failover">
+Failover
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Failover is the configurations of failover</p>
 </td>
 </tr>
 </tbody>
@@ -22964,6 +23436,16 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerMemb
 <a href="#workerfailuremember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerFailureMember
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>failoverUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
 </em>
 </td>
 <td>

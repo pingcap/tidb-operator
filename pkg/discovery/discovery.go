@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -113,8 +114,8 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
-		// Initialize the PD cluster with the FQDN format service record if tc.Spec.ClusterDomain is set.
-		if len(tc.Spec.ClusterDomain) > 0 {
+		// Initialize the PD cluster with the FQDN format service record if deploy across k8s or tc.Spec.ClusterDomain is set
+		if tc.AcrossK8s() || tc.Spec.ClusterDomain != "" {
 			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
 		}
 		// Initialize the PD cluster in the normal format service record.
@@ -124,10 +125,12 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	var pdClients []pdapi.PDClient
 
 	if tc.Spec.PD != nil {
+		// connect to pd of current cluster
 		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
 	}
 
-	if tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 {
+	if tc.Heterogeneous() {
+		// connect to pd of other cluster and use own cert
 		namespace := tc.Spec.Cluster.Namespace
 		if len(namespace) == 0 {
 			namespace = tc.GetNamespace()
@@ -136,6 +139,7 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 			d.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled(),
 				pdapi.TLSCertFromTC(pdapi.Namespace(tc.GetNamespace()), tc.GetName()),
 				pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
+				pdapi.UseHeadlessService(tc.Spec.AcrossK8s),
 			),
 		)
 	}
@@ -250,6 +254,16 @@ func (d *tidbDiscovery) VerifyPDEndpoint(pdURL string) (string, error) {
 	if err != nil {
 		klog.Errorf("Failed to get the tidbcluster when verifying PD endpoint, tcName: %s , ns: %s", pdEndpoint.tcName, ns)
 		return pdURL, err
+	}
+
+	// if local pd doesn't exist, return target cluster pd peer addr
+	if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		addr := controller.PDPeerFullyDomain(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.ClusterDomain)
+		if pdEndpoint.scheme != "" {
+			addr = fmt.Sprintf("%s://%s", pdEndpoint.scheme, addr)
+		}
+		addr = addr + ":" + pdEndpoint.pdMemberPort
+		return addr, nil
 	}
 
 	var returnPDMember string

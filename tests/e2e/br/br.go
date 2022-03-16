@@ -25,20 +25,24 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
+	e2etc "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/db/blockwriter"
 	utilginkgo "github.com/pingcap/tidb-operator/tests/e2e/util/ginkgo"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 
 	"github.com/onsi/ginkgo"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 var (
-	tidbReadyTimeout       = time.Minute * 7
+	tidbReadyTimeout       = time.Minute * 15
 	backupCompleteTimeout  = time.Minute * 7
 	restoreCompleteTimeout = time.Minute * 7
 )
@@ -50,8 +54,20 @@ const (
 
 type option func(t *testcase)
 
-func enableTLS(t *testcase) {
-	t.enableTLS = true
+var (
+	enableTLS         option = enableTLSWithCA(false)
+	enableTLSInsecure option = enableTLSWithCA(true)
+)
+
+func enableTLSWithCA(skipCA bool) option {
+	return func(t *testcase) {
+		t.enableTLS = true
+		t.skipCA = skipCA
+	}
+}
+
+func enableXK8sMode(t *testcase) {
+	t.enableXK8sMode = true
 }
 
 type testcase struct {
@@ -59,6 +75,8 @@ type testcase struct {
 	restoreVersion string
 	typ            string
 	enableTLS      bool
+	skipCA         bool
+	enableXK8sMode bool
 
 	// hooks
 	configureBackup func(backup *v1alpha1.Backup)
@@ -87,12 +105,17 @@ func (t *testcase) description() string {
 	if t.enableTLS {
 		builder.WriteString("[TLS]")
 	}
+	if t.enableXK8sMode {
+		builder.WriteString("[X-K8s TidbCluster]")
+	}
 
 	return builder.String()
 }
 
 var _ = ginkgo.Describe("Backup and Restore", func() {
 	f := e2eframework.NewFramework("br")
+
+	var namespaces []string
 
 	ginkgo.BeforeEach(func() {
 		accessKey := "12345678"
@@ -115,8 +138,10 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeDumper),
 		// latest version BR and enable TLS
 		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableTLS),
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableTLSInsecure),
 		// latest version Dumper and enable TLS
 		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeDumper, enableTLS),
+		newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeDumper, enableTLSInsecure),
 	}
 	for _, prevVersion := range utilimage.TiDBPreviousVersions {
 		cases = append(cases,
@@ -133,6 +158,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 	brTest := func(tcase *testcase) {
 		enableTLS := tcase.enableTLS
+		skipCA := tcase.skipCA
 		typ := strings.ToLower(tcase.typ)
 		backupVersion := tcase.backupVersion
 		restoreVersion := tcase.restoreVersion
@@ -148,21 +174,31 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ginkgo.By("Create TiDB cluster for backup")
-		err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
-		framework.ExpectNoError(err)
+		if tcase.enableXK8sMode {
+			ginkgo.By("Create TiDB cluster for backup and wait ready")
+			err := createXK8sTidbClusterWithComponentsReady(f, namespaces, backupClusterName, backupVersion, enableTLS)
+			framework.ExpectNoError(err, "creating TiDB clsuter for backup")
 
-		ginkgo.By("Create TiDB cluster for restore")
-		err = createTidbCluster(f, restoreClusterName, restoreVersion, enableTLS)
-		framework.ExpectNoError(err)
+			ginkgo.By("Create TiDB cluster for restore and wait ready")
+			err = createXK8sTidbClusterWithComponentsReady(f, namespaces, restoreClusterName, restoreVersion, enableTLS)
+			framework.ExpectNoError(err, "creating TiDB clsuter for restore")
+		} else {
+			ginkgo.By("Create TiDB cluster for backup")
+			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
 
-		ginkgo.By("Wait for backup TiDB cluster ready")
-		err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-		framework.ExpectNoError(err)
+			ginkgo.By("Create TiDB cluster for restore")
+			err = createTidbCluster(f, restoreClusterName, restoreVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
 
-		ginkgo.By("Wait for restore TiDB cluster ready")
-		err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
-		framework.ExpectNoError(err)
+			ginkgo.By("Wait for backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for restore TiDB cluster ready")
+			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+		}
 
 		ginkgo.By("Forward backup TiDB cluster service")
 		backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), 4000)
@@ -172,7 +208,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 		ginkgo.By("Write data into backup TiDB cluster")
 		backupDSN := getDefaultDSN(backupHost, dbName)
-		err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+		err = blockwriter.New().Write(context.Background(), backupDSN)
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Create RBAC for backup and restore")
@@ -207,6 +243,44 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			brTest(tcase)
 		})
 	}
+
+	ginkgo.Context("By X-k8s TidbCluster", func() {
+		cases := []*testcase{
+			// BR with x-k8s tidbcluster
+			newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableXK8sMode),
+			newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR, enableXK8sMode, enableTLS),
+		}
+
+		ginkgo.JustBeforeEach(func() {
+			namespaces = []string{f.Namespace.Name, f.Namespace.Name + "-1", f.Namespace.Name + "-2"}
+			// create all namespaces except framework's namespace
+			for _, ns := range namespaces[1:] {
+				ginkgo.By(fmt.Sprintf("Building namespace %s", ns))
+				_, existed, err := nsutil.CreateNamespaceIfNeeded(ns, f.ClientSet, nil)
+				framework.ExpectEqual(existed, false, fmt.Sprintf("namespace %s is existed", ns))
+				framework.ExpectNoError(err, fmt.Sprintf("failed to create namespace %s", ns))
+			}
+		})
+
+		ginkgo.AfterEach(func() {
+			// delete all namespaces if needed except framework's namespace
+			if framework.TestContext.DeleteNamespace && (framework.TestContext.DeleteNamespaceOnFailure || !ginkgo.CurrentGinkgoTestDescription().Failed) {
+				for _, ns := range namespaces[1:] {
+					ginkgo.By(fmt.Sprintf("Destroying namespace %s", ns))
+					_, err := nsutil.DeleteNamespace(ns, f.ClientSet)
+					framework.ExpectNoError(err, fmt.Sprintf("failed to create namespace %s", ns))
+				}
+			}
+		})
+
+		for i := range cases {
+			tcase := cases[i]
+			ginkgo.It(tcase.description(), func() {
+				brTest(tcase)
+			})
+		}
+
+	})
 
 	utilginkgo.ContextWhenFocus("Specific Version", func() {
 		cases := []*testcase{
@@ -248,6 +322,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backupClusterName := "backup-clean"
 			backupVersion := utilimage.TiDBLatest
 			enableTLS := false
+			skipCA := false
 			dbName := "e2etest"
 			backupName := backupClusterName
 			typ := strings.ToLower(typeBR)
@@ -257,7 +332,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			defer cancel()
 
 			ginkgo.By("Create TiDB cluster for backup")
-			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS)
+			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for backup TiDB cluster ready")
@@ -272,7 +347,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Write data into backup TiDB cluster")
 			backupDSN := getDefaultDSN(backupHost, dbName)
-			err = blockwriter.NewDefault().Write(context.Background(), backupDSN)
+			err = blockwriter.New().Write(context.Background(), backupDSN)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Create RBAC for backup and restore")
@@ -303,7 +378,7 @@ func getTiDBServiceResourceName(tcName string) string {
 	return "svc/" + tcName + "-tidb"
 }
 
-func createTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool) error {
+func createTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool) error {
 	ns := f.Namespace.Name
 	// TODO: change to use tidbclusterutil like brutil
 	tc := fixture.GetTidbCluster(ns, name, version)
@@ -313,6 +388,7 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 	if enableTLS {
 		tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 		tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+		tc.Spec.TiDB.TLSClient.SkipInternalClientCA = skipCA
 
 		if err := f.TLSManager.CreateTLSForTidbCluster(tc); err != nil {
 			return err
@@ -324,6 +400,143 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 	}
 
 	return nil
+}
+
+func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, namespaces []string, name string, version string, enableTLS bool) error {
+	ns1, ns2, ns3 := namespaces[0], namespaces[1], namespaces[2]
+	clusterDomain := "cluster.local"
+	tc1 := GetTCForXK8s(ns1, name, version, clusterDomain, nil)
+	tc2 := GetTCForXK8s(ns2, name, version, clusterDomain, tc1)
+	tc3 := GetTCForXK8s(ns3, name, version, clusterDomain, tc1)
+
+	if enableTLS {
+		ginkgo.By("Installing initial tidb CA certificate")
+		err := e2etc.InstallTiDBIssuer(ns1, name)
+		if err != nil {
+			return err
+		}
+
+		ginkgo.By("Export initial CA secret and install into other tidb clusters")
+		var caSecret *v1.Secret
+		err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+			caSecret, err = f.ClientSet.CoreV1().Secrets(ns1).Get(context.TODO(), fmt.Sprintf("%s-ca-secret", name), metav1.GetOptions{})
+			if err != nil {
+				return false, nil
+			}
+			return true, nil
+		})
+		if err != nil {
+			return err
+		}
+		caSecret.ObjectMeta.ResourceVersion = ""
+		caSecret.Namespace = ns2
+		err = f.GenericClient.Create(context.TODO(), caSecret)
+		if err != nil {
+			return err
+		}
+		caSecret.ObjectMeta.ResourceVersion = ""
+		caSecret.Namespace = ns3
+		err = f.GenericClient.Create(context.TODO(), caSecret)
+		if err != nil {
+			return err
+		}
+
+		ginkgo.By("Installing tidb cluster issuer with initial ca")
+		err = e2etc.InstallXK8sTiDBIssuer(ns2, name, name)
+		if err != nil {
+			return err
+		}
+		err = e2etc.InstallXK8sTiDBIssuer(ns3, name, name)
+		if err != nil {
+			return err
+		}
+
+		ginkgo.By("Installing tidb server and client certificate")
+		err = e2etc.InstallXK8sTiDBCertificates(ns1, name, clusterDomain)
+		if err != nil {
+			return err
+		}
+		err = e2etc.InstallXK8sTiDBCertificates(ns2, name, clusterDomain)
+		if err != nil {
+			return err
+		}
+		err = e2etc.InstallXK8sTiDBCertificates(ns3, name, clusterDomain)
+		if err != nil {
+			return err
+		}
+
+		ginkgo.By("Installing tidb components certificates")
+		err = e2etc.InstallXK8sTiDBComponentsCertificates(ns1, name, clusterDomain, false)
+		if err != nil {
+			return err
+		}
+		err = e2etc.InstallXK8sTiDBComponentsCertificates(ns2, name, clusterDomain, false)
+		if err != nil {
+			return err
+		}
+		err = e2etc.InstallXK8sTiDBComponentsCertificates(ns3, name, clusterDomain, false)
+		if err != nil {
+			return err
+		}
+
+		tc1.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+		tc1.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+
+		tc2.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+		tc2.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+
+		tc3.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+		tc3.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+	}
+
+	ginkgo.By(fmt.Sprintf("Creating tidb cluster in %s", ns1))
+	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns1).Create(context.TODO(), tc1, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+	err := utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns1, name, tidbReadyTimeout, 0)
+	if err != nil {
+		return err
+	}
+
+	ginkgo.By(fmt.Sprintf("Creating tidb cluster in %s", ns2))
+	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns2).Create(context.TODO(), tc2, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+	err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns2, name, tidbReadyTimeout, 0)
+	if err != nil {
+		return err
+	}
+
+	ginkgo.By(fmt.Sprintf("Creating tidb cluster in %s", ns3))
+	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns3).Create(context.TODO(), tc3, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+	err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns3, name, tidbReadyTimeout, 0)
+	if err != nil {
+		return err
+	}
+
+	ginkgo.By("Check deploy status")
+	return e2etc.CheckStatusWhenAcrossK8sWithTimeout(f.ExtClient, []*v1alpha1.TidbCluster{tc1, tc2, tc3}, 5*time.Second, 3*time.Minute)
+}
+
+func GetTCForXK8s(ns, name, version, clusterDomain string, joinTC *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
+	tc := fixture.GetTidbCluster(ns, name, version)
+
+	tc.Spec.PD.Replicas = 1
+	tc.Spec.TiDB.Replicas = 1
+	tc.Spec.TiKV.Replicas = 1
+
+	tc.Spec.ClusterDomain = clusterDomain
+	if joinTC != nil {
+		tc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+			Namespace:     joinTC.Namespace,
+			Name:          joinTC.Name,
+			ClusterDomain: joinTC.Spec.ClusterDomain,
+		}
+	}
+
+	return tc
 }
 
 func createRBAC(f *e2eframework.Framework) error {

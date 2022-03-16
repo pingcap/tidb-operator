@@ -49,14 +49,14 @@ require (
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
-	github.com/pingcap/tidb-operator/pkg/apis v0.0.0
-	github.com/pingcap/tidb-operator/pkg/client v0.0.0
+	github.com/pingcap/tidb-operator/pkg/apis v1.3.1
+	github.com/pingcap/tidb-operator/pkg/client v1.3.1
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.26.0
 	github.com/prometheus/prom2json v1.3.0
-	github.com/prometheus/prometheus v1.8.2
 	github.com/robfig/cron v1.1.0
+	github.com/sethvargo/go-password v0.2.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
@@ -71,6 +71,7 @@ require (
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gomodules.xyz/jsonpatch/v2 v2.1.0
+	google.golang.org/grpc v1.27.0
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.19.16

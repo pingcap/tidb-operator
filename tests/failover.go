@@ -165,7 +165,7 @@ func (oa *OperatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	}
 
 	// checkout pd config
-	pdCfg, err := controller.GetPDClientFromService(oa.pdControl, tc).GetConfig()
+	pdCfg, err := controller.GetPDClient(oa.pdControl, tc).GetConfig()
 	if err != nil {
 		log.Logf("ERROR: failed to get the pd config: tc=%s err=%s", info.ClusterName, err.Error())
 		return err
@@ -518,7 +518,7 @@ func (oa *OperatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 	// delete failover member store manually
 	if int32(len(tc.Status.TiKV.Stores)) > tc.Spec.TiKV.Replicas {
 
-		pdclient := controller.GetPDClientFromService(oa.pdControl, tc)
+		pdclient := controller.GetPDClient(oa.pdControl, tc)
 		for _, v := range tc.Status.TiKV.Stores {
 			ordinal, err := util.GetOrdinalFromPodName(v.PodName)
 			if err != nil {

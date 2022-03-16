@@ -19,7 +19,7 @@ spec:
     reserveDays: 12
     service:
       type: NodePort
-      portName: http-prometheus 
+      portName: http-prometheus
   grafana:
     baseImage: grafana/grafana
     version: 7.5.7
@@ -62,6 +62,16 @@ spec:
     service:
       type: NodePort
       portName: tcp-reloader
+    #limits:
+    #  cpu: 50m
+    #  memory: 64Mi
+    #requests:
+    #  cpu: 50m
+    #  memory: 64Mi
+  prometheusReloader:
+    baseImage: quay.io/prometheus-operator/prometheus-config-reloader
+    ImagePullPolicy: IfNotPresent
+    version: v0.49.0
     #limits:
     #  cpu: 50m
     #  memory: 64Mi

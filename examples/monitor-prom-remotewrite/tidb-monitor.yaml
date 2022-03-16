@@ -9,19 +9,22 @@ spec:
     baseImage: prom/prometheus
     version: v2.27.1
     remoteWrite:
-      - url: "http://thanos-receive:19291/api/v1/receive"
-        queue_config:
-          max_samples_per_send: 100
-          max_shards: 100
-        metadata_config:
-          send_interval: 10s
+      - url: "http://thanos-receiver-0.thanos-receiver.default.svc:19291/api/v1/receive"
+        queueConfig:
+          maxSamplesPerSend: 100
+          maxShards: 100
+        metadataConfig:
+          sendInterval: 10s
   grafana:
     baseImage: grafana/grafana
     version: 7.5.11
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v5.2.1
+    version: v5.4.0
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
+  prometheusReloader:
+    baseImage: quay.io/prometheus-operator/prometheus-config-reloader
+    version: v0.49.0
   imagePullPolicy: IfNotPresent

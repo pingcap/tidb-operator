@@ -6,7 +6,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v5.2.1
+  version: v5.4.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
@@ -26,6 +26,10 @@ spec:
   tikv:
     baseImage: pingcap/tikv
     maxFailoverCount: 0
+    # If only 1 TiKV is deployed, the TiKV region leader 
+    # cannot be transferred during upgrade, so we have
+    # to configure a short timeout
+    evictLeaderTimeout: 1m
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage

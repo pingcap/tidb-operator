@@ -50,7 +50,7 @@ const (
 	// tikvClusterCertPath is where the cert for inter-cluster communication stored (if any)
 	tikvClusterCertPath = "/var/lib/tikv-tls"
 
-	//find a better way to manage store only managed by tikv in Operator
+	// find a better way to manage store only managed by tikv in Operator
 	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc%s\:\d+`
 )
 
@@ -171,7 +171,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 
 	oldSet := oldSetTmp.DeepCopy()
 
-	if err := m.syncTidbClusterStatus(tc, oldSet); err != nil {
+	if err := m.syncTiKVClusterStatus(tc, oldSet); err != nil {
 		return err
 	}
 
@@ -190,7 +190,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		m.failover.RemoveUndesiredFailures(tc)
 	}
 	if len(tc.Status.TiKV.FailureStores) > 0 &&
-		tc.Spec.TiKV.RecoverFailover &&
+		(tc.Spec.TiKV.RecoverFailover || tc.Status.TiKV.FailoverUID == tc.Spec.TiKV.GetRecoverByUID()) &&
 		shouldRecover(tc, label.TiKVLabelVal, m.deps.PodLister) {
 		m.failover.Recover(tc)
 	}
@@ -242,7 +242,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newSet, oldSet)
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiKVSTS", newSet, oldSet)
 }
 
 func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -597,7 +597,6 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	podSpec := baseTiKVSpec.BuildPodSpec()
 	if baseTiKVSpec.HostNetwork() {
-		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{
@@ -707,21 +706,25 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	scriptModel := &TiKVStartScriptModel{
+		CommonModel: CommonModel{
+			AcrossK8s:     tc.AcrossK8s(),
+			ClusterDomain: tc.Spec.ClusterDomain,
+		},
 		EnableAdvertiseStatusAddr: false,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
-		ClusterDomain:             tc.Spec.ClusterDomain,
 	}
 	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
 		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc" + controller.FormatClusterDomain(tc.Spec.ClusterDomain)
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
 
-	if tc.HeterogeneousWithoutLocalPD() {
-		// TODO: for across k8s cluster, the start script do not support it now.
-		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
-	} else {
-		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
+	scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
+	if tc.AcrossK8s() {
+		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
 	}
+
 	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
 	if err != nil {
 		return nil, err
@@ -743,7 +746,7 @@ func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 	return label.New().Instance(instanceName).TiKV()
 }
 
-func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	if set == nil {
 		// skip if not created yet
 		return nil
@@ -821,7 +824,7 @@ func (m *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 	}
 
-	//this returns all tombstone stores
+	// this returns all tombstone stores
 	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
 	if err != nil {
 		tc.Status.TiKV.Synced = false

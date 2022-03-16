@@ -213,7 +213,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				StorageSize:          "1Gi",
 				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
-				Config:               &v1alpha1.MasterConfig{},
+				Config:               v1alpha1.NewMasterConfig(),
 				Service: &v1alpha1.MasterServiceSpec{
 					ServiceSpec: v1alpha1.ServiceSpec{
 						Type: corev1.ServiceTypeClusterIP,
@@ -240,7 +240,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 				BaseImage:            "pingcap/dm",
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
-				Config:               &v1alpha1.WorkerConfig{},
+				Config:               v1alpha1.NewWorkerConfig(),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.DMWorkerMemberType),
 					Labels: map[string]string{
@@ -620,6 +620,42 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 		restore.Spec.S3.Path = fmt.Sprintf("s3://%s/%s", s3config.Bucket, s3config.Path)
 	}
 	return restore
+}
+
+func GetTidbNGMonitoring(ns, name string, tc *v1alpha1.TidbCluster) *v1alpha1.TidbNGMonitoring {
+	deletePVP := corev1.PersistentVolumeReclaimDelete
+	version := utilimage.TiDBNGMonitoringLatest
+	cfgUpdateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
+
+	tngm := &v1alpha1.TidbNGMonitoring{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbNGMonitoringSpec{
+			Clusters: []v1alpha1.TidbClusterRef{
+				{
+					Name:      tc.Name,
+					Namespace: tc.Namespace,
+				},
+			},
+
+			ComponentSpec: v1alpha1.ComponentSpec{
+				ConfigUpdateStrategy: &cfgUpdateStrategy,
+			},
+			PVReclaimPolicy: &deletePVP,
+			NGMonitoring: v1alpha1.NGMonitoringSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Version: &version,
+				},
+
+				BaseImage:            "pingcap/ng-monitoring",
+				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
+			},
+		},
+	}
+
+	return tngm
 }
 
 func AddTiFlashForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {

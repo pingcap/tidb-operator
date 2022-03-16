@@ -30,7 +30,7 @@ spec:
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
     imagePullPolicy: IfNotPresent
-    version: v5.2.1
+    version: v5.4.0
   kubePrometheusURL: ""
   persistent: true
   prometheus:
@@ -49,4 +49,7 @@ spec:
       portName: tcp-reloader
       type: NodePort
     version: v1.0.1
+  prometheusReloader:
+    baseImage: quay.io/prometheus-operator/prometheus-config-reloader
+    version: v0.49.0
   storage: 100Gi

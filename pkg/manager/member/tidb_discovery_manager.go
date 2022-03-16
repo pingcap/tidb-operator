@@ -61,7 +61,7 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 	switch cluster := obj.(type) {
 	case *v1alpha1.TidbCluster:
 		// If PD is not specified return
-		if cluster.Spec.PD == nil {
+		if cluster.Spec.PD == nil && !cluster.AcrossK8s() {
 			return nil
 		}
 		clusterPolicyRule = rbacv1.PolicyRule{
@@ -91,7 +91,7 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 			{
 				APIGroups: []string{corev1.GroupName},
 				Resources: []string{"secrets"},
-				Verbs:     []string{"get", "list"},
+				Verbs:     []string{"get", "list", "watch"},
 			},
 		},
 	})
@@ -236,7 +236,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 	podSpec.ServiceAccountName = meta.Name
 
 	podSpec.Volumes = append(podSpec.Volumes, baseSpec.AdditionalVolumes()...)
-	if tc, ok := obj.(*v1alpha1.TidbCluster); ok && tc.IsTLSClusterEnabled() {
+	if tc, ok := obj.(*v1alpha1.TidbCluster); ok && tc.IsTLSClusterEnabled() && !tc.WithoutLocalPD() {
 		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
 			Name: "pd-tls",
 			VolumeSource: corev1.VolumeSource{

@@ -22,6 +22,7 @@ import (
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	onceutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/once"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/s3"
@@ -37,6 +38,7 @@ import (
 	"k8s.io/client-go/restmapper"
 	apiregistration "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
+	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Framework struct {
@@ -52,6 +54,8 @@ type Framework struct {
 	ARClient apiregistration.Interface
 	// client for apiextensions.
 	AEClient apiextensions.Interface
+	// controller-runtime client.
+	GenericClient ctrlCli.Client
 
 	RESTMapper *restmapper.DeferredDiscoveryRESTMapper
 
@@ -110,12 +114,17 @@ func (f *Framework) BeforeEach() {
 			return err
 		}
 
+		f.GenericClient, err = ctrlCli.New(config, ctrlCli.Options{Scheme: scheme.Scheme})
+		if err != nil {
+			return err
+		}
+
 		dc := memory.NewMemCacheClient(f.ClientSet.Discovery())
 		f.RESTMapper = restmapper.NewDeferredDiscoveryRESTMapper(dc)
 		f.RESTMapper.Reset()
 
 		f.YAMLClient = yamlutil.New(f.DynamicClient, f.RESTMapper)
-		f.TLSManager = tlsutil.New(f.YAMLClient)
+		f.TLSManager = tlsutil.New(f.YAMLClient, f.GenericClient)
 
 		f.PortForwarder, err = portforward.NewPortForwarderForConfig(config)
 		if err != nil {

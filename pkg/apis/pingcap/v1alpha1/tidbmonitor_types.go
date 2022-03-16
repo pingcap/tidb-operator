@@ -356,7 +356,7 @@ type MonitorContainer struct {
 // TidbClusterRef reference to a TidbCluster
 type TidbClusterRef struct {
 	// Namespace is the namespace that TidbCluster object locates,
-	// default to the same namespace with TidbMonitor
+	// default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 
@@ -437,8 +437,13 @@ type SecretOrConfigMap struct {
 type RemoteWriteSpec struct {
 	// The URL of the endpoint to send samples to.
 	URL string `json:"url"`
+	// The name of the remote write queue, must be unique if specified. The
+	// name is used in metrics and logging in order to differentiate queues.
+	// Only valid in Prometheus versions 2.15.0 and newer.
 	// +optional
-	RemoteTimeout model.Duration `json:"remoteTimeout,omitempty"`
+	Name string `json:"name,omitempty"`
+	// +optional
+	RemoteTimeout *model.Duration `json:"remoteTimeout,omitempty"`
 	// The list of remote write relabel configurations.
 	// +optional
 	WriteRelabelConfigs []RelabelConfig `json:"writeRelabelConfigs,omitempty"`
@@ -448,7 +453,6 @@ type RemoteWriteSpec struct {
 	// File to read bearer token for remote write.
 	// +optional
 	BearerToken string `json:"bearerToken,omitempty"`
-	// +optional
 	// File to read bearer token for remote write.
 	// +optional
 	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
@@ -460,6 +464,23 @@ type RemoteWriteSpec struct {
 	ProxyURL *string `json:"proxyUrl,omitempty"`
 	// +optional
 	QueueConfig *QueueConfig `json:"queueConfig,omitempty"`
+	// MetadataConfig configures the sending of series metadata to remote storage.
+	// Only valid in Prometheus versions 2.23.0 and newer.
+	// +optional
+	MetadataConfig *MetadataConfig `json:"metadataConfig,omitempty"`
+	// Custom HTTP headers to be sent along with each remote write request.
+	// Be aware that headers that are set by Prometheus itself can't be overwritten.
+	// Only valid in Prometheus versions 2.25.0 and newer.
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// Configures the sending of series metadata to remote storage.
+// +k8s:openapi-gen=true
+type MetadataConfig struct {
+	// Whether metric metadata is sent to remote storage or not.
+	Send bool `json:"send,omitempty"`
+	// How frequently metric metadata is sent to remote storage.
+	SendInterval string `json:"sendInterval,omitempty"`
 }
 
 // BasicAuth allow an endpoint to authenticate over basic authentication
@@ -504,6 +525,10 @@ type QueueConfig struct {
 	// Number of samples to buffer per shard before we start dropping them.
 	Capacity int `json:"capacity,omitempty"`
 
+	// MinShards is the minimum number of shards, i.e. amount of concurrency.
+	// Only valid in Prometheus versions 2.6.0 and newer.
+	MinShards int `json:"minShards,omitempty"`
+
 	// Max number of shards, i.e. amount of concurrency.
 	MaxShards int `json:"maxShards,omitempty"`
 
@@ -511,14 +536,14 @@ type QueueConfig struct {
 	MaxSamplesPerSend int `json:"maxSamplesPerSend,omitempty"`
 
 	// Maximum time sample will wait in buffer.
-	BatchSendDeadline time.Duration `json:"batchSendDeadline,omitempty"`
+	BatchSendDeadline *time.Duration `json:"batchSendDeadline,omitempty"`
 
 	// Max number of times to retry a batch on recoverable errors.
 	MaxRetries int `json:"maxRetries,omitempty"`
 
 	// On recoverable errors, backoff exponentially.
-	MinBackoff time.Duration `json:"minBackoff,omitempty"`
-	MaxBackoff time.Duration `json:"maxBackoff,omitempty"`
+	MinBackoff *time.Duration `json:"minBackoff,omitempty"`
+	MaxBackoff *time.Duration `json:"maxBackoff,omitempty"`
 }
 
 func (tm *TidbMonitor) GetShards() int32 {

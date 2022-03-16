@@ -5,7 +5,7 @@
 # timezone is the default system timzone
 timezone: UTC
 
-image: pingcap/tidb-lightning:v5.2.1
+image: pingcap/tidb-lightning:v5.4.0
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
@@ -91,14 +91,14 @@ annotations: {}
 tolerations: []
 affinity: {}
 
-# The delivery backend used to import data (valid options include `importer`, `local` and `tidb`).
+# The delivery backend used to import data (valid options include `local`, `tidb` and `importer`(deprecated)).
 # If set to `local`, then the following `sortedKV` should be set.
-backend: importer
+backend: local
 
 # For `local` backend, an extra PV is needed for local KV sorting.
-sortedKV: {}
-#  storageClassName: local-storage
-#  storage: 100Gi
+sortedKV:
+  storageClassName: local-storage
+  storage: 100Gi
 
 # Specify a Service Account for lightning
 # serviceAccount:

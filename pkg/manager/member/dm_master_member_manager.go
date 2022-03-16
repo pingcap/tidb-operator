@@ -662,7 +662,6 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 
 	podSpec := baseMasterSpec.BuildPodSpec()
 	if baseMasterSpec.HostNetwork() {
-		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{
@@ -730,19 +729,19 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 }
 
 func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
-	config := &v1alpha1.MasterConfig{}
+	config := v1alpha1.NewMasterConfig()
 	if dc.Spec.Master.Config != nil {
 		config = dc.Spec.Master.Config.DeepCopy()
 	}
 
 	// override CA if tls enabled
 	if dc.IsTLSClusterEnabled() {
-		config.SSLCA = pointer.StringPtr(path.Join(dmMasterClusterCertPath, tlsSecretRootCAKey))
-		config.SSLCert = pointer.StringPtr(path.Join(dmMasterClusterCertPath, corev1.TLSCertKey))
-		config.SSLKey = pointer.StringPtr(path.Join(dmMasterClusterCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("ssl-ca", path.Join(dmMasterClusterCertPath, tlsSecretRootCAKey))
+		config.Set("ssl-cert", path.Join(dmMasterClusterCertPath, corev1.TLSCertKey))
+		config.Set("ssl-key", path.Join(dmMasterClusterCertPath, corev1.TLSPrivateKeyKey))
 	}
 
-	confText, err := MarshalTOML(config)
+	confText, err := config.MarshalTOML()
 	if err != nil {
 		return nil, err
 	}

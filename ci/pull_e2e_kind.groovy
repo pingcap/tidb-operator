@@ -76,13 +76,13 @@ spec:
       requests:
         cpu: <%= resources.requests.cpu %>
         memory: <%= resources.requests.memory %>
-        ephemeral-storage: 250Gi
+        ephemeral-storage: 200Gi
     <% } %>
     <% if (resources.limits) { %>
       limits:
         cpu: <%= resources.limits.cpu %>
         memory: <%= resources.limits.memory %>
-        ephemeral-storage: 250Gi
+        ephemeral-storage: 200Gi
     <% } %>
 <% } %>
     # kind needs /lib/modules and cgroups from the host
@@ -278,7 +278,7 @@ try {
         def buildPodLabel = "tidb-operator-build-v1-pingcap-docker-mirror"
         def resources = [
             requests: [
-                cpu: "6",
+                cpu: "4",
                 memory: "10Gi"
             ],
             limits: [

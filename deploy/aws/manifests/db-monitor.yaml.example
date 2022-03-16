@@ -44,7 +44,7 @@ spec:
     #  requests:
     #    cpu: 50m
     #    memory: 64Mi
-    version: v5.2.1
+    version: v5.4.0
   kubePrometheusURL: ""
   nodeSelector: {}
   persistent: true
@@ -78,6 +78,9 @@ spec:
       portName: tcp-reloader
       type: NodePort
     version: v1.0.1
+  prometheusReloader:
+    baseImage: quay.io/prometheus-operator/prometheus-config-reloader
+    version: v0.49.0
   storage: 100Gi
   storageClassName: ebs-gp2
   tolerations: []

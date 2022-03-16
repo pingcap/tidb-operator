@@ -19,6 +19,18 @@ import (
 	"text/template"
 )
 
+type CommonModel struct {
+	AcrossK8s     bool   // same as tc.spec.acrossK8s
+	ClusterDomain string // same as tc.spec.clusterDomain
+}
+
+func (c CommonModel) FormatClusterDomain() string {
+	if len(c.ClusterDomain) > 0 {
+		return "." + c.ClusterDomain
+	}
+	return ""
+}
+
 // TODO(aylei): it is hard to maintain script in go literal, we should figure out a better solution
 // tidbStartScriptTpl is the template string of tidb start script
 // Note: changing this will cause a rolling-update of tidb-servers
@@ -49,7 +61,7 @@ then
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .FormatClusterDomain }}
+POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .AcrossK8s }}
 pd_url="{{ .Path }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
@@ -91,18 +103,12 @@ exec /tidb-server ${ARGS}
 `))
 
 type TidbStartScriptModel struct {
+	CommonModel
+
 	EnablePlugin    bool
 	PluginDirectory string
 	PluginList      string
-	ClusterDomain   string
 	Path            string
-}
-
-func (t *TidbStartScriptModel) FormatClusterDomain() string {
-	if len(t.ClusterDomain) > 0 {
-		return "." + t.ClusterDomain
-	}
-	return ""
 }
 
 func RenderTiDBStartScript(model *TidbStartScriptModel) (string, error) {
@@ -160,18 +166,18 @@ then
 echo "waiting for pd cluster ready timeout" >&2
 exit 1
 fi
-
+{{ if eq .CheckDomainScript ""}}
 if nslookup ${domain} 2>/dev/null
 then
 echo "nslookup domain ${domain}.svc success"
 break
 else
 echo "nslookup domain ${domain} failed" >&2
-fi
+fi {{- else}}{{.CheckDomainScript}}{{end}}
 done
 
 ARGS="--data-dir={{ .DataDir }} \
---name={{- if .ClusterDomain }}${domain}{{- else }}${POD_NAME}{{- end }} \
+--name={{- if or .AcrossK8s .ClusterDomain }}${domain}{{- else }}${POD_NAME}{{- end }} \
 --peer-urls={{ .Scheme }}://0.0.0.0:2380 \
 --advertise-peer-urls={{ .Scheme }}://${domain}:2380 \
 --client-urls={{ .Scheme }}://0.0.0.0:2379 \
@@ -203,17 +209,30 @@ echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `))
 
-type PDStartScriptModel struct {
-	Scheme        string
-	DataDir       string
-	ClusterDomain string
-}
+var checkDNSV1 string = `
+digRes=$(dig ${domain} A ${domain} AAAA +search +short)
+if [ $? -ne 0  ]; then
+  echo "$digRes"
+  echo "domain resolve ${domain} failed"
+  continue
+fi
 
-func (p *PDStartScriptModel) FormatClusterDomain() string {
-	if len(p.ClusterDomain) > 0 {
-		return "." + p.ClusterDomain
-	}
-	return ""
+if [ -z "${digRes}" ]
+then
+  echo "domain resolve ${domain} no record return"
+else
+  echo "domain resolve ${domain} success"
+  echo "$digRes"
+  break
+fi
+`
+
+type PDStartScriptModel struct {
+	CommonModel
+
+	Scheme            string
+	DataDir           string
+	CheckDomainScript string
 }
 
 func RenderPDStartScript(model *PDStartScriptModel) (string, error) {
@@ -249,7 +268,7 @@ then
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .FormatClusterDomain }}
+POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .AcrossK8s }}
 pd_url="{{ .PDAddress }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
@@ -282,18 +301,12 @@ exec /tikv-server ${ARGS}
 `))
 
 type TiKVStartScriptModel struct {
+	CommonModel
+
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	DataDir                   string
-	ClusterDomain             string
 	PDAddress                 string
-}
-
-func (t *TiKVStartScriptModel) FormatClusterDomain() string {
-	if len(t.ClusterDomain) > 0 {
-		return "." + t.ClusterDomain
-	}
-	return ""
 }
 
 func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
@@ -302,8 +315,8 @@ func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
 
 // pumpStartScriptTpl is the template string of pump start script
 // Note: changing this will cause a rolling-update of pump cluster
-var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .FormatClusterDomain }}
-pd_url="{{ .Scheme }}://{{ .ClusterName }}-pd:2379"
+var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .AcrossK8s }}
+pd_url="{{ .PDAddr }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
@@ -319,7 +332,7 @@ set -euo pipefail
 -pd-urls=$pd_url \{{ else }}set -euo pipefail
 
 /pump \
--pd-urls={{ .Scheme }}://{{ .ClusterName }}-pd:2379 \{{ end }}
+-pd-urls={{ .PDAddr }} \{{ end }}
 -L={{ .LogLevel }} \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump{{ .FormatPumpZone }}:8250 \
 -config=/etc/pump/pump.toml \
@@ -332,24 +345,21 @@ if [ $? == 0 ]; then
 fi`))
 
 type PumpStartScriptModel struct {
-	Scheme        string
-	ClusterName   string
-	LogLevel      string
-	Namespace     string
-	ClusterDomain string
-}
+	CommonModel
 
-func (pssm *PumpStartScriptModel) FormatClusterDomain() string {
-	if len(pssm.ClusterDomain) > 0 {
-		return "." + pssm.ClusterDomain
-	}
-
-	return ""
+	Scheme      string
+	ClusterName string
+	PDAddr      string
+	LogLevel    string
+	Namespace   string
 }
 
 func (pssm *PumpStartScriptModel) FormatPumpZone() string {
 	if pssm.ClusterDomain != "" {
 		return fmt.Sprintf(".%s.svc.%s", pssm.Namespace, pssm.ClusterDomain)
+	}
+	if pssm.ClusterDomain == "" && pssm.AcrossK8s {
+		return fmt.Sprintf(".%s.svc", pssm.Namespace)
 	}
 	return ""
 }
@@ -366,7 +376,9 @@ port = 4000
 retry_count = 0
 for i in range(0, 10):
     try:
-{{- if .TLS }}
+{{- if and .TLS .SkipCA }}
+        conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
+{{- else if .TLS }}
         conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
 {{- else }}
         conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, charset='utf8mb4')
@@ -413,6 +425,7 @@ type TiDBInitStartScriptModel struct {
 	PasswordSet bool
 	InitSQL     bool
 	TLS         bool
+	SkipCA      bool
 	CAPath      string
 	CertPath    string
 	KeyPath     string

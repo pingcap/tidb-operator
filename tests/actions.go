@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -41,9 +40,11 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/manager/tidbngmonitoring"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
@@ -74,6 +75,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/klog/v2"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
@@ -424,7 +426,7 @@ func (oi *OperatorConfig) Enabled(feature string) bool {
 	return false
 }
 
-func (oa *OperatorActions) runKubectlOrDie(args ...string) string {
+func (oa *OperatorActions) RunKubectlOrDie(args ...string) string {
 	cmd := "kubectl"
 	log.Logf("Running '%s %s'", cmd, strings.Join(args, " "))
 	out, err := exec.Command(cmd, args...).CombinedOutput()
@@ -453,93 +455,77 @@ func (oa *OperatorActions) CleanCRDOrDie() {
 	}
 }
 
-func (oa *OperatorActions) CreateOrReplaceCRD(isCRDV1Supported bool) {
-	files := map[string]struct{}{}
-	if isCRDV1Supported {
-		crdList, err := oa.apiExtCli.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
-		framework.ExpectNoError(err, "failed to list CRD")
-		for _, crd := range crdList.Items {
-			if !strings.HasSuffix(crd.Name, ".pingcap.com") {
-				framework.Logf("CRD %q ignored", crd.Name)
-				continue
-			}
-			files[crd.Spec.Group+"_"+crd.Spec.Names.Plural+".yaml"] = struct{}{}
-		}
-		oa.createOrReplaceCRD("v1", files)
-	} else {
-		crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
-		framework.ExpectNoError(err, "failed to list CRD")
-		for _, crd := range crdList.Items {
-			if !strings.HasSuffix(crd.Name, ".pingcap.com") {
-				framework.Logf("CRD %q ignored", crd.Name)
-				continue
-			}
-			files[crd.Spec.Group+"_"+crd.Spec.Names.Plural+".yaml"] = struct{}{}
-		}
-		oa.createOrReplaceCRD("v1beta1", files)
+func (oa *OperatorActions) ReplaceCRDOrDie(info *OperatorConfig) {
+	files, err := oa.crdFiles(info)
+	framework.ExpectNoError(err, "failed to get CRD files")
+
+	for _, file := range files {
+		framework.RunKubectl("", "create", "-f", file) // exec `create` command to create new CRD
+		oa.RunKubectlOrDie("replace", "-f", file)
 	}
+
+	oa.waitForCRDsReady()
 }
 
-func (oa *OperatorActions) createOrReplaceCRD(version string, files map[string]struct{}) {
-	filepath.Walk(oa.manifestPath(filepath.Join("e2e/crd", version)), func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		if _, ok := files[info.Name()]; ok {
-			oa.runKubectlOrDie("replace", "-f", path)
-		} else {
-			oa.runKubectlOrDie("create", "-f", path)
-		}
-		return nil
-	})
+func (oa *OperatorActions) CreateCRDOrDie(info *OperatorConfig) {
+	files, err := oa.crdFiles(info)
+	framework.ExpectNoError(err, "failed to get CRD files")
+
+	for _, file := range files {
+		oa.RunKubectlOrDie("create", "-f", file)
+	}
+
+	oa.waitForCRDsReady()
 }
 
-// InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
-func (oa *OperatorActions) InstallCRDOrDie(info *OperatorConfig) {
-	isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1")
-	if err != nil {
-		log.Failf(err.Error())
-	}
-	if info.Enabled(features.AdvancedStatefulSet) {
-		if isSupported {
-			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
-		} else {
-			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
-		}
-	}
-	// replace crd to avoid problem of too big annotation
-	oa.CreateOrReplaceCRD(isSupported)
-	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
-	log.Logf("Wait for all CRDs are established")
-	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
-	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
-	log.Logf("force sync kubectl cache")
-	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
-	if _, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput(); err != nil {
-		log.Failf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
-	}
-}
-
-func (oa *OperatorActions) DeployReleasedCRDOrDie(version string) {
+func (oa *OperatorActions) CreateReleasedCRDOrDie(version string) {
 	url := fmt.Sprintf("https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml", version)
+
+	var lastErr error
 	err := wait.PollImmediate(time.Second*10, time.Minute, func() (bool, error) {
-		_, err := framework.RunKubectl("", "apply", "-f", url)
+		_, err := framework.RunKubectl("", "create", "-f", url)
 		if err != nil {
+			lastErr = err
 			return false, nil
 		}
 		return true, nil
 	})
-	framework.ExpectNoError(err, "failed to apply CRD of version %s", version)
-	log.Logf("Wait for all CRDs are established")
-	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
-	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
-	log.Logf("force sync kubectl cache")
-	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
-	_, err = exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput()
+	framework.ExpectNoError(err, "failed to create CRD of version %s: %s", version, lastErr)
+
+	oa.waitForCRDsReady()
+}
+
+func (oa *OperatorActions) crdFiles(info *OperatorConfig) ([]string, error) {
+	supportV1, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1")
 	if err != nil {
+		return nil, err
+	}
+
+	crdFile := oa.manifestPath("e2e/crd.yaml")
+	astsCRDFile := oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml")
+	if !supportV1 {
+		crdFile = oa.manifestPath("e2e/crd_v1beta1.yaml")
+		astsCRDFile = oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml")
+	}
+
+	files := []string{
+		crdFile,
+	}
+	if info.Enabled("advanced-statefulset") {
+		files = append(files, astsCRDFile)
+	}
+
+	return files, nil
+}
+
+func (oa *OperatorActions) waitForCRDsReady() {
+	framework.Logf("Wait for all CRDs are established")
+	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
+
+	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
+	framework.Logf("force sync kubectl cache")
+	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
+	if _, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput(); err != nil {
 		log.Failf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
 	}
 }
@@ -3646,12 +3632,10 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 	if tc == nil {
 		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
 	}
-	var checkErr error
-	err := wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
-		var local *v1alpha1.TidbCluster
-		var err error
-		tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
-
+	var checkErr, err error
+	var local *v1alpha1.TidbCluster
+	tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
+	err = wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{}); err != nil {
 			checkErr = fmt.Errorf("failed to get TidbCluster: %q, %v", tcID, err)
 			return false, nil
@@ -3695,6 +3679,62 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		err = checkErr
 	}
 
+	return err
+}
+
+func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.TidbCluster, fw portforward.PortForward, timeout, pollInterval time.Duration) error {
+	var checkErr, err error
+	ns := tc.Namespace
+	tcName := tc.Name
+	var localHost string
+	var localPort uint16
+	var cancel context.CancelFunc
+	if fw != nil {
+		localHost, localPort, cancel, err = portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), 4000)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+	}
+	err = wait.Poll(timeout, pollInterval, func() (done bool, err error) {
+		randomPasswordTc, err := oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tcName, metav1.GetOptions{})
+		if err != nil {
+			checkErr = fmt.Errorf("failed to get TidbCluster[%s:%s], error:%v", ns, tcName, err)
+			return false, nil
+		}
+		if randomPasswordTc.Status.TiDB.PasswordInitialized != nil && *randomPasswordTc.Status.TiDB.PasswordInitialized {
+			secretName := controller.TiDBInitSecret(randomPasswordTc.Name)
+			passwordSecret, err := oa.kubeCli.CoreV1().Secrets(ns).Get(context.TODO(), secretName, metav1.GetOptions{})
+			if err != nil {
+				checkErr = fmt.Errorf("failed to get secret %s for cluster %s/%s, err: %s", secretName, ns, tcName, err)
+				return false, nil
+			}
+			password := string(passwordSecret.Data[constants.TidbRootKey])
+			var dsn string
+			if fw != nil {
+				dsn = fmt.Sprintf("root:%s@tcp(%s:%d)/?charset=utf8mb4,utf8&multiStatements=true", password, localHost, localPort)
+			} else {
+				dsn = util.GetDSN(randomPasswordTc, password)
+			}
+			klog.Errorf("tc[%s:%s] random password dsn:%s", tc.Namespace, tc.Name, dsn)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_, err = util.OpenDB(ctx, dsn)
+			if err != nil {
+				if ctx.Err() != nil {
+					checkErr = fmt.Errorf("can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s, context error: %s", ns, randomPasswordTc.Name, err, ctx.Err())
+				} else {
+					checkErr = fmt.Errorf("can't connect to the TiDB service of the TiDB cluster [%s:%s], error: %s", ns, randomPasswordTc.Name, err)
+				}
+				return false, err
+			}
+			return true, nil
+		}
+		return false, nil
+	})
+	if err == wait.ErrWaitTimeout {
+		return checkErr
+	}
 	return err
 }
 
@@ -3749,6 +3789,78 @@ func (oa *OperatorActions) WaitForDmClusterDeleted(ns, dcName string, timeout, p
 	return err
 }
 
+func (oa *OperatorActions) WaitForTiDBNGMonitoringReady(tngm *v1alpha1.TidbNGMonitoring, timeout, pollInterval time.Duration) error {
+	var checkErr error
+
+	err := wait.PollImmediate(pollInterval, timeout, func() (done bool, err error) {
+		ns := tngm.Namespace
+		name := tngm.Name
+		locator := fmt.Sprintf("%s/%s", tngm.Namespace, tngm.Name)
+
+		local, err := oa.cli.PingcapV1alpha1().TidbNGMonitorings(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			checkErr = fmt.Errorf("get tngm %q failed: %s", locator, err)
+			return false, nil
+		}
+
+		if ready := oa.ngmReadyFn(local); !ready {
+			checkErr = fmt.Errorf("ng monitoring is not ready for tngm %q", locator)
+			return false, nil
+		}
+
+		log.Logf("TiDBNGMonitoring %q: all components are ready", locator)
+		return true, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = checkErr
+	}
+
+	return err
+}
+
+func (oa *OperatorActions) ngmReadyFn(tngm *v1alpha1.TidbNGMonitoring) bool {
+	ns := tngm.Namespace
+	name := tngm.Name
+	tngmLocator := fmt.Sprintf("%s/%s", tngm.Namespace, tngm.Name)
+	stsName := tidbngmonitoring.NGMonitoringName(name)
+	stsLocator := fmt.Sprintf("%s/%s", tngm.Namespace, stsName)
+
+	sts, err := oa.tcStsGetter.StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
+	if err != nil {
+		log.Logf("TiDBNGMonitoring NGM Sts %q: get sts failed: %s", stsLocator, err)
+		return false
+	}
+
+	if sts.Status.CurrentRevision != sts.Status.UpdateRevision {
+		log.Logf("TiDBNGMonitoring NGM Sts %q: CurrentRevision(%s) != UpdateRevision(%s)", stsLocator, sts.Status.CurrentRevision, sts.Status.UpdateRevision)
+		return false
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), sts) {
+		return false
+	}
+
+	if tngm.Status.NGMonitoring.StatefulSet == nil {
+		log.Logf("TiDBNGMonitoring NGM %q: .Status.NGMonitoring.StatefulSet is nil", tngmLocator)
+		return false
+	}
+
+	c, found := getStsContainer(oa.kubeCli, sts, v1alpha1.NGMonitoringMemberType.String())
+	if !found {
+		log.Logf("TiDBNGMonitoring NGM Sts %q: not found containers %q", stsLocator, v1alpha1.NGMonitoringMemberType.String())
+		return false
+	}
+
+	if tngm.NGMonitoringImage() != c.Image {
+		log.Logf("iDBNGMonitoring NGM Sts %q: container image(%s) != %s", stsLocator, c.Image, tngm.NGMonitoringImage())
+		return false
+	}
+
+	log.Logf("iDBNGMonitoring NGM %q: ngm monitoring is ready", tngmLocator)
+	return true
+}
+
 var dummyCancel = func() {}
 
 func (oa *OperatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
@@ -3795,4 +3907,71 @@ func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContex
 
 func blockWriterPodName(info *TidbClusterConfig) string {
 	return fmt.Sprintf("%s-blockwriter", info.ClusterName)
+}
+
+// WaitForTidbComponentsReady will wait for tidbcluster components to be ready except those specified in componentsFilter.
+func (oa *OperatorActions) WaitForTidbComponentsReady(tc *v1alpha1.TidbCluster, componentsFilter map[v1alpha1.MemberType]struct{}, timeout, pollInterval time.Duration) error {
+	if tc == nil {
+		return fmt.Errorf("tidbcluster is nil")
+	}
+	var checkErr, err error
+	var local *v1alpha1.TidbCluster
+	tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
+	err = wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{}); err != nil {
+			checkErr = fmt.Errorf("failed to get TidbCluster: %q, %v", tcID, err)
+			return false, nil
+		}
+
+		if _, ok := componentsFilter[v1alpha1.PDMemberType]; !ok {
+			if b, err := oa.pdMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("pd members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		if _, ok := componentsFilter[v1alpha1.TiKVMemberType]; !ok {
+			if b, err := oa.tikvMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("tikv members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		if _, ok := componentsFilter[v1alpha1.TiDBMemberType]; !ok {
+			if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("tidb members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		if _, ok := componentsFilter[v1alpha1.TiFlashMemberType]; !ok {
+			if b, err := oa.tiflashMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("tiflash members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		if _, ok := componentsFilter[v1alpha1.PumpMemberType]; !ok {
+			if b, err := oa.pumpMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("pump members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		if _, ok := componentsFilter[v1alpha1.TiCDCMemberType]; !ok {
+			if b, err := oa.cdcMembersReadyFn(local); !b && err == nil {
+				checkErr = fmt.Errorf("cdc members are not ready for tc %q", tcID)
+				return false, nil
+			}
+		}
+
+		log.Logf("Components in %q are ready", tcID)
+		return true, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = checkErr
+	}
+
+	return err
 }

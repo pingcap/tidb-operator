@@ -14,6 +14,8 @@
 package util
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/sethvargo/go-password/password"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -374,7 +377,7 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 	// The annotations in old sts may include LastAppliedConfigAnnotation
 	tmpAnno := map[string]string{}
 	for k, v := range old.Annotations {
-		if k != LastAppliedConfigAnnotation {
+		if k != LastAppliedConfigAnnotation && k != label.AnnStsLastSyncTimestamp {
 			tmpAnno[k] = v
 		}
 	}
@@ -425,4 +428,46 @@ func ResolvePVCFromPod(pod *corev1.Pod, pvcLister corelisterv1.PersistentVolumeC
 		return pvcs, err
 	}
 	return pvcs, nil
+}
+
+// FixedLengthRandomPasswordBytes generates a random password
+func FixedLengthRandomPasswordBytes() []byte {
+	return RandomBytes(13)
+}
+
+// RandomBytes generates some random bytes that can be used as a token or as a key
+func RandomBytes(length int) []byte {
+	return []byte(password.MustGenerate(
+		length,
+		length/3, // number of digits to include in the result
+		length/4, // number of symbols to include in the result
+		false,    // noUpper
+		false,    // allowRepeat
+	))
+}
+
+// OpenDB opens db
+func OpenDB(ctx context.Context, dsn string) (*sql.DB, error) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("open datasource failed, err: %v", err)
+	}
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("cannot connect to tidb cluster, err: %v", err)
+	}
+	return db, nil
+}
+
+// SetPassword set tidb password
+func SetPassword(ctx context.Context, db *sql.DB, password string) error {
+
+	sql := fmt.Sprintf("SET PASSWORD FOR 'root'@'%%' = '%s'; FLUSH PRIVILEGES;", password)
+	_, err := db.ExecContext(ctx, sql)
+	return err
+}
+
+// GetDSN get tidb dsn
+func GetDSN(tc *v1alpha1.TidbCluster, password string) string {
+	return fmt.Sprintf("root:%s@tcp(%s-tidb.%s.svc:4000)/?charset=utf8mb4,utf8&multiStatements=true", password, tc.Name, tc.Namespace)
 }

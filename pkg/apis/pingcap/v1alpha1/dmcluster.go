@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -133,6 +134,13 @@ func (dc *DMCluster) WorkerStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 		replicas = dc.WorkerStsDesiredReplicas()
 	}
 	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, dc.getDeleteSlots(label.DMWorkerLabelVal))
+}
+
+func (dc *DMCluster) GetWorkerRecoverByUID() types.UID {
+	if dc.Spec.Worker == nil || dc.Spec.Worker.Failover == nil {
+		return ""
+	}
+	return dc.Spec.Worker.Failover.RecoverByUID
 }
 
 func (dc *DMCluster) GetInstanceName() string {

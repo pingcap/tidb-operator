@@ -1678,6 +1678,19 @@ spec:
                           type: string
                         bearerTokenFile:
                           type: string
+                        headers:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        metadataConfig:
+                          properties:
+                            send:
+                              type: boolean
+                            sendInterval:
+                              type: string
+                          type: object
+                        name:
+                          type: string
                         proxyUrl:
                           type: string
                         queueConfig:
@@ -1698,6 +1711,8 @@ spec:
                               type: integer
                             minBackoff:
                               format: int64
+                              type: integer
+                            minShards:
                               type: integer
                           type: object
                         remoteTimeout:

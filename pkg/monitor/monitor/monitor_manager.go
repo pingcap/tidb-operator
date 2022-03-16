@@ -99,7 +99,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			}
 		}
 
-		if firstTc == nil && !tc.HeterogeneousWithoutLocalPD() {
+		if firstTc == nil && !tc.WithoutLocalPD() {
 			firstTc = tc
 		}
 		err = m.syncDashboardMetricStorage(tc, monitor)
@@ -136,6 +136,11 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if err != nil {
 		return err
 	}
+	// sync basicAuth
+	err = m.syncBasicAuth(monitor, assetStore)
+	if err != nil {
+		return err
+	}
 
 	// Sync Service
 	if err := m.syncTidbMonitorService(monitor); err != nil {
@@ -146,7 +151,7 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
 
 	// Sync Statefulset
-	if err := m.syncTidbMonitorStatefulset(firstTc, firstDc, monitor); err != nil {
+	if err := m.syncTidbMonitorStatefulset(firstTc, firstDc, monitor, assetStore); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Statefulset failed, err:%v", monitor.Namespace, monitor.Name, err)
 		m.deps.Recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
@@ -205,10 +210,10 @@ func (m *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) e
 	return nil
 }
 
-func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) syncTidbMonitorStatefulset(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor, store *Store) error {
 	ns := monitor.Namespace
 	name := monitor.Name
-	err := m.syncTidbMonitorConfig(monitor)
+	err := m.syncTidbMonitorConfig(monitor, store)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", ns, name, err)
 		return err
@@ -281,7 +286,7 @@ func (m *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*
 	return m.deps.TypedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
-func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) error {
+func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor, store *Store) error {
 	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 		// TODO: We need to update the status to tell users we are monitoring extra clusters
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
@@ -364,7 +369,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor) er
 	}
 
 	shards := monitor.GetShards()
-	promCM, err := getPromConfigMap(monitor, monitorClusterInfos, dmClusterInfos, shards)
+	promCM, err := getPromConfigMap(monitor, monitorClusterInfos, dmClusterInfos, shards, store)
 	if err != nil {
 		return err
 	}
@@ -806,4 +811,13 @@ func buildEtcdValue(host string, port int) (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+func (m *MonitorManager) syncBasicAuth(monitor *v1alpha1.TidbMonitor, store *Store) error {
+	for i, remoteWrite := range monitor.Spec.Prometheus.RemoteWrite {
+		if err := store.AddBasicAuth(monitor.Namespace, remoteWrite.BasicAuth, fmt.Sprintf("remoteWrite/%d", i)); err != nil {
+			return err
+		}
+	}
+	return nil
 }

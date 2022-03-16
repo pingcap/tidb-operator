@@ -216,11 +216,17 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	}
 
 	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
-	if !tc.Status.PD.Synced && !templateEqual(newPDSet, oldPDSet) && (NeedForceUpgrade(tc.Annotations) || *oldPDSet.Spec.Replicas < 2) {
-		tc.Status.PD.Phase = v1alpha1.UpgradePhase
-		mngerutils.SetUpgradePartition(newPDSet, 0)
-		errSTS := mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
-		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+	if !tc.Status.PD.Synced && !templateEqual(newPDSet, oldPDSet) {
+		// upgrade forcedly only when `Synced` is false, because unable to upgrade gracefully
+		forceUpgradeAnnoSet := NeedForceUpgrade(tc.Annotations)
+		onlyOnePD := *oldPDSet.Spec.Replicas < 2 && len(tc.Status.PD.PeerMembers) == 0 // it's acceptable to use old record about peer members
+
+		if forceUpgradeAnnoSet || onlyOnePD {
+			tc.Status.PD.Phase = v1alpha1.UpgradePhase
+			mngerutils.SetUpgradePartition(newPDSet, 0)
+			errSTS := mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
+		}
 	}
 
 	// Scaling takes precedence over upgrading because:
@@ -248,7 +254,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
-	return mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdatePDSTS", newPDSet, oldPDSet)
 }
 
 // shouldRecover checks whether we should perform recovery operation.
@@ -496,9 +502,15 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 			ClusterIP: "None",
 			Ports: []corev1.ServicePort{
 				{
-					Name:       "peer",
+					Name:       "tcp-peer-2380",
 					Port:       2380,
 					TargetPort: intstr.FromInt(2380),
+					Protocol:   corev1.ProtocolTCP,
+				},
+				{
+					Name:       "tcp-peer-2379",
+					Port:       2379,
+					TargetPort: intstr.FromInt(2379),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -737,7 +749,6 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 
 	podSpec := basePDSpec.BuildPodSpec()
 	if basePDSpec.HostNetwork() {
-		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{
@@ -829,7 +840,9 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 	// Versions below v4.0 do not support Dashboard
 	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
-		config.Set("dashboard.tidb-cacert-path", path.Join(tidbClientCertPath, tlsSecretRootCAKey))
+		if !tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
+			config.Set("dashboard.tidb-cacert-path", path.Join(tidbClientCertPath, tlsSecretRootCAKey))
+		}
 		config.Set("dashboard.tidb-cert-path", path.Join(tidbClientCertPath, corev1.TLSCertKey))
 		config.Set("dashboard.tidb-key-path", path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
 	}
@@ -842,11 +855,20 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	startScript, err := RenderPDStartScript(&PDStartScriptModel{
-		Scheme:        tc.Scheme(),
-		DataDir:       filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
-		ClusterDomain: tc.Spec.ClusterDomain,
-	})
+
+	sm := &PDStartScriptModel{
+		CommonModel: CommonModel{
+			AcrossK8s:     tc.AcrossK8s(),
+			ClusterDomain: tc.Spec.ClusterDomain,
+		},
+		Scheme:  tc.Scheme(),
+		DataDir: filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+	}
+	if tc.Spec.PD.StartUpScriptVersion == "v1" {
+		sm.CheckDomainScript = checkDNSV1
+	}
+
+	startScript, err := RenderPDStartScript(sm)
 	if err != nil {
 		return nil, err
 	}
