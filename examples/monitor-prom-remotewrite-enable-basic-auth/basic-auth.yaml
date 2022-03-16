@@ -5,5 +5,4 @@ data:
 kind: Secret
 metadata:
   name: basic-auth
-  namespace: default
 type: Opaque

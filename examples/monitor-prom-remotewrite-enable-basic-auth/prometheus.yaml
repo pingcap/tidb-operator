@@ -4,7 +4,6 @@ metadata:
   labels:
     prometheus: basic
   name: basic
-  namespace: default
 spec:
   image: quay.io/prometheus/prometheus:v2.33.4
   containers:

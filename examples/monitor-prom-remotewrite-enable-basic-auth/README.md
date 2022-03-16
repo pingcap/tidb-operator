@@ -3,8 +3,10 @@
 > **Note:**
 >
 > this example describe how to add basic authorization to tidbMonitor remoteWrite configuration.
+> 
 > we use Prometheus as the remote write receiver, the Prometheus managed by [prometheus-operator](https://github.com/coreos/prometheus-operator).
-> we will add authentication to the prometheus remote write receiver by ingress-nginx controller.
+> 
+> we will add authentication to the prometheus remote write receiver by [ingress-nginx controller]((https://kubernetes.github.io/ingress-nginx/)).
 
 **Prerequisites**: 
 - Has Prometheus operator installed. [Doc](https://github.com/coreos/kube-prometheus)
@@ -108,13 +110,13 @@ Use curl with the correct credentials to connect to the ingress
 
 Create TiDB:
 ```bash
-> kubectl apply -f tidb-cluster.yaml
+> kubectl apply -f tidb-cluster.yaml -n <namespace>
 ```
 
 Create auth secret and TiDBMonitor:
 ```bash
-> kubectl apply -f basic-auth.yaml
-> kubectl apply -f tidb-monitor.yaml
+> kubectl apply -f basic-auth.yaml -n <namespace>
+> kubectl apply -f tidb-monitor.yaml -n <namespace>
 ```
 
 Add hostAliases to tidbmonitor statefulset:
@@ -139,7 +141,8 @@ Port-Forward remotewrite prometheus svc port 9090 to local port 9090.
 ```bash
 > kubectl port-forward svc/basic-prometheus-remote  9090:9090
 ```
-The data is writing successfully.
+
+Then access the prometheus ui url 127.0.0.1:9090, we will find the monitoring data write successfully.
 
 ## Destroy
 
