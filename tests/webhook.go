@@ -17,9 +17,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
@@ -47,4 +49,33 @@ func (oa *OperatorActions) setCabundleFromApiServer(info *OperatorConfig) error 
 		return nil
 	}
 	return nil
+}
+
+func (oa *OperatorActions) WaitAdmissionWebhookReady(info *OperatorConfig, timeout, pollInterval time.Duration) error {
+	var lastErr, err error
+	err = wait.PollImmediate(pollInterval, timeout, func() (done bool, err error) {
+		deploymentName := "tidb-admission-webhook"
+		deployment, err := oa.kubeCli.AppsV1().Deployments(info.Namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+		if err != nil {
+			lastErr = fmt.Errorf("failed to get deployment %s/%s: %v", info.Namespace, deploymentName, err)
+			return false, nil
+		}
+
+		if deployment.Status.UpdatedReplicas != *deployment.Spec.Replicas {
+			lastErr = fmt.Errorf("not all replication are updated, ready: %d, spec: %d", deployment.Status.ReadyReplicas, *deployment.Spec.Replicas)
+			return false, nil
+		}
+
+		if deployment.Status.ReadyReplicas != *deployment.Spec.Replicas {
+			lastErr = fmt.Errorf("not all replication are ready, ready: %d, spec: %d", deployment.Status.ReadyReplicas, *deployment.Spec.Replicas)
+			return false, nil
+		}
+
+		return true, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		return lastErr
+	}
+	return err
 }
