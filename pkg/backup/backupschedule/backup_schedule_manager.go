@@ -262,6 +262,11 @@ func (bm *backupScheduleManager) backupGC(bs *v1alpha1.BackupSchedule) {
 		return
 	}
 
+	//
+	if bs.Spec.MaxCompletedBackups != nil || bs.Spec.MaxFailedBackups != nil {
+		bm.backupGCByPolicy(bs)
+	}
+
 	if bs.Spec.MaxBackups != nil && *bs.Spec.MaxBackups > 0 {
 		bm.backupGCByMaxBackups(bs)
 		return
@@ -306,21 +311,51 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 	}
 }
 
-func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedule) {
-	ns := bs.GetNamespace()
-	bsName := bs.GetName()
-
+func (bm *backupScheduleManager) backupGCByPolicy(bs *v1alpha1.BackupSchedule) {
 	backupsList, err := bm.getBackupList(bs)
 	if err != nil {
 		klog.Errorf("backupGCByMaxBackups failed, err: %s", err)
 		return
 	}
 
+	failedBackups := []*v1alpha1.Backup{}
+	completedBackups := []*v1alpha1.Backup{}
+
+	for _, backup := range backupsList {
+		if backup.Status.Phase == v1alpha1.BackupComplete {
+			completedBackups = append(completedBackups, backup)
+		} else if backup.Status.Phase == v1alpha1.BackupFailed {
+			failedBackups = append(failedBackups, backup)
+		}
+	}
+
+	if bs.Spec.MaxCompletedBackups != nil {
+		bm.removeOldestBackup(bs, completedBackups, int(*bs.Spec.MaxCompletedBackups))
+	}
+
+	if bs.Spec.MaxFailedBackups != nil {
+		bm.removeOldestBackup(bs, failedBackups, int(*bs.Spec.MaxFailedBackups))
+	}
+}
+
+func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedule) {
+	backupsList, err := bm.getBackupList(bs)
+	if err != nil {
+		klog.Errorf("backupGCByMaxBackups failed, err: %s", err)
+		return
+	}
+
+	bm.removeOldestBackup(bs, backupsList, int(*bs.Spec.MaxBackups))
+}
+
+func (bm *backupScheduleManager) removeOldestBackup(bs *v1alpha1.BackupSchedule, backupsList []*v1alpha1.Backup, maxBackups int) {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
 	sort.Sort(byCreateTimeDesc(backupsList))
 
-	var deleteCount int
 	for i, backup := range backupsList {
-		if i < int(*bs.Spec.MaxBackups) {
+		if i < maxBackups {
 			continue
 		}
 		// delete the backup
@@ -328,13 +363,7 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
 			return
 		}
-		deleteCount += 1
 		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
-	}
-
-	if deleteCount == len(backupsList) && deleteCount > 0 {
-		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
-		bm.resetLastBackup(bs)
 	}
 }
 

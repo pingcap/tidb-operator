@@ -1763,6 +1763,14 @@ type BackupScheduleSpec struct {
 	// if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
 	// and MaxBackups is ignored.
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
+	// MaxCompletedBackups specifies the number of completed backups to retain
+	// total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups
+	// +optional
+	MaxCompletedBackups *int32 `json:"maxCompletedBackups,omitempty"`
+	// MaxFailedBackups specifies the number of failed backups to retain.
+	// total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups
+	// +optional
+	MaxFailedBackups *int32 `json:"maxFailedBackups,omitempty"`
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.

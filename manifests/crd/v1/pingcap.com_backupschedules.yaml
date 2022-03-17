@@ -1337,6 +1337,12 @@ spec:
               maxBackups:
                 format: int32
                 type: integer
+              maxCompletedBackups:
+                format: int32
+                type: integer
+              maxFailedBackups:
+                format: int32
+                type: integer
               maxReservedTime:
                 type: string
               pause:

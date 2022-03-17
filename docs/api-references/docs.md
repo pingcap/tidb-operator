@@ -480,6 +480,32 @@ and MaxBackups is ignored.</p>
 </tr>
 <tr>
 <td>
+<code>maxCompletedBackups</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxCompletedBackups specifies the number of completed backups to retain
+total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxFailedBackups</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxFailedBackups specifies the number of failed backups to retain.
+total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>maxReservedTime</code></br>
 <em>
 string
@@ -3141,6 +3167,32 @@ int32
 0 is magic number to indicate un-limited backups.
 if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
 and MaxBackups is ignored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxCompletedBackups</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxCompletedBackups specifies the number of completed backups to retain
+total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxFailedBackups</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxFailedBackups specifies the number of failed backups to retain.
+total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups</p>
 </td>
 </tr>
 <tr>
