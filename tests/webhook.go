@@ -19,6 +19,9 @@ import (
 	"fmt"
 	"time"
 
+	podutil "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
+
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -55,19 +58,37 @@ func (oa *OperatorActions) WaitAdmissionWebhookReady(info *OperatorConfig, timeo
 	var lastErr, err error
 	err = wait.PollImmediate(pollInterval, timeout, func() (done bool, err error) {
 		deploymentName := "tidb-admission-webhook"
+		deploymentID := fmt.Sprintf("%s/%s", info.Namespace, deploymentName)
+
 		deployment, err := oa.kubeCli.AppsV1().Deployments(info.Namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 		if err != nil {
-			lastErr = fmt.Errorf("failed to get deployment %s/%s: %v", info.Namespace, deploymentName, err)
+			lastErr = fmt.Errorf("failed to get deployment %q: %v", deploymentID, err)
+			return false, nil
+		}
+
+		containers := podutil.ListContainerFromPod(deployment.Spec.Template.Spec, func(container v1.Container) bool {
+			if container.Name != "admission-webhook" {
+				return false
+			}
+			if container.Image != info.Image {
+				return false
+			}
+			return true
+		})
+		if len(containers) == 0 {
+			lastErr = fmt.Errorf("failed to find container for deployment %q", deploymentID)
 			return false, nil
 		}
 
 		if deployment.Status.UpdatedReplicas != *deployment.Spec.Replicas {
-			lastErr = fmt.Errorf("not all replication are updated, ready: %d, spec: %d", deployment.Status.ReadyReplicas, *deployment.Spec.Replicas)
+			lastErr = fmt.Errorf("not all replication are updated for deployement %q, ready: %d, spec: %d",
+				deploymentID, deployment.Status.ReadyReplicas, *deployment.Spec.Replicas)
 			return false, nil
 		}
 
 		if deployment.Status.ReadyReplicas != *deployment.Spec.Replicas {
-			lastErr = fmt.Errorf("not all replication are ready, ready: %d, spec: %d", deployment.Status.ReadyReplicas, *deployment.Spec.Replicas)
+			lastErr = fmt.Errorf("not all replication are ready for deployment %q, ready: %d, spec: %d",
+				deploymentID, deployment.Status.ReadyReplicas, *deployment.Spec.Replicas)
 			return false, nil
 		}
 
