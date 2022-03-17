@@ -1339,6 +1339,7 @@ spec:
                 type: integer
               maxCompletedBackups:
                 format: int32
+                minimum: 1
                 type: integer
               maxFailedBackups:
                 format: int32

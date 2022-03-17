@@ -1765,6 +1765,7 @@ type BackupScheduleSpec struct {
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
 	// MaxCompletedBackups specifies the number of completed backups to retain
 	// total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups
+	// +kubebuilder:validation:Minimum:=1
 	// +optional
 	MaxCompletedBackups *int32 `json:"maxCompletedBackups,omitempty"`
 	// MaxFailedBackups specifies the number of failed backups to retain.
