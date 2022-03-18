@@ -2925,7 +2925,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 
 					ginkgo.By("Wait for tc ready")
-					err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
+					err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in %s", ns, tc.Name, comp)
 					log.Logf("tc is ready")
 
@@ -2974,7 +2974,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 
 					ginkgo.By("Wait for tc ready")
-					err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
+					err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out %s", ns, tc.Name, comp)
 
 					ginkgo.By(fmt.Sprintf("Check PVCs are recreated for newly scaled out %s", comp))
