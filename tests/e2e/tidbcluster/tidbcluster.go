@@ -58,6 +58,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	utile2e "github.com/pingcap/tidb-operator/tests/e2e/util"
 	utilginkgo "github.com/pingcap/tidb-operator/tests/e2e/util/ginkgo"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
@@ -1135,16 +1136,16 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for stores to be recorded into failure stores")
 
 			ginkgo.By("Waiting for failover pods to be created")
-			err = wait.PollImmediate(time.Second*10, 5*time.Minute, func() (bool, error) {
-				if _, err := c.CoreV1().Pods(ns).Get(context.TODO(), failoverTiKVPodName, metav1.GetOptions{}); err != nil {
-					return false, nil
+			err, lastReason := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
+				for _, pod := range pods {
+					if _, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}); err != nil {
+						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+					}
 				}
-				if _, err := c.CoreV1().Pods(ns).Get(context.TODO(), failoverTiFlashPodName, metav1.GetOptions{}); err != nil {
-					return false, nil
-				}
-				return true, nil
+				return true, nil, ""
 			})
-			framework.ExpectNoError(err, "failed to wait for failover pods to be created")
+			framework.ExpectNoError(err, "failed to wait for failover pods to be created, last reason: %s", lastReason)
 
 			ginkgo.By("Up down stores and waiting to become Up")
 			f.ExecCommandInContainer(downTiKVPodName, "tikv", "sh", "-c", "mv /var/lib/tikv/db_down /var/lib/tikv/db")
@@ -1188,14 +1189,22 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
 
 			ginkgo.By("Waiting for failover pods to be deleted after recovery")
-			err = wait.PollImmediate(time.Second*10, 5*time.Minute, func() (bool, error) {
-				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), failoverTiKVPodName, metav1.GetOptions{})
-				tikvIsNotFound := err != nil && apierrors.IsNotFound(err)
-				_, err = c.CoreV1().Pods(ns).Get(context.TODO(), failoverTiFlashPodName, metav1.GetOptions{})
-				tiflashIsNotFound := err != nil && apierrors.IsNotFound(err)
-				return tikvIsNotFound && tiflashIsNotFound, nil
+			err, lastReason = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
+
+				for _, pod := range pods {
+					_, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{})
+					if err == nil {
+						return false, nil, fmt.Sprintf("pod %s still exists", pod)
+					}
+					if err != nil && !apierrors.IsNotFound(err) {
+						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+					}
+				}
+
+				return true, nil, ""
 			})
-			framework.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery")
+			framework.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery, last reason: %s", lastReason)
 		})
 
 		ginkgo.It("should failover and recover by recoverFailover eventually", func() {
@@ -1263,16 +1272,16 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for stores to be recorded into failure stores")
 
 			ginkgo.By("Waiting for failover pods to be created")
-			err = wait.PollImmediate(time.Second*10, 5*time.Minute, func() (bool, error) {
-				if _, err := c.CoreV1().Pods(ns).Get(context.TODO(), failoverTiKVPodName, metav1.GetOptions{}); err != nil {
-					return false, nil
+			err, lastReason := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
+				for _, pod := range pods {
+					if _, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}); err != nil {
+						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+					}
 				}
-				if _, err := c.CoreV1().Pods(ns).Get(context.TODO(), failoverTiFlashPodName, metav1.GetOptions{}); err != nil {
-					return false, nil
-				}
-				return true, nil
+				return true, nil, ""
 			})
-			framework.ExpectNoError(err, "failed to wait for failover pods to be created")
+			framework.ExpectNoError(err, "failed to wait for failover pods to be created, last reason: %s", lastReason)
 
 			ginkgo.By("Up down stores and waiting to become Up")
 			f.ExecCommandInContainer(downTiKVPodName, "tikv", "sh", "-c", "mv /var/lib/tikv/db_down /var/lib/tikv/db")
@@ -1338,14 +1347,22 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
 
 			ginkgo.By("Waiting for failover pods to be deleted after recovery")
-			err = wait.PollImmediate(time.Second*10, 5*time.Minute, func() (bool, error) {
-				_, err := c.CoreV1().Pods(ns).Get(context.TODO(), failoverTiKVPodName, metav1.GetOptions{})
-				tikvIsNotFound := err != nil && apierrors.IsNotFound(err)
-				_, err = c.CoreV1().Pods(ns).Get(context.TODO(), failoverTiFlashPodName, metav1.GetOptions{})
-				tiflashIsNotFound := err != nil && apierrors.IsNotFound(err)
-				return tikvIsNotFound && tiflashIsNotFound, nil
+			err, lastReason = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
+
+				for _, pod := range pods {
+					_, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{})
+					if err == nil {
+						return false, nil, fmt.Sprintf("pod %s still exists", pod)
+					}
+					if err != nil && !apierrors.IsNotFound(err) {
+						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+					}
+				}
+
+				return true, nil, ""
 			})
-			framework.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery")
+			framework.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery, last reason: %s", lastReason)
 		})
 	})
 
