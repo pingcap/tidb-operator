@@ -157,7 +157,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 				setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 				return nil
 			} else {
-				klog.Warning("TiKV %s/%s store %d in status is not equal with store %d in label",
+				klog.Warning("TiKV %s/%s store %s in status is not equal with store %s in label",
 					ns, podName, storeID, pod.Labels[label.StoreIDLabelKey])
 			}
 		}
