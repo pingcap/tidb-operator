@@ -129,33 +129,39 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 
 	// If the store state turns to Tombstone, add defer deleting annotation to the PVCs of the Pod
 	for storeID, store := range tc.Status.TiKV.TombstoneStores {
-		if store.PodName == podName && pod.Labels[label.StoreIDLabelKey] == storeID {
-			id, err := strconv.ParseUint(store.ID, 10, 64)
-			if err != nil {
-				return err
-			}
-
-			// TODO: double check if store is really not in Up/Offline/Down state
-			klog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
-
-			pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
-			if err != nil {
-				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
-			}
-			for _, pvc := range pvcs {
-				if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
+		if store.PodName == podName {
+			if pod.Labels[label.StoreIDLabelKey] == storeID {
+				id, err := strconv.ParseUint(store.ID, 10, 64)
+				if err != nil {
 					return err
 				}
-			}
 
-			// endEvictLeader for TombStone stores
-			if err = endEvictLeaderbyStoreID(s.deps, tc, id); err != nil {
-				return err
-			}
+				// TODO: double check if store is really not in Up/Offline/Down state
+				klog.Infof("TiKV %s/%s store %d becomes tombstone", ns, podName, id)
 
-			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-			return nil
+				pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
+				if err != nil {
+					return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
+				}
+				for _, pvc := range pvcs {
+					if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
+						return err
+					}
+				}
+
+				// endEvictLeader for TombStone stores
+				if err = endEvictLeaderbyStoreID(s.deps, tc, id); err != nil {
+					return err
+				}
+
+				setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+				return nil
+			} else {
+				klog.Warningf("TiKV %s/%s store %s in status is not equal with store %s in label",
+					ns, podName, storeID, pod.Labels[label.StoreIDLabelKey])
+			}
 		}
+
 	}
 
 	// When store not found in TidbCluster status, there are two possible situations:
@@ -177,6 +183,8 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 				resetReplicas(newSet, oldSet)
 				return fmt.Errorf("TiKV %s/%s is not ready, wait for 5 resync periods to sync its status", ns, podName)
 			}
+
+			klog.Warningf("TiKV %s/%s is not ready, scale in it after waiting for 5 resync periods", ns, podName)
 		}
 
 		pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
