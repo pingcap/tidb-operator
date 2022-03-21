@@ -634,6 +634,96 @@ func TestDeleteStore(t *testing.T) {
 	}
 }
 
+func TestGetEvictLeaderSchedulersForStores(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	expectHTTPMethod := "GET"
+	expectURLPath := fmt.Sprintf("/%s", schedulersPrefix)
+
+	type testcase struct {
+		name string
+
+		storeIDs []uint64
+		resp     []byte
+		expect   func(schedulers map[uint64]string, err error)
+	}
+
+	cases := []testcase{
+		{
+			name:     "all store have evict scheduler",
+			storeIDs: []uint64{1, 7, 8},
+			resp: []byte(`
+[
+	"evict-leader-scheduler-1",	
+	"evict-leader-scheduler-7",	
+	"evict-leader-scheduler-8",	
+	"evict-leader-scheduler-9"
+]
+			`),
+			expect: func(schedulers map[uint64]string, err error) {
+				g.Expect(err).To(Succeed())
+				storeIDs := []uint64{1, 7, 8}
+				g.Expect(schedulers).To(HaveLen(len(storeIDs)))
+				for storeID, scheduler := range schedulers {
+					g.Expect(storeIDs).To(ContainElement(storeID), "store id isn't in storeIDs")
+					g.Expect(scheduler).To(Equal(getLeaderEvictSchedulerStr(storeID)), "scheduler is't corresponding to store id")
+				}
+			},
+		},
+		{
+			name:     "some store have evict scheduler",
+			storeIDs: []uint64{1, 7, 10},
+			resp: []byte(`
+[
+	"evict-leader-scheduler-1",	
+	"evict-leader-scheduler-7",	
+	"evict-leader-scheduler-8",	
+	"evict-leader-scheduler-9"
+]
+			`),
+			expect: func(schedulers map[uint64]string, err error) {
+				g.Expect(err).To(Succeed())
+				storeIDs := []uint64{1, 7, 10}
+				for storeID, scheduler := range schedulers {
+					g.Expect(storeIDs).To(ContainElement(storeID), "store id isn't in storeIDs")
+					g.Expect(scheduler).To(Equal(getLeaderEvictSchedulerStr(storeID)), "scheduler is't corresponding to store id")
+				}
+			},
+		},
+		{
+			name:     "no store have evict scheduler",
+			storeIDs: []uint64{1, 7, 10},
+			resp: []byte(`
+[
+	"evict-leader-scheduler-2",	
+	"evict-leader-scheduler-8",	
+	"evict-leader-scheduler-9"
+]
+			`),
+			expect: func(schedulers map[uint64]string, err error) {
+				g.Expect(err).To(Succeed())
+				g.Expect(schedulers).To(HaveLen(0))
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		svc := getClientServer(func(w http.ResponseWriter, request *http.Request) {
+			g.Expect(request.Method).To(Equal(expectHTTPMethod), "check method")
+			g.Expect(request.URL.Path).To(Equal(expectURLPath), "check url")
+
+			w.Header().Set("Content-Type", ContentTypeJSON)
+			w.WriteHeader(http.StatusOK)
+			w.Write(tc.resp)
+		})
+		defer svc.Close()
+
+		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
+		schedulers, err := pdClient.GetEvictLeaderSchedulersForStores(tc.storeIDs...)
+		tc.expect(schedulers, err)
+	}
+}
+
 func readJSON(r io.ReadCloser, data interface{}) error {
 	defer r.Close()
 
