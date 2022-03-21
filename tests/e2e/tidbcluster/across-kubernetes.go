@@ -483,13 +483,14 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "deleting sts of tikv for %q", tcName1)
 
 			ginkgo.By("Waiting for tikv pod to be unavailable")
-			err = utiltc.WaitForTidbClusterCondition(cli, tc1.Namespace, tc1.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				down := true
-				for _, store := range tc.Status.TiKV.Stores {
-					down = down && (store.State == "Disconnected" || store.State == v1alpha1.TiKVStateDown)
-				}
-				return down, nil
-			})
+			err = utiltc.WaitForTCCondition(cli, tc1.Namespace, tc1.Name, time.Minute*5, time.Second*10,
+				func(tc *v1alpha1.TidbCluster) (bool, error) {
+					down := true
+					for _, store := range tc.Status.TiKV.Stores {
+						down = down && (store.State == "Disconnected" || store.State == v1alpha1.TiKVStateDown)
+					}
+					return down, nil
+				})
 			framework.ExpectNoError(err, "waiting for tikv pod to be unavailable")
 
 			ginkgo.By("Restart other component pods")
@@ -524,14 +525,15 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "deleting sts of tikv for %q", tcName1)
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
-			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*10, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				healthy := false
-				for _, member := range tc.Status.PD.Members {
-					healthy = healthy || member.Health
-				}
-				// we consider it healthy only when member is healthy and synced is true
-				return !(healthy && tc.Status.PD.Synced), nil
-			})
+			err = utiltc.WaitForTCCondition(cli, ns1, tcName1, time.Minute*10, time.Second*10,
+				func(tc *v1alpha1.TidbCluster) (bool, error) {
+					healthy := false
+					for _, member := range tc.Status.PD.Members {
+						healthy = healthy || member.Health
+					}
+					// we consider it healthy only when member is healthy and synced is true
+					return !(healthy && tc.Status.PD.Synced), nil
+				})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
 			ginkgo.By("Restart other components and check cluster status")
@@ -616,14 +618,15 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "updating pd with an inexistent image %q for %q", tc1.Spec.PD.BaseImage, tcName1)
 
 			ginkgo.By("Waiting for pd pods to be in unhealthy state")
-			err = utiltc.WaitForTidbClusterCondition(cli, ns1, tcName1, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
-				healthy := false
-				for _, member := range tc.Status.PD.Members {
-					healthy = healthy || member.Health
-				}
-				// we consider it healthy only when member is healthy and synced is true
-				return !(healthy && tc.Status.PD.Synced), nil
-			})
+			err = utiltc.WaitForTCCondition(cli, ns1, tcName1, time.Minute*5, time.Second*10,
+				func(tc *v1alpha1.TidbCluster) (bool, error) {
+					healthy := false
+					for _, member := range tc.Status.PD.Members {
+						healthy = healthy || member.Health
+					}
+					// we consider it healthy only when member is healthy and synced is true
+					return !(healthy && tc.Status.PD.Synced), nil
+				})
 			framework.ExpectNoError(err, "waiting for the pd to be in unhealthy state")
 
 			ginkgo.By("Join cluster-2 into cluster-1 when pd failed")
