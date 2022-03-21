@@ -157,7 +157,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 				setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 				return nil
 			} else {
-				klog.Warning("TiKV %s/%s store %s in status is not equal with store %s in label",
+				klog.Warningf("TiKV %s/%s store %s in status is not equal with store %s in label",
 					ns, podName, storeID, pod.Labels[label.StoreIDLabelKey])
 			}
 		}
@@ -184,7 +184,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 				return fmt.Errorf("TiKV %s/%s is not ready, wait for 5 resync periods to sync its status", ns, podName)
 			}
 
-			klog.Warning("TiKV %s/%s is not ready, scale in it after waiting for 5 resync periods", ns, podName)
+			klog.Warningf("TiKV %s/%s is not ready, scale in it after waiting for 5 resync periods", ns, podName)
 		}
 
 		pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
