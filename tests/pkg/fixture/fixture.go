@@ -122,7 +122,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				Config: func() *v1alpha1.PDConfigWraper {
 					c := v1alpha1.NewPDConfig()
 					c.Set("log.level", "info")
-					c.Set("schedule.max-store-down-time", "5m")
+					c.Set("schedule.max-store-down-time", "2m")
 					return c
 				}(),
 				ComponentSpec: v1alpha1.ComponentSpec{

@@ -1189,7 +1189,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
 
 			ginkgo.By("Waiting for failover pods to be deleted after recovery")
-			err, lastReason = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+			err, lastReason = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*8, func() (bool, error, string) {
 				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
 
 				for _, pod := range pods {
@@ -2707,6 +2707,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale %s PD", op)
 
+					ginkgo.By("Wait for cluster to become ready")
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", ns, tc.Name)
 
@@ -3309,6 +3310,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = oa.WaitForTidbClusterInitRandomPassword(tc, fw, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "Expected tidbcluster connect success")
 		})
+
 		ginkgo.It("deploy tls tidb cluster with random password", func() {
 			tcName := "tls-random-password"
 
