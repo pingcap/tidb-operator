@@ -708,6 +708,8 @@ func TestGetEvictLeaderSchedulersForStores(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		t.Logf("test case: %s", tc.name)
+
 		svc := getClientServer(func(w http.ResponseWriter, request *http.Request) {
 			g.Expect(request.Method).To(Equal(expectHTTPMethod), "check method")
 			g.Expect(request.URL.Path).To(Equal(expectURLPath), "check url")
