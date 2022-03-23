@@ -86,17 +86,15 @@ func TestManagerGC(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type subcase struct {
+		desc string
 		// maxBackupsConf contains three entries, which are MaxBackups, MaxCompletedBackups, MaxFailedBackups respectively.
-		maxBackupsConf [3]*int32
-		// maxCompletedBackups *int32
-		// maxFailedBackups    *int32
+		maxBackupsConf  [3]*int32
 		maxReservedTime *string
 		// expectedBackups contains four entries, which are expectedBackups, expectedCompletedBackups, expectedFailedBackups respectively.
 		expectedBackups               [3]int
 		expectedBackupsByReservedTime int
 
 		initFn func(hp *helper, m *backupScheduleManager, bs *v1alpha1.BackupSchedule)
-		desc   string
 	}
 
 	init := func(helper *helper, m *backupScheduleManager, bs *v1alpha1.BackupSchedule) {
