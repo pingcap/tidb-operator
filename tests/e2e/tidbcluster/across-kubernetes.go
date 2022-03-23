@@ -243,7 +243,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update cluster domain of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
-			err = oa.WaitForTidbClusterReady(tc1, 10*time.Minute, 30*time.Second)
+			err = oa.WaitForTidbClusterReady(tc1, 30*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "failed to wait for cluster-1 ready: %s/%s", tc1.Namespace, tc1.Name)
 
 			localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, tc1.Namespace, fmt.Sprintf("svc/%s-pd", tc1.Name), 2379)
