@@ -167,7 +167,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tc.Spec.TiDB.Replicas = 2
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 			ginkgo.By("Set tikv partition annotation to 1")
@@ -218,7 +218,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			framework.ExpectNoError(err, "failed to set TidbCluster annotation to nil: %v", tc)
 
 			// TODO: find a more graceful way to check tidbcluster during upgrading
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})
