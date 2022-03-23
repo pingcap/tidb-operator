@@ -16,6 +16,7 @@ package backupschedule
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -162,14 +163,14 @@ func TestManagerGC(t *testing.T) {
 		},
 	}
 
-	for _, c := range cases {
+	for i, c := range cases {
 		t.Log(c.desc)
 		helper := newHelper(t)
 		defer helper.close()
 		deps := helper.deps
 		bs := &v1alpha1.BackupSchedule{}
 		bs.Namespace = "ns"
-		bs.Name = "bsname"
+		bs.Name = "bsname" + strconv.Itoa(i)
 		bs.Spec.Schedule = "0 0 * * *" // Run at midnight every day
 		m := NewBackupScheduleManager(deps).(*backupScheduleManager)
 		c.initFn(helper, m, bs)
