@@ -167,8 +167,8 @@ func TestManagerGC(t *testing.T) {
 		defer helper.close()
 		deps := helper.deps
 		bs := &v1alpha1.BackupSchedule{}
-		bs.Namespace = "ns"
-		bs.Name = "bsname" + strconv.Itoa(i)
+		bs.Namespace = "ns" + strconv.Itoa(i)
+		bs.Name = "bsname"
 		bs.Spec.Schedule = "0 0 * * *" // Run at midnight every day
 		m := NewBackupScheduleManager(deps).(*backupScheduleManager)
 		c.initFn(helper, m, bs)

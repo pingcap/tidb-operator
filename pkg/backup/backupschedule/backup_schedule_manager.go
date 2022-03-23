@@ -259,12 +259,7 @@ func (bm *backupScheduleManager) backupGC(bs *v1alpha1.BackupSchedule) {
 		return
 	}
 
-	if bs.Spec.MaxCompletedBackups != nil || bs.Spec.MaxFailedBackups != nil {
-		bm.backupGCByPolicy(bs)
-	}
-
-	// if MaxBackups are set, we will continue to cleanup backups according to maxBackups
-	if bs.Spec.MaxBackups != nil && *bs.Spec.MaxBackups > 0 {
+	if (bs.Spec.MaxBackups != nil && *bs.Spec.MaxBackups > 0) || bs.Spec.MaxCompletedBackups != nil || bs.Spec.MaxFailedBackups != nil {
 		bm.backupGCByMaxBackups(bs)
 		return
 	}
@@ -306,59 +301,55 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 	}
 }
 
-func (bm *backupScheduleManager) backupGCByPolicy(bs *v1alpha1.BackupSchedule) {
-	backupsList, err := bm.getBackupList(bs)
-	if err != nil {
-		klog.Errorf("backupGCByMaxBackups failed, err: %s", err)
-		return
-	}
-
-	failedBackups := []*v1alpha1.Backup{}
-	completedBackups := []*v1alpha1.Backup{}
-
-	for _, backup := range backupsList {
-		if backup.Status.Phase == v1alpha1.BackupComplete {
-			completedBackups = append(completedBackups, backup)
-		} else if backup.Status.Phase == v1alpha1.BackupFailed {
-			failedBackups = append(failedBackups, backup)
-		}
-	}
-
-	if bs.Spec.MaxCompletedBackups != nil {
-		bm.removeOldestBackup(bs, completedBackups, int(*bs.Spec.MaxCompletedBackups))
-	}
-
-	if bs.Spec.MaxFailedBackups != nil {
-		bm.removeOldestBackup(bs, failedBackups, int(*bs.Spec.MaxFailedBackups))
-	}
-}
-
 func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedule) {
 	backupsList, err := bm.getBackupList(bs)
 	if err != nil {
 		klog.Errorf("backupGCByMaxBackups failed, err: %s", err)
 		return
 	}
-
-	bm.removeOldestBackup(bs, backupsList, int(*bs.Spec.MaxBackups))
-}
-
-func (bm *backupScheduleManager) removeOldestBackup(bs *v1alpha1.BackupSchedule, backupsList []*v1alpha1.Backup, maxBackups int) {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
 	sort.Sort(byCreateTimeDesc(backupsList))
+	complCnt, failedCnt, totalCnt := 0, 0, 0
+	for _, backup := range backupsList {
+		if bs.Spec.MaxCompletedBackups != nil && v1alpha1.IsBackupComplete(backup) {
+			if complCnt >= int(*bs.Spec.MaxCompletedBackups) {
+				if err := bm.deps.BackupControl.DeleteBackup(backup); err != nil {
+					klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+					return
+				}
+				klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+				continue
+			} else {
+				complCnt++
+				totalCnt++
+			}
+		} else if bs.Spec.MaxFailedBackups != nil && v1alpha1.IsBackupFailed(backup) {
+			if failedCnt >= int(*bs.Spec.MaxFailedBackups) {
+				if err := bm.deps.BackupControl.DeleteBackup(backup); err != nil {
+					klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+					return
+				}
+				// TODO(just1900): Do we need to change Status.LastBackup if the deleted backup is the last?
+				klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+				continue
+			} else {
+				failedCnt++
+				totalCnt++
+			}
+		} else {
+			totalCnt++
+		}
 
-	for i, backup := range backupsList {
-		if i < maxBackups {
-			continue
+		if bs.Spec.MaxBackups != nil && int(*bs.Spec.MaxBackups) > 0 && totalCnt > int(*bs.Spec.MaxBackups) {
+			totalCnt--
+			if err := bm.deps.BackupControl.DeleteBackup(backup); err != nil {
+				klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+				return
+			}
+			klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 		}
-		// delete the backup
-		if err := bm.deps.BackupControl.DeleteBackup(backup); err != nil {
-			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
-			return
-		}
-		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 	}
 }
 
