@@ -1338,10 +1338,12 @@ spec:
                 format: int32
                 type: integer
               maxCompletedBackups:
+                default: 3
                 format: int32
                 minimum: 1
                 type: integer
               maxFailedBackups:
+                default: 1
                 format: int32
                 type: integer
               maxReservedTime:

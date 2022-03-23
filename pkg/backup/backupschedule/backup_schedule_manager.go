@@ -253,26 +253,21 @@ func createBackup(bkController controller.BackupControlInterface, bs *v1alpha1.B
 }
 
 func (bm *backupScheduleManager) backupGC(bs *v1alpha1.BackupSchedule) {
-	ns := bs.GetNamespace()
-	bsName := bs.GetName()
-
 	// if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred.
 	if bs.Spec.MaxReservedTime != nil {
 		bm.backupGCByMaxReservedTime(bs)
 		return
 	}
 
-	//
 	if bs.Spec.MaxCompletedBackups != nil || bs.Spec.MaxFailedBackups != nil {
 		bm.backupGCByPolicy(bs)
 	}
 
+	// if MaxBackups are set, we will continue to cleanup backups according to maxBackups
 	if bs.Spec.MaxBackups != nil && *bs.Spec.MaxBackups > 0 {
 		bm.backupGCByMaxBackups(bs)
 		return
 	}
-	// TODO: When the backup schedule gc policy is not set, we should set a default backup gc policy.
-	klog.Warningf("backup schedule %s/%s does not set backup gc policy", ns, bsName)
 }
 
 func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSchedule) {

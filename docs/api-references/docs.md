@@ -487,8 +487,7 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxCompletedBackups specifies the number of completed backups to retain
-total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups</p>
+<p>MaxCompletedBackups specifies the number of completed backups to retain. It should be greater than 0, defaults to 3.</p>
 </td>
 </tr>
 <tr>
@@ -500,8 +499,7 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxFailedBackups specifies the number of failed backups to retain.
-total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups</p>
+<p>MaxFailedBackups specifies the number of failed backups to retain. It should be non-negative integer, defaults to 1.</p>
 </td>
 </tr>
 <tr>
@@ -3178,8 +3176,7 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxCompletedBackups specifies the number of completed backups to retain
-total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups</p>
+<p>MaxCompletedBackups specifies the number of completed backups to retain. It should be greater than 0, defaults to 3.</p>
 </td>
 </tr>
 <tr>
@@ -3191,8 +3188,7 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxFailedBackups specifies the number of failed backups to retain.
-total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups</p>
+<p>MaxFailedBackups specifies the number of failed backups to retain. It should be non-negative integer, defaults to 1.</p>
 </td>
 </tr>
 <tr>

@@ -822,14 +822,14 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 					},
 					"maxCompletedBackups": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MaxCompletedBackups specifies the number of completed backups to retain total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups",
+							Description: "MaxCompletedBackups specifies the number of completed backups to retain. It should be greater than 0, defaults to 3.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
 					"maxFailedBackups": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MaxFailedBackups specifies the number of failed backups to retain. total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups",
+							Description: "MaxFailedBackups specifies the number of failed backups to retain. It should be non-negative integer, defaults to 1.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},

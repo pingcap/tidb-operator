@@ -79,50 +79,121 @@ func TestManager(t *testing.T) {
 	err = m.canPerformNextBackup(bs)
 	g.Expect(err).Should(BeAssignableToTypeOf(&controller.RequeueError{}))
 	helper.deleteBackup(bk)
+}
 
-	t.Log("start test normal Sync")
-	bk.Status.Conditions = nil
-	bs.Spec.Schedule = "0 0 * * *" // Run at midnight every day
+func TestManagerGC(t *testing.T) {
+	g := NewGomegaWithT(t)
 
-	now := time.Now()
-	m.now = func() time.Time { return now.AddDate(0, 0, -101) }
-	m.resetLastBackup(bs)
-	// 10 backup, one per day
-	for i := -9; i <= 0; i++ {
-		t.Log("loop id ", i)
-		m.now = func() time.Time { return now.AddDate(0, 0, i) }
-		err = m.Sync(bs)
-		g.Expect(err).Should(BeNil())
-		bks := helper.checkBacklist(bs.Namespace, i+10)
-		// complete the backup created
-		for i := range bks.Items {
-			bk := bks.Items[i]
-			changed := v1alpha1.UpdateBackupCondition(&bk.Status, &v1alpha1.BackupCondition{
-				Type:   v1alpha1.BackupComplete,
-				Status: v1.ConditionTrue,
-			})
-			if changed {
-				bk.CreationTimestamp = metav1.Time{Time: m.now()}
-				t.Log("complete backup: ", bk.Name)
-				helper.updateBackup(&bk)
-			}
+	type subcase struct {
+		// maxBackupsConf contains three entries, which are MaxBackups, MaxCompletedBackups, MaxFailedBackups respectively.
+		maxBackupsConf [3]*int32
+		// maxCompletedBackups *int32
+		// maxFailedBackups    *int32
+		maxReservedTime *string
+		// expectedBackups contains four entries, which are expectedBackups, expectedCompletedBackups, expectedFailedBackups respectively.
+		expectedBackups               [3]int
+		expectedBackupsByReservedTime int
+
+		initFn func(hp *helper, m *backupScheduleManager, bs *v1alpha1.BackupSchedule)
+		desc   string
+	}
+
+	init := func(helper *helper, m *backupScheduleManager, bs *v1alpha1.BackupSchedule) {
+		now := time.Now()
+		m.now = func() time.Time { return now.AddDate(0, 0, -101) }
+		m.resetLastBackup(bs)
+		// create first 5 CompletedBackups and last 5 FailedBackups, one per day
+		for i := -9; i <= 0; i++ {
+			t.Log("loop id ", i)
+			m.now = func() time.Time { return now.AddDate(0, 0, i) }
+			err := m.Sync(bs)
 			g.Expect(err).Should(BeNil())
+			bks := helper.checkBacklist(bs.Namespace, i+10, nil)
+			for i := range bks.Items {
+				cond := v1alpha1.BackupFailed
+				if i < 5 {
+					cond = v1alpha1.BackupComplete
+				}
+				bk := bks.Items[i]
+				v1alpha1.UpdateBackupCondition(&bk.Status, &v1alpha1.BackupCondition{
+					Type:   v1alpha1.BackupScheduled,
+					Status: v1.ConditionTrue,
+				})
+				changed := v1alpha1.UpdateBackupCondition(&bk.Status, &v1alpha1.BackupCondition{
+					Type:   cond,
+					Status: v1.ConditionTrue,
+				})
+				if changed {
+					bk.CreationTimestamp = metav1.Time{Time: m.now()}
+					helper.updateBackup(&bk)
+				}
+			}
 		}
 	}
 
-	t.Log("test setting MaxBackups")
-	m.now = time.Now
-	bs.Spec.MaxBackups = pointer.Int32Ptr(3)
-	err = m.Sync(bs)
-	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 3)
+	cases := []subcase{
+		{
+			desc:                          "setting MaxBackups and MaxReserveTime",
+			maxBackupsConf:                [3]*int32{pointer.Int32Ptr(5)},
+			maxReservedTime:               pointer.StringPtr("23h"),
+			initFn:                        init,
+			expectedBackups:               [3]int{5, -1, -1},
+			expectedBackupsByReservedTime: 1,
+		},
+		{
+			desc:            "setting MaxBackups, MaxCompletedBackups, MaxFailedBackups",
+			maxBackupsConf:  [3]*int32{pointer.Int32Ptr(2), pointer.Int32Ptr(3), pointer.Int32Ptr(1)},
+			initFn:          init,
+			expectedBackups: [3]int{2, 1, 1},
+		},
+		{
+			desc:            "setting MaxCompletedBackups, MaxFailedBackups without MaxBackups",
+			maxBackupsConf:  [3]*int32{nil, pointer.Int32Ptr(1), pointer.Int32Ptr(0)},
+			initFn:          init,
+			expectedBackups: [3]int{1, 1, 0},
+		},
+		{
+			desc:                          "setting MaxFailedBackups with MaxReservedTime",
+			maxBackupsConf:                [3]*int32{nil, nil, pointer.Int32Ptr(1)},
+			maxReservedTime:               pointer.StringPtr("23h"),
+			initFn:                        init,
+			expectedBackups:               [3]int{6, 5, 1},
+			expectedBackupsByReservedTime: 1,
+		},
+	}
 
-	t.Log("test setting setting MaxReservedTime")
-	bs.Spec.MaxBackups = nil
-	bs.Spec.MaxReservedTime = pointer.StringPtr("23h")
-	err = m.Sync(bs)
-	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 1)
+	for _, c := range cases {
+		t.Log(c.desc)
+		helper := newHelper(t)
+		defer helper.close()
+		deps := helper.deps
+		bs := &v1alpha1.BackupSchedule{}
+		bs.Namespace = "ns"
+		bs.Name = "bsname"
+		bs.Spec.Schedule = "0 0 * * *" // Run at midnight every day
+		m := NewBackupScheduleManager(deps).(*backupScheduleManager)
+		c.initFn(helper, m, bs)
+		m.now = time.Now
+		bs.Spec.MaxBackups, bs.Spec.MaxCompletedBackups, bs.Spec.MaxFailedBackups = c.maxBackupsConf[0], c.maxBackupsConf[1], c.maxBackupsConf[2]
+		// perform backupGC
+		err := m.Sync(bs)
+		g.Expect(err).Should(BeNil())
+
+		helper.checkBacklist(bs.Namespace, c.expectedBackups[0], nil)
+		if c.expectedBackups[1] != -1 {
+			helper.checkBacklist(bs.Namespace, c.expectedBackups[1], v1alpha1.IsBackupComplete)
+		}
+		if c.expectedBackups[2] != -1 {
+			helper.checkBacklist(bs.Namespace, c.expectedBackups[2], v1alpha1.IsBackupFailed)
+		}
+
+		if c.maxReservedTime != nil {
+			bs.Spec.MaxReservedTime = c.maxReservedTime
+			err = m.Sync(bs)
+			g.Expect(err).Should(BeNil())
+			helper.checkBacklist(bs.Namespace, c.expectedBackupsByReservedTime, nil)
+		}
+	}
 }
 
 func TestGetLastScheduledTime(t *testing.T) {
@@ -246,7 +317,7 @@ func (h *helper) close() {
 }
 
 // check for exists num Backup and return the exists backups "BackupList".
-func (h *helper) checkBacklist(ns string, num int) (bks *v1alpha1.BackupList) {
+func (h *helper) checkBacklist(ns string, num int, cond func(*v1alpha1.Backup) bool) (bks *v1alpha1.BackupList) {
 	t := h.t
 	deps := h.deps
 	g := NewGomegaWithT(t)
@@ -256,6 +327,15 @@ func (h *helper) checkBacklist(ns string, num int) (bks *v1alpha1.BackupList) {
 		var err error
 		bks, err = deps.Clientset.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
 		g.Expect(err).Should(BeNil())
+		if cond != nil {
+			filtered := bks.Items[:0]
+			for i := range bks.Items {
+				if cond(&bks.Items[i]) {
+					filtered = append(filtered, bks.Items[i])
+				}
+			}
+			bks.Items = filtered
+		}
 		if len(bks.Items) != num {
 			var names []string
 			for _, bk := range bks.Items {
@@ -269,7 +349,17 @@ func (h *helper) checkBacklist(ns string, num int) (bks *v1alpha1.BackupList) {
 	g.Eventually(func() error {
 		var err error
 		bks, err := deps.BackupLister.Backups(ns).List(labels.Everything())
-		if err == nil && len(bks) == num {
+		g.Expect(err).Should(BeNil())
+		if cond != nil {
+			filtered := bks[:0]
+			for i := range bks {
+				if cond(bks[i]) {
+					filtered = append(filtered, bks[i])
+				}
+			}
+			bks = filtered
+		}
+		if len(bks) == num {
 			return nil
 		}
 		return fmt.Errorf("there %d backup, but should be %d", len(bks), num)

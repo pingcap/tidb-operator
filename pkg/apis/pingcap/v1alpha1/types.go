@@ -1763,13 +1763,13 @@ type BackupScheduleSpec struct {
 	// if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
 	// and MaxBackups is ignored.
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
-	// MaxCompletedBackups specifies the number of completed backups to retain
-	// total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups
+	// MaxCompletedBackups specifies the number of completed backups to retain. It should be greater than 0, defaults to 3.
+	// +kubebuilder:default:=3
 	// +kubebuilder:validation:Minimum:=1
 	// +optional
 	MaxCompletedBackups *int32 `json:"maxCompletedBackups,omitempty"`
-	// MaxFailedBackups specifies the number of failed backups to retain.
-	// total number of MaxCompletedBackups and MaxFailedBackups should not be greater than MaxBackups
+	// MaxFailedBackups specifies the number of failed backups to retain. It should be non-negative integer, defaults to 1.
+	// +kubebuilder:default:=1
 	// +optional
 	MaxFailedBackups *int32 `json:"maxFailedBackups,omitempty"`
 	// MaxReservedTime is to specify how long backups we want to keep.
