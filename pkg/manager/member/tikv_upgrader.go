@@ -263,6 +263,10 @@ func endEvictLeaderForAllStore(deps *controller.Dependencies, tc *v1alpha1.TidbC
 	if err != nil {
 		return fmt.Errorf("get scheduler failed: %v", err)
 	}
+	if len(scheduelrs) == 0 {
+		klog.Infof("tikv: no evict leader scheduler exists for %s/%s", tc.Namespace, tc.Name)
+		return nil
+	}
 
 	errs := make([]error, 0)
 	for storeID := range scheduelrs {
