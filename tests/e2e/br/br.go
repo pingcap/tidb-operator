@@ -192,11 +192,11 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for backup TiDB cluster ready")
-			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for restore TiDB cluster ready")
-			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
 			framework.ExpectNoError(err)
 		}
 
@@ -336,7 +336,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for backup TiDB cluster ready")
-			err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Forward backup TiDB cluster service")
@@ -493,7 +493,7 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, namespa
 	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns1).Create(context.TODO(), tc1, metav1.CreateOptions{}); err != nil {
 		return err
 	}
-	err := utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns1, name, tidbReadyTimeout, 0)
+	err := utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns1, name, tidbReadyTimeout, 0)
 	if err != nil {
 		return err
 	}
@@ -502,7 +502,7 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, namespa
 	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns2).Create(context.TODO(), tc2, metav1.CreateOptions{}); err != nil {
 		return err
 	}
-	err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns2, name, tidbReadyTimeout, 0)
+	err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns2, name, tidbReadyTimeout, 0)
 	if err != nil {
 		return err
 	}
@@ -511,7 +511,7 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, namespa
 	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns3).Create(context.TODO(), tc3, metav1.CreateOptions{}); err != nil {
 		return err
 	}
-	err = utiltidbcluster.WaitForTidbClusterConditionReady(f.ExtClient, ns3, name, tidbReadyTimeout, 0)
+	err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns3, name, tidbReadyTimeout, 0)
 	if err != nil {
 		return err
 	}

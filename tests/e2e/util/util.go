@@ -111,3 +111,25 @@ func WaitForCRDNotFound(client apiextensionsclientset.Interface, name string) er
 		return false, nil
 	})
 }
+
+// PollImmediateWithReason calls 'wait.PollImmediate' and return last reason
+func PollImmediateWithReason(interval, timeout time.Duration, cond func() (bool, error, string /*reason*/)) (error, string) {
+	lastReason := ""
+	err := wait.PollImmediate(interval, timeout, func() (done bool, err error) {
+		done, err, reason := cond()
+		lastReason = reason
+		return done, err
+	})
+	return err, lastReason
+}
+
+// PollWithReason calls 'wait.Poll' and return last reason
+func PollWithReason(interval, timeout time.Duration, cond func() (bool, error, string /*reason*/)) (error, string) {
+	lastReason := ""
+	err := wait.Poll(interval, timeout, func() (done bool, err error) {
+		done, err, reason := cond()
+		lastReason = reason
+		return done, err
+	})
+	return err, lastReason
+}
