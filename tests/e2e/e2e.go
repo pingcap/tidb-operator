@@ -22,7 +22,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -395,16 +394,15 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 
 	if framework.TestContext.ReportDir != "" {
 		ginkgo.By("Dumping logs for tidb-operator")
-		logPath := filepath.Join(framework.TestContext.ReportDir, "logs", "tidb-operator")
-		// full permission (0777) for the log directory to avoid "permission denied" for later kubetest2 log dump.
-		framework.ExpectNoError(os.MkdirAll(logPath, 0777), "failed to create log directory for tidb-operator components")
+		err = dumpPodsForOperator(kubeCli, framework.TestContext.ReportDir, ocfg.Namespace)
+		if err != nil {
+			framework.Logf("failed to dump pods for tidb-operator: %v", err)
+		}
 
-		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(context.TODO(), metav1.ListOptions{})
-		framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
-		for _, pod := range podList.Items {
-			log.Logf("dumping logs for pod %s/%s", pod.Namespace, pod.Name)
-			err2 = tests.DumpPod(logPath, &pod)
-			framework.ExpectNoError(err2, "failed to dump log for pod %s/%s", pod.Namespace, pod.Name)
+		ginkgo.By("Dumping resources for tidb-operator")
+		err := dumpResoures(cli, kubeCli, framework.TestContext.ReportDir)
+		if err != nil {
+			framework.Logf("failed to dump resources for tidb-operator: %v", err)
 		}
 	}
 

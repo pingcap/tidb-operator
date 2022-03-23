@@ -16,11 +16,13 @@ package tests
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 
+	"github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -122,4 +124,27 @@ func dumpLog(cmdStr string, writer *bufio.Writer) {
 	if err != nil {
 		writer.WriteString(err.Error())
 	}
+}
+
+func DumpResource(dir string, typ string, obj metav1.Object) error {
+	obj.SetManagedFields(nil)
+
+	jsonBytes, err := json.MarshalIndent(obj, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	yamlBytes, err := yaml.JSONToYAML(jsonBytes)
+	if err != nil {
+		return err
+	}
+
+	filename := fmt.Sprintf("%s_%s_%s.yaml", typ, obj.GetName(), obj.GetNamespace())
+	filepath := filepath.Join(dir, filename)
+	err = os.WriteFile(filepath, yamlBytes, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

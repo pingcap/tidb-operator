@@ -14,11 +14,19 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
+	"path/filepath"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/tests"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2emetrics "k8s.io/kubernetes/test/e2e/framework/metrics"
 )
@@ -77,6 +85,83 @@ func gatherTestSuiteMetrics() error {
 		}
 	} else {
 		framework.Logf("\n\nTest Suite Metrics:\n%s\n", metricsJSON)
+	}
+
+	return nil
+}
+
+func dumpPodsForOperator(kubecli kubernetes.Interface, reportDir string, ns string) error {
+	dumpDir := filepath.Join(framework.TestContext.ReportDir, "logs", "tidb-operator")
+	// full permission (0777) for the log directory to avoid "permission denied" for later kubetest2 log dump.
+	err := os.MkdirAll(dumpDir, 0777)
+	if err != nil {
+		return fmt.Errorf("failed to create directory %s: %v", dumpDir, err)
+	}
+
+	podList, err := kubecli.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("list pods in ns %s failed: %v", ns, err)
+	}
+
+	for _, pod := range podList.Items {
+		err = tests.DumpPod(dumpDir, &pod)
+		if err != nil {
+			return fmt.Errorf("failed to dump log for pod %s/%s: %s", pod.Namespace, pod.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func dumpResoures(cli versioned.Interface, kubecli kubernetes.Interface, reportDir string) error {
+	dumpDir := filepath.Join(framework.TestContext.ReportDir, "resources", "tidb-operator")
+	err := os.MkdirAll(dumpDir, 0777)
+	if err != nil {
+		return fmt.Errorf("failed to create directory %s: %v", dumpDir, err)
+	}
+
+	// list resources
+	objs := make(map[string]metav1.Object)
+	list, err := kubecli.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	if len(list.Items) == 0 {
+		return nil
+	}
+	for _, namespace := range list.Items {
+		ns := namespace.Name
+
+		tclist, err := cli.PingcapV1alpha1().TidbClusters(ns).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("list tidbclusters failed: %v", err)
+		}
+		for i := range tclist.Items {
+			objs["tidbcluster"] = &tclist.Items[i]
+		}
+
+		backupList, err := cli.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("list backups failed: %v", err)
+		}
+		for i := range backupList.Items {
+			objs["backup"] = &backupList.Items[i]
+		}
+
+		restoreList, err := cli.PingcapV1alpha1().Restores(ns).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("list restores failed: %v", err)
+		}
+		for i := range restoreList.Items {
+			objs["restore"] = &restoreList.Items[i]
+		}
+	}
+
+	// dump resources
+	for typ, obj := range objs {
+		if err := tests.DumpResource(dumpDir, typ, obj); err != nil {
+			return fmt.Errorf("failed to dump %s %s/%s: %v", typ, obj.GetNamespace(), obj.GetName(), err)
+		}
 	}
 
 	return nil
