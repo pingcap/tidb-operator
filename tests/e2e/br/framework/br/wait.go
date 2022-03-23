@@ -20,6 +20,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	e2eutil "github.com/pingcap/tidb-operator/tests/e2e/util"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,16 +34,21 @@ var (
 
 // WaitForBackupDeleted will poll and wait until timeout or backup is really deleted
 func WaitForBackupDeleted(c versioned.Interface, ns, name string, timeout time.Duration) error {
-	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+	err, lastReason := e2eutil.PollImmediateWithReason(poll, timeout, func() (bool, error, string) {
 		if _, err := c.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
 			if errors.IsNotFound(err) {
-				return true, nil
+				return true, nil, ""
 			}
-			// check error is retriable
-			return false, err
+			// TODO: check error is retriable
+			return false, err, ""
 		}
-		return false, nil
-	}); err != nil {
+		return false, nil, fmt.Sprintf("backup %s still exists", name)
+	})
+
+	if err == wait.ErrWaitTimeout {
+		return fmt.Errorf("timed puit waiting for backup deleted, last reason: %s", lastReason)
+	}
+	if err != nil {
 		return fmt.Errorf("can't wait for backup deleted: %v", err)
 	}
 	return nil
