@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -141,7 +142,7 @@ func DumpResource(dir string, typ string, obj metav1.Object) error {
 
 	filename := fmt.Sprintf("%s_%s_%s.yaml", typ, obj.GetName(), obj.GetNamespace())
 	filepath := filepath.Join(dir, filename)
-	err = os.WriteFile(filepath, yamlBytes, 0644)
+	err = ioutil.WriteFile(filepath, yamlBytes, 0644)
 	if err != nil {
 		return err
 	}
