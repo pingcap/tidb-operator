@@ -352,7 +352,14 @@ func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) 
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 	}
-	password := util.FixedLengthRandomPasswordBytes()
+	var password []byte
+	for {
+		password = util.FixedLengthRandomPasswordBytes()
+		// check password not contain "\" character
+		if !strings.Contains(string(password), "\\") {
+			break
+		}
+	}
 	s.Data = map[string][]byte{
 		constants.TidbRootKey: password,
 	}
