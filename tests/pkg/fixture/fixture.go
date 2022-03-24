@@ -684,7 +684,7 @@ func AddTiCDCForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 		Replicas:  1,
 		Config: func() *v1alpha1.CDCConfigWraper {
 			cfg := v1alpha1.NewCDCConfig()
-			cfg.SetIfNil("log-file", "") // to avoid rolling upgrade due to # when upgrading operator
+			cfg.SetIfNil("log-file", "") // to avoid rolling upgrade due to PR #4494 when upgrading operator
 			return cfg
 		}(),
 	}
