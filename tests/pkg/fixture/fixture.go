@@ -682,7 +682,11 @@ func AddTiCDCForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{
 		BaseImage: "pingcap/ticdc",
 		Replicas:  1,
-		Config:    v1alpha1.NewCDCConfig(),
+		Config: func() *v1alpha1.CDCConfigWraper {
+			cfg := v1alpha1.NewCDCConfig()
+			cfg.SetIfNil("log-file", "") // to avoid rolling upgrade due to # when upgrading operator
+			return cfg
+		}(),
 	}
 	return tc
 }
