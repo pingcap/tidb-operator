@@ -2438,3 +2438,16 @@ func mustTiDBConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
 
 	return c
 }
+
+func TestBuildRandomPasswordSecret(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "basic",
+		},
+	}
+	tmm, _, _, _ := newFakeTiDBMemberManager()
+	_, password := tmm.BuildRandomPasswordSecret(tc)
+	g.Expect(!strings.Contains(password, "\\")).Should(BeTrue())
+
+}
