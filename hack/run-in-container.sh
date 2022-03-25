@@ -98,7 +98,7 @@ docker_args+=(
     -e DOCKER_IN_DOCKER_ENABLED=true
     # Docker in Docker expects it to be a volume
     -v $DOCKER_LIB_VOLUME:/var/lib/docker
-    -v $DOCKER_GRAPH_VOLUME:/docker-graph # legacy path for gcr.io/k8s-testimages/kubekins-e2e
+    -v $DOCKER_GRAPH_VOLUME:/docker-graph # legacy path for gcr.io/k8s-staging-test-infra/kubekins-e2e
     # golang cache
     -v $DOCKER_GO_VOLUME:/go
     # golang xdg cache directory
@@ -144,5 +144,5 @@ docker run ${docker_args[@]} \
     -v $ROOT:/go/src/github.com/pingcap/tidb-operator \
     -w /go/src/github.com/pingcap/tidb-operator \
     --entrypoint /usr/local/bin/runner.sh \
-    gcr.io/k8s-testimages/kubekins-e2e:v20200311-1e25827-master \
+    gcr.io/k8s-staging-test-infra/kubekins-e2e:v20220323-55ba9f6da3-master \
     "${args[@]}"

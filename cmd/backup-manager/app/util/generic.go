@@ -97,7 +97,7 @@ func (bo *GenericOptions) GetTikvGCLifeTime(ctx context.Context, db *sql.DB) (st
 }
 
 func (bo *GenericOptions) SetTikvGCLifeTime(ctx context.Context, db *sql.DB, gcTime string) error {
-	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
+	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable) // nolint: gosec
 	_, err := db.ExecContext(ctx, sql, gcTime, constants.TikvGCVariable)
 	if err != nil {
 		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)

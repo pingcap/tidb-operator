@@ -10,19 +10,12 @@ jobs:
 
   pull:
     runs-on: ubuntu-20.04
-    steps:
-    - name: Set up Go 1.16
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.16.4
-      id: go
-
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
+    - name: "set up golang"
+      uses: actions/setup-go@v3
       with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        path: go/src/github.com/${{ github.repository }}
-
+        go-version-file: 'go.mod'
     - name: Creating kind cluster
       run: |
         SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_DOWN=y SKIP_TEST=y KUBE_WORKERS=0 ./hack/e2e.sh
@@ -38,7 +31,6 @@ jobs:
         echo "info: create pingcap namespace for chaos configurations"
         kubectl create ns pingcap
       working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
-
     - name: Run chaos mesh
       uses: chaos-mesh/chaos-mesh-actions@master
       env:
@@ -48,7 +40,6 @@ jobs:
       run: |
         SKIP_UP=y ./hack/e2e.sh -- --ginkgo.focus='Restarter'
       working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
-
     - name: Set up tmate session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3
