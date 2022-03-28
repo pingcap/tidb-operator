@@ -650,7 +650,7 @@ func TestGetEvictLeaderSchedulersForStores(t *testing.T) {
 
 	cases := []testcase{
 		{
-			name:     "all store have evict scheduler",
+			name:     "all stores have evict scheduler",
 			storeIDs: []uint64{1, 7, 8},
 			resp: []byte(`
 [
@@ -666,12 +666,12 @@ func TestGetEvictLeaderSchedulersForStores(t *testing.T) {
 				g.Expect(schedulers).To(HaveLen(len(storeIDs)))
 				for storeID, scheduler := range schedulers {
 					g.Expect(storeIDs).To(ContainElement(storeID), "store id isn't in storeIDs")
-					g.Expect(scheduler).To(Equal(getLeaderEvictSchedulerStr(storeID)), "scheduler is't corresponding to store id")
+					g.Expect(scheduler).To(Equal(getLeaderEvictSchedulerStr(storeID)), "scheduler does not match with the store id")
 				}
 			},
 		},
 		{
-			name:     "some store have evict scheduler",
+			name:     "some stores have evict scheduler",
 			storeIDs: []uint64{1, 7, 10},
 			resp: []byte(`
 [
