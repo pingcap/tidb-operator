@@ -684,6 +684,7 @@ func TestGetEvictLeaderSchedulersForStores(t *testing.T) {
 			expect: func(schedulers map[uint64]string, err error) {
 				g.Expect(err).To(Succeed())
 				storeIDs := []uint64{1, 7, 10}
+				g.Expect(len(schedulers)).To(Equal(2))
 				for storeID, scheduler := range schedulers {
 					g.Expect(storeIDs).To(ContainElement(storeID), "store id isn't in storeIDs")
 					g.Expect(scheduler).To(Equal(getLeaderEvictSchedulerStr(storeID)), "scheduler is't corresponding to store id")
