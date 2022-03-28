@@ -1,4 +1,4 @@
-FROM pingcap/alpine-glibc:alpine-3.14.3
+FROM pingcap/alpine-glibc:alpine-3.14.3-gcompat
 ARG TARGETARCH
 ARG RCLONE_VERSION=v1.51.0
 ARG SHUSH_VERSION=v1.4.0
