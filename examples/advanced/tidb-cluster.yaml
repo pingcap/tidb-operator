@@ -70,7 +70,7 @@ spec:
   #   - http://cluster1-pd-1.cluster1-pd-peer.default.svc:2379
 
   ## Enable mutual TLS connection between TiDB cluster components
-  ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/enable-tls-between-components/
+  ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/enable-tls-between-components/
   # tlsCluster:
   #   enabled: true
 
@@ -134,7 +134,7 @@ spec:
   ## If specified, the pods will be scheduled by the specified scheduler.
   ## Can be overwritten by component settings.
   # schedulerName: default-scheduler
- 
+
   ## PodManagementPolicy default `OrderedReady` for Pump
   ## and default `Parallel` for the other components.
   ## Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#pod-management-policies
@@ -492,6 +492,8 @@ spec:
     ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/enable-tls-for-mysql-client
     # tlsClient:
     #   enabled: true
+    #   disableClientAuthn: false
+    #   skipInternalClientCA: false
 
     ## binlogEnabled will automatically be true if Pump is enabled, otherwise false
     ## set this manually only if you really know what you are doing
@@ -786,7 +788,7 @@ spec:
     # - topologyKey: topology.kubernetes.io/zone
 
   ## Deploy TiDB Binlog of a TiDB cluster
-  ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
+  ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
   # pump:
   #   baseImage: pingcap/tidb-binlog
   #   version: "v5.4.0"
@@ -828,7 +830,7 @@ spec:
   #   - topologyKey: topology.kubernetes.io/zone
 
   ## TiCDC is a tool for replicating the incremental data of TiDB
-  ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
+  ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
   #   version: "v5.4.0"
@@ -873,7 +875,7 @@ spec:
   #   - topologyKey: topology.kubernetes.io/zone
 
   ## TiFlash is the columnar storage extension of TiKV
-  ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tiflash/
+  ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-tiflash/
   # tiflash:
   #   ###############################
   #   # Basic TiFlash Configuration #

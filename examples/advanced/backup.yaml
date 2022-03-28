@@ -5,7 +5,7 @@ metadata:
   namespace: default
 
 spec:
-  ## Describes the compute resource requirements and limits of Backup.  
+  ## Describes the compute resource requirements and limits of Backup.
   ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
   requests:
     cpu: 1000m
@@ -13,7 +13,7 @@ spec:
   limits:
     cpu: 2000m
     memory: 2Gi
-  
+
   ## List of environment variables to set in the container, like v1.Container.Env.
   ## Note that the following builtin env vars will be overwritten by values set here.
   ## - S3_PROVIDER
@@ -47,10 +47,9 @@ spec:
     ## TLSClientSecretName is the name of secret which stores tidb server client certificate.
     ## Defaults to nil.
     # tlsClientSecretName: ""
-  
+
   ## BackupType is the backup type for TidbCluster.
   ## `full` represents the full backup of TidbCluster.
-  ## `raw` represents the raw backup of TidbCluster.
   ## `db` represents the backup of one DB of TidbCluster.
   ## `table` represents the backup of one table of TidbCluster.
   backupType: full
@@ -63,11 +62,11 @@ spec:
 
   ## StorageProvider configures where and how backup data should be stored.
   ## s3/gcs/local are supported.
-  
+
   ## Provider of s3 configuration.
   s3:
-    ## Provider specifies storage provider that implements the S3 interface.
-    ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/backup-restore-overview#s3-storage-fields
+    ## Provider specifies storage provider that implements the S3 interface, check all supported providers in link below.
+    ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/backup-restore-cr#s3-storage-fields
     provider: aws
     ## Region specifies where the S3 compatible bucket is located.
     region: us-west-1
@@ -86,14 +85,14 @@ spec:
     # acl: ""
     ## SecretName specifies the name of secret which stores S3 compliant storage access key and secret key.
     secretName: s3-secret
-    ## Prefix of the data path. If prefix set, 
+    ## Prefix of the data path. If prefix set,
     ## the value is used to make up the remote storage path:`s3://${.spec.s3.bucket}/${.spec.s3.prefix}/backupName`
     # prefix: ""
     ## SSE specifies Sever-Side Encryption. Ref: https://docs.aws.amazon.com/AmazonS3/latest/userguide/serv-side-encryption.html
     # sse: ""
     ## Options specifies extra arguments for backup and restore with mydumper and lightning.
     # options: []
-  
+
   ## Provider of gcs configuration.
   # gcs:
     ## ProjectId represents the project that organizes all your Google Cloud Platform resources.
@@ -125,9 +124,9 @@ spec:
     ## SecretName is the name of secret which stores the gcs service account credentials JSON.
     # secretName: "gcs-secret"
     ## Prefix specifies the data path.
-    ## If set, the value is used to make up the path of the remote storage: `gcs://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`. 
+    ## If set, the value is used to make up the path of the remote storage: `gcs://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`.
     # prefix: ""
-  
+
   # local:
     ## Volume presents the persistent volume configuration.
     ## specify volume types that are supported by Kubernetes, Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes
@@ -198,7 +197,7 @@ spec:
     # options: []
     ## Deprecated. Please use `Spec.TableFilter` instead. TableFilter means Table filter expression for 'db.table' matching
     # tableFilter: []
-  
+
   ## Tolerations are applied to Backup pod, allowing (but do not require) pod to be scheduled onto nodes with matching taints.
   ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
   # tolerations:
@@ -239,9 +238,9 @@ spec:
   ## `OnFailure` represents that the backup data will be cleaned only for the failed backups when the Backup CR is deleted.
   ## `Delete` represents that the backup data will be cleaned when the Backup CR is deleted.
   cleanPolicy: Retain
-  
+
   ## CleanOption controls the behavior of clean.
-  # cleanOption: 
+  # cleanOption:
     ## PageSize specifies the number of files to be deleted in each batch at a time.
     ## Defaults to 10000.
     # pageSize: 10000
