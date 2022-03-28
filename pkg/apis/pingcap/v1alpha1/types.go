@@ -1727,6 +1727,8 @@ type BackupStatus struct {
 // +kubebuilder:resource:shortName="bks"
 // +kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule`,description="The cron format string used for backup scheduling"
 // +kubebuilder:printcolumn:name="MaxBackups",type=integer,JSONPath=`.spec.maxBackups`,description="The max number of backups we want to keep"
+// +kubebuilder:printcolumn:name="MaxCompletedBackups",type=integer,JSONPath=`.spec.maxCompletedBackups`,description="The max completed number of backups we want to keep"
+// +kubebuilder:printcolumn:name="MaxFailedBackups",type=integer,JSONPath=`.spec.maxFailedBackups`,description="The max failed number of backups we want to keep"
 // +kubebuilder:printcolumn:name="LastBackup",type=string,JSONPath=`.status.lastBackup`,description="The last backup CR name",priority=1
 // +kubebuilder:printcolumn:name="LastBackupTime",type=date,JSONPath=`.status.lastBackupTime`,description="The last time the backup was successfully created",priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -1764,11 +1766,15 @@ type BackupScheduleSpec struct {
 	// and MaxBackups is ignored.
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
 	// MaxCompletedBackups specifies the number of completed backups to retain. It should be greater than 0, defaults to 3.
+	// if both MaxCompletedBackups and MaxBackups are set, operator will keep no more than MaxCompletedBackups completed backups,
+	// and no more than MaxBackups backups in total.
 	// +kubebuilder:default:=3
 	// +kubebuilder:validation:Minimum:=1
 	// +optional
 	MaxCompletedBackups *int32 `json:"maxCompletedBackups,omitempty"`
 	// MaxFailedBackups specifies the number of failed backups to retain. It should be non-negative integer, defaults to 1.
+	// if both MaxFailedBackups and MaxBackups are set, operator will keep no more than MaxFailedBackups failed backups,
+	// and no more than MaxBackups backups in total.
 	// +kubebuilder:default:=1
 	// +optional
 	MaxFailedBackups *int32 `json:"maxFailedBackups,omitempty"`

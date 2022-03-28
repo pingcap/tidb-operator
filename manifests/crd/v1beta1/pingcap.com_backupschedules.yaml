@@ -17,6 +17,14 @@ spec:
     description: The max number of backups we want to keep
     name: MaxBackups
     type: integer
+  - JSONPath: .spec.maxCompletedBackups
+    description: The max completed number of backups we want to keep
+    name: MaxCompletedBackups
+    type: integer
+  - JSONPath: .spec.maxFailedBackups
+    description: The max failed number of backups we want to keep
+    name: MaxFailedBackups
+    type: integer
   - JSONPath: .status.lastBackup
     description: The last backup CR name
     name: LastBackup

@@ -90,7 +90,7 @@ func TestManagerGC(t *testing.T) {
 		// maxBackupsConf contains three entries, which are MaxBackups, MaxCompletedBackups, MaxFailedBackups respectively.
 		maxBackupsConf  [3]*int32
 		maxReservedTime *string
-		// expectedBackups contains four entries, which are expectedBackups, expectedCompletedBackups, expectedFailedBackups respectively.
+		// expectedBackups contains three entries, which are expectedBackups, expectedCompletedBackups, expectedFailedBackups respectively.
 		expectedBackups               [3]int
 		expectedBackupsByReservedTime int
 
