@@ -2443,9 +2443,8 @@ func mustTiDBConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
 
 func TestBuildRandomPasswordSecret(t *testing.T) {
 	g := NewGomegaWithT(t)
-	patch := gomonkey.NewPatches()
-	gomonkey.ApplyFunc(util.FixedLengthRandomPasswordBytes, func() []byte {
-		return []byte(".FBV3\\`wQ20h6") // return the invalid string firstly
+	patch := gomonkey.ApplyFunc(util.FixedLengthRandomPasswordBytes, func() []byte {
+		return []byte("1234") // return the invalid string firstly
 	})
 	defer patch.Reset()
 
