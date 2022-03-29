@@ -16,6 +16,8 @@ package member
 import (
 	"context"
 	"fmt"
+	"github.com/agiledragon/gomonkey/v2"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"path"
 	"strings"
 	"testing"
@@ -2441,6 +2443,12 @@ func mustTiDBConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
 
 func TestBuildRandomPasswordSecret(t *testing.T) {
 	g := NewGomegaWithT(t)
+	patch := gomonkey.NewPatches()
+	gomonkey.ApplyFunc(util.FixedLengthRandomPasswordBytes, func() []byte {
+		return []byte(".FBV3\\`wQ20h6") // return the invalid string firstly
+	})
+	defer patch.Reset()
+
 	tc := &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "basic",
