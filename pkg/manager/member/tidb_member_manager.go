@@ -267,7 +267,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		return
 	}
 	// TiDB service has endpoints
-	if eps != nil && len(eps.Subsets[0].Addresses) > 0 {
+	if eps != nil && len(eps.Subsets) != 0 && len(eps.Subsets[0].Addresses) > 0 {
 		isTiDBReady = true
 	}
 
