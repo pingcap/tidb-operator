@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package member
+package v1
 
 import (
 	"bytes"
@@ -209,7 +209,7 @@ echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `))
 
-var checkDNSV1 string = `
+var CheckDNSV1 string = `
 digRes=$(dig ${domain} A ${domain} AAAA +search +short)
 if [ $? -ne 0  ]; then
   echo "$digRes"

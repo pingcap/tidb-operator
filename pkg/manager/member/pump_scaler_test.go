@@ -16,6 +16,8 @@ package member
 import (
 	"testing"
 
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
+
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,14 +29,14 @@ func TestPumpAdvertiseAddr(t *testing.T) {
 	type Case struct {
 		name string
 
-		model  *PumpStartScriptModel
+		model  *startscriptv1.PumpStartScriptModel
 		result string
 	}
 
 	tests := []Case{
 		{
 			name: "parse addr from basic startup script",
-			model: &PumpStartScriptModel{
+			model: &startscriptv1.PumpStartScriptModel{
 				ClusterName: "cname",
 				Namespace:   "ns",
 			},
@@ -42,8 +44,8 @@ func TestPumpAdvertiseAddr(t *testing.T) {
 		},
 		{
 			name: "parse addr from heterogeneous startup script",
-			model: &PumpStartScriptModel{
-				CommonModel: CommonModel{
+			model: &startscriptv1.PumpStartScriptModel{
+				CommonModel: startscriptv1.CommonModel{
 					AcrossK8s:     true,
 					ClusterDomain: "cluster.local",
 				},
@@ -57,7 +59,7 @@ func TestPumpAdvertiseAddr(t *testing.T) {
 	for _, test := range tests {
 		t.Logf("test case: %s", test.name)
 
-		data, err := RenderPumpStartScript(test.model)
+		data, err := startscriptv1.RenderPumpStartScript(test.model)
 		g.Expect(err).Should(BeNil())
 
 		pod := &corev1.Pod{

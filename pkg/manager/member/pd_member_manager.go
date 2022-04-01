@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -856,8 +857,8 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	sm := &PDStartScriptModel{
-		CommonModel: CommonModel{
+	sm := &startscriptv1.PDStartScriptModel{
+		CommonModel: startscriptv1.CommonModel{
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
@@ -865,10 +866,10 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		DataDir: filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
 	}
 	if tc.Spec.PD.StartUpScriptVersion == "v1" {
-		sm.CheckDomainScript = checkDNSV1
+		sm.CheckDomainScript = startscriptv1.CheckDNSV1
 	}
 
-	startScript, err := RenderPDStartScript(sm)
+	startScript, err := startscriptv1.RenderPDStartScript(sm)
 	if err != nil {
 		return nil, err
 	}

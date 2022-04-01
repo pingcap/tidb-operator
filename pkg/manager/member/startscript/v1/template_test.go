@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package member
+package v1
 
 import (
 	"path/filepath"
@@ -657,6 +657,7 @@ exec /tikv-server ${ARGS}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tikvDataVolumeMountPath := "/var/lib/tikv"
 			model := TiKVStartScriptModel{
 				CommonModel: CommonModel{
 					AcrossK8s:     tt.acrossK8s,
@@ -1165,6 +1166,7 @@ exec /pd-server ${ARGS}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			pdDataVolumeMountPath := "/var/lib/pd"
 			model := PDStartScriptModel{
 				CommonModel: CommonModel{
 					AcrossK8s:     tt.acrossK8s,

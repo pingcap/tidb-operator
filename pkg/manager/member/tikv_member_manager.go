@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -705,8 +706,8 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, nil
 	}
 
-	scriptModel := &TiKVStartScriptModel{
-		CommonModel: CommonModel{
+	scriptModel := &startscriptv1.TiKVStartScriptModel{
+		CommonModel: startscriptv1.CommonModel{
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},

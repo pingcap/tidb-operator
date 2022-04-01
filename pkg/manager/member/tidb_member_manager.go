@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -520,8 +521,8 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	plugins := tc.Spec.TiDB.Plugins
-	tidbStartScriptModel := &TidbStartScriptModel{
-		CommonModel: CommonModel{
+	tidbStartScriptModel := &startscriptv1.TidbStartScriptModel{
+		CommonModel: startscriptv1.CommonModel{
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
@@ -537,7 +538,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
 	}
 
-	startScript, err := RenderTiDBStartScript(tidbStartScriptModel)
+	startScript, err := startscriptv1.RenderTiDBStartScript(tidbStartScriptModel)
 	if err != nil {
 		return nil, err
 	}

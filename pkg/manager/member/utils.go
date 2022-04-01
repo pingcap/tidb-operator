@@ -21,13 +21,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
+	"github.com/Masterminds/semver"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -225,7 +227,7 @@ func findContainerByName(sts *apps.StatefulSet, containerName string) *corev1.Co
 	return nil
 }
 
-func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
+func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *startscriptv1.TiKVStartScriptModel) (*corev1.ConfigMap, error) {
 	config := tikvSpec.Config.DeepCopy()
 	if tc.IsTLSClusterEnabled() {
 		config.Set("security.ca-path", path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
@@ -236,7 +238,7 @@ func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbC
 	if err != nil {
 		return nil, err
 	}
-	startScript, err := RenderTiKVStartScript(scriptModel)
+	startScript, err := startscriptv1.RenderTiKVStartScript(scriptModel)
 	if err != nil {
 		return nil, err
 	}

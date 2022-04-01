@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -526,8 +527,8 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, pdDomain)
 
-	return RenderPumpStartScript(&PumpStartScriptModel{
-		CommonModel: CommonModel{
+	return startscriptv1.RenderPumpStartScript(&startscriptv1.PumpStartScriptModel{
+		CommonModel: startscriptv1.CommonModel{
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},

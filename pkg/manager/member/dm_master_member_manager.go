@@ -23,8 +23,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -746,7 +748,7 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	startScript, err := RenderDMMasterStartScript(&DMMasterStartScriptModel{
+	startScript, err := startscriptv1.RenderDMMasterStartScript(&startscriptv1.DMMasterStartScriptModel{
 		Scheme:  dc.Scheme(),
 		DataDir: filepath.Join(dmMasterDataVolumeMountPath, dc.Spec.Master.DataSubDir),
 	})
