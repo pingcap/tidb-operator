@@ -7,12 +7,13 @@ metadata:
 spec:
   ## Describes the compute resource requirements and limits of Backup.
   ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
-  requests:
-    cpu: 1000m
-    memory: 1Gi
-  limits:
-    cpu: 2000m
-    memory: 2Gi
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
 
   ## List of environment variables to set in the container, like v1.Container.Env.
   ## Note that the following builtin env vars will be overwritten by values set here.
@@ -70,7 +71,7 @@ spec:
     provider: aws
     ## Region specifies where the S3 compatible bucket is located.
     region: us-west-1
-    ## Path specifies the full path where the backup is saved.
+    ## Path specifies the full path where the backup is saved, valid when using dumpling or lightning.
     ## The format of the path must be: "<bucket-name>/<path-to-backup-file>"
     # path: ""
     ## Bucket specifies the name of the bucket which stores data.
@@ -90,7 +91,7 @@ spec:
     # prefix: ""
     ## SSE specifies Sever-Side Encryption. Ref: https://docs.aws.amazon.com/AmazonS3/latest/userguide/serv-side-encryption.html
     # sse: ""
-    ## Options specifies extra arguments for backup and restore with mydumper and lightning.
+    ## Options specifies extra arguments for backup and restore with dumpling and lightning.
     # options: []
 
   ## Provider of gcs configuration.
@@ -101,8 +102,8 @@ spec:
     ## Location specifies where the gcs bucket is located.
     ## Ref: https://cloud.google.com/storage/docs/locations#available-locations
     # location: "US-CENTRAL1"
-    ## Path specifies the full path where the backup is saved.
-    ## The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+    ## Path specifies the full path where the backup is saved, valid when using dumpling or lightning.
+    ## The format of the path must be: "gcs://<bucket-name>/<path-to-backup-file>"
     # path: ""
     ## Bucket specifies the name of the bucket which stores data.
     # bucket: "my-bucket"
@@ -161,12 +162,6 @@ spec:
     cluster: "advanced-tidb"
     ## Namespace specifies namespace of TidbCluster to be backed up.
     clusterNamespace: "default"
-    ## Deprecated from BR v4.0.3.
-    ## Please use `Spec.TableFilter` instead. DB is the specific DB which will be backed up or restored.
-    # db: ""
-    ## Deprecated from BR v4.0.3.
-    ## Please use `Spec.TableFilter` instead. Table is the specific table which will be backed up or restored.
-    # table: ""
     ## LogLevel is the log level. Defaults to `info`.
     # logLevel: "info"
     ## StatusAddr is the HTTP listening address for the status report service. Defaults to empty.
@@ -195,8 +190,6 @@ spec:
   # dumpling:
     ## Options means extra arguments that BR supports dumpling supports.
     # options: []
-    ## Deprecated. Please use `Spec.TableFilter` instead. TableFilter means Table filter expression for 'db.table' matching
-    # tableFilter: []
 
   ## Tolerations are applied to Backup pod, allowing (but do not require) pod to be scheduled onto nodes with matching taints.
   ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
@@ -240,6 +233,7 @@ spec:
   cleanPolicy: Retain
 
   ## CleanOption controls the behavior of clean.
+  ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/backup-restore-overview#clean-backup-data
   # cleanOption:
     ## PageSize specifies the number of files to be deleted in each batch at a time.
     ## Defaults to 10000.

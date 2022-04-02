@@ -5,15 +5,16 @@ metadata:
   namespace: default
 
 spec:
-  ## Describes the compute resource requirements and limits of Prometheus.  
+  ## Describes the compute resource requirements and limits of Prometheus.
   ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
-  requests:
-    cpu: 1000m
-    memory: 1Gi
-  limits:
-    cpu: 2000m
-    memory: 2Gi
-  
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
   ## List of environment variables to set in the container, like v1.Container.Env.
   ## Note that the following builtin env vars will be overwritten by values set here
   ## - S3_PROVIDER
@@ -56,7 +57,7 @@ spec:
 
   ## StorageProvider configures where and how backup data stored.
   ## s3/gcs/local are supported.
-  
+
   ## Provider of s3 configuration.
   s3:
     ## Provider specifies storage provider that implements the S3 interface.
@@ -64,8 +65,8 @@ spec:
     provider: aws
     ## Region specifies where the S3 compatible bucket is located.
     region: us-west-1
-    ## Path specifies the full path where the backup is saved.
-    ## The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+    ## Path specifies the full path where the backup is saved, valid when using dumpling or lightning.
+    ## The format of the path must be: "s3://<bucket-name>/<path-to-backup-file>"
     # path: ""
     ## Bucket specifies the name of the bucket which stores data.
     bucket: "my-bucket"
@@ -79,14 +80,14 @@ spec:
     # acl: ""
     ## SecretName is the name of secret which stores S3 compliant storage access key and secret key.
     secretName: s3-secret
-    ## Prefix of the data path. If prefix set, 
+    ## Prefix of the data path. If prefix set,
     ## the value is used to make up the remote storage path:`s3://${.spec.s3.bucket}/${.spec.s3.prefix}/backupName`
     # prefix: ""
     ## SSE specifies Sever-Side Encryption. Ref: https://docs.aws.amazon.com/AmazonS3/latest/userguide/serv-side-encryption.html
     # sse: ""
     ## Options specifies extra arguments for backup and restore with mydumper and lightning.
     # options: []
-  
+
   ## Provider of gcs configuration.
   # gcs:
     ## ProjectId represents the project that organizes all your Google Cloud Platform resources.
@@ -95,8 +96,8 @@ spec:
     ## Location specifies where the gcs bucket is located.
     ## Ref: https://cloud.google.com/storage/docs/locations#available-locations
     # location: "US-CENTRAL1"
-    ## Path specifies the full path where the backup is saved.
-    ## The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+    ## Path specifies the full path where the backup is saved, valid when using dumpling or lightning.
+    ## The format of the path must be: "gcs://<bucket-name>/<path-to-backup-file>"
     # path: ""
     ## Bucket specifies the name of the bucket which stores data.
     # bucket: "my-bucket"
@@ -118,9 +119,9 @@ spec:
     ## SecretName is the name of secret which stores the gcs service account credentials JSON.
     # secretName: "gcs-secret"
     ## Prefix of the data path.
-    ## If set, the value is used to make up the path of the remote storage: `gcs://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`. 
+    ## If set, the value is used to make up the path of the remote storage: `gcs://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`.
     # prefix: ""
-  
+
   # local:
     ## Volume presents the persistent volume configuration.
     # volume:
@@ -137,10 +138,9 @@ spec:
     ## Prefix of the data path.
     ## If set, the value is used to make up the storage path of the persistent volume: `local://${.spec.local.volumeMount.mountPath}/${.spec.local.prefix}/`.
     # prefix: ""
-  
+
   ## BackupType is the backup type for TidbCluster.
   ## `full` represents the full backup of TidbCluster.
-  ## `raw` represents the raw backup of TidbCluster.
   ## `db` represents the backup of one DB of TidbCluster.
   ## `table` represents the backup of one table of TidbCluster.
   backupType: full
@@ -149,7 +149,7 @@ spec:
   ## This value must be greater than the size of the TidbCluster to be backed up.
   ## Defaults to 100Gi.
   storageSize: "100Gi"
-  
+
   ## BR configuration.
   ## Ref: https://docs.pingcap.com/tidb/stable/backup-and-restore-tool
   br:
@@ -157,11 +157,6 @@ spec:
     cluster: "advanced-tidb"
     ## Namespace specifies namespace of TidbCluster to be backed up.
     clusterNamespace: "default"
-    ## Deprecated from BR v4.0.3.
-    ## Please use `Spec.TableFilter` instead. DB is the specific DB which will be backed-up or restored
-    # db: ""
-    ## Deprecated from BR v4.0.3. Please use `Spec.TableFilter` instead. Table is the specific table which will be backed-up or restored
-    # table: ""
     ## LogLevel is the log level. Defaults to `info`.
     # logLevel: "info"
     ## StatusAddr is the HTTP listening address for the status report service. Defaults to empty.
