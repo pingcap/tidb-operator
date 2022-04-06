@@ -322,6 +322,11 @@ type TidbClusterSpec struct {
 	// +listType=map
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// StartScriptVersion is the version of start script
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1";"v2"
+	StartScriptVersion string `json:"startScriptVersion,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
