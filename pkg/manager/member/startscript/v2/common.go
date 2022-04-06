@@ -44,11 +44,18 @@ fi
 )
 
 type CommonModel struct {
-	ClusterName      string
-	ClusterNamespace string
+	ClusterName      string // same as tc.metadata.name
+	ClusterNamespace string // same as tc.metadata.namespace
 	ClusterDomain    string // same as tc.spec.clusterDomain
-	PeerServiceName  string
-	AcrossK8s        bool
+	PeerServiceName  string // the name of the peer service
+	AcrossK8s        bool   // whether the cluster is deployed across k8s
+}
+
+func (m CommonModel) FormatClusterDomain() string {
+	if len(m.ClusterDomain) > 0 {
+		return "." + m.ClusterDomain
+	}
+	return ""
 }
 
 func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {

@@ -27,12 +27,15 @@ func TestScriptFormat(t *testing.T) {
 	scripts := []string{
 		componentCommonScript,
 		pdStartScript,
+		tidbStartScript,
+		tikvStartScript,
 	}
 
 	blankLineRegexp := regexp.MustCompile("^\\s*$")
 
 	for _, script := range scripts {
 		for _, line := range strings.Split(script, "\n") {
+			g.Expect(line).ShouldNot(gomega.HaveSuffix(" "))
 			g.Expect(line).ShouldNot(gomega.ContainSubstring("\t"), "use space but not tab")
 			if blankLineRegexp.MatchString(line) {
 				g.Expect(line).ShouldNot(gomega.ContainSubstring(" "), "blank line should not contain space")

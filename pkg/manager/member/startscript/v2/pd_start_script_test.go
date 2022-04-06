@@ -20,7 +20,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
-func TestPDStartScript(t *testing.T) {
+func TestRenderPDStartScript(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	type testcase struct {
@@ -57,7 +57,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${POD_NAME}.pd-peer.pd-test.svc
+PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc
 PD_COMPONENT_NAME=${PD_POD_NAME}
 PD_DATA_DIR=/var/lib/pd
 PD_PEER_URL=http://0.0.0.0:2380
@@ -65,6 +65,7 @@ PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
 PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_EXTRA_ARGS=
 
 set | grep PD_
 
@@ -104,6 +105,10 @@ ARGS="--data-dir=${PD_DATA_DIR} \
     --client-urls=${PD_CLIENT_URL} \
     --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
     --config=/etc/pd/pd.toml"
+
+if [[ -n "${PD_EXTRA_ARGS}" ]]; then
+    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
+fi
 
 if [[ -f ${PD_DATA_DIR}/join ]]; then
     join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -153,7 +158,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${POD_NAME}.pd-peer.pd-test.svc
+PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc
 PD_COMPONENT_NAME=${PD_POD_NAME}
 PD_DATA_DIR=/var/lib/pd
 PD_PEER_URL=https://0.0.0.0:2380
@@ -161,6 +166,7 @@ PD_ADVERTISE_PEER_URL=https://${PD_DOMAIN}:2380
 PD_CLIENT_URL=https://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=https://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_EXTRA_ARGS=
 
 set | grep PD_
 
@@ -200,6 +206,10 @@ ARGS="--data-dir=${PD_DATA_DIR} \
     --client-urls=${PD_CLIENT_URL} \
     --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
     --config=/etc/pd/pd.toml"
+
+if [[ -n "${PD_EXTRA_ARGS}" ]]; then
+    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
+fi
 
 if [[ -f ${PD_DATA_DIR}/join ]]; then
     join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -249,7 +259,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${POD_NAME}.pd-peer.pd-test.svc
+PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc
 PD_COMPONENT_NAME=${PD_POD_NAME}
 PD_DATA_DIR=/var/lib/pd/data
 PD_PEER_URL=http://0.0.0.0:2380
@@ -257,6 +267,7 @@ PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
 PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_EXTRA_ARGS=
 
 set | grep PD_
 
@@ -296,6 +307,10 @@ ARGS="--data-dir=${PD_DATA_DIR} \
     --client-urls=${PD_CLIENT_URL} \
     --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
     --config=/etc/pd/pd.toml"
+
+if [[ -n "${PD_EXTRA_ARGS}" ]]; then
+    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
+fi
 
 if [[ -f ${PD_DATA_DIR}/join ]]; then
     join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -345,7 +360,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${POD_NAME}.pd-peer.pd-test.svc.cluster-1.com
+PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc.cluster-1.com
 PD_COMPONENT_NAME=${PD_DOMAIN}
 PD_DATA_DIR=/var/lib/pd
 PD_PEER_URL=http://0.0.0.0:2380
@@ -353,6 +368,7 @@ PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
 PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_EXTRA_ARGS=
 
 set | grep PD_
 
@@ -392,6 +408,10 @@ ARGS="--data-dir=${PD_DATA_DIR} \
     --client-urls=${PD_CLIENT_URL} \
     --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
     --config=/etc/pd/pd.toml"
+
+if [[ -n "${PD_EXTRA_ARGS}" ]]; then
+    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
+fi
 
 if [[ -f ${PD_DATA_DIR}/join ]]; then
     join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -441,7 +461,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${POD_NAME}.pd-peer.pd-test.svc
+PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc
 PD_COMPONENT_NAME=${PD_DOMAIN}
 PD_DATA_DIR=/var/lib/pd
 PD_PEER_URL=http://0.0.0.0:2380
@@ -449,6 +469,7 @@ PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
 PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_EXTRA_ARGS=
 
 set | grep PD_
 
@@ -488,6 +509,10 @@ ARGS="--data-dir=${PD_DATA_DIR} \
     --client-urls=${PD_CLIENT_URL} \
     --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
     --config=/etc/pd/pd.toml"
+
+if [[ -n "${PD_EXTRA_ARGS}" ]]; then
+    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
+fi
 
 if [[ -f ${PD_DATA_DIR}/join ]]; then
     join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -538,7 +563,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${POD_NAME}.pd-peer.pd-test.svc.cluster-1.com
+PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc.cluster-1.com
 PD_COMPONENT_NAME=${PD_DOMAIN}
 PD_DATA_DIR=/var/lib/pd
 PD_PEER_URL=http://0.0.0.0:2380
@@ -546,6 +571,7 @@ PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
 PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_EXTRA_ARGS=
 
 set | grep PD_
 
@@ -585,6 +611,10 @@ ARGS="--data-dir=${PD_DATA_DIR} \
     --client-urls=${PD_CLIENT_URL} \
     --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
     --config=/etc/pd/pd.toml"
+
+if [[ -n "${PD_EXTRA_ARGS}" ]]; then
+    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
+fi
 
 if [[ -f ${PD_DATA_DIR}/join ]]; then
     join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")

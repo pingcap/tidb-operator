@@ -31,59 +31,69 @@ func RenderPDStartScript(m *PDStartScriptModel) (string, error) {
 const (
 	pdStartScriptVar = `
 {{ define "PD_POD_NAME" -}}
-    ${POD_NAME:-$HOSTNAME}
+PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 {{- end }}
+
 
 {{ define "PD_DOMAIN" -}}
-    {{- if .ClusterDomain -}}
-        ${POD_NAME}.{{ .PeerServiceName }}.{{ .ClusterNamespace }}.svc.{{ .ClusterDomain }}
-    {{- else -}}
-        ${POD_NAME}.{{ .PeerServiceName }}.{{ .ClusterNamespace }}.svc
-    {{- end -}}
+PD_DOMAIN=${PD_POD_NAME}.{{ .PeerServiceName }}.{{ .ClusterNamespace }}.svc{{ .FormatClusterDomain }}
 {{- end }}
+
 
 {{ define "PD_COMPONENT_NAME" -}}
-    {{- if or .AcrossK8s .ClusterDomain -}}
-        ${PD_DOMAIN}
+    {{- if or .AcrossK8s .FormatClusterDomain -}}
+PD_COMPONENT_NAME=${PD_DOMAIN}
     {{- else -}}
-        ${PD_POD_NAME}
+PD_COMPONENT_NAME=${PD_POD_NAME}
     {{- end -}}
 {{- end }}
 
+
 {{ define "PD_DATA_DIR" -}}
-    {{ .DataDir }}
+PD_DATA_DIR={{ .DataDir }}
 {{- end }}
+
 
 {{ define "PD_PEER_URL" -}}
-    {{ .Scheme }}://0.0.0.0:2380
+PD_PEER_URL={{ .Scheme }}://0.0.0.0:2380
 {{- end }}
+
 
 {{ define "PD_ADVERTISE_PEER_URL" -}}
-    {{ .Scheme }}://${PD_DOMAIN}:2380
+PD_ADVERTISE_PEER_URL={{ .Scheme }}://${PD_DOMAIN}:2380
 {{- end }}
+
 
 {{ define "PD_CLIENT_URL" -}}
-    {{ .Scheme }}://0.0.0.0:2379
+PD_CLIENT_URL={{ .Scheme }}://0.0.0.0:2379
 {{- end }}
+
 
 {{ define "PD_ADVERTISE_CLIENT_URL" -}}
-    {{ .Scheme }}://${PD_DOMAIN}:2379
+PD_ADVERTISE_CLIENT_URL={{ .Scheme }}://${PD_DOMAIN}:2379
 {{- end }}
 
+
 {{ define "PD_DISCOVERY_ADDR" -}}
-    {{ .ClusterName }}-discovery.{{ .PeerServiceName }}.{{ .ClusterNamespace }}.svc:10261
+PD_DISCOVERY_ADDR={{ .ClusterName }}-discovery.{{ .PeerServiceName }}.{{ .ClusterNamespace }}.svc:10261
+{{- end}}
+
+
+{{ define "PD_EXTRA_ARGS" -}}
+PD_EXTRA_ARGS=
 {{- end}}
 `
 	pdStartScript = `
-PD_POD_NAME={{ template "PD_POD_NAME" . }}
-PD_DOMAIN={{ template "PD_DOMAIN" . }}
-PD_COMPONENT_NAME={{ template "PD_COMPONENT_NAME" . }}
-PD_DATA_DIR={{ template "PD_DATA_DIR" . }}
-PD_PEER_URL={{ template "PD_PEER_URL" . }}
-PD_ADVERTISE_PEER_URL={{ template "PD_ADVERTISE_PEER_URL" . }}
-PD_CLIENT_URL={{ template "PD_CLIENT_URL" . }}
-PD_ADVERTISE_CLIENT_URL={{ template "PD_ADVERTISE_CLIENT_URL" . }}
-PD_DISCOVERY_ADDR={{ template "PD_DISCOVERY_ADDR" . }}
+{{ template "PD_POD_NAME" . }}
+{{ template "PD_DOMAIN" . }}
+{{ template "PD_COMPONENT_NAME" . }}
+{{ template "PD_DATA_DIR" . }}
+{{ template "PD_PEER_URL" . }}
+{{ template "PD_ADVERTISE_PEER_URL" . }}
+{{ template "PD_CLIENT_URL" . }}
+{{ template "PD_ADVERTISE_CLIENT_URL" . }}
+{{ template "PD_DISCOVERY_ADDR" . }}
+{{ template "PD_EXTRA_ARGS" . }}
 
 set | grep PD_
 
@@ -123,6 +133,10 @@ ARGS="--data-dir=${PD_DATA_DIR} \
     --client-urls=${PD_CLIENT_URL} \
     --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
     --config=/etc/pd/pd.toml"
+
+if [[ -n "${PD_EXTRA_ARGS}" ]]; then
+    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
+fi
 
 if [[ -f ${PD_DATA_DIR}/join ]]; then
     join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")

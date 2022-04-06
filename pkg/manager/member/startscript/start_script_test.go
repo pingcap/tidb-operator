@@ -1,0 +1,26 @@
+// Copyright 2021 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package startscript
+
+import "testing"
+
+func TestCompatibility(t *testing.T) {
+	t.Run("From v1 to v2", func(t *testing.T) {
+
+	})
+}
+
+func ensureArgsNotChanged(cmd1, cmd2 string, replaceEnv map[string]string) error {
+	return nil
+}
