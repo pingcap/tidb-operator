@@ -27,7 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -344,7 +344,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 	}
-	startScript, err := getPumpStartScript(tc)
+	startScript, err := startscript.RenderPumpStartScript(tc)
 	if err != nil {
 		return nil, fmt.Errorf("cannot render start-script for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 	}
@@ -510,54 +510,6 @@ func getPumpMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1
 		OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 	}
 	return objMeta, pumpLabel
-}
-
-func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	scheme := "http"
-	if tc.IsTLSClusterEnabled() {
-		scheme = "https"
-	}
-
-	pdDomain := controller.PDMemberName(tc.Name)
-	if tc.AcrossK8s() {
-		pdDomain = controller.PDMemberName(tc.Name) // get pd addr from discovery in startup script
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
-	}
-
-	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, pdDomain)
-
-	return startscriptv1.RenderPumpStartScript(&startscriptv1.PumpStartScriptModel{
-		CommonModel: startscriptv1.CommonModel{
-			AcrossK8s:     tc.AcrossK8s(),
-			ClusterDomain: tc.Spec.ClusterDomain,
-		},
-		Scheme:      scheme,
-		ClusterName: tc.Name,
-		PDAddr:      pdAddr,
-		LogLevel:    getPumpLogLevel(tc),
-		Namespace:   tc.GetNamespace(),
-	})
-}
-
-func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
-	cfg := tc.Spec.Pump.Config
-	if cfg == nil {
-		return defaultPumpLogLevel
-	}
-
-	v := cfg.Get("log-level")
-	if v == nil {
-		return defaultPumpLogLevel
-	}
-
-	logLevel, err := v.AsString()
-	if err != nil {
-		klog.Warning("error log-level for pump: ", err)
-		return defaultPumpLogLevel
-	}
-
-	return logLevel
 }
 
 func (m *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {

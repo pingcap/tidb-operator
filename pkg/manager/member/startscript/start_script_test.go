@@ -15,12 +15,6 @@ package startscript
 
 import "testing"
 
-func TestCompatibility(t *testing.T) {
-	t.Run("From v1 to v2", func(t *testing.T) {
+func TestStartScriptRoute(t *testing.T) {
 
-	})
-}
-
-func ensureArgsNotChanged(cmd1, cmd2 string, replaceEnv map[string]string) error {
-	return nil
 }

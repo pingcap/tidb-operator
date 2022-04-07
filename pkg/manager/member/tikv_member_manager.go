@@ -16,7 +16,6 @@ package member
 import (
 	"fmt"
 	"path"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -26,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -706,27 +704,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, nil
 	}
 
-	scriptModel := &startscriptv1.TiKVStartScriptModel{
-		CommonModel: startscriptv1.CommonModel{
-			AcrossK8s:     tc.AcrossK8s(),
-			ClusterDomain: tc.Spec.ClusterDomain,
-		},
-		EnableAdvertiseStatusAddr: false,
-		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
-	}
-	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
-		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc" + controller.FormatClusterDomain(tc.Spec.ClusterDomain)
-		scriptModel.EnableAdvertiseStatusAddr = true
-	}
-
-	scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
-	if tc.AcrossK8s() {
-		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
-	}
-
-	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
+	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc)
 	if err != nil {
 		return nil, err
 	}

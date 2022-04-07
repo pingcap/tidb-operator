@@ -577,7 +577,7 @@ ARGS="--pd=${result} \
 "
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
-  LABELS=" --labels ${STORE_LABELS} "
+  LABELS="--labels ${STORE_LABELS} "
   ARGS="${ARGS}${LABELS}"
 fi
 

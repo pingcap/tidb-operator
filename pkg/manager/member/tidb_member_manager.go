@@ -29,7 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -520,28 +520,11 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	plugins := tc.Spec.TiDB.Plugins
-	tidbStartScriptModel := &startscriptv1.TidbStartScriptModel{
-		CommonModel: startscriptv1.CommonModel{
-			AcrossK8s:     tc.AcrossK8s(),
-			ClusterDomain: tc.Spec.ClusterDomain,
-		},
-		EnablePlugin:    len(plugins) > 0,
-		PluginDirectory: "/plugins",
-		PluginList:      strings.Join(plugins, ","),
-	}
-
-	tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
-	if tc.AcrossK8s() {
-		tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
-	}
-
-	startScript, err := startscriptv1.RenderTiDBStartScript(tidbStartScriptModel)
+	startScript, err := startscript.RenderTiDBStartScript(tc)
 	if err != nil {
 		return nil, err
 	}
+
 	data := map[string]string{
 		"config-file":    string(confText),
 		"startup-script": startScript,

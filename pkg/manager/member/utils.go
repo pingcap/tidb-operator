@@ -26,7 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	"github.com/Masterminds/semver"
@@ -227,7 +227,7 @@ func findContainerByName(sts *apps.StatefulSet, containerName string) *corev1.Co
 	return nil
 }
 
-func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *startscriptv1.TiKVStartScriptModel) (*corev1.ConfigMap, error) {
+func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	config := tikvSpec.Config.DeepCopy()
 	if tc.IsTLSClusterEnabled() {
 		config.Set("security.ca-path", path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
@@ -238,10 +238,12 @@ func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbC
 	if err != nil {
 		return nil, err
 	}
-	startScript, err := startscriptv1.RenderTiKVStartScript(scriptModel)
+
+	startScript, err := startscript.RenderTiKVStartScript(tc, tikvDataVolumeMountPath)
 	if err != nil {
 		return nil, err
 	}
+
 	cm := &corev1.ConfigMap{
 		Data: map[string]string{
 			"config-file":    transformTiKVConfigMap(string(confText), tc),

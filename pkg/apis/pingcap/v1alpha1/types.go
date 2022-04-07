@@ -103,6 +103,13 @@ const (
 	ConfigUpdateStrategyRollingUpdate ConfigUpdateStrategy = "RollingUpdate"
 )
 
+type StartScriptVersion string
+
+const (
+	StartScriptV1 StartScriptVersion = "v1"
+	StartScriptV2 StartScriptVersion = "v2"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -324,9 +331,11 @@ type TidbClusterSpec struct {
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
 	// StartScriptVersion is the version of start script
+	//
+	// default to "v1"
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1";"v2"
-	StartScriptVersion string `json:"startScriptVersion,omitempty"`
+	StartScriptVersion StartScriptVersion `json:"startScriptVersion,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
