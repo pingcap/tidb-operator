@@ -54,7 +54,7 @@ def call(BUILD_BRANCH) {
                     }
                     stage('Push tidb-operator Docker Image to Harbor') {
                         docker.withRegistry("https://hub.pingcap.net", "harbor-pingcap") {
-                            docker.build("hub.pingcap.net/jenkins/tidb-operator:${GITHASH}", "images/tidb-operator").push()
+                            docker.build("hub.pingcap.net/jenkins/tidb-operator:${GITHASH}", "--build-arg=TARGETARCH=amd64 images/tidb-operator").push()
                         }
                     }
 
