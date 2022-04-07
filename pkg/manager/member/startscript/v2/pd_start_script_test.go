@@ -40,8 +40,6 @@ func TestRenderPDStartScript(t *testing.T) {
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -50,7 +48,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -67,8 +64,6 @@ PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
-
-set | grep PD_
 
 elapseTime=0
 period=1
@@ -141,8 +136,6 @@ exec /pd-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -151,7 +144,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -168,8 +160,6 @@ PD_CLIENT_URL=https://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=https://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
-
-set | grep PD_
 
 elapseTime=0
 period=1
@@ -242,8 +232,6 @@ exec /pd-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -252,7 +240,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -269,8 +256,6 @@ PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
-
-set | grep PD_
 
 elapseTime=0
 period=1
@@ -343,8 +328,6 @@ exec /pd-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -353,7 +336,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -370,8 +352,6 @@ PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
-
-set | grep PD_
 
 elapseTime=0
 period=1
@@ -445,8 +425,6 @@ exec /pd-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -455,7 +433,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -472,8 +449,6 @@ PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
-
-set | grep PD_
 
 elapseTime=0
 period=1
@@ -547,8 +522,6 @@ exec /pd-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -557,7 +530,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -574,8 +546,6 @@ PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
 PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
-
-set | grep PD_
 
 elapseTime=0
 period=1
@@ -659,5 +629,6 @@ exec /pd-server ${ARGS}
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)
 		}
+		g.Expect(validateScript(script)).Should(gomega.Succeed())
 	}
 }

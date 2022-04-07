@@ -42,8 +42,6 @@ func TestRenderPumpStartScript(t *testing.T) {
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -52,7 +50,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -65,14 +62,12 @@ PUMP_LOG_LEVEL=info
 PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump:8250
 PUMP_EXTRA_ARGS=
 
-set | grep PUMP_
-
 ARGS="-pd-urls=${PUMP_PD_ADDR} \
     -L ${PUMP_LOG_LEVEL} \
     -log-file= \
     -advertise-addr=${PUMP_ADVERTISE_ADDR} \
     -data-dir=/data \
-    --config=/etc/pump/pump.toml
+    --config=/etc/pump/pump.toml"
 
 if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
@@ -100,8 +95,6 @@ fi
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -110,7 +103,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -123,14 +115,12 @@ PUMP_LOG_LEVEL=debug
 PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump:8250
 PUMP_EXTRA_ARGS=
 
-set | grep PUMP_
-
 ARGS="-pd-urls=${PUMP_PD_ADDR} \
     -L ${PUMP_LOG_LEVEL} \
     -log-file= \
     -advertise-addr=${PUMP_ADVERTISE_ADDR} \
     -data-dir=/data \
-    --config=/etc/pump/pump.toml
+    --config=/etc/pump/pump.toml"
 
 if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
@@ -156,8 +146,6 @@ fi
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -166,7 +154,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -179,14 +166,12 @@ PUMP_LOG_LEVEL=info
 PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc.demo.com:8250
 PUMP_EXTRA_ARGS=
 
-set | grep PUMP_
-
 ARGS="-pd-urls=${PUMP_PD_ADDR} \
     -L ${PUMP_LOG_LEVEL} \
     -log-file= \
     -advertise-addr=${PUMP_ADVERTISE_ADDR} \
     -data-dir=/data \
-    --config=/etc/pump/pump.toml
+    --config=/etc/pump/pump.toml"
 
 if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
@@ -213,8 +198,6 @@ fi
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -223,7 +206,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -243,14 +225,12 @@ PUMP_LOG_LEVEL=info
 PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc.demo.com:8250
 PUMP_EXTRA_ARGS=
 
-set | grep PUMP_
-
 ARGS="-pd-urls=${PUMP_PD_ADDR} \
     -L ${PUMP_LOG_LEVEL} \
     -log-file= \
     -advertise-addr=${PUMP_ADVERTISE_ADDR} \
     -data-dir=/data \
-    --config=/etc/pump/pump.toml
+    --config=/etc/pump/pump.toml"
 
 if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
@@ -277,8 +257,6 @@ fi
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -287,7 +265,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -307,14 +284,12 @@ PUMP_LOG_LEVEL=info
 PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250
 PUMP_EXTRA_ARGS=
 
-set | grep PUMP_
-
 ARGS="-pd-urls=${PUMP_PD_ADDR} \
     -L ${PUMP_LOG_LEVEL} \
     -log-file= \
     -advertise-addr=${PUMP_ADVERTISE_ADDR} \
     -data-dir=/data \
-    --config=/etc/pump/pump.toml
+    --config=/etc/pump/pump.toml"
 
 if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
@@ -341,8 +316,6 @@ fi
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -351,7 +324,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -364,14 +336,12 @@ PUMP_LOG_LEVEL=info
 PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump:8250
 PUMP_EXTRA_ARGS=
 
-set | grep PUMP_
-
 ARGS="-pd-urls=${PUMP_PD_ADDR} \
     -L ${PUMP_LOG_LEVEL} \
     -log-file= \
     -advertise-addr=${PUMP_ADVERTISE_ADDR} \
     -data-dir=/data \
-    --config=/etc/pump/pump.toml
+    --config=/etc/pump/pump.toml"
 
 if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
@@ -399,8 +369,6 @@ fi
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -409,7 +377,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -429,14 +396,12 @@ PUMP_LOG_LEVEL=info
 PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250
 PUMP_EXTRA_ARGS=
 
-set | grep PUMP_
-
 ARGS="-pd-urls=${PUMP_PD_ADDR} \
     -L ${PUMP_LOG_LEVEL} \
     -log-file= \
     -advertise-addr=${PUMP_ADVERTISE_ADDR} \
     -data-dir=/data \
-    --config=/etc/pump/pump.toml
+    --config=/etc/pump/pump.toml"
 
 if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
@@ -473,5 +438,6 @@ fi
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)
 		}
+		g.Expect(validateScript(script)).Should(gomega.Succeed())
 	}
 }

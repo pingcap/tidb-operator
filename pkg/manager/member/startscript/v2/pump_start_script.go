@@ -22,15 +22,17 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// PumpStartScriptModel contain fields for rendering Pump start script
 type PumpStartScriptModel struct {
 	PDAddr        string
 	LogLevel      string
 	AdvertiseAddr string
 	ExtraArgs     string
 
-	AcrossK8s *ComponentAcrossK8s
+	AcrossK8s *AcrossK8sScriptModel
 }
 
+// RenderPumpStartScript renders Pump start script from TidbCluster
 func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &PumpStartScriptModel{}
 
@@ -65,7 +67,7 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m.ExtraArgs = ""
 
 	if tc.AcrossK8s() {
-		m.AcrossK8s = &ComponentAcrossK8s{
+		m.AcrossK8s = &AcrossK8sScriptModel{
 			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
 		}
 	}
@@ -98,14 +100,12 @@ PUMP_LOG_LEVEL={{ .LogLevel }}
 PUMP_ADVERTISE_ADDR={{ .AdvertiseAddr }}
 PUMP_EXTRA_ARGS={{ .ExtraArgs }}
 
-set | grep PUMP_
-
 ARGS="-pd-urls=${PUMP_PD_ADDR} \
     -L ${PUMP_LOG_LEVEL} \
     -log-file= \
     -advertise-addr=${PUMP_ADVERTISE_ADDR} \
     -data-dir=/data \
-    --config=/etc/pump/pump.toml
+    --config=/etc/pump/pump.toml"
 
 if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"

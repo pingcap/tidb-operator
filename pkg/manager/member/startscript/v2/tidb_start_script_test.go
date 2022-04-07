@@ -41,8 +41,6 @@ func TestRenderTiDBStartScript(t *testing.T) {
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -51,7 +49,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -63,13 +60,11 @@ TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-
 TIDB_PD_ADDR=start-script-test-pd:2379
 TIDB_EXTRA_ARGS=
 
-set | grep TIDB_
-
 ARGS="--store=tikv \
     --advertise-address=${TIDB_ADVERTISE_ADDR} \
     --host=0.0.0.0 \
     --path=${TIDB_PD_ADDR} \
-    --config=/etc/tidb/tidb.toml
+    --config=/etc/tidb/tidb.toml"
 
 if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
@@ -96,8 +91,6 @@ exec /tidb-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -106,7 +99,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -118,13 +110,11 @@ TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-
 TIDB_PD_ADDR=start-script-test-pd:2379
 TIDB_EXTRA_ARGS="--plugin-dir=/plugins --plugin-load=plugin-1,plugin-2"
 
-set | grep TIDB_
-
 ARGS="--store=tikv \
     --advertise-address=${TIDB_ADVERTISE_ADDR} \
     --host=0.0.0.0 \
     --path=${TIDB_PD_ADDR} \
-    --config=/etc/tidb/tidb.toml
+    --config=/etc/tidb/tidb.toml"
 
 if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
@@ -152,8 +142,6 @@ exec /tidb-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -162,7 +150,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -174,13 +161,11 @@ TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-
 TIDB_PD_ADDR=start-script-test-pd:2379
 TIDB_EXTRA_ARGS="--enable-binlog=true"
 
-set | grep TIDB_
-
 ARGS="--store=tikv \
     --advertise-address=${TIDB_ADVERTISE_ADDR} \
     --host=0.0.0.0 \
     --path=${TIDB_PD_ADDR} \
-    --config=/etc/tidb/tidb.toml
+    --config=/etc/tidb/tidb.toml"
 
 if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
@@ -208,8 +193,6 @@ exec /tidb-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -218,7 +201,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -230,13 +212,11 @@ TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-
 TIDB_PD_ADDR=start-script-test-pd:2379
 TIDB_EXTRA_ARGS="--enable-binlog=true"
 
-set | grep TIDB_
-
 ARGS="--store=tikv \
     --advertise-address=${TIDB_ADVERTISE_ADDR} \
     --host=0.0.0.0 \
     --path=${TIDB_PD_ADDR} \
-    --config=/etc/tidb/tidb.toml
+    --config=/etc/tidb/tidb.toml"
 
 if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
@@ -263,8 +243,6 @@ exec /tidb-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -273,7 +251,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -285,13 +262,11 @@ TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-
 TIDB_PD_ADDR=start-script-test-pd:2379
 TIDB_EXTRA_ARGS=
 
-set | grep TIDB_
-
 ARGS="--store=tikv \
     --advertise-address=${TIDB_ADVERTISE_ADDR} \
     --host=0.0.0.0 \
     --path=${TIDB_PD_ADDR} \
-    --config=/etc/tidb/tidb.toml
+    --config=/etc/tidb/tidb.toml"
 
 if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
@@ -319,8 +294,6 @@ exec /tidb-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -329,7 +302,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -348,13 +320,11 @@ done
 TIDB_PD_ADDR=${result}
 TIDB_EXTRA_ARGS=
 
-set | grep TIDB_
-
 ARGS="--store=tikv \
     --advertise-address=${TIDB_ADVERTISE_ADDR} \
     --host=0.0.0.0 \
     --path=${TIDB_PD_ADDR} \
-    --config=/etc/tidb/tidb.toml
+    --config=/etc/tidb/tidb.toml"
 
 if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
@@ -382,8 +352,6 @@ exec /tidb-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -392,7 +360,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -411,13 +378,11 @@ done
 TIDB_PD_ADDR=${result}
 TIDB_EXTRA_ARGS=
 
-set | grep TIDB_
-
 ARGS="--store=tikv \
     --advertise-address=${TIDB_ADVERTISE_ADDR} \
     --host=0.0.0.0 \
     --path=${TIDB_PD_ADDR} \
-    --config=/etc/tidb/tidb.toml
+    --config=/etc/tidb/tidb.toml"
 
 if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
@@ -445,8 +410,6 @@ exec /tidb-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -455,7 +418,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -467,13 +429,11 @@ TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-
 TIDB_PD_ADDR=target-cluster-pd:2379
 TIDB_EXTRA_ARGS=
 
-set | grep TIDB_
-
 ARGS="--store=tikv \
     --advertise-address=${TIDB_ADVERTISE_ADDR} \
     --host=0.0.0.0 \
     --path=${TIDB_PD_ADDR} \
-    --config=/etc/tidb/tidb.toml
+    --config=/etc/tidb/tidb.toml"
 
 if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
@@ -502,8 +462,6 @@ exec /tidb-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -512,7 +470,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -531,13 +488,11 @@ done
 TIDB_PD_ADDR=${result}
 TIDB_EXTRA_ARGS=
 
-set | grep TIDB_
-
 ARGS="--store=tikv \
     --advertise-address=${TIDB_ADVERTISE_ADDR} \
     --host=0.0.0.0 \
     --path=${TIDB_PD_ADDR} \
-    --config=/etc/tidb/tidb.toml
+    --config=/etc/tidb/tidb.toml"
 
 if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
@@ -576,5 +531,6 @@ exec /tidb-server ${ARGS}
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)
 		}
+		g.Expect(validateScript(script)).Should(gomega.Succeed())
 	}
 }

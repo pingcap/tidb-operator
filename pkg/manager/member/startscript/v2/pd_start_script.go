@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
+// PDStartScriptModel contain fields for rendering PD start script
 type PDStartScriptModel struct {
 	PDDomain           string
 	PDName             string
@@ -33,6 +34,7 @@ type PDStartScriptModel struct {
 	ExtraArgs          string
 }
 
+// RenderPDStartScript renders PD start script from TidbCluster
 func RenderPDStartScript(tc *v1alpha1.TidbCluster, pdDataVolumeMountPath string) (string, error) {
 	m := &PDStartScriptModel{}
 
@@ -74,8 +76,6 @@ PD_CLIENT_URL={{ .ClientURL }}
 PD_ADVERTISE_CLIENT_URL={{ .AdvertiseClientURL }}
 PD_DISCOVERY_ADDR={{ .DiscoveryAddr }}
 PD_EXTRA_ARGS={{ .ExtraArgs }}
-
-set | grep PD_
 
 elapseTime=0
 period=1

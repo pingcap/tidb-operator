@@ -24,8 +24,6 @@ const (
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -34,7 +32,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -43,7 +40,8 @@ fi
 `
 )
 
-type ComponentAcrossK8s struct {
+// AcrossK8sScriptModel contain fields for rendering subscript
+type AcrossK8sScriptModel struct {
 	// DiscoveryAddr is the address of the discovery service.
 	//
 	// When cluster is deployed across k8s, all components except pd will get the pd addr from discovery.

@@ -22,19 +22,16 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
-type TiDBPlugin struct {
-	PluginDirectory string
-	PluginList      string
-}
-
+// TiDBStartScriptModel contain some fields for rendering TiDB start script
 type TiDBStartScriptModel struct {
 	PDAddr        string
 	AdvertiseAddr string
 	ExtraArgs     string
 
-	AcrossK8s *ComponentAcrossK8s
+	AcrossK8s *AcrossK8sScriptModel
 }
 
+// RenderTiDBStartScript renders TiDB start script from TidbCluster
 func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &TiDBStartScriptModel{}
 
@@ -64,7 +61,7 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	}
 
 	if tc.AcrossK8s() {
-		m.AcrossK8s = &ComponentAcrossK8s{
+		m.AcrossK8s = &AcrossK8sScriptModel{
 			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
 		}
 	}
@@ -96,13 +93,11 @@ TIDB_ADVERTISE_ADDR={{ .AdvertiseAddr }}
 {{ template "TIDB_PD_ADDR" . }}
 TIDB_EXTRA_ARGS={{ .ExtraArgs }}
 
-set | grep TIDB_
-
 ARGS="--store=tikv \
     --advertise-address=${TIDB_ADVERTISE_ADDR} \
     --host=0.0.0.0 \
     --path=${TIDB_PD_ADDR} \
-    --config=/etc/tidb/tidb.toml
+    --config=/etc/tidb/tidb.toml"
 
 if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"

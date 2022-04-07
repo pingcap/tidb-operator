@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/onsi/gomega"
+	"mvdan.cc/sh/v3/syntax"
 )
 
 func TestScriptFormat(t *testing.T) {
@@ -34,6 +35,8 @@ func TestScriptFormat(t *testing.T) {
 		tikvStartSubScript,
 		pumpStartScript,
 		pumpStartSubScript,
+		ticdcStartScript,
+		ticdcStartSubScript,
 	}
 
 	blankLineRegexp := regexp.MustCompile("^\\s*$")
@@ -47,4 +50,9 @@ func TestScriptFormat(t *testing.T) {
 			}
 		}
 	}
+}
+
+func validateScript(script string) error {
+	_, err := syntax.NewParser().Parse(strings.NewReader(script), "")
+	return err
 }

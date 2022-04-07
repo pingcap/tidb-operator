@@ -41,8 +41,6 @@ func TestRenderTiKVStartScript(t *testing.T) {
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -51,7 +49,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -65,15 +62,13 @@ TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
 
-set | grep TIKV_
-
 ARGS="--pd=${TIKV_PD_ADDR} \
     --advertise-addr=${TIKV_ADVERTISE_ADDR} \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=${TIKV_DATA_DIR} \
     --capacity=${TIKV_CAPACITY} \
-    --config=/etc/tikv/tikv.toml
+    --config=/etc/tikv/tikv.toml"
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
@@ -99,8 +94,6 @@ exec /tikv-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -109,7 +102,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -123,15 +115,13 @@ TIKV_DATA_DIR=/var/lib/tikv/tikv-data
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
 
-set | grep TIKV_
-
 ARGS="--pd=${TIKV_PD_ADDR} \
     --advertise-addr=${TIKV_ADVERTISE_ADDR} \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=${TIKV_DATA_DIR} \
     --capacity=${TIKV_CAPACITY} \
-    --config=/etc/tikv/tikv.toml
+    --config=/etc/tikv/tikv.toml"
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
@@ -158,8 +148,6 @@ exec /tikv-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -168,7 +156,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -182,15 +169,13 @@ TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS="--advertise-status-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20180"
 
-set | grep TIKV_
-
 ARGS="--pd=${TIKV_PD_ADDR} \
     --advertise-addr=${TIKV_ADVERTISE_ADDR} \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=${TIKV_DATA_DIR} \
     --capacity=${TIKV_CAPACITY} \
-    --config=/etc/tikv/tikv.toml
+    --config=/etc/tikv/tikv.toml"
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
@@ -218,8 +203,6 @@ exec /tikv-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -228,7 +211,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -242,15 +224,13 @@ TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS="--advertise-status-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20180"
 
-set | grep TIKV_
-
 ARGS="--pd=${TIKV_PD_ADDR} \
     --advertise-addr=${TIKV_ADVERTISE_ADDR} \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=${TIKV_DATA_DIR} \
     --capacity=${TIKV_CAPACITY} \
-    --config=/etc/tikv/tikv.toml
+    --config=/etc/tikv/tikv.toml"
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
@@ -277,8 +257,6 @@ exec /tikv-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -287,7 +265,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -301,15 +278,13 @@ TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
 
-set | grep TIKV_
-
 ARGS="--pd=${TIKV_PD_ADDR} \
     --advertise-addr=${TIKV_ADVERTISE_ADDR} \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=${TIKV_DATA_DIR} \
     --capacity=${TIKV_CAPACITY} \
-    --config=/etc/tikv/tikv.toml
+    --config=/etc/tikv/tikv.toml"
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
@@ -336,8 +311,6 @@ exec /tikv-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -346,7 +319,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -367,15 +339,13 @@ TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
 
-set | grep TIKV_
-
 ARGS="--pd=${TIKV_PD_ADDR} \
     --advertise-addr=${TIKV_ADVERTISE_ADDR} \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=${TIKV_DATA_DIR} \
     --capacity=${TIKV_CAPACITY} \
-    --config=/etc/tikv/tikv.toml
+    --config=/etc/tikv/tikv.toml"
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
@@ -402,8 +372,6 @@ exec /tikv-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -412,7 +380,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -433,15 +400,13 @@ TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
 
-set | grep TIKV_
-
 ARGS="--pd=${TIKV_PD_ADDR} \
     --advertise-addr=${TIKV_ADVERTISE_ADDR} \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=${TIKV_DATA_DIR} \
     --capacity=${TIKV_CAPACITY} \
-    --config=/etc/tikv/tikv.toml
+    --config=/etc/tikv/tikv.toml"
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
@@ -468,8 +433,6 @@ exec /tikv-server ${ARGS}
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
-OPERATOR_ENV="/etc/operator.env"
-
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
     echo "${ANNOTATIONS} does't exist, exiting."
@@ -478,7 +441,6 @@ fi
 source ${ANNOTATIONS} 2>/dev/null
 
 runmode=${runmode:-normal}
-
 if [[ X${runmode} == Xdebug ]]
 then
     echo "entering debug mode."
@@ -492,15 +454,13 @@ TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
 
-set | grep TIKV_
-
 ARGS="--pd=${TIKV_PD_ADDR} \
     --advertise-addr=${TIKV_ADVERTISE_ADDR} \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=${TIKV_DATA_DIR} \
     --capacity=${TIKV_CAPACITY} \
-    --config=/etc/tikv/tikv.toml
+    --config=/etc/tikv/tikv.toml"
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
@@ -541,5 +501,6 @@ exec /tikv-server ${ARGS}
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)
 		}
+		g.Expect(validateScript(script)).Should(gomega.Succeed())
 	}
 }

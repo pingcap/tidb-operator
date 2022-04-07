@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
+// TiKVStartScriptModel contain fields for rendering TiKV start script
 type TiKVStartScriptModel struct {
 	PDAddr        string
 	AdvertiseAddr string
@@ -30,9 +31,10 @@ type TiKVStartScriptModel struct {
 	Capacity      string
 	ExtraArgs     string
 
-	AcrossK8s *ComponentAcrossK8s
+	AcrossK8s *AcrossK8sScriptModel
 }
 
+// RenderTiKVStartScript renders TiKV start script from TidbCluster
 func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath string) (string, error) {
 	m := &TiKVStartScriptModel{}
 
@@ -68,7 +70,7 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath str
 	}
 
 	if tc.AcrossK8s() {
-		m.AcrossK8s = &ComponentAcrossK8s{
+		m.AcrossK8s = &AcrossK8sScriptModel{
 			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
 		}
 	}
@@ -102,15 +104,13 @@ TIKV_DATA_DIR={{ .DataDir }}
 TIKV_CAPACITY={{ .Capacity }}
 TIKV_EXTRA_ARGS={{ .ExtraArgs }}
 
-set | grep TIKV_
-
 ARGS="--pd=${TIKV_PD_ADDR} \
     --advertise-addr=${TIKV_ADVERTISE_ADDR} \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=${TIKV_DATA_DIR} \
     --capacity=${TIKV_CAPACITY} \
-    --config=/etc/tikv/tikv.toml
+    --config=/etc/tikv/tikv.toml"
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
