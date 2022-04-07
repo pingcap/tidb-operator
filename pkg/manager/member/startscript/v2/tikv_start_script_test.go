@@ -16,6 +16,8 @@ package v2
 import (
 	"testing"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/onsi/gomega"
 )
@@ -26,14 +28,14 @@ func TestRenderTiKVStartScript(t *testing.T) {
 	type testcase struct {
 		name string
 
-		modifyModel  func(m *TiKVStartScriptModel)
+		modifyTC     func(tc *v1alpha1.TidbCluster)
 		expectScript string
 	}
 
 	cases := []testcase{
 		{
-			name:        "basic",
-			modifyModel: func(m *TiKVStartScriptModel) {},
+			name:     "basic",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {},
 			expectScript: `#!/bin/sh
 
 set -uo pipefail
@@ -57,16 +59,11 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIKV_PD_ADDR=cluster01-pd:2379
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.tikv-peer.tikv-test.svc:20160
+TIKV_PD_ADDR=start-script-test-pd:2379
+TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160
 TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
-
-if [ ! -z "${STORE_LABELS:-}" ]; then
-    LABELS="--labels ${STORE_LABELS} "
-    TIKV_EXTRA_ARGS="${TIKV_EXTRA_ARGS} ${LABELS}"
-fi
 
 set | grep TIKV_
 
@@ -82,15 +79,20 @@ if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
 fi
 
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS="--labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
 echo "starting tikv-server ..."
 echo "/tikv-server ${ARGS}"
 exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name: "enable AdvertiseAddr",
-			modifyModel: func(m *TiKVStartScriptModel) {
-				m.AdvertiseStatusAddr = "test-tikv-1.test-tikv-peer.namespace.svc"
+			name: "set data sub dir",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.DataSubDir = "tikv-data"
 			},
 			expectScript: `#!/bin/sh
 
@@ -115,17 +117,11 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIKV_PD_ADDR=cluster01-pd:2379
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.tikv-peer.tikv-test.svc:20160
-TIKV_DATA_DIR=/var/lib/tikv
+TIKV_PD_ADDR=start-script-test-pd:2379
+TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160
+TIKV_DATA_DIR=/var/lib/tikv/tikv-data
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
-TIKV_EXTRA_ARGS="--advertise-status-addr=test-tikv-1.test-tikv-peer.namespace.svc:20180"
-
-if [ ! -z "${STORE_LABELS:-}" ]; then
-    LABELS="--labels ${STORE_LABELS} "
-    TIKV_EXTRA_ARGS="${TIKV_EXTRA_ARGS} ${LABELS}"
-fi
 
 set | grep TIKV_
 
@@ -141,15 +137,21 @@ if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
 fi
 
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS="--labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
 echo "starting tikv-server ..."
 echo "/tikv-server ${ARGS}"
 exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name: "set data dir",
-			modifyModel: func(m *TiKVStartScriptModel) {
-				m.DataDir = "/data/tikv"
+			name: "enable dynamic configuration",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				enable := true
+				tc.Spec.EnableDynamicConfiguration = &enable
 			},
 			expectScript: `#!/bin/sh
 
@@ -174,16 +176,11 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIKV_PD_ADDR=cluster01-pd:2379
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.tikv-peer.tikv-test.svc:20160
-TIKV_DATA_DIR=/data/tikv
+TIKV_PD_ADDR=start-script-test-pd:2379
+TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160
+TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
-TIKV_EXTRA_ARGS=
-
-if [ ! -z "${STORE_LABELS:-}" ]; then
-    LABELS="--labels ${STORE_LABELS} "
-    TIKV_EXTRA_ARGS="${TIKV_EXTRA_ARGS} ${LABELS}"
-fi
+TIKV_EXTRA_ARGS="--advertise-status-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20180"
 
 set | grep TIKV_
 
@@ -197,6 +194,71 @@ ARGS="--pd=${TIKV_PD_ADDR} \
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
+fi
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS="--labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tikv-server ..."
+echo "/tikv-server ${ARGS}"
+exec /tikv-server ${ARGS}
+`,
+		},
+		{
+			name: "enable dynamic configuration with setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				enable := true
+				tc.Spec.EnableDynamicConfiguration = &enable
+				tc.Spec.ClusterDomain = "cluster.local"
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+OPERATOR_ENV="/etc/operator.env"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+TIKV_PD_ADDR=start-script-test-pd:2379
+TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160
+TIKV_DATA_DIR=/var/lib/tikv
+TIKV_CAPACITY=${CAPACITY}
+TIKV_EXTRA_ARGS="--advertise-status-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20180"
+
+set | grep TIKV_
+
+ARGS="--pd=${TIKV_PD_ADDR} \
+    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+    --addr=0.0.0.0:20160 \
+    --status-addr=0.0.0.0:20180 \
+    --data-dir=${TIKV_DATA_DIR} \
+    --capacity=${TIKV_CAPACITY} \
+    --config=/etc/tikv/tikv.toml
+
+if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
+    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
+fi
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS="--labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
 fi
 
 echo "starting tikv-server ..."
@@ -206,9 +268,9 @@ exec /tikv-server ${ARGS}
 		},
 		{
 			name: "set cluster domain",
-			modifyModel: func(m *TiKVStartScriptModel) {
-				m.ClusterDomain = "cluster.local"
-				m.AcrossK8s = false
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+				tc.Spec.AcrossK8s = false
 			},
 			expectScript: `#!/bin/sh
 
@@ -233,16 +295,11 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIKV_PD_ADDR=cluster01-pd:2379
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.tikv-peer.tikv-test.svc.cluster.local:20160
+TIKV_PD_ADDR=start-script-test-pd:2379
+TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160
 TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
-
-if [ ! -z "${STORE_LABELS:-}" ]; then
-    LABELS="--labels ${STORE_LABELS} "
-    TIKV_EXTRA_ARGS="${TIKV_EXTRA_ARGS} ${LABELS}"
-fi
 
 set | grep TIKV_
 
@@ -256,6 +313,11 @@ ARGS="--pd=${TIKV_PD_ADDR} \
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
+fi
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS="--labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
 fi
 
 echo "starting tikv-server ..."
@@ -265,9 +327,9 @@ exec /tikv-server ${ARGS}
 		},
 		{
 			name: "across k8s with setting cluster domain",
-			modifyModel: func(m *TiKVStartScriptModel) {
-				m.ClusterDomain = "cluster.local"
-				m.AcrossK8s = true
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+				tc.Spec.AcrossK8s = true
 			},
 			expectScript: `#!/bin/sh
 
@@ -292,23 +354,18 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-pd_url="cluster01-pd:2379"
+pd_url=start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="tikv-start-script-test-discovery.tikv-test:10261"
+discovery_url=start-script-test-discovery.start-script-test-ns:10261
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
 TIKV_PD_ADDR=${result}
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.tikv-peer.tikv-test.svc.cluster.local:20160
+TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160
 TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
-
-if [ ! -z "${STORE_LABELS:-}" ]; then
-    LABELS="--labels ${STORE_LABELS} "
-    TIKV_EXTRA_ARGS="${TIKV_EXTRA_ARGS} ${LABELS}"
-fi
 
 set | grep TIKV_
 
@@ -322,6 +379,11 @@ ARGS="--pd=${TIKV_PD_ADDR} \
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
+fi
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS="--labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
 fi
 
 echo "starting tikv-server ..."
@@ -331,9 +393,9 @@ exec /tikv-server ${ARGS}
 		},
 		{
 			name: "across k8s without setting cluster domain",
-			modifyModel: func(m *TiKVStartScriptModel) {
-				m.ClusterDomain = ""
-				m.AcrossK8s = true
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = ""
+				tc.Spec.AcrossK8s = true
 			},
 			expectScript: `#!/bin/sh
 
@@ -358,23 +420,18 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-pd_url="cluster01-pd:2379"
+pd_url=start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="tikv-start-script-test-discovery.tikv-test:10261"
+discovery_url=start-script-test-discovery.start-script-test-ns:10261
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
 TIKV_PD_ADDR=${result}
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.tikv-peer.tikv-test.svc:20160
+TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160
 TIKV_DATA_DIR=/var/lib/tikv
 TIKV_CAPACITY=${CAPACITY}
 TIKV_EXTRA_ARGS=
-
-if [ ! -z "${STORE_LABELS:-}" ]; then
-    LABELS="--labels ${STORE_LABELS} "
-    TIKV_EXTRA_ARGS="${TIKV_EXTRA_ARGS} ${LABELS}"
-fi
 
 set | grep TIKV_
 
@@ -388,6 +445,70 @@ ARGS="--pd=${TIKV_PD_ADDR} \
 
 if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
+fi
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS="--labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tikv-server ..."
+echo "/tikv-server ${ARGS}"
+exec /tikv-server ${ARGS}
+`,
+		},
+		{
+			name: "heterogeneous without local pd",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD = nil
+				tc.Spec.Cluster = &v1alpha1.TidbClusterRef{Name: "target-cluster"}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+OPERATOR_ENV="/etc/operator.env"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+TIKV_PD_ADDR=target-cluster-pd:2379
+TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160
+TIKV_DATA_DIR=/var/lib/tikv
+TIKV_CAPACITY=${CAPACITY}
+TIKV_EXTRA_ARGS=
+
+set | grep TIKV_
+
+ARGS="--pd=${TIKV_PD_ADDR} \
+    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+    --addr=0.0.0.0:20160 \
+    --status-addr=0.0.0.0:20180 \
+    --data-dir=${TIKV_DATA_DIR} \
+    --capacity=${TIKV_CAPACITY} \
+    --config=/etc/tikv/tikv.toml
+
+if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
+    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
+fi
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS="--labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
 fi
 
 echo "starting tikv-server ..."
@@ -400,23 +521,22 @@ exec /tikv-server ${ARGS}
 	for _, c := range cases {
 		t.Logf("test case: %s", c.name)
 
-		model := &TiKVStartScriptModel{
-			CommonModel: CommonModel{
-				ClusterName:      "tikv-start-script-test",
-				ClusterNamespace: "tikv-test",
-				ClusterDomain:    "",
-				PeerServiceName:  "tikv-peer",
-				AcrossK8s:        false,
+		tc := &v1alpha1.TidbCluster{
+			Spec: v1alpha1.TidbClusterSpec{
+				TiKV: &v1alpha1.TiKVSpec{},
 			},
-			DataDir:             "/var/lib/tikv",
-			PDAddr:              "cluster01-pd:2379",
-			AdvertiseStatusAddr: "",
 		}
-		if c.modifyModel != nil {
-			c.modifyModel(model)
+		tc.Name = "start-script-test"
+		tc.Namespace = "start-script-test-ns"
+		tc.Spec.AcrossK8s = false
+		tc.Spec.ClusterDomain = ""
+		tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: false}
+
+		if c.modifyTC != nil {
+			c.modifyTC(tc)
 		}
 
-		script, err := RenderTiKVStartScript(model)
+		script, err := RenderTiKVStartScript(tc, "/var/lib/tikv")
 		g.Expect(err).Should(gomega.Succeed())
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)

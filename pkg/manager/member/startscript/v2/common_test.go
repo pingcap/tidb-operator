@@ -27,8 +27,13 @@ func TestScriptFormat(t *testing.T) {
 	scripts := []string{
 		componentCommonScript,
 		pdStartScript,
+		pdStartSubScript,
 		tidbStartScript,
+		tidbStartSubScript,
 		tikvStartScript,
+		tikvStartSubScript,
+		pumpStartScript,
+		pumpStartSubScript,
 	}
 
 	blankLineRegexp := regexp.MustCompile("^\\s*$")

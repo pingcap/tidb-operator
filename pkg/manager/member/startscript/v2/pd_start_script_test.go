@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 func TestRenderPDStartScript(t *testing.T) {
@@ -26,14 +27,14 @@ func TestRenderPDStartScript(t *testing.T) {
 	type testcase struct {
 		name string
 
-		modifyModel  func(m *PDStartScriptModel)
+		modifyTC     func(tc *v1alpha1.TidbCluster)
 		expectScript string
 	}
 
 	cases := []testcase{
 		{
-			name:        "basic",
-			modifyModel: func(m *PDStartScriptModel) {},
+			name:     "basic",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {},
 			expectScript: `#!/bin/sh
 
 set -uo pipefail
@@ -57,14 +58,14 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc
-PD_COMPONENT_NAME=${PD_POD_NAME}
+PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
+PD_NAME=${POD_NAME}
 PD_DATA_DIR=/var/lib/pd
 PD_PEER_URL=http://0.0.0.0:2380
 PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
 PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
 
 set | grep PD_
@@ -99,7 +100,7 @@ while true; do
 done
 
 ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_COMPONENT_NAME} \
+    --name=${PD_NAME} \
     --peer-urls=${PD_PEER_URL} \
     --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
     --client-urls=${PD_CLIENT_URL} \
@@ -131,9 +132,9 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
-			name: "https scheme",
-			modifyModel: func(m *PDStartScriptModel) {
-				m.Scheme = "https"
+			name: "enable tls",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			},
 			expectScript: `#!/bin/sh
 
@@ -158,14 +159,14 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc
-PD_COMPONENT_NAME=${PD_POD_NAME}
+PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
+PD_NAME=${POD_NAME}
 PD_DATA_DIR=/var/lib/pd
 PD_PEER_URL=https://0.0.0.0:2380
 PD_ADVERTISE_PEER_URL=https://${PD_DOMAIN}:2380
 PD_CLIENT_URL=https://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=https://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
 
 set | grep PD_
@@ -200,7 +201,7 @@ while true; do
 done
 
 ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_COMPONENT_NAME} \
+    --name=${PD_NAME} \
     --peer-urls=${PD_PEER_URL} \
     --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
     --client-urls=${PD_CLIENT_URL} \
@@ -232,9 +233,9 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
-			name: "set data dir",
-			modifyModel: func(m *PDStartScriptModel) {
-				m.DataDir = "/var/lib/pd/data"
+			name: "set data sub dir",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD.DataSubDir = "pd-data"
 			},
 			expectScript: `#!/bin/sh
 
@@ -259,14 +260,14 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc
-PD_COMPONENT_NAME=${PD_POD_NAME}
-PD_DATA_DIR=/var/lib/pd/data
+PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
+PD_NAME=${POD_NAME}
+PD_DATA_DIR=/var/lib/pd/pd-data
 PD_PEER_URL=http://0.0.0.0:2380
 PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
 PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
 
 set | grep PD_
@@ -301,7 +302,7 @@ while true; do
 done
 
 ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_COMPONENT_NAME} \
+    --name=${PD_NAME} \
     --peer-urls=${PD_PEER_URL} \
     --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
     --client-urls=${PD_CLIENT_URL} \
@@ -334,8 +335,8 @@ exec /pd-server ${ARGS}
 		},
 		{
 			name: "set cluster domain",
-			modifyModel: func(m *PDStartScriptModel) {
-				m.ClusterDomain = "cluster-1.com"
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster-1.com"
 			},
 			expectScript: `#!/bin/sh
 
@@ -360,14 +361,14 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc.cluster-1.com
-PD_COMPONENT_NAME=${PD_DOMAIN}
+PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster-1.com
+PD_NAME=${PD_DOMAIN}
 PD_DATA_DIR=/var/lib/pd
 PD_PEER_URL=http://0.0.0.0:2380
 PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
 PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
 
 set | grep PD_
@@ -402,7 +403,7 @@ while true; do
 done
 
 ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_COMPONENT_NAME} \
+    --name=${PD_NAME} \
     --peer-urls=${PD_PEER_URL} \
     --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
     --client-urls=${PD_CLIENT_URL} \
@@ -434,9 +435,10 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
-			name: "across k8s but not set cluster domain",
-			modifyModel: func(m *PDStartScriptModel) {
-				m.AcrossK8s = true
+			name: "across k8s without setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = ""
+				tc.Spec.AcrossK8s = true
 			},
 			expectScript: `#!/bin/sh
 
@@ -461,14 +463,14 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc
-PD_COMPONENT_NAME=${PD_DOMAIN}
+PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
+PD_NAME=${PD_DOMAIN}
 PD_DATA_DIR=/var/lib/pd
 PD_PEER_URL=http://0.0.0.0:2380
 PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
 PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
 
 set | grep PD_
@@ -503,7 +505,7 @@ while true; do
 done
 
 ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_COMPONENT_NAME} \
+    --name=${PD_NAME} \
     --peer-urls=${PD_PEER_URL} \
     --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
     --client-urls=${PD_CLIENT_URL} \
@@ -535,10 +537,10 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
-			name: "across k8s and set cluster domain",
-			modifyModel: func(m *PDStartScriptModel) {
-				m.ClusterDomain = "cluster-1.com"
-				m.AcrossK8s = true
+			name: "across k8s with setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster-1.com"
+				tc.Spec.AcrossK8s = true
 			},
 			expectScript: `#!/bin/sh
 
@@ -563,14 +565,14 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.pd-peer.pd-test.svc.cluster-1.com
-PD_COMPONENT_NAME=${PD_DOMAIN}
+PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster-1.com
+PD_NAME=${PD_DOMAIN}
 PD_DATA_DIR=/var/lib/pd
 PD_PEER_URL=http://0.0.0.0:2380
 PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
 PD_CLIENT_URL=http://0.0.0.0:2379
 PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=pd-start-script-test-discovery.pd-peer.pd-test.svc:10261
+PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
 PD_EXTRA_ARGS=
 
 set | grep PD_
@@ -605,7 +607,7 @@ while true; do
 done
 
 ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_COMPONENT_NAME} \
+    --name=${PD_NAME} \
     --peer-urls=${PD_PEER_URL} \
     --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
     --client-urls=${PD_CLIENT_URL} \
@@ -641,22 +643,18 @@ exec /pd-server ${ARGS}
 	for _, c := range cases {
 		t.Logf("test case: %s", c.name)
 
-		model := &PDStartScriptModel{
-			CommonModel: CommonModel{
-				ClusterName:      "pd-start-script-test",
-				ClusterNamespace: "pd-test",
-				ClusterDomain:    "",
-				PeerServiceName:  "pd-peer",
-				AcrossK8s:        false,
+		tc := &v1alpha1.TidbCluster{
+			Spec: v1alpha1.TidbClusterSpec{
+				PD: &v1alpha1.PDSpec{},
 			},
-			DataDir: "/var/lib/pd",
-			Scheme:  "http",
 		}
-		if c.modifyModel != nil {
-			c.modifyModel(model)
+		tc.Name = "start-script-test"
+		tc.Namespace = "start-script-test-ns"
+		if c.modifyTC != nil {
+			c.modifyTC(tc)
 		}
 
-		script, err := RenderPDStartScript(model)
+		script, err := RenderPDStartScript(tc, "/var/lib/pd")
 		g.Expect(err).Should(gomega.Succeed())
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)

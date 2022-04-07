@@ -13,7 +13,14 @@
 
 package v2
 
-import "text/template"
+import (
+	"fmt"
+	"strings"
+	"text/template"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+)
 
 type TiDBPlugin struct {
 	PluginDirectory string
@@ -21,33 +28,57 @@ type TiDBPlugin struct {
 }
 
 type TiDBStartScriptModel struct {
-	CommonModel
+	PDAddr        string
+	AdvertiseAddr string
+	ExtraArgs     string
 
-	PDAddr string
-	Plugin *TiDBPlugin
+	AcrossK8s *ComponentAcrossK8s
 }
 
-func RenderTiDBStartScript(m *TiDBStartScriptModel) (string, error) {
+func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
+	m := &TiDBStartScriptModel{}
+
+	pdDomain := controller.PDMemberName(tc.Name)
+	if tc.AcrossK8s() {
+		pdDomain = controller.PDMemberName(tc.Name) // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
+	}
+	m.PDAddr = fmt.Sprintf("%s:2379", pdDomain)
+
+	m.AdvertiseAddr = fmt.Sprintf("${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.%s.svc", tc.Namespace)
+	if tc.Spec.ClusterDomain != "" {
+		m.AdvertiseAddr = m.AdvertiseAddr + "." + tc.Spec.ClusterDomain
+	}
+
+	extraArgs := []string{}
+	if tc.IsTiDBBinlogEnabled() {
+		extraArgs = append(extraArgs, "--enable-binlog=true")
+	}
+	if plugins := tc.Spec.TiDB.Plugins; len(plugins) > 0 {
+		extraArgs = append(extraArgs, "--plugin-dir=/plugins")
+		extraArgs = append(extraArgs, fmt.Sprintf("--plugin-load=%s", strings.Join(plugins, ",")))
+	}
+	if len(extraArgs) > 0 {
+		m.ExtraArgs = fmt.Sprintf("\"%s\"", strings.Join(extraArgs, " "))
+	}
+
+	if tc.AcrossK8s() {
+		m.AcrossK8s = &ComponentAcrossK8s{
+			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
+		}
+	}
+
 	return renderTemplateFunc(tidbStartScriptTpl, m)
 }
 
 const (
-	tidbStartScriptVar = `
-{{ define "TIDB_POD_NAME" -}}
-TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-{{- end }}
-
-
-{{ define "TIDB_ADVERTISE_ADDR" -}}
-TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.{{ .PeerServiceName }}.{{ .ClusterNamespace }}.svc{{ .FormatClusterDomain }}
-{{- end }}
-
-
+	tidbStartSubScript = `
 {{ define "TIDB_PD_ADDR" -}}
     {{- if .AcrossK8s -}}
-pd_url="{{ .PDAddr }}"
+pd_url={{ .PDAddr }}
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="{{ .ClusterName }}-discovery.{{ .ClusterNamespace }}:10261"
+discovery_url={{ .AcrossK8s.DiscoveryAddr }}
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
@@ -57,33 +88,13 @@ TIDB_PD_ADDR=${result}
 TIDB_PD_ADDR={{ .PDAddr }}
     {{- end -}}
 {{- end}}
-
-
-{{ define "TIDB_EXTRA_ARGS" -}}
-TIDB_EXTRA_ARGS=
-
-if [[ X${BINLOG_ENABLED:-} == Xtrue ]]
-then
-    TIDB_EXTRA_ARGS="${TIDB_EXTRA_ARGS} --enable-binlog=true"
-fi
-
-SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
-if [[ ! -z "${SLOW_LOG_FILE}" ]]
-then
-    TIDB_EXTRA_ARGS="${TIDB_EXTRA_ARGS} --log-slow-query=${SLOW_LOG_FILE:-}"
-fi
-
-    {{- if .Plugin }}
-TIDB_EXTRA_ARGS="${TIDB_EXTRA_ARGS}  --plugin-dir  {{ .Plugin.PluginDirectory  }} --plugin-load {{ .Plugin.PluginList }}"
-    {{- end }}
-{{- end}}
 `
 
 	tidbStartScript = `
-{{ template "TIDB_POD_NAME" . }}
-{{ template "TIDB_ADVERTISE_ADDR" . }}
+TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
+TIDB_ADVERTISE_ADDR={{ .AdvertiseAddr }}
 {{ template "TIDB_PD_ADDR" . }}
-{{ template "TIDB_EXTRA_ARGS" . }}
+TIDB_EXTRA_ARGS={{ .ExtraArgs }}
 
 set | grep TIDB_
 
@@ -97,6 +108,12 @@ if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
     ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
 fi
 
+SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
+if [[ ! -z "${SLOW_LOG_FILE}" ]]
+then
+    ARGS="${ARGS} --log-slow-query=${SLOW_LOG_FILE:-}"
+fi
+
 echo "start tidb-server ..."
 echo "/tidb-server ${ARGS}"
 exec /tidb-server ${ARGS}
@@ -105,6 +122,6 @@ exec /tidb-server ${ARGS}
 
 var tidbStartScriptTpl = template.Must(
 	template.Must(
-		template.New("tidb-start-script").Parse(tidbStartScriptVar),
+		template.New("tidb-start-script").Parse(tidbStartSubScript),
 	).Parse(componentCommonScript + tidbStartScript),
 )

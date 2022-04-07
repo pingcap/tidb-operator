@@ -43,19 +43,11 @@ fi
 `
 )
 
-type CommonModel struct {
-	ClusterName      string // same as tc.metadata.name
-	ClusterNamespace string // same as tc.metadata.namespace
-	ClusterDomain    string // same as tc.spec.clusterDomain
-	PeerServiceName  string // the name of the peer service
-	AcrossK8s        bool   // whether the cluster is deployed across k8s
-}
-
-func (m CommonModel) FormatClusterDomain() string {
-	if len(m.ClusterDomain) > 0 {
-		return "." + m.ClusterDomain
-	}
-	return ""
+type ComponentAcrossK8s struct {
+	// DiscoveryAddr is the address of the discovery service.
+	//
+	// When cluster is deployed across k8s, all components except pd will get the pd addr from discovery.
+	DiscoveryAddr string
 }
 
 func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {

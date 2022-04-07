@@ -14,86 +14,66 @@
 package v2
 
 import (
+	"fmt"
+	"path/filepath"
 	"text/template"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 type PDStartScriptModel struct {
-	CommonModel
-
-	DataDir string
-	Scheme  string
+	PDDomain           string
+	PDName             string
+	DataDir            string
+	PeerURL            string
+	AdvertisePeerURL   string
+	ClientURL          string
+	AdvertiseClientURL string
+	DiscoveryAddr      string
+	ExtraArgs          string
 }
 
-func RenderPDStartScript(m *PDStartScriptModel) (string, error) {
+func RenderPDStartScript(tc *v1alpha1.TidbCluster, pdDataVolumeMountPath string) (string, error) {
+	m := &PDStartScriptModel{}
+
+	m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.%s.svc", tc.Namespace)
+	if tc.Spec.ClusterDomain != "" {
+		m.PDDomain = m.PDDomain + "." + tc.Spec.ClusterDomain
+	}
+
+	m.PDName = "${POD_NAME}"
+	if tc.AcrossK8s() || tc.Spec.ClusterDomain != "" {
+		m.PDName = "${PD_DOMAIN}"
+	}
+
+	m.DataDir = filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir)
+
+	m.PeerURL = fmt.Sprintf("%s://0.0.0.0:2380", tc.Scheme())
+
+	m.AdvertisePeerURL = fmt.Sprintf("%s://${PD_DOMAIN}:2380", tc.Scheme())
+
+	m.ClientURL = fmt.Sprintf("%s://0.0.0.0:2379", tc.Scheme())
+
+	m.AdvertiseClientURL = fmt.Sprintf("%s://${PD_DOMAIN}:2379", tc.Scheme())
+
+	m.DiscoveryAddr = fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace)
+
 	return renderTemplateFunc(pdStartScriptTpl, m)
 }
 
 const (
-	pdStartScriptVar = `
-{{ define "PD_POD_NAME" -}}
+	pdStartSubScript = ``
+	pdStartScript    = `
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-{{- end }}
-
-
-{{ define "PD_DOMAIN" -}}
-PD_DOMAIN=${PD_POD_NAME}.{{ .PeerServiceName }}.{{ .ClusterNamespace }}.svc{{ .FormatClusterDomain }}
-{{- end }}
-
-
-{{ define "PD_COMPONENT_NAME" -}}
-    {{- if or .AcrossK8s .FormatClusterDomain -}}
-PD_COMPONENT_NAME=${PD_DOMAIN}
-    {{- else -}}
-PD_COMPONENT_NAME=${PD_POD_NAME}
-    {{- end -}}
-{{- end }}
-
-
-{{ define "PD_DATA_DIR" -}}
+PD_DOMAIN={{ .PDDomain }}
+PD_NAME={{ .PDName }}
 PD_DATA_DIR={{ .DataDir }}
-{{- end }}
-
-
-{{ define "PD_PEER_URL" -}}
-PD_PEER_URL={{ .Scheme }}://0.0.0.0:2380
-{{- end }}
-
-
-{{ define "PD_ADVERTISE_PEER_URL" -}}
-PD_ADVERTISE_PEER_URL={{ .Scheme }}://${PD_DOMAIN}:2380
-{{- end }}
-
-
-{{ define "PD_CLIENT_URL" -}}
-PD_CLIENT_URL={{ .Scheme }}://0.0.0.0:2379
-{{- end }}
-
-
-{{ define "PD_ADVERTISE_CLIENT_URL" -}}
-PD_ADVERTISE_CLIENT_URL={{ .Scheme }}://${PD_DOMAIN}:2379
-{{- end }}
-
-
-{{ define "PD_DISCOVERY_ADDR" -}}
-PD_DISCOVERY_ADDR={{ .ClusterName }}-discovery.{{ .PeerServiceName }}.{{ .ClusterNamespace }}.svc:10261
-{{- end}}
-
-
-{{ define "PD_EXTRA_ARGS" -}}
-PD_EXTRA_ARGS=
-{{- end}}
-`
-	pdStartScript = `
-{{ template "PD_POD_NAME" . }}
-{{ template "PD_DOMAIN" . }}
-{{ template "PD_COMPONENT_NAME" . }}
-{{ template "PD_DATA_DIR" . }}
-{{ template "PD_PEER_URL" . }}
-{{ template "PD_ADVERTISE_PEER_URL" . }}
-{{ template "PD_CLIENT_URL" . }}
-{{ template "PD_ADVERTISE_CLIENT_URL" . }}
-{{ template "PD_DISCOVERY_ADDR" . }}
-{{ template "PD_EXTRA_ARGS" . }}
+PD_PEER_URL={{ .PeerURL }}
+PD_ADVERTISE_PEER_URL={{ .AdvertisePeerURL }}
+PD_CLIENT_URL={{ .ClientURL }}
+PD_ADVERTISE_CLIENT_URL={{ .AdvertiseClientURL }}
+PD_DISCOVERY_ADDR={{ .DiscoveryAddr }}
+PD_EXTRA_ARGS={{ .ExtraArgs }}
 
 set | grep PD_
 
@@ -127,7 +107,7 @@ while true; do
 done
 
 ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_COMPONENT_NAME} \
+    --name=${PD_NAME} \
     --peer-urls=${PD_PEER_URL} \
     --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
     --client-urls=${PD_CLIENT_URL} \
@@ -161,6 +141,6 @@ exec /pd-server ${ARGS}
 
 var pdStartScriptTpl = template.Must(
 	template.Must(
-		template.New("pd-start-script").Parse(pdStartScriptVar),
+		template.New("pd-start-script").Parse(pdStartSubScript),
 	).Parse(componentCommonScript + pdStartScript),
 )
