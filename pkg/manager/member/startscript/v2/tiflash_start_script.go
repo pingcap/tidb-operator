@@ -38,7 +38,7 @@ const (
 
 	// init container of tiflash have core start script, so just to start tiflash
 	tiflashStartScript = `
-TIKV_EXTRA_ARGS={{ .ExtraArgs }}
+TIFLASH_EXTRA_ARGS={{ .ExtraArgs }}
 
 ARGS="--config-file /data0/config.toml"
 

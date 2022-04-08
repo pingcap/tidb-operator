@@ -367,6 +367,8 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			},
 		})
 	}
+
+	annMount, annVolume := annotationsMountVolume()
 	volumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "data",
@@ -381,6 +383,10 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name: pumpCertVolumeMount, ReadOnly: true, MountPath: pumpCertPath,
 		})
+	}
+	// FIXME: find a better way to handle this
+	if tc.Spec.StartScriptVersion == v1alpha1.StartScriptV2 {
+		volumeMounts = append(volumeMounts, annMount)
 	}
 	containers := []corev1.Container{
 		{
@@ -427,6 +433,10 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				},
 			},
 		},
+	}
+	// FIXME: find a better way to handle this
+	if tc.Spec.StartScriptVersion == v1alpha1.StartScriptV2 {
+		volumes = append(volumes, annVolume)
 	}
 
 	if tc.IsTLSClusterEnabled() {

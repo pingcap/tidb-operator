@@ -38,7 +38,7 @@ type PDStartScriptModel struct {
 func RenderPDStartScript(tc *v1alpha1.TidbCluster, pdDataVolumeMountPath string) (string, error) {
 	m := &PDStartScriptModel{}
 
-	m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.%s.svc", tc.Namespace)
+	m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.${PEER_SERVICE_NAME}.%s.svc", tc.Namespace)
 	if tc.Spec.ClusterDomain != "" {
 		m.PDDomain = m.PDDomain + "." + tc.Spec.ClusterDomain
 	}
