@@ -267,7 +267,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 		return
 	}
 	// TiDB service has endpoints
-	if eps != nil && len(eps.Subsets[0].Addresses) > 0 {
+	if eps != nil && len(eps.Subsets) > 0 && len(eps.Subsets[0].Addresses) > 0 {
 		isTiDBReady = true
 	}
 
@@ -292,7 +292,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	if !passwordSecretExist {
 		klog.Infof("Create random password secret for cluster %s/%s", ns, tcName)
 		var secret *corev1.Secret
-		secret, password = m.buildRandomPasswordSecret(tc)
+		secret, password = m.BuildRandomPasswordSecret(tc)
 		err := m.deps.TypedControl.Create(tc, secret)
 		if err != nil {
 			klog.Errorf("Failed to create secret %s for cluster %s:%s, err: %s", secretName, ns, tcName, err)
@@ -342,7 +342,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	}
 }
 
-func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) (*corev1.Secret, string) {
+func (m *tidbMemberManager) BuildRandomPasswordSecret(tc *v1alpha1.TidbCluster) (*corev1.Secret, string) {
 
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -352,7 +352,14 @@ func (m *tidbMemberManager) buildRandomPasswordSecret(tc *v1alpha1.TidbCluster) 
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 	}
-	password := util.FixedLengthRandomPasswordBytes()
+	var password []byte
+	for {
+		password = util.FixedLengthRandomPasswordBytes()
+		// check password not contain "\" character
+		if !strings.Contains(string(password), "\\") {
+			break
+		}
+	}
 	s.Data = map[string][]byte{
 		constants.TidbRootKey: password,
 	}
