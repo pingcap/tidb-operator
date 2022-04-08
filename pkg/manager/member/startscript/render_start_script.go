@@ -93,11 +93,11 @@ func RenderTiFlashStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	case v1alpha1.StartScriptV2:
 		return startscriptv2.RenderTiFlashStartScript(tc)
 	case v1alpha1.StartScriptV1:
-		return renderTiCDCStartScriptV1(tc)
+		return renderTiFlashStartScriptV1(tc)
 	}
 
 	// use v1 by default
-	return renderTiCDCStartScriptV1(tc)
+	return renderTiFlashStartScriptV1(tc)
 }
 
 func renderTiKVStartScriptV1(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath string) (string, error) {
