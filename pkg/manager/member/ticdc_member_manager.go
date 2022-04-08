@@ -15,13 +15,13 @@ package member
 
 import (
 	"fmt"
-	"path"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -344,32 +344,12 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
 
-	cmdArgs := []string{"/cdc server", "--addr=0.0.0.0:8301", fmt.Sprintf("--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:8301", controller.FormatClusterDomain(tc.Spec.ClusterDomain))}
-	cmdArgs = append(cmdArgs, fmt.Sprintf("--gc-ttl=%d", tc.TiCDCGCTTL()))
-	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-file=%s", tc.TiCDCLogFile()))
-	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-level=%s", tc.TiCDCLogLevel()))
-
 	var (
 		volMounts []corev1.VolumeMount
 		vols      []corev1.Volume
 	)
 
-	scheme := "http"
 	if tc.IsTLSClusterEnabled() {
-		scheme = "https"
-	}
-	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Name))
-	if tc.AcrossK8s() {
-		pdAddr = "${result}" // get pd addr from discovery in startup script
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		pdAddr = fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
-	}
-
-	if tc.IsTLSClusterEnabled() {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--key=%s", path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey)))
-
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name:      ticdcCertVolumeMount,
 			ReadOnly:  true,
@@ -394,43 +374,11 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 			},
 		})
 	}
-	cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=%s", pdAddr))
-
-	if cm != nil {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--config=%s", "/etc/ticdc/ticdc.toml"))
-	}
 
 	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
 	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiCDC.StorageVolumes, tc.Spec.TiCDC.StorageClassName, v1alpha1.TiCDCMemberType)
 	volMounts = append(volMounts, storageVolMounts...)
 	volMounts = append(volMounts, tc.Spec.TiCDC.AdditionalVolumeMounts...)
-
-	var script string
-
-	if tc.AcrossK8s() {
-		var pdAddr string
-		pdDomain := controller.PDMemberName(tcName)
-		if tc.IsTLSClusterEnabled() {
-			pdAddr = fmt.Sprintf("https://%s:2379", pdDomain)
-		} else {
-			pdAddr = fmt.Sprintf("http://%s:2379", pdDomain)
-		}
-
-		str := `set -uo pipefail
-pd_url="%s"
-encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="%s-discovery.${NAMESPACE}:10261"
-until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
-echo "waiting for the verification of PD endpoints ..."
-sleep 2
-done
-`
-
-		script += fmt.Sprintf(str, pdAddr, tc.GetName())
-		script += "\n" + strings.Join(append([]string{"exec"}, cmdArgs...), " ")
-	} else {
-		script = strings.Join(cmdArgs, " ")
-	}
 
 	envs := []corev1.EnvVar{
 		{
@@ -457,6 +405,11 @@ done
 			Name:  "TZ",
 			Value: tc.TiCDCTimezone(),
 		},
+	}
+
+	script, err := startscript.RenderTiCDCStartScript(tc, ticdcCertPath)
+	if err != nil {
+		return nil, fmt.Errorf("rendor start script for tc %s/%s failed: %s", ns, tcName, err)
 	}
 
 	ticdcContainer := corev1.Container{

@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -494,11 +495,17 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 			Value: tc.Timezone(),
 		},
 	}
+
+	startScript, err := startscript.RenderTiFlashStartScript(tc)
+	if err != nil {
+		return nil, fmt.Errorf("render start script of tc %s/%s failed: %v", ns, tcName, err)
+	}
+
 	tiflashContainer := corev1.Container{
 		Name:            v1alpha1.TiFlashMemberType.String(),
 		Image:           tc.TiFlashImage(),
 		ImagePullPolicy: baseTiFlashSpec.ImagePullPolicy(),
-		Command:         []string{"/bin/sh", "-c", "/tiflash/tiflash server --config-file /data0/config.toml"},
+		Command:         []string{"/bin/sh", "-c", startScript},
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: tc.TiFlashContainerPrivilege(),
 		},

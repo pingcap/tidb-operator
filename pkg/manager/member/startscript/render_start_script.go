@@ -15,6 +15,7 @@ package startscript
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -22,6 +23,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	startscriptv2 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v2"
+
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -71,6 +74,30 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	// use v1 by default
 	return renderPumpStartScriptV1(tc)
+}
+
+func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster, ticdcCertPath string) (string, error) {
+	switch tc.Spec.StartScriptVersion {
+	case v1alpha1.StartScriptV2:
+		return startscriptv2.RenderTiCDCStartScript(tc, ticdcCertPath)
+	case v1alpha1.StartScriptV1:
+		return renderTiCDCStartScriptV1(tc, ticdcCertPath)
+	}
+
+	// use v1 by default
+	return renderTiCDCStartScriptV1(tc, ticdcCertPath)
+}
+
+func RenderTiFlashStartScript(tc *v1alpha1.TidbCluster) (string, error) {
+	switch tc.Spec.StartScriptVersion {
+	case v1alpha1.StartScriptV2:
+		return startscriptv2.RenderTiFlashStartScript(tc)
+	case v1alpha1.StartScriptV1:
+		return renderTiCDCStartScriptV1(tc)
+	}
+
+	// use v1 by default
+	return renderTiCDCStartScriptV1(tc)
 }
 
 func renderTiKVStartScriptV1(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath string) (string, error) {
@@ -159,6 +186,70 @@ func renderPumpStartScriptV1(tc *v1alpha1.TidbCluster) (string, error) {
 		LogLevel:    getPumpLogLevel(tc),
 		Namespace:   tc.GetNamespace(),
 	})
+}
+
+func renderTiCDCStartScriptV1(tc *v1alpha1.TidbCluster, ticdcCertPath string) (string, error) {
+	tcName := tc.GetName()
+
+	cmdArgs := []string{"/cdc server", "--addr=0.0.0.0:8301", fmt.Sprintf("--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:8301", controller.FormatClusterDomain(tc.Spec.ClusterDomain))}
+	cmdArgs = append(cmdArgs, fmt.Sprintf("--gc-ttl=%d", tc.TiCDCGCTTL()))
+	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-file=%s", tc.TiCDCLogFile()))
+	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-level=%s", tc.TiCDCLogLevel()))
+
+	scheme := "http"
+	if tc.IsTLSClusterEnabled() {
+		scheme = "https"
+	}
+	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Name))
+	if tc.AcrossK8s() {
+		pdAddr = "${result}" // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		pdAddr = fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
+	}
+
+	if tc.IsTLSClusterEnabled() {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--key=%s", path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey)))
+	}
+	cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=%s", pdAddr))
+
+	if tc.Spec.TiCDC.Config != nil && !tc.Spec.TiCDC.Config.OnlyOldItems() {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--config=%s", "/etc/ticdc/ticdc.toml"))
+	}
+
+	var script string
+
+	if tc.AcrossK8s() {
+		var pdAddr string
+		pdDomain := controller.PDMemberName(tcName)
+		if tc.IsTLSClusterEnabled() {
+			pdAddr = fmt.Sprintf("https://%s:2379", pdDomain)
+		} else {
+			pdAddr = fmt.Sprintf("http://%s:2379", pdDomain)
+		}
+
+		str := `set -uo pipefail
+pd_url="%s"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="%s-discovery.${NAMESPACE}:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep 2
+done
+`
+
+		script += fmt.Sprintf(str, pdAddr, tc.GetName())
+		script += "\n" + strings.Join(append([]string{"exec"}, cmdArgs...), " ")
+	} else {
+		script = strings.Join(cmdArgs, " ")
+	}
+
+	return script, nil
+}
+
+func renderTiFlashStartScriptV1(tc *v1alpha1.TidbCluster) (string, error) {
+	return "/tiflash/tiflash server --config-file /data0/config.toml", nil
 }
 
 func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
