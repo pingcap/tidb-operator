@@ -37,19 +37,22 @@ type TiKVStartScriptModel struct {
 // RenderTiKVStartScript renders TiKV start script from TidbCluster
 func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath string) (string, error) {
 	m := &TiKVStartScriptModel{}
+	tcName := tc.Name
+	tcNS := tc.Namespace
+	peerServiceName := controller.TiKVPeerMemberName(tcName)
 
-	m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Name))
+	m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tcName))
 	if tc.AcrossK8s() {
 		m.AcrossK8s = &AcrossK8sScriptModel{
-			PDAddr:        fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Name)),
-			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
+			PDAddr:        fmt.Sprintf("%s:2379", controller.PDMemberName(tcName)),
+			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
 		}
 		m.PDAddr = "${result}" // get pd addr in subscript
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
 		m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
 	}
 
-	advertiseAddr := fmt.Sprintf("${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.%s.svc", tc.Namespace)
+	advertiseAddr := fmt.Sprintf("${TIKV_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
 		advertiseAddr = advertiseAddr + "." + tc.Spec.ClusterDomain
 	}
@@ -61,7 +64,7 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath str
 
 	extraArgs := []string{}
 	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
-		advertiseStatusAddr := fmt.Sprintf("${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.%s.svc", tc.Namespace)
+		advertiseStatusAddr := fmt.Sprintf("${TIKV_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 		if tc.Spec.ClusterDomain != "" {
 			advertiseStatusAddr = advertiseStatusAddr + "." + tc.Spec.ClusterDomain
 		}

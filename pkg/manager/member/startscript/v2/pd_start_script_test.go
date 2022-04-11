@@ -55,7 +55,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc
+PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
 
 elapseTime=0
 period=1
@@ -139,7 +139,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc
+PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
 
 elapseTime=0
 period=1
@@ -223,7 +223,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc
+PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
 
 elapseTime=0
 period=1
@@ -307,7 +307,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc.cluster-1.com
+PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc.cluster-1.com
 
 elapseTime=0
 period=1
@@ -392,7 +392,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc
+PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
 
 elapseTime=0
 period=1
@@ -477,7 +477,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc.cluster-1.com
+PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc.cluster-1.com
 
 elapseTime=0
 period=1

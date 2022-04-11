@@ -19,6 +19,7 @@ import (
 	"text/template"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
 // PDStartScriptModel contain fields for rendering PD start script
@@ -37,8 +38,11 @@ type PDStartScriptModel struct {
 // RenderPDStartScript renders PD start script from TidbCluster
 func RenderPDStartScript(tc *v1alpha1.TidbCluster, pdDataVolumeMountPath string) (string, error) {
 	m := &PDStartScriptModel{}
+	tcName := tc.Name
+	tcNS := tc.Namespace
+	peerServiceName := controller.PDPeerMemberName(tcName)
 
-	m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.${PEER_SERVICE_NAME}.%s.svc", tc.Namespace)
+	m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
 		m.PDDomain = m.PDDomain + "." + tc.Spec.ClusterDomain
 	}
@@ -58,7 +62,7 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster, pdDataVolumeMountPath string)
 
 	m.AdvertiseClientURL = fmt.Sprintf("%s://${PD_DOMAIN}:2379", tc.Scheme())
 
-	m.DiscoveryAddr = fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace)
+	m.DiscoveryAddr = fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS)
 
 	return renderTemplateFunc(pdStartScriptTpl, m)
 }

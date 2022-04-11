@@ -58,7 +58,7 @@ fi
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
+    --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
     --host=0.0.0.0 \
     --path=start-script-test-pd:2379 \
     --config=/etc/tidb/tidb.toml"
@@ -101,7 +101,7 @@ fi
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
+    --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
     --host=0.0.0.0 \
     --path=start-script-test-pd:2379 \
     --config=/etc/tidb/tidb.toml"
@@ -146,7 +146,7 @@ fi
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
+    --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
     --host=0.0.0.0 \
     --path=start-script-test-pd:2379 \
     --config=/etc/tidb/tidb.toml"
@@ -191,7 +191,7 @@ fi
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
+    --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
     --host=0.0.0.0 \
     --path=start-script-test-pd:2379 \
     --config=/etc/tidb/tidb.toml"
@@ -235,7 +235,7 @@ fi
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.test.com \
+    --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc.test.com \
     --host=0.0.0.0 \
     --path=start-script-test-pd:2379 \
     --config=/etc/tidb/tidb.toml"
@@ -286,7 +286,7 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
 done
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.test.com \
+    --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc.test.com \
     --host=0.0.0.0 \
     --path=${result} \
     --config=/etc/tidb/tidb.toml"
@@ -337,7 +337,7 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
 done
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
+    --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
     --host=0.0.0.0 \
     --path=${result} \
     --config=/etc/tidb/tidb.toml"
@@ -381,7 +381,7 @@ fi
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
+    --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
     --host=0.0.0.0 \
     --path=target-cluster-pd:2379 \
     --config=/etc/tidb/tidb.toml"
@@ -433,7 +433,7 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
 done
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
+    --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
     --host=0.0.0.0 \
     --path=${result} \
     --config=/etc/tidb/tidb.toml"

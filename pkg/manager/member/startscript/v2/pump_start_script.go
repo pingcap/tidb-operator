@@ -35,12 +35,15 @@ type PumpStartScriptModel struct {
 // RenderPumpStartScript renders Pump start script from TidbCluster
 func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &PumpStartScriptModel{}
+	tcName := tc.Name
+	tcNS := tc.Namespace
+	peerServiceName := controller.PumpPeerMemberName(tcName)
 
-	m.PDAddr = fmt.Sprintf("%s://%s:2379", tc.Scheme(), controller.PDMemberName(tc.Name))
+	m.PDAddr = fmt.Sprintf("%s://%s:2379", tc.Scheme(), controller.PDMemberName(tcName))
 	if tc.AcrossK8s() {
 		m.AcrossK8s = &AcrossK8sScriptModel{
-			PDAddr:        fmt.Sprintf("%s://%s:2379", tc.Scheme(), controller.PDMemberName(tc.Name)),
-			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
+			PDAddr:        fmt.Sprintf("%s://%s:2379", tc.Scheme(), controller.PDMemberName(tcName)),
+			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
 		}
 		m.PDAddr = "${result}" // get pd addr in subscript
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
@@ -59,11 +62,11 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		}
 	}
 
-	advertiseAddr := fmt.Sprintf("${PUMP_POD_NAME}.%s-pump", tc.Name)
+	advertiseAddr := fmt.Sprintf("${PUMP_POD_NAME}.%s", peerServiceName)
 	if tc.Spec.ClusterDomain != "" {
-		advertiseAddr = advertiseAddr + fmt.Sprintf(".%s.svc.%s", tc.Namespace, tc.Spec.ClusterDomain)
+		advertiseAddr = advertiseAddr + fmt.Sprintf(".%s.svc.%s", tcNS, tc.Spec.ClusterDomain)
 	} else if tc.Spec.ClusterDomain == "" && tc.AcrossK8s() {
-		advertiseAddr = advertiseAddr + fmt.Sprintf(".%s.svc", tc.Namespace)
+		advertiseAddr = advertiseAddr + fmt.Sprintf(".%s.svc", tcNS)
 	}
 	m.AdvertiseAddr = advertiseAddr + ":8250"
 

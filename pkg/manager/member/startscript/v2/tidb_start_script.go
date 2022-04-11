@@ -34,19 +34,22 @@ type TiDBStartScriptModel struct {
 // RenderTiDBStartScript renders TiDB start script from TidbCluster
 func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &TiDBStartScriptModel{}
+	tcName := tc.Name
+	tcNS := tc.Namespace
+	peerServiceName := controller.TiDBPeerMemberName(tcName)
 
-	m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Name))
+	m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tcName))
 	if tc.AcrossK8s() {
 		m.AcrossK8s = &AcrossK8sScriptModel{
-			PDAddr:        fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Name)),
-			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
+			PDAddr:        fmt.Sprintf("%s:2379", controller.PDMemberName(tcName)),
+			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
 		}
 		m.PDAddr = "${result}" // get pd addr in subscript
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
 		m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
 	}
 
-	m.AdvertiseAddr = fmt.Sprintf("${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.%s.svc", tc.Namespace)
+	m.AdvertiseAddr = fmt.Sprintf("${TIDB_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
 		m.AdvertiseAddr = m.AdvertiseAddr + "." + tc.Spec.ClusterDomain
 	}

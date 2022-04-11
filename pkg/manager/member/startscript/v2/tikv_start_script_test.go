@@ -58,7 +58,7 @@ fi
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--pd=start-script-test-pd:2379 \
-    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160 \
+    --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=/var/lib/tikv \
@@ -102,7 +102,7 @@ fi
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--pd=start-script-test-pd:2379 \
-    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160 \
+    --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=/var/lib/tikv/tikv-data \
@@ -147,13 +147,13 @@ fi
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--pd=start-script-test-pd:2379 \
-    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160 \
+    --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=/var/lib/tikv \
     --capacity=${CAPACITY} \
     --config=/etc/tikv/tikv.toml"
-ARGS="${ARGS} --advertise-status-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20180"
+ARGS="${ARGS} --advertise-status-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20180"
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "
@@ -194,13 +194,13 @@ fi
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--pd=start-script-test-pd:2379 \
-    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160 \
+    --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc.cluster.local:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=/var/lib/tikv \
     --capacity=${CAPACITY} \
     --config=/etc/tikv/tikv.toml"
-ARGS="${ARGS} --advertise-status-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20180"
+ARGS="${ARGS} --advertise-status-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc.cluster.local:20180"
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "
@@ -240,7 +240,7 @@ fi
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--pd=start-script-test-pd:2379 \
-    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160 \
+    --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc.cluster.local:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=/var/lib/tikv \
@@ -292,7 +292,7 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
 done
 
 ARGS="--pd=${result} \
-    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160 \
+    --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc.cluster.local:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=/var/lib/tikv \
@@ -344,7 +344,7 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
 done
 
 ARGS="--pd=${result} \
-    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160 \
+    --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=/var/lib/tikv \
@@ -389,7 +389,7 @@ fi
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--pd=target-cluster-pd:2379 \
-    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160 \
+    --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
     --data-dir=/var/lib/tikv \
