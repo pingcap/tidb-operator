@@ -281,7 +281,7 @@ exec /tidb-server ${ARGS}
 				EnablePlugin: false,
 				Path:         "cluster01-pd:2379",
 			}
-			script, err := RenderTiDBStartScript(&model)
+			script, err := renderTemplateFunc(tidbStartScriptTpl, &model)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -577,7 +577,7 @@ ARGS="--pd=${result} \
 "
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
-  LABELS="--labels ${STORE_LABELS} "
+  LABELS=" --labels ${STORE_LABELS} "
   ARGS="${ARGS}${LABELS}"
 fi
 
@@ -668,7 +668,7 @@ exec /tikv-server ${ARGS}
 				AdvertiseStatusAddr:       tt.advertiseAddr,
 				DataDir:                   filepath.Join(tikvDataVolumeMountPath, tt.dataSubDir),
 			}
-			script, err := RenderTiKVStartScript(&model)
+			script, err := renderTemplateFunc(tikvStartScriptTpl, &model)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1174,7 +1174,7 @@ exec /pd-server ${ARGS}
 				},
 				DataDir: filepath.Join(pdDataVolumeMountPath, tt.dataSubDir),
 			}
-			script, err := RenderPDStartScript(&model)
+			script, err := renderTemplateFunc(pdStartScriptTpl, &model)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1387,7 +1387,7 @@ fi`,
 				LogLevel:    tt.LogLevel,
 				Namespace:   tt.Namespace,
 			}
-			script, err := RenderPumpStartScript(&model)
+			script, err := renderTemplateFunc(pumpStartScriptTpl, &model)
 			if err != nil {
 				t.Fatal(err)
 			}
