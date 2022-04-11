@@ -55,13 +55,7 @@ then
     tail -f /dev/null
 fi
 
-TIKV_EXTRA_ARGS=
-
 ARGS="--config-file /data0/config.toml"
-
-if [[ -n "${TIFLASH_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIFLASH_EXTRA_ARGS}"
-fi
 
 echo "starting tiflash-server ..."
 echo "/tiflash/tiflash ${ARGS}"

@@ -55,23 +55,13 @@ then
 fi
 
 TICDC_POD_NAME=${POD_NAME}
-TICDC_ADVERTISE_ADDR=${POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301
-TICDC_GC_TTL=86400
-TICDC_LOG_FILE=/dev/stderr
-TICDC_LOG_LEVEL=info
-TICDC_PD_ADDR=http://start-script-test-pd:2379
-TICDC_EXTRA_ARGS=
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_ADVERTISE_ADDR} \
-    --gc-ttl=${TICDC_GC_TTL} \
-    --log-file=${TICDC_LOG_FILE} \
-    --log-level=${TICDC_LOG_LEVEL} \
-    --pd=${TICDC_PD_ADDR}"
-
-if [[ -n "${TICDC_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TICDC_EXTRA_ARGS}"
-fi
+    --advertise-addr=${TICDC_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301 \
+    --gc-ttl=86400 \
+    --log-file=/dev/stderr \
+    --log-level=info \
+    --pd=http://start-script-test-pd:2379"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -103,23 +93,13 @@ then
 fi
 
 TICDC_POD_NAME=${POD_NAME}
-TICDC_ADVERTISE_ADDR=${POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:8301
-TICDC_GC_TTL=86400
-TICDC_LOG_FILE=/dev/stderr
-TICDC_LOG_LEVEL=info
-TICDC_PD_ADDR=http://start-script-test-pd:2379
-TICDC_EXTRA_ARGS=
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_ADVERTISE_ADDR} \
-    --gc-ttl=${TICDC_GC_TTL} \
-    --log-file=${TICDC_LOG_FILE} \
-    --log-level=${TICDC_LOG_LEVEL} \
-    --pd=${TICDC_PD_ADDR}"
-
-if [[ -n "${TICDC_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TICDC_EXTRA_ARGS}"
-fi
+    --advertise-addr=${TICDC_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:8301 \
+    --gc-ttl=86400 \
+    --log-file=/dev/stderr \
+    --log-level=info \
+    --pd=http://start-script-test-pd:2379"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -153,23 +133,13 @@ then
 fi
 
 TICDC_POD_NAME=${POD_NAME}
-TICDC_ADVERTISE_ADDR=${POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301
-TICDC_GC_TTL=3600
-TICDC_LOG_FILE=/dev/stderr
-TICDC_LOG_LEVEL=info
-TICDC_PD_ADDR=http://start-script-test-pd:2379
-TICDC_EXTRA_ARGS=
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_ADVERTISE_ADDR} \
-    --gc-ttl=${TICDC_GC_TTL} \
-    --log-file=${TICDC_LOG_FILE} \
-    --log-level=${TICDC_LOG_LEVEL} \
-    --pd=${TICDC_PD_ADDR}"
-
-if [[ -n "${TICDC_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TICDC_EXTRA_ARGS}"
-fi
+    --advertise-addr=${TICDC_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301 \
+    --gc-ttl=3600 \
+    --log-file=/dev/stderr \
+    --log-level=info \
+    --pd=http://start-script-test-pd:2379"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -204,23 +174,13 @@ then
 fi
 
 TICDC_POD_NAME=${POD_NAME}
-TICDC_ADVERTISE_ADDR=${POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301
-TICDC_GC_TTL=86400
-TICDC_LOG_FILE=/tmp/ticdc.log
-TICDC_LOG_LEVEL=debug
-TICDC_PD_ADDR=http://start-script-test-pd:2379
-TICDC_EXTRA_ARGS=
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_ADVERTISE_ADDR} \
-    --gc-ttl=${TICDC_GC_TTL} \
-    --log-file=${TICDC_LOG_FILE} \
-    --log-level=${TICDC_LOG_LEVEL} \
-    --pd=${TICDC_PD_ADDR}"
-
-if [[ -n "${TICDC_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TICDC_EXTRA_ARGS}"
-fi
+    --advertise-addr=${TICDC_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301 \
+    --gc-ttl=86400 \
+    --log-file=/tmp/ticdc.log \
+    --log-level=debug \
+    --pd=http://start-script-test-pd:2379"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -253,10 +213,6 @@ then
 fi
 
 TICDC_POD_NAME=${POD_NAME}
-TICDC_ADVERTISE_ADDR=${POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:8301
-TICDC_GC_TTL=86400
-TICDC_LOG_FILE=/dev/stderr
-TICDC_LOG_LEVEL=info
 pd_url=http://start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url=start-script-test-discovery.start-script-test-ns:10261
@@ -264,19 +220,13 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-TICDC_PD_ADDR=${result}
-TICDC_EXTRA_ARGS=
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_ADVERTISE_ADDR} \
-    --gc-ttl=${TICDC_GC_TTL} \
-    --log-file=${TICDC_LOG_FILE} \
-    --log-level=${TICDC_LOG_LEVEL} \
-    --pd=${TICDC_PD_ADDR}"
-
-if [[ -n "${TICDC_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TICDC_EXTRA_ARGS}"
-fi
+    --advertise-addr=${TICDC_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:8301 \
+    --gc-ttl=86400 \
+    --log-file=/dev/stderr \
+    --log-level=info \
+    --pd=${result}"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -309,10 +259,6 @@ then
 fi
 
 TICDC_POD_NAME=${POD_NAME}
-TICDC_ADVERTISE_ADDR=${POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301
-TICDC_GC_TTL=86400
-TICDC_LOG_FILE=/dev/stderr
-TICDC_LOG_LEVEL=info
 pd_url=http://start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url=start-script-test-discovery.start-script-test-ns:10261
@@ -320,19 +266,13 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-TICDC_PD_ADDR=${result}
-TICDC_EXTRA_ARGS=
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_ADVERTISE_ADDR} \
-    --gc-ttl=${TICDC_GC_TTL} \
-    --log-file=${TICDC_LOG_FILE} \
-    --log-level=${TICDC_LOG_LEVEL} \
-    --pd=${TICDC_PD_ADDR}"
-
-if [[ -n "${TICDC_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TICDC_EXTRA_ARGS}"
-fi
+    --advertise-addr=${TICDC_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301 \
+    --gc-ttl=86400 \
+    --log-file=/dev/stderr \
+    --log-level=info \
+    --pd=${result}"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -365,23 +305,13 @@ then
 fi
 
 TICDC_POD_NAME=${POD_NAME}
-TICDC_ADVERTISE_ADDR=${POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301
-TICDC_GC_TTL=86400
-TICDC_LOG_FILE=/dev/stderr
-TICDC_LOG_LEVEL=info
-TICDC_PD_ADDR=http://target-cluster-pd:2379
-TICDC_EXTRA_ARGS=
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_ADVERTISE_ADDR} \
-    --gc-ttl=${TICDC_GC_TTL} \
-    --log-file=${TICDC_LOG_FILE} \
-    --log-level=${TICDC_LOG_LEVEL} \
-    --pd=${TICDC_PD_ADDR}"
-
-if [[ -n "${TICDC_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TICDC_EXTRA_ARGS}"
-fi
+    --advertise-addr=${TICDC_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301 \
+    --gc-ttl=86400 \
+    --log-file=/dev/stderr \
+    --log-level=info \
+    --pd=http://target-cluster-pd:2379"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -413,23 +343,14 @@ then
 fi
 
 TICDC_POD_NAME=${POD_NAME}
-TICDC_ADVERTISE_ADDR=${POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301
-TICDC_GC_TTL=86400
-TICDC_LOG_FILE=/dev/stderr
-TICDC_LOG_LEVEL=info
-TICDC_PD_ADDR=https://start-script-test-pd:2379
-TICDC_EXTRA_ARGS="--ca=/var/lib/ticdc-tls/ca.crt --cert=/var/lib/ticdc-tls/tls.crt --key=/var/lib/ticdc-tls/tls.key"
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_ADVERTISE_ADDR} \
-    --gc-ttl=${TICDC_GC_TTL} \
-    --log-file=${TICDC_LOG_FILE} \
-    --log-level=${TICDC_LOG_LEVEL} \
-    --pd=${TICDC_PD_ADDR}"
-
-if [[ -n "${TICDC_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TICDC_EXTRA_ARGS}"
-fi
+    --advertise-addr=${TICDC_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301 \
+    --gc-ttl=86400 \
+    --log-file=/dev/stderr \
+    --log-level=info \
+    --pd=https://start-script-test-pd:2379"
+ARGS="${ARGS} --ca=/var/lib/ticdc-tls/ca.crt --cert=/var/lib/ticdc-tls/tls.crt --key=/var/lib/ticdc-tls/tls.key"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -463,23 +384,14 @@ then
 fi
 
 TICDC_POD_NAME=${POD_NAME}
-TICDC_ADVERTISE_ADDR=${POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301
-TICDC_GC_TTL=86400
-TICDC_LOG_FILE=/dev/stderr
-TICDC_LOG_LEVEL=info
-TICDC_PD_ADDR=http://start-script-test-pd:2379
-TICDC_EXTRA_ARGS="--config=/etc/ticdc/ticdc.toml"
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_ADVERTISE_ADDR} \
-    --gc-ttl=${TICDC_GC_TTL} \
-    --log-file=${TICDC_LOG_FILE} \
-    --log-level=${TICDC_LOG_LEVEL} \
-    --pd=${TICDC_PD_ADDR}"
-
-if [[ -n "${TICDC_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TICDC_EXTRA_ARGS}"
-fi
+    --advertise-addr=${TICDC_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:8301 \
+    --gc-ttl=86400 \
+    --log-file=/dev/stderr \
+    --log-level=info \
+    --pd=http://start-script-test-pd:2379"
+ARGS="${ARGS} --config=/etc/ticdc/ticdc.toml"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"

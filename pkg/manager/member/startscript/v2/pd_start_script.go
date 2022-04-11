@@ -43,7 +43,7 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster, pdDataVolumeMountPath string)
 		m.PDDomain = m.PDDomain + "." + tc.Spec.ClusterDomain
 	}
 
-	m.PDName = "${POD_NAME}"
+	m.PDName = "${PD_POD_NAME}"
 	if tc.AcrossK8s() || tc.Spec.ClusterDomain != "" {
 		m.PDName = "${PD_DOMAIN}"
 	}
@@ -68,14 +68,6 @@ const (
 	pdStartScript    = `
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN={{ .PDDomain }}
-PD_NAME={{ .PDName }}
-PD_DATA_DIR={{ .DataDir }}
-PD_PEER_URL={{ .PeerURL }}
-PD_ADVERTISE_PEER_URL={{ .AdvertisePeerURL }}
-PD_CLIENT_URL={{ .ClientURL }}
-PD_ADVERTISE_CLIENT_URL={{ .AdvertiseClientURL }}
-PD_DISCOVERY_ADDR={{ .DiscoveryAddr }}
-PD_EXTRA_ARGS={{ .ExtraArgs }}
 
 elapseTime=0
 period=1
@@ -106,26 +98,25 @@ while true; do
     fi
 done
 
-ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_NAME} \
-    --peer-urls=${PD_PEER_URL} \
-    --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
-    --client-urls=${PD_CLIENT_URL} \
-    --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
+ARGS="--data-dir={{ .DataDir }} \
+    --name={{ .PDName }} \
+    --peer-urls={{ .PeerURL }} \
+    --advertise-peer-urls={{ .AdvertisePeerURL }} \
+    --client-urls={{ .ClientURL }} \
+    --advertise-client-urls={{ .AdvertiseClientURL }} \
     --config=/etc/pd/pd.toml"
+{{- if .ExtraArgs }}
+ARGS="${ARGS} {{ .ExtraArgs }}"
+{{- end }}
 
-if [[ -n "${PD_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
-fi
-
-if [[ -f ${PD_DATA_DIR}/join ]]; then
-    join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
+if [[ -f {{ .DataDir }}/join ]]; then
+    join=$(cat {{ .DataDir }}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
     join=${join%,}
     ARGS="${ARGS} --join=${join}"
-elif [[ ! -d ${PD_DATA_DIR}/member/wal ]]; then
+elif [[ ! -d {{ .DataDir }}/member/wal ]]; then
     encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
 
-    until result=$(wget -qO- -T 3 http://${PD_DISCOVERY_ADDR}/new/${encoded_domain_url} 2>/dev/null); do
+    until result=$(wget -qO- -T 3 http://{{ .DiscoveryAddr }}/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done

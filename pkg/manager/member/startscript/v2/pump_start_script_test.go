@@ -57,21 +57,13 @@ then
 fi
 
 PUMP_POD_NAME=$HOSTNAME
-PUMP_PD_ADDR=http://start-script-test-pd:2379
-PUMP_LOG_LEVEL=info
-PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump:8250
-PUMP_EXTRA_ARGS=
 
-ARGS="-pd-urls=${PUMP_PD_ADDR} \
-    -L ${PUMP_LOG_LEVEL} \
+ARGS="-pd-urls=http://start-script-test-pd:2379 \
+    -L info \
     -log-file= \
-    -advertise-addr=${PUMP_ADVERTISE_ADDR} \
+    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump:8250 \
     -data-dir=/data \
     --config=/etc/pump/pump.toml"
-
-if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
-fi
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -110,21 +102,13 @@ then
 fi
 
 PUMP_POD_NAME=$HOSTNAME
-PUMP_PD_ADDR=http://start-script-test-pd:2379
-PUMP_LOG_LEVEL=debug
-PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump:8250
-PUMP_EXTRA_ARGS=
 
-ARGS="-pd-urls=${PUMP_PD_ADDR} \
-    -L ${PUMP_LOG_LEVEL} \
+ARGS="-pd-urls=http://start-script-test-pd:2379 \
+    -L debug \
     -log-file= \
-    -advertise-addr=${PUMP_ADVERTISE_ADDR} \
+    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump:8250 \
     -data-dir=/data \
     --config=/etc/pump/pump.toml"
-
-if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
-fi
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -161,21 +145,13 @@ then
 fi
 
 PUMP_POD_NAME=$HOSTNAME
-PUMP_PD_ADDR=http://start-script-test-pd:2379
-PUMP_LOG_LEVEL=info
-PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc.demo.com:8250
-PUMP_EXTRA_ARGS=
 
-ARGS="-pd-urls=${PUMP_PD_ADDR} \
-    -L ${PUMP_LOG_LEVEL} \
+ARGS="-pd-urls=http://start-script-test-pd:2379 \
+    -L info \
     -log-file= \
-    -advertise-addr=${PUMP_ADVERTISE_ADDR} \
+    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc.demo.com:8250 \
     -data-dir=/data \
     --config=/etc/pump/pump.toml"
-
-if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
-fi
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -220,21 +196,13 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-PUMP_PD_ADDR=${result}
-PUMP_LOG_LEVEL=info
-PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc.demo.com:8250
-PUMP_EXTRA_ARGS=
 
-ARGS="-pd-urls=${PUMP_PD_ADDR} \
-    -L ${PUMP_LOG_LEVEL} \
+ARGS="-pd-urls=${result} \
+    -L info \
     -log-file= \
-    -advertise-addr=${PUMP_ADVERTISE_ADDR} \
+    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc.demo.com:8250 \
     -data-dir=/data \
     --config=/etc/pump/pump.toml"
-
-if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
-fi
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -279,21 +247,13 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-PUMP_PD_ADDR=${result}
-PUMP_LOG_LEVEL=info
-PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250
-PUMP_EXTRA_ARGS=
 
-ARGS="-pd-urls=${PUMP_PD_ADDR} \
-    -L ${PUMP_LOG_LEVEL} \
+ARGS="-pd-urls=${result} \
+    -L info \
     -log-file= \
-    -advertise-addr=${PUMP_ADVERTISE_ADDR} \
+    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250 \
     -data-dir=/data \
     --config=/etc/pump/pump.toml"
-
-if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
-fi
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -331,21 +291,13 @@ then
 fi
 
 PUMP_POD_NAME=$HOSTNAME
-PUMP_PD_ADDR=http://target-cluster-pd:2379
-PUMP_LOG_LEVEL=info
-PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump:8250
-PUMP_EXTRA_ARGS=
 
-ARGS="-pd-urls=${PUMP_PD_ADDR} \
-    -L ${PUMP_LOG_LEVEL} \
+ARGS="-pd-urls=http://target-cluster-pd:2379 \
+    -L info \
     -log-file= \
-    -advertise-addr=${PUMP_ADVERTISE_ADDR} \
+    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump:8250 \
     -data-dir=/data \
     --config=/etc/pump/pump.toml"
-
-if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
-fi
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -391,21 +343,13 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-PUMP_PD_ADDR=${result}
-PUMP_LOG_LEVEL=info
-PUMP_ADVERTISE_ADDR=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250
-PUMP_EXTRA_ARGS=
 
-ARGS="-pd-urls=${PUMP_PD_ADDR} \
-    -L ${PUMP_LOG_LEVEL} \
+ARGS="-pd-urls=${result} \
+    -L info \
     -log-file= \
-    -advertise-addr=${PUMP_ADVERTISE_ADDR} \
+    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250 \
     -data-dir=/data \
     --config=/etc/pump/pump.toml"
-
-if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
-fi
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"

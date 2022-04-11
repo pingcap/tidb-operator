@@ -56,23 +56,14 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIKV_PD_ADDR=start-script-test-pd:2379
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160
-TIKV_DATA_DIR=/var/lib/tikv
-TIKV_CAPACITY=${CAPACITY}
-TIKV_EXTRA_ARGS=
 
-ARGS="--pd=${TIKV_PD_ADDR} \
-    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+ARGS="--pd=start-script-test-pd:2379 \
+    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
-    --data-dir=${TIKV_DATA_DIR} \
-    --capacity=${TIKV_CAPACITY} \
+    --data-dir=/var/lib/tikv \
+    --capacity=${CAPACITY} \
     --config=/etc/tikv/tikv.toml"
-
-if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
-fi
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "
@@ -109,23 +100,14 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIKV_PD_ADDR=start-script-test-pd:2379
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160
-TIKV_DATA_DIR=/var/lib/tikv/tikv-data
-TIKV_CAPACITY=${CAPACITY}
-TIKV_EXTRA_ARGS=
 
-ARGS="--pd=${TIKV_PD_ADDR} \
-    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+ARGS="--pd=start-script-test-pd:2379 \
+    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
-    --data-dir=${TIKV_DATA_DIR} \
-    --capacity=${TIKV_CAPACITY} \
+    --data-dir=/var/lib/tikv/tikv-data \
+    --capacity=${CAPACITY} \
     --config=/etc/tikv/tikv.toml"
-
-if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
-fi
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "
@@ -163,23 +145,15 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIKV_PD_ADDR=start-script-test-pd:2379
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160
-TIKV_DATA_DIR=/var/lib/tikv
-TIKV_CAPACITY=${CAPACITY}
-TIKV_EXTRA_ARGS="--advertise-status-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20180"
 
-ARGS="--pd=${TIKV_PD_ADDR} \
-    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+ARGS="--pd=start-script-test-pd:2379 \
+    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
-    --data-dir=${TIKV_DATA_DIR} \
-    --capacity=${TIKV_CAPACITY} \
+    --data-dir=/var/lib/tikv \
+    --capacity=${CAPACITY} \
     --config=/etc/tikv/tikv.toml"
-
-if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
-fi
+ARGS="${ARGS} --advertise-status-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20180"
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "
@@ -218,23 +192,15 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIKV_PD_ADDR=start-script-test-pd:2379
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160
-TIKV_DATA_DIR=/var/lib/tikv
-TIKV_CAPACITY=${CAPACITY}
-TIKV_EXTRA_ARGS="--advertise-status-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20180"
 
-ARGS="--pd=${TIKV_PD_ADDR} \
-    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+ARGS="--pd=start-script-test-pd:2379 \
+    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
-    --data-dir=${TIKV_DATA_DIR} \
-    --capacity=${TIKV_CAPACITY} \
+    --data-dir=/var/lib/tikv \
+    --capacity=${CAPACITY} \
     --config=/etc/tikv/tikv.toml"
-
-if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
-fi
+ARGS="${ARGS} --advertise-status-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20180"
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "
@@ -272,23 +238,14 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIKV_PD_ADDR=start-script-test-pd:2379
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160
-TIKV_DATA_DIR=/var/lib/tikv
-TIKV_CAPACITY=${CAPACITY}
-TIKV_EXTRA_ARGS=
 
-ARGS="--pd=${TIKV_PD_ADDR} \
-    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+ARGS="--pd=start-script-test-pd:2379 \
+    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
-    --data-dir=${TIKV_DATA_DIR} \
-    --capacity=${TIKV_CAPACITY} \
+    --data-dir=/var/lib/tikv \
+    --capacity=${CAPACITY} \
     --config=/etc/tikv/tikv.toml"
-
-if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
-fi
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "
@@ -333,23 +290,14 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-TIKV_PD_ADDR=${result}
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160
-TIKV_DATA_DIR=/var/lib/tikv
-TIKV_CAPACITY=${CAPACITY}
-TIKV_EXTRA_ARGS=
 
-ARGS="--pd=${TIKV_PD_ADDR} \
-    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+ARGS="--pd=${result} \
+    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster.local:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
-    --data-dir=${TIKV_DATA_DIR} \
-    --capacity=${TIKV_CAPACITY} \
+    --data-dir=/var/lib/tikv \
+    --capacity=${CAPACITY} \
     --config=/etc/tikv/tikv.toml"
-
-if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
-fi
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "
@@ -394,23 +342,14 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-TIKV_PD_ADDR=${result}
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160
-TIKV_DATA_DIR=/var/lib/tikv
-TIKV_CAPACITY=${CAPACITY}
-TIKV_EXTRA_ARGS=
 
-ARGS="--pd=${TIKV_PD_ADDR} \
-    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+ARGS="--pd=${result} \
+    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
-    --data-dir=${TIKV_DATA_DIR} \
-    --capacity=${TIKV_CAPACITY} \
+    --data-dir=/var/lib/tikv \
+    --capacity=${CAPACITY} \
     --config=/etc/tikv/tikv.toml"
-
-if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
-fi
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "
@@ -448,23 +387,14 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIKV_PD_ADDR=target-cluster-pd:2379
-TIKV_ADVERTISE_ADDR=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160
-TIKV_DATA_DIR=/var/lib/tikv
-TIKV_CAPACITY=${CAPACITY}
-TIKV_EXTRA_ARGS=
 
-ARGS="--pd=${TIKV_PD_ADDR} \
-    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+ARGS="--pd=target-cluster-pd:2379 \
+    --advertise-addr=${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc:20160 \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
-    --data-dir=${TIKV_DATA_DIR} \
-    --capacity=${TIKV_CAPACITY} \
+    --data-dir=/var/lib/tikv \
+    --capacity=${CAPACITY} \
     --config=/etc/tikv/tikv.toml"
-
-if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
-fi
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "

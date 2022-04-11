@@ -38,15 +38,17 @@ type TiKVStartScriptModel struct {
 func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath string) (string, error) {
 	m := &TiKVStartScriptModel{}
 
-	pdDomain := controller.PDMemberName(tc.Name)
+	m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Name))
 	if tc.AcrossK8s() {
-		pdDomain = controller.PDMemberName(tc.Name) // get pd addr from discovery in startup script
+		m.AcrossK8s = &AcrossK8sScriptModel{
+			PDAddr:        fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Name)),
+			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
+		}
+		m.PDAddr = "${result}" // get pd addr in subscript
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
+		m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
 	}
-	m.PDAddr = fmt.Sprintf("%s:2379", pdDomain)
 
-	// FIXME: not use HEADLESS_SERVICE_NAME
 	advertiseAddr := fmt.Sprintf("${TIKV_POD_NAME}.${HEADLESS_SERVICE_NAME}.%s.svc", tc.Namespace)
 	if tc.Spec.ClusterDomain != "" {
 		advertiseAddr = advertiseAddr + "." + tc.Spec.ClusterDomain
@@ -66,13 +68,7 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath str
 		extraArgs = append(extraArgs, fmt.Sprintf("--advertise-status-addr=%s:20180", advertiseStatusAddr))
 	}
 	if len(extraArgs) > 0 {
-		m.ExtraArgs = fmt.Sprintf("\"%s\"", strings.Join(extraArgs, " "))
-	}
-
-	if tc.AcrossK8s() {
-		m.AcrossK8s = &AcrossK8sScriptModel{
-			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
-		}
+		m.ExtraArgs = strings.Join(extraArgs, " ")
 	}
 
 	return renderTemplateFunc(tikvStartScriptTpl, m)
@@ -80,41 +76,31 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath str
 
 const (
 	tikvStartSubScript = `
-{{ define "TIKV_PD_ADDR" -}}
-    {{- if .AcrossK8s -}}
-pd_url={{ .PDAddr }}
+{{ define "AcrossK8sSubscript" }}
+pd_url={{ .AcrossK8s.PDAddr }}
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url={{ .AcrossK8s.DiscoveryAddr }}
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-TIKV_PD_ADDR=${result}
-    {{- else -}}
-TIKV_PD_ADDR={{ .PDAddr }}
-    {{- end -}}
 {{- end }}
 `
 
 	tikvStartScript = `
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
-{{ template "TIKV_PD_ADDR" . }}
-TIKV_ADVERTISE_ADDR={{ .AdvertiseAddr }}
-TIKV_DATA_DIR={{ .DataDir }}
-TIKV_CAPACITY={{ .Capacity }}
-TIKV_EXTRA_ARGS={{ .ExtraArgs }}
+{{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
-ARGS="--pd=${TIKV_PD_ADDR} \
-    --advertise-addr=${TIKV_ADVERTISE_ADDR} \
+ARGS="--pd={{ .PDAddr }} \
+    --advertise-addr={{ .AdvertiseAddr }} \
     --addr=0.0.0.0:20160 \
     --status-addr=0.0.0.0:20180 \
-    --data-dir=${TIKV_DATA_DIR} \
-    --capacity=${TIKV_CAPACITY} \
+    --data-dir={{ .DataDir }} \
+    --capacity={{ .Capacity }} \
     --config=/etc/tikv/tikv.toml"
-
-if [[ -n "${TIKV_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIKV_EXTRA_ARGS}"
-fi
+{{- if .ExtraArgs }}
+ARGS="${ARGS} {{ .ExtraArgs }}"
+{{- end }}
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
   LABELS="--labels ${STORE_LABELS} "

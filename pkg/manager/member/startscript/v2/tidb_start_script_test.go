@@ -56,19 +56,12 @@ then
 fi
 
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
-TIDB_PD_ADDR=start-script-test-pd:2379
-TIDB_EXTRA_ARGS=
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_ADVERTISE_ADDR} \
+    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
     --host=0.0.0.0 \
-    --path=${TIDB_PD_ADDR} \
+    --path=start-script-test-pd:2379 \
     --config=/etc/tidb/tidb.toml"
-
-if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
-fi
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]
@@ -106,19 +99,13 @@ then
 fi
 
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
-TIDB_PD_ADDR=start-script-test-pd:2379
-TIDB_EXTRA_ARGS="--plugin-dir=/plugins --plugin-load=plugin-1,plugin-2"
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_ADVERTISE_ADDR} \
+    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
     --host=0.0.0.0 \
-    --path=${TIDB_PD_ADDR} \
+    --path=start-script-test-pd:2379 \
     --config=/etc/tidb/tidb.toml"
-
-if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
-fi
+ARGS="${ARGS} --plugin-dir=/plugins --plugin-load=plugin-1,plugin-2"
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]
@@ -157,19 +144,13 @@ then
 fi
 
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
-TIDB_PD_ADDR=start-script-test-pd:2379
-TIDB_EXTRA_ARGS="--enable-binlog=true"
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_ADVERTISE_ADDR} \
+    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
     --host=0.0.0.0 \
-    --path=${TIDB_PD_ADDR} \
+    --path=start-script-test-pd:2379 \
     --config=/etc/tidb/tidb.toml"
-
-if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
-fi
+ARGS="${ARGS} --enable-binlog=true"
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]
@@ -208,19 +189,13 @@ then
 fi
 
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
-TIDB_PD_ADDR=start-script-test-pd:2379
-TIDB_EXTRA_ARGS="--enable-binlog=true"
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_ADVERTISE_ADDR} \
+    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
     --host=0.0.0.0 \
-    --path=${TIDB_PD_ADDR} \
+    --path=start-script-test-pd:2379 \
     --config=/etc/tidb/tidb.toml"
-
-if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
-fi
+ARGS="${ARGS} --enable-binlog=true"
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]
@@ -258,19 +233,12 @@ then
 fi
 
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.test.com
-TIDB_PD_ADDR=start-script-test-pd:2379
-TIDB_EXTRA_ARGS=
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_ADVERTISE_ADDR} \
+    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.test.com \
     --host=0.0.0.0 \
-    --path=${TIDB_PD_ADDR} \
+    --path=start-script-test-pd:2379 \
     --config=/etc/tidb/tidb.toml"
-
-if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
-fi
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]
@@ -309,7 +277,6 @@ then
 fi
 
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.test.com
 pd_url=start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url=start-script-test-discovery.start-script-test-ns:10261
@@ -317,18 +284,12 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-TIDB_PD_ADDR=${result}
-TIDB_EXTRA_ARGS=
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_ADVERTISE_ADDR} \
+    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.test.com \
     --host=0.0.0.0 \
-    --path=${TIDB_PD_ADDR} \
+    --path=${result} \
     --config=/etc/tidb/tidb.toml"
-
-if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
-fi
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]
@@ -367,7 +328,6 @@ then
 fi
 
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
 pd_url=start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url=start-script-test-discovery.start-script-test-ns:10261
@@ -375,18 +335,12 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-TIDB_PD_ADDR=${result}
-TIDB_EXTRA_ARGS=
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_ADVERTISE_ADDR} \
+    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
     --host=0.0.0.0 \
-    --path=${TIDB_PD_ADDR} \
+    --path=${result} \
     --config=/etc/tidb/tidb.toml"
-
-if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
-fi
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]
@@ -425,19 +379,12 @@ then
 fi
 
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
-TIDB_PD_ADDR=target-cluster-pd:2379
-TIDB_EXTRA_ARGS=
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_ADVERTISE_ADDR} \
+    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
     --host=0.0.0.0 \
-    --path=${TIDB_PD_ADDR} \
+    --path=target-cluster-pd:2379 \
     --config=/etc/tidb/tidb.toml"
-
-if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
-fi
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]
@@ -477,7 +424,6 @@ then
 fi
 
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIDB_ADVERTISE_ADDR=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
 pd_url=start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url=start-script-test-discovery.start-script-test-ns:10261
@@ -485,18 +431,12 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-TIDB_PD_ADDR=${result}
-TIDB_EXTRA_ARGS=
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_ADVERTISE_ADDR} \
+    --advertise-address=${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc \
     --host=0.0.0.0 \
-    --path=${TIDB_PD_ADDR} \
+    --path=${result} \
     --config=/etc/tidb/tidb.toml"
-
-if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
-fi
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]

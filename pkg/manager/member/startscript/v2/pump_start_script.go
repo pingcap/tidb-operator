@@ -36,13 +36,16 @@ type PumpStartScriptModel struct {
 func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &PumpStartScriptModel{}
 
-	pdDomain := controller.PDMemberName(tc.Name)
+	m.PDAddr = fmt.Sprintf("%s://%s:2379", tc.Scheme(), controller.PDMemberName(tc.Name))
 	if tc.AcrossK8s() {
-		pdDomain = controller.PDMemberName(tc.Name) // get pd addr from discovery in startup script
+		m.AcrossK8s = &AcrossK8sScriptModel{
+			PDAddr:        fmt.Sprintf("%s://%s:2379", tc.Scheme(), controller.PDMemberName(tc.Name)),
+			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
+		}
+		m.PDAddr = "${result}" // get pd addr in subscript
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
+		m.PDAddr = fmt.Sprintf("%s://%s:2379", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
 	}
-	m.PDAddr = fmt.Sprintf("%s://%s:2379", tc.Scheme(), pdDomain)
 
 	m.LogLevel = "info"
 	if cfg := tc.Spec.Pump.Config; cfg != nil {
@@ -66,50 +69,35 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.ExtraArgs = ""
 
-	if tc.AcrossK8s() {
-		m.AcrossK8s = &AcrossK8sScriptModel{
-			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
-		}
-	}
-
 	return renderTemplateFunc(pumpStartScriptTpl, m)
 }
 
 const (
 	pumpStartSubScript = `
-{{ define "PUMP_PD_ADDR" -}}
-    {{- if .AcrossK8s -}}
-pd_url={{ .PDAddr }}
+{{ define "AcrossK8sSubscript" }}
+pd_url={{ .AcrossK8s.PDAddr }}
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url={{ .AcrossK8s.DiscoveryAddr }}
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-PUMP_PD_ADDR=${result}
-    {{- else -}}
-PUMP_PD_ADDR={{ .PDAddr }}
-    {{- end -}}
 {{- end}}
 `
 
 	pumpStartScript = `
 PUMP_POD_NAME=$HOSTNAME
-{{ template "PUMP_PD_ADDR" . }}
-PUMP_LOG_LEVEL={{ .LogLevel }}
-PUMP_ADVERTISE_ADDR={{ .AdvertiseAddr }}
-PUMP_EXTRA_ARGS={{ .ExtraArgs }}
+{{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
-ARGS="-pd-urls=${PUMP_PD_ADDR} \
-    -L ${PUMP_LOG_LEVEL} \
+ARGS="-pd-urls={{ .PDAddr }} \
+    -L {{ .LogLevel }} \
     -log-file= \
-    -advertise-addr=${PUMP_ADVERTISE_ADDR} \
+    -advertise-addr={{ .AdvertiseAddr }} \
     -data-dir=/data \
     --config=/etc/pump/pump.toml"
-
-if [[ -n "${PUMP_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PUMP_EXTRA_ARGS}"
-fi
+{{- if .ExtraArgs }}
+ARGS="${ARGS} {{ .ExtraArgs }}"
+{{- end }}
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"

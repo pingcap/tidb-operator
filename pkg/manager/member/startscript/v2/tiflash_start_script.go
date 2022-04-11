@@ -38,13 +38,10 @@ const (
 
 	// init container of tiflash have core start script, so just to start tiflash
 	tiflashStartScript = `
-TIFLASH_EXTRA_ARGS={{ .ExtraArgs }}
-
 ARGS="--config-file /data0/config.toml"
-
-if [[ -n "${TIFLASH_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIFLASH_EXTRA_ARGS}"
-fi
+{{- if .ExtraArgs }}
+ARGS="${ARGS} {{ .ExtraArgs }}"
+{{- end }}
 
 echo "starting tiflash-server ..."
 echo "/tiflash/tiflash ${ARGS}"

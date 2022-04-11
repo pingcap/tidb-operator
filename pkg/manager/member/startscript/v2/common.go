@@ -46,6 +46,9 @@ type AcrossK8sScriptModel struct {
 	//
 	// When cluster is deployed across k8s, all components except pd will get the pd addr from discovery.
 	DiscoveryAddr string
+
+	// PDAddr is the address used by discovery to get pd addr.
+	PDAddr string
 }
 
 func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {

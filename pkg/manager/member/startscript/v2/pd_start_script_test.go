@@ -55,15 +55,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
-PD_NAME=${POD_NAME}
-PD_DATA_DIR=/var/lib/pd
-PD_PEER_URL=http://0.0.0.0:2380
-PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
-PD_CLIENT_URL=http://0.0.0.0:2379
-PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
-PD_EXTRA_ARGS=
+PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc
 
 elapseTime=0
 period=1
@@ -94,26 +86,22 @@ while true; do
     fi
 done
 
-ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_NAME} \
-    --peer-urls=${PD_PEER_URL} \
-    --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
-    --client-urls=${PD_CLIENT_URL} \
-    --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
+ARGS="--data-dir=/var/lib/pd \
+    --name=${PD_POD_NAME} \
+    --peer-urls=http://0.0.0.0:2380 \
+    --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+    --client-urls=http://0.0.0.0:2379 \
+    --advertise-client-urls=http://${PD_DOMAIN}:2379 \
     --config=/etc/pd/pd.toml"
 
-if [[ -n "${PD_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
-fi
-
-if [[ -f ${PD_DATA_DIR}/join ]]; then
-    join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
+if [[ -f /var/lib/pd/join ]]; then
+    join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
     join=${join%,}
     ARGS="${ARGS} --join=${join}"
-elif [[ ! -d ${PD_DATA_DIR}/member/wal ]]; then
+elif [[ ! -d /var/lib/pd/member/wal ]]; then
     encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
 
-    until result=$(wget -qO- -T 3 http://${PD_DISCOVERY_ADDR}/new/${encoded_domain_url} 2>/dev/null); do
+    until result=$(wget -qO- -T 3 http://start-script-test-discovery.start-script-test-ns:10261/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
@@ -151,15 +139,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
-PD_NAME=${POD_NAME}
-PD_DATA_DIR=/var/lib/pd
-PD_PEER_URL=https://0.0.0.0:2380
-PD_ADVERTISE_PEER_URL=https://${PD_DOMAIN}:2380
-PD_CLIENT_URL=https://0.0.0.0:2379
-PD_ADVERTISE_CLIENT_URL=https://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
-PD_EXTRA_ARGS=
+PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc
 
 elapseTime=0
 period=1
@@ -190,26 +170,22 @@ while true; do
     fi
 done
 
-ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_NAME} \
-    --peer-urls=${PD_PEER_URL} \
-    --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
-    --client-urls=${PD_CLIENT_URL} \
-    --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
+ARGS="--data-dir=/var/lib/pd \
+    --name=${PD_POD_NAME} \
+    --peer-urls=https://0.0.0.0:2380 \
+    --advertise-peer-urls=https://${PD_DOMAIN}:2380 \
+    --client-urls=https://0.0.0.0:2379 \
+    --advertise-client-urls=https://${PD_DOMAIN}:2379 \
     --config=/etc/pd/pd.toml"
 
-if [[ -n "${PD_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
-fi
-
-if [[ -f ${PD_DATA_DIR}/join ]]; then
-    join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
+if [[ -f /var/lib/pd/join ]]; then
+    join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
     join=${join%,}
     ARGS="${ARGS} --join=${join}"
-elif [[ ! -d ${PD_DATA_DIR}/member/wal ]]; then
+elif [[ ! -d /var/lib/pd/member/wal ]]; then
     encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
 
-    until result=$(wget -qO- -T 3 http://${PD_DISCOVERY_ADDR}/new/${encoded_domain_url} 2>/dev/null); do
+    until result=$(wget -qO- -T 3 http://start-script-test-discovery.start-script-test-ns:10261/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
@@ -247,15 +223,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
-PD_NAME=${POD_NAME}
-PD_DATA_DIR=/var/lib/pd/pd-data
-PD_PEER_URL=http://0.0.0.0:2380
-PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
-PD_CLIENT_URL=http://0.0.0.0:2379
-PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
-PD_EXTRA_ARGS=
+PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc
 
 elapseTime=0
 period=1
@@ -286,26 +254,22 @@ while true; do
     fi
 done
 
-ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_NAME} \
-    --peer-urls=${PD_PEER_URL} \
-    --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
-    --client-urls=${PD_CLIENT_URL} \
-    --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
+ARGS="--data-dir=/var/lib/pd/pd-data \
+    --name=${PD_POD_NAME} \
+    --peer-urls=http://0.0.0.0:2380 \
+    --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+    --client-urls=http://0.0.0.0:2379 \
+    --advertise-client-urls=http://${PD_DOMAIN}:2379 \
     --config=/etc/pd/pd.toml"
 
-if [[ -n "${PD_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
-fi
-
-if [[ -f ${PD_DATA_DIR}/join ]]; then
-    join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
+if [[ -f /var/lib/pd/pd-data/join ]]; then
+    join=$(cat /var/lib/pd/pd-data/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
     join=${join%,}
     ARGS="${ARGS} --join=${join}"
-elif [[ ! -d ${PD_DATA_DIR}/member/wal ]]; then
+elif [[ ! -d /var/lib/pd/pd-data/member/wal ]]; then
     encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
 
-    until result=$(wget -qO- -T 3 http://${PD_DISCOVERY_ADDR}/new/${encoded_domain_url} 2>/dev/null); do
+    until result=$(wget -qO- -T 3 http://start-script-test-discovery.start-script-test-ns:10261/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
@@ -343,15 +307,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster-1.com
-PD_NAME=${PD_DOMAIN}
-PD_DATA_DIR=/var/lib/pd
-PD_PEER_URL=http://0.0.0.0:2380
-PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
-PD_CLIENT_URL=http://0.0.0.0:2379
-PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
-PD_EXTRA_ARGS=
+PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc.cluster-1.com
 
 elapseTime=0
 period=1
@@ -382,26 +338,22 @@ while true; do
     fi
 done
 
-ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_NAME} \
-    --peer-urls=${PD_PEER_URL} \
-    --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
-    --client-urls=${PD_CLIENT_URL} \
-    --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
+ARGS="--data-dir=/var/lib/pd \
+    --name=${PD_DOMAIN} \
+    --peer-urls=http://0.0.0.0:2380 \
+    --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+    --client-urls=http://0.0.0.0:2379 \
+    --advertise-client-urls=http://${PD_DOMAIN}:2379 \
     --config=/etc/pd/pd.toml"
 
-if [[ -n "${PD_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
-fi
-
-if [[ -f ${PD_DATA_DIR}/join ]]; then
-    join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
+if [[ -f /var/lib/pd/join ]]; then
+    join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
     join=${join%,}
     ARGS="${ARGS} --join=${join}"
-elif [[ ! -d ${PD_DATA_DIR}/member/wal ]]; then
+elif [[ ! -d /var/lib/pd/member/wal ]]; then
     encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
 
-    until result=$(wget -qO- -T 3 http://${PD_DISCOVERY_ADDR}/new/${encoded_domain_url} 2>/dev/null); do
+    until result=$(wget -qO- -T 3 http://start-script-test-discovery.start-script-test-ns:10261/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
@@ -440,15 +392,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc
-PD_NAME=${PD_DOMAIN}
-PD_DATA_DIR=/var/lib/pd
-PD_PEER_URL=http://0.0.0.0:2380
-PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
-PD_CLIENT_URL=http://0.0.0.0:2379
-PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
-PD_EXTRA_ARGS=
+PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc
 
 elapseTime=0
 period=1
@@ -479,26 +423,22 @@ while true; do
     fi
 done
 
-ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_NAME} \
-    --peer-urls=${PD_PEER_URL} \
-    --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
-    --client-urls=${PD_CLIENT_URL} \
-    --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
+ARGS="--data-dir=/var/lib/pd \
+    --name=${PD_DOMAIN} \
+    --peer-urls=http://0.0.0.0:2380 \
+    --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+    --client-urls=http://0.0.0.0:2379 \
+    --advertise-client-urls=http://${PD_DOMAIN}:2379 \
     --config=/etc/pd/pd.toml"
 
-if [[ -n "${PD_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
-fi
-
-if [[ -f ${PD_DATA_DIR}/join ]]; then
-    join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
+if [[ -f /var/lib/pd/join ]]; then
+    join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
     join=${join%,}
     ARGS="${ARGS} --join=${join}"
-elif [[ ! -d ${PD_DATA_DIR}/member/wal ]]; then
+elif [[ ! -d /var/lib/pd/member/wal ]]; then
     encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
 
-    until result=$(wget -qO- -T 3 http://${PD_DISCOVERY_ADDR}/new/${encoded_domain_url} 2>/dev/null); do
+    until result=$(wget -qO- -T 3 http://start-script-test-discovery.start-script-test-ns:10261/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
@@ -537,15 +477,7 @@ then
 fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.${HEADLESS_SERVICE_NAME}.start-script-test-ns.svc.cluster-1.com
-PD_NAME=${PD_DOMAIN}
-PD_DATA_DIR=/var/lib/pd
-PD_PEER_URL=http://0.0.0.0:2380
-PD_ADVERTISE_PEER_URL=http://${PD_DOMAIN}:2380
-PD_CLIENT_URL=http://0.0.0.0:2379
-PD_ADVERTISE_CLIENT_URL=http://${PD_DOMAIN}:2379
-PD_DISCOVERY_ADDR=start-script-test-discovery.start-script-test-ns:10261
-PD_EXTRA_ARGS=
+PD_DOMAIN=${PD_POD_NAME}.${PEER_SERVICE_NAME}.start-script-test-ns.svc.cluster-1.com
 
 elapseTime=0
 period=1
@@ -576,26 +508,22 @@ while true; do
     fi
 done
 
-ARGS="--data-dir=${PD_DATA_DIR} \
-    --name=${PD_NAME} \
-    --peer-urls=${PD_PEER_URL} \
-    --advertise-peer-urls=${PD_ADVERTISE_PEER_URL} \
-    --client-urls=${PD_CLIENT_URL} \
-    --advertise-client-urls=${PD_ADVERTISE_CLIENT_URL} \
+ARGS="--data-dir=/var/lib/pd \
+    --name=${PD_DOMAIN} \
+    --peer-urls=http://0.0.0.0:2380 \
+    --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+    --client-urls=http://0.0.0.0:2379 \
+    --advertise-client-urls=http://${PD_DOMAIN}:2379 \
     --config=/etc/pd/pd.toml"
 
-if [[ -n "${PD_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${PD_EXTRA_ARGS}"
-fi
-
-if [[ -f ${PD_DATA_DIR}/join ]]; then
-    join=$(cat ${PD_DATA_DIR}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
+if [[ -f /var/lib/pd/join ]]; then
+    join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
     join=${join%,}
     ARGS="${ARGS} --join=${join}"
-elif [[ ! -d ${PD_DATA_DIR}/member/wal ]]; then
+elif [[ ! -d /var/lib/pd/member/wal ]]; then
     encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
 
-    until result=$(wget -qO- -T 3 http://${PD_DISCOVERY_ADDR}/new/${encoded_domain_url} 2>/dev/null); do
+    until result=$(wget -qO- -T 3 http://start-script-test-discovery.start-script-test-ns:10261/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done

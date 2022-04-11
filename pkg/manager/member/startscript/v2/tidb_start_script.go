@@ -35,13 +35,16 @@ type TiDBStartScriptModel struct {
 func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &TiDBStartScriptModel{}
 
-	pdDomain := controller.PDMemberName(tc.Name)
+	m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Name))
 	if tc.AcrossK8s() {
-		pdDomain = controller.PDMemberName(tc.Name) // get pd addr from discovery in startup script
+		m.AcrossK8s = &AcrossK8sScriptModel{
+			PDAddr:        fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Name)),
+			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
+		}
+		m.PDAddr = "${result}" // get pd addr in subscript
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
+		m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
 	}
-	m.PDAddr = fmt.Sprintf("%s:2379", pdDomain)
 
 	m.AdvertiseAddr = fmt.Sprintf("${TIDB_POD_NAME}.${HEADLESS_SERVICE_NAME}.%s.svc", tc.Namespace)
 	if tc.Spec.ClusterDomain != "" {
@@ -57,13 +60,7 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		extraArgs = append(extraArgs, fmt.Sprintf("--plugin-load=%s", strings.Join(plugins, ",")))
 	}
 	if len(extraArgs) > 0 {
-		m.ExtraArgs = fmt.Sprintf("\"%s\"", strings.Join(extraArgs, " "))
-	}
-
-	if tc.AcrossK8s() {
-		m.AcrossK8s = &AcrossK8sScriptModel{
-			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tc.Name, tc.Namespace),
-		}
+		m.ExtraArgs = strings.Join(extraArgs, " ")
 	}
 
 	return renderTemplateFunc(tidbStartScriptTpl, m)
@@ -71,37 +68,29 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 const (
 	tidbStartSubScript = `
-{{ define "TIDB_PD_ADDR" -}}
-    {{- if .AcrossK8s -}}
-pd_url={{ .PDAddr }}
+{{ define "AcrossK8sSubscript" }}
+pd_url={{ .AcrossK8s.PDAddr }}
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url={{ .AcrossK8s.DiscoveryAddr }}
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done
-TIDB_PD_ADDR=${result}
-    {{- else -}}
-TIDB_PD_ADDR={{ .PDAddr }}
-    {{- end -}}
 {{- end}}
 `
 
 	tidbStartScript = `
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
-TIDB_ADVERTISE_ADDR={{ .AdvertiseAddr }}
-{{ template "TIDB_PD_ADDR" . }}
-TIDB_EXTRA_ARGS={{ .ExtraArgs }}
+{{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
 ARGS="--store=tikv \
-    --advertise-address=${TIDB_ADVERTISE_ADDR} \
+    --advertise-address={{ .AdvertiseAddr }} \
     --host=0.0.0.0 \
-    --path=${TIDB_PD_ADDR} \
+    --path={{ .PDAddr }} \
     --config=/etc/tidb/tidb.toml"
-
-if [[ -n "${TIDB_EXTRA_ARGS}" ]]; then
-    ARGS="${ARGS} ${TIDB_EXTRA_ARGS}"
-fi
+{{- if .ExtraArgs }}
+ARGS="${ARGS} {{ .ExtraArgs }}"
+{{- end }}
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
 if [[ ! -z "${SLOW_LOG_FILE}" ]]
