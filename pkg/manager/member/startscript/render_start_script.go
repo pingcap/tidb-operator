@@ -19,74 +19,53 @@ import (
 	v2 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v2"
 )
 
-func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath string) (string, error) {
-	switch tc.Spec.StartScriptVersion {
-	case v1alpha1.StartScriptV2:
-		return v2.RenderTiKVStartScript(tc, tikvDataVolumeMountPath)
-	case v1alpha1.StartScriptV1:
-		return v1.RenderTiKVStartScript(tc, tikvDataVolumeMountPath)
+var (
+	tikv = map[v1alpha1.StartScriptVersion]func(*v1alpha1.TidbCluster, string) (string, error){
+		v1alpha1.StartScriptV1: v1.RenderTiKVStartScript,
+		v1alpha1.StartScriptV2: v2.RenderTiKVStartScript,
 	}
+	pd = map[v1alpha1.StartScriptVersion]func(*v1alpha1.TidbCluster, string) (string, error){
+		v1alpha1.StartScriptV1: v1.RenderPDStartScript,
+		v1alpha1.StartScriptV2: v2.RenderPDStartScript,
+	}
+	tidb = map[v1alpha1.StartScriptVersion]func(*v1alpha1.TidbCluster) (string, error){
+		v1alpha1.StartScriptV1: v1.RenderTiDBStartScript,
+		v1alpha1.StartScriptV2: v2.RenderTiDBStartScript,
+	}
+	pump = map[v1alpha1.StartScriptVersion]func(*v1alpha1.TidbCluster) (string, error){
+		v1alpha1.StartScriptV1: v1.RenderPumpStartScript,
+		v1alpha1.StartScriptV2: v2.RenderPumpStartScript,
+	}
+	ticdc = map[v1alpha1.StartScriptVersion]func(*v1alpha1.TidbCluster, string) (string, error){
+		v1alpha1.StartScriptV1: v1.RenderTiCDCStartScript,
+		v1alpha1.StartScriptV2: v2.RenderTiCDCStartScript,
+	}
+	tiflash = map[v1alpha1.StartScriptVersion]func(*v1alpha1.TidbCluster) (string, error){
+		v1alpha1.StartScriptV1: v1.RenderTiFlashStartScript,
+		v1alpha1.StartScriptV2: v2.RenderTiFlashStartScript,
+	}
+)
 
-	// use v1 by default
-	return v1.RenderTiKVStartScript(tc, tikvDataVolumeMountPath)
+func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath string) (string, error) {
+	return tikv[tc.StartScriptVersion()](tc, tikvDataVolumeMountPath)
 }
 
 func RenderPDStartScript(tc *v1alpha1.TidbCluster, pdDataVolumeMountPath string) (string, error) {
-	switch tc.Spec.StartScriptVersion {
-	case v1alpha1.StartScriptV2:
-		return v2.RenderPDStartScript(tc, pdDataVolumeMountPath)
-	case v1alpha1.StartScriptV1:
-		return v1.RenderPDStartScript(tc, pdDataVolumeMountPath)
-	}
-
-	// use v1 by default
-	return v1.RenderPDStartScript(tc, pdDataVolumeMountPath)
+	return pd[tc.StartScriptVersion()](tc, pdDataVolumeMountPath)
 }
 
 func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	switch tc.Spec.StartScriptVersion {
-	case v1alpha1.StartScriptV2:
-		return v2.RenderTiDBStartScript(tc)
-	case v1alpha1.StartScriptV1:
-		return v1.RenderTiDBStartScript(tc)
-	}
-
-	// use v1 by default
-	return v1.RenderTiDBStartScript(tc)
+	return tidb[tc.StartScriptVersion()](tc)
 }
 
 func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	switch tc.Spec.StartScriptVersion {
-	case v1alpha1.StartScriptV2:
-		return v2.RenderPumpStartScript(tc)
-	case v1alpha1.StartScriptV1:
-		return v1.RenderPumpStartScript(tc)
-	}
-
-	// use v1 by default
-	return v1.RenderPumpStartScript(tc)
+	return pump[tc.StartScriptVersion()](tc)
 }
 
 func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster, ticdcCertPath string) (string, error) {
-	switch tc.Spec.StartScriptVersion {
-	case v1alpha1.StartScriptV2:
-		return v2.RenderTiCDCStartScript(tc, ticdcCertPath)
-	case v1alpha1.StartScriptV1:
-		return v1.RenderTiCDCStartScript(tc, ticdcCertPath)
-	}
-
-	// use v1 by default
-	return v1.RenderTiCDCStartScript(tc, ticdcCertPath)
+	return ticdc[tc.StartScriptVersion()](tc, ticdcCertPath)
 }
 
 func RenderTiFlashStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	switch tc.Spec.StartScriptVersion {
-	case v1alpha1.StartScriptV2:
-		return v2.RenderTiFlashStartScript(tc)
-	case v1alpha1.StartScriptV1:
-		return v1.RenderTiFlashStartScript(tc)
-	}
-
-	// use v1 by default
-	return v1.RenderTiFlashStartScript(tc)
+	return tiflash[tc.StartScriptVersion()](tc)
 }

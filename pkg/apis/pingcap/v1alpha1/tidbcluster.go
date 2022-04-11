@@ -946,3 +946,12 @@ func (tc *TidbCluster) WithoutLocalTiDB() bool {
 func (tc *TidbCluster) AcrossK8s() bool {
 	return tc.Spec.AcrossK8s
 }
+
+func (tc *TidbCluster) StartScriptVersion() StartScriptVersion {
+	switch tc.Spec.StartScriptVersion {
+	case StartScriptV1, StartScriptV2:
+		return tc.Spec.StartScriptVersion
+	default:
+		return StartScriptV1
+	}
+}

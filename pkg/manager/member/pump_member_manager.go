@@ -368,7 +368,6 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 		})
 	}
 
-	annMount, annVolume := annotationsMountVolume()
 	volumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "data",
@@ -379,15 +378,44 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			MountPath: "/etc/pump",
 		},
 	}
+	// Keep backward compatibility for pump created by helm
+	volumes := []corev1.Volume{
+		{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cm.Name,
+					},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "pump-config",
+							Path: "pump.toml",
+						},
+					},
+				},
+			},
+		},
+	}
 	if tc.IsTLSClusterEnabled() {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name: pumpCertVolumeMount, ReadOnly: true, MountPath: pumpCertPath,
 		})
+		volumes = append(volumes, corev1.Volume{
+			Name: pumpCertVolumeMount, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PumpLabelVal),
+				},
+			},
+		})
 	}
-	// FIXME: find a better way to handle this
-	if tc.Spec.StartScriptVersion == v1alpha1.StartScriptV2 {
+	// For compatibility, add the volume mount for anno when startscript is not v1
+	if tc.StartScriptVersion() != v1alpha1.StartScriptV1 {
+		annMount, annVolume := annotationsMountVolume()
 		volumeMounts = append(volumeMounts, annMount)
+		volumes = append(volumes, annVolume)
 	}
+
 	containers := []corev1.Container{
 		{
 			Name:            "pump",
@@ -413,40 +441,6 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				},
 			},
 		},
-	}
-
-	// Keep backward compatibility for pump created by helm
-	volumes := []corev1.Volume{
-		{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: cm.Name,
-					},
-					Items: []corev1.KeyToPath{
-						{
-							Key:  "pump-config",
-							Path: "pump.toml",
-						},
-					},
-				},
-			},
-		},
-	}
-	// FIXME: find a better way to handle this
-	if tc.Spec.StartScriptVersion == v1alpha1.StartScriptV2 {
-		volumes = append(volumes, annVolume)
-	}
-
-	if tc.IsTLSClusterEnabled() {
-		volumes = append(volumes, corev1.Volume{
-			Name: pumpCertVolumeMount, VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.PumpLabelVal),
-				},
-			},
-		})
 	}
 
 	volumeClaims := []corev1.PersistentVolumeClaim{

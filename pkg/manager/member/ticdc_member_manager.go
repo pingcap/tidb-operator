@@ -349,8 +349,8 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		vols      []corev1.Volume
 	)
 
-	// FIXME: find a better way to handle this
-	if tc.Spec.StartScriptVersion == v1alpha1.StartScriptV2 {
+	// For compatibility, add the volume mount for anno when startscript is not v1
+	if tc.StartScriptVersion() != v1alpha1.StartScriptV1 {
 		annMount, annVolume := annotationsMountVolume()
 		volMounts = append(volMounts, annMount)
 		vols = append(vols, annVolume)
