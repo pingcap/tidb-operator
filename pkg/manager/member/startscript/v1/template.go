@@ -17,8 +17,6 @@ import (
 	"bytes"
 	"fmt"
 	"text/template"
-
-	
 )
 
 type CommonModel struct {

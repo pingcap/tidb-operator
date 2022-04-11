@@ -416,7 +416,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 
 	script, err := startscript.RenderTiCDCStartScript(tc, ticdcCertPath)
 	if err != nil {
-		return nil, fmt.Errorf("rendor start script for tc %s/%s failed: %s", ns, tcName, err)
+		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}
 
 	ticdcContainer := corev1.Container{

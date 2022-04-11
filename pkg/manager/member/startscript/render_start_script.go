@@ -44,6 +44,10 @@ var (
 		v1alpha1.StartScriptV1: v1.RenderTiFlashStartScript,
 		v1alpha1.StartScriptV2: v2.RenderTiFlashStartScript,
 	}
+	tiflashInit = map[v1alpha1.StartScriptVersion]func(*v1alpha1.TidbCluster) (string, error){
+		v1alpha1.StartScriptV1: v1.RenderTiFlashInitScript,
+		v1alpha1.StartScriptV2: v2.RenderTiFlashInitScript,
+	}
 )
 
 func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath string) (string, error) {
@@ -68,4 +72,8 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster, ticdcCertPath string) (str
 
 func RenderTiFlashStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	return tiflash[tc.StartScriptVersion()](tc)
+}
+
+func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
+	return tiflashInit[tc.StartScriptVersion()](tc)
 }

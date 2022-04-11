@@ -413,30 +413,11 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			},
 		},
 	}
-	script := "set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml"
 
-	if tc.AcrossK8s() {
-		var pdAddr string
-		if tc.IsTLSClusterEnabled() {
-			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
-		} else {
-			pdAddr = fmt.Sprintf("http://%s-pd:2379", tcName)
-		}
-		str := `pd_url="%s"
-set +e
-encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="%s-discovery.%s:10261"
-until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
-echo "waiting for the verification of PD endpoints ..."
-sleep 2
-done
-
-
-sed -i s/PD_ADDR/${result}/g /data0/config.toml
-sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
-`
-		script += "\n"
-		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace())
+	// NOTE: the config content should respect the init script
+	initScript, err := startscript.RenderTiFlashInitScript(tc)
+	if err != nil {
+		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}
 
 	initializer := corev1.Container{
@@ -445,7 +426,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		Command: []string{
 			"sh",
 			"-c",
-			script,
+			initScript,
 		},
 		Env:          initEnv,
 		VolumeMounts: initVolMounts,
@@ -498,7 +479,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 
 	startScript, err := startscript.RenderTiFlashStartScript(tc)
 	if err != nil {
-		return nil, fmt.Errorf("render start script of tc %s/%s failed: %v", ns, tcName, err)
+		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}
 
 	tiflashContainer := corev1.Container{

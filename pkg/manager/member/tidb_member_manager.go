@@ -522,7 +522,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	startScript, err := startscript.RenderTiDBStartScript(tc)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}
 
 	data := map[string]string{
