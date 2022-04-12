@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -28,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -2437,4 +2439,22 @@ func mustTiDBConfig(x interface{}) *v1alpha1.TiDBConfigWraper {
 	c.UnmarshalTOML(data)
 
 	return c
+}
+
+func TestBuildRandomPasswordSecret(t *testing.T) {
+	g := NewGomegaWithT(t)
+	patch := gomonkey.ApplyFunc(util.FixedLengthRandomPasswordBytes, func() []byte {
+		return []byte("1234") // return the invalid string firstly
+	})
+	defer patch.Reset()
+
+	tc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "basic",
+		},
+	}
+	tmm, _, _, _ := newFakeTiDBMemberManager()
+	_, password := tmm.BuildRandomPasswordSecret(tc)
+	g.Expect(!strings.Contains(password, "\\")).Should(BeTrue())
+
 }
