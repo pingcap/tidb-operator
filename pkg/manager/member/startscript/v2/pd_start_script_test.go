@@ -552,7 +552,7 @@ exec /pd-server ${ARGS}
 			c.modifyTC(tc)
 		}
 
-		script, err := RenderPDStartScript(tc, "/var/lib/pd")
+		script, err := RenderPDStartScript(tc)
 		g.Expect(err).Should(gomega.Succeed())
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)

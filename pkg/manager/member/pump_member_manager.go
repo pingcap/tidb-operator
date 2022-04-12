@@ -42,7 +42,6 @@ import (
 )
 
 const (
-	defaultPumpLogLevel = "info"
 	pumpCertVolumeMount = "pump-tls"
 	pumpCertPath        = "/var/lib/pump-tls"
 )

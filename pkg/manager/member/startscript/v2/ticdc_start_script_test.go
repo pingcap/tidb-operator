@@ -414,7 +414,7 @@ exec /cdc server ${ARGS}
 			c.modifyTC(tc)
 		}
 
-		script, err := RenderTiCDCStartScript(tc, "/var/lib/ticdc-tls")
+		script, err := RenderTiCDCStartScript(tc)
 		g.Expect(err).Should(gomega.Succeed())
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)

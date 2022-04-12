@@ -426,7 +426,7 @@ exec /tikv-server ${ARGS}
 			c.modifyTC(tc)
 		}
 
-		script, err := RenderTiKVStartScript(tc, "/var/lib/tikv")
+		script, err := RenderTiKVStartScript(tc)
 		g.Expect(err).Should(gomega.Succeed())
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)

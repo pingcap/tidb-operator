@@ -29,22 +29,26 @@ func TestScriptFormat(t *testing.T) {
 		componentCommonScript,
 		pdStartScript,
 		pdStartSubScript,
-		tidbStartScript,
-		tidbStartSubScript,
-		tikvStartScript,
-		tikvStartSubScript,
 		pumpStartScript,
 		pumpStartSubScript,
 		ticdcStartScript,
 		ticdcStartSubScript,
+		tidbStartScript,
+		tidbStartSubScript,
+		tiflashInitScript,
+		tiflashStartSubScript,
+		tiflashStartScript,
+		tiflashStartSubScript,
+		tikvStartScript,
+		tikvStartSubScript,
 	}
 
-	blankLineRegexp := regexp.MustCompile("^\\s*$")
+	blankLineRegexp := regexp.MustCompile(`^\s*$`)
 
 	for _, script := range scripts {
 		for _, line := range strings.Split(script, "\n") {
 			g.Expect(line).ShouldNot(gomega.HaveSuffix(" "))
-			g.Expect(line).ShouldNot(gomega.ContainSubstring("\t"), "use space but not tab")
+			g.Expect(line).ShouldNot(gomega.ContainSubstring("\t"), "line should use space not tab")
 			if blankLineRegexp.MatchString(line) {
 				g.Expect(line).ShouldNot(gomega.ContainSubstring(" "), "blank line should not contain space")
 			}

@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -38,7 +39,6 @@ import (
 )
 
 const (
-	ticdcCertPath        = "/var/lib/ticdc-tls"
 	ticdcSinkCertPath    = "/var/lib/sink-tls"
 	ticdcCertVolumeMount = "ticdc-tls"
 )
@@ -360,7 +360,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name:      ticdcCertVolumeMount,
 			ReadOnly:  true,
-			MountPath: ticdcCertPath,
+			MountPath: constants.TiCDCCertPath,
 		}, corev1.VolumeMount{
 			Name:      util.ClusterClientVolName,
 			ReadOnly:  true,
@@ -414,7 +414,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		},
 	}
 
-	script, err := startscript.RenderTiCDCStartScript(tc, ticdcCertPath)
+	script, err := startscript.RenderTiCDCStartScript(tc)
 	if err != nil {
 		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}

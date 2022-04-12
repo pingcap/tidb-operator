@@ -916,6 +916,21 @@ func (tc *TidbCluster) TiCDCLogFile() string {
 	return "/dev/stderr"
 }
 
+func (tc *TidbCluster) PumpLogLevel() string {
+	if tc.Spec.Pump != nil && tc.Spec.Pump.Config != nil {
+		if v := tc.Spec.Pump.Config.Get("log-level"); v != nil {
+			level, err := v.AsString()
+			if err != nil {
+				klog.Warningf("'%s/%s' incorrect log-level type %v", tc.Namespace, tc.Name, v.Interface())
+			} else {
+				return level
+			}
+		}
+	}
+
+	return "info"
+}
+
 func (tc *TidbCluster) TiCDCLogLevel() string {
 	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil {
 		if v := tc.Spec.TiCDC.Config.Get("log-level"); v != nil {

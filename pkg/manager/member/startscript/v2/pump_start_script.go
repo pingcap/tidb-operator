@@ -19,7 +19,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"k8s.io/klog/v2"
 )
 
 // PumpStartScriptModel contain fields for rendering Pump start script
@@ -50,17 +49,7 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		m.PDAddr = fmt.Sprintf("%s://%s:2379", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
 	}
 
-	m.LogLevel = "info"
-	if cfg := tc.Spec.Pump.Config; cfg != nil {
-		if v := cfg.Get("log-level"); v != nil {
-			logLevel, err := v.AsString()
-			if err == nil {
-				m.LogLevel = logLevel
-			} else {
-				klog.Warningf("error log-level for pump: %s", err)
-			}
-		}
-	}
+	m.LogLevel = tc.PumpLogLevel()
 
 	advertiseAddr := fmt.Sprintf("${PUMP_POD_NAME}.%s", peerServiceName)
 	if tc.Spec.ClusterDomain != "" {

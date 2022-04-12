@@ -21,19 +21,19 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
 )
 
-func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath string) (string, error) {
+func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	model := &TiKVStartScriptModel{
 		CommonModel: CommonModel{
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
 		EnableAdvertiseStatusAddr: false,
-		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
+		DataDir:                   filepath.Join(constants.TiKVDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
 	}
 	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
 		model.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc" + controller.FormatClusterDomain(tc.Spec.ClusterDomain)
@@ -50,14 +50,14 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath str
 	return renderTemplateFunc(tikvStartScriptTpl, model)
 }
 
-func RenderPDStartScript(tc *v1alpha1.TidbCluster, pdDataVolumeMountPath string) (string, error) {
+func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	model := &PDStartScriptModel{
 		CommonModel: CommonModel{
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
 		Scheme:  tc.Scheme(),
-		DataDir: filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+		DataDir: filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir),
 	}
 	if tc.Spec.PD.StartUpScriptVersion == "v1" {
 		model.CheckDomainScript = checkDNSV1
@@ -109,12 +109,12 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		Scheme:      scheme,
 		ClusterName: tc.Name,
 		PDAddr:      pdAddr,
-		LogLevel:    getPumpLogLevel(tc),
+		LogLevel:    tc.PumpLogLevel(),
 		Namespace:   tc.GetNamespace(),
 	})
 }
 
-func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster, ticdcCertPath string) (string, error) {
+func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	tcName := tc.GetName()
 
 	cmdArgs := []string{"/cdc server", "--addr=0.0.0.0:8301", fmt.Sprintf("--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:8301", controller.FormatClusterDomain(tc.Spec.ClusterDomain))}
@@ -134,6 +134,7 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster, ticdcCertPath string) (str
 	}
 
 	if tc.IsTLSClusterEnabled() {
+		ticdcCertPath := constants.TiCDCCertPath
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--key=%s", path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey)))
@@ -207,26 +208,4 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 	}
 
 	return script, nil
-}
-
-func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
-	defaultPumpLogLevel := "info"
-
-	cfg := tc.Spec.Pump.Config
-	if cfg == nil {
-		return defaultPumpLogLevel
-	}
-
-	v := cfg.Get("log-level")
-	if v == nil {
-		return defaultPumpLogLevel
-	}
-
-	logLevel, err := v.AsString()
-	if err != nil {
-		klog.Warning("error log-level for pump: ", err)
-		return defaultPumpLogLevel
-	}
-
-	return logLevel
 }

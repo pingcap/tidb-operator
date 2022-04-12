@@ -23,6 +23,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
 )
 
 // TiCDCStartScriptModel contain fields for rendering TiCDC start script
@@ -37,7 +38,7 @@ type TiCDCStartScriptModel struct {
 	AcrossK8s *AcrossK8sScriptModel
 }
 
-func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster, ticdcCertPath string) (string, error) {
+func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &TiCDCStartScriptModel{}
 	tcName := tc.Name
 	tcNS := tc.Namespace
@@ -68,6 +69,7 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster, ticdcCertPath string) (str
 
 	extraArgs := []string{}
 	if tc.IsTLSClusterEnabled() {
+		ticdcCertPath := constants.TiCDCCertPath
 		extraArgs = append(extraArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
 		extraArgs = append(extraArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
 		extraArgs = append(extraArgs, fmt.Sprintf("--key=%s", path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey)))

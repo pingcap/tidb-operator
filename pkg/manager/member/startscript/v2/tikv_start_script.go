@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
 )
 
 // TiKVStartScriptModel contain fields for rendering TiKV start script
@@ -35,7 +36,7 @@ type TiKVStartScriptModel struct {
 }
 
 // RenderTiKVStartScript renders TiKV start script from TidbCluster
-func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath string) (string, error) {
+func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &TiKVStartScriptModel{}
 	tcName := tc.Name
 	tcNS := tc.Namespace
@@ -58,7 +59,7 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster, tikvDataVolumeMountPath str
 	}
 	m.AdvertiseAddr = advertiseAddr + ":20160"
 
-	m.DataDir = filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir)
+	m.DataDir = filepath.Join(constants.TiKVDataVolumeMountPath, tc.Spec.TiKV.DataSubDir)
 
 	m.Capacity = "${CAPACITY}"
 

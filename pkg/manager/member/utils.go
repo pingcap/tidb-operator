@@ -239,7 +239,7 @@ func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbC
 		return nil, err
 	}
 
-	startScript, err := startscript.RenderTiKVStartScript(tc, tikvDataVolumeMountPath)
+	startScript, err := startscript.RenderTiKVStartScript(tc)
 	if err != nil {
 		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}

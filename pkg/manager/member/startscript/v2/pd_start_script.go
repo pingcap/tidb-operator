@@ -20,6 +20,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
 )
 
 // PDStartScriptModel contain fields for rendering PD start script
@@ -36,7 +37,7 @@ type PDStartScriptModel struct {
 }
 
 // RenderPDStartScript renders PD start script from TidbCluster
-func RenderPDStartScript(tc *v1alpha1.TidbCluster, pdDataVolumeMountPath string) (string, error) {
+func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &PDStartScriptModel{}
 	tcName := tc.Name
 	tcNS := tc.Namespace
@@ -52,7 +53,7 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster, pdDataVolumeMountPath string)
 		m.PDName = "${PD_DOMAIN}"
 	}
 
-	m.DataDir = filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir)
+	m.DataDir = filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir)
 
 	m.PeerURL = fmt.Sprintf("%s://0.0.0.0:2380", tc.Scheme())
 

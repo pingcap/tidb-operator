@@ -61,41 +61,24 @@ func TestStartScriptRoute(t *testing.T) {
 		tc.Spec.StartScriptVersion = c.ver
 		mockRenderFunc(c.expectVer)
 
-		_, err := RenderTiKVStartScript(tc, "")
-		g.Expect(err).Should(gomega.Succeed())
-		_, err = RenderPDStartScript(tc, "")
-		g.Expect(err).Should(gomega.Succeed())
-		_, err = RenderTiDBStartScript(tc)
-		g.Expect(err).Should(gomega.Succeed())
-		_, err = RenderPumpStartScript(tc)
-		g.Expect(err).Should(gomega.Succeed())
-		_, err = RenderTiCDCStartScript(tc, "")
-		g.Expect(err).Should(gomega.Succeed())
-		_, err = RenderTiFlashStartScript(tc)
-		g.Expect(err).Should(gomega.Succeed())
-		_, err = RenderTiFlashInitScript(tc)
-		g.Expect(err).Should(gomega.Succeed())
+		for _, render := range []Render{
+			RenderTiKVStartScript,
+			RenderPDStartScript,
+			RenderTiDBStartScript,
+			RenderPumpStartScript,
+			RenderTiCDCStartScript,
+			RenderTiFlashStartScript,
+			RenderTiFlashInitScript,
+		} {
+			_, err := render(tc)
+			g.Expect(err).Should(gomega.Succeed())
+		}
+
 	}
 }
 
 func mockRenderFunc(expectedVer v1alpha1.StartScriptVersion) {
-	for _, scriptMap := range []map[v1alpha1.StartScriptVersion]func(*v1alpha1.TidbCluster, string) (string, error){
-		tikv, pd, ticdc,
-	} {
-		for ver := range scriptMap {
-			var err error
-			if ver != expectedVer {
-				err = fmt.Errorf("should use render func for version %s", expectedVer)
-			}
-			scriptMap[ver] = func(tc *v1alpha1.TidbCluster, s string) (string, error) {
-				return "", err
-			}
-		}
-	}
-
-	for _, scriptMap := range []map[v1alpha1.StartScriptVersion]func(*v1alpha1.TidbCluster) (string, error){
-		tidb, pump, tiflash, tiflashInit,
-	} {
+	for _, scriptMap := range []RenderMap{tikv, pd, ticdc, tidb, pump, tiflash, tiflashInit} {
 		for ver := range scriptMap {
 			var err error
 			if ver != expectedVer {

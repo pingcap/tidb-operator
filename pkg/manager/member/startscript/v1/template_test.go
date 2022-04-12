@@ -671,8 +671,7 @@ exec /tikv-server ${ARGS}
 				tt.modifyTC(tc)
 			}
 
-			tikvDataVolumeMountPath := "/var/lib/tikv"
-			script, err := RenderTiKVStartScript(tc, tikvDataVolumeMountPath)
+			script, err := RenderTiKVStartScript(tc)
 			g.Expect(err).Should(gomega.Succeed())
 			if diff := cmp.Diff(tt.result, script); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
@@ -1181,7 +1180,7 @@ exec /pd-server ${ARGS}
 				tt.modifyTC(tc)
 			}
 
-			script, err := RenderPDStartScript(tc, "/var/lib/pd")
+			script, err := RenderPDStartScript(tc)
 			g.Expect(err).Should(gomega.Succeed())
 			if diff := cmp.Diff(tt.result, script); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
@@ -1496,7 +1495,7 @@ exec /cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SER
 			c.modifyTC(tc)
 		}
 
-		script, err := RenderTiCDCStartScript(tc, "/var/lib/ticdc-tls")
+		script, err := RenderTiCDCStartScript(tc)
 		g.Expect(err).Should(gomega.Succeed())
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)

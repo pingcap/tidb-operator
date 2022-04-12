@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -43,9 +44,6 @@ import (
 )
 
 const (
-	// tikvDataVolumeMountPath is the mount path for tikv data volume
-	tikvDataVolumeMountPath = "/var/lib/tikv"
-
 	// tikvClusterCertPath is where the cert for inter-cluster communication stored (if any)
 	tikvClusterCertPath = "/var/lib/tikv-tls"
 
@@ -322,7 +320,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	annoMount, annoVolume := annotationsMountVolume()
 	tikvDataVol := corev1.VolumeMount{
 		Name:      v1alpha1.TiKVMemberType.String(),
-		MountPath: tikvDataVolumeMountPath}
+		MountPath: constants.TiKVDataVolumeMountPath}
 	volMounts := []corev1.VolumeMount{
 		annoMount,
 		tikvDataVol,
