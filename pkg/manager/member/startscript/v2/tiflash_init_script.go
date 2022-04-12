@@ -43,6 +43,7 @@ func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
 }
 
 const (
+	// tiflashInitSubScript contains optional subscripts used in start script.
 	tiflashInitSubScript = `
 {{ define "AcrossK8sSubscript" }}
 pd_url={{ .AcrossK8s.PDAddr }}
@@ -58,7 +59,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 {{- end }}
 `
 
-	// init container of tiflash have core Init script, so just to Init tiflash
+	// tiflashInitScript is the template of start script.
 	tiflashInitScript = `#!/bin/sh
 set -uo pipefail
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}

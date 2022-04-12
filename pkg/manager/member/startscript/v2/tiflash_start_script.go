@@ -34,9 +34,12 @@ func RenderTiFlashStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 }
 
 const (
+	// tiflashStartSubScript contains optional subscripts used in start script.
 	tiflashStartSubScript = ``
 
-	// init container of tiflash have core start script, so just to start tiflash
+	// tiflashStartScript is the template of start script.
+	//
+	// Because init container of tiflash have core start script, so just to start tiflash there.
 	tiflashStartScript = `
 ARGS="--config-file /data0/config.toml"
 {{- if .ExtraArgs }}

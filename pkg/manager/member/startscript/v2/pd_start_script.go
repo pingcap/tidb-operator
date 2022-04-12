@@ -69,8 +69,11 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 }
 
 const (
+	// pdStartSubScript contains optional subscripts used in start script.
 	pdStartSubScript = ``
-	pdStartScript    = `
+
+	// pdStartScript is the template of start script.
+	pdStartScript = `
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN={{ .PDDomain }}
 

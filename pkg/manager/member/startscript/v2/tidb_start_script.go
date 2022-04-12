@@ -70,6 +70,7 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 }
 
 const (
+	// tidbStartSubScript contains optional subscripts used in start script.
 	tidbStartSubScript = `
 {{ define "AcrossK8sSubscript" }}
 pd_url={{ .AcrossK8s.PDAddr }}
@@ -82,6 +83,7 @@ done
 {{- end}}
 `
 
+	// tidbStartScript is the template of start script.
 	tidbStartScript = `
 TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}

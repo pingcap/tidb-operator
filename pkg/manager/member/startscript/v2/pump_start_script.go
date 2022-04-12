@@ -65,6 +65,7 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 }
 
 const (
+	// pumpStartSubScript contains optional subscripts used in start script.
 	pumpStartSubScript = `
 {{ define "AcrossK8sSubscript" }}
 pd_url={{ .AcrossK8s.PDAddr }}
@@ -77,6 +78,7 @@ done
 {{- end}}
 `
 
+	// pumpStartScript is the template of start script.
 	pumpStartScript = `
 PUMP_POD_NAME=$HOSTNAME
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
