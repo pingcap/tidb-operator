@@ -107,12 +107,12 @@ while true; do
 done
 
 ARGS="--data-dir={{ .DataDir }} \
-    --name={{ .PDName }} \
-    --peer-urls={{ .PeerURL }} \
-    --advertise-peer-urls={{ .AdvertisePeerURL }} \
-    --client-urls={{ .ClientURL }} \
-    --advertise-client-urls={{ .AdvertiseClientURL }} \
-    --config=/etc/pd/pd.toml"
+--name={{ .PDName }} \
+--peer-urls={{ .PeerURL }} \
+--advertise-peer-urls={{ .AdvertisePeerURL }} \
+--client-urls={{ .ClientURL }} \
+--advertise-client-urls={{ .AdvertiseClientURL }} \
+--config=/etc/pd/pd.toml"
 {{- if .ExtraArgs }}
 ARGS="${ARGS} {{ .ExtraArgs }}"
 {{- end }}
@@ -128,7 +128,7 @@ elif [[ ! -d {{ .DataDir }}/member/wal ]]; then
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
-    ARGS="${ARGS}${result}"
+    ARGS="${ARGS} ${result}"
 fi
 
 echo "starting pd-server ..."

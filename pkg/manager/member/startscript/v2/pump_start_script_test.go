@@ -59,11 +59,11 @@ fi
 PUMP_POD_NAME=$HOSTNAME
 
 ARGS="-pd-urls=http://start-script-test-pd:2379 \
-    -L info \
-    -log-file= \
-    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump:8250 \
-    -data-dir=/data \
-    --config=/etc/pump/pump.toml"
+-L info \
+-log-file= \
+-advertise-addr=${PUMP_POD_NAME}.start-script-test-pump:8250 \
+-data-dir=/data \
+--config=/etc/pump/pump.toml"
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -104,11 +104,11 @@ fi
 PUMP_POD_NAME=$HOSTNAME
 
 ARGS="-pd-urls=http://start-script-test-pd:2379 \
-    -L debug \
-    -log-file= \
-    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump:8250 \
-    -data-dir=/data \
-    --config=/etc/pump/pump.toml"
+-L debug \
+-log-file= \
+-advertise-addr=${PUMP_POD_NAME}.start-script-test-pump:8250 \
+-data-dir=/data \
+--config=/etc/pump/pump.toml"
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -147,11 +147,11 @@ fi
 PUMP_POD_NAME=$HOSTNAME
 
 ARGS="-pd-urls=http://start-script-test-pd:2379 \
-    -L info \
-    -log-file= \
-    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc.demo.com:8250 \
-    -data-dir=/data \
-    --config=/etc/pump/pump.toml"
+-L info \
+-log-file= \
+-advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc.demo.com:8250 \
+-data-dir=/data \
+--config=/etc/pump/pump.toml"
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -198,11 +198,11 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
 done
 
 ARGS="-pd-urls=${result} \
-    -L info \
-    -log-file= \
-    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc.demo.com:8250 \
-    -data-dir=/data \
-    --config=/etc/pump/pump.toml"
+-L info \
+-log-file= \
+-advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc.demo.com:8250 \
+-data-dir=/data \
+--config=/etc/pump/pump.toml"
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -249,11 +249,11 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
 done
 
 ARGS="-pd-urls=${result} \
-    -L info \
-    -log-file= \
-    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250 \
-    -data-dir=/data \
-    --config=/etc/pump/pump.toml"
+-L info \
+-log-file= \
+-advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250 \
+-data-dir=/data \
+--config=/etc/pump/pump.toml"
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -293,11 +293,11 @@ fi
 PUMP_POD_NAME=$HOSTNAME
 
 ARGS="-pd-urls=http://target-cluster-pd:2379 \
-    -L info \
-    -log-file= \
-    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump:8250 \
-    -data-dir=/data \
-    --config=/etc/pump/pump.toml"
+-L info \
+-log-file= \
+-advertise-addr=${PUMP_POD_NAME}.start-script-test-pump:8250 \
+-data-dir=/data \
+--config=/etc/pump/pump.toml"
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"
@@ -345,11 +345,11 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
 done
 
 ARGS="-pd-urls=${result} \
-    -L info \
-    -log-file= \
-    -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250 \
-    -data-dir=/data \
-    --config=/etc/pump/pump.toml"
+-L info \
+-log-file= \
+-advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250 \
+-data-dir=/data \
+--config=/etc/pump/pump.toml"
 
 echo "start pump-server ..."
 echo "/pump ${ARGS}"

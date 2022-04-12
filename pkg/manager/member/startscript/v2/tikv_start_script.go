@@ -98,12 +98,12 @@ TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
 ARGS="--pd={{ .PDAddr }} \
-    --advertise-addr={{ .AdvertiseAddr }} \
-    --addr=0.0.0.0:20160 \
-    --status-addr=0.0.0.0:20180 \
-    --data-dir={{ .DataDir }} \
-    --capacity={{ .Capacity }} \
-    --config=/etc/tikv/tikv.toml"
+--advertise-addr={{ .AdvertiseAddr }} \
+--addr=0.0.0.0:20160 \
+--status-addr=0.0.0.0:20180 \
+--data-dir={{ .DataDir }} \
+--capacity={{ .Capacity }} \
+--config=/etc/tikv/tikv.toml"
 {{- if .ExtraArgs }}
 ARGS="${ARGS} {{ .ExtraArgs }}"
 {{- end }}

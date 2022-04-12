@@ -87,12 +87,12 @@ while true; do
 done
 
 ARGS="--data-dir=/var/lib/pd \
-    --name=${PD_POD_NAME} \
-    --peer-urls=http://0.0.0.0:2380 \
-    --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
-    --client-urls=http://0.0.0.0:2379 \
-    --advertise-client-urls=http://${PD_DOMAIN}:2379 \
-    --config=/etc/pd/pd.toml"
+--name=${PD_POD_NAME} \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${PD_DOMAIN}:2379 \
+--config=/etc/pd/pd.toml"
 
 if [[ -f /var/lib/pd/join ]]; then
     join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -105,7 +105,7 @@ elif [[ ! -d /var/lib/pd/member/wal ]]; then
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
-    ARGS="${ARGS}${result}"
+    ARGS="${ARGS} ${result}"
 fi
 
 echo "starting pd-server ..."
@@ -171,12 +171,12 @@ while true; do
 done
 
 ARGS="--data-dir=/var/lib/pd \
-    --name=${PD_POD_NAME} \
-    --peer-urls=https://0.0.0.0:2380 \
-    --advertise-peer-urls=https://${PD_DOMAIN}:2380 \
-    --client-urls=https://0.0.0.0:2379 \
-    --advertise-client-urls=https://${PD_DOMAIN}:2379 \
-    --config=/etc/pd/pd.toml"
+--name=${PD_POD_NAME} \
+--peer-urls=https://0.0.0.0:2380 \
+--advertise-peer-urls=https://${PD_DOMAIN}:2380 \
+--client-urls=https://0.0.0.0:2379 \
+--advertise-client-urls=https://${PD_DOMAIN}:2379 \
+--config=/etc/pd/pd.toml"
 
 if [[ -f /var/lib/pd/join ]]; then
     join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -189,7 +189,7 @@ elif [[ ! -d /var/lib/pd/member/wal ]]; then
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
-    ARGS="${ARGS}${result}"
+    ARGS="${ARGS} ${result}"
 fi
 
 echo "starting pd-server ..."
@@ -255,12 +255,12 @@ while true; do
 done
 
 ARGS="--data-dir=/var/lib/pd/pd-data \
-    --name=${PD_POD_NAME} \
-    --peer-urls=http://0.0.0.0:2380 \
-    --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
-    --client-urls=http://0.0.0.0:2379 \
-    --advertise-client-urls=http://${PD_DOMAIN}:2379 \
-    --config=/etc/pd/pd.toml"
+--name=${PD_POD_NAME} \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${PD_DOMAIN}:2379 \
+--config=/etc/pd/pd.toml"
 
 if [[ -f /var/lib/pd/pd-data/join ]]; then
     join=$(cat /var/lib/pd/pd-data/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -273,7 +273,7 @@ elif [[ ! -d /var/lib/pd/pd-data/member/wal ]]; then
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
-    ARGS="${ARGS}${result}"
+    ARGS="${ARGS} ${result}"
 fi
 
 echo "starting pd-server ..."
@@ -339,12 +339,12 @@ while true; do
 done
 
 ARGS="--data-dir=/var/lib/pd \
-    --name=${PD_DOMAIN} \
-    --peer-urls=http://0.0.0.0:2380 \
-    --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
-    --client-urls=http://0.0.0.0:2379 \
-    --advertise-client-urls=http://${PD_DOMAIN}:2379 \
-    --config=/etc/pd/pd.toml"
+--name=${PD_DOMAIN} \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${PD_DOMAIN}:2379 \
+--config=/etc/pd/pd.toml"
 
 if [[ -f /var/lib/pd/join ]]; then
     join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -357,7 +357,7 @@ elif [[ ! -d /var/lib/pd/member/wal ]]; then
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
-    ARGS="${ARGS}${result}"
+    ARGS="${ARGS} ${result}"
 fi
 
 echo "starting pd-server ..."
@@ -424,12 +424,12 @@ while true; do
 done
 
 ARGS="--data-dir=/var/lib/pd \
-    --name=${PD_DOMAIN} \
-    --peer-urls=http://0.0.0.0:2380 \
-    --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
-    --client-urls=http://0.0.0.0:2379 \
-    --advertise-client-urls=http://${PD_DOMAIN}:2379 \
-    --config=/etc/pd/pd.toml"
+--name=${PD_DOMAIN} \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${PD_DOMAIN}:2379 \
+--config=/etc/pd/pd.toml"
 
 if [[ -f /var/lib/pd/join ]]; then
     join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -442,7 +442,7 @@ elif [[ ! -d /var/lib/pd/member/wal ]]; then
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
-    ARGS="${ARGS}${result}"
+    ARGS="${ARGS} ${result}"
 fi
 
 echo "starting pd-server ..."
@@ -509,12 +509,12 @@ while true; do
 done
 
 ARGS="--data-dir=/var/lib/pd \
-    --name=${PD_DOMAIN} \
-    --peer-urls=http://0.0.0.0:2380 \
-    --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
-    --client-urls=http://0.0.0.0:2379 \
-    --advertise-client-urls=http://${PD_DOMAIN}:2379 \
-    --config=/etc/pd/pd.toml"
+--name=${PD_DOMAIN} \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${PD_DOMAIN}:2379 \
+--config=/etc/pd/pd.toml"
 
 if [[ -f /var/lib/pd/join ]]; then
     join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
@@ -527,7 +527,7 @@ elif [[ ! -d /var/lib/pd/member/wal ]]; then
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
-    ARGS="${ARGS}${result}"
+    ARGS="${ARGS} ${result}"
 fi
 
 echo "starting pd-server ..."

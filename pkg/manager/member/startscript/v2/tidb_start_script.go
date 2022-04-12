@@ -89,10 +89,10 @@ TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
 ARGS="--store=tikv \
-    --advertise-address={{ .AdvertiseAddr }} \
-    --host=0.0.0.0 \
-    --path={{ .PDAddr }} \
-    --config=/etc/tidb/tidb.toml"
+--advertise-address={{ .AdvertiseAddr }} \
+--host=0.0.0.0 \
+--path={{ .PDAddr }} \
+--config=/etc/tidb/tidb.toml"
 {{- if .ExtraArgs }}
 ARGS="${ARGS} {{ .ExtraArgs }}"
 {{- end }}

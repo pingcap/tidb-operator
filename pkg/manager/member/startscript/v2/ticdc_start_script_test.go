@@ -57,11 +57,11 @@ fi
 TICDC_POD_NAME=${POD_NAME}
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
-    --gc-ttl=86400 \
-    --log-file=/dev/stderr \
-    --log-level=info \
-    --pd=http://start-script-test-pd:2379"
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
+--gc-ttl=86400 \
+--log-file=/dev/stderr \
+--log-level=info \
+--pd=http://start-script-test-pd:2379"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -95,11 +95,11 @@ fi
 TICDC_POD_NAME=${POD_NAME}
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc.cluster.local:8301 \
-    --gc-ttl=86400 \
-    --log-file=/dev/stderr \
-    --log-level=info \
-    --pd=http://start-script-test-pd:2379"
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc.cluster.local:8301 \
+--gc-ttl=86400 \
+--log-file=/dev/stderr \
+--log-level=info \
+--pd=http://start-script-test-pd:2379"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -135,11 +135,11 @@ fi
 TICDC_POD_NAME=${POD_NAME}
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
-    --gc-ttl=3600 \
-    --log-file=/dev/stderr \
-    --log-level=info \
-    --pd=http://start-script-test-pd:2379"
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
+--gc-ttl=3600 \
+--log-file=/dev/stderr \
+--log-level=info \
+--pd=http://start-script-test-pd:2379"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -176,11 +176,11 @@ fi
 TICDC_POD_NAME=${POD_NAME}
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
-    --gc-ttl=86400 \
-    --log-file=/tmp/ticdc.log \
-    --log-level=debug \
-    --pd=http://start-script-test-pd:2379"
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
+--gc-ttl=86400 \
+--log-file=/tmp/ticdc.log \
+--log-level=debug \
+--pd=http://start-script-test-pd:2379"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -222,11 +222,11 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
 done
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc.cluster.local:8301 \
-    --gc-ttl=86400 \
-    --log-file=/dev/stderr \
-    --log-level=info \
-    --pd=${result}"
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc.cluster.local:8301 \
+--gc-ttl=86400 \
+--log-file=/dev/stderr \
+--log-level=info \
+--pd=${result}"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -268,11 +268,11 @@ until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_ur
 done
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
-    --gc-ttl=86400 \
-    --log-file=/dev/stderr \
-    --log-level=info \
-    --pd=${result}"
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
+--gc-ttl=86400 \
+--log-file=/dev/stderr \
+--log-level=info \
+--pd=${result}"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -307,11 +307,11 @@ fi
 TICDC_POD_NAME=${POD_NAME}
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
-    --gc-ttl=86400 \
-    --log-file=/dev/stderr \
-    --log-level=info \
-    --pd=http://target-cluster-pd:2379"
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
+--gc-ttl=86400 \
+--log-file=/dev/stderr \
+--log-level=info \
+--pd=http://target-cluster-pd:2379"
 
 echo "start ticdc-server ..."
 echo "/cdc server ${ARGS}"
@@ -345,11 +345,11 @@ fi
 TICDC_POD_NAME=${POD_NAME}
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
-    --gc-ttl=86400 \
-    --log-file=/dev/stderr \
-    --log-level=info \
-    --pd=https://start-script-test-pd:2379"
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
+--gc-ttl=86400 \
+--log-file=/dev/stderr \
+--log-level=info \
+--pd=https://start-script-test-pd:2379"
 ARGS="${ARGS} --ca=/var/lib/ticdc-tls/ca.crt --cert=/var/lib/ticdc-tls/tls.crt --key=/var/lib/ticdc-tls/tls.key"
 
 echo "start ticdc-server ..."
@@ -386,11 +386,11 @@ fi
 TICDC_POD_NAME=${POD_NAME}
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
-    --gc-ttl=86400 \
-    --log-file=/dev/stderr \
-    --log-level=info \
-    --pd=http://start-script-test-pd:2379"
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
+--gc-ttl=86400 \
+--log-file=/dev/stderr \
+--log-level=info \
+--pd=http://start-script-test-pd:2379"
 ARGS="${ARGS} --config=/etc/ticdc/ticdc.toml"
 
 echo "start ticdc-server ..."

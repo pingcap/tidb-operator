@@ -84,11 +84,11 @@ PUMP_POD_NAME=$HOSTNAME
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
 ARGS="-pd-urls={{ .PDAddr }} \
-    -L {{ .LogLevel }} \
-    -log-file= \
-    -advertise-addr={{ .AdvertiseAddr }} \
-    -data-dir=/data \
-    --config=/etc/pump/pump.toml"
+-L {{ .LogLevel }} \
+-log-file= \
+-advertise-addr={{ .AdvertiseAddr }} \
+-data-dir=/data \
+--config=/etc/pump/pump.toml"
 {{- if .ExtraArgs }}
 ARGS="${ARGS} {{ .ExtraArgs }}"
 {{- end }}

@@ -104,11 +104,11 @@ TICDC_POD_NAME=${POD_NAME}
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
 ARGS="--addr=0.0.0.0:8301 \
-    --advertise-addr={{ .AdvertiseAddr }} \
-    --gc-ttl={{ .GCTTL }} \
-    --log-file={{ .LogFile }} \
-    --log-level={{ .LogLevel }} \
-    --pd={{ .PDAddr }}"
+--advertise-addr={{ .AdvertiseAddr }} \
+--gc-ttl={{ .GCTTL }} \
+--log-file={{ .LogFile }} \
+--log-level={{ .LogLevel }} \
+--pd={{ .PDAddr }}"
 {{- if .ExtraArgs }}
 ARGS="${ARGS} {{ .ExtraArgs }}"
 {{- end }}

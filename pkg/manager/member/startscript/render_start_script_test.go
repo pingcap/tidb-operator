@@ -22,7 +22,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
-func TestStartScriptRoute(t *testing.T) {
+func TestRenderStartScriptRoute(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	type testcase struct {
