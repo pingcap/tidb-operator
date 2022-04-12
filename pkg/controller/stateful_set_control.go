@@ -82,6 +82,8 @@ func (c *realStatefulSetControl) UpdateStatefulSet(controller runtime.Object, se
 
 	setName := set.GetName()
 	setSpec := set.Spec.DeepCopy()
+	setLabels := set.Labels
+	setAnnotations := set.Annotations
 	var updatedSS *apps.StatefulSet
 
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
@@ -98,6 +100,8 @@ func (c *realStatefulSetControl) UpdateStatefulSet(controller runtime.Object, se
 			// make a copy so we don't mutate the shared cache
 			set = updated.DeepCopy()
 			set.Spec = *setSpec
+			set.Labels = setLabels
+			set.Annotations = setAnnotations
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated StatefulSet %s/%s from lister: %v", namespace, setName, err))
 		}
