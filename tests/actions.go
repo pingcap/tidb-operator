@@ -51,13 +51,9 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
-	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
-	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
-	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
-	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -177,7 +173,6 @@ type OperatorConfig struct {
 	WebhookServiceName        string
 	WebhookSecretName         string
 	WebhookConfigName         string
-	Context                   *apimachinery.CertContext
 	ImagePullPolicy           corev1.PullPolicy
 	TestMode                  bool
 	WebhookEnabled            bool
@@ -1123,83 +1118,6 @@ func (oa *OperatorActions) checkoutTag(tagName string) error {
 	return nil
 }
 
-func strPtr(s string) *string { return &s }
-
-func (oa *OperatorActions) RegisterWebHookAndServiceOrDie(configName, namespace, service string, context *apimachinery.CertContext) {
-	if err := oa.RegisterWebHookAndService(configName, namespace, service, context); err != nil {
-		slack.NotifyAndPanic(err)
-	}
-}
-
-func (oa *OperatorActions) RegisterWebHookAndService(configName, namespace, service string, ctx *apimachinery.CertContext) error {
-	client := oa.kubeCli
-	log.Logf("Registering the webhook via the AdmissionRegistration API")
-
-	failurePolicy := admissionV1beta1.Fail
-
-	_, err := client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Create(context.TODO(), &admissionV1beta1.ValidatingWebhookConfiguration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: configName,
-		},
-		Webhooks: []admissionV1beta1.ValidatingWebhook{
-			{
-				Name:          "check-pod-before-delete.k8s.io",
-				FailurePolicy: &failurePolicy,
-				Rules: []admissionV1beta1.RuleWithOperations{{
-					Operations: []admissionV1beta1.OperationType{admissionV1beta1.Delete},
-					Rule: admissionV1beta1.Rule{
-						APIGroups:   []string{""},
-						APIVersions: []string{"v1"},
-						Resources:   []string{"pods"},
-					},
-				}},
-				ClientConfig: admissionV1beta1.WebhookClientConfig{
-					Service: &admissionV1beta1.ServiceReference{
-						Namespace: namespace,
-						Name:      service,
-						Path:      strPtr("/pods"),
-					},
-					CABundle: ctx.SigningCert,
-				},
-			},
-		},
-	}, metav1.CreateOptions{})
-
-	if err != nil {
-		log.Logf("registering webhook config %s with namespace %s error %v", configName, namespace, err)
-		return err
-	}
-
-	// The webhook configuration is honored in 10s.
-	time.Sleep(10 * time.Second)
-
-	return nil
-
-}
-
-func (oa *OperatorActions) CleanWebHookAndService(name string) error {
-	err := oa.kubeCli.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Delete(context.TODO(), name, metav1.DeleteOptions{})
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete webhook config %v", err)
-	}
-	return nil
-}
-
-func (oa *OperatorActions) CleanWebHookAndServiceOrDie(name string) {
-	err := oa.CleanWebHookAndService(name)
-	if err != nil {
-		slack.NotifyAndPanic(err)
-	}
-}
-
-type pumpStatus struct {
-	StatusMap map[string]*nodeStatus `json:"StatusMap"`
-}
-
-type nodeStatus struct {
-	State string `json:"state"`
-}
-
 func (oa *OperatorActions) pumpIsHealthy(tcName, ns, podName string, tlsEnabled bool) bool {
 	var err error
 	var addr string
@@ -1548,30 +1466,6 @@ func (oa *OperatorActions) WaitForTiDBNGMonitoringReady(tngm *v1alpha1.TidbNGMon
 	}
 
 	return err
-}
-
-func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContext, namespaces ...string) {
-	sCert, err := tls.X509KeyPair(context.Cert, context.Key)
-	if err != nil {
-		panic(err)
-	}
-
-	versionCli, kubeCli, _, _, _ := client.NewCliOrDie()
-	wh := webhook.NewWebhook(kubeCli, versionCli, namespaces)
-	http.HandleFunc("/pods", wh.ServePods)
-	server := &http.Server{
-		Addr: ":443",
-		TLSConfig: &tls.Config{
-			Certificates: []tls.Certificate{sCert},
-		},
-	}
-	if err := server.ListenAndServeTLS("", ""); err != nil {
-		sendErr := slack.SendErrMsg(err.Error())
-		if sendErr != nil {
-			log.Logf(sendErr.Error())
-		}
-		panic(fmt.Sprintf("failed to start webhook server %v", err))
-	}
 }
 
 // WaitForTidbComponentsReady will wait for tidbcluster components to be ready except those specified in componentsFilter.
