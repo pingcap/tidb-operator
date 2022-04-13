@@ -14,16 +14,22 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"strings"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 type DbType string
 
 const (
+	DrainerReplicas int32 = 1
+
 	DbTypeMySQL DbType = "mysql"
 	DbTypeFile  DbType = "file"
 	DbTypeTiDB  DbType = "tidb"
@@ -31,6 +37,13 @@ const (
 	// DbTypeKafka DbType = "kafka"
 	// DbTypeFlash DbType = "flash"
 )
+
+type DrainerSourceConfig struct {
+	Namespace      string
+	ClusterName    string
+	ClusterVersion string
+	OperatorTag    string
+}
 
 type DrainerConfig struct {
 	DrainerName       string
@@ -48,7 +61,89 @@ type DrainerConfig struct {
 	TLSCluster bool
 }
 
-func (d *DrainerConfig) DrainerHelmString(m map[string]string, source *TidbClusterConfig) string {
+func (oa *OperatorActions) DeployDrainer(info *DrainerConfig, source *DrainerSourceConfig) error {
+	log.Logf("begin to deploy drainer [%s] namespace[%s], source cluster [%s]", info.DrainerName, source.Namespace, source.ClusterName)
+
+	valuesPath, err := info.BuildSubValues(oa.drainerChartPath(source.OperatorTag))
+	if err != nil {
+		return err
+	}
+
+	override := map[string]string{}
+	if len(oa.cfg.AdditionalDrainerVersion) > 0 {
+		override["clusterVersion"] = oa.cfg.AdditionalDrainerVersion
+	}
+	if info.TLSCluster {
+		override["clusterVersion"] = source.ClusterVersion
+		override["tlsCluster.enabled"] = "true"
+	}
+
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --set-string %s -f %s",
+		info.DrainerName,
+		oa.drainerChartPath(source.OperatorTag),
+		source.Namespace,
+		info.DrainerHelmString(override, source),
+		valuesPath)
+	log.Logf(cmd)
+
+	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to deploy drainer [%s/%s], %v, %s",
+			source.Namespace, info.DrainerName, err, string(res))
+	}
+
+	return nil
+}
+
+func (oa *OperatorActions) CheckDrainer(info *DrainerConfig, source *DrainerSourceConfig) error {
+	log.Logf("checking drainer [%s/%s]", info.DrainerName, source.Namespace)
+
+	ns := source.Namespace
+	stsName := fmt.Sprintf("%s-%s-drainer", source.ClusterName, info.DrainerName)
+	fn := func() (bool, error) {
+		sts, err := oa.kubeCli.AppsV1().StatefulSets(source.Namespace).Get(context.TODO(), stsName, v1.GetOptions{})
+		if err != nil {
+			log.Logf("ERROR: failed to get drainer StatefulSet %s ,%v", sts, err)
+			return false, nil
+		}
+		if *sts.Spec.Replicas != DrainerReplicas {
+			log.Logf("StatefulSet: %s/%s .spec.Replicas(%d) != %d",
+				ns, sts.Name, *sts.Spec.Replicas, DrainerReplicas)
+			return false, nil
+		}
+		if sts.Status.ReadyReplicas != DrainerReplicas {
+			log.Logf("StatefulSet: %s/%s .state.ReadyReplicas(%d) != %d",
+				ns, sts.Name, sts.Status.ReadyReplicas, DrainerReplicas)
+			return false, nil
+		}
+		for i := 0; i < int(*sts.Spec.Replicas); i++ {
+			podName := fmt.Sprintf("%s-%d", stsName, i)
+			if !oa.drainerHealth(source.ClusterName, source.Namespace, podName, info.TLSCluster) {
+				log.Logf("%s is not health yet", podName)
+				return false, nil
+			}
+		}
+		return true, nil
+	}
+
+	err := wait.Poll(DefaultPollInterval, DefaultPollTimeout, fn)
+	if err != nil {
+		return fmt.Errorf("failed to install drainer [%s/%s], %v", source.Namespace, info.DrainerName, err)
+	}
+
+	return nil
+}
+
+func (d *DrainerConfig) BuildSubValues(dir string) (string, error) {
+	values := GetDrainerSubValuesOrDie(d)
+	path := fmt.Sprintf("%s/%s.yaml", dir, d.DrainerName)
+	if err := ioutil.WriteFile(path, []byte(values), 0644); err != nil {
+		return "", err
+	}
+	log.Logf("Values of drainer %s:\n %s", d.DrainerName, values)
+	return path, nil
+}
+
+func (d *DrainerConfig) DrainerHelmString(m map[string]string, source *DrainerSourceConfig) string {
 
 	set := map[string]string{
 		"clusterName":    source.ClusterName,
@@ -64,15 +159,4 @@ func (d *DrainerConfig) DrainerHelmString(m map[string]string, source *TidbClust
 		arr = append(arr, fmt.Sprintf("%s=%s", k, v))
 	}
 	return strings.Join(arr, ",")
-}
-
-func (d *DrainerConfig) BuildSubValues(dir string) (string, error) {
-
-	values := GetDrainerSubValuesOrDie(d)
-	path := fmt.Sprintf("%s/%s.yaml", dir, d.DrainerName)
-	if err := ioutil.WriteFile(path, []byte(values), 0644); err != nil {
-		return "", err
-	}
-	log.Logf("Values of drainer %s:\n %s", d.DrainerName, values)
-	return path, nil
 }
