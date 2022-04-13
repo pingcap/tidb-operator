@@ -3468,7 +3468,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				ginkgo.By(fmt.Sprintf("Wait for phase is %q", v1alpha1.UpgradePhase))
 				utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
 
-				ginkgo.By(fmt.Sprintf("Wait for cluster is ready"))
+				ginkgo.By("Wait for cluster is ready")
 				err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
 				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 

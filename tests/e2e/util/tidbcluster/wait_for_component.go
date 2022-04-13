@@ -149,7 +149,7 @@ func CheckComponentStatusNotChanged(c versioned.Interface, oldTC *v1alpha1.TidbC
 		for _, oldMember := range oldTC.Status.Pump.Members {
 			exist := false
 			for _, curMember := range curTC.Status.Pump.Members {
-				if curMember.Host == curMember.Host {
+				if oldMember.Host == curMember.Host {
 					exist = true
 					if oldMember.NodeID != curMember.NodeID {
 						return fmt.Errorf("nodeID of pump %q is changed from %q to %q", oldMember.Host, oldMember.NodeID, curMember.NodeID)
