@@ -20,11 +20,8 @@ import (
 
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/tests/slack"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 )
@@ -107,66 +104,4 @@ func CleanNodeLabels(c kubernetes.Interface) error {
 		}
 	}
 	return nil
-}
-
-func (oa *OperatorActions) CheckDisasterTolerance(cluster *TidbClusterConfig) error {
-	pds, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(context.TODO(),
-		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
-			label.New().Instance(cluster.ClusterName).PD().Labels(),
-		).String()})
-	if err != nil {
-		return err
-	}
-	err = oa.checkPodsDisasterTolerance(pds.Items)
-	if err != nil {
-		return err
-	}
-
-	tikvs, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(context.TODO(),
-		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
-			label.New().Instance(cluster.ClusterName).TiKV().Labels(),
-		).String()})
-	if err != nil {
-		return err
-	}
-	err = oa.checkPodsDisasterTolerance(tikvs.Items)
-	if err != nil {
-		return err
-	}
-
-	tidbs, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(context.TODO(),
-		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
-			label.New().Instance(cluster.ClusterName).TiDB().Labels(),
-		).String()})
-	if err != nil {
-		return err
-	}
-	return oa.checkPodsDisasterTolerance(tidbs.Items)
-}
-
-func (oa *OperatorActions) checkPodsDisasterTolerance(allPods []corev1.Pod) error {
-	for _, pod := range allPods {
-		if pod.Spec.Affinity == nil {
-			return fmt.Errorf("the pod:[%s/%s] has not Affinity", pod.Namespace, pod.Name)
-		}
-		if pod.Spec.Affinity.PodAntiAffinity == nil {
-			return fmt.Errorf("the pod:[%s/%s] has not Affinity.PodAntiAffinity", pod.Namespace, pod.Name)
-		}
-		if len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) == 0 {
-			return fmt.Errorf("the pod:[%s/%s] has not PreferredDuringSchedulingIgnoredDuringExecution", pod.Namespace, pod.Name)
-		}
-		for _, prefer := range pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-			if prefer.PodAffinityTerm.TopologyKey != RackLabel {
-				return fmt.Errorf("the pod:[%s/%s] topology key is not %s", pod.Namespace, pod.Name, RackLabel)
-			}
-		}
-	}
-	return nil
-}
-
-func (oa *OperatorActions) CheckDisasterToleranceOrDie(cluster *TidbClusterConfig) {
-	err := oa.CheckDisasterTolerance(cluster)
-	if err != nil {
-		slack.NotifyAndPanic(err)
-	}
 }
