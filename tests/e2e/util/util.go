@@ -133,3 +133,7 @@ func PollWithReason(interval, timeout time.Duration, cond func() (bool, error, s
 	})
 	return err, lastReason
 }
+
+func IntPtr(i int) *int {
+	return &i
+}
