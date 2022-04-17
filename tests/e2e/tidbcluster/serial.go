@@ -647,7 +647,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			if setOperatorConfig != nil {
 				setOperatorConfig(ocfg)
 			}
-      
+
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.CreateReleasedCRDOrDie(operatorVersion)
