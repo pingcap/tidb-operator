@@ -41,6 +41,14 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
+type pumpStatus struct {
+	StatusMap map[string]*nodeStatus `json:"StatusMap"`
+}
+
+type nodeStatus struct {
+	State string `json:"state"`
+}
+
 type CrdTestUtil struct {
 	cli         versioned.Interface
 	kubeCli     kubernetes.Interface
