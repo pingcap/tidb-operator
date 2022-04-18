@@ -120,41 +120,30 @@ func dumpResoures(cli versioned.Interface, kubecli kubernetes.Interface, reportD
 		return fmt.Errorf("failed to create directory %s: %v", dumpDir, err)
 	}
 
-	// list resources
 	objs := make(map[string]metav1.Object)
-	list, err := kubecli.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+
+	tclist, err := cli.PingcapV1alpha1().TidbClusters(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("list tidbclusters failed: %v", err)
 	}
-	if len(list.Items) == 0 {
-		return nil
+	for i := range tclist.Items {
+		objs["tidbcluster"] = &tclist.Items[i]
 	}
-	for _, namespace := range list.Items {
-		ns := namespace.Name
 
-		tclist, err := cli.PingcapV1alpha1().TidbClusters(ns).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return fmt.Errorf("list tidbclusters failed: %v", err)
-		}
-		for i := range tclist.Items {
-			objs["tidbcluster"] = &tclist.Items[i]
-		}
+	backupList, err := cli.PingcapV1alpha1().Backups(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("list backups failed: %v", err)
+	}
+	for i := range backupList.Items {
+		objs["backup"] = &backupList.Items[i]
+	}
 
-		backupList, err := cli.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return fmt.Errorf("list backups failed: %v", err)
-		}
-		for i := range backupList.Items {
-			objs["backup"] = &backupList.Items[i]
-		}
-
-		restoreList, err := cli.PingcapV1alpha1().Restores(ns).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return fmt.Errorf("list restores failed: %v", err)
-		}
-		for i := range restoreList.Items {
-			objs["restore"] = &restoreList.Items[i]
-		}
+	restoreList, err := cli.PingcapV1alpha1().Restores(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("list restores failed: %v", err)
+	}
+	for i := range restoreList.Items {
+		objs["restore"] = &restoreList.Items[i]
 	}
 
 	// dump resources
