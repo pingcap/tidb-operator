@@ -913,7 +913,7 @@ func (tc *TidbCluster) TiCDCLogFile() string {
 		}
 	}
 
-	return "/dev/stderr"
+	return ""
 }
 
 func (tc *TidbCluster) TiCDCLogLevel() string {
