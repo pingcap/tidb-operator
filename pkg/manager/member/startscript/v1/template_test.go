@@ -1393,14 +1393,14 @@ func TestRenderTiCDCStartScript(t *testing.T) {
 		{
 			name:         "basic",
 			modifyTC:     func(tc *v1alpha1.TidbCluster) {},
-			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file=/dev/stderr --log-level=info --pd=http://start-script-test-pd:2379`,
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=http://start-script-test-pd:2379`,
 		},
 		{
 			name: "set cluster domain",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.ClusterDomain = "cluster.local"
 			},
-			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:8301 --gc-ttl=86400 --log-file=/dev/stderr --log-level=info --pd=http://start-script-test-pd:2379`,
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=http://start-script-test-pd:2379`,
 		},
 		{
 			name: "set gc ttl",
@@ -1409,7 +1409,7 @@ func TestRenderTiCDCStartScript(t *testing.T) {
 				cfg.Set("gc-ttl", 3600)
 				tc.Spec.TiCDC.Config = cfg
 			},
-			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=3600 --log-file=/dev/stderr --log-level=info --pd=http://start-script-test-pd:2379`,
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=3600 --log-file= --log-level=info --pd=http://start-script-test-pd:2379`,
 		},
 		{
 			name: "set log file and log level",
@@ -1436,7 +1436,7 @@ echo "waiting for the verification of PD endpoints ..."
 sleep 2
 done
 
-exec /cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:8301 --gc-ttl=86400 --log-file=/dev/stderr --log-level=info --pd=${result}`,
+exec /cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=${result}`,
 		},
 		{
 			name: "across k8s without setting cluster domain",
@@ -1453,7 +1453,7 @@ echo "waiting for the verification of PD endpoints ..."
 sleep 2
 done
 
-exec /cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file=/dev/stderr --log-level=info --pd=${result}`,
+exec /cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=${result}`,
 		},
 		{
 			name: "heterogeneous without local pd",
@@ -1461,14 +1461,14 @@ exec /cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SER
 				tc.Spec.PD = nil
 				tc.Spec.Cluster = &v1alpha1.TidbClusterRef{Name: "target-cluster"}
 			},
-			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file=/dev/stderr --log-level=info --pd=http://target-cluster-pd:2379`,
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=http://target-cluster-pd:2379`,
 		},
 		{
 			name: "enable tls",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			},
-			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file=/dev/stderr --log-level=info --ca=/var/lib/ticdc-tls/ca.crt --cert=/var/lib/ticdc-tls/tls.crt --key=/var/lib/ticdc-tls/tls.key --pd=https://start-script-test-pd:2379`,
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file= --log-level=info --ca=/var/lib/ticdc-tls/ca.crt --cert=/var/lib/ticdc-tls/tls.crt --key=/var/lib/ticdc-tls/tls.key --pd=https://start-script-test-pd:2379`,
 		},
 		{
 			name: "set config",
@@ -1477,7 +1477,7 @@ exec /cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SER
 				cfg.Set("log-backup", 4)
 				tc.Spec.TiCDC.Config = cfg
 			},
-			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file=/dev/stderr --log-level=info --pd=http://start-script-test-pd:2379 --config=/etc/ticdc/ticdc.toml`,
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=http://start-script-test-pd:2379 --config=/etc/ticdc/ticdc.toml`,
 		},
 	}
 
