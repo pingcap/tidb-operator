@@ -37,6 +37,7 @@ var (
 	optClusterName string
 	optDatabase    string
 	optPassword    string
+	optTiDBSvcPort int32
 )
 
 func init() {
@@ -48,10 +49,11 @@ func init() {
 	flag.StringVar(&optClusterName, "cluster-name", optClusterName, "cluster name")
 	flag.StringVar(&optDatabase, "database", optDatabase, "database")
 	flag.StringVar(&optPassword, "password", optPassword, "password")
+	flag.Int32Var(&optTiDBSvcPort, "tidb-service-port", 4000, "tidb service port")
 }
 
-func getDSN(ns, tcName, databaseName, password string) string {
-	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName)
+func getDSN(ns, tcName, databaseName, password string, port int32) string {
+	return fmt.Sprintf("root:%s@(%s-tidb.%s:%d)/%s?charset=utf8", password, tcName, ns, port, databaseName)
 }
 
 func main() {
@@ -64,7 +66,7 @@ func main() {
 	if err != nil {
 		log.Failf(err.Error())
 	}
-	dsn := getDSN(optNamespace, optClusterName, optDatabase, optPassword)
+	dsn := getDSN(optNamespace, optClusterName, optDatabase, optPassword, optTiDBSvcPort)
 	db, err := util.OpenDB(dsn, optConfig.Concurrency)
 	if err != nil {
 		log.Failf(err.Error())
