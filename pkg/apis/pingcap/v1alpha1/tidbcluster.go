@@ -37,7 +37,6 @@ const (
 	defaultEnablePVReclaim    = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
 	defaultEvictLeaderTimeout = 1500 * time.Minute
-	defaultTiDBServicePort    = int32(4000)
 )
 
 var (
@@ -794,7 +793,7 @@ func (tidb *TiDBSpec) GetSlowLogTailerSpec() TiDBSlowLogTailerSpec {
 
 // GetServicePort returns the service port for tidb
 func (tidb *TiDBSpec) GetServicePort() int32 {
-	port := defaultTiDBServicePort
+	port := DefaultTiDBServicePort
 	if tidb.Service != nil && tidb.Service.Port != nil {
 		port = *tidb.Service.Port
 	}

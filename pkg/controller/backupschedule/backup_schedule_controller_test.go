@@ -162,7 +162,7 @@ func newBackupSchedule() *v1alpha1.BackupSchedule {
 			BackupTemplate: v1alpha1.BackupSpec{
 				From: &v1alpha1.TiDBAccessConfig{
 					Host:       "10.1.1.2",
-					Port:       v1alpha1.DefaultTidbPort,
+					Port:       v1alpha1.DefaultTiDBServicePort,
 					User:       v1alpha1.DefaultTidbUser,
 					SecretName: "demo1-tidb-secret",
 				},
