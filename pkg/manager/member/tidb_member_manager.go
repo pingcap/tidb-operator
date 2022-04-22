@@ -1043,7 +1043,7 @@ func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.State
 
 func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 	if tc.Spec.TiDB.ReadinessProbe != nil {
-	if tp := tc.Spec.TiDB.ReadinessProbe.Type; tp != nil {
+		if tp := tc.Spec.TiDB.ReadinessProbe.Type; tp != nil {
 			if *tp == v1alpha1.CommandProbeType {
 				command := buildTiDBProbeCommand(tc)
 				return corev1.Handler{

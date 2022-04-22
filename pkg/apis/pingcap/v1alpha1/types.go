@@ -1053,6 +1053,8 @@ type ServiceSpec struct {
 
 	// The port that will be exposed by this service.
 	//
+	// NOTE: only used for TiDB
+	//
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
 	// +optional
