@@ -313,3 +313,89 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 	}
 	return nil, nil
 }
+
+// CheckThanosCommon check the Thanos Query working status by querying `up` api and `targets` api.
+func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expectActiveTargets int, shard int32) error {
+	var thanosAddr string
+	if fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", "thanos-query"), 9090)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+		thanosAddr = fmt.Sprintf("%s:%d", localHost, localPort)
+	} else {
+		thanosAddr = fmt.Sprintf("%s.%s:9090", "thanos-query", namespace)
+	}
+	err := wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", thanosAddr)
+		resp, err := http.Get(prometheusSvc)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		response := &struct {
+			Status string `json:"status"`
+		}{}
+		err = json.Unmarshal(body, response)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		if response.Status != "success" {
+			log.Logf("ERROR: he prometheus's api[%s] has not ready", prometheusSvc)
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		log.Logf("ERROR: %v", err)
+		return err
+	}
+	log.Logf("thanos[%s/%s] is up", namespace, "thanos-query")
+
+	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		prometheusTargets := fmt.Sprintf("http://%s/api/v1/targets", thanosAddr)
+		targetResponse, err := http.Get(prometheusTargets)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		defer targetResponse.Body.Close()
+		body, err := ioutil.ReadAll(targetResponse.Body)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		data := struct {
+			Status string `json:"status"`
+			Data   struct {
+				ActiveTargets []struct {
+					DiscoveredLabels struct {
+						Job     string `json:"job"`
+						PodName string `json:"__meta_kubernetes_pod_name"`
+					} `json:"discoveredLabels"`
+					Health string `json:"health"`
+				} `json:"activeTargets"`
+			} `json:"data"`
+		}{}
+		if err := json.Unmarshal(body, &data); err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		if data.Status != "success" || len(data.Data.ActiveTargets) < expectActiveTargets {
+			log.Logf("ERROR: monitor[%s/%s]'s prometheus targets error %s, ActiveTargets:%d", namespace, name, thanosAddr, data.Data.ActiveTargets)
+			return false, nil
+		}
+		for _, target := range data.Data.ActiveTargets {
+			log.Logf("monitor[%s/%s]'s target[%s]", namespace, monitor.GetMonitorShardName(name, shard), target.DiscoveredLabels.PodName)
+		}
+		return true, nil
+	})
+}
