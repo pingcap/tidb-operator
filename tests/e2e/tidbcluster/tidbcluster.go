@@ -2952,7 +2952,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Deploy tidbmonitor")
 		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
-
 		tm.Spec.Prometheus.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
 			{
 				URL: "http://thanos-receiver-0.thanos-receiver.default.svc:19291/api/v1/receive",
