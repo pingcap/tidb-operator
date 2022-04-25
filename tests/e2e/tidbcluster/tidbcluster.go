@@ -3146,7 +3146,7 @@ spec:
 			if receiverSts.Status.ReadyReplicas == 1 {
 				return true, nil
 			}
-			return false, errors.New("Expect number of stores is 1")
+			return false, nil
 		})
 		framework.ExpectNoError(err, "Expected thanos receiver deployed ready success")
 
@@ -3279,7 +3279,7 @@ spec:
 			if queryDeployment.Status.ReadyReplicas == 1 {
 				return true, nil
 			}
-			return false, errors.New("Expect number of stores is 1")
+			return false, nil
 		})
 		framework.ExpectNoError(err, "Expected thanos query deployed ready success")
 
