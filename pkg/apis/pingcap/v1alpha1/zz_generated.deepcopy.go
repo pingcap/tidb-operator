@@ -272,6 +272,16 @@ func (in *BackupScheduleSpec) DeepCopyInto(out *BackupScheduleSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.MaxCompletedBackups != nil {
+		in, out := &in.MaxCompletedBackups, &out.MaxCompletedBackups
+		*out = new(int32)
+		**out = **in
+	}
+	if in.MaxFailedBackups != nil {
+		in, out := &in.MaxFailedBackups, &out.MaxFailedBackups
+		*out = new(int32)
+		**out = **in
+	}
 	if in.MaxReservedTime != nil {
 		in, out := &in.MaxReservedTime, &out.MaxReservedTime
 		*out = new(string)
