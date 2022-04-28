@@ -617,14 +617,6 @@ func installPDDashboardCertificates(ns, tcName string) error {
 	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName, tcName}, "dashboard"})
 }
 
-func installBackupCertificates(ns, tcName string) error {
-	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName, tcName}, "backup"})
-}
-
-func installRestoreCertificates(ns, tcName string) error {
-	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName, tcName}, "restore"})
-}
-
 func InstallMySQLCertificates(ns, dcName string) error {
 	return installCert(mysqlCertificatesTmpl, tcTmplMeta{ns, dcName, dcName})
 }
