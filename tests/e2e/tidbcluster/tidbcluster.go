@@ -2972,6 +2972,28 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 
+		thanosReceiverConfigmapYaml := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hashring
+  labels:
+    app.kubernetes.io/name: thanos-receive
+data:
+  hashrings.json: |
+    [
+        {
+            "hashring": "athena",
+            "endpoints": ["thanos-receiver-0.thanos-receiver.default.svc:10901"],
+            "tenants": ["athena"]
+        }
+    ]
+`
+		decode := k8sScheme.Codecs.UniversalDeserializer().Decode
+		thanosReceiverConfigmapObj, _, _ := decode([]byte(thanosReceiverConfigmapYaml), nil, nil)
+		thanosReceiverConfigmap := thanosReceiverConfigmapObj.(*corev1.ConfigMap) // This fails
+		_, err = c.CoreV1().ConfigMaps(ns).Create(context.TODO(), thanosReceiverConfigmap, metav1.CreateOptions{})
+		framework.ExpectNoError(err, "Expected thanos receiver configmap created success")
+
 		thanosReceiverYaml := `
 apiVersion: apps/v1
 kind: StatefulSet
@@ -3130,7 +3152,7 @@ spec:
           requests:
             storage: 10Gi
 `
-		decode := k8sScheme.Codecs.UniversalDeserializer().Decode
+		decode = k8sScheme.Codecs.UniversalDeserializer().Decode
 		thanosReceiverStsObj, _, _ := decode([]byte(thanosReceiverYaml), nil, nil)
 		thanosReceiverSts := thanosReceiverStsObj.(*v1.StatefulSet) // This fails
 		_, err = c.AppsV1().StatefulSets(ns).Create(context.TODO(), thanosReceiverSts, metav1.CreateOptions{})
