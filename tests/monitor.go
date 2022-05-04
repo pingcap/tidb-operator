@@ -318,7 +318,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expectActiveTargets int, shard int32) error {
 	var thanosAddr string
 	if fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", "thanos-query"), 9090)
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", name), 9090)
 		if err != nil {
 			return err
 		}
@@ -390,11 +390,11 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.ActiveTargets) < expectActiveTargets {
-			log.Logf("ERROR: monitor[%s/%s]'s prometheus targets error %s, ActiveTargets:%d", namespace, name, thanosAddr, data.Data.ActiveTargets)
+			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, ActiveTargets:%d", namespace, name, thanosAddr, data.Data.ActiveTargets)
 			return false, nil
 		}
 		for _, target := range data.Data.ActiveTargets {
-			log.Logf("monitor[%s/%s]'s target[%s]", namespace, monitor.GetMonitorShardName(name, shard), target.DiscoveredLabels.PodName)
+			log.Logf("thanos[%s/%s]'s target[%s]", namespace, name, target.DiscoveredLabels.PodName)
 		}
 		return true, nil
 	})

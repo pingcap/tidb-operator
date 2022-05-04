@@ -3331,7 +3331,7 @@ spec:
 		_, err = c.CoreV1().Services(ns).Create(context.TODO(), thanosQueryService, metav1.CreateOptions{})
 		framework.ExpectNoError(err, "Expected thanos query service created success")
 
-		err = tests.CheckThanosCommon(tm.Name, tm.Namespace, fw, 1, 0)
+		err = tests.CheckThanosCommon("thanos-query", tm.Namespace, fw, 1, 0)
 		framework.ExpectNoError(err, "Expected thanos query check success")
 
 		ginkgo.By("Delete tidbmonitor")
