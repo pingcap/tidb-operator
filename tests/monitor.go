@@ -385,12 +385,13 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 				} `json:"activeTargets"`
 			} `json:"data"`
 		}{}
+		log.Logf("thanos query body: %s", string(body))
 		if err := json.Unmarshal(body, &data); err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.ActiveTargets) < expectActiveTargets {
-			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, ActiveTargets:%d", namespace, name, thanosAddr, data.Data.ActiveTargets)
+			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, ActiveTargets:%d , status: %s", namespace, name, thanosAddr, data.Data.ActiveTargets, data.Status)
 			return false, nil
 		}
 		for _, target := range data.Data.ActiveTargets {

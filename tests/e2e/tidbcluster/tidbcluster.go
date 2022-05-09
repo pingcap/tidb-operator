@@ -3195,22 +3195,6 @@ spec:
     app.kubernetes.io/component: database-write-hashring
     app.kubernetes.io/instance: thanos-receiver
     app.kubernetes.io/name: thanos-receiver
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: hashring
-  labels:
-    app.kubernetes.io/name: thanos-receive
-data:
-  hashrings.json: |
-    [
-        {
-            "hashring": "athena",
-            "endpoints": ["thanos-receiver-0.thanos-receiver.default.svc:10901"],
-            "tenants": ["athena"]
-        }
-    ]
 `
 		decode = k8sScheme.Codecs.UniversalDeserializer().Decode
 		thanosReceiverServiceObj, _, _ := decode([]byte(thanosReceiverServiceYaml), nil, nil)
