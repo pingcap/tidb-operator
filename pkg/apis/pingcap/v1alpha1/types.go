@@ -1051,6 +1051,15 @@ type ServiceSpec struct {
 	// +optional
 	PortName *string `json:"portName,omitempty"`
 
+	// The port that will be exposed by this service.
+	//
+	// NOTE: only used for TiDB
+	//
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	// +optional
+	Port *int32 `json:"port,omitempty"`
+
 	// LoadBalancerSourceRanges is the loadBalancerSourceRanges of service
 	// If specified and supported by the platform, this will restrict traffic through the cloud-provider
 	// load-balancer will be restricted to the specified client IPs. This field will be ignored if the
