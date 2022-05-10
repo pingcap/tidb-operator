@@ -3089,13 +3089,7 @@ func (oa *OperatorActions) RegisterWebHookAndService(configName, namespace, serv
 	// The webhook configuration is honored in 10s.
 	time.Sleep(10 * time.Second)
 
-<<<<<<< HEAD
 	return nil
-
-=======
-func releaseIsNotFound(err error) bool {
-	return strings.Contains(err.Error(), "not found")
->>>>>>> ee456738b... Support to customize tidb service port (#4512)
 }
 
 func (oa *OperatorActions) CleanWebHookAndService(name string) error {
