@@ -4932,6 +4932,11 @@ spec:
                       type: array
                     masterNodePort:
                       type: integer
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
                     portName:
                       type: string
                     type:

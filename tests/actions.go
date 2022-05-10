@@ -3089,8 +3089,13 @@ func (oa *OperatorActions) RegisterWebHookAndService(configName, namespace, serv
 	// The webhook configuration is honored in 10s.
 	time.Sleep(10 * time.Second)
 
+<<<<<<< HEAD
 	return nil
 
+=======
+func releaseIsNotFound(err error) bool {
+	return strings.Contains(err.Error(), "not found")
+>>>>>>> ee456738b... Support to customize tidb service port (#4512)
 }
 
 func (oa *OperatorActions) CleanWebHookAndService(name string) error {
@@ -3530,7 +3535,7 @@ func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.Tid
 	var localPort uint16
 	var cancel context.CancelFunc
 	if fw != nil {
-		localHost, localPort, cancel, err = portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), 4000)
+		localHost, localPort, cancel, err = portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), uint16(tc.Spec.TiDB.GetServicePort()))
 		if err != nil {
 			return err
 		}

@@ -1518,7 +1518,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					Namespace:         ns,
 					DbType:            tests.DbTypeTiDB,
 					Host:              fmt.Sprintf("%s-tidb.%s.svc.cluster.local", targetTcName, ns),
-					Port:              "4000",
+					Port:              strconv.Itoa(int(targetTc.Spec.TiDB.GetServicePort())),
 					TLSCluster:        true,
 					User:              "root",
 					Password:          "",
@@ -1731,7 +1731,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				Namespace:         ns,
 				DbType:            tests.DbTypeTiDB,
 				Host:              fmt.Sprintf("%s-tidb.%s.svc.cluster.local", targetTcName, ns),
-				Port:              "4000",
+				Port:              strconv.Itoa(int(targetTc.Spec.TiDB.GetServicePort())),
 				TLSCluster:        true,
 				User:              "root",
 				Password:          "",
@@ -2040,7 +2040,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("%s-0", controller.TiCDCMemberName(fromTCName)),
 				"--",
 				"/cdc", "cli", "changefeed", "create",
-				fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
+				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
 				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
 			}
 			data, err := framework.RunKubectl(ns, args...)
@@ -2168,7 +2168,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("%s-0", controller.TiCDCMemberName(fromTCName)),
 				"--",
 				"/cdc", "cli", "changefeed", "create",
-				fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
+				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
 				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
 			}
 			data, err := framework.RunKubectl(ns, args...)
