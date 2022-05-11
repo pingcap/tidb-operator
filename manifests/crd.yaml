@@ -7706,6 +7706,11 @@ spec:
                         type: array
                       masterNodePort:
                         type: integer
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
                       portName:
                         type: string
                       type:
@@ -17012,6 +17017,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
                       portName:
                         type: string
                       type:
@@ -24202,6 +24212,11 @@ spec:
                           type: string
                         type: array
                       mysqlNodePort:
+                        type: integer
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
                         type: integer
                       portName:
                         type: string
@@ -31448,6 +31463,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
                       portName:
                         type: string
                       type:
@@ -31854,6 +31874,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
                       portName:
                         type: string
                       type:
@@ -31930,6 +31955,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
                       portName:
                         type: string
                       type:

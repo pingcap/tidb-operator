@@ -44,6 +44,7 @@ import (
 	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
@@ -80,7 +81,7 @@ const (
 	dmMasterSvcPort = uint16(8261)
 
 	// the service port for client requests to TiDB.
-	dmTiDBSvcPort = uint16(4000)
+	dmTiDBSvcPort = uint16(v1alpha1.DefaultTiDBServicePort)
 
 	// PK steps for generated data between MySQL tables.
 	dmPKStepForTable = 10000

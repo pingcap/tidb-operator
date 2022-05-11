@@ -13069,6 +13069,19 @@ string
 </tr>
 <tr>
 <td>
+<code>port</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The port that will be exposed by this service.</p>
+<p>NOTE: only used for TiDB</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>loadBalancerSourceRanges</code></br>
 <em>
 []string

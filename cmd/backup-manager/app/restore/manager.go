@@ -58,7 +58,7 @@ func (rm *Manager) setOptions(restore *v1alpha1.Restore) {
 	if restore.Spec.To.Port != 0 {
 		rm.Options.Port = restore.Spec.To.Port
 	} else {
-		rm.Options.Port = v1alpha1.DefaultTidbPort
+		rm.Options.Port = v1alpha1.DefaultTiDBServicePort
 	}
 
 	if restore.Spec.To.User != "" {

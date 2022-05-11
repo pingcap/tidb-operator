@@ -35,7 +35,7 @@ func (tac *TiDBAccessConfig) GetTidbPort() int32 {
 	if tac.Port != 0 {
 		return tac.Port
 	}
-	return DefaultTidbPort
+	return DefaultTiDBServicePort
 }
 
 // GetTidbUser return the tidb user

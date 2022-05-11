@@ -3090,7 +3090,6 @@ func (oa *OperatorActions) RegisterWebHookAndService(configName, namespace, serv
 	time.Sleep(10 * time.Second)
 
 	return nil
-
 }
 
 func (oa *OperatorActions) CleanWebHookAndService(name string) error {
@@ -3530,7 +3529,7 @@ func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.Tid
 	var localPort uint16
 	var cancel context.CancelFunc
 	if fw != nil {
-		localHost, localPort, cancel, err = portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), 4000)
+		localHost, localPort, cancel, err = portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), uint16(tc.Spec.TiDB.GetServicePort()))
 		if err != nil {
 			return err
 		}
