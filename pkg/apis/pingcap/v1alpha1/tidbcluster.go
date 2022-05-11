@@ -791,6 +791,15 @@ func (tidb *TiDBSpec) GetSlowLogTailerSpec() TiDBSlowLogTailerSpec {
 	return *tidb.SlowLogTailer
 }
 
+// GetServicePort returns the service port for tidb
+func (tidb *TiDBSpec) GetServicePort() int32 {
+	port := DefaultTiDBServicePort
+	if tidb.Service != nil && tidb.Service.Port != nil {
+		port = *tidb.Service.Port
+	}
+	return port
+}
+
 func (tikv *TiKVSpec) ShouldSeparateRocksDBLog() bool {
 	separateRocksDBLog := tikv.SeparateRocksDBLog
 	if separateRocksDBLog == nil {
@@ -852,6 +861,15 @@ func (tidbSvc *TiDBServiceSpec) GetStatusNodePort() int32 {
 		return 0
 	}
 	return int32(*statusNodePort)
+}
+
+// GetPort returns the service port name in spec.tidb.service
+func (tidbSvc *TiDBServiceSpec) GetPortName() string {
+	portName := "mysql-client"
+	if tidbSvc.PortName != nil {
+		portName = *tidbSvc.PortName
+	}
+	return portName
 }
 
 func (tc *TidbCluster) GetInstanceName() string {

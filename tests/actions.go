@@ -1078,10 +1078,6 @@ func getDatasourceID(addr string) (int, error) {
 	return 0, pingcapErrors.New("not found tidb-cluster datasource")
 }
 
-func GetD(ns, tcName, databaseName, password string) string {
-	return fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/%s?charset=utf8", password, tcName, ns, databaseName)
-}
-
 func releaseIsNotFound(err error) bool {
 	return strings.Contains(err.Error(), "not found")
 }
@@ -1330,7 +1326,7 @@ func (oa *OperatorActions) WaitForTidbClusterInitRandomPassword(tc *v1alpha1.Tid
 	var localPort uint16
 	var cancel context.CancelFunc
 	if fw != nil {
-		localHost, localPort, cancel, err = portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), 4000)
+		localHost, localPort, cancel, err = portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), uint16(tc.Spec.TiDB.GetServicePort()))
 		if err != nil {
 			return err
 		}

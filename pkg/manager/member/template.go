@@ -372,7 +372,7 @@ func RenderPumpStartScript(model *PumpStartScriptModel) (string, error) {
 var tidbInitStartScriptTpl = template.Must(template.New("tidb-init-start-script").Parse(`import os, sys, time, MySQLdb
 host = '{{ .ClusterName }}-tidb'
 permit_host = '{{ .PermitHost }}'
-port = 4000
+port = {{ .TiDBServicePort }}
 retry_count = 0
 for i in range(0, 10):
     try:
@@ -420,15 +420,16 @@ conn.close()
 `))
 
 type TiDBInitStartScriptModel struct {
-	ClusterName string
-	PermitHost  string
-	PasswordSet bool
-	InitSQL     bool
-	TLS         bool
-	SkipCA      bool
-	CAPath      string
-	CertPath    string
-	KeyPath     string
+	ClusterName     string
+	PermitHost      string
+	PasswordSet     bool
+	InitSQL         bool
+	TLS             bool
+	SkipCA          bool
+	CAPath          string
+	CertPath        string
+	KeyPath         string
+	TiDBServicePort int32
 }
 
 func RenderTiDBInitStartScript(model *TiDBInitStartScriptModel) (string, error) {
@@ -438,7 +439,7 @@ func RenderTiDBInitStartScript(model *TiDBInitStartScriptModel) (string, error) 
 // tidbInitInitStartScriptTpl is the template string of tidb initializer init container start script
 var tidbInitInitStartScriptTpl = template.Must(template.New("tidb-init-init-start-script").Parse(`trap exit TERM
 host={{ .ClusterName }}-tidb
-port=4000
+port={{ .TiDBServicePort }}
 while true; do
   nc -zv -w 3 $host $port
   if [ $? -eq 0 ]; then
@@ -452,7 +453,8 @@ echo "info: successfully connected to $host:$port, able to initialize TiDB now"
 `))
 
 type TiDBInitInitStartScriptModel struct {
-	ClusterName string
+	ClusterName     string
+	TiDBServicePort int32
 }
 
 func RenderTiDBInitInitStartScript(model *TiDBInitInitStartScriptModel) (string, error) {

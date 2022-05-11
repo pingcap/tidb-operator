@@ -267,7 +267,7 @@ func newRestore() *v1alpha1.Restore {
 		Spec: v1alpha1.RestoreSpec{
 			To: &v1alpha1.TiDBAccessConfig{
 				Host:       "10.1.1.2",
-				Port:       v1alpha1.DefaultTidbPort,
+				Port:       v1alpha1.DefaultTiDBServicePort,
 				User:       v1alpha1.DefaultTidbUser,
 				SecretName: "demo1-tidb-secret",
 			},

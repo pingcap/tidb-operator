@@ -73,7 +73,7 @@ func TestTiDBInitManagerSync(t *testing.T) {
 		}
 
 		err = func() error {
-			err = tim.syncTiDBInitConfigMap(ti)
+			err = tim.syncTiDBInitConfigMap(ti, test.tc)
 			if err != nil {
 				return err
 			}
