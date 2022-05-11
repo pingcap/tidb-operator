@@ -78,7 +78,7 @@ func (m *tidbInitManager) Sync(ti *v1alpha1.TidbInitializer) error {
 		return nil
 	}
 
-	err = m.syncTiDBInitConfigMap(ti)
+	err = m.syncTiDBInitConfigMap(ti, tc)
 	if err != nil {
 		return err
 	}
@@ -160,11 +160,14 @@ func (m *tidbInitManager) updateInitializer(ti *v1alpha1.TidbInitializer) (*v1al
 	return update, err
 }
 
-func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) error {
+func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tc *v1alpha1.TidbCluster) error {
 	name := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
 	ns := ti.Namespace
 	cm := &corev1.ConfigMap{}
-	tcName := ti.Spec.Clusters.Name
+
+	if tc == nil {
+		return fmt.Errorf("tc of TidbInitializer %s/%s is nil", ns, ti.Name)
+	}
 
 	exist, err := m.deps.TypedControl.Exist(client.ObjectKey{
 		Namespace: ns,
@@ -177,18 +180,13 @@ func (m *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) er
 		return nil
 	}
 
-	tc, err := m.deps.TiDBClusterLister.TidbClusters(ns).Get(tcName)
-	if err != nil {
-		return fmt.Errorf("syncTiDBInitConfigMap: failed to get tidbcluster %s for TidbInitializer %s/%s, error: %s", tcName, ns, ti.Name, err)
-	}
-
 	tlsClientEnabled, skipCA := false, false
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		tlsClientEnabled = true
 		skipCA = tc.Spec.TiDB.TLSClient.SkipInternalClientCA
 	}
-
-	newCm, err := getTiDBInitConfigMap(ti, tlsClientEnabled, skipCA)
+	tidbSvcPort := tc.Spec.TiDB.GetServicePort()
+	newCm, err := getTiDBInitConfigMap(ti, tlsClientEnabled, skipCA, tidbSvcPort)
 	if err != nil {
 		return err
 	}
@@ -411,7 +409,7 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 	return job, nil
 }
 
-func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, skipCA bool) (*corev1.ConfigMap, error) {
+func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, skipCA bool, tidbSvcPort int32) (*corev1.ConfigMap, error) {
 	var initSQL, passwdSet bool
 
 	permitHost := ti.GetPermitHost()
@@ -424,17 +422,19 @@ func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, s
 	}
 
 	initStartScript, err := startscriptv1.RenderTiDBInitInitStartScript(&startscriptv1.TiDBInitInitStartScriptModel{
-		ClusterName: ti.Spec.Clusters.Name,
+		ClusterName:     ti.Spec.Clusters.Name,
+		TiDBServicePort: tidbSvcPort,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	initModel := &startscriptv1.TiDBInitStartScriptModel{
-		ClusterName: ti.Spec.Clusters.Name,
-		PermitHost:  permitHost,
-		InitSQL:     initSQL,
-		PasswordSet: passwdSet,
+		ClusterName:     ti.Spec.Clusters.Name,
+		PermitHost:      permitHost,
+		InitSQL:         initSQL,
+		PasswordSet:     passwdSet,
+		TiDBServicePort: tidbSvcPort,
 	}
 	if tlsClientEnabled {
 		initModel.TLS = true

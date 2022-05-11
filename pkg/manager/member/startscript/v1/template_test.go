@@ -1638,15 +1638,16 @@ func TestRenderTiDBInitStartScript(t *testing.T) {
 		{
 			name: "tls with skipca",
 			model: &TiDBInitStartScriptModel{
-				ClusterName: "test",
-				PermitHost:  "127.0.0.1",
-				PasswordSet: true,
-				InitSQL:     true,
-				TLS:         true,
-				SkipCA:      true,
-				CAPath:      "/var/lib/tidb-client-tls/ca.crt",
-				CertPath:    "/var/lib/tidb-client-tls/tls.crt",
-				KeyPath:     "/var/lib/tidb-client-tls/tls.key",
+				ClusterName:     "test",
+				PermitHost:      "127.0.0.1",
+				PasswordSet:     true,
+				InitSQL:         true,
+				TLS:             true,
+				SkipCA:          true,
+				CAPath:          "/var/lib/tidb-client-tls/ca.crt",
+				CertPath:        "/var/lib/tidb-client-tls/tls.crt",
+				KeyPath:         "/var/lib/tidb-client-tls/tls.key",
+				TiDBServicePort: 4000,
 			},
 			result: `import os, sys, time, MySQLdb
 host = 'test-tidb'
@@ -1690,15 +1691,16 @@ conn.close()
 		{
 			name: "tls",
 			model: &TiDBInitStartScriptModel{
-				ClusterName: "test",
-				PermitHost:  "127.0.0.1",
-				PasswordSet: true,
-				InitSQL:     true,
-				TLS:         true,
-				SkipCA:      false,
-				CAPath:      "/var/lib/tidb-client-tls/ca.crt",
-				CertPath:    "/var/lib/tidb-client-tls/tls.crt",
-				KeyPath:     "/var/lib/tidb-client-tls/tls.key",
+				ClusterName:     "test",
+				PermitHost:      "127.0.0.1",
+				PasswordSet:     true,
+				InitSQL:         true,
+				TLS:             true,
+				SkipCA:          false,
+				CAPath:          "/var/lib/tidb-client-tls/ca.crt",
+				CertPath:        "/var/lib/tidb-client-tls/tls.crt",
+				KeyPath:         "/var/lib/tidb-client-tls/tls.key",
+				TiDBServicePort: 4000,
 			},
 			result: `import os, sys, time, MySQLdb
 host = 'test-tidb'
@@ -1708,6 +1710,59 @@ retry_count = 0
 for i in range(0, 10):
     try:
         conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'ca': '/var/lib/tidb-client-tls/ca.crt', 'cert': '/var/lib/tidb-client-tls/tls.crt', 'key': '/var/lib/tidb-client-tls/tls.key'})
+    except MySQLdb.OperationalError as e:
+        print(e)
+        retry_count += 1
+        time.sleep(1)
+        continue
+    break
+if retry_count == 10:
+    sys.exit(1)
+password_dir = '/etc/tidb/password'
+for file in os.listdir(password_dir):
+    if file.startswith('.'):
+        continue
+    user = file
+    with open(os.path.join(password_dir, file), 'r') as f:
+        lines = f.read().splitlines()
+        password = lines[0] if len(lines) > 0 else ""
+    if user == 'root':
+        conn.cursor().execute("set password for 'root'@'%%' = %s;", (password,))
+    else:
+        conn.cursor().execute("create user %s@%s identified by %s;", (user, permit_host, password,))
+with open('/data/init.sql', 'r') as sql:
+    for line in sql.readlines():
+        conn.cursor().execute(line)
+        conn.commit()
+if permit_host != '%%':
+    conn.cursor().execute("update mysql.user set Host=%s where User='root';", (permit_host,))
+conn.cursor().execute("flush privileges;")
+conn.commit()
+conn.close()
+`,
+		},
+		{
+			name: "confiure tidb service port",
+			model: &TiDBInitStartScriptModel{
+				ClusterName:     "test",
+				PermitHost:      "127.0.0.1",
+				PasswordSet:     true,
+				InitSQL:         true,
+				TLS:             true,
+				SkipCA:          true,
+				CAPath:          "/var/lib/tidb-client-tls/ca.crt",
+				CertPath:        "/var/lib/tidb-client-tls/tls.crt",
+				KeyPath:         "/var/lib/tidb-client-tls/tls.key",
+				TiDBServicePort: 5000,
+			},
+			result: `import os, sys, time, MySQLdb
+host = 'test-tidb'
+permit_host = '127.0.0.1'
+port = 5000
+retry_count = 0
+for i in range(0, 10):
+    try:
+        conn = MySQLdb.connect(host=host, port=port, user='root', charset='utf8mb4',connect_timeout=5, ssl={'cert': '/var/lib/tidb-client-tls/tls.crt', 'key': '/var/lib/tidb-client-tls/tls.key'})
     except MySQLdb.OperationalError as e:
         print(e)
         retry_count += 1
