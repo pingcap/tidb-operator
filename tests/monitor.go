@@ -361,7 +361,7 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 	log.Logf("thanos[%s/%s] is up", namespace, "thanos-query")
 
 	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-		prometheusTargets := fmt.Sprintf("http://%s/api/v1/targets", thanosAddr)
+		prometheusTargets := fmt.Sprintf("http://%s/api/v1/query?query=up", thanosAddr)
 		targetResponse, err := http.Get(prometheusTargets)
 		if err != nil {
 			log.Logf("ERROR: %v", err)
@@ -376,13 +376,7 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 		data := struct {
 			Status string `json:"status"`
 			Data   struct {
-				ActiveTargets []struct {
-					DiscoveredLabels struct {
-						Job     string `json:"job"`
-						PodName string `json:"__meta_kubernetes_pod_name"`
-					} `json:"discoveredLabels"`
-					Health string `json:"health"`
-				} `json:"activeTargets"`
+				Result []map[string]interface{} `json:"result"`
 			} `json:"data"`
 		}{}
 		log.Logf("thanos query body: %s", string(body))
@@ -390,12 +384,12 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
-		if data.Status != "success" || len(data.Data.ActiveTargets) < expectActiveTargets {
-			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, ActiveTargets:%d , status: %s", namespace, name, thanosAddr, data.Data.ActiveTargets, data.Status)
+		if data.Status != "success" || len(data.Data.Result) < expectActiveTargets {
+			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, ActiveTargets:%d , status: %s", namespace, name, thanosAddr, data.Data.Result, data.Status)
 			return false, nil
 		}
-		for _, target := range data.Data.ActiveTargets {
-			log.Logf("thanos[%s/%s]'s target[%s]", namespace, name, target.DiscoveredLabels.PodName)
+		for _, target := range data.Data.Result {
+			log.Logf("thanos[%s/%s]'s target[%s]", namespace, name, target)
 		}
 		return true, nil
 	})
