@@ -726,9 +726,20 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 }
 
 func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor, shard int32) core.Container {
+	image := "quay.io/prometheus-operator/prometheus-config-reloader"
+	version := "v0.49.0"
+	if monitor.Spec.PrometheusReloader != nil {
+		if len(monitor.Spec.PrometheusReloader.BaseImage) > 0 {
+			image = monitor.Spec.PrometheusReloader.BaseImage
+		}
+		if len(monitor.Spec.PrometheusReloader.Version) > 0 {
+			version = monitor.Spec.PrometheusReloader.Version
+		}
+	}
+
 	c := core.Container{
 		Name:  "prometheus-config-reloader",
-		Image: fmt.Sprintf("%s:%s", monitor.Spec.PrometheusReloader.BaseImage, monitor.Spec.PrometheusReloader.Version),
+		Image: fmt.Sprintf("%s:%s", image, version),
 		Command: []string{
 			"/bin/prometheus-config-reloader",
 			"--listen-address=:9088",
@@ -743,7 +754,6 @@ func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor, shard 
 				Protocol:      core.ProtocolTCP,
 			},
 		},
-		Resources: controller.ContainerResource(monitor.Spec.PrometheusReloader.ResourceRequirements),
 		Env: []core.EnvVar{
 			{
 				Name: "POD_NAME",
@@ -775,9 +785,13 @@ func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor, shard 
 			},
 		},
 	}
-	if monitor.Spec.PrometheusReloader.ImagePullPolicy != nil {
-		c.ImagePullPolicy = *monitor.Spec.PrometheusReloader.ImagePullPolicy
+	if monitor.Spec.PrometheusReloader != nil {
+		c.Resources = controller.ContainerResource(monitor.Spec.PrometheusReloader.ResourceRequirements)
+		if monitor.Spec.PrometheusReloader.ImagePullPolicy != nil {
+			c.ImagePullPolicy = *monitor.Spec.PrometheusReloader.ImagePullPolicy
+		}
 	}
+
 	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.RuleConfigRef != nil {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      "external-rules",
@@ -1228,11 +1242,9 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 		thanosSideCarContainer := getThanosSidecarContainer(monitor)
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, thanosSideCarContainer)
 	}
-	if monitor.Spec.PrometheusReloader != nil {
-		prometheusReloaderContainer := getMonitorPrometheusReloaderContainer(monitor, shard)
-		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusReloaderContainer)
+	prometheusReloaderContainer := getMonitorPrometheusReloaderContainer(monitor, shard)
+	statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, prometheusReloaderContainer)
 
-	}
 	additionalContainers := monitor.Spec.AdditionalContainers
 	if len(additionalContainers) > 0 {
 		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, additionalContainers...)

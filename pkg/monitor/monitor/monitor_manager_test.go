@@ -284,7 +284,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(4))
 			},
 			stsCreated:    true,
 			svcCreated:    true,
@@ -327,7 +327,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(4))
 			},
 			stsCreated:    true,
 			svcCreated:    true,
@@ -364,7 +364,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(4))
 
 			},
 			stsCreated:    true,
@@ -393,7 +393,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				errExpectRequeuefunc(g, err, tmm, tm)
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(2))
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
 				g.Expect(sts.Spec.Template.Spec.InitContainers).To(HaveLen(2))
 			},
 			stsCreated:    true,
@@ -589,7 +589,7 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				sts, err := tmm.deps.StatefulSetLister.StatefulSets(tm.Namespace).Get(GetMonitorObjectName(tm))
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
+				g.Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(4))
 			},
 			update: func(tmm *MonitorManager, monitor *v1alpha1.TidbMonitor) {
 				monitor.Spec.Grafana.Service.Type = v1.ServiceTypeLoadBalancer
