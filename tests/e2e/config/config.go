@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/tests"
+	"github.com/pingcap/tidb-operator/tests/e2e/util"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -95,9 +96,9 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		ReleaseName:               "operator",
 		Image:                     cfg.OperatorImage,
 		Tag:                       cfg.OperatorTag,
-		ControllerManagerReplicas: tests.IntPtr(2),
+		ControllerManagerReplicas: util.IntPtr(2),
 		SchedulerImage:            "k8s.gcr.io/kube-scheduler",
-		SchedulerReplicas:         tests.IntPtr(2),
+		SchedulerReplicas:         util.IntPtr(2),
 		Features:                  features,
 		LogLevel:                  "4",
 		WebhookServiceName:        "webhook-service",
