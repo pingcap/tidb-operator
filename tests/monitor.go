@@ -360,15 +360,44 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 	}
 	log.Logf("thanos[%s/%s] is up", namespace, "thanos-query")
 
-	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-		prometheusTargets := fmt.Sprintf("http://%s/api/v1/query?query=up", thanosAddr)
-		targetResponse, err := http.Get(prometheusTargets)
+	return wait.PollImmediate(5*time.Second, 10*time.Minute, func() (done bool, err error) {
+
+		storesUrl := fmt.Sprintf("http://%s/api/v1/stores", thanosAddr)
+		targetResponse, err := http.Get(storesUrl)
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		defer targetResponse.Body.Close()
 		body, err := ioutil.ReadAll(targetResponse.Body)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		storeData := struct {
+			Status string `json:"status"`
+			Data   struct {
+				Receive []map[string]interface{} `json:"result"`
+			} `json:"data"`
+		}{}
+		log.Logf("thanos query stores: %s", string(body))
+		if err := json.Unmarshal(body, &storeData); err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		if storeData.Status != "success" || len(storeData.Data.Receive) < expectActiveTargets {
+			log.Logf("ERROR: thanos[%s/%s]'s stores error %s, ActiveTargets:%d , status: %s", namespace, name, thanosAddr, storeData.Data.Receive, storeData.Status)
+			return false, nil
+		}
+
+		metrcis := fmt.Sprintf("http://%s/api/v1/query?query=up", thanosAddr)
+		targetResponse, err = http.Get(metrcis)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		defer targetResponse.Body.Close()
+		body, err = ioutil.ReadAll(targetResponse.Body)
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
