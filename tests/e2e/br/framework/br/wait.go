@@ -46,7 +46,7 @@ func WaitForBackupDeleted(c versioned.Interface, ns, name string, timeout time.D
 	})
 
 	if err == wait.ErrWaitTimeout {
-		return fmt.Errorf("timed puit waiting for backup deleted, last reason: %s", lastReason)
+		return fmt.Errorf("timed out waiting for backup deleted, last reason: %s", lastReason)
 	}
 	if err != nil {
 		return fmt.Errorf("can't wait for backup deleted: %v", err)
