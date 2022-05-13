@@ -131,16 +131,6 @@ e2e-examples:
 gocovmerge:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o bin/gocovmerge github.com/zhouqiang-cl/gocovmerge
 
-stability-test-build:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/blockwriter ./tests/cmd/blockwriter
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test ./tests/cmd/stability
-
-stability-test-docker: stability-test-build
-	docker build -t "${DOCKER_REPO}/tidb-operator-stability-test:${IMAGE_TAG}" tests/images/stability-test
-
-stability-test-push: stability-test-docker
-	docker push "${DOCKER_REPO}/tidb-operator-stability-test:${IMAGE_TAG}"
-
 fault-trigger:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
 

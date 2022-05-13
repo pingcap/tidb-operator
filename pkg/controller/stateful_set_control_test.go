@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -87,6 +88,13 @@ func TestStatefulSetControlUpdateStatefulSet(t *testing.T) {
 	recorder := record.NewFakeRecorder(10)
 	tc := newTidbCluster()
 	set := newStatefulSet(tc, "pd")
+	set.Annotations = map[string]string{
+		helper.DeleteSlotsAnn: "[1,2,3]",
+		"annotations":         "new",
+	}
+	set.Labels = map[string]string{
+		"labels": "new",
+	}
 	set.Spec.Replicas = func() *int32 { var i int32 = 100; return &i }()
 	fakeClient := &fake.Clientset{}
 	control := NewRealStatefuSetControl(fakeClient, nil, recorder)
@@ -97,6 +105,8 @@ func TestStatefulSetControlUpdateStatefulSet(t *testing.T) {
 	updateSS, err := control.UpdateStatefulSet(tc, set)
 	g.Expect(err).To(Succeed())
 	g.Expect(int(*updateSS.Spec.Replicas)).To(Equal(100))
+	g.Expect(updateSS.Annotations).To(Equal(set.Annotations))
+	g.Expect(updateSS.Labels).To(Equal(set.Labels))
 }
 
 func TestStatefulSetControlUpdateStatefulSetConflictSuccess(t *testing.T) {
@@ -105,10 +115,24 @@ func TestStatefulSetControlUpdateStatefulSetConflictSuccess(t *testing.T) {
 	tc := newTidbCluster()
 	set := newStatefulSet(tc, "pd")
 	set.Spec.Replicas = func() *int32 { var i int32 = 100; return &i }()
+	set.Annotations = map[string]string{
+		helper.DeleteSlotsAnn: "[1,2,3]",
+		"annotations":         "new",
+	}
+	set.Labels = map[string]string{
+		"label": "new",
+	}
 	fakeClient := &fake.Clientset{}
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	oldSet := newStatefulSet(tc, "pd")
 	oldSet.Spec.Replicas = func() *int32 { var i int32 = 200; return &i }()
+	oldSet.Annotations = map[string]string{
+		helper.DeleteSlotsAnn: "[1,2]",
+		"annotations":         "old",
+	}
+	oldSet.Labels = map[string]string{
+		"label": "old",
+	}
 	err := indexer.Add(oldSet)
 	g.Expect(err).To(Succeed())
 	setLister := appslisters.NewStatefulSetLister(indexer)
@@ -125,6 +149,8 @@ func TestStatefulSetControlUpdateStatefulSetConflictSuccess(t *testing.T) {
 	updateSS, err := control.UpdateStatefulSet(tc, set)
 	g.Expect(err).To(Succeed())
 	g.Expect(int(*updateSS.Spec.Replicas)).To(Equal(100))
+	g.Expect(updateSS.Annotations).To(Equal(set.Annotations))
+	g.Expect(updateSS.Labels).To(Equal(set.Labels))
 }
 
 func TestStatefulSetControlDeleteStatefulSet(t *testing.T) {

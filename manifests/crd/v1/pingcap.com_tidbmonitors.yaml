@@ -1429,6 +1429,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
                       portName:
                         type: string
                       type:
@@ -1850,6 +1855,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
                       portName:
                         type: string
                       type:
@@ -1926,6 +1936,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
                       portName:
                         type: string
                       type:
