@@ -23,25 +23,26 @@ import (
 type ActionType string
 
 const (
-	GetHealthActionType                ActionType = "GetHealth"
-	GetConfigActionType                ActionType = "GetConfig"
-	GetClusterActionType               ActionType = "GetCluster"
-	GetMembersActionType               ActionType = "GetMembers"
-	GetStoresActionType                ActionType = "GetStores"
-	GetTombStoneStoresActionType       ActionType = "GetTombStoneStores"
-	GetStoreActionType                 ActionType = "GetStore"
-	DeleteStoreActionType              ActionType = "DeleteStore"
-	SetStoreStateActionType            ActionType = "SetStoreState"
-	DeleteMemberByIDActionType         ActionType = "DeleteMemberByID"
-	DeleteMemberActionType             ActionType = "DeleteMember "
-	SetStoreLabelsActionType           ActionType = "SetStoreLabels"
-	UpdateReplicationActionType        ActionType = "UpdateReplicationConfig"
-	BeginEvictLeaderActionType         ActionType = "BeginEvictLeader"
-	EndEvictLeaderActionType           ActionType = "EndEvictLeader"
-	GetEvictLeaderSchedulersActionType ActionType = "GetEvictLeaderSchedulers"
-	GetPDLeaderActionType              ActionType = "GetPDLeader"
-	TransferPDLeaderActionType         ActionType = "TransferPDLeader"
-	GetAutoscalingPlansActionType      ActionType = "GetAutoscalingPlans"
+	GetHealthActionType                         ActionType = "GetHealth"
+	GetConfigActionType                         ActionType = "GetConfig"
+	GetClusterActionType                        ActionType = "GetCluster"
+	GetMembersActionType                        ActionType = "GetMembers"
+	GetStoresActionType                         ActionType = "GetStores"
+	GetTombStoneStoresActionType                ActionType = "GetTombStoneStores"
+	GetStoreActionType                          ActionType = "GetStore"
+	DeleteStoreActionType                       ActionType = "DeleteStore"
+	SetStoreStateActionType                     ActionType = "SetStoreState"
+	DeleteMemberByIDActionType                  ActionType = "DeleteMemberByID"
+	DeleteMemberActionType                      ActionType = "DeleteMember "
+	SetStoreLabelsActionType                    ActionType = "SetStoreLabels"
+	UpdateReplicationActionType                 ActionType = "UpdateReplicationConfig"
+	BeginEvictLeaderActionType                  ActionType = "BeginEvictLeader"
+	EndEvictLeaderActionType                    ActionType = "EndEvictLeader"
+	GetEvictLeaderSchedulersActionType          ActionType = "GetEvictLeaderSchedulers"
+	GetEvictLeaderSchedulersForStoresActionType ActionType = "GetEvictLeaderSchedulersForStores"
+	GetPDLeaderActionType                       ActionType = "GetPDLeader"
+	TransferPDLeaderActionType                  ActionType = "TransferPDLeader"
+	GetAutoscalingPlansActionType               ActionType = "GetAutoscalingPlans"
 )
 
 type NotFoundReaction struct {
@@ -230,6 +231,15 @@ func (c *FakePDClient) GetEvictLeaderSchedulers() ([]string, error) {
 		action := &Action{}
 		result, err := reaction(action)
 		return result.([]string), err
+	}
+	return nil, nil
+}
+
+func (c *FakePDClient) GetEvictLeaderSchedulersForStores(storeIDs ...uint64) (map[uint64]string, error) {
+	if reaction, ok := c.reactions[GetEvictLeaderSchedulersActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		return result.(map[uint64]string), err
 	}
 	return nil, nil
 }
