@@ -315,7 +315,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 }
 
 // CheckThanosCommon check the Thanos Query working status by querying `up` api and `targets` api.
-func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expectActiveTargets int, shard int32) error {
+func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expectNumber int, shard int32) error {
 	var thanosAddr string
 	if fw != nil {
 		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", name), 9090)
@@ -377,7 +377,7 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 		storeData := struct {
 			Status string `json:"status"`
 			Data   struct {
-				Receive []map[string]interface{} `json:"result"`
+				Receive []map[string]interface{} `json:"receive"`
 			} `json:"data"`
 		}{}
 		log.Logf("thanos query stores: %s", string(body))
@@ -385,8 +385,8 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
-		if storeData.Status != "success" || len(storeData.Data.Receive) < expectActiveTargets {
-			log.Logf("ERROR: thanos[%s/%s]'s stores error %s, ActiveTargets:%d , status: %s", namespace, name, thanosAddr, storeData.Data.Receive, storeData.Status)
+		if storeData.Status != "success" || len(storeData.Data.Receive) < expectNumber {
+			log.Logf("ERROR: thanos[%s/%s]'s stores error %s, store:%d , status: %s", namespace, name, thanosAddr, storeData.Data.Receive, storeData.Status)
 			return false, nil
 		}
 
@@ -413,7 +413,7 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
-		if data.Status != "success" || len(data.Data.Result) < expectActiveTargets {
+		if data.Status != "success" || len(data.Data.Result) < expectNumber {
 			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, ActiveTargets:%d , status: %s", namespace, name, thanosAddr, data.Data.Result, data.Status)
 			return false, nil
 		}
