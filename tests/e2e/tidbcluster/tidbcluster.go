@@ -2955,7 +2955,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
 		tm.Spec.Prometheus.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
 			{
-				URL: "http://thanos-receiver-0.thanos-receiver.default.svc:19291/api/v1/receive",
+				URL: fmt.Sprintf("http://thanos-receiver-0.thanos-receiver.%s.svc:19291/api/v1/receive", ns),
 				QueueConfig: &v1alpha1.QueueConfig{
 					MaxSamplesPerSend: 100,
 					MaxShards:         100,
