@@ -2984,13 +2984,13 @@ data:
     [
         {
             "hashring": "athena",
-            "endpoints": ["thanos-receiver-0.thanos-receiver.default.svc:10901"],
+            "endpoints": ["thanos-receiver-0.thanos-receiver.%s.svc:10901"],
             "tenants": ["athena"]
         }
     ]
 `
 		decode := k8sScheme.Codecs.UniversalDeserializer().Decode
-		thanosReceiverConfigmapObj, _, _ := decode([]byte(thanosReceiverConfigmapYaml), nil, nil)
+		thanosReceiverConfigmapObj, _, _ := decode([]byte(fmt.Sprintf(thanosReceiverConfigmapYaml, ns)), nil, nil)
 		thanosReceiverConfigmap := thanosReceiverConfigmapObj.(*corev1.ConfigMap) // This fails
 		_, err = c.CoreV1().ConfigMaps(ns).Create(context.TODO(), thanosReceiverConfigmap, metav1.CreateOptions{})
 		framework.ExpectNoError(err, "Expected thanos receiver configmap created success")
