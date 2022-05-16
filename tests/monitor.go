@@ -327,38 +327,6 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 	} else {
 		thanosAddr = fmt.Sprintf("%s.%s:9090", "thanos-query", namespace)
 	}
-	err := wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-		prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", thanosAddr)
-		resp, err := http.Get(prometheusSvc)
-		if err != nil {
-			log.Logf("ERROR: %v", err)
-			return false, nil
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Logf("ERROR: %v", err)
-			return false, nil
-		}
-		response := &struct {
-			Status string `json:"status"`
-		}{}
-		err = json.Unmarshal(body, response)
-		if err != nil {
-			log.Logf("ERROR: %v", err)
-			return false, nil
-		}
-		if response.Status != "success" {
-			log.Logf("ERROR: he prometheus's api[%s] has not ready", prometheusSvc)
-			return false, nil
-		}
-		return true, nil
-	})
-	if err != nil {
-		log.Logf("ERROR: %v", err)
-		return err
-	}
-	log.Logf("thanos[%s/%s] is up", namespace, "thanos-query")
 
 	return wait.PollImmediate(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 
@@ -380,7 +348,6 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 				Receive []map[string]interface{} `json:"receive"`
 			} `json:"data"`
 		}{}
-		log.Logf("thanos query stores: %s", string(body))
 		if err := json.Unmarshal(body, &storeData); err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
@@ -389,7 +356,6 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 			log.Logf("ERROR: thanos[%s/%s]'s stores error %s, store:%d , status: %s", namespace, name, thanosAddr, storeData.Data.Receive, storeData.Status)
 			return false, nil
 		}
-
 		metrcis := fmt.Sprintf("http://%s/api/v1/query?query=up", thanosAddr)
 		targetResponse, err = http.Get(metrcis)
 		if err != nil {
@@ -408,13 +374,12 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 				Result []map[string]interface{} `json:"result"`
 			} `json:"data"`
 		}{}
-		log.Logf("thanos query body: %s", string(body))
 		if err := json.Unmarshal(body, &data); err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.Result) < expectNumber {
-			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, ActiveTargets:%d , status: %s", namespace, name, thanosAddr, data.Data.Result, data.Status)
+			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, metrics data:%d , status: %s", namespace, name, thanosAddr, data.Data.Result, data.Status)
 			return false, nil
 		}
 		for _, target := range data.Data.Result {
