@@ -42,7 +42,7 @@ webhooks:
       matchLabels:
         "app.kubernetes.io/managed-by": "tidb-operator"
     admissionReviewVersions: ["v1beta1"]
-    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Failure" }}
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Fail" }}
     sideEffects: None
     clientConfig:
       service:
@@ -80,7 +80,7 @@ metadata:
 webhooks:
   - name: validating.admission.tidb.pingcap.com
     admissionReviewVersions: ["v1beta1"]
-    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Failure" }}
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Fail" }}
     sideEffects: None
     clientConfig:
       service:
