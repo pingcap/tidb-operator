@@ -353,7 +353,7 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 			return false, nil
 		}
 		if storeData.Status != "success" || len(storeData.Data.Receive) < expectNumber {
-			log.Logf("ERROR: thanos[%s/%s]'s stores error %s, store:%d , status: %s", namespace, name, thanosAddr, storeData.Data.Receive, storeData.Status)
+			log.Logf("ERROR: thanos[%s/%s]'s stores error %s, store:%v , status: %s", namespace, name, thanosAddr, storeData.Data.Receive, storeData.Status)
 			return false, nil
 		}
 		metrcis := fmt.Sprintf("http://%s/api/v1/query?query=up", thanosAddr)
@@ -379,7 +379,7 @@ func CheckThanosCommon(name, namespace string, fw portforward.PortForward, expec
 			return false, nil
 		}
 		if data.Status != "success" || len(data.Data.Result) < expectNumber {
-			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, metrics data:%d , status: %s", namespace, name, thanosAddr, data.Data.Result, data.Status)
+			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, metrics data:%v , status: %s", namespace, name, thanosAddr, data.Data.Result, data.Status)
 			return false, nil
 		}
 		for _, target := range data.Data.Result {
