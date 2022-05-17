@@ -38,7 +38,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.3.2
+  image: pingcap/tidb-operator:v1.3.3
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -111,7 +111,7 @@ pd:
     # annotations: {} "<the default name will be used>"
     # portName: "client"
   replicas: 3
-  image: pingcap/pd:v5.4.0
+  image: pingcap/pd:v5.4.1
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -258,7 +258,7 @@ tikv:
   # we can only set capacity in tikv.resources.limits.storage.
 
   replicas: 3
-  image: pingcap/tikv:v5.4.0
+  image: pingcap/tikv:v5.4.1
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -355,7 +355,7 @@ tidb:
   # initSqlConfigMapName: tidb-initsql
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v5.4.0
+  image: pingcap/tidb:v5.4.1
   # Image pull policy.
   imagePullPolicy: IfNotPresent
 
@@ -509,7 +509,7 @@ monitor:
   storageClassName: local-storage
   storage: 10Gi
   initializer:
-    image: pingcap/tidb-monitor-initializer:v5.4.0
+    image: pingcap/tidb-monitor-initializer:v5.4.1
     imagePullPolicy: IfNotPresent
     config:
       K8S_PROMETHEUS_URL: http://prometheus-k8s.monitoring.svc:9090
@@ -595,7 +595,7 @@ binlog:
   pump:
     create: false
     replicas: 1
-    image: pingcap/tidb-binlog:v5.4.0
+    image: pingcap/tidb-binlog:v5.4.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -664,7 +664,7 @@ binlog:
 
   drainer:
     create: false
-    image: pingcap/tidb-binlog:v5.4.0
+    image: pingcap/tidb-binlog:v5.4.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -829,7 +829,7 @@ scheduledBackup:
 
 importer:
   create: false
-  image: pingcap/tidb-lightning:v5.4.0
+  image: pingcap/tidb-lightning:v5.4.1
   imagePullPolicy: IfNotPresent
   storageClassName: local-storage
   storage: 200Gi
