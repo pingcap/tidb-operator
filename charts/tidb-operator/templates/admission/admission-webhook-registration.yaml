@@ -114,7 +114,7 @@ metadata:
 webhooks:
   - name: defaulting.admission.tidb.pingcap.com
     admissionReviewVersions: ["v1beta1"]
-    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.mutation | default "Failure" }}
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.mutation | default "Fail" }}
     sideEffects: None
     clientConfig:
       service:
