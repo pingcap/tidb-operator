@@ -201,7 +201,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		}
 
 		ginkgo.By("Forward backup TiDB cluster service")
-		backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), 4000)
+		backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(brutil.TiDBServicePort))
 		framework.ExpectNoError(err)
 		err = initDatabase(backupHost, dbName)
 		framework.ExpectNoError(err)
@@ -228,7 +228,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Forward restore TiDB cluster service")
-		restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), 4000)
+		restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), int(brutil.TiDBServicePort))
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Validate restore result")
@@ -340,7 +340,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Forward backup TiDB cluster service")
-			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), 4000)
+			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(brutil.TiDBServicePort))
 			framework.ExpectNoError(err)
 			err = initDatabase(backupHost, dbName)
 			framework.ExpectNoError(err)

@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	_ "net/http/pprof"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1163,7 +1164,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					Namespace:         ns,
 					DbType:            tests.DbTypeTiDB,
 					Host:              fmt.Sprintf("%s-tidb.%s.svc.cluster.local", targetTcName, ns),
-					Port:              "4000",
+					Port:              strconv.Itoa(int(targetTc.Spec.TiDB.GetServicePort())),
 					TLSCluster:        true,
 					User:              "root",
 					Password:          "",
@@ -1376,7 +1377,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				Namespace:         ns,
 				DbType:            tests.DbTypeTiDB,
 				Host:              fmt.Sprintf("%s-tidb.%s.svc.cluster.local", targetTcName, ns),
-				Port:              "4000",
+				Port:              strconv.Itoa(int(targetTc.Spec.TiDB.GetServicePort())),
 				TLSCluster:        true,
 				User:              "root",
 				Password:          "",
@@ -1685,7 +1686,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("%s-0", controller.TiCDCMemberName(fromTCName)),
 				"--",
 				"/cdc", "cli", "changefeed", "create",
-				fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
+				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
 				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
 			}
 			data, err := framework.RunKubectl(ns, args...)
@@ -1813,7 +1814,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("%s-0", controller.TiCDCMemberName(fromTCName)),
 				"--",
 				"/cdc", "cli", "changefeed", "create",
-				fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
+				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
 				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
 			}
 			data, err := framework.RunKubectl(ns, args...)
@@ -2318,7 +2319,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		// this case merge scale-in/scale-out into one case, may seems a little bit dense
 		// when scale-in, replica is first set to 5 and changed to 3
 		// when scale-out, replica is first set to 3 and changed to 5
-		utilginkgo.ContextWhenFocus("while concurrently scale PD", func() {
+		ginkgo.Context("while concurrently scale PD", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
 				op := op
@@ -2364,7 +2365,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 
 		// similar to PD scale-in/scale-out case above, need to check no evict leader scheduler left
-		utilginkgo.ContextWhenFocus("while concurrently scale TiKV", func() {
+		ginkgo.Context("while concurrently scale TiKV", func() {
 			operation := []string{"in", "out"}
 			for _, op := range operation {
 				op := op
