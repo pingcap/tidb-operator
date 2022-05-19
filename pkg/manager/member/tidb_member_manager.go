@@ -886,6 +886,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
 		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
+		EnvFrom:      baseTiDBSpec.EnvFrom(),
 		ReadinessProbe: &corev1.Probe{
 			Handler:             buildTiDBReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),

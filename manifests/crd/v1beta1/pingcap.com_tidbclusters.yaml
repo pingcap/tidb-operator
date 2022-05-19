@@ -1957,6 +1957,27 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
                 hostNetwork:
                   type: boolean
                 image:
@@ -4292,6 +4313,27 @@ spec:
                         type: object
                     required:
                     - name
+                    type: object
+                  type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
                     type: object
                   type: array
                 hostNetwork:
@@ -6705,6 +6747,27 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
                 hostNetwork:
                   type: boolean
                 image:
@@ -9011,6 +9074,27 @@ spec:
                         type: object
                     required:
                     - name
+                    type: object
+                  type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
                     type: object
                   type: array
                 hostNetwork:
@@ -11322,6 +11406,27 @@ spec:
                         type: object
                     required:
                     - name
+                    type: object
+                  type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
                     type: object
                   type: array
                 hostNetwork:
@@ -13849,6 +13954,27 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
                 failover:
                   properties:
                     recoverByUID:
@@ -16216,6 +16342,27 @@ spec:
                         type: object
                     required:
                     - name
+                    type: object
+                  type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
                     type: object
                   type: array
                 evictLeaderTimeout:

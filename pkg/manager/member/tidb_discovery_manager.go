@@ -215,6 +215,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		Image:           m.deps.CLIConfig.TiDBDiscoveryImage,
 		ImagePullPolicy: baseSpec.ImagePullPolicy(),
 		Env:             envs,
+		EnvFrom:         baseSpec.EnvFrom(),
 		VolumeMounts:    volMounts,
 		Ports: []corev1.ContainerPort{
 			{

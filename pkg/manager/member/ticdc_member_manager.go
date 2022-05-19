@@ -474,6 +474,7 @@ done
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiCDC.ResourceRequirements),
 		Env:          util.AppendEnv(envs, baseTiCDCSpec.Env()),
+		EnvFrom:      baseTiCDCSpec.EnvFrom(),
 	}
 	if cm != nil {
 		ticdcContainer.VolumeMounts = append(ticdcContainer.VolumeMounts, corev1.VolumeMount{

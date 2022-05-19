@@ -8,6 +8,8 @@ go 1.13
 
 require (
 	cloud.google.com/go/storage v1.0.0
+	github.com/Azure/azure-storage-blob-go v0.8.0
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Masterminds/semver v1.4.2
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
@@ -148,7 +150,7 @@ replace k8s.io/node-api => k8s.io/node-api v0.0.0-20190918163711-2299658ad911
 
 replace github.com/uber-go/atomic => go.uber.org/atomic v1.5.0
 
-replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.2.0+incompatible
+replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v14.2.0+incompatible
 
 replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.0
 

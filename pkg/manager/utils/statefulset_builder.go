@@ -46,6 +46,10 @@ func (cb *ContainerBuilder) AddEnvs(envs ...corev1.EnvVar) {
 	cb.prototype.Env = util.AppendEnv(cb.prototype.Env, envs)
 }
 
+func (cb *ContainerBuilder) AddEnvFroms(envFroms ...corev1.EnvFromSource) {
+	cb.prototype.EnvFrom = envFroms
+}
+
 type PodTemplateSpecBuilder struct {
 	prototype *corev1.PodTemplateSpec
 }
