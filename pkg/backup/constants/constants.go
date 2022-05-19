@@ -38,6 +38,21 @@ const (
 	// GcsCredentialsKey represents the gcs service account credentials json key in related secret
 	GcsCredentialsKey = "credentials"
 
+	// AzblobAccountName represents the Azure Storage Account using shared key credential in related secret
+	AzblobAccountName = "AZURE_STORAGE_ACCOUNT"
+
+	// AzblobAccountKey represents the Azure Storage Access Key using shared key credential in related secret
+	AzblobAccountKey = "AZURE_STORAGE_KEY"
+
+	// AzblobClientID represents the Azure Application (client) ID using AAD credtentials in related secret
+	AzblobClientID = "AZURE_CLIENT_ID"
+
+	// AzblobClientScrt represents the Azure Application (client) secret using AAD credtentials in related secret
+	AzblobClientScrt = "AZURE_CLIENT_SECRET"
+
+	// AzblobTenantID represents the Azure Directory (tenant) ID for the application using AAD credtentials in related secret
+	AzblobTenantID = "AZURE_TENANT_ID"
+
 	// BackupManagerEnvVarPrefix represents the environment variable used for tidb-backup-manager must include this prefix
 	BackupManagerEnvVarPrefix = "BACKUP_MANAGER"
 
