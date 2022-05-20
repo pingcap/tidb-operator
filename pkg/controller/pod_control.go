@@ -40,6 +40,7 @@ type PodControlInterface interface {
 	// TODO change this to UpdatePod
 	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.Pod) (*corev1.Pod, error)
 	DeletePod(runtime.Object, *corev1.Pod) error
+	ForceDeletePod(runtime.Object, *corev1.Pod) error
 	UpdatePod(runtime.Object, *corev1.Pod) (*corev1.Pod, error)
 }
 
@@ -198,6 +199,15 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 }
 
 func (c *realPodControl) DeletePod(controller runtime.Object, pod *corev1.Pod) error {
+	return c.deletePodWithGrace(controller, pod, false)
+}
+
+func (c *realPodControl) ForceDeletePod(controller runtime.Object, pod *corev1.Pod) error {
+	return c.deletePodWithGrace(controller, pod, true)
+}
+
+// deletePodWithGrace takes an extra nonGraceful boolean which determines whether to remove the grace period in delete command
+func (c *realPodControl) deletePodWithGrace(controller runtime.Object, pod *corev1.Pod, nonGraceful bool) error {
 	controllerMo, ok := controller.(metav1.Object)
 	if !ok {
 		return fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
@@ -209,6 +219,14 @@ func (c *realPodControl) DeletePod(controller runtime.Object, pod *corev1.Pod) e
 	podName := pod.GetName()
 	preconditions := metav1.Preconditions{UID: &pod.UID, ResourceVersion: &pod.ResourceVersion}
 	deleteOptions := metav1.DeleteOptions{Preconditions: &preconditions}
+	// If nonGraceful is false, then use default grace period
+	// If nonGraceful is true, then use zero grace period and use "Background" propagation policy
+	if nonGraceful {
+		gracePeriod := int64(0)
+		propagationPolicy := metav1.DeletePropagationBackground
+		deleteOptions.GracePeriodSeconds = &gracePeriod
+		deleteOptions.PropagationPolicy = &propagationPolicy
+	}
 	err := c.kubeCli.CoreV1().Pods(namespace).Delete(context.TODO(), podName, deleteOptions)
 	if err != nil {
 		klog.Errorf("failed to delete Pod: [%s/%s], %s: %s, %v", namespace, podName, kind, namespace, err)
@@ -336,6 +354,10 @@ func (c *FakePodControl) DeletePod(_ runtime.Object, pod *corev1.Pod) error {
 	}
 
 	return c.PodIndexer.Delete(pod)
+}
+
+func (c *FakePodControl) ForceDeletePod(rObj runtime.Object, pod *corev1.Pod) error {
+	return c.DeletePod(rObj, pod)
 }
 
 func (c *FakePodControl) UpdatePod(_ runtime.Object, pod *corev1.Pod) (*corev1.Pod, error) {

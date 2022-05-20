@@ -29,6 +29,12 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// FIXME!! This would move to CLIConfig
+const (
+	// Long waiting period after which the force deletion of a failed pod and pvc is attempted
+	forceDeleteLongWait = 3 * time.Hour
+)
+
 type pdFailover struct {
 	deps *controller.Dependencies
 }
@@ -187,15 +193,6 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to get pod %s/%s for tc %s/%s, error: %s", ns, failurePodName, ns, tcName, err)
 	}
-	if pod != nil {
-		if pod.DeletionTimestamp == nil {
-			if err := f.deps.PodControl.DeletePod(tc, pod); err != nil {
-				return err
-			}
-		}
-	} else {
-		klog.Infof("pd failover[tryToDeleteAFailureMember]: failure pod %s/%s not found, skip", ns, failurePodName)
-	}
 
 	ordinal, err := util.GetOrdinalFromPodName(failurePodName)
 	if err != nil {
@@ -210,6 +207,36 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to get PVCs for pod %s/%s, error: %s", ns, failurePodName, err)
 	}
 
+	// hostingNodeUnavailable will be set to true when it is detected that the K8s node hosting the failure pod is not available anymore
+	hostingNodeUnavailable := false
+	if pod != nil {
+		// If the Ready condition of pod is False, then detect whether the K8s node hosting the pod is no more available
+		_, podReadyCond := getPodConditionFromList(pod.Status.Conditions, apiv1.PodReady)
+		if podReadyCond != nil && podReadyCond.Status == apiv1.ConditionFalse {
+			hostingNodeUnavailable, err = f.isHostingNodeUnavailable(pod)
+			if err != nil {
+				return err
+			}
+		}
+		klog.Infof("pd failover[tryToDeleteAFailureMember]: node not ready condition of %s of failure pod %s/%s = %s", pod.Spec.NodeName, ns, failurePodName, hostingNodeUnavailable)
+		if pod.DeletionTimestamp == nil {
+			if err := f.deps.PodControl.DeletePod(tc, pod); err != nil {
+				return err
+			}
+		} else {
+			klog.Infof("pd failover[tryToDeleteAFailureMember]: failure pod %s/%s has DeletionTimestamp = %s", ns, failurePodName, pod.DeletionTimestamp)
+			// Use force option to delete the pod only after all PVCs associated with the Pod are deleted
+			// If the hosting node is no more available or if the pod Ready condition has been False for a long time, then force delete the pod
+			if len(pvcs) == 0 && (hostingNodeUnavailable || podReadyCond.LastTransitionTime.Add(forceDeleteLongWait).After(time.Now())) {
+				if err := f.deps.PodControl.ForceDeletePod(tc, pod); err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		klog.Infof("pd failover[tryToDeleteAFailureMember]: failure pod %s/%s not found, skip", ns, failurePodName)
+	}
+
 	for _, pvc := range pvcs {
 		_, pvcUIDExist := failureMember.PVCUIDSet[pvc.GetUID()]
 		// for backward compatibility, if there exists failureMembers and user upgrades operator to newer version
@@ -217,17 +244,55 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 		if pvc.GetUID() == failureMember.PVCUID {
 			pvcUIDExist = true
 		}
-		if pvc.DeletionTimestamp == nil && pvcUIDExist {
+		if !pvcUIDExist {
+			continue
+		}
+		if pvc.DeletionTimestamp == nil {
 			if err := f.deps.PVCControl.DeletePVC(tc, pvc); err != nil {
 				klog.Errorf("pd failover[tryToDeleteAFailureMember]: failed to delete PVC: %s/%s, error: %s", ns, pvc.Name, err)
 				return err
 			}
 			klog.Infof("pd failover[tryToDeleteAFailureMember]: delete PVC %s/%s successfully", ns, pvc.Name)
+		} else {
+			klog.Infof("pd failover[tryToDeleteAFailureMember]: DeletionTimestamp = %s set for failure PVC %s/%s", pvc.DeletionTimestamp, ns, pvc.Name)
+			// If the hosting node is no more available or if the pvc is stuck in deletion for a long time, then force delete the pvc
+			if hostingNodeUnavailable || pvc.DeletionTimestamp.Add(forceDeleteLongWait).After(time.Now()) {
+				klog.Infof("pd failover[tryToDeleteAFailureMember]: Finalizers=%v set for failure PVC %s/%s", pvc.Finalizers, ns, pvc.Name)
+				if removePvcDeleteProtectionFinalizer(pvc) {
+					if _, err := f.deps.PVCControl.UpdatePVC(tc, pvc); err != nil {
+						klog.Errorf("pd failover[tryToDeleteAFailureMember]: failed to remove finalizer from PVC: %s/%s, error: %s", ns, pvc.Name, err)
+						return err
+					}
+					klog.Infof("pd failover[tryToDeleteAFailureMember]: remove finalizer from PVC %s/%s successful", ns, pvc.Name)
+				}
+			}
 		}
 	}
 
 	setMemberDeleted(tc, failurePDName)
 	return nil
+}
+
+// isHostingNodeUnavailable checks whether the hosting node is unavailable
+// 1. Check the pod Status, if the pod has Unknown status phase, then it means node is not available
+// 2. Check the node Status, if the Ready condition of node is False, then it means node is not available
+func (f *pdFailover) isHostingNodeUnavailable(pod *apiv1.Pod) (bool, error) {
+	ns := pod.Namespace
+	name := strings.Split(pod.Name, ".")[0]
+	nodeUnavailable := false
+	if pod.Status.Phase == apiv1.PodUnknown {
+		klog.Infof("pd failover[isHostingNodeUnavailable]: failure pod %s/%s has Unknown status", ns, name)
+		nodeUnavailable = true
+	} else {
+		if f.deps.NodeLister != nil {
+			podNode, err := f.deps.NodeLister.Get(pod.Spec.NodeName)
+			if err != nil {
+				return false, fmt.Errorf("pd failover[isHostingNodeUnavailable]: failed to get node for pod %s/%s, error: %s", ns, name, err)
+			}
+			nodeUnavailable = IsNodeReadyConditionFalse(podNode.Status)
+		}
+	}
+	return nodeUnavailable, nil
 }
 
 func (f *pdFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
@@ -248,6 +313,35 @@ func setMemberDeleted(tc *v1alpha1.TidbCluster, pdName string) {
 	failureMember.MemberDeleted = true
 	tc.Status.PD.FailureMembers[pdName] = failureMember
 	klog.Infof("pd failover: set pd member: %s/%s deleted", tc.GetName(), pdName)
+}
+
+// getPodConditionFromList extracts the provided condition from the given list of condition and
+// returns the index of the condition and the condition. Returns -1 and nil if the condition is not present.
+func getPodConditionFromList(conditions []apiv1.PodCondition, conditionType apiv1.PodConditionType) (int, *apiv1.PodCondition) {
+	if conditions == nil {
+		return -1, nil
+	}
+	for i := range conditions {
+		if conditions[i].Type == conditionType {
+			return i, &conditions[i]
+		}
+	}
+	return -1, nil
+}
+
+// removePvcDeleteProtectionFinalizer removes "kubernetes.io/pvc-protection" if it is present in finalizers for the PVC
+func removePvcDeleteProtectionFinalizer(pvc *apiv1.PersistentVolumeClaim) bool {
+	var newFinalizers []string
+	for f := range pvc.Finalizers {
+		if pvc.Finalizers[f] != "kubernetes.io/pvc-protection" {
+			newFinalizers = append(newFinalizers, pvc.Finalizers[f])
+		}
+	}
+	if len(newFinalizers) < len(pvc.Finalizers) {
+		pvc.Finalizers = newFinalizers
+		return true
+	}
+	return false
 }
 
 // is healthy PD more than a half

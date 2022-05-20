@@ -41,3 +41,39 @@ func getNodeLabels(nodeLister corelisterv1.NodeLister, nodeName string, storeLab
 	}
 	return labels, nil
 }
+
+// IsNodeReadyConditionFalse returns true if a pod is not ready; false otherwise.
+func IsNodeReadyConditionFalse(status corev1.NodeStatus) bool {
+	condition := getNodeReadyCondition(status)
+	return condition != nil && condition.Status == corev1.ConditionFalse
+}
+
+// GetNodeReadyCondition extracts the node ready condition from the given status and returns that.
+// Returns nil if the condition is not present.
+func getNodeReadyCondition(status corev1.NodeStatus) *corev1.NodeCondition {
+	_, condition := getNodeCondition(&status, corev1.NodeReady)
+	return condition
+}
+
+// GetNodeCondition extracts the provided condition from the given status and returns that.
+// Returns nil and -1 if the condition is not present, and the index of the located condition.
+func getNodeCondition(status *corev1.NodeStatus, conditionType corev1.NodeConditionType) (int, *corev1.NodeCondition) {
+	if status == nil {
+		return -1, nil
+	}
+	return getNodeConditionFromList(status.Conditions, conditionType)
+}
+
+// GetNodeConditionFromList extracts the provided condition from the given list of condition and
+// returns the index of the condition and the condition. Returns -1 and nil if the condition is not present.
+func getNodeConditionFromList(conditions []corev1.NodeCondition, conditionType corev1.NodeConditionType) (int, *corev1.NodeCondition) {
+	if conditions == nil {
+		return -1, nil
+	}
+	for i := range conditions {
+		if conditions[i].Type == conditionType {
+			return i, &conditions[i]
+		}
+	}
+	return -1, nil
+}
