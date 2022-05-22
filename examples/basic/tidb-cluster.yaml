@@ -23,6 +23,8 @@ spec:
     requests:
       storage: "1Gi"
     config: {}
+    userCustomStrategy:
+
   tikv:
     baseImage: pingcap/tikv
     maxFailoverCount: 0

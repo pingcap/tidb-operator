@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 
+	errors2 "github.com/pingcap/errors"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -199,6 +201,13 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	if err != nil {
 		return err
 	}
+
+	containers, err := MergePatchContainers(newSet.Spec.Template.Spec.Containers, tc.Spec.TiKV.Containers)
+	if err != nil {
+		return errors2.Wrap(err, "failed to merge containers spec")
+	}
+	newSet.Spec.Template.Spec.Containers = containers
+
 	if setNotExist {
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {

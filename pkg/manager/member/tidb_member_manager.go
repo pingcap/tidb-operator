@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	errors2 "github.com/pingcap/errors"
+
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -213,6 +215,12 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	if err != nil {
 		return err
 	}
+
+	containers, err := MergePatchContainers(newTiDBSet.Spec.Template.Spec.Containers, tc.Spec.TiDB.Containers)
+	if err != nil {
+		return errors2.Wrap(err, "failed to merge containers spec")
+	}
+	newTiDBSet.Spec.Template.Spec.Containers = containers
 
 	if setNotExist {
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newTiDBSet)

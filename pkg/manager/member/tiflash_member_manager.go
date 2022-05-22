@@ -19,6 +19,8 @@ import (
 	"regexp"
 	"strings"
 
+	errors2 "github.com/pingcap/errors"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -185,6 +187,13 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return err
 	}
+
+	containers, err := MergePatchContainers(newSet.Spec.Template.Spec.Containers, tc.Spec.TiFlash.Containers)
+	if err != nil {
+		return errors2.Wrap(err, "failed to merge containers spec")
+	}
+	newSet.Spec.Template.Spec.Containers = containers
+
 	if setNotExist {
 		if !tc.PDIsAvailable() {
 			klog.Infof("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
