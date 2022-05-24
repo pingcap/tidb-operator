@@ -6909,6 +6909,13 @@ func schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"port": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The port that will be exposed by this service.\n\nNOTE: only used for TiDB",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"loadBalancerSourceRanges": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LoadBalancerSourceRanges is the loadBalancerSourceRanges of service If specified and supported by the platform, this will restrict traffic through the cloud-provider load-balancer will be restricted to the specified client IPs. This field will be ignored if the cloud-provider does not support the feature.\" More info: https://kubernetes.io/docs/concepts/services-networking/service/#aws-nlb-support Optional: Defaults to omitted",

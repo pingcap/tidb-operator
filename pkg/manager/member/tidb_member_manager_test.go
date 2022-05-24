@@ -1792,6 +1792,76 @@ func TestGetNewTiDBService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "customize service port",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: &v1alpha1.TiDBSpec{
+						Service: &v1alpha1.TiDBServiceSpec{
+							ServiceSpec: v1alpha1.ServiceSpec{
+								Port: pointer.Int32Ptr(5000),
+							},
+							ExposeStatus: pointer.BoolPtr(true),
+						},
+					},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			expected: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tidb",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "tidb",
+						"app.kubernetes.io/used-by":    "end-user",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "mysql-client",
+							Port:       5000,
+							TargetPort: intstr.FromInt(4000),
+							Protocol:   corev1.ProtocolTCP,
+						},
+						{
+							Name:       "status",
+							Port:       10080,
+							TargetPort: intstr.FromInt(10080),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "tidb",
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {

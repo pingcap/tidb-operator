@@ -763,6 +763,11 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 		if err = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set)); err != nil {
 			return err
 		}
+
+		// end evict leader for all stores when upgrade is done
+		if err = endEvictLeaderForAllStore(m.deps, tc); err != nil {
+			return err
+		}
 	}
 
 	// Scaling takes precedence over upgrading.
