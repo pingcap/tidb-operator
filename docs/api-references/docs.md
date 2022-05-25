@@ -8651,7 +8651,7 @@ int
 <td>
 <code>buffer-flush-interval</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
@@ -8747,7 +8747,7 @@ int
 <td>
 <code>sampling-refresh-interval</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
@@ -11816,7 +11816,7 @@ int
 <td>
 <code>batchSendDeadline</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
@@ -11838,7 +11838,7 @@ int
 <td>
 <code>minBackoff</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
@@ -11849,7 +11849,7 @@ invalid type
 <td>
 <code>maxBackoff</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
@@ -16604,7 +16604,7 @@ Optional: Defaults to 200</p>
 <td>
 <code>max-batch-wait-time</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
