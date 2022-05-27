@@ -23,6 +23,16 @@ spec:
     requests:
       storage: "1Gi"
     config: {}
+    containers:
+      - name: pd
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - "sh"
+                - "-c"
+                - |
+                  echo "test"
   tikv:
     baseImage: pingcap/tikv
     maxFailoverCount: 0
