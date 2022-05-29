@@ -17,7 +17,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -60,8 +59,8 @@ import (
 // - Shrinking volumes is not supported.
 //
 type PVCResizerInterface interface {
-	Resize(*v1alpha1.TidbCluster) error
-	ResizeDM(*v1alpha1.DMCluster) error
+	Sync(*v1alpha1.TidbCluster) error
+	SyncDM(*v1alpha1.DMCluster) error
 }
 
 var (
@@ -80,215 +79,320 @@ type pvcResizer struct {
 	deps *controller.Dependencies
 }
 
-// Resize will resize the PVCs defined in components storage requests in tc.Spec
-// Take PD as an example, there are 2 possible places: tc.Spec.PD.Requests & tc.Spec.PD.StorageVolumes
-// Note: TiFlash is an exception for now, which uses tc.Spec.TiFlash.StorageClaims
-func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
+type podVolumeContext struct {
+	pod *corev1.Pod
+	// key: volume name in pod, value: autacl pvc
+	volToPVCs map[string]*corev1.PersistentVolumeClaim
+}
+
+type componentVolumeContext struct {
+	comp v1alpha1.MemberType
+	// label selector for pvc and pod
+	selector labels.Selector
+	// desiredVolumeSpec is the volume request in tc spec
+	// key: volume name in pod, value: volume request in spec
+	desiredVolumeQuantity map[string]resource.Quantity
+	// function to update volume status in tc status
+	updateVolumeStatusFn func(map[string]*v1alpha1.StorageVolumeStatus)
+
+	actualPodVolumes []*podVolumeContext
+	
+}
+
+func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
+	name := tc.GetName()
+
+	components := []v1alpha1.MemberType{}
+	if tc.Spec.PD != nil {
+		components = append(components, v1alpha1.PDMemberType)
+	}
+	if tc.Spec.TiDB != nil {
+		components = append(components, v1alpha1.TiDBMemberType)
+	}
+	if tc.Spec.TiKV != nil {
+		components = append(components, v1alpha1.TiKVMemberType)
+	}
+	if tc.Spec.TiFlash != nil {
+		components = append(components, v1alpha1.TiFlashMemberType)
+	}
+	if tc.Spec.TiCDC != nil {
+		components = append(components, v1alpha1.TiCDCMemberType)
+	}
+	if tc.Spec.Pump != nil {
+		components = append(components, v1alpha1.PumpMemberType)
+	}
+
+	for _, comp := range components {
+		ctx, err := p.buildContextForTC(tc, comp)
+		if err != nil {
+			return fmt.Errorf("sync pvc for tc %s/%s failed: failed to prepare: %v", ns, name, err)
+		}
+
+		p.updateVolumeStatus(ctx)
+
+		err = p.resizeVolumes(ctx)
+		if err != nil {
+			return fmt.Errorf("sync pvc for tc %s/%s failed: resize volumes for %q failed: %v", ns, name, comp, err)
+		}
+	}
+
+	return nil
+}
+
+func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
+	ns := dc.GetNamespace()
+	name := dc.GetName()
+
+	components := []v1alpha1.MemberType{}
+	components = append(components, v1alpha1.DMMasterMemberType)
+	if dc.Spec.Worker != nil {
+		components = append(components, v1alpha1.DMWorkerMemberType)
+	}
+
+	for _, comp := range components {
+		ctx, err := p.buildContextForDM(dc, comp)
+		if err != nil {
+			return fmt.Errorf("sync pvc for dc %s/%s failed: failed to prepare: %v", ns, name, err)
+		}
+
+		p.updateVolumeStatus(ctx)
+
+		err = p.resizeVolumes(ctx)
+		if err != nil {
+			return fmt.Errorf("sync pvc for dc %s/%s failed: resize volumes for %q failed: %v", ns, name, comp, err)
+		}
+	}
+
+	return nil
+}
+
+func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType) (*componentVolumeContext, error) {
+	ns := tc.Namespace
+	name := tc.Name
+
+	ctx := &componentVolumeContext{
+		comp:                  comp,
+		desiredVolumeQuantity: map[string]resource.Quantity{},
+	}
+
 	selector, err := label.New().Instance(tc.GetInstanceName()).Selector()
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// For each component, we compose a map called pvcPrefix2Quantity, with PVC name prefix for current component as keys,
-	// for example "pd-${tcName}-pd" (for tc.Spec.PD.Requests) or "pd-log-${tcName}-pd" (for tc.Spec.PD.storageVolumes elements with name "log").
-	// Reference implementation of BuildStorageVolumeAndVolumeMount().
-	// Note: for TiFlash, it is currently "data0-${tcName}-tiflash" (for tc.Spec.TiFlash.StorageClaims elements, in list definition order)
-
-	// patch PD PVCs
-	if tc.Spec.PD != nil {
-		pvcPrefix2Quantity := make(map[string]resource.Quantity)
-		pdMemberType := v1alpha1.PDMemberType.String()
+	storageVolumes := []v1alpha1.StorageVolume{}
+	switch comp {
+	case v1alpha1.PDMemberType:
+		ctx.selector = selector.Add(*pdRequirement)
+		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.PD.Volumes = m }
 		if quantity, ok := tc.Spec.PD.Requests[corev1.ResourceStorage]; ok {
-			key := fmt.Sprintf("%s-%s-%s", pdMemberType, tc.Name, pdMemberType)
-			pvcPrefix2Quantity[key] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.PDMemberType)] = quantity
 		}
-		for _, sv := range tc.Spec.PD.StorageVolumes {
-			key := fmt.Sprintf("%s-%s-%s-%s", pdMemberType, sv.Name, tc.Name, pdMemberType)
-			if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
-				pvcPrefix2Quantity[key] = quantity
-			} else {
-				klog.Warningf("StorageVolume %q in %s/%s .Spec.PD is invalid", sv.Name, ns, tc.Name)
-			}
-		}
-		if err := p.patchPVCs(ns, selector.Add(*pdRequirement), pvcPrefix2Quantity); err != nil {
-			return err
-		}
-	}
-	// patch TiDB PVCs
-	if tc.Spec.TiDB != nil {
-		pvcPrefix2Quantity := make(map[string]resource.Quantity)
-		tidbMemberType := v1alpha1.TiDBMemberType.String()
-		for _, sv := range tc.Spec.TiDB.StorageVolumes {
-			key := fmt.Sprintf("%s-%s-%s-%s", tidbMemberType, sv.Name, tc.Name, tidbMemberType)
-			if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
-				pvcPrefix2Quantity[key] = quantity
-			} else {
-				klog.Warningf("StorageVolume %q in %s/%s .Spec.TiDB is invalid", sv.Name, ns, tc.Name)
-			}
-		}
-		if err := p.patchPVCs(ns, selector.Add(*tidbRequirement), pvcPrefix2Quantity); err != nil {
-			return err
-		}
-	}
-	// patch TiKV PVCs
-	if tc.Spec.TiKV != nil {
-		pvcPrefix2Quantity := make(map[string]resource.Quantity)
-		tikvMemberType := v1alpha1.TiKVMemberType.String()
+		storageVolumes = tc.Spec.PD.StorageVolumes
+	case v1alpha1.TiDBMemberType:
+		ctx.selector = selector.Add(*tidbRequirement)
+		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.TiDB.Volumes = m }
+		storageVolumes = tc.Spec.TiDB.StorageVolumes
+	case v1alpha1.TiKVMemberType:
+		ctx.selector = selector.Add(*tikvRequirement)
+		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.TiKV.Volumes = m }
 		if quantity, ok := tc.Spec.TiKV.Requests[corev1.ResourceStorage]; ok {
-			key := fmt.Sprintf("%s-%s-%s", tikvMemberType, tc.Name, tikvMemberType)
-			pvcPrefix2Quantity[key] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.TiKVMemberType)] = quantity
 		}
-		for _, sv := range tc.Spec.TiKV.StorageVolumes {
-			key := fmt.Sprintf("%s-%s-%s-%s", tikvMemberType, sv.Name, tc.Name, tikvMemberType)
-			if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
-				pvcPrefix2Quantity[key] = quantity
-			} else {
-				klog.Warningf("StorageVolume %q in %s/%s .Spec.TiKV is invalid", sv.Name, ns, tc.Name)
-			}
-		}
-		if err := p.patchPVCs(ns, selector.Add(*tikvRequirement), pvcPrefix2Quantity); err != nil {
-			return err
-		}
-	}
-	// patch TiFlash PVCs
-	if tc.Spec.TiFlash != nil {
-		pvcPrefix2Quantity := make(map[string]resource.Quantity)
-		tiflashMemberType := v1alpha1.TiFlashMemberType.String()
+		storageVolumes = tc.Spec.TiKV.StorageVolumes
+	case v1alpha1.TiFlashMemberType:
+		ctx.selector = selector.Add(*tiflashRequirement)
+		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.TiFlash.Volumes = m }
 		for i, claim := range tc.Spec.TiFlash.StorageClaims {
-			key := fmt.Sprintf("data%d-%s-%s", i, tc.Name, tiflashMemberType)
 			if quantity, ok := claim.Resources.Requests[corev1.ResourceStorage]; ok {
-				pvcPrefix2Quantity[key] = quantity
+				ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateNameForTiFlash(i)] = quantity
 			}
 		}
-		if err := p.patchPVCs(ns, selector.Add(*tiflashRequirement), pvcPrefix2Quantity); err != nil {
-			return err
-		}
-	}
-	// patch TiCDC PVCs
-	if tc.Spec.TiCDC != nil {
-		pvcPrefix2Quantity := make(map[string]resource.Quantity)
-		ticdcMemberType := v1alpha1.TiCDCMemberType.String()
-		for _, sv := range tc.Spec.TiCDC.StorageVolumes {
-			key := fmt.Sprintf("%s-%s-%s-%s", ticdcMemberType, sv.Name, tc.Name, ticdcMemberType)
-			if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
-				pvcPrefix2Quantity[key] = quantity
-			} else {
-				klog.Warningf("StorageVolume %q in %s/%s .Spec.TiCDC is invalid", sv.Name, ns, tc.Name)
-			}
-		}
-		if err := p.patchPVCs(ns, selector.Add(*ticdcRequirement), pvcPrefix2Quantity); err != nil {
-			return err
-		}
-	}
-	// patch Pump PVCs
-	if tc.Spec.Pump != nil {
-		pvcPrefix2Quantity := make(map[string]resource.Quantity)
-		pumpMemberType := v1alpha1.PumpMemberType.String()
+	case v1alpha1.TiCDCMemberType:
+		ctx.selector = selector.Add(*ticdcRequirement)
+		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.TiCDC.Volumes = m }
+		storageVolumes = tc.Spec.TiCDC.StorageVolumes
+	case v1alpha1.PumpMemberType:
+		ctx.selector = selector.Add(*pumpRequirement)
+		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.Pump.Volumes = m }
 		if quantity, ok := tc.Spec.Pump.Requests[corev1.ResourceStorage]; ok {
-			key := fmt.Sprintf("data-%s-%s", tc.Name, pumpMemberType)
-			pvcPrefix2Quantity[key] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.PumpMemberType)] = quantity
 		}
-		if err := p.patchPVCs(ns, selector.Add(*pumpRequirement), pvcPrefix2Quantity); err != nil {
-			return err
+	default:
+		return nil, fmt.Errorf("unsupported member type %s", comp)
+	}
+
+	for _, sv := range storageVolumes {
+		if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
+			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName(sv.Name, comp)] = quantity
+		} else {
+			klog.Warningf("StorageVolume %q in %s/%s .spec.%s is invalid", sv.Name, ns, name, comp)
 		}
 	}
-	return nil
+
+	podVolumes, err := p.collectAcutalStatus(ns, ctx.selector)
+	if err != nil {
+		return nil, err
+	}
+	ctx.actualPodVolumes = podVolumes
+
+	return ctx, nil
 }
 
-// ResizeDM do things similar to Resize for TidbCluster
-func (p *pvcResizer) ResizeDM(dc *v1alpha1.DMCluster) error {
-	ns := dc.GetNamespace()
+func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.MemberType) (*componentVolumeContext, error) {
+	ns := dc.Namespace
+
+	ctx := &componentVolumeContext{
+		comp:                  comp,
+		updateVolumeStatusFn:  nil,
+		desiredVolumeQuantity: map[string]resource.Quantity{},
+	}
+
 	selector, err := label.NewDM().Instance(dc.GetInstanceName()).Selector()
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// patch dm-master PVCs
-	{
-		pvcPrefix2Quantity := make(map[string]resource.Quantity)
+	switch comp {
+	case v1alpha1.DMMasterMemberType:
+		ctx.selector = selector.Add(*dmMasterRequirement)
 		if quantity, err := resource.ParseQuantity(dc.Spec.Master.StorageSize); err == nil {
-			dmMasterMemberType := v1alpha1.DMMasterMemberType.String()
-			key := fmt.Sprintf("%s-%s-%s", dmMasterMemberType, dc.Name, dmMasterMemberType)
-			pvcPrefix2Quantity[key] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.DMMasterMemberType)] = quantity
 		}
-		if err := p.patchPVCs(ns, selector.Add(*dmMasterRequirement), pvcPrefix2Quantity); err != nil {
-			return err
-		}
-	}
-
-	// patch dm-worker PVCs
-	if dc.Spec.Worker != nil {
-		pvcPrefix2Quantity := make(map[string]resource.Quantity)
+	case v1alpha1.DMWorkerMemberType:
+		ctx.selector = selector.Add(*dmWorkerRequirement)
 		if quantity, err := resource.ParseQuantity(dc.Spec.Worker.StorageSize); err == nil {
-			dmWorkerMemberType := v1alpha1.DMWorkerMemberType.String()
-			key := fmt.Sprintf("%s-%s-%s", dmWorkerMemberType, dc.Name, dmWorkerMemberType)
-			pvcPrefix2Quantity[key] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.DMWorkerMemberType)] = quantity
 		}
-		if err := p.patchPVCs(ns, selector.Add(*dmWorkerRequirement), pvcPrefix2Quantity); err != nil {
-			return err
-		}
+	default:
+		return nil, fmt.Errorf("unsupported member type %s", comp)
 	}
-	return nil
+
+	podVolumes, err := p.collectAcutalStatus(ns, ctx.selector)
+	if err != nil {
+		return nil, err
+	}
+	ctx.actualPodVolumes = podVolumes
+
+	return ctx, nil
 }
 
-func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, error) {
-	sc, err := p.deps.StorageClassLister.Get(storageClassName)
-	if err != nil {
-		return false, err
+// updateVolumeStatus build volume status from `actualPodVolumes` and call the `updateVolumeStatusFn` function.
+func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
+	if ctx.updateVolumeStatusFn == nil {
+		return
 	}
-	if sc.AllowVolumeExpansion == nil {
-		return false, nil
+
+	getCapacity := func(volName string, pvc *corev1.PersistentVolumeClaim) (resource.Quantity, resource.Quantity, bool) {
+		var desired, actual resource.Quantity
+		var exist bool
+
+		if pvc.Status.Phase != corev1.ClaimBound {
+			return desired, actual, false
+		}
+		desired, exist = ctx.desiredVolumeQuantity[volName]
+		if !exist {
+			return desired, actual, false
+		}
+		actual, exist = pvc.Status.Capacity[corev1.ResourceStorage]
+		if !exist {
+			return desired, actual, false
+		}
+
+		return desired, actual, true
 	}
-	return *sc.AllowVolumeExpansion, nil
+
+	allStatus := map[string]*v1alpha1.StorageVolumeStatus{}
+	for _, podVolume := range ctx.actualPodVolumes {
+		for volName, pvc := range podVolume.volToPVCs {
+			desiredQuantity, actualQuantity, pred := getCapacity(volName, pvc)
+			if !pred {
+				continue
+			}
+
+			status, exist := allStatus[volName]
+			if !exist {
+				status = &v1alpha1.StorageVolumeStatus{
+					Name:            volName,
+					BoundCount:      0,
+					CurrentCount:    0,
+					ResizedCount:    0,
+					CurrentCapacity: desiredQuantity,
+					ResizedCapacity: desiredQuantity,
+				}
+				allStatus[volName] = status
+			}
+
+			status.BoundCount++
+			if actualQuantity.Cmp(desiredQuantity) == 0 {
+				status.ResizedCount++
+			} else {
+				status.CurrentCount++
+				status.CurrentCapacity = actualQuantity
+			}
+		}
+	}
+
+	for _, status := range allStatus {
+		if status.CurrentCapacity.Cmp(status.ResizedCapacity) == 0 {
+			status.CurrentCount = status.ResizedCount
+		}
+	}
+
+	ctx.updateVolumeStatusFn(allStatus)
 }
 
-// patchPVCs patches PVCs filtered by selector and prefix.
-func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityInSpec map[string]resource.Quantity) error {
-	if len(pvcQuantityInSpec) == 0 {
-		return nil
-	}
-	pvcs, err := p.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
-	if err != nil {
-		return err
-	}
+// resizeVolumes resize PVCs by comparing `desiredVolumeQuantity` and `actualVolumeQuantity` in context.
+func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
+	desiredVolumeQuantity := ctx.desiredVolumeQuantity
+	podVolumes := ctx.actualPodVolumes
 
-	// the PVC name for StatefulSet will be ${pvcNameInTemplate}-${stsName}-${ordinal}, here we want to drop the ordinal
-	rePvcPrefix := regexp.MustCompile(`^(.+)-\d+$`)
-	for _, pvc := range pvcs {
-		match := rePvcPrefix.FindStringSubmatch(pvc.Name)
-		pvcPrefix := match[1]
-		quantityInSpec, ok := pvcQuantityInSpec[pvcPrefix]
-		if !ok {
-			// TODO: PVC not specified in tc.spec, should we deal with it and raise a warning
-			continue
-		}
+	for _, podVolume := range podVolumes {
+		for volName, pvc := range podVolume.volToPVCs {
+			quantityInSpec, exist := desiredVolumeQuantity[volName]
+			if !exist {
+				continue
+			}
 
-		if pvc.Spec.StorageClassName == nil {
-			klog.Warningf("PVC %s/%s has no storage class, skipped", pvc.Namespace, pvc.Name)
-			continue
-		}
+			// not support default storage class
+			if pvc.Spec.StorageClassName == nil {
+				klog.Warningf("PVC %s/%s has no storage class, skipped", pvc.Namespace, pvc.Name)
+				continue
+			}
 
-		currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
-		if !ok {
-			klog.Warningf("PVC %s/%s storage request is empty, skipped", pvc.Namespace, pvc.Name)
-			continue
-		}
+			// check whether the volume needs to be expanded
+			currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+			if !ok {
+				klog.Warningf("PVC %s/%s storage request is empty, skipped", pvc.Namespace, pvc.Name)
+				continue
+			}
+			cmpVal := quantityInSpec.Cmp(currentRequest)
+			if cmpVal == 0 {
+				klog.V(4).Infof("PVC %s/%s storage request is already %s, skipped", pvc.Namespace, pvc.Name, quantityInSpec.String())
+				continue
+			}
+			if cmpVal < 0 {
+				klog.Warningf("PVC %s/%s/ storage request cannot be shrunk (%s to %s), skipped",
+					pvc.Namespace, pvc.Name, currentRequest.String(), quantityInSpec.String())
+				continue
+			}
 
-		if quantityInSpec.Cmp(currentRequest) > 0 {
+			// check whether the storage class support
 			if p.deps.StorageClassLister != nil {
 				volumeExpansionSupported, err := p.isVolumeExpansionSupported(*pvc.Spec.StorageClassName)
 				if err != nil {
 					return err
 				}
 				if !volumeExpansionSupported {
-					klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped", *pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
+					klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped",
+						*pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
 					continue
 				}
 			} else {
 				klog.V(4).Infof("Storage classes lister is unavailable, skip checking volume expansion support for PVC %s/%s with storage class %s. This may be caused by no relevant permissions",
 					pvc.Namespace, pvc.Name, *pvc.Spec.StorageClassName)
 			}
+
+			// patch PVC to expand the storage
 			mergePatch, err := json.Marshal(map[string]interface{}{
 				"spec": map[string]interface{}{
 					"resources": corev1.ResourceRequirements{
@@ -305,14 +409,66 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, pvcQuantityI
 			if err != nil {
 				return err
 			}
-			klog.V(2).Infof("PVC %s/%s storage request is updated from %s to %s", pvc.Namespace, pvc.Name, currentRequest.String(), quantityInSpec.String())
-		} else if quantityInSpec.Cmp(currentRequest) < 0 {
-			klog.Warningf("PVC %s/%s/ storage request cannot be shrunk (%s to %s), skipped", pvc.Namespace, pvc.Name, currentRequest.String(), quantityInSpec.String())
-		} else {
-			klog.V(4).Infof("PVC %s/%s storage request is already %s, skipped", pvc.Namespace, pvc.Name, quantityInSpec.String())
+			klog.V(2).Infof("PVC %s/%s storage request is updated from %s to %s",
+				pvc.Namespace, pvc.Name, currentRequest.String(), quantityInSpec.String())
 		}
 	}
+
 	return nil
+}
+
+func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([]*podVolumeContext, error) {
+	pods, err := p.deps.PodLister.Pods(ns).List(selector)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list Pods: %v", err)
+	}
+	pvcs, err := p.deps.PVCLister.PersistentVolumeClaims(ns).List(selector)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list PVCs: %v", err)
+	}
+
+	result := make([]*podVolumeContext, 0, len(pods))
+	findPVC := func(pvcName string) (*corev1.PersistentVolumeClaim, error) {
+		for _, pvc := range pvcs {
+			if pvc.Name == pvcName {
+				return pvc, nil
+			}
+		}
+		return nil, fmt.Errorf("failed to find PVC %s", pvcName)
+	}
+
+	for _, pod := range pods {
+		volToPVCs := map[string]*corev1.PersistentVolumeClaim{}
+
+		for _, vol := range pod.Spec.Volumes {
+			if vol.PersistentVolumeClaim != nil {
+				pvc, err := findPVC(vol.PersistentVolumeClaim.ClaimName)
+				if err != nil {
+					// FIXME: log
+					continue
+				}
+				volToPVCs[vol.Name] = pvc
+			}
+		}
+
+		result = append(result, &podVolumeContext{
+			pod:       pod,
+			volToPVCs: volToPVCs,
+		})
+	}
+
+	return result, nil
+}
+
+func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, error) {
+	sc, err := p.deps.StorageClassLister.Get(storageClassName)
+	if err != nil {
+		return false, err
+	}
+	if sc.AllowVolumeExpansion == nil {
+		return false, nil
+	}
+	return *sc.AllowVolumeExpansion, nil
 }
 
 func NewPVCResizer(deps *controller.Dependencies) PVCResizerInterface {
@@ -324,11 +480,11 @@ func NewPVCResizer(deps *controller.Dependencies) PVCResizerInterface {
 type fakePVCResizer struct {
 }
 
-func (f *fakePVCResizer) Resize(_ *v1alpha1.TidbCluster) error {
+func (f *fakePVCResizer) Sync(_ *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (f *fakePVCResizer) ResizeDM(_ *v1alpha1.DMCluster) error {
+func (f *fakePVCResizer) SyncDM(_ *v1alpha1.DMCluster) error {
 	return nil
 }
 

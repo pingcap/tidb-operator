@@ -609,7 +609,7 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 			return nil, err
 		}
 		pvcs = append(pvcs, corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("data%d", k)},
+			ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.GetPVCTemplateNameForTiFlash(k)},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,

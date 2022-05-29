@@ -564,11 +564,12 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	}
 
 	annMount, annVolume := annotationsMountVolume()
+	dataVolumeName := v1alpha1.GetPVCTemplateName("", v1alpha1.PDMemberType)
 	volMounts := []corev1.VolumeMount{
 		annMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
-		{Name: v1alpha1.PDMemberType.String(), MountPath: pdDataVolumeMountPath},
+		{Name: dataVolumeName, MountPath: pdDataVolumeMountPath},
 	}
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
@@ -798,18 +799,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 				Spec: podSpec,
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: v1alpha1.PDMemberType.String(),
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{
-							corev1.ReadWriteOnce,
-						},
-						StorageClassName: tc.Spec.PD.StorageClassName,
-						Resources:        storageRequest,
-					},
-				},
+				util.VolumeClaimTemplate(storageRequest, dataVolumeName, tc.Spec.PD.StorageClassName),
 			},
 			ServiceName:         controller.PDPeerMemberName(tcName),
 			PodManagementPolicy: basePDSpec.PodManagementPolicy(),
