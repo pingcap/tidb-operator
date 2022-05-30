@@ -102,6 +102,11 @@ func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
 		bucket = backup.Spec.StorageProvider.Gcs.Bucket
 		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
 		return url, nil
+	case v1alpha1.BackupStorageTypeAzblob:
+		prefix = backup.Spec.StorageProvider.Azblob.Prefix
+		bucket = backup.Spec.StorageProvider.Azblob.Container
+		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
+		return url, nil
 	case v1alpha1.BackupStorageTypeLocal:
 		prefix = backup.Spec.StorageProvider.Local.Prefix
 		mountPath := backup.Spec.StorageProvider.Local.VolumeMount.MountPath

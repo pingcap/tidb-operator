@@ -149,6 +149,36 @@ func TestGenerateGcsCertEnvVar(t *testing.T) {
 	g.Expect(len(envs)).ShouldNot(Equal(0))
 }
 
+func TestGenerateAzblobCertEnvVar(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	var azblob *v1alpha1.AzblobStorageProvider
+
+	contains := func(envs []corev1.EnvVar, name string, value string) {
+		for _, e := range envs {
+			if e.Name == name {
+				g.Expect(e.Value).Should(Equal(value))
+				return
+			}
+		}
+		t.Fatalf("env %s not exist", name)
+	}
+
+	// test &v1alpha1.AzblobStorageProvider AccessTier default value
+	azblob = &v1alpha1.AzblobStorageProvider{
+		AccessTier: "",
+	}
+	envs, _, err := generateAzblobCertEnvVar(azblob, true)
+	g.Expect(err).Should(BeNil())
+	contains(envs, "AZURE_ACCESS_TIER", "Cool")
+
+	// test &v1alpha1.AzblobStorageProvider AccessTier set value
+	azblob.AccessTier = "Hot"
+	envs, _, err = generateAzblobCertEnvVar(azblob, true)
+	g.Expect(err).Should(BeNil())
+	contains(envs, "AZURE_ACCESS_TIER", "Hot")
+}
+
 func TestGenerateStorageCertEnv(t *testing.T) {
 	g := NewGomegaWithT(t)
 	ns := "ns"
@@ -182,6 +212,13 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 		},
 		{
 			provider: v1alpha1.StorageProvider{},
+		},
+		{
+			provider: v1alpha1.StorageProvider{
+				Azblob: &v1alpha1.AzblobStorageProvider{
+					SecretName: secretName,
+				},
+			},
 		},
 	}
 	for _, test := range tests {
@@ -225,11 +262,56 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 			constants.GcsCredentialsKey: []byte("dummy"),
 			constants.S3AccessKey:       []byte("dummy"),
 			constants.S3SecretKey:       []byte("dummy"),
+			constants.AzblobAccountName: []byte("dummy"),
+			constants.AzblobAccountKey:  []byte("dummy"),
+			constants.AzblobClientID:    []byte("dummy"),
+			constants.AzblobClientScrt:  []byte("dummy"),
+			constants.AzblobTenantID:    []byte("dummy"),
 		}
 		err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
 		g.Expect(err).Should(BeNil())
 		_, _, err = GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
 		g.Expect(err).Should(BeNil())
+
+		// test azblob secret with key
+		if test.provider.Azblob != nil && test.provider.Azblob.SecretName != "" {
+
+			// test missing some critical key
+			s.Data = map[string][]byte{
+				constants.TidbPasswordKey:   []byte("dummy"),
+				constants.AzblobAccountName: []byte("dummy"),
+				constants.AzblobClientID:    []byte("dummy"),
+				constants.AzblobTenantID:    []byte("dummy"),
+			}
+			err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
+			g.Expect(err).Should(BeNil())
+			_, _, err = GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
+			g.Expect(err.Error()).Should(MatchRegexp(".*missing some keys.*"))
+
+			// test integrated shared key
+			s.Data = map[string][]byte{
+				constants.TidbPasswordKey:   []byte("dummy"),
+				constants.AzblobAccountName: []byte("dummy"),
+				constants.AzblobAccountKey:  []byte("dummy"),
+			}
+			err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
+			g.Expect(err).Should(BeNil())
+			_, _, err = GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
+			g.Expect(err).Should(BeNil())
+
+			// test integrated AAD key
+			s.Data = map[string][]byte{
+				constants.TidbPasswordKey:   []byte("dummy"),
+				constants.AzblobAccountName: []byte("dummy"),
+				constants.AzblobClientID:    []byte("dummy"),
+				constants.AzblobClientScrt:  []byte("dummy"),
+				constants.AzblobTenantID:    []byte("dummy"),
+			}
+			err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
+			g.Expect(err).Should(BeNil())
+			_, _, err = GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
+			g.Expect(err).Should(BeNil())
+		}
 	}
 }
 

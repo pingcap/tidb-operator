@@ -484,6 +484,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		})
 	}
 	workerContainer.Env = util.AppendEnv(env, baseWorkerSpec.Env())
+	workerContainer.EnvFrom = baseWorkerSpec.EnvFrom()
 	podSpec.Volumes = append(vols, baseWorkerSpec.AdditionalVolumes()...)
 	podSpec.Containers = append([]corev1.Container{workerContainer}, baseWorkerSpec.AdditionalContainers()...)
 	var initContainers []corev1.Container // no default initContainers now
