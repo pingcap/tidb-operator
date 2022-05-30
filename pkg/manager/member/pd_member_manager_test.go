@@ -1000,6 +1000,20 @@ func testContainerEnv(t *testing.T, env []corev1.EnvVar, memberType v1alpha1.Mem
 	}
 }
 
+func testContainerEnvFrom(t *testing.T, envFrom []corev1.EnvFromSource, memberType v1alpha1.MemberType) func(sts *apps.StatefulSet) {
+	return func(sts *apps.StatefulSet) {
+		got := []corev1.EnvFromSource{}
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			if c.Name == memberType.String() {
+				got = c.EnvFrom
+			}
+		}
+		if diff := cmp.Diff(envFrom, got); diff != "" {
+			t.Errorf("unexpected (-want, +got): %s", diff)
+		}
+	}
+}
+
 func testAdditionalContainers(t *testing.T, additionalContainers []corev1.Container) func(sts *apps.StatefulSet) {
 	return func(sts *apps.StatefulSet) {
 		cs := sts.Spec.Template.Spec.Containers
