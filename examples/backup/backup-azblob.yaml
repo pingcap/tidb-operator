@@ -1,0 +1,29 @@
+apiVersion: pingcap.com/v1alpha1
+kind: Backup
+metadata:
+  name: basic-backup-azblob
+  namespace: default
+spec:
+  cleanPolicy: Delete
+  # backupType: full
+  # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
+  # from:
+  #   host: ${tidb-host}
+  #   port: ${tidb-port}
+  #   user: ${tidb-user}
+  #   secretName: backup-basic-tidb-secret
+  br:
+    cluster: basic
+    clusterNamespace: default
+    # logLevel: info
+    # statusAddr: ${status-addr}
+    # concurrency: 4
+    # rateLimit: 0
+    # checksum: true
+    sendCredToTikv: true
+    # options:
+    # - --lastbackupts=420134118382108673
+  azblob:
+    prefix: t1
+    container: test1
+    secretName: azblob-secret 
