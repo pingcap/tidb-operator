@@ -3157,7 +3157,7 @@ spec:
 		thanosReceiverStsObj, _, _ := decode([]byte(thanosReceiverYaml), nil, nil)
 		thanosReceiverSts := thanosReceiverStsObj.(*v1.StatefulSet) // This fails
 		_, err = c.AppsV1().StatefulSets(ns).Create(context.TODO(), thanosReceiverSts, metav1.CreateOptions{})
-		framework.ExpectNoError(err, "Expected thanos receiver deployed success")
+		framework.ExpectNoError(err, "Expected thanos receiver created success")
 
 		err = wait.PollImmediate(15*time.Second, 3*time.Minute, func() (bool, error) {
 			receiverSts, err := c.AppsV1().StatefulSets(ns).Get(context.TODO(), thanosReceiverSts.Name, metav1.GetOptions{})
@@ -3275,7 +3275,7 @@ spec:
 		thanosQueryDeploymentObj, _, _ := decode([]byte(thanosQueryYaml), nil, nil)
 		thanosQueryDeployment := thanosQueryDeploymentObj.(*v1.Deployment) // This fails
 		_, err = c.AppsV1().Deployments(ns).Create(context.TODO(), thanosQueryDeployment, metav1.CreateOptions{})
-		framework.ExpectNoError(err, "Expected thanos query deployed success")
+		framework.ExpectNoError(err, "Expected thanos query created success")
 		err = wait.PollImmediate(15*time.Second, 3*time.Minute, func() (bool, error) {
 			queryDeployment, err := c.AppsV1().Deployments(ns).Get(context.TODO(), thanosQueryDeployment.Name, metav1.GetOptions{})
 			if err != nil {
@@ -3316,7 +3316,7 @@ spec:
 		_, err = c.CoreV1().Services(ns).Create(context.TODO(), thanosQueryService, metav1.CreateOptions{})
 		framework.ExpectNoError(err, "Expected thanos query service created success")
 
-		err = tests.CheckThanosCommon("thanos-query", tm.Namespace, fw, 1, 0)
+		err = tests.CheckThanosQueryData("thanos-query", tm.Namespace, fw, 1)
 		framework.ExpectNoError(err, "Expected thanos query check success")
 
 		ginkgo.By("Delete tidbmonitor")
