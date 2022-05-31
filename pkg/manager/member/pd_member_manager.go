@@ -768,6 +768,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		})
 	}
 	pdContainer.Env = util.AppendEnv(env, basePDSpec.Env())
+	pdContainer.EnvFrom = basePDSpec.EnvFrom()
 	podSpec.Volumes = append(vols, basePDSpec.AdditionalVolumes()...)
 	podSpec.Containers = append([]corev1.Container{pdContainer}, basePDSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.PD.ServiceAccount

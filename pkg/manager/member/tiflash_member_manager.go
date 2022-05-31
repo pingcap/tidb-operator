@@ -558,6 +558,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		})
 	}
 	tiflashContainer.Env = util.AppendEnv(env, baseTiFlashSpec.Env())
+	tiflashContainer.EnvFrom = baseTiFlashSpec.EnvFrom()
 	podSpec.Volumes = append(vols, baseTiFlashSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, baseTiFlashSpec.InitContainers()...)
