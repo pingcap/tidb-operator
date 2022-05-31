@@ -42,6 +42,7 @@ type ComponentAccessor interface {
 	ConfigUpdateStrategy() ConfigUpdateStrategy
 	BuildPodSpec() corev1.PodSpec
 	Env() []corev1.EnvVar
+	EnvFrom() []corev1.EnvFromSource
 	AdditionalContainers() []corev1.Container
 	InitContainers() []corev1.Container
 	AdditionalVolumes() []corev1.Volume
@@ -286,6 +287,13 @@ func (a *componentAccessorImpl) Env() []corev1.EnvVar {
 		return nil
 	}
 	return a.ComponentSpec.Env
+}
+
+func (a *componentAccessorImpl) EnvFrom() []corev1.EnvFromSource {
+	if a.ComponentSpec == nil {
+		return nil
+	}
+	return a.ComponentSpec.EnvFrom
 }
 
 func (a *componentAccessorImpl) InitContainers() []corev1.Container {
