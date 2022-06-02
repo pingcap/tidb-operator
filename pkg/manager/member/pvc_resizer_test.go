@@ -434,6 +434,7 @@ func TestPVCResizer(t *testing.T) {
 				wantPVC := tt.wantPVCs[i]
 				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 				g.Expect(err).To(gomega.Succeed())
+				got.Status.Capacity[v1.ResourceStorage] = got.Spec.Resources.Requests[v1.ResourceStorage] // to ignore resource status
 				diff := cmp.Diff(wantPVC, got)
 				g.Expect(diff).To(gomega.BeEmpty(), "unexpected (-want, +got): %s", diff)
 			}
