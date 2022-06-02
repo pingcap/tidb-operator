@@ -96,7 +96,6 @@ type componentVolumeContext struct {
 	updateVolumeStatusFn func(map[string]*v1alpha1.StorageVolumeStatus)
 
 	actualPodVolumes []*podVolumeContext
-	
 }
 
 func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {

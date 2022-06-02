@@ -10614,6 +10614,20 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.
+Key is the volume name and same as <code>StorageVolumeStatus.Name</code>.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstorelabel">PDStoreLabel</h3>
@@ -11818,6 +11832,20 @@ Kubernetes apps/v1.StatefulSetStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.
+Key is the volume name and same as <code>StorageVolumeStatus.Name</code>.</p>
 </td>
 </tr>
 </tbody>
@@ -13618,6 +13646,91 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="storagevolumestatus">StorageVolumeStatus</h3>
+<p>
+<p>StorageVolumeStatus is the actual status for a storage</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the volume name in pod spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>boundCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BoundCount is the count of bound volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CurrentCount is the count of volumes whose capacity is equal to <code>currentCapacity</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resizedCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResizedCount is the count of volumes whose capacity is equal to <code>resizedCapacity</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentCapacity</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>CurrentCapacity is the current capacity of the volume.
+If any volume is resizing, it is the capacity before resizing.
+If all volumes are resized, it is the resized capacity and same as desired capacity.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resizedCapacity</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>ResizedCapacity is the desired capacity of the volume.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tlscluster">TLSCluster</h3>
 <p>
 (<em>Appears on:</em>
@@ -14232,6 +14345,20 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCaptu
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.
+Key is the volume name and same as <code>StorageVolumeStatus.Name</code>.</p>
 </td>
 </tr>
 </tbody>
@@ -15607,6 +15734,20 @@ bool
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.
+Key is the volume name and same as <code>StorageVolumeStatus.Name</code>.</p>
 </td>
 </tr>
 </tbody>
@@ -20227,6 +20368,20 @@ map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLead
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.
+Key is the volume name and same as <code>StorageVolumeStatus.Name</code>.</p>
 </td>
 </tr>
 </tbody>
