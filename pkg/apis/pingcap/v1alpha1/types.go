@@ -2433,10 +2433,7 @@ type StorageVolume struct {
 	MountPath        string  `json:"mountPath,omitempty"`
 }
 
-// StorageVolumeStatus is the actual status for a storage
-type StorageVolumeStatus struct {
-	// Name is the volume name in pod spec.
-	Name string `json:"name"`
+type ObservedStorageVolumeStatus struct {
 	// BoundCount is the count of bound volumes.
 	// +optional
 	BoundCount int `json:"boundCount"`
@@ -2452,6 +2449,13 @@ type StorageVolumeStatus struct {
 	CurrentCapacity resource.Quantity `json:"currentCapacity"`
 	// ResizedCapacity is the desired capacity of the volume.
 	ResizedCapacity resource.Quantity `json:"resizedCapacity"`
+}
+
+// StorageVolumeStatus is the actual status for a storage
+type StorageVolumeStatus struct {
+	ObservedStorageVolumeStatus `json:",inline"`
+	// Name is the volume name in pod spec.
+	Name string `json:"name"`
 }
 
 // TopologySpreadConstraint specifies how to spread matching pods among the given topology.

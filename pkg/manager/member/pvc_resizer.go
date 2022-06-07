@@ -92,10 +92,10 @@ type componentVolumeContext struct {
 	// desiredVolumeSpec is the volume request in tc spec
 	// key: volume name in pod, value: volume request in spec
 	desiredVolumeQuantity map[string]resource.Quantity
-	// function to update volume status in tc status
-	updateVolumeStatusFn func(map[string]*v1alpha1.StorageVolumeStatus)
-
+	// actualPodVolumes is the actual status for all volumes
 	actualPodVolumes []*podVolumeContext
+
+	sourceVolumeStatus map[string]*v1alpha1.StorageVolumeStatus
 }
 
 func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
@@ -183,25 +183,37 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 	switch comp {
 	case v1alpha1.PDMemberType:
 		ctx.selector = selector.Add(*pdRequirement)
-		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.PD.Volumes = m }
+		if tc.Status.PD.Volumes == nil {
+			tc.Status.PD.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+		}
+		ctx.sourceVolumeStatus = tc.Status.PD.Volumes
 		if quantity, ok := tc.Spec.PD.Requests[corev1.ResourceStorage]; ok {
 			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.PDMemberType)] = quantity
 		}
 		storageVolumes = tc.Spec.PD.StorageVolumes
 	case v1alpha1.TiDBMemberType:
 		ctx.selector = selector.Add(*tidbRequirement)
-		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.TiDB.Volumes = m }
+		if tc.Status.TiDB.Volumes == nil {
+			tc.Status.TiDB.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+		}
+		ctx.sourceVolumeStatus = tc.Status.TiDB.Volumes
 		storageVolumes = tc.Spec.TiDB.StorageVolumes
 	case v1alpha1.TiKVMemberType:
 		ctx.selector = selector.Add(*tikvRequirement)
-		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.TiKV.Volumes = m }
+		if tc.Status.TiKV.Volumes == nil {
+			tc.Status.TiKV.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+		}
+		ctx.sourceVolumeStatus = tc.Status.TiKV.Volumes
 		if quantity, ok := tc.Spec.TiKV.Requests[corev1.ResourceStorage]; ok {
 			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.TiKVMemberType)] = quantity
 		}
 		storageVolumes = tc.Spec.TiKV.StorageVolumes
 	case v1alpha1.TiFlashMemberType:
 		ctx.selector = selector.Add(*tiflashRequirement)
-		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.TiFlash.Volumes = m }
+		if tc.Status.TiFlash.Volumes == nil {
+			tc.Status.TiFlash.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+		}
+		ctx.sourceVolumeStatus = tc.Status.TiFlash.Volumes
 		for i, claim := range tc.Spec.TiFlash.StorageClaims {
 			if quantity, ok := claim.Resources.Requests[corev1.ResourceStorage]; ok {
 				ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateNameForTiFlash(i)] = quantity
@@ -209,11 +221,17 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 		}
 	case v1alpha1.TiCDCMemberType:
 		ctx.selector = selector.Add(*ticdcRequirement)
-		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.TiCDC.Volumes = m }
+		if tc.Status.TiCDC.Volumes == nil {
+			tc.Status.TiCDC.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+		}
+		ctx.sourceVolumeStatus = tc.Status.TiCDC.Volumes
 		storageVolumes = tc.Spec.TiCDC.StorageVolumes
 	case v1alpha1.PumpMemberType:
 		ctx.selector = selector.Add(*pumpRequirement)
-		ctx.updateVolumeStatusFn = func(m map[string]*v1alpha1.StorageVolumeStatus) { tc.Status.Pump.Volumes = m }
+		if tc.Status.Pump.Volumes == nil {
+			tc.Status.Pump.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+		}
+		ctx.sourceVolumeStatus = tc.Status.Pump.Volumes
 		if quantity, ok := tc.Spec.Pump.Requests[corev1.ResourceStorage]; ok {
 			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.PumpMemberType)] = quantity
 		}
@@ -243,7 +261,6 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 
 	ctx := &componentVolumeContext{
 		comp:                  comp,
-		updateVolumeStatusFn:  nil,
 		desiredVolumeQuantity: map[string]resource.Quantity{},
 	}
 
@@ -277,7 +294,7 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 
 // updateVolumeStatus build volume status from `actualPodVolumes` and call the `updateVolumeStatusFn` function.
 func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
-	if ctx.updateVolumeStatusFn == nil {
+	if ctx.sourceVolumeStatus == nil {
 		return
 	}
 
@@ -311,12 +328,14 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 			status, exist := allStatus[volName]
 			if !exist {
 				status = &v1alpha1.StorageVolumeStatus{
-					Name:            volName,
-					BoundCount:      0,
-					CurrentCount:    0,
-					ResizedCount:    0,
-					CurrentCapacity: desiredQuantity,
-					ResizedCapacity: desiredQuantity,
+					Name: volName,
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      0,
+						CurrentCount:    0,
+						ResizedCount:    0,
+						CurrentCapacity: desiredQuantity,
+						ResizedCapacity: desiredQuantity,
+					},
 				}
 				allStatus[volName] = status
 			}
@@ -331,13 +350,28 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 		}
 	}
 
+	// update existing volume status
 	for _, status := range allStatus {
+		// all volumes are resized, reset the current count
 		if status.CurrentCapacity.Cmp(status.ResizedCapacity) == 0 {
 			status.CurrentCount = status.ResizedCount
 		}
+
+		volName := status.Name
+		if _, exist := ctx.sourceVolumeStatus[volName]; !exist {
+			ctx.sourceVolumeStatus[volName] = &v1alpha1.StorageVolumeStatus{
+				Name: volName,
+			}
+		}
+		ctx.sourceVolumeStatus[volName].ObservedStorageVolumeStatus = status.ObservedStorageVolumeStatus
 	}
 
-	ctx.updateVolumeStatusFn(allStatus)
+	// remove lost volume
+	for _, status := range ctx.sourceVolumeStatus {
+		if _, exist := allStatus[status.Name]; !exist {
+			delete(ctx.sourceVolumeStatus, status.Name)
+		}
+	}
 }
 
 // resizeVolumes resize PVCs by comparing `desiredVolumeQuantity` and `actualVolumeQuantity` in context.
@@ -408,6 +442,17 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 			if err != nil {
 				return err
 			}
+
+			// update volume status, so that we can observbe that volume is resizing immediately
+			if ctx.sourceVolumeStatus != nil {
+				if status, exist := ctx.sourceVolumeStatus[volName]; exist {
+					if status.CurrentCapacity.Cmp(status.ResizedCapacity) == 0 {
+						status.ResizedCapacity = quantityInSpec
+						status.ResizedCount = 0
+					}
+				}
+			}
+
 			klog.V(2).Infof("PVC %s/%s storage request is updated from %s to %s",
 				pvc.Namespace, pvc.Name, currentRequest.String(), quantityInSpec.String())
 		}
