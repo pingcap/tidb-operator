@@ -297,7 +297,7 @@ try {
             yaml: buildPodYAML(resources: resources, any: true),
             // We allow this pod to remain active for a while, later jobs can
             // reuse cache in previous created nodes.
-            idleMinutes: 0,
+            idleMinutes: 180,
         ) {
         node(buildPodLabel) {
             container("main") {
