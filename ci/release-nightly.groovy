@@ -66,6 +66,8 @@ try {
             ],
         ]
         podTemplate(
+            cloud: "kubernetes-ng",
+            namespace: "jenkins-tidb-operator",
             label: buildPodLabel,
             yaml: podYAML,
             // We allow this pod to remain active for a while, later jobs can
