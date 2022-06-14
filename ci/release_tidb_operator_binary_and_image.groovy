@@ -5,9 +5,6 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 	def UCLOUD_OSS_URL = "http://pingcap-dev.hk.ufileos.com"
 
 	catchError {
-<<<<<<< HEAD
-		node('delivery') {
-=======
 		def delivery_pod_label = "${JOB_NAME}-${BUILD_NUMBER}"
 		podTemplate(label: delivery_pod_label,
 				cloud: "kubernetes-ng",
@@ -34,7 +31,6 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 				],
 		) {
 		node(delivery_pod_label) {
->>>>>>> c1820e39e... ci use new cluster (#4541)
 			container("delivery") {
 				def WORKSPACE = pwd()
 				withCredentials([string(credentialsId: "${env.QN_ACCESS_KET_ID}", variable: 'QN_access_key'), string(credentialsId: "${env.QN_SECRET_KEY_ID}", variable: 'Qiniu_secret_key')]) {
