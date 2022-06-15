@@ -321,7 +321,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	annoMount, annoVolume := annotationsMountVolume()
-	dataVolumeName := v1alpha1.GetStorageVolumeName("", v1alpha1.TiKVMemberType)
+	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.TiKVMemberType))
 	tikvDataVol := corev1.VolumeMount{
 		Name:      dataVolumeName,
 		MountPath: tikvDataVolumeMountPath}
