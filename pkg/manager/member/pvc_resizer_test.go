@@ -142,7 +142,7 @@ func TestPVCResizer(t *testing.T) {
 				newPVCWithStorage("pd-log-tc-pd-2", label.PDLabelVal, "sc", "2Gi"),
 			},
 			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[string]*v1alpha1.StorageVolumeStatus{
+				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 					"pd": {
 						Name: "pd",
 						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -199,7 +199,7 @@ func TestPVCResizer(t *testing.T) {
 				newPVCWithStorage("tidb-log-tc-tidb-2", label.TiDBLabelVal, "sc", "2Gi"),
 			},
 			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[string]*v1alpha1.StorageVolumeStatus{
+				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 					"tidb-log": {
 						Name: "tidb-log",
 						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -258,7 +258,7 @@ func TestPVCResizer(t *testing.T) {
 				newPVCWithStorage("tikv-log-tc-tikv-2", label.TiKVLabelVal, "sc", "2Gi"),
 			},
 			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[string]*v1alpha1.StorageVolumeStatus{
+				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 					"tikv": {
 						Name: "tikv",
 						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -325,7 +325,7 @@ func TestPVCResizer(t *testing.T) {
 				newPVCWithStorage("data1-tc-tiflash-0", label.TiFlashLabelVal, "sc", "3Gi"),
 			},
 			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[string]*v1alpha1.StorageVolumeStatus{
+				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 					"data0": {
 						Name: "data0",
 						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -382,7 +382,7 @@ func TestPVCResizer(t *testing.T) {
 				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-2", label.TiCDCLabelVal, "sc", "2Gi"),
 			},
 			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[string]*v1alpha1.StorageVolumeStatus{
+				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 					"ticdc-sort-dir": {
 						Name: "ticdc-sort-dir",
 						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -425,7 +425,7 @@ func TestPVCResizer(t *testing.T) {
 				newPVCWithStorage("data-tc-pump-0", label.PumpLabelVal, "sc", "2Gi"),
 			},
 			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[string]*v1alpha1.StorageVolumeStatus{
+				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 					"data": {
 						Name: "data",
 						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -694,37 +694,37 @@ func TestUpdateVolumeStatus(t *testing.T) {
 	tests := []struct {
 		name   string
 		setup  func(ctx *componentVolumeContext)
-		expect map[string]*v1alpha1.StorageVolumeStatus
+		expect map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus
 	}{
 		{
 			name: "volumes start to resize",
 			setup: func(ctx *componentVolumeContext) {
-				ctx.desiredVolumeQuantity = map[string]resource.Quantity{
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
 					"volume-1": resource.MustParse("2Gi"),
 					"volume-2": resource.MustParse("2Gi"),
 				}
 				ctx.actualPodVolumes = []*podVolumeContext{
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-1", scName, "2Gi", "1Gi"),
 							"volume-2": newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi"),
 						},
 					},
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi"),
 							"volume-2": newMockPVC("volume-2-pvc-2", scName, "2Gi", "1Gi"),
 						},
 					},
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-3", scName, "2Gi", "1Gi"),
 							"volume-2": newMockPVC("volume-2-pvc-3", scName, "2Gi", "1Gi"),
 						},
 					},
 				}
 			},
-			expect: map[string]*v1alpha1.StorageVolumeStatus{
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 				"volume-1": {
 					Name: "volume-1",
 					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -750,32 +750,32 @@ func TestUpdateVolumeStatus(t *testing.T) {
 		{
 			name: "some volumes is resizing",
 			setup: func(ctx *componentVolumeContext) {
-				ctx.desiredVolumeQuantity = map[string]resource.Quantity{
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
 					"volume-1": resource.MustParse("2Gi"),
 					"volume-2": resource.MustParse("2Gi"),
 				}
 				ctx.actualPodVolumes = []*podVolumeContext{
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"), // resized
 							"volume-2": newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi"),
 						},
 					},
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi"),
 							"volume-2": newMockPVC("volume-2-pvc-2", scName, "2Gi", "2Gi"), // resized
 						},
 					},
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-3", scName, "2Gi", "1Gi"),
 							"volume-2": newMockPVC("volume-2-pvc-3", scName, "2Gi", "2Gi"), // resized
 						},
 					},
 				}
 			},
-			expect: map[string]*v1alpha1.StorageVolumeStatus{
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 				"volume-1": {
 					Name: "volume-1",
 					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -801,32 +801,32 @@ func TestUpdateVolumeStatus(t *testing.T) {
 		{
 			name: "all volumes is resized",
 			setup: func(ctx *componentVolumeContext) {
-				ctx.desiredVolumeQuantity = map[string]resource.Quantity{
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
 					"volume-1": resource.MustParse("2Gi"),
 					"volume-2": resource.MustParse("2Gi"),
 				}
 				ctx.actualPodVolumes = []*podVolumeContext{
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"),
 							"volume-2": newMockPVC("volume-2-pvc-1", scName, "2Gi", "2Gi"),
 						},
 					},
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi"),
 							"volume-2": newMockPVC("volume-2-pvc-2", scName, "2Gi", "2Gi"),
 						},
 					},
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi"),
 							"volume-2": newMockPVC("volume-2-pvc-3", scName, "2Gi", "2Gi"),
 						},
 					},
 				}
 			},
-			expect: map[string]*v1alpha1.StorageVolumeStatus{
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 				"volume-1": {
 					Name: "volume-1",
 					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -852,32 +852,32 @@ func TestUpdateVolumeStatus(t *testing.T) {
 		{
 			name: "remove lost volume status",
 			setup: func(ctx *componentVolumeContext) {
-				ctx.sourceVolumeStatus = map[string]*v1alpha1.StorageVolumeStatus{
+				ctx.sourceVolumeStatus = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 					"volume-1": {Name: "volume-1"},
 					"volume-2": {Name: "volume-2"},
 				}
-				ctx.desiredVolumeQuantity = map[string]resource.Quantity{
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
 					"volume-1": resource.MustParse("2Gi"),
 				}
 				ctx.actualPodVolumes = []*podVolumeContext{
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"),
 						},
 					},
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi"),
 						},
 					},
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi"),
 						},
 					},
 				}
 			},
-			expect: map[string]*v1alpha1.StorageVolumeStatus{
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 				"volume-1": {
 					Name: "volume-1",
 					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -893,31 +893,31 @@ func TestUpdateVolumeStatus(t *testing.T) {
 		{
 			name: "update existing volume status",
 			setup: func(ctx *componentVolumeContext) {
-				ctx.sourceVolumeStatus = map[string]*v1alpha1.StorageVolumeStatus{
+				ctx.sourceVolumeStatus = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 					"volume-1": {Name: "volume-1"},
 				}
-				ctx.desiredVolumeQuantity = map[string]resource.Quantity{
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
 					"volume-1": resource.MustParse("2Gi"),
 				}
 				ctx.actualPodVolumes = []*podVolumeContext{
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"),
 						},
 					},
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi"),
 						},
 					},
 					{
-						volToPVCs: map[string]*v1.PersistentVolumeClaim{
+						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
 							"volume-1": newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi"),
 						},
 					},
 				}
 			},
-			expect: map[string]*v1alpha1.StorageVolumeStatus{
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 				"volume-1": {
 					Name: "volume-1",
 					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
@@ -940,7 +940,7 @@ func TestUpdateVolumeStatus(t *testing.T) {
 			}
 
 			ctx := &componentVolumeContext{}
-			ctx.sourceVolumeStatus = map[string]*v1alpha1.StorageVolumeStatus{}
+			ctx.sourceVolumeStatus = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 			if tt.setup != nil {
 				tt.setup(ctx)
 			}
@@ -1050,13 +1050,13 @@ func addVolumeForPod(pods []*corev1.Pod, comp v1alpha1.MemberType,
 	volumeNames := []string{}
 
 	if dataVolumeStorageClass != nil {
-		volumeNames = append(volumeNames, v1alpha1.GetPVCTemplateName("", comp))
+		volumeNames = append(volumeNames, string(v1alpha1.GetStorageVolumeName("", comp)))
 	}
 	for _, sv := range storageVolumes {
-		volumeNames = append(volumeNames, v1alpha1.GetPVCTemplateName(sv.Name, comp))
+		volumeNames = append(volumeNames, string(v1alpha1.GetStorageVolumeName(sv.Name, comp)))
 	}
 	for i := range storageClaims {
-		volumeNames = append(volumeNames, v1alpha1.GetPVCTemplateNameForTiFlash(i))
+		volumeNames = append(volumeNames, string(v1alpha1.GetStorageVolumeNameForTiFlash(i)))
 	}
 
 	for _, volName := range volumeNames {

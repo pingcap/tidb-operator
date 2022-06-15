@@ -527,7 +527,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	masterConfigMap := cm.Name
 
 	annoMount, annoVolume := annotationsMountVolume()
-	dataVolumeName := v1alpha1.GetPVCTemplateName("", v1alpha1.DMMasterMemberType)
+	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.DMMasterMemberType))
 	volMounts := []corev1.VolumeMount{
 		annoMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/dm-master"},

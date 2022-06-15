@@ -85,23 +85,23 @@ func GetMaxReplicaCountAndDeleteSlots(replicas int32, deleteSlots sets.Int32) (i
 	return replicaCount, deleteSlotsCopy
 }
 
-// GetPVCTemplateName return the PVC template name for a component's storage volume
+// GetStorageVolumeName return the storage volume name for a component's storage volume (not support TiFlash).
 //
-// When storageVolumeName is empty, it indicate volume is base data volume which have special name. (not support TiFlash)
+// When storageVolumeName is empty, it indicate volume is base data volume which have special name.
 // When storageVolumeName is not empty, it indicate volume is additional volume which is declaired in `spec.storageVolumes`.
-func GetPVCTemplateName(storageVolumeName string, memberType MemberType) string {
+func GetStorageVolumeName(storageVolumeName string, memberType MemberType) StorageVolumeName {
 	if storageVolumeName == "" {
 		switch memberType {
 		case PumpMemberType:
-			return "data"
+			return StorageVolumeName("data")
 		default:
-			return memberType.String()
+			return StorageVolumeName(memberType.String())
 		}
 	}
-	return fmt.Sprintf("%s-%s", memberType.String(), storageVolumeName)
+	return StorageVolumeName(fmt.Sprintf("%s-%s", memberType.String(), storageVolumeName))
 }
 
-// GetPVCTemplateNameForTiFlash return the PVC template name for a TiFlash's data volume
-func GetPVCTemplateNameForTiFlash(index int) string {
-	return fmt.Sprintf("data%d", index)
+// GetStorageVolumeNameForTiFlash return the PVC template name for a TiFlash's data volume
+func GetStorageVolumeNameForTiFlash(index int) StorageVolumeName {
+	return StorageVolumeName(fmt.Sprintf("data%d", index))
 }

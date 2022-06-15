@@ -10696,7 +10696,7 @@ string
 <code>volumes</code></br>
 <em>
 <a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
-map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
 </td>
@@ -11916,7 +11916,7 @@ Kubernetes apps/v1.StatefulSetStatus
 <code>volumes</code></br>
 <em>
 <a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
-map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
 </td>
@@ -13723,6 +13723,14 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="storagevolumename">StorageVolumeName</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storagevolumestatus">StorageVolumeStatus</a>)
+</p>
+<p>
+<p>StorageVolumeName is the volume name which is same as <code>volumes.name</code> in Pod spec.</p>
+</p>
 <h3 id="storagevolumestatus">StorageVolumeStatus</h3>
 <p>
 <p>StorageVolumeStatus is the actual status for a storage</p>
@@ -13754,11 +13762,13 @@ ObservedStorageVolumeStatus
 <td>
 <code>name</code></br>
 <em>
-string
+<a href="#storagevolumename">
+StorageVolumeName
+</a>
 </em>
 </td>
 <td>
-<p>Name is the volume name in pod spec.</p>
+<p>Name is the volume name which is same as <code>volumes.name</code> in Pod spec.</p>
 </td>
 </tr>
 </tbody>
@@ -14384,7 +14394,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCaptu
 <code>volumes</code></br>
 <em>
 <a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
-map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
 </td>
@@ -15773,7 +15783,7 @@ bool
 <code>volumes</code></br>
 <em>
 <a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
-map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
 </td>
@@ -20407,7 +20417,7 @@ map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLead
 <code>volumes</code></br>
 <em>
 <a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
-map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
 </td>

@@ -367,7 +367,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 		})
 	}
 
-	dataVolumeName := v1alpha1.GetPVCTemplateName("", v1alpha1.PumpMemberType)
+	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.PumpMemberType))
 	volumeMounts := []corev1.VolumeMount{
 		{
 			Name:      dataVolumeName,

@@ -564,7 +564,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	}
 
 	annMount, annVolume := annotationsMountVolume()
-	dataVolumeName := v1alpha1.GetPVCTemplateName("", v1alpha1.PDMemberType)
+	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.PDMemberType))
 	volMounts := []corev1.VolumeMount{
 		annMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},

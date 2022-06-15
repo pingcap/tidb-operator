@@ -349,7 +349,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	workerConfigMap := cm.Name
 
 	annoMount, annoVolume := annotationsMountVolume()
-	dataVolumeName := v1alpha1.GetPVCTemplateName("", v1alpha1.DMWorkerMemberType)
+	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.DMWorkerMemberType))
 	volMounts := []corev1.VolumeMount{
 		annoMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/dm-worker"},

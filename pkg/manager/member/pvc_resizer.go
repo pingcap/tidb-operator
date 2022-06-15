@@ -82,7 +82,7 @@ type pvcResizer struct {
 type podVolumeContext struct {
 	pod *corev1.Pod
 	// key: volume name in pod, value: autacl pvc
-	volToPVCs map[string]*corev1.PersistentVolumeClaim
+	volToPVCs map[v1alpha1.StorageVolumeName]*corev1.PersistentVolumeClaim
 }
 
 type componentVolumeContext struct {
@@ -91,11 +91,13 @@ type componentVolumeContext struct {
 	selector labels.Selector
 	// desiredVolumeSpec is the volume request in tc spec
 	// key: volume name in pod, value: volume request in spec
-	desiredVolumeQuantity map[string]resource.Quantity
+	desiredVolumeQuantity map[v1alpha1.StorageVolumeName]resource.Quantity
 	// actualPodVolumes is the actual status for all volumes
 	actualPodVolumes []*podVolumeContext
 
-	sourceVolumeStatus map[string]*v1alpha1.StorageVolumeStatus
+	// sourceVolumeStatus is the volume status in tc status
+	// NOTE: modifying it will modify the status in tc
+	sourceVolumeStatus map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus
 }
 
 func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
@@ -172,7 +174,7 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 
 	ctx := &componentVolumeContext{
 		comp:                  comp,
-		desiredVolumeQuantity: map[string]resource.Quantity{},
+		desiredVolumeQuantity: map[v1alpha1.StorageVolumeName]resource.Quantity{},
 	}
 
 	selector, err := label.New().Instance(tc.GetInstanceName()).Selector()
@@ -184,56 +186,56 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 	case v1alpha1.PDMemberType:
 		ctx.selector = selector.Add(*pdRequirement)
 		if tc.Status.PD.Volumes == nil {
-			tc.Status.PD.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+			tc.Status.PD.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
 		ctx.sourceVolumeStatus = tc.Status.PD.Volumes
 		if quantity, ok := tc.Spec.PD.Requests[corev1.ResourceStorage]; ok {
-			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.PDMemberType)] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.PDMemberType)] = quantity
 		}
 		storageVolumes = tc.Spec.PD.StorageVolumes
 	case v1alpha1.TiDBMemberType:
 		ctx.selector = selector.Add(*tidbRequirement)
 		if tc.Status.TiDB.Volumes == nil {
-			tc.Status.TiDB.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+			tc.Status.TiDB.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
 		ctx.sourceVolumeStatus = tc.Status.TiDB.Volumes
 		storageVolumes = tc.Spec.TiDB.StorageVolumes
 	case v1alpha1.TiKVMemberType:
 		ctx.selector = selector.Add(*tikvRequirement)
 		if tc.Status.TiKV.Volumes == nil {
-			tc.Status.TiKV.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+			tc.Status.TiKV.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
 		ctx.sourceVolumeStatus = tc.Status.TiKV.Volumes
 		if quantity, ok := tc.Spec.TiKV.Requests[corev1.ResourceStorage]; ok {
-			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.TiKVMemberType)] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.TiKVMemberType)] = quantity
 		}
 		storageVolumes = tc.Spec.TiKV.StorageVolumes
 	case v1alpha1.TiFlashMemberType:
 		ctx.selector = selector.Add(*tiflashRequirement)
 		if tc.Status.TiFlash.Volumes == nil {
-			tc.Status.TiFlash.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+			tc.Status.TiFlash.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
 		ctx.sourceVolumeStatus = tc.Status.TiFlash.Volumes
 		for i, claim := range tc.Spec.TiFlash.StorageClaims {
 			if quantity, ok := claim.Resources.Requests[corev1.ResourceStorage]; ok {
-				ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateNameForTiFlash(i)] = quantity
+				ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeNameForTiFlash(i)] = quantity
 			}
 		}
 	case v1alpha1.TiCDCMemberType:
 		ctx.selector = selector.Add(*ticdcRequirement)
 		if tc.Status.TiCDC.Volumes == nil {
-			tc.Status.TiCDC.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+			tc.Status.TiCDC.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
 		ctx.sourceVolumeStatus = tc.Status.TiCDC.Volumes
 		storageVolumes = tc.Spec.TiCDC.StorageVolumes
 	case v1alpha1.PumpMemberType:
 		ctx.selector = selector.Add(*pumpRequirement)
 		if tc.Status.Pump.Volumes == nil {
-			tc.Status.Pump.Volumes = map[string]*v1alpha1.StorageVolumeStatus{}
+			tc.Status.Pump.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
 		ctx.sourceVolumeStatus = tc.Status.Pump.Volumes
 		if quantity, ok := tc.Spec.Pump.Requests[corev1.ResourceStorage]; ok {
-			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.PumpMemberType)] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.PumpMemberType)] = quantity
 		}
 	default:
 		return nil, fmt.Errorf("unsupported member type %s", comp)
@@ -241,7 +243,7 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 
 	for _, sv := range storageVolumes {
 		if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
-			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName(sv.Name, comp)] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName(sv.Name, comp)] = quantity
 		} else {
 			klog.Warningf("StorageVolume %q in %s/%s .spec.%s is invalid", sv.Name, ns, name, comp)
 		}
@@ -261,7 +263,7 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 
 	ctx := &componentVolumeContext{
 		comp:                  comp,
-		desiredVolumeQuantity: map[string]resource.Quantity{},
+		desiredVolumeQuantity: map[v1alpha1.StorageVolumeName]resource.Quantity{},
 	}
 
 	selector, err := label.NewDM().Instance(dc.GetInstanceName()).Selector()
@@ -272,12 +274,12 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 	case v1alpha1.DMMasterMemberType:
 		ctx.selector = selector.Add(*dmMasterRequirement)
 		if quantity, err := resource.ParseQuantity(dc.Spec.Master.StorageSize); err == nil {
-			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.DMMasterMemberType)] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.DMMasterMemberType)] = quantity
 		}
 	case v1alpha1.DMWorkerMemberType:
 		ctx.selector = selector.Add(*dmWorkerRequirement)
 		if quantity, err := resource.ParseQuantity(dc.Spec.Worker.StorageSize); err == nil {
-			ctx.desiredVolumeQuantity[v1alpha1.GetPVCTemplateName("", v1alpha1.DMWorkerMemberType)] = quantity
+			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.DMWorkerMemberType)] = quantity
 		}
 	default:
 		return nil, fmt.Errorf("unsupported member type %s", comp)
@@ -298,7 +300,7 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 		return
 	}
 
-	getCapacity := func(volName string, pvc *corev1.PersistentVolumeClaim) (resource.Quantity, resource.Quantity, bool) {
+	getCapacity := func(volName v1alpha1.StorageVolumeName, pvc *corev1.PersistentVolumeClaim) (resource.Quantity, resource.Quantity, bool) {
 		var desired, actual resource.Quantity
 		var exist bool
 
@@ -317,7 +319,7 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 		return desired, actual, true
 	}
 
-	allStatus := map[string]*v1alpha1.StorageVolumeStatus{}
+	allStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 	for _, podVolume := range ctx.actualPodVolumes {
 		for volName, pvc := range podVolume.volToPVCs {
 			desiredQuantity, actualQuantity, pred := getCapacity(volName, pvc)
@@ -461,6 +463,7 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 	return nil
 }
 
+// collectAcutalStatus list pods and volumes to build context
 func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([]*podVolumeContext, error) {
 	pods, err := p.deps.PodLister.Pods(ns).List(selector)
 	if err != nil {
@@ -482,16 +485,16 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 	}
 
 	for _, pod := range pods {
-		volToPVCs := map[string]*corev1.PersistentVolumeClaim{}
+		volToPVCs := map[v1alpha1.StorageVolumeName]*corev1.PersistentVolumeClaim{}
 
 		for _, vol := range pod.Spec.Volumes {
 			if vol.PersistentVolumeClaim != nil {
 				pvc, err := findPVC(vol.PersistentVolumeClaim.ClaimName)
 				if err != nil {
-					// FIXME: log
+					// TODO: log error?
 					continue
 				}
-				volToPVCs[vol.Name] = pvc
+				volToPVCs[v1alpha1.StorageVolumeName(vol.Name)] = pvc
 			}
 		}
 

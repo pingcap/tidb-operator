@@ -3698,7 +3698,7 @@ func (in *PDStatus) DeepCopyInto(out *PDStatus) {
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
-		*out = make(map[string]*StorageVolumeStatus, len(*in))
+		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))
 		for key, val := range *in {
 			var outVal *StorageVolumeStatus
 			if val == nil {
@@ -4308,7 +4308,7 @@ func (in *PumpStatus) DeepCopyInto(out *PumpStatus) {
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
-		*out = make(map[string]*StorageVolumeStatus, len(*in))
+		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))
 		for key, val := range *in {
 			var outVal *StorageVolumeStatus
 			if val == nil {
@@ -5242,7 +5242,7 @@ func (in *TiCDCStatus) DeepCopyInto(out *TiCDCStatus) {
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
-		*out = make(map[string]*StorageVolumeStatus, len(*in))
+		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))
 		for key, val := range *in {
 			var outVal *StorageVolumeStatus
 			if val == nil {
@@ -5808,7 +5808,7 @@ func (in *TiDBStatus) DeepCopyInto(out *TiDBStatus) {
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
-		*out = make(map[string]*StorageVolumeStatus, len(*in))
+		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))
 		for key, val := range *in {
 			var outVal *StorageVolumeStatus
 			if val == nil {
@@ -6035,7 +6035,7 @@ func (in *TiFlashStatus) DeepCopyInto(out *TiFlashStatus) {
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
-		*out = make(map[string]*StorageVolumeStatus, len(*in))
+		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))
 		for key, val := range *in {
 			var outVal *StorageVolumeStatus
 			if val == nil {
@@ -7921,7 +7921,7 @@ func (in *TiKVStatus) DeepCopyInto(out *TiKVStatus) {
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
-		*out = make(map[string]*StorageVolumeStatus, len(*in))
+		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))
 		for key, val := range *in {
 			var outVal *StorageVolumeStatus
 			if val == nil {

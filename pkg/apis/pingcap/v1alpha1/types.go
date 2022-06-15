@@ -1130,7 +1130,7 @@ type PDStatus struct {
 	Image           string                     `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	// Key is the volume name and same as `StorageVolumeStatus.Name`.
-	Volumes map[string]*StorageVolumeStatus `json:"volumes,omitempty"`
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
 // PDMember is PD member
@@ -1182,7 +1182,7 @@ type TiDBStatus struct {
 	PasswordInitialized      *bool                        `json:"passwordInitialized,omitempty"`
 	// Volumes contains the status of all volumes.
 	// Key is the volume name and same as `StorageVolumeStatus.Name`.
-	Volumes map[string]*StorageVolumeStatus `json:"volumes,omitempty"`
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -1234,7 +1234,7 @@ type TiKVStatus struct {
 	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
 	// Volumes contains the status of all volumes.
 	// Key is the volume name and same as `StorageVolumeStatus.Name`.
-	Volumes map[string]*StorageVolumeStatus `json:"volumes,omitempty"`
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status
@@ -1250,7 +1250,7 @@ type TiFlashStatus struct {
 	Image           string                      `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	// Key is the volume name and same as `StorageVolumeStatus.Name`.
-	Volumes map[string]*StorageVolumeStatus `json:"volumes,omitempty"`
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
 // TiCDCStatus is TiCDC status
@@ -1261,7 +1261,7 @@ type TiCDCStatus struct {
 	Captures    map[string]TiCDCCapture `json:"captures,omitempty"`
 	// Volumes contains the status of all volumes.
 	// Key is the volume name and same as `StorageVolumeStatus.Name`.
-	Volumes map[string]*StorageVolumeStatus `json:"volumes,omitempty"`
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
 // TiCDCCapture is TiCDC Capture status
@@ -1315,7 +1315,7 @@ type PumpStatus struct {
 	Members     []*PumpNodeStatus       `json:"members,omitempty"`
 	// Volumes contains the status of all volumes.
 	// Key is the volume name and same as `StorageVolumeStatus.Name`.
-	Volumes map[string]*StorageVolumeStatus `json:"volumes,omitempty"`
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
@@ -2451,11 +2451,14 @@ type ObservedStorageVolumeStatus struct {
 	ResizedCapacity resource.Quantity `json:"resizedCapacity"`
 }
 
+// StorageVolumeName is the volume name which is same as `volumes.name` in Pod spec.
+type StorageVolumeName string
+
 // StorageVolumeStatus is the actual status for a storage
 type StorageVolumeStatus struct {
 	ObservedStorageVolumeStatus `json:",inline"`
-	// Name is the volume name in pod spec.
-	Name string `json:"name"`
+	// Name is the volume name which is same as `volumes.name` in Pod spec.
+	Name StorageVolumeName `json:"name"`
 }
 
 // TopologySpreadConstraint specifies how to spread matching pods among the given topology.
