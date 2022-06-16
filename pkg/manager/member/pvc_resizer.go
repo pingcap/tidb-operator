@@ -80,8 +80,7 @@ type pvcResizer struct {
 }
 
 type podVolumeContext struct {
-	pod *corev1.Pod
-	// key: volume name in pod, value: autacl pvc
+	pod       *corev1.Pod
 	volToPVCs map[v1alpha1.StorageVolumeName]*corev1.PersistentVolumeClaim
 }
 
@@ -90,7 +89,6 @@ type componentVolumeContext struct {
 	// label selector for pvc and pod
 	selector labels.Selector
 	// desiredVolumeSpec is the volume request in tc spec
-	// key: volume name in pod, value: volume request in spec
 	desiredVolumeQuantity map[v1alpha1.StorageVolumeName]resource.Quantity
 	// actualPodVolumes is the actual status for all volumes
 	actualPodVolumes []*podVolumeContext
@@ -273,11 +271,19 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 	switch comp {
 	case v1alpha1.DMMasterMemberType:
 		ctx.selector = selector.Add(*dmMasterRequirement)
+		if dc.Status.Master.Volumes == nil {
+			dc.Status.Master.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
+		}
+		ctx.sourceVolumeStatus = dc.Status.Master.Volumes
 		if quantity, err := resource.ParseQuantity(dc.Spec.Master.StorageSize); err == nil {
 			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.DMMasterMemberType)] = quantity
 		}
 	case v1alpha1.DMWorkerMemberType:
 		ctx.selector = selector.Add(*dmWorkerRequirement)
+		if dc.Status.Worker.Volumes == nil {
+			dc.Status.Worker.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
+		}
+		ctx.sourceVolumeStatus = dc.Status.Worker.Volumes
 		if quantity, err := resource.ParseQuantity(dc.Spec.Worker.StorageSize); err == nil {
 			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.DMWorkerMemberType)] = quantity
 		}
@@ -352,7 +358,7 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 		}
 	}
 
-	// update existing volume status
+	// add or update existing volume status
 	for _, status := range allStatus {
 		// all volumes are resized, reset the current count
 		if status.CurrentCapacity.Cmp(status.ResizedCapacity) == 0 {
@@ -491,7 +497,8 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 			if vol.PersistentVolumeClaim != nil {
 				pvc, err := findPVC(vol.PersistentVolumeClaim.ClaimName)
 				if err != nil {
-					// TODO: log error?
+					klog.Warning("Failed to find PVC %s of Pod %s/%s, maybe some labels are lost",
+						vol.PersistentVolumeClaim.ClaimName, pod.Namespace, pod.Name)
 					continue
 				}
 				volToPVCs[v1alpha1.StorageVolumeName(vol.Name)] = pvc

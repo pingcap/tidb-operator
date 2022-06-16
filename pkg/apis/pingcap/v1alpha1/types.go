@@ -1129,7 +1129,6 @@ type PDStatus struct {
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
 	Image           string                     `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
-	// Key is the volume name and same as `StorageVolumeStatus.Name`.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
@@ -1181,7 +1180,6 @@ type TiDBStatus struct {
 	Image                    string                       `json:"image,omitempty"`
 	PasswordInitialized      *bool                        `json:"passwordInitialized,omitempty"`
 	// Volumes contains the status of all volumes.
-	// Key is the volume name and same as `StorageVolumeStatus.Name`.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
@@ -1233,7 +1231,6 @@ type TiKVStatus struct {
 	Image           string                        `json:"image,omitempty"`
 	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
 	// Volumes contains the status of all volumes.
-	// Key is the volume name and same as `StorageVolumeStatus.Name`.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
@@ -1249,7 +1246,6 @@ type TiFlashStatus struct {
 	FailoverUID     types.UID                   `json:"failoverUID,omitempty"`
 	Image           string                      `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
-	// Key is the volume name and same as `StorageVolumeStatus.Name`.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
@@ -1260,7 +1256,6 @@ type TiCDCStatus struct {
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Captures    map[string]TiCDCCapture `json:"captures,omitempty"`
 	// Volumes contains the status of all volumes.
-	// Key is the volume name and same as `StorageVolumeStatus.Name`.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
@@ -1314,7 +1309,6 @@ type PumpStatus struct {
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Members     []*PumpNodeStatus       `json:"members,omitempty"`
 	// Volumes contains the status of all volumes.
-	// Key is the volume name and same as `StorageVolumeStatus.Name`.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
@@ -2368,6 +2362,8 @@ type MasterStatus struct {
 	FailureMembers  map[string]MasterFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember      `json:"unjoinedMembers,omitempty"`
 	Image           string                         `json:"image,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
 // MasterMember is dm-master member status
@@ -2402,6 +2398,8 @@ type WorkerStatus struct {
 	FailureMembers map[string]WorkerFailureMember `json:"failureMembers,omitempty"`
 	FailoverUID    types.UID                      `json:"failoverUID,omitempty"`
 	Image          string                         `json:"image,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 }
 
 // WorkerMember is dm-worker member status
