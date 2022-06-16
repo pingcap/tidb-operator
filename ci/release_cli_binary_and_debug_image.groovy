@@ -8,7 +8,26 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID) {
 	def PROJECT_DIR = "go/src/github.com/pingcap/tidb-operator"
 
 	catchError {
-		node('build_go1130_memvolume') {
+		def build_pod_label = "${JOB_NAME}-${BUILD_NUMBER}-build"
+		podTemplate(label: build_pod_label,
+				cloud: "kubernetes-ng",
+				namespace: "jenkins-tidb-operator",
+				idleMinutes: 0,
+				containers: [
+						containerTemplate(
+							name: 'golang', alwaysPullImage: true,
+							image: "hub.pingcap.net/jenkins/centos7_golang-1.13:latest", 
+							ttyEnabled: true, privileged: true,
+							resourceRequestCpu: '2000m', resourceRequestMemory: '4Gi',
+							command: '/bin/sh -c', args: 'cat',
+							envVars: [containerEnvVar(key: 'GOPATH', value: '/go')]     
+						)
+				],
+				volumes: [
+						emptyDirVolume(mountPath: '/home/jenkins', memory: true)
+						],
+		) {
+        node(build_pod_label) {
 			container("golang") {
 				def WORKSPACE = pwd()
 				dir("${PROJECT_DIR}") {
@@ -46,7 +65,28 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID) {
 				stash excludes: "${PROJECT_DIR}/vendor/**", includes: "${PROJECT_DIR}/**", name: "tidb-operator"
 			}
 		}
-		node('delivery') {
+		}
+		def delivery_pod_label = "${JOB_NAME}-${BUILD_NUMBER}"
+		podTemplate(label: delivery_pod_label,
+				cloud: "kubernetes-ng",
+				namespace: "jenkins-tidb-operator",
+				idleMinutes: 0,
+				containers: [
+						containerTemplate(
+							name: 'delivery', alwaysPullImage: true,
+							image: "hub.pingcap.net/jenkins/jenkins-slave-centos7:delivery3", ttyEnabled: true,
+							resourceRequestCpu: '2000m', resourceRequestMemory: '4Gi',
+							command: '/bin/sh -c', args: 'cat' 
+						),
+						containerTemplate(
+							name: 'dind', alwaysPullImage: false,
+							image: "docker:18.09-dind", ttyEnabled: true, privileged: true,
+							resourceRequestCpu: '2000m', resourceRequestMemory: '4Gi',
+							envVars: [containerEnvVar(key: 'DOCKER_HOST', value: 'tcp://localhost:2375')]    
+						)
+				],
+		) {
+		node(delivery_pod_label) {
 			container("delivery") {
 				def WORKSPACE = pwd()
 				sh "chown -R jenkins:jenkins ./"
@@ -79,6 +119,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID) {
 					}
 				}
 			}
+		}
 		}
 		currentBuild.result = "SUCCESS"
 	}
