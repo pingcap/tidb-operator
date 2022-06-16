@@ -2659,6 +2659,21 @@ func (in *MasterStatus) DeepCopyInto(out *MasterStatus) {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
+	if in.Volumes != nil {
+		in, out := &in.Volumes, &out.Volumes
+		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))
+		for key, val := range *in {
+			var outVal *StorageVolumeStatus
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = new(StorageVolumeStatus)
+				(*in).DeepCopyInto(*out)
+			}
+			(*out)[key] = outVal
+		}
+	}
 	return
 }
 
@@ -9438,6 +9453,21 @@ func (in *WorkerStatus) DeepCopyInto(out *WorkerStatus) {
 		*out = make(map[string]WorkerFailureMember, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
+		}
+	}
+	if in.Volumes != nil {
+		in, out := &in.Volumes, &out.Volumes
+		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))
+		for key, val := range *in {
+			var outVal *StorageVolumeStatus
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = new(StorageVolumeStatus)
+				(*in).DeepCopyInto(*out)
+			}
+			(*out)[key] = outVal
 		}
 	}
 	return

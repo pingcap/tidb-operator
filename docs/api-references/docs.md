@@ -8330,6 +8330,19 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="memberphase">MemberPhase</h3>
@@ -10701,8 +10714,7 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 </em>
 </td>
 <td>
-<p>Volumes contains the status of all volumes.
-Key is the volume name and same as <code>StorageVolumeStatus.Name</code>.</p>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 </tbody>
@@ -11921,8 +11933,7 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 </em>
 </td>
 <td>
-<p>Volumes contains the status of all volumes.
-Key is the volume name and same as <code>StorageVolumeStatus.Name</code>.</p>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 </tbody>
@@ -14399,8 +14410,7 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 </em>
 </td>
 <td>
-<p>Volumes contains the status of all volumes.
-Key is the volume name and same as <code>StorageVolumeStatus.Name</code>.</p>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 </tbody>
@@ -15788,8 +15798,7 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 </em>
 </td>
 <td>
-<p>Volumes contains the status of all volumes.
-Key is the volume name and same as <code>StorageVolumeStatus.Name</code>.</p>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 </tbody>
@@ -20422,8 +20431,7 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 </em>
 </td>
 <td>
-<p>Volumes contains the status of all volumes.
-Key is the volume name and same as <code>StorageVolumeStatus.Name</code>.</p>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 </tbody>
@@ -23770,6 +23778,19 @@ string
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 </tbody>
