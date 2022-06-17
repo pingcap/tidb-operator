@@ -497,7 +497,7 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 			if vol.PersistentVolumeClaim != nil {
 				pvc, err := findPVC(vol.PersistentVolumeClaim.ClaimName)
 				if err != nil {
-					klog.Warning("Failed to find PVC %s of Pod %s/%s, maybe some labels are lost",
+					klog.Warningf("Failed to find PVC %s of Pod %s/%s, maybe some labels are lost",
 						vol.PersistentVolumeClaim.ClaimName, pod.Namespace, pod.Name)
 					continue
 				}
