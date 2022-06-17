@@ -311,6 +311,8 @@ function e2e::create_kindconfig() {
     cat <<EOF > $tmpfile
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  serviceSubnet: "10.234.0.0/18"
 kubeadmConfigPatches:
 - |
   kind: ClusterConfiguration
