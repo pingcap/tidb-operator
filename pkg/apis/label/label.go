@@ -119,6 +119,9 @@ const (
 	// AnnSkipTLSWhenConnectTiDB describes whether skip TLS when connecting to TiDB Server
 	AnnSkipTLSWhenConnectTiDB = "tidb.tidb.pingcap.com/skip-tls-when-connect-tidb"
 
+	// AnnBackupCloudSnapKey is the annotation key for backup metadata based cloud snapshot
+	AnnBackupCloudSnapKey string = "tidb.pingcap.com/backup-cloud-snapshot"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value

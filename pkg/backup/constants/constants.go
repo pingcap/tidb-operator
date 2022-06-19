@@ -67,4 +67,16 @@ const (
 
 	// RootKey represents the username in tidb secret
 	TidbRootKey = "root"
+
+	// the volumes provisioned by CSI driver on AWSElasticBlockStore
+	EbsCSIDriver = "ebs.csi.aws.com"
+
+	// the volumes provisioned by CSI driver on GCEPersistentDisk
+	PdCSIDriver = "pd.csi.storage.gke.io"
+
+	// the mount path for TiKV data volume
+	TiKVDataVolumeMountPath = "/var/lib/tikv"
+
+	// the configuration for TiKV data volume as type for snapshotter
+	TiKVDataVolumeType = "storage.data-dir"
 )
