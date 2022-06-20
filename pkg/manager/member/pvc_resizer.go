@@ -300,7 +300,7 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 	return ctx, nil
 }
 
-// updateVolumeStatus build volume status from `actualPodVolumes` and call the `updateVolumeStatusFn` function.
+// updateVolumeStatus build volume status from `actualPodVolumes` and update `sourceVolumeStatus`.
 func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 	if ctx.sourceVolumeStatus == nil {
 		return
@@ -311,14 +311,17 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 		var exist bool
 
 		if pvc.Status.Phase != corev1.ClaimBound {
+			klog.Warningf("PVC %s/%s is not bound", pvc.Namespace, pvc.Name)
 			return desired, actual, false
 		}
 		desired, exist = ctx.desiredVolumeQuantity[volName]
 		if !exist {
+			klog.Warningf("PVC %s/%s is not exist in desired volumes", pvc.Namespace, pvc.Name)
 			return desired, actual, false
 		}
 		actual, exist = pvc.Status.Capacity[corev1.ResourceStorage]
 		if !exist {
+			klog.Warningf("PVC %s/%s dose not have cacacity in status", pvc.Namespace, pvc.Name)
 			return desired, actual, false
 		}
 
@@ -391,6 +394,7 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 		for volName, pvc := range podVolume.volToPVCs {
 			quantityInSpec, exist := desiredVolumeQuantity[volName]
 			if !exist {
+				klog.Warningf("PVC %s/%s is not exist in desired volumes", pvc.Namespace, pvc.Name)
 				continue
 			}
 
