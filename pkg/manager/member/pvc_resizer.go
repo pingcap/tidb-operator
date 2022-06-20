@@ -329,7 +329,7 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 	}
 
 	// build observed status from `actualPodVolumes`
-	observedStatus := map[v1alpha1.StorageVolumeName]v1alpha1.ObservedStorageVolumeStatus{}
+	observedStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus{}
 	for _, podVolume := range ctx.actualPodVolumes {
 		for volName, pvc := range podVolume.volToPVCs {
 			desiredQuantity, actualQuantity, pred := getCapacity(volName, pvc)
@@ -339,7 +339,7 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 
 			status, exist := observedStatus[volName]
 			if !exist {
-				status = v1alpha1.ObservedStorageVolumeStatus{
+				observedStatus[volName] = &v1alpha1.ObservedStorageVolumeStatus{
 					BoundCount:   0,
 					CurrentCount: 0,
 					ResizedCount: 0,
@@ -349,6 +349,7 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 					// ResizedCapacity is always same as desired capacity
 					ResizedCapacity: desiredQuantity,
 				}
+				status = observedStatus[volName]
 			}
 
 			status.BoundCount++
@@ -358,24 +359,23 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 				status.CurrentCount++
 				status.CurrentCapacity = actualQuantity
 			}
-
-			observedStatus[volName] = status
 		}
 	}
-
-	// add, update or delete volume status for `sourceVolumeStatus`
-	for volName, status := range observedStatus {
+	for _, status := range observedStatus {
 		// all volumes are resized, reset the current count
 		if status.CurrentCapacity.Cmp(status.ResizedCapacity) == 0 {
 			status.CurrentCount = status.ResizedCount
 		}
+	}
 
+	// sync volume status for `sourceVolumeStatus`
+	for volName, status := range observedStatus {
 		if _, exist := ctx.sourceVolumeStatus[volName]; !exist {
 			ctx.sourceVolumeStatus[volName] = &v1alpha1.StorageVolumeStatus{
 				Name: volName,
 			}
 		}
-		ctx.sourceVolumeStatus[volName].ObservedStorageVolumeStatus = status
+		ctx.sourceVolumeStatus[volName].ObservedStorageVolumeStatus = *status
 	}
 	for _, status := range ctx.sourceVolumeStatus {
 		if _, exist := observedStatus[status.Name]; !exist {
