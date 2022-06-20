@@ -125,7 +125,7 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 	for _, comp := range components {
 		ctx, err := p.buildContextForTC(tc, comp)
 		if err != nil {
-			return fmt.Errorf("sync pvc for tc %s/%s failed: failed to prepare: %v", ns, name, err)
+			return fmt.Errorf("sync pvc of %s for tc %s/%s failed: failed to prepare: %v", comp, ns, name, err)
 		}
 
 		p.updateVolumeStatus(ctx)
