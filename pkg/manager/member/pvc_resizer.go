@@ -328,7 +328,8 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 		return desired, actual, true
 	}
 
-	allStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
+	// build observed status from `actualPodVolumes`
+	observedStatus := map[v1alpha1.StorageVolumeName]v1alpha1.ObservedStorageVolumeStatus{}
 	for _, podVolume := range ctx.actualPodVolumes {
 		for volName, pvc := range podVolume.volToPVCs {
 			desiredQuantity, actualQuantity, pred := getCapacity(volName, pvc)
@@ -336,19 +337,18 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 				continue
 			}
 
-			status, exist := allStatus[volName]
+			status, exist := observedStatus[volName]
 			if !exist {
-				status = &v1alpha1.StorageVolumeStatus{
-					Name: volName,
-					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
-						BoundCount:      0,
-						CurrentCount:    0,
-						ResizedCount:    0,
-						CurrentCapacity: desiredQuantity,
-						ResizedCapacity: desiredQuantity,
-					},
+				status = v1alpha1.ObservedStorageVolumeStatus{
+					BoundCount:   0,
+					CurrentCount: 0,
+					ResizedCount: 0,
+					// CurrentCapacity is default to same as desired capacity, and maybe changed later if any
+					// volume is reszing.
+					CurrentCapacity: desiredQuantity,
+					// ResizedCapacity is always same as desired capacity
+					ResizedCapacity: desiredQuantity,
 				}
-				allStatus[volName] = status
 			}
 
 			status.BoundCount++
@@ -358,28 +358,27 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 				status.CurrentCount++
 				status.CurrentCapacity = actualQuantity
 			}
+
+			observedStatus[volName] = status
 		}
 	}
 
-	// add or update existing volume status
-	for _, status := range allStatus {
+	// add, update or delete volume status for `sourceVolumeStatus`
+	for volName, status := range observedStatus {
 		// all volumes are resized, reset the current count
 		if status.CurrentCapacity.Cmp(status.ResizedCapacity) == 0 {
 			status.CurrentCount = status.ResizedCount
 		}
 
-		volName := status.Name
 		if _, exist := ctx.sourceVolumeStatus[volName]; !exist {
 			ctx.sourceVolumeStatus[volName] = &v1alpha1.StorageVolumeStatus{
 				Name: volName,
 			}
 		}
-		ctx.sourceVolumeStatus[volName].ObservedStorageVolumeStatus = status.ObservedStorageVolumeStatus
+		ctx.sourceVolumeStatus[volName].ObservedStorageVolumeStatus = status
 	}
-
-	// remove lost volume
 	for _, status := range ctx.sourceVolumeStatus {
-		if _, exist := allStatus[status.Name]; !exist {
+		if _, exist := observedStatus[status.Name]; !exist {
 			delete(ctx.sourceVolumeStatus, status.Name)
 		}
 	}
