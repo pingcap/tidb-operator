@@ -62,6 +62,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.7.2 // indirect
 	github.com/tikv/pd v2.1.17+incompatible
 	github.com/uber-go/atomic v0.0.0-00010101000000-000000000000 // indirect
 	github.com/uber/jaeger-client-go v2.19.0+incompatible // indirect

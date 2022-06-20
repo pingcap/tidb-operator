@@ -59,7 +59,7 @@ type AWSSnapshotter struct {
 
 func (s *AWSSnapshotter) Init(bm *backupManager, conf map[string]string) error {
 	s.BaseSnapshotter.Init(bm, conf)
-	s.volRegexp = regexp.MustCompile(`^projects\/[^\/]+\/(zones|regions)\/[^\/]+\/disks\/[^\/]+$`)
+	s.volRegexp = regexp.MustCompile("vol-.*")
 	return nil
 }
 
@@ -91,7 +91,7 @@ type GCPSnapshotter struct {
 
 func (s *GCPSnapshotter) Init(bm *backupManager, conf map[string]string) error {
 	s.BaseSnapshotter.Init(bm, conf)
-	s.volRegexp = regexp.MustCompile("vol-.*")
+	s.volRegexp = regexp.MustCompile(`^projects\/[^\/]+\/(zones|regions)\/[^\/]+\/disks\/[^\/]+$`)
 	return nil
 }
 
