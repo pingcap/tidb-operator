@@ -152,7 +152,7 @@ func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
 	for _, comp := range components {
 		ctx, err := p.buildContextForDM(dc, comp)
 		if err != nil {
-			return fmt.Errorf("sync pvc for dc %s/%s failed: failed to prepare: %v", ns, name, err)
+			return fmt.Errorf("sync pvc of %s for dc %s/%s failed: failed to prepare: %v", comp, ns, name, err)
 		}
 
 		p.updateVolumeStatus(ctx)
