@@ -23,7 +23,7 @@ spec:
     requests:
       storage: "1Gi"
     config: {}
-    containers:
+    additionalContainers:
       - name: pd
         lifecycle:
           preStop:
