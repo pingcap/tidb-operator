@@ -322,7 +322,7 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 		}
 		desired, exist = ctx.desiredVolumeQuantity[volName]
 		if !exist {
-			klog.Warningf("PVC %s/%s is not exist in desired volumes", pvc.Namespace, pvc.Name)
+			klog.Warningf("PVC %s/%s does not exist in desired volumes", pvc.Namespace, pvc.Name)
 			return desired, actual, false
 		}
 		actual, exist = pvc.Status.Capacity[corev1.ResourceStorage]
@@ -399,7 +399,7 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 		for volName, pvc := range podVolume.volToPVCs {
 			quantityInSpec, exist := desiredVolumeQuantity[volName]
 			if !exist {
-				klog.Warningf("PVC %s/%s is not exist in desired volumes", pvc.Namespace, pvc.Name)
+				klog.Warningf("PVC %s/%s does not exist in desired volumes", pvc.Namespace, pvc.Name)
 				continue
 			}
 
