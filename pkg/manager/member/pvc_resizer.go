@@ -22,12 +22,14 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	errutil "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -99,8 +101,7 @@ type componentVolumeContext struct {
 }
 
 func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	name := tc.GetName()
+	id := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
 
 	components := []v1alpha1.MemberType{}
 	if tc.Spec.PD != nil {
@@ -122,26 +123,28 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 		components = append(components, v1alpha1.PumpMemberType)
 	}
 
+	errs := []error{}
 	for _, comp := range components {
 		ctx, err := p.buildContextForTC(tc, comp)
 		if err != nil {
-			return fmt.Errorf("sync pvc of %s for tc %s/%s failed: failed to prepare: %v", comp, ns, name, err)
+			errs = append(errs, fmt.Errorf("sync pvc for %q in tc %q failed: failed to prepare: %v", comp, id, err))
+			continue
 		}
 
 		p.updateVolumeStatus(ctx)
 
 		err = p.resizeVolumes(ctx)
 		if err != nil {
-			return fmt.Errorf("sync pvc for tc %s/%s failed: resize volumes for %q failed: %v", ns, name, comp, err)
+			errs = append(errs, fmt.Errorf("sync pvc for %q in tc %q failed: resize volumes failed: %v", comp, id, err))
+			continue
 		}
 	}
 
-	return nil
+	return errutil.NewAggregate(errs)
 }
 
 func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
-	ns := dc.GetNamespace()
-	name := dc.GetName()
+	id := fmt.Sprintf("%s/%s", dc.Namespace, dc.Name)
 
 	components := []v1alpha1.MemberType{}
 	components = append(components, v1alpha1.DMMasterMemberType)
@@ -149,21 +152,24 @@ func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
 		components = append(components, v1alpha1.DMWorkerMemberType)
 	}
 
+	errs := []error{}
 	for _, comp := range components {
 		ctx, err := p.buildContextForDM(dc, comp)
 		if err != nil {
-			return fmt.Errorf("sync pvc of %s for dc %s/%s failed: failed to prepare: %v", comp, ns, name, err)
+			errs = append(errs, fmt.Errorf("sync pvc for %q in dc %q failed: failed to prepare: %v", comp, id, err))
+			continue
 		}
 
 		p.updateVolumeStatus(ctx)
 
 		err = p.resizeVolumes(ctx)
 		if err != nil {
-			return fmt.Errorf("sync pvc for dc %s/%s failed: resize volumes for %q failed: %v", ns, name, comp, err)
+			errs = append(errs, fmt.Errorf("sync pvc for %q in dc %q failed: resize volumes failed: %v", comp, id, err))
+			continue
 		}
 	}
 
-	return nil
+	return errutil.NewAggregate(errs)
 }
 
 func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType) (*componentVolumeContext, error) {
