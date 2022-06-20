@@ -352,7 +352,7 @@ func CheckThanosQueryData(name, namespace string, fw portforward.PortForward, ex
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
-		if storeData.Status != "success" || len(storeData.Data.Receive) < expectNumber {
+		if storeData.Status != "success" || len(storeData.Data.Receive) != 1 {
 			log.Logf("ERROR: thanos[%s/%s]'s stores error %s, store:%v , status: %s", namespace, name, thanosAddr, storeData.Data.Receive, storeData.Status)
 			return false, nil
 		}
@@ -378,7 +378,7 @@ func CheckThanosQueryData(name, namespace string, fw portforward.PortForward, ex
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
-		if instanceUpData.Status != "success" || len(instanceUpData.Data.Result) < expectNumber {
+		if instanceUpData.Status != "success" || len(instanceUpData.Data.Result) != 7 {
 			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, metrics data:%v , status: %s", namespace, name, thanosAddr, instanceUpData.Data.Result, instanceUpData.Status)
 			return false, nil
 		}
