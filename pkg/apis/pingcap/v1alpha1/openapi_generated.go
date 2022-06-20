@@ -1606,7 +1606,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -3537,7 +3537,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -3981,7 +3981,7 @@ func schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref common.ReferenceCallb
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5130,7 +5130,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5343,19 +5343,6 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Description: "Start up script version",
 							Type:        []string{"string"},
 							Format:      "",
-						},
-					},
-					"containers": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Containers allows injecting additional containers. This is meant to allow adding an additional container to an PD pod. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/core/v1.Container"),
-									},
-								},
-							},
 						},
 					},
 				},
@@ -5974,7 +5961,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -7390,7 +7377,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -7569,19 +7556,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 							Description: "The storageClassName of the persistent volume for TiCDC data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
-						},
-					},
-					"containers": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Containers allows injecting additional containers. This is meant to allow adding an additional container to an PD pod. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/core/v1.Container"),
-									},
-								},
-							},
 						},
 					},
 				},
@@ -8245,7 +8219,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -8488,19 +8462,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "Initializer is the init configurations of TiDB",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBInitializer"),
-						},
-					},
-					"containers": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Containers allows injecting additional containers. This is meant to allow adding an additional container to an PD pod. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/core/v1.Container"),
-									},
-								},
-							},
 						},
 					},
 				},
@@ -8746,7 +8707,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -8943,19 +8904,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 						SchemaProps: spec.SchemaProps{
 							Description: "Failover is the configurations of failover",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Failover"),
-						},
-					},
-					"containers": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Containers allows injecting additional containers. This is meant to allow adding an additional container to an PD pod. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/core/v1.Container"),
-									},
-								},
-							},
 						},
 					},
 				},
@@ -11096,7 +11044,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -11364,19 +11312,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Description: "EnableNamedStatusPort enables status port(20180) in the Pod spec. If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.",
 							Type:        []string{"boolean"},
 							Format:      "",
-						},
-					},
-					"containers": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Containers allows injecting additional containers. This is meant to allow adding an additional container to an PD pod. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/core/v1.Container"),
-									},
-								},
-							},
 						},
 					},
 				},
@@ -13280,7 +13215,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoringSpec(ref common.ReferenceC
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -13779,7 +13714,7 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Additional containers of the component.",
+							Description: "Additional containers of the component. Containers described here modify an operator generated container if they share the same name and modifications are done via a strategic merge patch. If additional container name is not contained in operator generated containers, it will add into pod containers directly.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

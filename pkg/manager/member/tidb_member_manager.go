@@ -216,12 +216,6 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return err
 	}
 
-	containers, err := MergePatchContainers(newTiDBSet.Spec.Template.Spec.Containers, tc.Spec.TiDB.Containers)
-	if err != nil {
-		return errors2.Wrap(err, "failed to merge containers spec")
-	}
-	newTiDBSet.Spec.Template.Spec.Containers = containers
-
 	if setNotExist {
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
@@ -903,7 +897,13 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	containers = append(containers, c)
 
 	podSpec := baseTiDBSpec.BuildPodSpec()
-	podSpec.Containers = append(containers, baseTiDBSpec.AdditionalContainers()...)
+
+	var err error
+	podSpec.Containers, err = MergePatchContainers(containers, baseTiDBSpec.AdditionalContainers())
+	if err != nil {
+		return nil, errors2.Wrap(err, "failed to merge containers spec")
+	}
+
 	podSpec.Volumes = append(vols, baseTiDBSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, baseTiDBSpec.InitContainers()...)

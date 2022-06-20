@@ -15,11 +15,10 @@ package member
 
 import (
 	"fmt"
+	errors2 "github.com/pingcap/errors"
 	"reflect"
 	"regexp"
 	"strings"
-
-	errors2 "github.com/pingcap/errors"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -187,13 +186,6 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return err
 	}
-
-	containers, err := MergePatchContainers(newSet.Spec.Template.Spec.Containers, tc.Spec.TiFlash.Containers)
-	if err != nil {
-		return errors2.Wrap(err, "failed to merge containers spec")
-	}
-	newSet.Spec.Template.Spec.Containers = containers
-
 	if setNotExist {
 		if !tc.PDIsAvailable() {
 			klog.Infof("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
@@ -567,7 +559,12 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		return nil, err
 	}
 	podSpec.Containers = append([]corev1.Container{tiflashContainer}, containers...)
-	podSpec.Containers = append(podSpec.Containers, baseTiFlashSpec.AdditionalContainers()...)
+
+	podSpec.Containers, err = MergePatchContainers(podSpec.Containers, baseTiFlashSpec.AdditionalContainers())
+	if err != nil {
+		return nil, errors2.Wrap(err, "failed to merge containers spec")
+	}
+
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount

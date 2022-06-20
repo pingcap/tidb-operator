@@ -186,7 +186,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		{
 			name: "patch pod container",
 			prepare: func(cluster *v1alpha1.TidbCluster) {
-				cluster.Spec.PD.Containers = []v1.Container{
+				cluster.Spec.PD.AdditionalContainers = []v1.Container{
 					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.Handler{
 						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
 					}}},
@@ -444,7 +444,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			name: "patch pd container lifecycle configuration when sync cluster  ",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
-				tc.Spec.PD.Containers = []v1.Container{
+				tc.Spec.PD.AdditionalContainers = []v1.Container{
 					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.Handler{
 						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
 					}}},

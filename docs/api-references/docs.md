@@ -4608,7 +4608,12 @@ Note that the following env names cannot be used and will be overridden by TiDB 
 </td>
 <td>
 <em>(Optional)</em>
-<p>Additional containers of the component.</p>
+<p>Additional containers of the component.
+Containers described here modify an operator generated container if they
+share the same name and modifications are done via a strategic merge
+patch.
+If additional container name is not contained in operator generated containers, it will add into
+pod containers directly.</p>
 </td>
 </tr>
 <tr>
@@ -8740,7 +8745,7 @@ int
 <td>
 <code>buffer-flush-interval</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -8836,7 +8841,7 @@ int
 <td>
 <code>sampling-refresh-interval</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -10489,23 +10494,6 @@ string
 <p>Start up script version</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>containers</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core">
-[]Kubernetes core/v1.Container
-</a>
-</em>
-</td>
-<td>
-<p>Containers allows injecting additional containers. This is meant to
-allow adding an additional container to an PD pod.
-Containers described here modify an operator generated container if they
-share the same name and modifications are done via a strategic merge
-patch.</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -11905,7 +11893,7 @@ int
 <td>
 <code>batchSendDeadline</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -11927,7 +11915,7 @@ int
 <td>
 <code>minBackoff</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -11938,7 +11926,7 @@ time.Duration
 <td>
 <code>maxBackoff</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -14187,23 +14175,6 @@ string
 Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>containers</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core">
-[]Kubernetes core/v1.Container
-</a>
-</em>
-</td>
-<td>
-<p>Containers allows injecting additional containers. This is meant to
-allow adding an additional container to an PD pod.
-Containers described here modify an operator generated container if they
-share the same name and modifications are done via a strategic merge
-patch.</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="ticdcstatus">TiCDCStatus</h3>
@@ -15547,23 +15518,6 @@ TiDBInitializer
 <p>Initializer is the init configurations of TiDB</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>containers</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core">
-[]Kubernetes core/v1.Container
-</a>
-</em>
-</td>
-<td>
-<p>Containers allows injecting additional containers. This is meant to
-allow adding an additional container to an PD pod.
-Containers described here modify an operator generated container if they
-share the same name and modifications are done via a strategic merge
-patch.</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="tidbstatus">TiDBStatus</h3>
@@ -16061,23 +16015,6 @@ Failover
 <td>
 <em>(Optional)</em>
 <p>Failover is the configurations of failover</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>containers</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core">
-[]Kubernetes core/v1.Container
-</a>
-</em>
-</td>
-<td>
-<p>Containers allows injecting additional containers. This is meant to
-allow adding an additional container to an PD pod.
-Containers described here modify an operator generated container if they
-share the same name and modifications are done via a strategic merge
-patch.</p>
 </td>
 </tr>
 </tbody>
@@ -16705,7 +16642,7 @@ Optional: Defaults to 200</p>
 <td>
 <code>max-batch-wait-time</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -20153,23 +20090,6 @@ bool
 <td>
 <p>EnableNamedStatusPort enables status port(20180) in the Pod spec.
 If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>containers</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core">
-[]Kubernetes core/v1.Container
-</a>
-</em>
-</td>
-<td>
-<p>Containers allows injecting additional containers. This is meant to
-allow adding an additional container to an PD pod.
-Containers described here modify an operator generated container if they
-share the same name and modifications are done via a strategic merge
-patch.</p>
 </td>
 </tr>
 </tbody>

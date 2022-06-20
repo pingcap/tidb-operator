@@ -205,13 +205,6 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	if err != nil {
 		return err
 	}
-
-	containers, err := MergePatchContainers(newPDSet.Spec.Template.Spec.Containers, tc.Spec.PD.Containers)
-	if err != nil {
-		return errors2.Wrap(err, "failed to merge containers spec")
-	}
-	newPDSet.Spec.Template.Spec.Containers = containers
-
 	if setNotExist {
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
@@ -770,7 +763,11 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	pdContainer.Env = util.AppendEnv(env, basePDSpec.Env())
 	pdContainer.EnvFrom = basePDSpec.EnvFrom()
 	podSpec.Volumes = append(vols, basePDSpec.AdditionalVolumes()...)
-	podSpec.Containers = append([]corev1.Container{pdContainer}, basePDSpec.AdditionalContainers()...)
+	podSpec.Containers, err = MergePatchContainers([]corev1.Container{pdContainer}, basePDSpec.AdditionalContainers())
+	if err != nil {
+		return nil, errors2.Wrap(err, "failed to merge containers spec")
+	}
+
 	podSpec.ServiceAccountName = tc.Spec.PD.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount

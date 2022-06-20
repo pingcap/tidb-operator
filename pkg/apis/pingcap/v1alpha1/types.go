@@ -454,12 +454,6 @@ type PDSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1"
 	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
-	// Containers allows injecting additional containers. This is meant to
-	// allow adding an additional container to an PD pod.
-	// Containers described here modify an operator generated container if they
-	// share the same name and modifications are done via a strategic merge
-	// patch.
-	Containers []corev1.Container `json:"containers,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
@@ -564,12 +558,6 @@ type TiKVSpec struct {
 	// EnableNamedStatusPort enables status port(20180) in the Pod spec.
 	// If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.
 	EnableNamedStatusPort bool `json:"enableNamedStatusPort,omitempty"`
-	// Containers allows injecting additional containers. This is meant to
-	// allow adding an additional container to an PD pod.
-	// Containers described here modify an operator generated container if they
-	// share the same name and modifications are done via a strategic merge
-	// patch.
-	Containers []corev1.Container `json:"containers,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -626,12 +614,6 @@ type TiFlashSpec struct {
 	// Failover is the configurations of failover
 	// +optional
 	Failover *Failover `json:"failover,omitempty"`
-	// Containers allows injecting additional containers. This is meant to
-	// allow adding an additional container to an PD pod.
-	// Containers described here modify an operator generated container if they
-	// share the same name and modifications are done via a strategic merge
-	// patch.
-	Containers []corev1.Container `json:"containers,omitempty"`
 }
 
 // TiCDCSpec contains details of TiCDC members
@@ -671,12 +653,6 @@ type TiCDCSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
-	// Containers allows injecting additional containers. This is meant to
-	// allow adding an additional container to an PD pod.
-	// Containers described here modify an operator generated container if they
-	// share the same name and modifications are done via a strategic merge
-	// patch.
-	Containers []corev1.Container `json:"containers,omitempty"`
 }
 
 // TiCDCConfig is the configuration of tidbcdc
@@ -817,12 +793,6 @@ type TiDBSpec struct {
 	//
 	// +optional
 	Initializer *TiDBInitializer `json:"initializer,omitempty"`
-	// Containers allows injecting additional containers. This is meant to
-	// allow adding an additional container to an PD pod.
-	// Containers described here modify an operator generated container if they
-	// share the same name and modifications are done via a strategic merge
-	// patch.
-	Containers []corev1.Container `json:"containers,omitempty"`
 }
 
 type TiDBInitializer struct {
@@ -1010,6 +980,11 @@ type ComponentSpec struct {
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
 	// Additional containers of the component.
+	// Containers described here modify an operator generated container if they
+	// share the same name and modifications are done via a strategic merge
+	// patch.
+	// If additional container name is not contained in operator generated containers, it will add into
+	// pod containers directly.
 	// +optional
 	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
 

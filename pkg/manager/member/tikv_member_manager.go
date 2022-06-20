@@ -201,13 +201,6 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 	if err != nil {
 		return err
 	}
-
-	containers, err := MergePatchContainers(newSet.Spec.Template.Spec.Containers, tc.Spec.TiKV.Containers)
-	if err != nil {
-		return errors2.Wrap(err, "failed to merge containers spec")
-	}
-	newSet.Spec.Template.Spec.Containers = containers
-
 	if setNotExist {
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
@@ -622,7 +615,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, baseTiKVSpec.InitContainers()...)
-	podSpec.Containers = append(containers, baseTiKVSpec.AdditionalContainers()...)
+
+	podSpec.Containers, err = MergePatchContainers(containers, baseTiKVSpec.AdditionalContainers())
+	if err != nil {
+		return nil, errors2.Wrap(err, "failed to merge containers spec")
+	}
+
 	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
