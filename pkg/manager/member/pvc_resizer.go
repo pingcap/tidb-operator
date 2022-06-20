@@ -451,16 +451,6 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 				return err
 			}
 
-			// update volume status, so that we can observbe that volume is resizing immediately
-			if ctx.sourceVolumeStatus != nil {
-				if status, exist := ctx.sourceVolumeStatus[volName]; exist {
-					if status.CurrentCapacity.Cmp(status.ResizedCapacity) == 0 {
-						status.ResizedCapacity = quantityInSpec
-						status.ResizedCount = 0
-					}
-				}
-			}
-
 			klog.V(2).Infof("PVC %s/%s storage request is updated from %s to %s",
 				pvc.Namespace, pvc.Name, currentRequest.String(), quantityInSpec.String())
 		}
