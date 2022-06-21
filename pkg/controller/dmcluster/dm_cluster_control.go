@@ -193,7 +193,7 @@ func (c *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) error 
 	// return c.tidbClusterStatusManager.Sync(dc)
 
 	// resize PVC if necessary
-	if err := c.pvcResizer.ResizeDM(dc); err != nil {
+	if err := c.pvcResizer.SyncDM(dc); err != nil {
 		errs = append(errs, err)
 	}
 	return errorutils.NewAggregate(errs)
