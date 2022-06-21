@@ -321,8 +321,9 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	annoMount, annoVolume := annotationsMountVolume()
+	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.TiKVMemberType))
 	tikvDataVol := corev1.VolumeMount{
-		Name:      v1alpha1.TiKVMemberType.String(),
+		Name:      dataVolumeName,
 		MountPath: tikvDataVolumeMountPath}
 	volMounts := []corev1.VolumeMount{
 		annoMount,
@@ -647,7 +648,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Spec: podSpec,
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				util.VolumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), tc.Spec.TiKV.StorageClassName),
+				util.VolumeClaimTemplate(storageRequest, dataVolumeName, tc.Spec.TiKV.StorageClassName),
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: baseTiKVSpec.PodManagementPolicy(),
