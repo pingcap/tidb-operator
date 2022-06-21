@@ -145,7 +145,7 @@ func (cpf *CloudProviderFactory) CreateSnapshotter(bt v1alpha1.BackupType) (s Sn
 	return
 }
 
-type CloudSnapshotBackup struct {
+type CloudSnapBackup struct {
 	TiKV       *TiKVBackup            `json:"tikv"`
 	PD         Component              `json:"pd"`
 	TiDB       Component              `json:"tidb"`
@@ -166,10 +166,10 @@ type Component struct {
 
 type TiKVBackup struct {
 	Component
-	VolumesInfo []*VolumesInfoBackup `json:"volumes_info"`
+	Stores []*StoresBackup `json:"stores"`
 }
 
-type VolumesInfoBackup struct {
+type StoresBackup struct {
 	StoreID string          `json:"store_id"`
 	Volumes []*VolumeBackup `json:"volumes"`
 }
@@ -180,14 +180,14 @@ type VolumeBackup struct {
 	MountPath string `json:"mount_path"`
 }
 
-func NewCloudSnapshotBackup(tc *v1alpha1.TidbCluster) (csb *CloudSnapshotBackup) {
+func NewCloudSnapshotBackup(tc *v1alpha1.TidbCluster) (csb *CloudSnapBackup) {
 	if tc != nil && tc.Spec.TiKV != nil {
-		csb = &CloudSnapshotBackup{
+		csb = &CloudSnapBackup{
 			TiKV: &TiKVBackup{
 				Component: Component{
 					Replicas: tc.Spec.TiKV.Replicas,
 				},
-				VolumesInfo: []*VolumesInfoBackup{},
+				Stores: []*StoresBackup{},
 			},
 			PD: Component{
 				Replicas: tc.Spec.PD.Replicas,
@@ -207,7 +207,7 @@ func NewCloudSnapshotBackup(tc *v1alpha1.TidbCluster) (csb *CloudSnapshotBackup)
 	return
 }
 
-type VolumesMixture struct {
+type StoresMixture struct {
 	tc          *v1alpha1.TidbCluster
 	pod         *corev1.Pod
 	pvcs        []*corev1.PersistentVolumeClaim
@@ -218,7 +218,7 @@ type VolumesMixture struct {
 	snapshotter Snapshotter
 }
 
-func NewIntactVolumesMixture(
+func NewIntactStoresMixture(
 	tc *v1alpha1.TidbCluster,
 	pod *corev1.Pod,
 	pvcs []*corev1.PersistentVolumeClaim,
@@ -226,8 +226,8 @@ func NewIntactVolumesMixture(
 	volsMap map[string]string,
 	mpTypeMap map[string]string,
 	mpVolIDMap map[string]string,
-	s Snapshotter) *VolumesMixture {
-	return &VolumesMixture{
+	s Snapshotter) *StoresMixture {
+	return &StoresMixture{
 		tc:          tc,
 		pod:         pod,
 		pvcs:        pvcs,
@@ -239,12 +239,12 @@ func NewIntactVolumesMixture(
 	}
 }
 
-func NewVolumesMixture(
+func NewStoresMixture(
 	tc *v1alpha1.TidbCluster,
 	pvcs []*corev1.PersistentVolumeClaim,
 	pvs []*corev1.PersistentVolume,
-	s Snapshotter) *VolumesMixture {
-	return &VolumesMixture{
+	s Snapshotter) *StoresMixture {
+	return &StoresMixture{
 		tc:          tc,
 		pvcs:        pvcs,
 		pvs:         pvs,
@@ -255,11 +255,11 @@ func NewVolumesMixture(
 	}
 }
 
-func (m *VolumesMixture) SetPod(pod *corev1.Pod) {
+func (m *StoresMixture) SetPod(pod *corev1.Pod) {
 	m.pod = pod
 }
 
-func (m *VolumesMixture) CollectVolumesInfo() {
+func (m *StoresMixture) collectVolumesInfo() {
 	if m.tc != nil && m.tc.Spec.TiKV != nil {
 		for _, sv := range m.tc.Spec.TiKV.StorageVolumes {
 			for k, v := range m.tc.Spec.TiKV.Config.Inner() {
@@ -276,7 +276,8 @@ func (m *VolumesMixture) CollectVolumesInfo() {
 	m.mpTypeMap[constants.TiKVDataVolumeMountPath] = constants.TiKVDataVolumeType
 }
 
-func (m *VolumesMixture) ExtractVolumeIDs() (string, error) {
+func (m *StoresMixture) extractVolumeIDs() (string, error) {
+	// key: MountPath value: Volume
 	mpVolMap := make(map[string]corev1.Volume)
 	for _, vol := range m.pod.Spec.Volumes {
 		if mp, ok := m.volsMap[vol.Name]; ok {
@@ -284,6 +285,7 @@ func (m *VolumesMixture) ExtractVolumeIDs() (string, error) {
 		}
 	}
 
+	// key: MountPath value: PV
 	mpPVMap := make(map[string]*corev1.PersistentVolume)
 	for mp, vol := range mpVolMap {
 		for _, pvc := range m.pvcs {
@@ -299,6 +301,7 @@ func (m *VolumesMixture) ExtractVolumeIDs() (string, error) {
 		}
 	}
 
+	// key: MountPath value: VolumeID
 	mpVolIDMap := make(map[string]string)
 	for mp, pv := range mpPVMap {
 		volID, err := m.snapshotter.GetVolumeID(pv)
@@ -312,54 +315,70 @@ func (m *VolumesMixture) ExtractVolumeIDs() (string, error) {
 	return "", nil
 }
 
-func (s *BaseSnapshotter) prepareBackupMetadata(
-	b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string, impl Snapshotter) (string, error) {
-	csb := NewCloudSnapshotBackup(tc)
-
+func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, ns string) ([]*corev1.Pod, string, error) {
 	req, err := labels.NewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
 	if err != nil {
-		return fmt.Sprintf("unexpected error generating label selector: %v", err), err
+		return nil, fmt.Sprintf("unexpected error generating label selector: %v", err), err
 	}
 	sel := labels.NewSelector().Add(*req)
 	pvcs, err := s.backupMgr.deps.PVCLister.PersistentVolumeClaims(ns).List(sel)
 
 	if err != nil {
-		return fmt.Sprintf("failed to fetch pvcs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
+		return nil, fmt.Sprintf("failed to fetch pvcs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
 	csb.Kubernetes.PVCs = pvcs
 	pvs, err := s.backupMgr.deps.PVLister.List(sel)
 	if err != nil {
-		return fmt.Sprintf("failed to fetch pvs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
+		return nil, fmt.Sprintf("failed to fetch pvs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
 	csb.Kubernetes.PVs = pvs
 	pods, err := s.backupMgr.deps.PodLister.Pods(ns).List(sel)
 	if err != nil {
-		return fmt.Sprintf("failed to fetch pods %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
+		return nil, fmt.Sprintf("failed to fetch pods %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
+	return pods, "", nil
+}
 
-	volMix := NewVolumesMixture(tc, pvcs, pvs, impl)
-	volMix.CollectVolumesInfo()
+func (m *StoresMixture) PrepareCSBStoresMeta(csb *CloudSnapBackup, pods []*corev1.Pod) (string, error) {
+	m.collectVolumesInfo()
 
 	for _, pod := range pods {
-		volMix.SetPod(pod)
-		reason, err := volMix.ExtractVolumeIDs()
+		m.SetPod(pod)
+		reason, err := m.extractVolumeIDs()
 		if err != nil {
 			return reason, err
 		}
 
-		volsInfo := &VolumesInfoBackup{
+		stores := &StoresBackup{
 			StoreID: pod.Labels[label.StoreIDLabelKey],
 			Volumes: []*VolumeBackup{},
 		}
-		for mp, volID := range volMix.mpVolIDMap {
+		for mp, volID := range m.mpVolIDMap {
 			vol := &VolumeBackup{
 				VolumeID:  volID,
-				Type:      volMix.mpTypeMap[mp],
+				Type:      m.mpTypeMap[mp],
 				MountPath: mp,
 			}
-			volsInfo.Volumes = append(volsInfo.Volumes, vol)
+			stores.Volumes = append(stores.Volumes, vol)
 		}
-		csb.TiKV.VolumesInfo = append(csb.TiKV.VolumesInfo, volsInfo)
+		csb.TiKV.Stores = append(csb.TiKV.Stores, stores)
+	}
+
+	return "", nil
+}
+
+func (s *BaseSnapshotter) prepareBackupMetadata(
+	b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string, execr Snapshotter) (string, error) {
+	csb := NewCloudSnapshotBackup(tc)
+	pods, reason, err := s.PrepareCSBK8SMeta(csb, ns)
+	if err != nil {
+		return reason, err
+	}
+
+	storesMix := NewStoresMixture(tc, csb.Kubernetes.PVCs, csb.Kubernetes.PVs, execr)
+	reason, err = storesMix.PrepareCSBStoresMeta(csb, pods)
+	if err != nil {
+		return reason, err
 	}
 
 	out, err := json.Marshal(csb)
@@ -367,6 +386,7 @@ func (s *BaseSnapshotter) prepareBackupMetadata(
 		return "ParseCloudSnapshotBackupFailed", err
 	}
 	b.Annotations[label.AnnBackupCloudSnapKey] = string(out)
+
 	return "", nil
 }
 

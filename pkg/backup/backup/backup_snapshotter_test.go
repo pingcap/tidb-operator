@@ -270,3 +270,15 @@ func TestGetVolumeIDForCSI(t *testing.T) {
 		})
 	}
 }
+
+func TestPrepareCSBK8SMeta(t *testing.T) {
+
+}
+
+func TestPrepareCSBStoresMeta(t *testing.T) {
+
+}
+
+func TestPrepareBackupMetadata(t *testing.T) {
+
+}
