@@ -366,9 +366,11 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			},
 		})
 	}
+
+	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.PumpMemberType))
 	volumeMounts := []corev1.VolumeMount{
 		{
-			Name:      "data",
+			Name:      dataVolumeName,
 			MountPath: "/data",
 		},
 		{
@@ -442,7 +444,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	volumeClaims := []corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "data",
+				Name: dataVolumeName,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				AccessModes: []corev1.PersistentVolumeAccessMode{
