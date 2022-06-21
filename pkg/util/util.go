@@ -335,7 +335,7 @@ func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, d
 			} else {
 				tmpStorageClass = defaultStorageClassName
 			}
-			pvcNameInVCT := fmt.Sprintf("%s-%s", memberType.String(), storageVolume.Name)
+			pvcNameInVCT := string(v1alpha1.GetStorageVolumeName(storageVolume.Name, memberType))
 			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, pvcNameInVCT, tmpStorageClass))
 			if storageVolume.MountPath != "" {
 				volMounts = append(volMounts, corev1.VolumeMount{
@@ -469,5 +469,7 @@ func SetPassword(ctx context.Context, db *sql.DB, password string) error {
 
 // GetDSN get tidb dsn
 func GetDSN(tc *v1alpha1.TidbCluster, password string) string {
-	return fmt.Sprintf("root:%s@tcp(%s-tidb.%s.svc:4000)/?charset=utf8mb4,utf8&multiStatements=true", password, tc.Name, tc.Namespace)
+	port := tc.Spec.TiDB.GetServicePort()
+	return fmt.Sprintf("root:%s@tcp(%s-tidb.%s.svc:%d)/?charset=utf8mb4,utf8&multiStatements=true",
+		password, tc.Name, tc.Namespace, port)
 }

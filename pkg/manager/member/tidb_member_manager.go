@@ -575,14 +575,10 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 	tidbSelector := label.New().Instance(instanceName).TiDB()
 	svcName := controller.TiDBMemberName(tcName)
 	tidbLabels := util.CombineStringMap(tidbSelector.Copy().UsedByEndUser().Labels(), svcSpec.Labels)
-	portName := "mysql-client"
-	if svcSpec.PortName != nil {
-		portName = *svcSpec.PortName
-	}
 	ports := []corev1.ServicePort{
 		{
-			Name:       portName,
-			Port:       4000,
+			Name:       svcSpec.GetPortName(),
+			Port:       tc.Spec.TiDB.GetServicePort(),
 			TargetPort: intstr.FromInt(4000),
 			Protocol:   corev1.ProtocolTCP,
 			NodePort:   svcSpec.GetMySQLNodePort(),
@@ -886,6 +882,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
 		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
+		EnvFrom:      baseTiDBSpec.EnvFrom(),
 		ReadinessProbe: &corev1.Probe{
 			Handler:             buildTiDBReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),

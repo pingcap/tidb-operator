@@ -26,6 +26,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
@@ -240,6 +241,48 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 	}
 	klog.Infof("tikv upgrader: set pod %s/%s annotation %s to %s successfully",
 		ns, podName, EvictLeaderBeginTime, now)
+	return nil
+}
+
+// endEvictLeaderForAllStore end evict leader for all stores of a tc
+func endEvictLeaderForAllStore(deps *controller.Dependencies, tc *v1alpha1.TidbCluster) error {
+	storeIDs := make([]uint64, 0, len(tc.Status.TiKV.Stores)+len(tc.Status.TiKV.TombstoneStores))
+	for _, stores := range []map[string]v1alpha1.TiKVStore{tc.Status.TiKV.Stores, tc.Status.TiKV.TombstoneStores} {
+		for _, store := range stores {
+			storeID, err := strconv.ParseUint(store.ID, 10, 64)
+			if err != nil {
+				return fmt.Errorf("parse store id %s to uint64 failed: %v", store.ID, err)
+			}
+			storeIDs = append(storeIDs, storeID)
+		}
+	}
+
+	pdcli := controller.GetPDClient(deps.PDControl, tc)
+
+	scheduelrs, err := pdcli.GetEvictLeaderSchedulersForStores(storeIDs...)
+	if err != nil {
+		return fmt.Errorf("get scheduler failed: %v", err)
+	}
+	if len(scheduelrs) == 0 {
+		klog.Infof("tikv: no evict leader scheduler exists for %s/%s", tc.Namespace, tc.Name)
+		return nil
+	}
+
+	errs := make([]error, 0)
+	for storeID := range scheduelrs {
+		err := pdcli.EndEvictLeader(storeID)
+		if err != nil {
+			klog.Errorf("tikv: failed to end evict leader for store: %d of %s/%s, error: %v", storeID, tc.Namespace, tc.Name, err)
+			errs = append(errs, fmt.Errorf("end evict leader for store %d failed: %v", storeID, err))
+			continue
+		}
+		klog.Infof("tikv: end evict leader for store: %d of %s/%s successfully", storeID, tc.Namespace, tc.Name)
+	}
+
+	if len(errs) > 0 {
+		return errorutils.NewAggregate(errs)
+	}
+
 	return nil
 }
 

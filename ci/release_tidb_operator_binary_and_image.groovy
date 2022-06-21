@@ -5,7 +5,32 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 	def UCLOUD_OSS_URL = "http://pingcap-dev.hk.ufileos.com"
 
 	catchError {
-		node('delivery-dind-2010') {
+		def delivery_pod_label = "${JOB_NAME}-${BUILD_NUMBER}"
+		podTemplate(label: delivery_pod_label,
+				cloud: "kubernetes-ng",
+				namespace: "jenkins-tidb-operator",
+				idleMinutes: 0,
+				containers: [
+						containerTemplate(
+							name: 'delivery', alwaysPullImage: true,
+							image: "hub.pingcap.net/jenkins/jenkins-slave-centos7:delivery3", 
+							ttyEnabled: true,  privileged: true,
+							resourceRequestCpu: '2000m', resourceRequestMemory: '4Gi',
+							command: '/bin/sh -c', args: 'cat' 
+						),
+						containerTemplate(
+							name: 'dind', alwaysPullImage: false,
+							image: "docker:20.10.13-dind", ttyEnabled: true, privileged: true,
+							resourceRequestCpu: '2000m', resourceRequestMemory: '4Gi',
+							envVars: [containerEnvVar(key: 'DOCKER_TLS_CERTDIR', value: '')]    
+						)
+				],
+				volumes: [
+						emptyDirVolume(mountPath: '/var/lib/docker', memory: false),
+						secretVolume(secretName: 'operator-staging-kubeconfig', mountPath: '/home/jenkins/.kubeconfig'),
+				],
+		) {
+		node(delivery_pod_label) {
 			container("delivery") {
 				def WORKSPACE = pwd()
 				withCredentials([string(credentialsId: "${env.QN_ACCESS_KET_ID}", variable: 'QN_access_key'), string(credentialsId: "${env.QN_SECRET_KEY_ID}", variable: 'Qiniu_secret_key')]) {
@@ -91,6 +116,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 					}
 				}
 			}
+		}
 		}
 		currentBuild.result = "SUCCESS"
 	}

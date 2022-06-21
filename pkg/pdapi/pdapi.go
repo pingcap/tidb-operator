@@ -84,6 +84,8 @@ type PDClient interface {
 	EndEvictLeader(storeID uint64) error
 	// GetEvictLeaderSchedulers gets schedulers of evict leader
 	GetEvictLeaderSchedulers() ([]string, error)
+	// GetEvictLeaderSchedulersForStores gets schedulers of evict leader for given stores
+	GetEvictLeaderSchedulersForStores(storeIDs ...uint64) (map[uint64]string, error)
 	// GetPDLeader returns pd leader
 	GetPDLeader() (*pdpb.Member, error)
 	// TransferPDLeader transfers pd leader to specified member
@@ -606,6 +608,32 @@ func (c *pdClient) GetEvictLeaderSchedulers() ([]string, error) {
 		return nil, err
 	}
 	return evictSchedulers, nil
+}
+
+func (c *pdClient) GetEvictLeaderSchedulersForStores(storeIDs ...uint64) (map[uint64]string, error) {
+	schedulers, err := c.GetEvictLeaderSchedulers()
+	if err != nil {
+		return nil, err
+	}
+
+	find := func(id uint64) string {
+		for _, scheduler := range schedulers {
+			sName := getLeaderEvictSchedulerStr(id)
+			if scheduler == sName {
+				return scheduler
+			}
+		}
+		return ""
+	}
+
+	result := make(map[uint64]string)
+	for _, id := range storeIDs {
+		if scheduler := find(id); scheduler != "" {
+			result[id] = scheduler
+		}
+	}
+
+	return result, nil
 }
 
 // getEvictLeaderSchedulerConfig gets the config of PD scheduler "evict-leader-scheduler"

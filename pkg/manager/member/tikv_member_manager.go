@@ -321,8 +321,9 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	annoMount, annoVolume := annotationsMountVolume()
+	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.TiKVMemberType))
 	tikvDataVol := corev1.VolumeMount{
-		Name:      v1alpha1.TiKVMemberType.String(),
+		Name:      dataVolumeName,
 		MountPath: tikvDataVolumeMountPath}
 	volMounts := []corev1.VolumeMount{
 		annoMount,
@@ -607,6 +608,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		})
 	}
 	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
+	tikvContainer.EnvFrom = baseTiKVSpec.EnvFrom()
 	containers = append(containers, tikvContainer)
 
 	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)
@@ -647,7 +649,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Spec: podSpec,
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				util.VolumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), tc.Spec.TiKV.StorageClassName),
+				util.VolumeClaimTemplate(storageRequest, dataVolumeName, tc.Spec.TiKV.StorageClassName),
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: baseTiKVSpec.PodManagementPolicy(),
@@ -760,6 +762,11 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 	// If phase changes from UpgradePhase to NormalPhase, try to endEvictLeader for the last store.
 	if !upgrading && tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		if err = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set)); err != nil {
+			return err
+		}
+
+		// end evict leader for all stores when upgrade is done
+		if err = endEvictLeaderForAllStore(m.deps, tc); err != nil {
 			return err
 		}
 	}
