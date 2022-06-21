@@ -57,7 +57,6 @@ spec:
                 affinity:
                   properties:
                     nodeAffinity:
-<<<<<<< HEAD
                       properties:
                         preferredDuringSchedulingIgnoredDuringExecution:
                           items:
@@ -126,207 +125,6 @@ spec:
                                       - operator
                                       type: object
                                     type: array
-                                  matchFields:
-                                    items:
-                                      properties:
-                                        key:
-                                          type: string
-                                        operator:
-                                          type: string
-                                        values:
-                                          items:
-                                            type: string
-                                          type: array
-                                      required:
-                                      - key
-                                      - operator
-                                      type: object
-                                    type: array
-                                type: object
-                              type: array
-                          required:
-                          - nodeSelectorTerms
-                          type: object
-                      type: object
-                    podAffinity:
-=======
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
-                      properties:
-                        preferredDuringSchedulingIgnoredDuringExecution:
-                          items:
-                            properties:
-<<<<<<< HEAD
-                              podAffinityTerm:
-                                properties:
-                                  labelSelector:
-                                    properties:
-                                      matchExpressions:
-                                        items:
-                                          properties:
-                                            key:
-                                              type: string
-                                            operator:
-                                              type: string
-                                            values:
-                                              items:
-                                                type: string
-                                              type: array
-                                          required:
-                                          - key
-                                          - operator
-                                          type: object
-                                        type: array
-                                      matchLabels:
-                                        additionalProperties:
-                                          type: string
-                                        type: object
-                                    type: object
-                                  namespaces:
-                                    items:
-                                      type: string
-                                    type: array
-                                  topologyKey:
-                                    type: string
-                                required:
-                                - topologyKey
-                                type: object
-                              weight:
-                                format: int32
-                                type: integer
-                            required:
-                            - podAffinityTerm
-                            - weight
-                            type: object
-                          type: array
-                        requiredDuringSchedulingIgnoredDuringExecution:
-                          items:
-                            properties:
-                              labelSelector:
-=======
-                              preference:
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
-                                properties:
-                                  matchExpressions:
-                                    items:
-                                      properties:
-                                        key:
-                                          type: string
-                                        operator:
-                                          type: string
-                                        values:
-                                          items:
-                                            type: string
-                                          type: array
-                                      required:
-                                      - key
-                                      - operator
-                                      type: object
-                                    type: array
-                                  matchFields:
-                                    items:
-                                      properties:
-                                        key:
-                                          type: string
-                                        operator:
-                                          type: string
-                                        values:
-                                          items:
-                                            type: string
-                                          type: array
-                                      required:
-                                      - key
-                                      - operator
-                                      type: object
-                                    type: array
-                                type: object
-                              weight:
-                                format: int32
-                                type: integer
-                            required:
-<<<<<<< HEAD
-                            - topologyKey
-                            type: object
-                          type: array
-                      type: object
-                    podAntiAffinity:
-                      properties:
-                        preferredDuringSchedulingIgnoredDuringExecution:
-                          items:
-                            properties:
-                              podAffinityTerm:
-                                properties:
-                                  labelSelector:
-                                    properties:
-                                      matchExpressions:
-                                        items:
-                                          properties:
-                                            key:
-                                              type: string
-                                            operator:
-                                              type: string
-                                            values:
-                                              items:
-                                                type: string
-                                              type: array
-                                          required:
-                                          - key
-                                          - operator
-                                          type: object
-                                        type: array
-                                      matchLabels:
-                                        additionalProperties:
-                                          type: string
-                                        type: object
-                                    type: object
-                                  namespaces:
-                                    items:
-                                      type: string
-                                    type: array
-                                  topologyKey:
-                                    type: string
-                                required:
-                                - topologyKey
-                                type: object
-                              weight:
-                                format: int32
-                                type: integer
-                            required:
-                            - podAffinityTerm
-=======
-                            - preference
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
-                            - weight
-                            type: object
-                          type: array
-                        requiredDuringSchedulingIgnoredDuringExecution:
-<<<<<<< HEAD
-                          items:
-                            properties:
-                              labelSelector:
-=======
-                          properties:
-                            nodeSelectorTerms:
-                              items:
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
-                                properties:
-                                  matchExpressions:
-                                    items:
-                                      properties:
-                                        key:
-                                          type: string
-                                        operator:
-                                          type: string
-                                        values:
-                                          items:
-                                            type: string
-                                          type: array
-                                      required:
-                                      - key
-                                      - operator
-                                      type: object
-                                    type: array
-<<<<<<< HEAD
-=======
                                   matchFields:
                                     items:
                                       properties:
@@ -501,7 +299,6 @@ spec:
                                       - operator
                                       type: object
                                     type: array
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                                   matchLabels:
                                     additionalProperties:
                                       type: string
@@ -518,7 +315,6 @@ spec:
                             type: object
                           type: array
                       type: object
-<<<<<<< HEAD
                   type: object
                 backupType:
                   type: string
@@ -645,147 +441,6 @@ spec:
                   type: array
                 from:
                   properties:
-=======
-                  type: object
-                azblob:
-                  properties:
-                    accessTier:
-                      type: string
-                    container:
-                      type: string
-                    path:
-                      type: string
-                    prefix:
-                      type: string
-                    secretName:
-                      type: string
-                  type: object
-                backupType:
-                  type: string
-                br:
-                  properties:
-                    checksum:
-                      type: boolean
-                    cluster:
-                      type: string
-                    clusterNamespace:
-                      type: string
-                    concurrency:
-                      format: int32
-                      type: integer
-                    db:
-                      type: string
-                    logLevel:
-                      type: string
-                    onLine:
-                      type: boolean
-                    options:
-                      items:
-                        type: string
-                      type: array
-                    rateLimit:
-                      type: integer
-                    sendCredToTikv:
-                      type: boolean
-                    statusAddr:
-                      type: string
-                    table:
-                      type: string
-                    timeAgo:
-                      type: string
-                  required:
-                  - cluster
-                  type: object
-                cleanOption:
-                  properties:
-                    batchConcurrency:
-                      format: int32
-                      type: integer
-                    disableBatchConcurrency:
-                      type: boolean
-                    pageSize:
-                      format: int64
-                      type: integer
-                    routineConcurrency:
-                      format: int32
-                      type: integer
-                  type: object
-                cleanPolicy:
-                  type: string
-                dumpling:
-                  properties:
-                    options:
-                      items:
-                        type: string
-                      type: array
-                    tableFilter:
-                      items:
-                        type: string
-                      type: array
-                  type: object
-                env:
-                  items:
-                    properties:
-                      name:
-                        type: string
-                      value:
-                        type: string
-                      valueFrom:
-                        properties:
-                          configMapKeyRef:
-                            properties:
-                              key:
-                                type: string
-                              name:
-                                type: string
-                              optional:
-                                type: boolean
-                            required:
-                            - key
-                            type: object
-                          fieldRef:
-                            properties:
-                              apiVersion:
-                                type: string
-                              fieldPath:
-                                type: string
-                            required:
-                            - fieldPath
-                            type: object
-                          resourceFieldRef:
-                            properties:
-                              containerName:
-                                type: string
-                              divisor:
-                                anyOf:
-                                - type: integer
-                                - type: string
-                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                x-kubernetes-int-or-string: true
-                              resource:
-                                type: string
-                            required:
-                            - resource
-                            type: object
-                          secretKeyRef:
-                            properties:
-                              key:
-                                type: string
-                              name:
-                                type: string
-                              optional:
-                                type: boolean
-                            required:
-                            - key
-                            type: object
-                        type: object
-                    required:
-                    - name
-                    type: object
-                  type: array
-                from:
-                  properties:
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                     host:
                       type: string
                     port:
@@ -838,7 +493,6 @@ spec:
                     volume:
                       properties:
                         awsElasticBlockStore:
-<<<<<<< HEAD
                           properties:
                             fsType:
                               type: string
@@ -966,151 +620,6 @@ spec:
                           - driver
                           type: object
                         downwardAPI:
-=======
-                          properties:
-                            fsType:
-                              type: string
-                            partition:
-                              format: int32
-                              type: integer
-                            readOnly:
-                              type: boolean
-                            volumeID:
-                              type: string
-                          required:
-                          - volumeID
-                          type: object
-                        azureDisk:
-                          properties:
-                            cachingMode:
-                              type: string
-                            diskName:
-                              type: string
-                            diskURI:
-                              type: string
-                            fsType:
-                              type: string
-                            kind:
-                              type: string
-                            readOnly:
-                              type: boolean
-                          required:
-                          - diskName
-                          - diskURI
-                          type: object
-                        azureFile:
-                          properties:
-                            readOnly:
-                              type: boolean
-                            secretName:
-                              type: string
-                            shareName:
-                              type: string
-                          required:
-                          - secretName
-                          - shareName
-                          type: object
-                        cephfs:
-                          properties:
-                            monitors:
-                              items:
-                                type: string
-                              type: array
-                            path:
-                              type: string
-                            readOnly:
-                              type: boolean
-                            secretFile:
-                              type: string
-                            secretRef:
-                              properties:
-                                name:
-                                  type: string
-                              type: object
-                            user:
-                              type: string
-                          required:
-                          - monitors
-                          type: object
-                        cinder:
-                          properties:
-                            fsType:
-                              type: string
-                            readOnly:
-                              type: boolean
-                            secretRef:
-                              properties:
-                                name:
-                                  type: string
-                              type: object
-                            volumeID:
-                              type: string
-                          required:
-                          - volumeID
-                          type: object
-                        configMap:
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
-                          properties:
-                            defaultMode:
-                              format: int32
-                              type: integer
-                            items:
-                              items:
-                                properties:
-<<<<<<< HEAD
-                                  fieldRef:
-                                    properties:
-                                      apiVersion:
-                                        type: string
-                                      fieldPath:
-                                        type: string
-                                    required:
-                                    - fieldPath
-                                    type: object
-                                  mode:
-                                    format: int32
-                                    type: integer
-                                  path:
-                                    type: string
-=======
-                                  key:
-                                    type: string
-                                  mode:
-                                    format: int32
-                                    type: integer
-                                  path:
-                                    type: string
-                                required:
-                                - key
-                                - path
-                                type: object
-                              type: array
-                            name:
-                              type: string
-                            optional:
-                              type: boolean
-                          type: object
-                        csi:
-                          properties:
-                            driver:
-                              type: string
-                            fsType:
-                              type: string
-                            nodePublishSecretRef:
-                              properties:
-                                name:
-                                  type: string
-                              type: object
-                            readOnly:
-                              type: boolean
-                            volumeAttributes:
-                              additionalProperties:
-                                type: string
-                              type: object
-                          required:
-                          - driver
-                          type: object
-                        downwardAPI:
                           properties:
                             defaultMode:
                               format: int32
@@ -1132,7 +641,6 @@ spec:
                                     type: integer
                                   path:
                                     type: string
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                                   resourceFieldRef:
                                     properties:
                                       containerName:
@@ -1144,7 +652,6 @@ spec:
                                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                         x-kubernetes-int-or-string: true
                                       resource:
-<<<<<<< HEAD
                                         type: string
                                     required:
                                     - resource
@@ -1498,361 +1005,6 @@ spec:
                                           - key
                                           - path
                                           type: object
-=======
-                                        type: string
-                                    required:
-                                    - resource
-                                    type: object
-                                required:
-                                - path
-                                type: object
-                              type: array
-                          type: object
-                        emptyDir:
-                          properties:
-                            medium:
-                              type: string
-                            sizeLimit:
-                              anyOf:
-                              - type: integer
-                              - type: string
-                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                              x-kubernetes-int-or-string: true
-                          type: object
-                        ephemeral:
-                          properties:
-                            readOnly:
-                              type: boolean
-                            volumeClaimTemplate:
-                              properties:
-                                metadata:
-                                  type: object
-                                spec:
-                                  properties:
-                                    accessModes:
-                                      items:
-                                        type: string
-                                      type: array
-                                    dataSource:
-                                      properties:
-                                        apiGroup:
-                                          type: string
-                                        kind:
-                                          type: string
-                                        name:
-                                          type: string
-                                      required:
-                                      - kind
-                                      - name
-                                      type: object
-                                    resources:
-                                      properties:
-                                        limits:
-                                          additionalProperties:
-                                            anyOf:
-                                            - type: integer
-                                            - type: string
-                                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                            x-kubernetes-int-or-string: true
-                                          type: object
-                                        requests:
-                                          additionalProperties:
-                                            anyOf:
-                                            - type: integer
-                                            - type: string
-                                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                            x-kubernetes-int-or-string: true
-                                          type: object
-                                      type: object
-                                    selector:
-                                      properties:
-                                        matchExpressions:
-                                          items:
-                                            properties:
-                                              key:
-                                                type: string
-                                              operator:
-                                                type: string
-                                              values:
-                                                items:
-                                                  type: string
-                                                type: array
-                                            required:
-                                            - key
-                                            - operator
-                                            type: object
-                                          type: array
-                                        matchLabels:
-                                          additionalProperties:
-                                            type: string
-                                          type: object
-                                      type: object
-                                    storageClassName:
-                                      type: string
-                                    volumeMode:
-                                      type: string
-                                    volumeName:
-                                      type: string
-                                  type: object
-                              required:
-                              - spec
-                              type: object
-                          type: object
-                        fc:
-                          properties:
-                            fsType:
-                              type: string
-                            lun:
-                              format: int32
-                              type: integer
-                            readOnly:
-                              type: boolean
-                            targetWWNs:
-                              items:
-                                type: string
-                              type: array
-                            wwids:
-                              items:
-                                type: string
-                              type: array
-                          type: object
-                        flexVolume:
-                          properties:
-                            driver:
-                              type: string
-                            fsType:
-                              type: string
-                            options:
-                              additionalProperties:
-                                type: string
-                              type: object
-                            readOnly:
-                              type: boolean
-                            secretRef:
-                              properties:
-                                name:
-                                  type: string
-                              type: object
-                          required:
-                          - driver
-                          type: object
-                        flocker:
-                          properties:
-                            datasetName:
-                              type: string
-                            datasetUUID:
-                              type: string
-                          type: object
-                        gcePersistentDisk:
-                          properties:
-                            fsType:
-                              type: string
-                            partition:
-                              format: int32
-                              type: integer
-                            pdName:
-                              type: string
-                            readOnly:
-                              type: boolean
-                          required:
-                          - pdName
-                          type: object
-                        gitRepo:
-                          properties:
-                            directory:
-                              type: string
-                            repository:
-                              type: string
-                            revision:
-                              type: string
-                          required:
-                          - repository
-                          type: object
-                        glusterfs:
-                          properties:
-                            endpoints:
-                              type: string
-                            path:
-                              type: string
-                            readOnly:
-                              type: boolean
-                          required:
-                          - endpoints
-                          - path
-                          type: object
-                        hostPath:
-                          properties:
-                            path:
-                              type: string
-                            type:
-                              type: string
-                          required:
-                          - path
-                          type: object
-                        iscsi:
-                          properties:
-                            chapAuthDiscovery:
-                              type: boolean
-                            chapAuthSession:
-                              type: boolean
-                            fsType:
-                              type: string
-                            initiatorName:
-                              type: string
-                            iqn:
-                              type: string
-                            iscsiInterface:
-                              type: string
-                            lun:
-                              format: int32
-                              type: integer
-                            portals:
-                              items:
-                                type: string
-                              type: array
-                            readOnly:
-                              type: boolean
-                            secretRef:
-                              properties:
-                                name:
-                                  type: string
-                              type: object
-                            targetPortal:
-                              type: string
-                          required:
-                          - iqn
-                          - lun
-                          - targetPortal
-                          type: object
-                        name:
-                          type: string
-                        nfs:
-                          properties:
-                            path:
-                              type: string
-                            readOnly:
-                              type: boolean
-                            server:
-                              type: string
-                          required:
-                          - path
-                          - server
-                          type: object
-                        persistentVolumeClaim:
-                          properties:
-                            claimName:
-                              type: string
-                            readOnly:
-                              type: boolean
-                          required:
-                          - claimName
-                          type: object
-                        photonPersistentDisk:
-                          properties:
-                            fsType:
-                              type: string
-                            pdID:
-                              type: string
-                          required:
-                          - pdID
-                          type: object
-                        portworxVolume:
-                          properties:
-                            fsType:
-                              type: string
-                            readOnly:
-                              type: boolean
-                            volumeID:
-                              type: string
-                          required:
-                          - volumeID
-                          type: object
-                        projected:
-                          properties:
-                            defaultMode:
-                              format: int32
-                              type: integer
-                            sources:
-                              items:
-                                properties:
-                                  configMap:
-                                    properties:
-                                      items:
-                                        items:
-                                          properties:
-                                            key:
-                                              type: string
-                                            mode:
-                                              format: int32
-                                              type: integer
-                                            path:
-                                              type: string
-                                          required:
-                                          - key
-                                          - path
-                                          type: object
-                                        type: array
-                                      name:
-                                        type: string
-                                      optional:
-                                        type: boolean
-                                    type: object
-                                  downwardAPI:
-                                    properties:
-                                      items:
-                                        items:
-                                          properties:
-                                            fieldRef:
-                                              properties:
-                                                apiVersion:
-                                                  type: string
-                                                fieldPath:
-                                                  type: string
-                                              required:
-                                              - fieldPath
-                                              type: object
-                                            mode:
-                                              format: int32
-                                              type: integer
-                                            path:
-                                              type: string
-                                            resourceFieldRef:
-                                              properties:
-                                                containerName:
-                                                  type: string
-                                                divisor:
-                                                  anyOf:
-                                                  - type: integer
-                                                  - type: string
-                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                                  x-kubernetes-int-or-string: true
-                                                resource:
-                                                  type: string
-                                              required:
-                                              - resource
-                                              type: object
-                                          required:
-                                          - path
-                                          type: object
-                                        type: array
-                                    type: object
-                                  secret:
-                                    properties:
-                                      items:
-                                        items:
-                                          properties:
-                                            key:
-                                              type: string
-                                            mode:
-                                              format: int32
-                                              type: integer
-                                            path:
-                                              type: string
-                                          required:
-                                          - key
-                                          - path
-                                          type: object
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                                         type: array
                                       name:
                                         type: string
@@ -2007,22 +1159,6 @@ spec:
                           type: object
                       required:
                       - name
-<<<<<<< HEAD
-                      type: object
-                    volumeMount:
-                      properties:
-                        mountPath:
-                          type: string
-                        mountPropagation:
-                          type: string
-                        name:
-                          type: string
-                        readOnly:
-                          type: boolean
-                        subPath:
-                          type: string
-                        subPathExpr:
-=======
                       type: object
                     volumeMount:
                       properties:
@@ -2042,76 +1178,6 @@ spec:
                       - mountPath
                       - name
                       type: object
-                  required:
-                  - volume
-                  - volumeMount
-                  type: object
-                podSecurityContext:
-                  properties:
-                    fsGroup:
-                      format: int64
-                      type: integer
-                    fsGroupChangePolicy:
-                      type: string
-                    runAsGroup:
-                      format: int64
-                      type: integer
-                    runAsNonRoot:
-                      type: boolean
-                    runAsUser:
-                      format: int64
-                      type: integer
-                    seLinuxOptions:
-                      properties:
-                        level:
-                          type: string
-                        role:
-                          type: string
-                        type:
-                          type: string
-                        user:
-                          type: string
-                      type: object
-                    seccompProfile:
-                      properties:
-                        localhostProfile:
-                          type: string
-                        type:
-                          type: string
-                      required:
-                      - type
-                      type: object
-                    supplementalGroups:
-                      items:
-                        format: int64
-                        type: integer
-                      type: array
-                    sysctls:
-                      items:
-                        properties:
-                          name:
-                            type: string
-                          value:
-                            type: string
-                        required:
-                        - name
-                        - value
-                        type: object
-                      type: array
-                    windowsOptions:
-                      properties:
-                        gmsaCredentialSpec:
-                          type: string
-                        gmsaCredentialSpecName:
-                          type: string
-                        runAsUserName:
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
-                          type: string
-                      required:
-                      - mountPath
-                      - name
-                      type: object
-<<<<<<< HEAD
                   required:
                   - volume
                   - volumeMount
@@ -2201,32 +1267,6 @@ spec:
                   type: object
                 s3:
                   properties:
-=======
-                  type: object
-                priorityClassName:
-                  type: string
-                resources:
-                  properties:
-                    limits:
-                      additionalProperties:
-                        anyOf:
-                        - type: integer
-                        - type: string
-                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                        x-kubernetes-int-or-string: true
-                      type: object
-                    requests:
-                      additionalProperties:
-                        anyOf:
-                        - type: integer
-                        - type: string
-                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                        x-kubernetes-int-or-string: true
-                      type: object
-                  type: object
-                s3:
-                  properties:
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                     acl:
                       type: string
                     bucket:
@@ -2265,7 +1305,6 @@ spec:
                     type: string
                   type: array
                 tikvGCLifeTime:
-<<<<<<< HEAD
                   type: string
                 tolerations:
                   items:
@@ -2285,27 +1324,6 @@ spec:
                   type: array
                 toolImage:
                   type: string
-=======
-                  type: string
-                tolerations:
-                  items:
-                    properties:
-                      effect:
-                        type: string
-                      key:
-                        type: string
-                      operator:
-                        type: string
-                      tolerationSeconds:
-                        format: int64
-                        type: integer
-                      value:
-                        type: string
-                    type: object
-                  type: array
-                toolImage:
-                  type: string
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                 useKMS:
                   type: boolean
               type: object
@@ -2434,15 +1452,9 @@ spec:
                                 items:
                                   properties:
                                     key:
-<<<<<<< HEAD
                                       type: string
                                     operator:
                                       type: string
-=======
-                                      type: string
-                                    operator:
-                                      type: string
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                                     values:
                                       items:
                                         type: string
@@ -2689,22 +1701,6 @@ spec:
                       type: array
                   type: object
               type: object
-<<<<<<< HEAD
-=======
-            azblob:
-              properties:
-                accessTier:
-                  type: string
-                container:
-                  type: string
-                path:
-                  type: string
-                prefix:
-                  type: string
-                secretName:
-                  type: string
-              type: object
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
             backupType:
               type: string
             br:
@@ -3130,7 +2126,6 @@ spec:
                                       type: object
                                   type: object
                                 storageClassName:
-<<<<<<< HEAD
                                   type: string
                                 volumeMode:
                                   type: string
@@ -3227,104 +2222,6 @@ spec:
                       properties:
                         path:
                           type: string
-=======
-                                  type: string
-                                volumeMode:
-                                  type: string
-                                volumeName:
-                                  type: string
-                              type: object
-                          required:
-                          - spec
-                          type: object
-                      type: object
-                    fc:
-                      properties:
-                        fsType:
-                          type: string
-                        lun:
-                          format: int32
-                          type: integer
-                        readOnly:
-                          type: boolean
-                        targetWWNs:
-                          items:
-                            type: string
-                          type: array
-                        wwids:
-                          items:
-                            type: string
-                          type: array
-                      type: object
-                    flexVolume:
-                      properties:
-                        driver:
-                          type: string
-                        fsType:
-                          type: string
-                        options:
-                          additionalProperties:
-                            type: string
-                          type: object
-                        readOnly:
-                          type: boolean
-                        secretRef:
-                          properties:
-                            name:
-                              type: string
-                          type: object
-                      required:
-                      - driver
-                      type: object
-                    flocker:
-                      properties:
-                        datasetName:
-                          type: string
-                        datasetUUID:
-                          type: string
-                      type: object
-                    gcePersistentDisk:
-                      properties:
-                        fsType:
-                          type: string
-                        partition:
-                          format: int32
-                          type: integer
-                        pdName:
-                          type: string
-                        readOnly:
-                          type: boolean
-                      required:
-                      - pdName
-                      type: object
-                    gitRepo:
-                      properties:
-                        directory:
-                          type: string
-                        repository:
-                          type: string
-                        revision:
-                          type: string
-                      required:
-                      - repository
-                      type: object
-                    glusterfs:
-                      properties:
-                        endpoints:
-                          type: string
-                        path:
-                          type: string
-                        readOnly:
-                          type: boolean
-                      required:
-                      - endpoints
-                      - path
-                      type: object
-                    hostPath:
-                      properties:
-                        path:
-                          type: string
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                         type:
                           type: string
                       required:
@@ -3444,7 +2341,6 @@ spec:
                                     items:
                                       properties:
                                         fieldRef:
-<<<<<<< HEAD
                                           properties:
                                             apiVersion:
                                               type: string
@@ -3473,36 +2369,6 @@ spec:
                                           required:
                                           - resource
                                           type: object
-=======
-                                          properties:
-                                            apiVersion:
-                                              type: string
-                                            fieldPath:
-                                              type: string
-                                          required:
-                                          - fieldPath
-                                          type: object
-                                        mode:
-                                          format: int32
-                                          type: integer
-                                        path:
-                                          type: string
-                                        resourceFieldRef:
-                                          properties:
-                                            containerName:
-                                              type: string
-                                            divisor:
-                                              anyOf:
-                                              - type: integer
-                                              - type: string
-                                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                              x-kubernetes-int-or-string: true
-                                            resource:
-                                              type: string
-                                          required:
-                                          - resource
-                                          type: object
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                                       required:
                                       - path
                                       type: object
@@ -3544,7 +2410,6 @@ spec:
                                 type: object
                             type: object
                           type: array
-<<<<<<< HEAD
                       required:
                       - sources
                       type: object
@@ -3675,138 +2540,6 @@ spec:
                         volumePath:
                           type: string
                       required:
-=======
-                      required:
-                      - sources
-                      type: object
-                    quobyte:
-                      properties:
-                        group:
-                          type: string
-                        readOnly:
-                          type: boolean
-                        registry:
-                          type: string
-                        tenant:
-                          type: string
-                        user:
-                          type: string
-                        volume:
-                          type: string
-                      required:
-                      - registry
-                      - volume
-                      type: object
-                    rbd:
-                      properties:
-                        fsType:
-                          type: string
-                        image:
-                          type: string
-                        keyring:
-                          type: string
-                        monitors:
-                          items:
-                            type: string
-                          type: array
-                        pool:
-                          type: string
-                        readOnly:
-                          type: boolean
-                        secretRef:
-                          properties:
-                            name:
-                              type: string
-                          type: object
-                        user:
-                          type: string
-                      required:
-                      - image
-                      - monitors
-                      type: object
-                    scaleIO:
-                      properties:
-                        fsType:
-                          type: string
-                        gateway:
-                          type: string
-                        protectionDomain:
-                          type: string
-                        readOnly:
-                          type: boolean
-                        secretRef:
-                          properties:
-                            name:
-                              type: string
-                          type: object
-                        sslEnabled:
-                          type: boolean
-                        storageMode:
-                          type: string
-                        storagePool:
-                          type: string
-                        system:
-                          type: string
-                        volumeName:
-                          type: string
-                      required:
-                      - gateway
-                      - secretRef
-                      - system
-                      type: object
-                    secret:
-                      properties:
-                        defaultMode:
-                          format: int32
-                          type: integer
-                        items:
-                          items:
-                            properties:
-                              key:
-                                type: string
-                              mode:
-                                format: int32
-                                type: integer
-                              path:
-                                type: string
-                            required:
-                            - key
-                            - path
-                            type: object
-                          type: array
-                        optional:
-                          type: boolean
-                        secretName:
-                          type: string
-                      type: object
-                    storageos:
-                      properties:
-                        fsType:
-                          type: string
-                        readOnly:
-                          type: boolean
-                        secretRef:
-                          properties:
-                            name:
-                              type: string
-                          type: object
-                        volumeName:
-                          type: string
-                        volumeNamespace:
-                          type: string
-                      type: object
-                    vsphereVolume:
-                      properties:
-                        fsType:
-                          type: string
-                        storagePolicyID:
-                          type: string
-                        storagePolicyName:
-                          type: string
-                        volumePath:
-                          type: string
-                      required:
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                       - volumePath
                       type: object
                   required:
@@ -3920,7 +2653,6 @@ spec:
             s3:
               properties:
                 acl:
-<<<<<<< HEAD
                   type: string
                 bucket:
                   type: string
@@ -3942,29 +2674,6 @@ spec:
                   type: string
                 sse:
                   type: string
-=======
-                  type: string
-                bucket:
-                  type: string
-                endpoint:
-                  type: string
-                options:
-                  items:
-                    type: string
-                  type: array
-                path:
-                  type: string
-                prefix:
-                  type: string
-                provider:
-                  type: string
-                region:
-                  type: string
-                secretName:
-                  type: string
-                sse:
-                  type: string
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
                 storageClass:
                   type: string
               required:
@@ -4038,21 +2747,12 @@ spec:
             phase:
               type: string
             timeCompleted:
-<<<<<<< HEAD
               format: date-time
               nullable: true
               type: string
             timeStarted:
               format: date-time
               nullable: true
-=======
-              format: date-time
-              nullable: true
-              type: string
-            timeStarted:
-              format: date-time
-              nullable: true
->>>>>>> 85d3e3c23... Support to expose volume status (#4540)
               type: string
           type: object
       required:
