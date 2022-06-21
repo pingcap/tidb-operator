@@ -549,6 +549,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		})
 	}
 	tiflashContainer.Env = util.AppendEnv(env, baseTiFlashSpec.Env())
+	tiflashContainer.EnvFrom = baseTiFlashSpec.EnvFrom()
 	podSpec.Volumes = append(vols, baseTiFlashSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, baseTiFlashSpec.InitContainers()...)
@@ -608,7 +609,7 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 			return nil, err
 		}
 		pvcs = append(pvcs, corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("data%d", k)},
+			ObjectMeta: metav1.ObjectMeta{Name: string(v1alpha1.GetStorageVolumeNameForTiFlash(k))},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,

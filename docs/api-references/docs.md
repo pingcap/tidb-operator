@@ -2846,6 +2846,81 @@ float64
 </tr>
 </tbody>
 </table>
+<h3 id="azblobstorageprovider">AzblobStorageProvider</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storageprovider">StorageProvider</a>)
+</p>
+<p>
+<p>AzblobStorageProvider represents the azure blob storage for storing backups.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path is the full path where the backup is saved.
+The format of the path must be: &ldquo;<container-name>/<path-to-backup-file>&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>container</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Container in which to store the backup data.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>accessTier</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Access tier of the uploaded objects.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SecretName is the name of secret which stores the
+azblob service account credentials.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Prefix of the data path.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="brconfig">BRConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -4492,6 +4567,20 @@ Note that the following env names cannot be used and will be overridden by TiDB 
 - POD_NAME
 - BINLOG_ENABLED
 - SLOW_LOG_FILE</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>envFrom</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#envfromsource-v1-core">
+[]Kubernetes core/v1.EnvFromSource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Extend the use scenarios for env</p>
 </td>
 </tr>
 <tr>
@@ -8241,6 +8330,19 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="memberphase">MemberPhase</h3>
@@ -8548,6 +8650,83 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="observedstoragevolumestatus">ObservedStorageVolumeStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storagevolumestatus">StorageVolumeStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>boundCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BoundCount is the count of bound volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CurrentCount is the count of volumes whose capacity is equal to <code>currentCapacity</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resizedCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResizedCount is the count of volumes whose capacity is equal to <code>resizedCapacity</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentCapacity</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>CurrentCapacity is the current capacity of the volume.
+If any volume is resizing, it is the capacity before resizing.
+If all volumes are resized, it is the resized capacity and same as desired capacity.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resizedCapacity</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>ResizedCapacity is the desired capacity of the volume.</p>
 </td>
 </tr>
 </tbody>
@@ -10525,6 +10704,19 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstorelabel">PDStoreLabel</h3>
@@ -11729,6 +11921,19 @@ Kubernetes apps/v1.StatefulSetStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 </tbody>
@@ -13439,6 +13644,18 @@ GcsStorageProvider
 </tr>
 <tr>
 <td>
+<code>azblob</code></br>
+<em>
+<a href="#azblobstorageprovider">
+AzblobStorageProvider
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>local</code></br>
 <em>
 <a href="#localstorageprovider">
@@ -13513,6 +13730,56 @@ string
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="storagevolumename">StorageVolumeName</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storagevolumestatus">StorageVolumeStatus</a>)
+</p>
+<p>
+<p>StorageVolumeName is the volume name which is same as <code>volumes.name</code> in Pod spec.</p>
+</p>
+<h3 id="storagevolumestatus">StorageVolumeStatus</h3>
+<p>
+<p>StorageVolumeStatus is the actual status for a storage</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ObservedStorageVolumeStatus</code></br>
+<em>
+<a href="#observedstoragevolumestatus">
+ObservedStorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ObservedStorageVolumeStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+<a href="#storagevolumename">
+StorageVolumeName
+</a>
+</em>
+</td>
+<td>
+<p>Name is the volume name which is same as <code>volumes.name</code> in Pod spec.</p>
 </td>
 </tr>
 </tbody>
@@ -14131,6 +14398,19 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCaptu
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 </tbody>
@@ -15506,6 +15786,19 @@ bool
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 </tbody>
@@ -20128,6 +20421,19 @@ map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLead
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstorageconfig">TiKVStorageConfig</h3>
@@ -23472,6 +23778,19 @@ string
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 </tbody>

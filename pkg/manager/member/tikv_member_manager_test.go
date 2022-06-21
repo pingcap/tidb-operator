@@ -1829,6 +1829,41 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 			},
 		},
 		{
+			name: "TiKV set custom env from secret",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							EnvFrom: []corev1.EnvFromSource{
+								{
+									SecretRef: &corev1.SecretEnvSource{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "secret-example",
+										},
+									},
+								},
+							},
+						},
+					},
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+				},
+			},
+			testSts: testContainerEnvFrom(t, []corev1.EnvFromSource{
+				{
+					SecretRef: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "secret-example",
+						},
+					},
+				},
+			}, v1alpha1.TiKVMemberType),
+		},
+		{
 			name: "TiKV additional containers",
 			tc: v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{

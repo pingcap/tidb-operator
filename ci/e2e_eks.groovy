@@ -69,6 +69,8 @@ if (!env.DEFAULT_AWS_REGION) {
 pipeline {
     agent {
         kubernetes {
+            cloud "kubernetes-ng"
+            namespace "jenkins-tidb-operator"
             yaml podYAML
             defaultContainer "main"
             customWorkspace "/home/jenkins/agent/workspace/go/src/github.com/pingcap/tidb-operator"

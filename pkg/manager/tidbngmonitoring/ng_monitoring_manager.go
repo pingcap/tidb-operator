@@ -379,6 +379,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 
 	// downward
 	builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddEnvs(spec.Env()...)
+	builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddEnvFroms(spec.EnvFrom()...)
 	builder.PodTemplateSpecBuilder().AddLabels(spec.Labels())
 	builder.PodTemplateSpecBuilder().AddAnnotations(spec.Annotations())
 	// additional storage volumes
