@@ -3027,7 +3027,8 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		_, err = c.CoreV1().Services(ns).Create(context.TODO(), thanosQueryService, metav1.CreateOptions{})
 		framework.ExpectNoError(err, "Expected thanos query service created success")
 
-		err = tests.CheckThanosQueryData("thanos-query", tm.Namespace, fw, 1)
+		// Check 3 targets, 1 TiDB + 1 PD + 1 TiKV
+		err = tests.CheckThanosQueryData("thanos-query", tm.Namespace, fw, 3)
 		framework.ExpectNoError(err, "Expected thanos query check success")
 
 		ginkgo.By("Delete tidbmonitor")
