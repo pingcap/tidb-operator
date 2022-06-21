@@ -3734,6 +3734,17 @@ string
 </tr>
 <tr>
 <td>
+<code>progress</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The current progress of the backup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>phase</code></br>
 <em>
 <a href="#backupconditiontype">

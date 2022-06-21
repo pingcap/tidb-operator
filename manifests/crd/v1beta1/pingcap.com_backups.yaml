@@ -25,6 +25,11 @@ spec:
     description: The commit ts of tidb cluster dump
     name: CommitTS
     type: string
+  - JSONPath: .status.progress
+    description: The current progress of the backup
+    name: Progress
+    priority: 1
+    type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
     name: Started
@@ -1379,6 +1384,8 @@ spec:
               nullable: true
               type: array
             phase:
+              type: string
+            progress:
               type: string
             timeCompleted:
               format: date-time

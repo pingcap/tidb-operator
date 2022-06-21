@@ -35,6 +35,11 @@ spec:
       jsonPath: .status.commitTs
       name: CommitTS
       type: string
+    - description: The current progress of the backup
+      jsonPath: .status.progress
+      name: Progress
+      priority: 1
+      type: string
     - description: The time at which the backup was started
       jsonPath: .status.timeStarted
       name: Started
@@ -1379,6 +1384,8 @@ spec:
                 nullable: true
                 type: array
               phase:
+                type: string
+              progress:
                 type: string
               timeCompleted:
                 format: date-time

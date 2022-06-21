@@ -19,12 +19,20 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path"
+	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/dustin/go-humanize"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
@@ -36,7 +44,10 @@ type Options struct {
 }
 
 // backupData generates br args and runs br binary to do the real backup work
-func (bo *Options) backupData(ctx context.Context, backup *v1alpha1.Backup) error {
+func (bo *Options) backupData(
+	ctx context.Context,
+	backup *v1alpha1.Backup,
+	statusUpdater controller.BackupConditionUpdaterInterface) (bool, error) {
 	clusterNamespace := backup.Spec.BR.ClusterNamespace
 	if backup.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = backup.Namespace
@@ -48,10 +59,22 @@ func (bo *Options) backupData(ctx context.Context, backup *v1alpha1.Backup) erro
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
+
+	// CloudSnapshotBackup is the metadata for backup TiDBCluster, especially TiKV-volumes for BR to take snapshot
+	csb, isCSB := backup.Annotations[label.AnnBackupCloudSnapKey]
+	if isCSB {
+		csbPath := path.Join(util.BRBinPath, "csb_backup.json")
+		err := ioutil.WriteFile(csbPath, []byte(csb), 0644)
+		if err != nil {
+			return false, err
+		}
+		args = append(args, fmt.Sprintf("--volume-file=%s", csbPath))
+	}
+
 	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
 	dataArgs, err := constructOptions(backup)
 	if err != nil {
-		return err
+		return false, err
 	}
 	args = append(args, dataArgs...)
 
@@ -72,16 +95,99 @@ func (bo *Options) backupData(ctx context.Context, backup *v1alpha1.Backup) erro
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
+		return false, fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
 	}
 	stdErr, err := cmd.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
+		return false, fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
+		return false, fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
 	}
+
+	type progressUpdate struct {
+		progress, backupSize, resolvedTs *string
+	}
+
+	quit := make(chan struct{})
+	update := make(chan *progressUpdate)
+	progressFile := path.Join(util.BRBinPath, "progress.txt")
+	successTag := fmt.Sprintf("[%s backup success]", strings.ToUpper(backupType))
+	go func() {
+		ticker := time.NewTicker(constants.ProgressInterval)
+		var file *os.File
+		var lastUpdate string
+		var completed bool
+		for {
+			select {
+			case <-quit:
+				ticker.Stop()
+				return
+			case val := <-update:
+				if completed {
+					continue
+				}
+				updateStatus := &controller.BackupUpdateStatus{
+					Progress: val.progress,
+				}
+				if val.resolvedTs != nil || val.backupSize != nil {
+					updateStatus.CommitTs = val.resolvedTs
+					backupSize, err := strconv.ParseInt(*val.backupSize, 10, 64)
+					if err == nil {
+						updateStatus.BackupSize = &backupSize
+						backupSizeReadable := humanize.Bytes(uint64(backupSize))
+						updateStatus.BackupSizeReadable = &backupSizeReadable
+					} else {
+						klog.Warningf("Failed to parse BackupSize %s, %s", *val.backupSize, err.Error())
+					}
+					err = statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+						Type:   v1alpha1.BackupComplete,
+						Status: corev1.ConditionTrue,
+					}, updateStatus)
+					if err == nil {
+						completed = true
+					} else {
+						klog.Warningf("Failed to update BackupUpdateStatus-Complete for cluster %s, %s", bo, err.Error())
+					}
+				} else {
+					err = statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+						Type:   v1alpha1.BackupRunning,
+						Status: corev1.ConditionTrue,
+					}, updateStatus)
+					if err != nil {
+						klog.Warningf("Failed to update BackupUpdateStatus-Running for cluster %s, %s", bo, err.Error())
+					}
+				}
+			case <-ticker.C:
+				if backupUtil.IsFileExist(progressFile) {
+					continue
+				}
+				if file == nil {
+					file, err = os.Open(progressFile)
+					if err != nil {
+						return
+					}
+					defer file.Close()
+				}
+				file.Seek(0, 0)
+				bs, err := ioutil.ReadAll(file)
+				if err != nil {
+					return
+				}
+				go func() {
+					progress := string(bs)
+					if lastUpdate != progress {
+						update <- &progressUpdate{
+							progress: &progress,
+						}
+						lastUpdate = progress
+					}
+				}()
+			}
+		}
+	}()
+
 	var errMsg string
 	reader := bufio.NewReader(stdOut)
 	for {
@@ -89,9 +195,23 @@ func (bo *Options) backupData(ctx context.Context, backup *v1alpha1.Backup) erro
 		if strings.Contains(line, "[ERROR]") {
 			errMsg += line
 		}
-
 		klog.Info(strings.Replace(line, "\n", "", -1))
+
+		if strings.Contains(line, successTag) {
+			extract := strings.Split(line, successTag)[1]
+			sizeStr := regexp.MustCompile(`size=\d+`).FindString(extract)
+			size := strings.ReplaceAll(sizeStr, "size=", "")
+			tsStr := regexp.MustCompile(`resolved_ts=\d+`).FindString(extract)
+			ts := strings.ReplaceAll(tsStr, "resolved_ts=", "")
+			update <- &progressUpdate{
+				progress:   func(s string) *string { return &s }("100%"),
+				resolvedTs: &ts,
+				backupSize: &size,
+			}
+		}
+
 		if err != nil || io.EOF == err {
+			quit <- struct{}{}
 			break
 		}
 	}
@@ -102,11 +222,14 @@ func (bo *Options) backupData(ctx context.Context, backup *v1alpha1.Backup) erro
 	}
 	err = cmd.Wait()
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+		return false, fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
 	}
 
 	klog.Infof("Backup data for cluster %s successfully", bo)
-	return nil
+	if isCSB {
+		return true, nil
+	}
+	return false, nil
 }
 
 // constructOptions constructs options for BR

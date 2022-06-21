@@ -47,6 +47,8 @@ type BackupUpdateStatus struct {
 	BackupSize *int64
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
+	// Progress is the progress of the backup.
+	Progress *string
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -123,6 +125,9 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	}
 	if newStatus.CommitTs != nil {
 		status.CommitTs = *newStatus.CommitTs
+	}
+	if newStatus.Progress != nil {
+		status.Progress = *newStatus.Progress
 	}
 }
 

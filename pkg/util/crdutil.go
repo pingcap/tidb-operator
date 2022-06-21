@@ -186,6 +186,12 @@ var (
 		Description: "The commit ts of tidb cluster dump",
 		JSONPath:    ".status.commitTs",
 	}
+	backupProgressColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Progress",
+		Type:        "string",
+		Description: "The progress of the backup",
+		JSONPath:    ".status.progress",
+	}
 	backupStartedColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Started",
 		Type:        "string",

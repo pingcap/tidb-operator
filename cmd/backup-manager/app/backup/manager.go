@@ -262,7 +262,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.backupData(ctx, backup)
+	isCompleted, backupErr := bm.backupData(ctx, backup, bm.StatusUpdater)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
@@ -300,7 +300,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
+
+	// The status update has been completed, so return success directly
 	klog.Infof("backup cluster %s data to %s success", bm, backupFullPath)
+	if isCompleted {
+		return nil
+	}
 
 	backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
 	if err != nil {
