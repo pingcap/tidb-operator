@@ -378,7 +378,7 @@ func CheckThanosQueryData(name, namespace string, fw portforward.PortForward, ex
 			log.Logf("ERROR: %v", err)
 			return false, nil
 		}
-		if instanceUpData.Status != "success" || len(instanceUpData.Data.Result) != 7 {
+		if instanceUpData.Status != "success" || len(instanceUpData.Data.Result) != expectNumber {
 			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, metrics data:%v , status: %s", namespace, name, thanosAddr, instanceUpData.Data.Result, instanceUpData.Status)
 			return false, nil
 		}
