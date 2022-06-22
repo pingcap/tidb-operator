@@ -351,8 +351,13 @@ try {
         if (GIT_REF ==~ /^(master|)$/ || GIT_REF ==~ /^(release-.*)$/
             || GIT_REF ==~ /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/) {
             // Upload assets if the git ref is the master branch or version tag
+<<<<<<< HEAD
             podTemplate(yaml: buildPodYAML(resources: [requests: [cpu: "1", memory: "2Gi"]])
                         cloud: "kubernetes-ng", namespace: "tidb-operator",
+=======
+            podTemplate(yaml: buildPodYAML(resources: [requests: [cpu: "1", memory: "2Gi"]]),
+                        cloud: "kubernetes-ng", namespace: "jenkins-tidb-operator",
+>>>>>>> f042dc3e1... Fix release ci (#4559)
             ) {
                 node(POD_LABEL) {
                     container("main") {
