@@ -12952,7 +12952,7 @@ string
 </em>
 </td>
 <td>
-<p>Options Rclone options for backup and restore with mydumper and lightning.</p>
+<p>Options Rclone options for backup and restore with dumpling and lightning.</p>
 </td>
 </tr>
 </tbody>
