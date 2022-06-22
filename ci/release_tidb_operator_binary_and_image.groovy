@@ -2,7 +2,8 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 	def GITHASH
 	def ACCESS_KEY
 	def SECRET_KEY
-	def UCLOUD_OSS_URL = "http://pingcap-dev.hk.ufileos.com"
+	def FILE_SERVER_URL = "http://fileserver.pingcap.net"
+    def FILE_BASE_DIR = "pingcap/tidb-operator"
 
 	catchError {
 		def delivery_pod_label = "${JOB_NAME}-${BUILD_NUMBER}"
@@ -43,9 +44,9 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 
 				dir("${WORKSPACE}/operator") {
 					stage('Download tidb-operator binary'){
-						GITHASH = sh(returnStdout: true, script: "curl ${UCLOUD_OSS_URL}/refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1").trim()
+						GITHASH = sh(returnStdout: true, script: "curl ${FILE_SERVER_URL}/download/${FILE_BASE_DIR}/refs/${BUILD_BRANCH}/sha1").trim()
 						sh """
-						curl ${UCLOUD_OSS_URL}/builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz | tar xz
+						curl ${FILE_SERVER_URL}/download/${FILE_BASE_DIR}/builds/${GITHASH}/tidb-operator.tar.gz | tar xz
 
 						wget https://github.com/docker/buildx/releases/download/v0.8.0/buildx-v0.8.0.linux-amd64 -O /usr/bin/buildx
                         chmod +x /usr/bin/buildx
