@@ -1,5 +1,5 @@
 {{- if .Values.admissionWebhook.create }}
-apiVersion: apiregistration.k8s.io/v1beta1
+apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
   name: v1alpha1.admission.tidb.pingcap.com
@@ -19,13 +19,13 @@ spec:
   group: admission.tidb.pingcap.com
   groupPriorityMinimum: 1000
   versionPriority: 15
+  version: v1alpha1
   service:
     name: tidb-admission-webhook
     namespace: {{ .Release.Namespace }}
-  version: v1alpha1
 ---
 {{- if .Values.admissionWebhook.validation.statefulSets }}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: validation-tidb-statefulset-webhook-cfg
@@ -38,12 +38,12 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 webhooks:
   - name: stsadmission.tidb.pingcap.com
-    {{- if semverCompare ">=1.15-0" .Capabilities.KubeVersion.GitVersion }}
     objectSelector:
       matchLabels:
         "app.kubernetes.io/managed-by": "tidb-operator"
-    {{- end }}
-    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Ignore" }}
+    admissionReviewVersions: ["v1beta1"]
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Fail" }}
+    sideEffects: None
     clientConfig:
       service:
         name: kubernetes
@@ -66,7 +66,7 @@ webhooks:
 {{- end }}
 ---
 {{- if .Values.admissionWebhook.validation.pingcapResources }}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: pingcap-tidb-resources-validating
@@ -79,7 +79,9 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 webhooks:
   - name: validating.admission.tidb.pingcap.com
-    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Ignore" }}
+    admissionReviewVersions: ["v1beta1"]
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Fail" }}
+    sideEffects: None
     clientConfig:
       service:
         name: kubernetes
@@ -98,7 +100,7 @@ webhooks:
 {{- end }}
 ---
 {{- if .Values.admissionWebhook.mutation.pingcapResources }}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: pingcap-tidb-resources-defaulitng
@@ -111,7 +113,9 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 webhooks:
   - name: defaulting.admission.tidb.pingcap.com
-    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.mutation | default "Ignore" }}
+    admissionReviewVersions: ["v1beta1"]
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.mutation | default "Fail" }}
+    sideEffects: None
     clientConfig:
       service:
         name: kubernetes
