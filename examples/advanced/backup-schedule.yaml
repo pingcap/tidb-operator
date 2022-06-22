@@ -1,0 +1,48 @@
+apiVersion: pingcap.com/v1alpha1
+kind: BackupSchedule
+metadata:
+  name: advanced-backup-schedule
+  namespace: default
+
+spec:
+
+  ## Schedule specifies time scheduling format of Cron for backup scheduling. Ref: https://en.wikipedia.org/wiki/Cron.
+  schedule: "*/2 * * * *"
+
+  ## Pause means paused backupSchedule.
+  ## If set to true, the backup operation will not be performed even if the scheduling time is reached.
+  ## Defaults to false.
+  # pause: false
+
+  ## MaxBackups specifies how many backups we want to keep.
+  ## 0 is magic number to indicate un-limited backups.
+  ## if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred and MaxBackups is ignored.
+  maxBackups: 5
+
+  ## MaxReservedTime specifies how long backups we want to keep.
+  ## if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred and MaxBackups is ignored.
+  maxReservedTime: "3h"
+
+  ## BackupTemplate specifies the specification of the backup structure to get scheduled,
+  ## which is the same as the spec configuration of Backup CR fields.
+  ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/backup-restore-overview#backup-cr-fields
+  backupTemplate:
+    ########################
+    # Backup Configuration #
+    ########################
+
+    ## Refer to Spec in `backup.yaml`
+    backupType: full
+
+  ## StorageClassName is the storageClassName of the persistent volume for Backup data storage if not storage class name set in backupTemplate.
+  ## Defaults to Kubernetes default storage class.
+  # storageClassName: ""
+
+  ## StorageSize is the request storage size for backup job.
+  ## This value must be greater than the size of the TidbCluster to be backed up.
+  ## Defaults to 100Gi.
+  storageSize: "100Gi"
+
+  ## ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+  #imagePullSecrets:
+  # - name: secretName
