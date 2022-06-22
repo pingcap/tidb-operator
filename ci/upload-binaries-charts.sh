@@ -22,25 +22,10 @@ cd $ROOT
 
 source "${ROOT}/hack/lib.sh"
 
-UCLOUD_PUBLIC_KEY=${UCLOUD_PUBLIC_KEY:-}
-UCLOUD_PRIVATE_KEY=${UCLOUD_PRIVATE_KEY:-}
-UCLOUD_UFILE_PROXY_HOST=${UCLOUD_UFILE_PROXY_HOST:-}
-UCLOUD_UFILE_API_HOST=${UCLOUD_UFILE_API_HOST:-api.spark.ucloud.cn}
-UCLOUD_UFILE_BUCKET=${UCLOUD_UFILE_BUCKET:-}
+FILE_SERVER_URL=http://fileserver.pingcap.net
+FILE_BASE_DIR=pingcap/tidb-operator
 GITHASH=${GITHASH:-}
 BUILD_BRANCH=${BUILD_BRANCH:-}
-
-FILEMGR_URL="http://tools.ufile.ucloud.com.cn/filemgr-linux64.tar.gz"
-
-if [ -z "$UCLOUD_PUBLIC_KEY" -o -z "$UCLOUD_PRIVATE_KEY" -o -z "$UCLOUD_UFILE_PROXY_HOST" ]; then
-    echo "error: UCLOUD_PUBLIC_KEY/UCLOUD_PUBLIC_KEY/UCLOUD_UFILE_PROXY_HOST are required"
-    exit 1
-fi
-
-if [ -z "$UCLOUD_UFILE_BUCKET" ]; then
-    echo "error: UCLOUD_UFILE_BUCKET is required"
-    exit 1
-fi
 
 if [ -z "$GITHASH" -o -z "$BUILD_BRANCH" ]; then
     echo "error: GITHASH/BUILD_BRANCH are required"
@@ -53,25 +38,13 @@ function upload() {
 
     echo "info: create a temporary directory: $dir"
 
-    cat <<EOF > $dir/config.cfg
-{
-    "public_key" : "${UCLOUD_PUBLIC_KEY}",
-    "private_key" : "${UCLOUD_PRIVATE_KEY}",
-    "proxy_host" : "${UCLOUD_UFILE_PROXY_HOST}",
-    "api_host" : "${UCLOUD_UFILE_API_HOST}"
-}
-EOF
-
-    echo "info: downloading filemgr from $FILEMGR_URL"
-    curl --retry 10 -L -s "$FILEMGR_URL" | tar --strip-components 1 -C $dir -xzvf -
-
     echo "info: uploading charts and binaries"
     tar -zcvf $dir/tidb-operator.tar.gz images/tidb-operator images/tidb-backup-manager charts
-    $dir/linux64/filemgr-linux64 --config $dir/config.cfg --action mput --bucket ${UCLOUD_UFILE_BUCKET} --nobar --key builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz --file $dir/tidb-operator.tar.gz
+    curl -F ${FILE_BASE_DIR}/builds/${GITHASH}/tidb-operator.tar.gz=@$dir/tidb-operator.tar.gz  ${FILE_SERVER_URL}/upload
 
     echo "info: update ref of branch '$BUILD_BRANCH'"
     echo -n $GITHASH > $dir/sha1
-    $dir/linux64/filemgr-linux64 --config $dir/config.cfg --action mput --bucket ${UCLOUD_UFILE_BUCKET} --nobar --key refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1 --file $dir/sha1
+    curl -F ${FILE_BASE_DIR}/refs/${BUILD_BRANCH}/sha1=@$dir/sha1  ${FILE_SERVER_URL}/upload
 }
 
 # retry a few times until it succeeds, this can avoid temporary network flakes
