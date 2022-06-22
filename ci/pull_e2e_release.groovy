@@ -361,18 +361,11 @@ try {
                         dir("${PROJECT_DIR}") {
                             unstash 'tidb-operator'
                             stage('upload tidb-operator binaries and charts'){
-                                withCredentials([
-                                    string(credentialsId: 'UCLOUD_PUBLIC_KEY', variable: 'UCLOUD_PUBLIC_KEY'),
-                                    string(credentialsId: 'UCLOUD_PRIVATE_KEY', variable: 'UCLOUD_PRIVATE_KEY'),
-                                ]) {
-                                    sh """
-                                    export UCLOUD_UFILE_PROXY_HOST=pingcap-dev.hk.ufileos.com
-                                    export UCLOUD_UFILE_BUCKET=pingcap-dev
-                                    export BUILD_BRANCH=${GIT_REF}
-                                    export GITHASH=${GITHASH}
-                                    ./ci/upload-binaries-charts.sh
-                                    """
-                                }
+                              sh """
+                              export BUILD_BRANCH=${GIT_REF}
+                              export GITHASH=${GITHASH}
+                              ./ci/upload-binaries-charts.sh
+                              """
                             }
                         }
                     }
