@@ -35,6 +35,9 @@ var (
 
 func init() {
 	flag.CommandLine.Init(os.Args[0], flag.ContinueOnError)
+	// Define the flag "secure-port" to avoid the `flag.Parse()` reporting error
+	// TODO: remove this flag after we don't use the lib "github.com/openshift/generic-admission-server"
+	flag.Int("secure-port", 6443, "The port on which to serve HTTPS with authentication and authorization. If 0, don't serve HTTPS at all.")
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")

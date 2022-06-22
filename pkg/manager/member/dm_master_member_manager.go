@@ -527,11 +527,12 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	masterConfigMap := cm.Name
 
 	annoMount, annoVolume := annotationsMountVolume()
+	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.DMMasterMemberType))
 	volMounts := []corev1.VolumeMount{
 		annoMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/dm-master"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
-		{Name: v1alpha1.DMMasterMemberType.String(), MountPath: dmMasterDataVolumeMountPath},
+		{Name: dataVolumeName, MountPath: dmMasterDataVolumeMountPath},
 	}
 	volMounts = append(volMounts, dc.Spec.Master.AdditionalVolumeMounts...)
 
@@ -709,7 +710,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: v1alpha1.DMMasterMemberType.String(),
+						Name: dataVolumeName,
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						AccessModes: []corev1.PersistentVolumeAccessMode{
