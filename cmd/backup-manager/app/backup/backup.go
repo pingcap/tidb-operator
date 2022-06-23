@@ -204,7 +204,7 @@ func (bo *Options) processExecOutputForCSB(
 					}
 				}
 			case <-ticker.C:
-				if backupUtil.IsFileExist(progressFile) {
+				if !backupUtil.IsFileExist(progressFile) {
 					continue
 				}
 				if file == nil {
