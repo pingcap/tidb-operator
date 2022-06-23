@@ -106,6 +106,51 @@ func (bo *Options) backupData(
 		return false, fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
 	}
 
+	var errMsg string
+	if isCSB {
+		errMsg = bo.processExecOutputForCSB(backup, backupType, stdOut, statusUpdater)
+	} else {
+		errMsg = bo.processExecOutput(stdOut)
+	}
+
+	tmpErr, _ := ioutil.ReadAll(stdErr)
+	if len(tmpErr) > 0 {
+		klog.Info(string(tmpErr))
+		errMsg += string(tmpErr)
+	}
+	err = cmd.Wait()
+	if err != nil {
+		return false, fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+	}
+
+	klog.Infof("Backup data for cluster %s successfully", bo)
+	if isCSB {
+		return true, nil
+	}
+	return false, nil
+}
+
+// processExecOutput processes the output from exec br binary
+// NOTE: keep original logic for code
+func (bo *Options) processExecOutput(stdOut io.ReadCloser) (errMsg string) {
+	var err error
+	reader := bufio.NewReader(stdOut)
+	for {
+		_, errMsg, err = readExecOutputLine(reader)
+		if err != nil || io.EOF == err {
+			break
+		}
+	}
+	return
+}
+
+// processExecOutputForCSB processes the output from exec br binary for CloudSnapshotBackup
+// NOTE: distinguish between previous code logic
+func (bo *Options) processExecOutputForCSB(
+	backup *v1alpha1.Backup,
+	backupType string,
+	stdOut io.ReadCloser,
+	statusUpdater controller.BackupConditionUpdaterInterface) (errMsg string) {
 	type progressUpdate struct {
 		progress, backupSize, resolvedTs *string
 	}
@@ -113,7 +158,6 @@ func (bo *Options) backupData(
 	quit := make(chan struct{})
 	update := make(chan *progressUpdate)
 	progressFile := path.Join(util.BRBinPath, "progress.txt")
-	successTag := fmt.Sprintf("[%s backup success]", strings.ToUpper(backupType))
 	go func() {
 		ticker := time.NewTicker(constants.ProgressInterval)
 		var file *os.File
@@ -151,7 +195,7 @@ func (bo *Options) backupData(
 						klog.Warningf("Failed to update BackupUpdateStatus-Complete for cluster %s, %s", bo, err.Error())
 					}
 				} else {
-					err = statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+					err := statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 						Type:   v1alpha1.BackupRunning,
 						Status: corev1.ConditionTrue,
 					}, updateStatus)
@@ -164,7 +208,7 @@ func (bo *Options) backupData(
 					continue
 				}
 				if file == nil {
-					file, err = os.Open(progressFile)
+					file, err := os.Open(progressFile)
 					if err != nil {
 						return
 					}
@@ -188,14 +232,12 @@ func (bo *Options) backupData(
 		}
 	}()
 
-	var errMsg string
+	var line string
+	var err error
+	successTag := fmt.Sprintf("[%s backup success]", strings.ToUpper(backupType))
 	reader := bufio.NewReader(stdOut)
 	for {
-		line, err := reader.ReadString('\n')
-		if strings.Contains(line, "[ERROR]") {
-			errMsg += line
-		}
-		klog.Info(strings.Replace(line, "\n", "", -1))
+		line, errMsg, err = readExecOutputLine(reader)
 
 		if strings.Contains(line, successTag) {
 			extract := strings.Split(line, successTag)[1]
@@ -215,21 +257,17 @@ func (bo *Options) backupData(
 			break
 		}
 	}
-	tmpErr, _ := ioutil.ReadAll(stdErr)
-	if len(tmpErr) > 0 {
-		klog.Info(string(tmpErr))
-		errMsg += string(tmpErr)
-	}
-	err = cmd.Wait()
-	if err != nil {
-		return false, fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
-	}
 
-	klog.Infof("Backup data for cluster %s successfully", bo)
-	if isCSB {
-		return true, nil
+	return
+}
+
+func readExecOutputLine(reader *bufio.Reader) (line, errMsg string, err error) {
+	line, err = reader.ReadString('\n')
+	if strings.Contains(line, "[ERROR]") {
+		errMsg += line
 	}
-	return false, nil
+	klog.Info(strings.Replace(line, "\n", "", -1))
+	return
 }
 
 // constructOptions constructs options for BR
