@@ -6697,7 +6697,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 					},
 					"options": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Options Rclone options for backup and restore with mydumper and lightning.",
+							Description: "Options Rclone options for backup and restore with dumpling and lightning.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
