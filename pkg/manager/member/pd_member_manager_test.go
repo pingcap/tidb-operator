@@ -474,6 +474,36 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 			},
 		},
+		{
+			name: "patch pd add additional container ",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD.Replicas = 5
+				tc.Spec.PD.AdditionalContainers = []v1.Container{
+					{Name: "additional", Image: "test"},
+				}
+			},
+			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
+			}},
+			errWhenUpdateStatefulSet:   false,
+			errWhenUpdatePDService:     false,
+			errWhenUpdatePDPeerService: false,
+			errWhenGetPDHealth:         false,
+			err:                        false,
+			expectPDServiceFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectPDPeerServiceFn: nil,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(set.Spec.Template.Spec.Containers)).To(Equal(2))
+				g.Expect(set.Spec.Template.Spec.Containers[1]).To(Equal(v1.Container{Name: "additional", Image: "test"}))
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+			},
+		},
 	}
 
 	for i := range tests {
