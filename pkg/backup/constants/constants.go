@@ -78,5 +78,5 @@ const (
 	TiKVDataVolumeMountPath = "/var/lib/tikv"
 
 	// the configuration for TiKV data volume as type for snapshotter
-	TiKVDataVolumeType = "storage.data-dir"
+	TiKVDataVolumeConfType = "storage.data-dir"
 )

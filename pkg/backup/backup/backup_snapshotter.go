@@ -208,13 +208,21 @@ func NewCloudSnapshotBackup(tc *v1alpha1.TidbCluster) (csb *CloudSnapBackup) {
 }
 
 type StoresMixture struct {
-	tc          *v1alpha1.TidbCluster
-	pod         *corev1.Pod
-	pvcs        []*corev1.PersistentVolumeClaim
-	pvs         []*corev1.PersistentVolume
-	volsMap     map[string]string
-	mpTypeMap   map[string]string
-	mpVolIDMap  map[string]string
+	// TidbCluster as CRD
+	tc *v1alpha1.TidbCluster
+	// Pod as resource native to Kubernetes
+	pod *corev1.Pod
+	// PersistentVolumeClaim as resource native to Kubernetes
+	pvcs []*corev1.PersistentVolumeClaim
+	// PersistentVolume as resource native to Kubernetes
+	pvs []*corev1.PersistentVolume
+	// key: volumeName, value: mountPath
+	volsMap map[string]string
+	// key: mountPath, value: dirConfigType
+	mpTypeMap map[string]string
+	// key: mountPath, value: volumeID
+	mpVolIDMap map[string]string
+	// support snapshot for the cloudprovider
 	snapshotter Snapshotter
 }
 
@@ -273,11 +281,11 @@ func (m *StoresMixture) collectVolumesInfo() {
 	}
 
 	m.volsMap[v1alpha1.TiKVMemberType.String()] = constants.TiKVDataVolumeMountPath
-	m.mpTypeMap[constants.TiKVDataVolumeMountPath] = constants.TiKVDataVolumeType
+	m.mpTypeMap[constants.TiKVDataVolumeMountPath] = constants.TiKVDataVolumeConfType
 }
 
 func (m *StoresMixture) extractVolumeIDs() (string, error) {
-	// key: MountPath value: Volume
+	// key: mountPath, value: Volume
 	mpVolMap := make(map[string]corev1.Volume)
 	for _, vol := range m.pod.Spec.Volumes {
 		if mp, ok := m.volsMap[vol.Name]; ok {
@@ -285,7 +293,8 @@ func (m *StoresMixture) extractVolumeIDs() (string, error) {
 		}
 	}
 
-	// key: MountPath value: PV
+	// key: mountPath, value: PV
+	// TODO: optimize the loop as repeated comparisons
 	mpPVMap := make(map[string]*corev1.PersistentVolume)
 	for mp, vol := range mpVolMap {
 		for _, pvc := range m.pvcs {
@@ -301,7 +310,7 @@ func (m *StoresMixture) extractVolumeIDs() (string, error) {
 		}
 	}
 
-	// key: MountPath value: VolumeID
+	// key: mountPath, value: volumeID
 	mpVolIDMap := make(map[string]string)
 	for mp, pv := range mpPVMap {
 		volID, err := m.snapshotter.GetVolumeID(pv)
@@ -316,6 +325,9 @@ func (m *StoresMixture) extractVolumeIDs() (string, error) {
 }
 
 func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, ns string) ([]*corev1.Pod, string, error) {
+	if s.backupMgr == nil {
+		return nil, "NotExistBackupManager", fmt.Errorf("unexpected error for backup-manager is nil")
+	}
 	req, err := labels.NewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
 	if err != nil {
 		return nil, fmt.Sprintf("unexpected error generating label selector: %v", err), err
@@ -340,6 +352,10 @@ func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, ns string) ([]
 }
 
 func (m *StoresMixture) PrepareCSBStoresMeta(csb *CloudSnapBackup, pods []*corev1.Pod) (string, error) {
+	if csb.TiKV.Stores == nil {
+		csb.TiKV.Stores = []*StoresBackup{}
+	}
+
 	m.collectVolumesInfo()
 
 	for _, pod := range pods {
@@ -386,7 +402,6 @@ func (s *BaseSnapshotter) prepareBackupMetadata(
 		return "ParseCloudSnapshotBackupFailed", err
 	}
 	b.Annotations[label.AnnBackupCloudSnapKey] = string(out)
-
 	return "", nil
 }
 
