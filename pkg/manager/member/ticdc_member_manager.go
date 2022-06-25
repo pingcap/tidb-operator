@@ -489,7 +489,13 @@ done
 	}
 
 	podSpec := baseTiCDCSpec.BuildPodSpec()
-	podSpec.Containers = []corev1.Container{ticdcContainer}
+
+	var err error
+	podSpec.Containers, err = MergePatchContainers([]corev1.Container{ticdcContainer}, baseTiCDCSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("ticdc[%s/%s] failed to merge containers spec , error: %v", ns, stsName, err)
+	}
+
 	podSpec.Volumes = append(vols, baseTiCDCSpec.AdditionalVolumes()...)
 	podSpec.ServiceAccountName = tc.Spec.TiCDC.ServiceAccount
 	podSpec.InitContainers = append(podSpec.InitContainers, baseTiCDCSpec.InitContainers()...)

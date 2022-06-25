@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	errors2 "github.com/pingcap/errors"
 	"reflect"
 	"regexp"
 	"strings"
@@ -562,7 +561,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 
 	podSpec.Containers, err = MergePatchContainers(podSpec.Containers, baseTiFlashSpec.AdditionalContainers())
 	if err != nil {
-		return nil, errors2.Wrap(err, "failed to merge containers spec")
+		return nil, fmt.Errorf("tiflash[%s:%s] failed to merge containers spec,err:%v", ns, setName, err)
 	}
 
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount

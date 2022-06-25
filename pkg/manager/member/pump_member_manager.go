@@ -461,8 +461,13 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	if serviceAccountName == "" {
 		serviceAccountName = tc.Spec.ServiceAccount
 	}
+
 	podSpec := spec.BuildPodSpec()
-	podSpec.Containers = containers
+	podSpec.Containers, err = MergePatchContainers(containers, tc.Spec.Pump.AdditionalContainers)
+	if err != nil {
+		return nil, fmt.Errorf("pump[%s/%s] failed to merge containers spec , error: %v", objMeta.Namespace, objMeta.Name, err)
+	}
+
 	podSpec.Volumes = volumes
 	podSpec.ServiceAccountName = serviceAccountName
 	// TODO: change to set field in BuildPodSpec

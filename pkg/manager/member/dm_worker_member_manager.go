@@ -486,7 +486,12 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	workerContainer.Env = util.AppendEnv(env, baseWorkerSpec.Env())
 	workerContainer.EnvFrom = baseWorkerSpec.EnvFrom()
 	podSpec.Volumes = append(vols, baseWorkerSpec.AdditionalVolumes()...)
-	podSpec.Containers = append([]corev1.Container{workerContainer}, baseWorkerSpec.AdditionalContainers()...)
+
+	podSpec.Containers, err = MergePatchContainers([]corev1.Container{workerContainer}, baseWorkerSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("dw[%s/%s] failed to merge containers spec , error: %v", dc.Namespace, dc.Name, err)
+	}
+
 	var initContainers []corev1.Container // no default initContainers now
 	podSpec.InitContainers = append(initContainers, baseWorkerSpec.InitContainers()...)
 

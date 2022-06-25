@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -390,7 +391,11 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 	builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddVolumeMounts(spec.AdditionalVolumeMounts()...)
 	builder.PodTemplateSpecBuilder().AddVolumes(spec.AdditionalVolumes()...)
 	// additional containers
-	builder.PodTemplateSpecBuilder().AddContainers(spec.AdditionalContainers()...)
+	builder.PodTemplateSpecBuilder().Get().Spec.Containers, err = member.MergePatchContainers(builder.PodTemplateSpecBuilder().Get().Spec.Containers, spec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("tngm[%s/%s] failed to merge containers spec , error: %v", tngm.Namespace, tngm.Name, err)
+	}
+
 	// tc enable tls
 	if tc.IsTLSClusterEnabled() {
 		builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddVolumeMounts(corev1.VolumeMount{
