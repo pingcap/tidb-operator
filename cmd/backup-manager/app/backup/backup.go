@@ -30,8 +30,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	backupConst "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
@@ -61,8 +61,11 @@ func (bo *Options) backupData(
 	}
 
 	// CloudSnapshotBackup is the metadata for backup TiDBCluster, especially TiKV-volumes for BR to take snapshot
-	csb, isCSB := backup.Annotations[label.AnnBackupCloudSnapKey]
-	if isCSB {
+	var isCSB bool
+	csb := os.Getenv(backupConst.EnvCloudSnapMeta)
+	if csb != "" {
+		isCSB = true
+		klog.Infof("Running cloud-snapshot-backup with metadata: %s", csb)
 		csbPath := path.Join(util.BRBinPath, "csb_backup.json")
 		err := ioutil.WriteFile(csbPath, []byte(csb), 0644)
 		if err != nil {

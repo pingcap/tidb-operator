@@ -366,6 +366,12 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		Value: string(rune(1)),
 	})
 
+	dwAPIEnvs, reason, err := backuputil.GenerateDownwardAPIEnvs()
+	if err != nil {
+		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+	}
+	envVars = append(envVars, dwAPIEnvs...)
+
 	// set env vars specified in backup.Spec.Env
 	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
@@ -540,7 +546,23 @@ func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1
 		return "InitSnapshotterFailed", err
 	}
 
-	return s.PrepareBackupMetadata(b, tc, ns)
+	reason, err := s.PrepareBackupMetadata(b, tc, ns)
+	if err != nil {
+		return reason, err
+	}
+
+	/* if metadata, ok := b.Annotations[label.AnnBackupCloudSnapKey]; ok {
+		b.Spec.Env = append(b.Spec.Env, corev1.EnvVar{
+			Name: constants.EnvCloudSnapMeta,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: fmt.Sprintf("metadata.annotations['%s']", label.AnnBackupCloudSnapKey),
+				},
+			},
+			Value: metadata,
+		})
+	} */
+	return "", nil
 }
 
 func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, error) {

@@ -321,7 +321,7 @@ func TestPrepareCSBStoresMeta(t *testing.T) {
 
 	storesWanted := []*StoresBackup{
 		{
-			StoreID: "1",
+			StoreID: 1,
 			Volumes: []*VolumeBackup{
 				{
 					VolumeID:  "vol-0e444aca5b73faaa0",
@@ -336,7 +336,7 @@ func TestPrepareCSBStoresMeta(t *testing.T) {
 			},
 		},
 		{
-			StoreID: "2",
+			StoreID: 2,
 			Volumes: []*VolumeBackup{
 				{
 					VolumeID:  "vol-0e444aca5b73faaa1",
@@ -351,7 +351,7 @@ func TestPrepareCSBStoresMeta(t *testing.T) {
 			},
 		},
 		{
-			StoreID: "3",
+			StoreID: 3,
 			Volumes: []*VolumeBackup{
 				{
 					VolumeID:  "vol-0e444aca5b73faaa2",

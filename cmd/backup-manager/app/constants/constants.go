@@ -71,4 +71,7 @@ const (
 
 	// DefaultTableFilter is the default table filter 'db.table' matching
 	DefaultTableFilter = "!/^(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA)$/.*"
+
+	// the metadata for cloud provider to take snapshot
+	EnvCloudSnapMeta = "CLOUD_SNAPSHOT_METADATA"
 )

@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -170,7 +171,7 @@ type TiKVBackup struct {
 }
 
 type StoresBackup struct {
-	StoreID string          `json:"store_id"`
+	StoreID uint64          `json:"store_id"`
 	Volumes []*VolumeBackup `json:"volumes"`
 }
 
@@ -365,8 +366,9 @@ func (m *StoresMixture) PrepareCSBStoresMeta(csb *CloudSnapBackup, pods []*corev
 			return reason, err
 		}
 
+		storeID, _ := strconv.ParseUint(pod.Labels[label.StoreIDLabelKey], 10, 64)
 		stores := &StoresBackup{
-			StoreID: pod.Labels[label.StoreIDLabelKey],
+			StoreID: storeID,
 			Volumes: []*VolumeBackup{},
 		}
 		for mp, volID := range m.mpVolIDMap {

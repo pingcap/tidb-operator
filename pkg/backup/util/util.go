@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
@@ -366,6 +367,20 @@ func GenerateTidbPasswordEnv(ns, tcName, tidbSecretName string, useKMS bool, sec
 	return certEnv, "", nil
 }
 
+// GenerateDownwardAPIEnvs generate the downward-api EnvVars
+func GenerateDownwardAPIEnvs() ([]corev1.EnvVar, string, error) {
+	var envs []corev1.EnvVar
+	envs = append(envs, corev1.EnvVar{
+		Name: constants.EnvCloudSnapMeta,
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: fmt.Sprintf("metadata.annotations['%s']", label.AnnBackupCloudSnapKey),
+			},
+		},
+	})
+	return envs, "", nil
+}
+
 // GetBackupBucketName return the bucket name for remote storage
 func GetBackupBucketName(backup *v1alpha1.Backup) (string, string, error) {
 	ns := backup.GetNamespace()
@@ -481,7 +496,8 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 		if backup.Spec.Type != "" &&
 			backup.Spec.Type != v1alpha1.BackupTypeFull &&
 			backup.Spec.Type != v1alpha1.BackupTypeDB &&
-			backup.Spec.Type != v1alpha1.BackupTypeTable {
+			backup.Spec.Type != v1alpha1.BackupTypeTable &&
+			backup.Spec.Type != v1alpha1.BackupTypeEBS {
 			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", backup.Spec.Type, ns, name)
 		}
 
@@ -536,7 +552,8 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 		if restore.Spec.Type != "" &&
 			restore.Spec.Type != v1alpha1.BackupTypeFull &&
 			restore.Spec.Type != v1alpha1.BackupTypeDB &&
-			restore.Spec.Type != v1alpha1.BackupTypeTable {
+			restore.Spec.Type != v1alpha1.BackupTypeTable &&
+			restore.Spec.Type != v1alpha1.BackupTypeEBS {
 			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", restore.Spec.Type, ns, name)
 		}
 

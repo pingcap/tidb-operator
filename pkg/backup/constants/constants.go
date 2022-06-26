@@ -79,4 +79,7 @@ const (
 
 	// the configuration for TiKV data volume as type for snapshotter
 	TiKVDataVolumeConfType = "storage.data-dir"
+
+	// the metadata for cloud provider to take snapshot
+	EnvCloudSnapMeta = "CLOUD_SNAPSHOT_METADATA"
 )
