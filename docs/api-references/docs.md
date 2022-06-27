@@ -2846,6 +2846,81 @@ float64
 </tr>
 </tbody>
 </table>
+<h3 id="azblobstorageprovider">AzblobStorageProvider</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storageprovider">StorageProvider</a>)
+</p>
+<p>
+<p>AzblobStorageProvider represents the azure blob storage for storing backups.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path is the full path where the backup is saved.
+The format of the path must be: &ldquo;<container-name>/<path-to-backup-file>&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>container</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Container in which to store the backup data.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>accessTier</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Access tier of the uploaded objects.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SecretName is the name of secret which stores the
+azblob service account credentials.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Prefix of the data path.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="brconfig">BRConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -4492,6 +4567,20 @@ Note that the following env names cannot be used and will be overridden by TiDB 
 - POD_NAME
 - BINLOG_ENABLED
 - SLOW_LOG_FILE</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>envFrom</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#envfromsource-v1-core">
+[]Kubernetes core/v1.EnvFromSource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Extend the use scenarios for env</p>
 </td>
 </tr>
 <tr>
@@ -13453,6 +13542,18 @@ S3StorageProvider
 <em>
 <a href="#gcsstorageprovider">
 GcsStorageProvider
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>azblob</code></br>
+<em>
+<a href="#azblobstorageprovider">
+AzblobStorageProvider
 </a>
 </em>
 </td>

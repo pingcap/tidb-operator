@@ -270,6 +270,18 @@ func TestStorageBackendBasic(t *testing.T) {
 			expectedPrefix:    "gcs-prefix",
 		},
 		{
+			name: "basic azblob storage backend",
+			provider: v1alpha1.StorageProvider{
+				Azblob: &v1alpha1.AzblobStorageProvider{
+					Container: "azblob-bucket",
+					Prefix:    "azblob-prefix",
+				},
+			},
+			expectStorageType: v1alpha1.BackupStorageTypeAzblob,
+			expectedBucket:    "azblob-bucket",
+			expectedPrefix:    "azblob-prefix",
+		},
+		{
 			name: "basic local storage backend",
 			provider: v1alpha1.StorageProvider{
 				Local: &v1alpha1.LocalStorageProvider{
@@ -305,6 +317,18 @@ func TestStorageBackendBasic(t *testing.T) {
 			expectedBucket:    "gcs-bucket",
 			expectedPrefix:    "a/b/gcs-prefix/c/d",
 		},
+		{
+			name: "azblob storage backend and bucket contains prefix",
+			provider: v1alpha1.StorageProvider{
+				Azblob: &v1alpha1.AzblobStorageProvider{
+					Container: "azblob-bucket/a/b",
+					Prefix:    "azblob-prefix/c/d",
+				},
+			},
+			expectStorageType: v1alpha1.BackupStorageTypeAzblob,
+			expectedBucket:    "azblob-bucket",
+			expectedPrefix:    "a/b/azblob-prefix/c/d",
+		},
 	}
 	for _, tcases := range cases {
 		t.Log(tcases.name)
@@ -319,6 +343,10 @@ func TestStorageBackendBasic(t *testing.T) {
 			return nil, nil
 		})
 		defer gcsPatches.Reset()
+		azblobPatches := gomonkey.ApplyFunc(newAzblobStorage, func(conf *azblobConfig) (*blob.Bucket, error) {
+			return nil, nil
+		})
+		defer azblobPatches.Reset()
 		localPatches := gomonkey.ApplyFunc(newLocalStorage, func(conf *localConfig) (*blob.Bucket, error) {
 			return nil, nil
 		})
@@ -353,6 +381,9 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 	gcsdrv := &mockDriver{
 		typ: v1alpha1.BackupStorageTypeGcs,
 	}
+	azblobdrv := &mockDriver{
+		typ: v1alpha1.BackupStorageTypeAzblob,
+	}
 	localdrv := &mockDriver{
 		typ: v1alpha1.BackupStorageTypeLocal,
 	}
@@ -371,6 +402,15 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 			name: "gcs with default option",
 			backend: &StorageBackend{
 				Bucket: blob.NewBucket(gcsdrv),
+			},
+			opt:                       v1alpha1.BatchDeleteOption{},
+			expectedConcurrency:       int(v1alpha1.DefaultBatchDeleteOption.RoutineConcurrency),
+			useBatchDeleteObjectsOfS3: false,
+		},
+		{
+			name: "azblob with default option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(azblobdrv),
 			},
 			opt:                       v1alpha1.BatchDeleteOption{},
 			expectedConcurrency:       int(v1alpha1.DefaultBatchDeleteOption.RoutineConcurrency),
@@ -400,6 +440,17 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 			name: "gcs with option",
 			backend: &StorageBackend{
 				Bucket: blob.NewBucket(gcsdrv),
+			},
+			opt: v1alpha1.BatchDeleteOption{
+				RoutineConcurrency: 10000,
+			},
+			expectedConcurrency:       10000,
+			useBatchDeleteObjectsOfS3: false,
+		},
+		{
+			name: "azblob with option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(azblobdrv),
 			},
 			opt: v1alpha1.BatchDeleteOption{
 				RoutineConcurrency: 10000,

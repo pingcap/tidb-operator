@@ -608,6 +608,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		})
 	}
 	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
+	tikvContainer.EnvFrom = baseTiKVSpec.EnvFrom()
 	containers = append(containers, tikvContainer)
 
 	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)

@@ -972,6 +972,10 @@ type ComponentSpec struct {
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
+	// Extend the use scenarios for env
+	// +optional
+	EnvFrom []corev1.EnvFromSource `json:"envFrom,omitempty"`
+
 	// Init containers of the components
 	// +optional
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
@@ -1407,6 +1411,8 @@ const (
 	BackupStorageTypeS3 BackupStorageType = "s3"
 	// BackupStorageTypeGcs represents the google cloud storage
 	BackupStorageTypeGcs BackupStorageType = "gcs"
+	// BackupStorageType represents the azure blob storage
+	BackupStorageTypeAzblob BackupStorageType = "azblob"
 	// BackupStorageTypeLocal represents local volume storage type
 	BackupStorageTypeLocal BackupStorageType = "local"
 	// BackupStorageTypeUnknown represents the unknown storage type
@@ -1427,9 +1433,10 @@ const (
 // StorageProvider defines the configuration for storing a backup in backend storage.
 // +k8s:openapi-gen=true
 type StorageProvider struct {
-	S3    *S3StorageProvider    `json:"s3,omitempty"`
-	Gcs   *GcsStorageProvider   `json:"gcs,omitempty"`
-	Local *LocalStorageProvider `json:"local,omitempty"`
+	S3     *S3StorageProvider     `json:"s3,omitempty"`
+	Gcs    *GcsStorageProvider    `json:"gcs,omitempty"`
+	Azblob *AzblobStorageProvider `json:"azblob,omitempty"`
+	Local  *LocalStorageProvider  `json:"local,omitempty"`
 }
 
 // LocalStorageProvider defines local storage options, which can be any k8s supported mounted volume
@@ -1488,6 +1495,23 @@ type GcsStorageProvider struct {
 	BucketAcl string `json:"bucketAcl,omitempty"`
 	// SecretName is the name of secret which stores the
 	// gcs service account credentials JSON.
+	SecretName string `json:"secretName,omitempty"`
+	// Prefix of the data path.
+	Prefix string `json:"prefix,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// AzblobStorageProvider represents the azure blob storage for storing backups.
+type AzblobStorageProvider struct {
+	// Path is the full path where the backup is saved.
+	// The format of the path must be: "<container-name>/<path-to-backup-file>"
+	Path string `json:"path,omitempty"`
+	// Container in which to store the backup data.
+	Container string `json:"container,omitempty"`
+	// Access tier of the uploaded objects.
+	AccessTier string `json:"accessTier,omitempty"`
+	// SecretName is the name of secret which stores the
+	// azblob service account credentials.
 	SecretName string `json:"secretName,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
