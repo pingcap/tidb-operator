@@ -192,7 +192,7 @@ func (bo *Options) processExecOutputForCSB(
 						Type:   v1alpha1.BackupComplete,
 						Status: corev1.ConditionTrue,
 					}, updateStatus)
-					if err == nil {
+					if err != nil {
 						completed = true
 					} else {
 						klog.Warningf("Failed to update BackupUpdateStatus-Complete for cluster %s, %s", bo, err.Error())
@@ -224,6 +224,7 @@ func (bo *Options) processExecOutputForCSB(
 				}
 				go func() {
 					progress := string(bs)
+					klog.Infof("update progress for current: %s and last: %s", progress, lastUpdate)
 					if lastUpdate != progress {
 						update <- &progressUpdate{
 							progress: &progress,
@@ -237,7 +238,7 @@ func (bo *Options) processExecOutputForCSB(
 
 	var line string
 	var err error
-	successTag := fmt.Sprintf("[%s backup success]", strings.ToUpper(backupType))
+	successTag := fmt.Sprintf("[\"%s backup success\"]", strings.ToUpper(backupType))
 	reader := bufio.NewReader(stdOut)
 	for {
 		line, errMsg, err = readExecOutputLine(reader)
@@ -248,6 +249,7 @@ func (bo *Options) processExecOutputForCSB(
 			size := strings.ReplaceAll(sizeStr, "size=", "")
 			tsStr := regexp.MustCompile(`resolved_ts=\d+`).FindString(extract)
 			ts := strings.ReplaceAll(tsStr, "resolved_ts=", "")
+			klog.Infof("%s size: %s, resolved_ts: %s", successTag, size, ts)
 			update <- &progressUpdate{
 				progress:   func(s string) *string { return &s }("100%"),
 				resolvedTs: &ts,

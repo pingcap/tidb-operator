@@ -546,23 +546,7 @@ func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1
 		return "InitSnapshotterFailed", err
 	}
 
-	reason, err := s.PrepareBackupMetadata(b, tc, ns)
-	if err != nil {
-		return reason, err
-	}
-
-	/* if metadata, ok := b.Annotations[label.AnnBackupCloudSnapKey]; ok {
-		b.Spec.Env = append(b.Spec.Env, corev1.EnvVar{
-			Name: constants.EnvCloudSnapMeta,
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: fmt.Sprintf("metadata.annotations['%s']", label.AnnBackupCloudSnapKey),
-				},
-			},
-			Value: metadata,
-		})
-	} */
-	return "", nil
+	return s.PrepareBackupMetadata(b, tc, ns)
 }
 
 func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, error) {
