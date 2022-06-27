@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/util/slice"
 )
 
@@ -102,6 +103,7 @@ func (c *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup
 		if err != nil {
 			return fmt.Errorf("remove backup %s/%s protection finalizers failed, err: %v", ns, name, err)
 		}
+		klog.Infof("remove backup %s/%s protection finalizers success", ns, name)
 		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s has been cleaned up", ns, name))
 	}
 	return nil
