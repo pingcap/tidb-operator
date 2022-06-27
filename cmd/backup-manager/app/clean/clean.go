@@ -69,17 +69,16 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 			klog.Infof("For backup %s, delete %d objects successfully", bo, len(result.Deleted))
 			klog.V(4).Infof("For backup %s, all objects deleted: %s", bo, strings.Join(result.Deleted, ","))
 		}
-		if len(result.Deleted) < len(objs) {
-			if len(result.Errors) != 0 {
-				klog.Errorf("For backup %s, delete %d objects failed", bo, len(result.Errors))
-				for _, oerr := range result.Errors {
-					klog.V(4).Infof("For backup %s, delete object %s failed: %s", bo, oerr.Key, oerr.Err)
-				}
-			} else {
-				klog.Errorf("For backup %s, deleted objects are less than expected but failed is 0, deleted: %d, expected: %d", bo, len(result.Deleted), len(objs))
+		if len(result.Errors) != 0 {
+			klog.Errorf("For backup %s, delete %d objects failed", bo, len(result.Errors))
+			for _, oerr := range result.Errors {
+				klog.V(4).Infof("For backup %s, delete object %s failed: %s", bo, oerr.Key, oerr.Err)
 			}
-
-			return fmt.Errorf("objects remain to delete")
+			return fmt.Errorf("some objects failed to delete")
+		}
+		if len(result.Deleted) < len(objs) {
+			klog.Errorf("For backup %s, deleted objects are less than expected, deleted: %d, expected: %d", bo, len(result.Deleted), len(objs))
+			return fmt.Errorf("some objects remain to delete")
 		}
 	}
 
