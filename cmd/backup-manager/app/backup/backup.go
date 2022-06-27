@@ -192,7 +192,7 @@ func (bo *Options) processExecOutputForCSB(
 						Type:   v1alpha1.BackupComplete,
 						Status: corev1.ConditionTrue,
 					}, updateStatus)
-					if err != nil {
+					if err == nil {
 						completed = true
 					} else {
 						klog.Warningf("Failed to update BackupUpdateStatus-Complete for cluster %s, %s", bo, err.Error())
