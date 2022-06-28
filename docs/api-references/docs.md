@@ -8683,6 +8683,18 @@ int
 </tr>
 <tr>
 <td>
+<code>resizingCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResizingCount is the count of volumes that are resizing.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>currentCount</code></br>
 <em>
 int

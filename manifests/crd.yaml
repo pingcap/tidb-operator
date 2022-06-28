@@ -10453,6 +10453,8 @@ spec:
                           x-kubernetes-int-or-string: true
                         resizedCount:
                           type: integer
+                        resizingCount:
+                          type: integer
                       required:
                       - currentCapacity
                       - name
@@ -10566,6 +10568,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         resizedCount:
+                          type: integer
+                        resizingCount:
                           type: integer
                       required:
                       - currentCapacity
@@ -29613,6 +29617,8 @@ spec:
                           x-kubernetes-int-or-string: true
                         resizedCount:
                           type: integer
+                        resizingCount:
+                          type: integer
                       required:
                       - currentCapacity
                       - name
@@ -29707,6 +29713,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         resizedCount:
+                          type: integer
+                        resizingCount:
                           type: integer
                       required:
                       - currentCapacity
@@ -29804,6 +29812,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         resizedCount:
+                          type: integer
+                        resizingCount:
                           type: integer
                       required:
                       - currentCapacity
@@ -29920,6 +29930,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         resizedCount:
+                          type: integer
+                        resizingCount:
                           type: integer
                       required:
                       - currentCapacity
@@ -30097,6 +30109,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         resizedCount:
+                          type: integer
+                        resizingCount:
                           type: integer
                       required:
                       - currentCapacity
@@ -30286,6 +30300,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         resizedCount:
+                          type: integer
+                        resizingCount:
                           type: integer
                       required:
                       - currentCapacity
