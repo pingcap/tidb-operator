@@ -1,6 +1,0 @@
-.terraform
-*.tfstate*
-credentials
-rendered
-terraform-key.json
-credentials.auto.tfvars
