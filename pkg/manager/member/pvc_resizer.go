@@ -94,6 +94,8 @@ type componentVolumeContext struct {
 	desiredVolumeQuantity map[v1alpha1.StorageVolumeName]resource.Quantity
 	// actualPodVolumes is the actual status for all volumes
 	actualPodVolumes []*podVolumeContext
+	// observedStatus is current volume status assembled from `actualPodVolumes`
+	observedStatus map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus
 
 	// sourceVolumeStatus is the volume status in tc status
 	// NOTE: modifying it will modify the status in tc
@@ -131,13 +133,12 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 			continue
 		}
 
-		p.updateVolumeStatus(ctx)
-
 		err = p.resizeVolumes(ctx)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("sync pvc for %q in tc %q failed: resize volumes failed: %v", comp, id, err))
-			continue
 		}
+
+		p.updateVolumeStatus(ctx)
 	}
 
 	return errutil.NewAggregate(errs)
@@ -160,13 +161,12 @@ func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
 			continue
 		}
 
-		p.updateVolumeStatus(ctx)
-
 		err = p.resizeVolumes(ctx)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("sync pvc for %q in dc %q failed: resize volumes failed: %v", comp, id, err))
-			continue
 		}
+
+		p.updateVolumeStatus(ctx)
 	}
 
 	return errutil.NewAggregate(errs)
@@ -303,78 +303,18 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 	}
 	ctx.actualPodVolumes = podVolumes
 
+	ctx.observedStatus = p.assembleObserveVolumeStatus(ctx)
+
 	return ctx, nil
 }
 
-// updateVolumeStatus build volume status from `actualPodVolumes` and update `sourceVolumeStatus`.
+// updateVolumeStatus update the volume status in tc status
 func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 	if ctx.sourceVolumeStatus == nil {
 		return
 	}
 
-	getCapacity := func(volName v1alpha1.StorageVolumeName, pvc *corev1.PersistentVolumeClaim) (resource.Quantity, resource.Quantity, bool) {
-		var desired, actual resource.Quantity
-		var exist bool
-
-		if pvc.Status.Phase != corev1.ClaimBound {
-			klog.Warningf("PVC %s/%s is not bound", pvc.Namespace, pvc.Name)
-			return desired, actual, false
-		}
-		desired, exist = ctx.desiredVolumeQuantity[volName]
-		if !exist {
-			klog.Warningf("PVC %s/%s does not exist in desired volumes", pvc.Namespace, pvc.Name)
-			return desired, actual, false
-		}
-		actual, exist = pvc.Status.Capacity[corev1.ResourceStorage]
-		if !exist {
-			klog.Warningf("PVC %s/%s dose not have cacacity in status", pvc.Namespace, pvc.Name)
-			return desired, actual, false
-		}
-
-		return desired, actual, true
-	}
-
-	// build observed status from `actualPodVolumes`
-	observedStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus{}
-	for _, podVolume := range ctx.actualPodVolumes {
-		for volName, pvc := range podVolume.volToPVCs {
-			desiredQuantity, actualQuantity, pred := getCapacity(volName, pvc)
-			if !pred {
-				continue
-			}
-
-			status, exist := observedStatus[volName]
-			if !exist {
-				observedStatus[volName] = &v1alpha1.ObservedStorageVolumeStatus{
-					BoundCount:   0,
-					CurrentCount: 0,
-					ResizedCount: 0,
-					// CurrentCapacity is default to same as desired capacity, and maybe changed later if any
-					// volume is reszing.
-					CurrentCapacity: desiredQuantity,
-					// ResizedCapacity is always same as desired capacity
-					ResizedCapacity: desiredQuantity,
-				}
-				status = observedStatus[volName]
-			}
-
-			status.BoundCount++
-			if actualQuantity.Cmp(desiredQuantity) == 0 {
-				status.ResizedCount++
-			} else {
-				status.CurrentCount++
-				status.CurrentCapacity = actualQuantity
-			}
-		}
-	}
-	for _, status := range observedStatus {
-		// all volumes are resized, reset the current count
-		if status.CurrentCapacity.Cmp(status.ResizedCapacity) == 0 {
-			status.CurrentCount = status.ResizedCount
-		}
-	}
-
-	// sync volume status for `sourceVolumeStatus`
+	observedStatus := ctx.observedStatus
 	for volName, status := range observedStatus {
 		if _, exist := ctx.sourceVolumeStatus[volName]; !exist {
 			ctx.sourceVolumeStatus[volName] = &v1alpha1.StorageVolumeStatus{
@@ -397,32 +337,33 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 
 	for _, podVolume := range podVolumes {
 		for volName, pvc := range podVolume.volToPVCs {
+			logPrefix := fmt.Sprintf("Skip to resize PVC %s/%s", pvc.Namespace, pvc.Name)
+
 			quantityInSpec, exist := desiredVolumeQuantity[volName]
 			if !exist {
-				klog.Warningf("PVC %s/%s does not exist in desired volumes", pvc.Namespace, pvc.Name)
+				klog.Warningf("%s: volume %s is not exist in desired volumes", logPrefix, volName)
 				continue
 			}
 
 			// not support default storage class
 			if pvc.Spec.StorageClassName == nil {
-				klog.Warningf("PVC %s/%s has no storage class, skipped", pvc.Namespace, pvc.Name)
+				klog.Warningf("%s: PVC has not storage class", logPrefix)
 				continue
 			}
 
 			// check whether the volume needs to be expanded
 			currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
 			if !ok {
-				klog.Warningf("PVC %s/%s storage request is empty, skipped", pvc.Namespace, pvc.Name)
+				klog.Warningf("%s: storage request is empty", logPrefix)
 				continue
 			}
 			cmpVal := quantityInSpec.Cmp(currentRequest)
 			if cmpVal == 0 {
-				klog.V(4).Infof("PVC %s/%s storage request is already %s, skipped", pvc.Namespace, pvc.Name, quantityInSpec.String())
+				klog.V(4).Infof("%s: storage request is already %s", logPrefix, quantityInSpec.String())
 				continue
 			}
 			if cmpVal < 0 {
-				klog.Warningf("PVC %s/%s/ storage request cannot be shrunk (%s to %s), skipped",
-					pvc.Namespace, pvc.Name, currentRequest.String(), quantityInSpec.String())
+				klog.Warningf("%s: storage request cannot be shrunk (%s to %s)", logPrefix, currentRequest.String(), quantityInSpec.String())
 				continue
 			}
 
@@ -433,13 +374,22 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 					return err
 				}
 				if !volumeExpansionSupported {
-					klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped",
-						*pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
+					klog.Warningf("%s: storage class %q does not support volume expansion", logPrefix, *pvc.Spec.StorageClassName)
 					continue
 				}
 			} else {
 				klog.V(4).Infof("Storage classes lister is unavailable, skip checking volume expansion support for PVC %s/%s with storage class %s. This may be caused by no relevant permissions",
 					pvc.Namespace, pvc.Name, *pvc.Spec.StorageClassName)
+			}
+
+			volStatus, exist := ctx.observedStatus[volName]
+			if !exist {
+				klog.Warningf("%s: wait for status of volume %s to be collected", logPrefix, volName)
+				continue
+			}
+			if volStatus.ResizingCount > 0 {
+				klog.Warningf("%s: resizing count is %d and wait for other resize to finish", logPrefix, volStatus.ResizingCount)
+				continue
 			}
 
 			// patch PVC to expand the storage
@@ -459,6 +409,9 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 			if err != nil {
 				return err
 			}
+
+			// update the resizing count
+			volStatus.ResizingCount++
 
 			klog.V(2).Infof("PVC %s/%s storage request is updated from %s to %s",
 				pvc.Namespace, pvc.Name, currentRequest.String(), quantityInSpec.String())
@@ -511,6 +464,85 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 	}
 
 	return result, nil
+}
+
+// assembleObserveVolumeStatus assemble volume status from `actualPodVolumes`
+func (p *pvcResizer) assembleObserveVolumeStatus(ctx *componentVolumeContext) map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus {
+	parse := func(volName v1alpha1.StorageVolumeName, pvc *corev1.PersistentVolumeClaim) (resource.Quantity, resource.Quantity, bool) {
+		var desired, actual resource.Quantity
+		var exist bool
+
+		if pvc.Status.Phase != corev1.ClaimBound {
+			klog.Warningf("PVC %s/%s is not bound", pvc.Namespace, pvc.Name)
+			return desired, actual, false
+		}
+		desired, exist = ctx.desiredVolumeQuantity[volName]
+		if !exist {
+			klog.Warningf("PVC %s/%s does not exist in desired volumes", pvc.Namespace, pvc.Name)
+			return desired, actual, false
+		}
+		actual, exist = pvc.Status.Capacity[corev1.ResourceStorage]
+		if !exist {
+			klog.Warningf("PVC %s/%s dose not have cacacity in status", pvc.Namespace, pvc.Name)
+			return desired, actual, false
+		}
+
+		return desired, actual, true
+	}
+
+	// build observed status from `actualPodVolumes`
+	observedStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus{}
+	for _, podVolume := range ctx.actualPodVolumes {
+		for volName, pvc := range podVolume.volToPVCs {
+			desiredQuantity, actualQuantity, pred := parse(volName, pvc)
+			if !pred {
+				continue
+			}
+
+			resizing := false
+			for _, cond := range pvc.Status.Conditions {
+				switch cond.Type {
+				case corev1.PersistentVolumeClaimResizing, corev1.PersistentVolumeClaimFileSystemResizePending:
+					resizing = true
+				}
+			}
+
+			status, exist := observedStatus[volName]
+			if !exist {
+				observedStatus[volName] = &v1alpha1.ObservedStorageVolumeStatus{
+					BoundCount:    0,
+					ResizingCount: 0,
+					CurrentCount:  0,
+					ResizedCount:  0,
+					// CurrentCapacity is default to same as desired capacity, and maybe changed later if any
+					// volume is reszing.
+					CurrentCapacity: desiredQuantity,
+					// ResizedCapacity is always same as desired capacity
+					ResizedCapacity: desiredQuantity,
+				}
+				status = observedStatus[volName]
+			}
+
+			status.BoundCount++
+			if actualQuantity.Cmp(desiredQuantity) == 0 {
+				status.ResizedCount++
+			} else {
+				status.CurrentCount++
+				status.CurrentCapacity = actualQuantity
+			}
+			if resizing {
+				status.ResizingCount++
+			}
+		}
+	}
+	for _, status := range observedStatus {
+		// all volumes are resized, reset the current count
+		if status.CurrentCapacity.Cmp(status.ResizedCapacity) == 0 {
+			status.CurrentCount = status.ResizedCount
+		}
+	}
+
+	return observedStatus
 }
 
 func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, error) {

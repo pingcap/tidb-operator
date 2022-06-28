@@ -2435,6 +2435,9 @@ type ObservedStorageVolumeStatus struct {
 	// BoundCount is the count of bound volumes.
 	// +optional
 	BoundCount int `json:"boundCount"`
+	// ResizingCount is the count of volumes that are resizing.
+	// +optional
+	ResizingCount int `json:"resizingCount"`
 	// CurrentCount is the count of volumes whose capacity is equal to `currentCapacity`.
 	// +optional
 	CurrentCount int `json:"currentCount"`
