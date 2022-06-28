@@ -1338,6 +1338,8 @@ spec:
               type: array
             phase:
               type: string
+            progress:
+              type: string
             timeCompleted:
               format: date-time
               nullable: true

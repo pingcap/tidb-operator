@@ -353,6 +353,11 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
+	reason, err = rm.tryRestoreIfCanSnapshot(restore, tc, restoreNamespace)
+	if err != nil {
+		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
+	}
+
 	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
 	podLabels := jobLabels
 	jobAnnotations := restore.Annotations
@@ -493,6 +498,21 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	}
 
 	return job, "", nil
+}
+
+func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster, ns string) (string, error) {
+	// TODO: snapshotter for restore by factory
+	switch r.Status.Phase {
+	case v1alpha1.RestoreVolumeComplete:
+		// TODO: setVolumeID for all PVs, and debound PVCs, then commit all PVs and PVCs
+		// TODO: wait for TiKV running then spwan new Job for BR to deal with data consistency
+		// TODO: set special parameters for passsing them to Pod as Job by ENV maybe using DownwardAPI
+	case v1alpha1.RestoreDataComplete:
+		// TODO: set TidbCluster.Spec.RecoveryMode = false, maybe restart the cluster or all TiKVs
+	default:
+		// still using previous code logic
+	}
+	return "", nil
 }
 
 func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (string, error) {

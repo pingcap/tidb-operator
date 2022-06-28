@@ -122,6 +122,9 @@ const (
 	// AnnBackupCloudSnapKey is the annotation key for backup metadata based cloud snapshot
 	AnnBackupCloudSnapKey string = "tidb.pingcap.com/backup-cloud-snapshot"
 
+	// AnnWaitTiKVVolumesKey is the annotation key for TiKV wait volumes from snapshot to restore
+	AnnWaitTiKVVolumesKey string = "tidb.pingcap.com/wait-tikv-volumes"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value

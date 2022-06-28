@@ -1514,6 +1514,19 @@ the controller.</p>
 </tr>
 <tr>
 <td>
+<code>recoveryMode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether RecoveryMode is enabled for TiDB cluster to restore
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>version</code></br>
 <em>
 string
@@ -12684,6 +12697,17 @@ string
 </tr>
 <tr>
 <td>
+<code>progress</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The current progress of the backup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>phase</code></br>
 <em>
 <a href="#restoreconditiontype">
@@ -21339,6 +21363,19 @@ bool
 <em>(Optional)</em>
 <p>Indicates that the tidb cluster is paused and will not be processed by
 the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recoveryMode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether RecoveryMode is enabled for TiDB cluster to restore
+Optional: Defaults to false</p>
 </td>
 </tr>
 <tr>

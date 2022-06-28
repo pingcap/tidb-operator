@@ -192,6 +192,11 @@ type TidbClusterSpec struct {
 	// +optional
 	Paused bool `json:"paused,omitempty"`
 
+	// Whether RecoveryMode is enabled for TiDB cluster to restore
+	// Optional: Defaults to false
+	// +optional
+	RecoveryMode bool `json:"recoveryMode,omitempty"`
+
 	// TiDB cluster version
 	// +optional
 	Version string `json:"version"`
@@ -1868,6 +1873,12 @@ const (
 	RestoreScheduled RestoreConditionType = "Scheduled"
 	// RestoreRunning means the Restore is currently being executed.
 	RestoreRunning RestoreConditionType = "Running"
+	// RestoreVolumeComplete means the Restore has successfully executed part-1 and the
+	// backup volumes have been rebuilded from the corresponding snapshot
+	RestoreVolumeComplete RestoreConditionType = "VolumeComplete"
+	// RestoreDataComplete means the Restore has successfully executed part-2 and the
+	// data in restore volumes has been deal with consistency based on min_resolved_ts
+	RestoreDataComplete RestoreConditionType = "DataComplete"
 	// RestoreComplete means the Restore has successfully executed and the
 	// backup data has been loaded into tidb cluster.
 	RestoreComplete RestoreConditionType = "Complete"
@@ -1970,6 +1981,8 @@ type RestoreStatus struct {
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs,omitempty"`
+	// The current progress of the backup.
+	Progress string `json:"progress,omitempty"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
 	Phase RestoreConditionType `json:"phase,omitempty"`
 	// +nullable

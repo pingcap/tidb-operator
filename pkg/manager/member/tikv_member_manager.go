@@ -98,6 +98,15 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
+	// Check whether the cluster is in recovery mode
+	// and whether the volumes have been restored for TiKV
+	if tc.Spec.RecoveryMode {
+		anns := tc.GetAnnotations()
+		if _, ok := anns[label.AnnWaitTiKVVolumesKey]; !ok {
+			return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for volumes restore complete", ns, tcName)
+		}
+	}
+
 	svcList := []SvcConfig{
 		{
 			Name:       "peer",

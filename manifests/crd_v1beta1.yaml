@@ -11873,6 +11873,8 @@ spec:
               type: array
             phase:
               type: string
+            progress:
+              type: string
             timeCompleted:
               format: date-time
               nullable: true
@@ -19621,6 +19623,8 @@ spec:
               type: object
             pvReclaimPolicy:
               type: string
+            recoveryMode:
+              type: boolean
             schedulerName:
               type: string
             serviceAccount:
