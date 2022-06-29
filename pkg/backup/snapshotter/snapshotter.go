@@ -11,18 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package snapshotter
 
 import (
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -31,7 +31,7 @@ import (
 
 type Snapshotter interface {
 	// Init prepares the Snapshotter for usage, it would add specific parameters as config map[string]string in the future.
-	Init(bm *backupManager, conf map[string]string) error
+	Init(deps *controller.Dependencies, conf map[string]string) error
 
 	// GetVolumeID returns the cloud provider specific identifier for the PersistentVolume.
 	GetVolumeID(pv *corev1.PersistentVolume) (string, error)
@@ -44,88 +44,21 @@ type Snapshotter interface {
 
 type BaseSnapshotter struct {
 	volRegexp *regexp.Regexp
-	backupMgr *backupManager
+	deps      *controller.Dependencies
 	config    map[string]string
 }
 
-func (s *BaseSnapshotter) Init(bm *backupManager, conf map[string]string) error {
-	s.backupMgr = bm
+func (s *BaseSnapshotter) Init(deps *controller.Dependencies, conf map[string]string) error {
+	s.deps = deps
 	s.config = conf
 	return nil
 }
 
-type AWSSnapshotter struct {
-	BaseSnapshotter
-}
-
-func (s *AWSSnapshotter) Init(bm *backupManager, conf map[string]string) error {
-	s.BaseSnapshotter.Init(bm, conf)
-	s.volRegexp = regexp.MustCompile("vol-.*")
-	return nil
-}
-
-func (s *AWSSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, error) {
-	if pv == nil {
-		return "", nil
-	}
-
-	if pv.Spec.CSI != nil {
-		driver := pv.Spec.CSI.Driver
-		if driver == constants.EbsCSIDriver {
-			return s.volRegexp.FindString(pv.Spec.CSI.VolumeHandle), nil
-		}
-		return "", fmt.Errorf("unable to handle CSI driver: %s", driver)
-	}
-	if pv.Spec.AWSElasticBlockStore != nil {
-		if pv.Spec.AWSElasticBlockStore.VolumeID == "" {
-			return "", fmt.Errorf("spec.awsElasticBlockStore.volumeID not found")
-		}
-		return s.volRegexp.FindString(pv.Spec.AWSElasticBlockStore.VolumeID), nil
-	}
-
-	return "", nil
-}
-
-type GCPSnapshotter struct {
-	BaseSnapshotter
-}
-
-func (s *GCPSnapshotter) Init(bm *backupManager, conf map[string]string) error {
-	s.BaseSnapshotter.Init(bm, conf)
-	s.volRegexp = regexp.MustCompile(`^projects\/[^\/]+\/(zones|regions)\/[^\/]+\/disks\/[^\/]+$`)
-	return nil
-}
-
-func (s *GCPSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, error) {
-	if pv == nil {
-		return "", nil
-	}
-
-	if pv.Spec.CSI != nil {
-		driver := pv.Spec.CSI.Driver
-		if driver == constants.PdCSIDriver {
-			handle := pv.Spec.CSI.VolumeHandle
-			if !s.volRegexp.MatchString(handle) {
-				return "", fmt.Errorf("invalid volumeHandle for CSI driver:%s, expected projects/{project}/zones/{zone}/disks/{name}, got %s",
-					constants.PdCSIDriver, handle)
-			}
-			l := strings.Split(handle, "/")
-			return l[len(l)-1], nil
-		}
-		return "", fmt.Errorf("unable to handle CSI driver: %s", driver)
-	}
-
-	if pv.Spec.GCEPersistentDisk != nil {
-		if pv.Spec.GCEPersistentDisk.PDName == "" {
-			return "", fmt.Errorf("spec.gcePersistentDisk.pdName not found")
-		}
-		return pv.Spec.GCEPersistentDisk.PDName, nil
-	}
-
-	return "", nil
-}
-
 type CloudProviderFactory struct {
+}
+
+func NewCloudProviderFactory() *CloudProviderFactory {
+	return &CloudProviderFactory{}
 }
 
 type CloudProviderInter interface {
@@ -326,26 +259,26 @@ func (m *StoresMixture) extractVolumeIDs() (string, error) {
 }
 
 func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, ns string) ([]*corev1.Pod, string, error) {
-	if s.backupMgr == nil {
-		return nil, "NotExistBackupManager", fmt.Errorf("unexpected error for backup-manager is nil")
+	if s.deps == nil {
+		return nil, "NotExistDependencies", fmt.Errorf("unexpected error for nil dependencies")
 	}
 	req, err := labels.NewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
 	if err != nil {
 		return nil, fmt.Sprintf("unexpected error generating label selector: %v", err), err
 	}
 	sel := labels.NewSelector().Add(*req)
-	pvcs, err := s.backupMgr.deps.PVCLister.PersistentVolumeClaims(ns).List(sel)
+	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(ns).List(sel)
 
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch pvcs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
 	csb.Kubernetes.PVCs = pvcs
-	pvs, err := s.backupMgr.deps.PVLister.List(sel)
+	pvs, err := s.deps.PVLister.List(sel)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch pvs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
 	csb.Kubernetes.PVs = pvs
-	pods, err := s.backupMgr.deps.PodLister.Pods(ns).List(sel)
+	pods, err := s.deps.PodLister.Pods(ns).List(sel)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch pods %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
@@ -405,12 +338,4 @@ func (s *BaseSnapshotter) prepareBackupMetadata(
 	}
 	b.Annotations[label.AnnBackupCloudSnapKey] = string(out)
 	return "", nil
-}
-
-func (s *AWSSnapshotter) PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error) {
-	return s.BaseSnapshotter.prepareBackupMetadata(b, tc, ns, s)
-}
-
-func (s *GCPSnapshotter) PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error) {
-	return s.BaseSnapshotter.prepareBackupMetadata(b, tc, ns, s)
 }

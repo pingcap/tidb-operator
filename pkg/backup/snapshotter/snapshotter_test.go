@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package snapshotter
 
 import (
 	"strconv"
@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
+	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/r3labs/diff/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -288,8 +289,7 @@ func TestPrepareCSBK8SMeta(t *testing.T) {
 	}
 	helper := newHelper(t)
 	defer helper.Close()
-	bm := NewBackupManager(helper.Deps).(*backupManager)
-	b.backupMgr = bm
+	b.deps = helper.Deps
 	_, _, err := b.PrepareCSBK8SMeta(csb, "test-ns")
 	assert.NoError(t, err)
 }
@@ -374,7 +374,7 @@ func TestPrepareCSBStoresMeta(t *testing.T) {
 func TestPrepareBackupMetadata(t *testing.T) {
 	helper := newHelper(t)
 	defer helper.Close()
-	bm := NewBackupManager(helper.Deps).(*backupManager)
+	deps := helper.Deps
 
 	tc := &v1alpha1.TidbCluster{
 		Spec: v1alpha1.TidbClusterSpec{
@@ -447,7 +447,7 @@ func TestPrepareBackupMetadata(t *testing.T) {
 			} else {
 				assert.NotNil(t, s)
 			}
-			s.Init(bm, nil)
+			s.Init(deps, nil)
 			_, err := s.PrepareBackupMetadata(tt.backup, tc, "test-ns")
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -583,4 +583,13 @@ func constructTidbClusterWithSpecTiKV() (
 	}
 
 	return
+}
+
+type helper struct {
+	testutils.Helper
+}
+
+func newHelper(t *testing.T) *helper {
+	h := testutils.NewHelper(t)
+	return &helper{*h}
 }

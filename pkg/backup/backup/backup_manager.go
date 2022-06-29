@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/backup/snapshotter"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -535,13 +536,13 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 }
 
 func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error) {
-	cpFactory := &CloudProviderFactory{}
+	cpFactory := snapshotter.NewCloudProviderFactory()
 	s := cpFactory.CreateSnapshotter(b.Spec.Type)
 	if s == nil {
 		return "", nil
 	}
 
-	err := s.Init(bm, nil)
+	err := s.Init(bm.deps, nil)
 	if err != nil {
 		return "InitSnapshotterFailed", err
 	}
