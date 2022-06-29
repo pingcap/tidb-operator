@@ -182,6 +182,8 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 
 	ctx := &componentVolumeContext{
 		comp:                  comp,
+		namespace:             ns,
+		name:                  name,
 		desiredVolumeQuantity: map[v1alpha1.StorageVolumeName]resource.Quantity{},
 	}
 
@@ -268,9 +270,12 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 
 func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.MemberType) (*componentVolumeContext, error) {
 	ns := dc.Namespace
+	name := dc.Name
 
 	ctx := &componentVolumeContext{
 		comp:                  comp,
+		namespace:             ns,
+		name:                  name,
 		desiredVolumeQuantity: map[v1alpha1.StorageVolumeName]resource.Quantity{},
 	}
 
@@ -419,10 +424,23 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 				klog.Errorf("Check PVC %q of TC %q resized failed: storage request is empty", pvcID, tcID)
 				continue
 			}
+			currentCapacity, ok := pvc.Status.Capacity[corev1.ResourceStorage]
+			if !ok {
+				klog.Errorf("Check PVC %q of TC %q resized failed: storage capacity is empty", pvcID, tcID)
+				continue
+			}
+
 			cmpVal := quantityInSpec.Cmp(currentRequest)
+			resizing := currentRequest.Cmp(currentCapacity) != 0
 			if cmpVal == 0 {
-				klog.V(4).Infof("PVC %q of TC %q storage request is already %s, skip resize",
-					pvcID, tcID, quantityInSpec.String())
+				if resizing {
+					allResized = false
+					klog.Infof("PVC %q of TC %q is resizing, request: %s capcaity: %s",
+						pvcID, tcID, currentRequest.String(), currentCapacity.String())
+				} else {
+					klog.V(4).Infof("PVC %q of TC %q is already resized, request: %s",
+						pvcID, tcID, quantityInSpec.String())
+				}
 				continue
 			}
 
