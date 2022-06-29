@@ -632,7 +632,7 @@ func TestDMPVCResizer(t *testing.T) {
 				wantPVC := tt.wantPVCs[i]
 				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 				g.Expect(err).To(gomega.Succeed())
-				got.Status.Capacity[v1.ResourceStorage] = got.Spec.Resources.Requests[v1.ResourceStorage] // to ignore resource status
+				got.Status = wantPVC.Status // to ignore resource status
 				diff := cmp.Diff(wantPVC, got)
 				g.Expect(diff).To(gomega.BeEmpty(), "unexpected (-want, +got): %s", diff)
 			}
@@ -644,13 +644,13 @@ func TestDMPVCResizer(t *testing.T) {
 	}
 }
 
-func TestAssembleObserveVolumeStatus(t *testing.T) {
+func TestUpdateVolumeStatus(t *testing.T) {
 	scName := "sc"
 
 	tests := []struct {
 		name   string
 		setup  func(ctx *componentVolumeContext)
-		expect map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus
+		expect map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus
 	}{
 		{
 			name: "volumes start to resize",
@@ -661,31 +661,37 @@ func TestAssembleObserveVolumeStatus(t *testing.T) {
 				}
 				ctx.actualPodVolumes = map[v1alpha1.StorageVolumeName][]*podVolumeContext{
 					"volume-1": {
-						{pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "1Gi")},
-						{pvc: newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi")},
-						{pvc: newMockPVC("volume-1-pvc-3", scName, "2Gi", "1Gi")},
+						{pvc: newMockPVC("volume-1-pvc-1", scName, "1Gi", "1Gi")},
+						{pvc: newMockPVC("volume-1-pvc-2", scName, "1Gi", "1Gi")},
+						{pvc: newMockPVC("volume-1-pvc-3", scName, "1Gi", "1Gi")},
 					},
 					"volume-2": {
-						{pvc: newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi")},
-						{pvc: newMockPVC("volume-2-pvc-2", scName, "2Gi", "1Gi")},
-						{pvc: newMockPVC("volume-2-pvc-3", scName, "2Gi", "1Gi")},
+						{pvc: newMockPVC("volume-2-pvc-1", scName, "1Gi", "1Gi")},
+						{pvc: newMockPVC("volume-2-pvc-2", scName, "1Gi", "1Gi")},
+						{pvc: newMockPVC("volume-2-pvc-3", scName, "1Gi", "1Gi")},
 					},
 				}
 			},
-			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus{
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 				"volume-1": {
-					BoundCount:      3,
-					CurrentCount:    3,
-					ResizedCount:    0,
-					CurrentCapacity: resource.MustParse("1Gi"),
-					ResizedCapacity: resource.MustParse("2Gi"),
+					Name: "volume-1",
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      3,
+						CurrentCount:    3,
+						ResizedCount:    0,
+						CurrentCapacity: resource.MustParse("1Gi"),
+						ResizedCapacity: resource.MustParse("2Gi"),
+					},
 				},
 				"volume-2": {
-					BoundCount:      3,
-					CurrentCount:    3,
-					ResizedCount:    0,
-					CurrentCapacity: resource.MustParse("1Gi"),
-					ResizedCapacity: resource.MustParse("2Gi"),
+					Name: "volume-2",
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      3,
+						CurrentCount:    3,
+						ResizedCount:    0,
+						CurrentCapacity: resource.MustParse("1Gi"),
+						ResizedCapacity: resource.MustParse("2Gi"),
+					},
 				},
 			},
 		},
@@ -699,30 +705,36 @@ func TestAssembleObserveVolumeStatus(t *testing.T) {
 				ctx.actualPodVolumes = map[v1alpha1.StorageVolumeName][]*podVolumeContext{
 					"volume-1": {
 						{pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")},
-						{pvc: newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi")}, // not resized
-						{pvc: newMockPVC("volume-1-pvc-3", scName, "2Gi", "1Gi")}, // not resized
+						{pvc: newMockPVC("volume-1-pvc-2", scName, "1Gi", "1Gi")}, // not resized
+						{pvc: newMockPVC("volume-1-pvc-3", scName, "1Gi", "1Gi")}, // not resized
 					},
 					"volume-2": {
-						{pvc: newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi")}, // not resized
+						{pvc: newMockPVC("volume-2-pvc-1", scName, "1Gi", "1Gi")}, // not resized
 						{pvc: newMockPVC("volume-2-pvc-2", scName, "2Gi", "2Gi")},
 						{pvc: newMockPVC("volume-2-pvc-3", scName, "2Gi", "2Gi")},
 					},
 				}
 			},
-			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus{
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 				"volume-1": {
-					BoundCount:      3,
-					CurrentCount:    2,
-					ResizedCount:    1,
-					CurrentCapacity: resource.MustParse("1Gi"),
-					ResizedCapacity: resource.MustParse("2Gi"),
+					Name: "volume-1",
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      3,
+						CurrentCount:    2,
+						ResizedCount:    1,
+						CurrentCapacity: resource.MustParse("1Gi"),
+						ResizedCapacity: resource.MustParse("2Gi"),
+					},
 				},
 				"volume-2": {
-					BoundCount:      3,
-					CurrentCount:    1,
-					ResizedCount:    2,
-					CurrentCapacity: resource.MustParse("1Gi"),
-					ResizedCapacity: resource.MustParse("2Gi"),
+					Name: "volume-2",
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      3,
+						CurrentCount:    1,
+						ResizedCount:    2,
+						CurrentCapacity: resource.MustParse("1Gi"),
+						ResizedCapacity: resource.MustParse("2Gi"),
+					},
 				},
 			},
 		},
@@ -737,11 +749,11 @@ func TestAssembleObserveVolumeStatus(t *testing.T) {
 					"volume-1": {
 						{pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")},
 						{pvc: newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi")},
-						{pvc: newMockPVC("volume-1-pvc-3", scName, "2Gi", "1Gi")}, // not resized
+						{pvc: newMockPVC("volume-1-pvc-3", scName, "1Gi", "1Gi")}, // not resized
 					},
 					"volume-2": {
-						{pvc: newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi")}, // not resized
-						{pvc: newMockPVC("volume-2-pvc-2", scName, "2Gi", "1Gi")}, // not resized
+						{pvc: newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi")}, // resizing
+						{pvc: newMockPVC("volume-2-pvc-2", scName, "2Gi", "1Gi")}, // resizing
 						{pvc: newMockPVC("volume-2-pvc-3", scName, "2Gi", "2Gi")},
 					},
 				}
@@ -753,21 +765,27 @@ func TestAssembleObserveVolumeStatus(t *testing.T) {
 					{Type: v1.PersistentVolumeClaimFileSystemResizePending, Status: v1.ConditionTrue},
 				}
 			},
-			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus{
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 				"volume-1": {
-					BoundCount:      3,
-					CurrentCount:    1,
-					ResizedCount:    2,
-					CurrentCapacity: resource.MustParse("1Gi"),
-					ResizedCapacity: resource.MustParse("2Gi"),
+					Name: "volume-1",
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      3,
+						CurrentCount:    1,
+						ResizedCount:    2,
+						CurrentCapacity: resource.MustParse("1Gi"),
+						ResizedCapacity: resource.MustParse("2Gi"),
+					},
 				},
 				"volume-2": {
-					BoundCount:      3,
-					ResizingCount:   2,
-					CurrentCount:    2,
-					ResizedCount:    1,
-					CurrentCapacity: resource.MustParse("1Gi"),
-					ResizedCapacity: resource.MustParse("2Gi"),
+					Name: "volume-2",
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      3,
+						ResizingCount:   2,
+						CurrentCount:    2,
+						ResizedCount:    1,
+						CurrentCapacity: resource.MustParse("1Gi"),
+						ResizedCapacity: resource.MustParse("2Gi"),
+					},
 				},
 			},
 		},
@@ -791,20 +809,87 @@ func TestAssembleObserveVolumeStatus(t *testing.T) {
 					},
 				}
 			},
-			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus{
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
 				"volume-1": {
-					BoundCount:      3,
-					CurrentCount:    3,
-					ResizedCount:    3,
-					CurrentCapacity: resource.MustParse("2Gi"),
-					ResizedCapacity: resource.MustParse("2Gi"),
+					Name: "volume-1",
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      3,
+						CurrentCount:    3,
+						ResizedCount:    3,
+						CurrentCapacity: resource.MustParse("2Gi"),
+						ResizedCapacity: resource.MustParse("2Gi"),
+					},
 				},
 				"volume-2": {
-					BoundCount:      3,
-					CurrentCount:    3,
-					ResizedCount:    3,
-					CurrentCapacity: resource.MustParse("2Gi"),
-					ResizedCapacity: resource.MustParse("2Gi"),
+					Name: "volume-2",
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      3,
+						CurrentCount:    3,
+						ResizedCount:    3,
+						CurrentCapacity: resource.MustParse("2Gi"),
+						ResizedCapacity: resource.MustParse("2Gi"),
+					},
+				},
+			},
+		},
+		{
+			name: "remove lost volume status",
+			setup: func(ctx *componentVolumeContext) {
+				ctx.sourceVolumeStatus = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
+					"volume-1": {Name: "volume-1"},
+					"volume-2": {Name: "volume-2"},
+				}
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				ctx.actualPodVolumes = map[v1alpha1.StorageVolumeName][]*podVolumeContext{
+					"volume-1": {
+						{pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")},
+						{pvc: newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi")},
+						{pvc: newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi")},
+					},
+				}
+			},
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
+				"volume-1": {
+					Name: "volume-1",
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      3,
+						CurrentCount:    3,
+						ResizedCount:    3,
+						CurrentCapacity: resource.MustParse("2Gi"),
+						ResizedCapacity: resource.MustParse("2Gi"),
+					},
+				},
+			},
+		},
+		{
+			name: "update existing volume status",
+			setup: func(ctx *componentVolumeContext) {
+				ctx.sourceVolumeStatus = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
+					"volume-1": {Name: "volume-1"},
+				}
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				ctx.actualPodVolumes = map[v1alpha1.StorageVolumeName][]*podVolumeContext{
+					"volume-1": {
+						{pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")},
+						{pvc: newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi")},
+						{pvc: newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi")},
+					},
+				}
+			},
+			expect: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
+				"volume-1": {
+					Name: "volume-1",
+					ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
+						BoundCount:      3,
+						CurrentCount:    3,
+						ResizedCount:    3,
+						CurrentCapacity: resource.MustParse("2Gi"),
+						ResizedCapacity: resource.MustParse("2Gi"),
+					},
 				},
 			},
 		},
@@ -818,12 +903,13 @@ func TestAssembleObserveVolumeStatus(t *testing.T) {
 			}
 
 			ctx := &componentVolumeContext{}
+			ctx.sourceVolumeStatus = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 			if tt.setup != nil {
 				tt.setup(ctx)
 			}
 
-			observedStatus := resizer.assembleObserveVolumeStatus(ctx)
-			diff := cmp.Diff(observedStatus, tt.expect)
+			resizer.updateVolumeStatus(ctx)
+			diff := cmp.Diff(tt.expect, ctx.sourceVolumeStatus)
 			g.Expect(diff).Should(gomega.BeEmpty(), "unexpected (-want, +got)")
 		})
 	}
