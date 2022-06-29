@@ -404,7 +404,7 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 	desiredVolumeQuantity := ctx.desiredVolumeQuantity
 	podVolumes := ctx.actualPodVolumes
 
-	tcID := fmt.Sprintf("%s/%s", ctx.namespace, ctx.name)
+	id := fmt.Sprintf("%s/%s", ctx.namespace, ctx.name)
 
 	for _, podVolume := range podVolumes {
 
@@ -416,17 +416,17 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 			// check whether the PVC is resized
 			quantityInSpec, exist := desiredVolumeQuantity[volName]
 			if !exist {
-				klog.Errorf("Check PVC %q of TC %q resized failed: not exist in desired volumes", pvcID, tcID)
+				klog.Errorf("Check PVC %q of %q resized failed: not exist in desired volumes", pvcID, id)
 				continue
 			}
 			currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
 			if !ok {
-				klog.Errorf("Check PVC %q of TC %q resized failed: storage request is empty", pvcID, tcID)
+				klog.Errorf("Check PVC %q of %q resized failed: storage request is empty", pvcID, id)
 				continue
 			}
 			currentCapacity, ok := pvc.Status.Capacity[corev1.ResourceStorage]
 			if !ok {
-				klog.Errorf("Check PVC %q of TC %q resized failed: storage capacity is empty", pvcID, tcID)
+				klog.Errorf("Check PVC %q of %q resized failed: storage capacity is empty", pvcID, id)
 				continue
 			}
 
@@ -435,28 +435,26 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 			if cmpVal == 0 {
 				if resizing {
 					allResized = false
-					klog.Infof("PVC %q of TC %q is resizing, request: %s capcaity: %s",
-						pvcID, tcID, currentRequest.String(), currentCapacity.String())
+					klog.Infof("PVC %q of %q is resizing, request: %s capcaity: %s",
+						pvcID, id, currentRequest.String(), currentCapacity.String())
 				} else {
-					klog.V(4).Infof("PVC %q of TC %q is already resized, request: %s",
-						pvcID, tcID, quantityInSpec.String())
+					klog.V(4).Infof("PVC %q of %q is already resized, request: %s",
+						pvcID, id, quantityInSpec.String())
 				}
 				continue
 			}
-
-			allResized = false
 
 			// check whether the PVC can be resized
 
 			// not support shrink
 			if cmpVal < 0 {
-				klog.Warningf("Skip to resize PVC %q of TC %q: storage request cannot be shrunk (%s to %s)",
-					pvcID, tcID, currentRequest.String(), quantityInSpec.String())
+				klog.Warningf("Skip to resize PVC %q of %q: storage request cannot be shrunk (%s to %s)",
+					pvcID, id, currentRequest.String(), quantityInSpec.String())
 				continue
 			}
 			// not support default storage class
 			if pvc.Spec.StorageClassName == nil {
-				klog.Warningf("Skip to resize PVC %q of TC %q: PVC have no storage class", pvcID, tcID)
+				klog.Warningf("Skip to resize PVC %q of %q: PVC have no storage class", pvcID, id)
 				continue
 			}
 			// check whether the storage class support
@@ -466,14 +464,16 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 					return err
 				}
 				if !volumeExpansionSupported {
-					klog.Warningf("Skip to resize PVC %q of TC %q: storage class %q does not support volume expansion",
-						*pvc.Spec.StorageClassName, pvcID, tcID)
+					klog.Warningf("Skip to resize PVC %q of %q: storage class %q does not support volume expansion",
+						*pvc.Spec.StorageClassName, pvcID, id)
 					continue
 				}
 			} else {
-				klog.V(4).Infof("Storage classes lister is unavailable, skip checking volume expansion support for PVC %q of TC %q with storage class %s. This may be caused by no relevant permissions",
-					pvcID, tcID, *pvc.Spec.StorageClassName)
+				klog.V(4).Infof("Storage classes lister is unavailable, skip checking volume expansion support for PVC %q of %q with storage class %s. This may be caused by no relevant permissions",
+					pvcID, id, *pvc.Spec.StorageClassName)
 			}
+
+			allResized = false
 
 			// patch PVC to expand the storage
 			mergePatch, err := json.Marshal(map[string]interface{}{
@@ -493,13 +493,13 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 				return err
 			}
 
-			klog.V(2).Infof("PVC %q of TC %q storage request is updated from %s to %s",
-				pvcID, tcID, currentRequest.String(), quantityInSpec.String())
+			klog.V(2).Infof("PVC %q of %q storage request is updated from %s to %s",
+				pvcID, id, currentRequest.String(), quantityInSpec.String())
 		}
 
 		if !allResized {
-			klog.Infof("Skip to resize other PVCs of TC %q: wait all PVCs in Pod %s/%s to be resized",
-				tcID, podVolume.pod.Namespace, podVolume.pod.Name)
+			klog.Infof("Skip to resize other PVCs of %q: wait all PVCs in Pod %s/%s to be resized",
+				id, podVolume.pod.Namespace, podVolume.pod.Name)
 			break
 		}
 	}
@@ -529,6 +529,7 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 	}
 
 	for _, pod := range pods {
+		pods := pod.DeepCopy()
 		volToPVCs := map[v1alpha1.StorageVolumeName]*corev1.PersistentVolumeClaim{}
 
 		for _, vol := range pod.Spec.Volumes {
