@@ -529,7 +529,6 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 	}
 
 	for _, pod := range pods {
-		pods := pod.DeepCopy()
 		volToPVCs := map[v1alpha1.StorageVolumeName]*corev1.PersistentVolumeClaim{}
 
 		for _, vol := range pod.Spec.Volumes {
