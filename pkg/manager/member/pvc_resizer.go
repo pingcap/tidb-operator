@@ -409,6 +409,7 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 	for _, podVolume := range podVolumes {
 
 		allResized := true
+		errors := []error{}
 
 		for volName, pvc := range podVolume.volToPVCs {
 			pvcID := fmt.Sprintf("%s/%s", pvc.Namespace, pvc.Name)
@@ -486,15 +487,21 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 				},
 			})
 			if err != nil {
-				return err
+				errors = append(errors, err)
+				continue
 			}
 			_, err = p.deps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(context.TODO(), pvc.Name, types.MergePatchType, mergePatch, metav1.PatchOptions{})
 			if err != nil {
-				return err
+				errors = append(errors, err)
+				continue
 			}
 
 			klog.V(2).Infof("PVC %q of %q storage request is updated from %s to %s",
 				pvcID, id, currentRequest.String(), quantityInSpec.String())
+		}
+
+		if len(errors) > 0 {
+			return errutil.NewAggregate(errors)
 		}
 
 		if !allResized {
