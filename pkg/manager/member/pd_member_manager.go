@@ -764,7 +764,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	podSpec.Volumes = append(vols, basePDSpec.AdditionalVolumes()...)
 	podSpec.Containers, err = MergePatchContainers([]corev1.Container{pdContainer}, basePDSpec.AdditionalContainers())
 	if err != nil {
-		return nil, fmt.Errorf("pd[%s/%s] failed to merge containers spec , error: %v", tc.Namespace, tc.Name, err)
+		return nil, fmt.Errorf("failed to merge containers spec for PD of [%s/%s], error: %v", tc.Namespace, tc.Name, err)
 	}
 
 	podSpec.ServiceAccountName = tc.Spec.PD.ServiceAccount
