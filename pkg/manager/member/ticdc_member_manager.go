@@ -493,7 +493,7 @@ done
 	var err error
 	podSpec.Containers, err = MergePatchContainers([]corev1.Container{ticdcContainer}, baseTiCDCSpec.AdditionalContainers())
 	if err != nil {
-		return nil, fmt.Errorf("ticdc[%s/%s] failed to merge containers spec , error: %v", ns, stsName, err)
+		return nil, fmt.Errorf("failed to merge containers spec for TiCDC of [%s/%s], error: %v", ns, tcName, err)
 	}
 
 	podSpec.Volumes = append(vols, baseTiCDCSpec.AdditionalVolumes()...)
