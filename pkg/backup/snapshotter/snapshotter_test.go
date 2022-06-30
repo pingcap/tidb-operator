@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/r3labs/diff/v2"
 	"github.com/stretchr/testify/assert"
@@ -372,6 +373,20 @@ func TestPrepareCSBStoresMeta(t *testing.T) {
 	changelog, err := diff.Diff(storesWanted, csb.TiKV.Stores)
 	assert.NoError(t, err)
 	assert.Len(t, changelog, 0)
+
+	vols := []*VolumeBackup{}
+	for _, store := range storesWanted {
+		vols = append(vols, store.Volumes...)
+	}
+	volIDs := []string{}
+	for _, vol := range vols {
+		volIDs = append(volIDs, vol.VolumeID)
+	}
+	csb.Kubernetes.PVs = pvs
+	for _, pv := range csb.Kubernetes.PVs {
+		require.NotNil(t, pv.Annotations[constants.AnnTemporaryVolumeID])
+		assert.Contains(t, volIDs, pv.Annotations[constants.AnnTemporaryVolumeID])
+	}
 }
 
 func TestPrepareBackupMetadata(t *testing.T) {
@@ -806,12 +821,13 @@ func TestSetVolumeIDForCSI(t *testing.T) {
 				return
 			}
 
+			// happy path
 			require.NoError(t, err)
 			if _, ok := tt.s.(*GCPSnapshotter); ok {
-				originalVolHanle := tt.csiPV.Spec.CSI.VolumeHandle
+				orilVolHandle := tt.csiPV.Spec.CSI.VolumeHandle
 				ind := strings.LastIndex(newPV.Spec.CSI.VolumeHandle, "/")
 				assert.Equal(t, tt.volumeID, newPV.Spec.CSI.VolumeHandle[ind+1:])
-				assert.Equal(t, originalVolHanle[:ind], newPV.Spec.CSI.VolumeHandle[:ind])
+				assert.Equal(t, orilVolHandle[:ind], newPV.Spec.CSI.VolumeHandle[:ind])
 			} else {
 				assert.Equal(t, tt.volumeID, newPV.Spec.CSI.VolumeHandle)
 			}

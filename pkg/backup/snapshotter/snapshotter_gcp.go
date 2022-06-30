@@ -96,3 +96,7 @@ func (s *GCPSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID strin
 
 	return newPV, nil
 }
+
+func (s *GCPSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore) (string, error) {
+	return s.BaseSnapshotter.prepareRestoreMetadata(r, s)
+}

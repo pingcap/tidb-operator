@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"unsafe"
 
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -654,4 +655,17 @@ func canSkipSetGCLifeTime(image string) bool {
 		return false
 	}
 	return true
+}
+
+func BytesToString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func StringToBytes(s string) []byte {
+	return *(*[]byte)(unsafe.Pointer(
+		&struct {
+			string
+			Cap int
+		}{s, len(s)},
+	))
 }

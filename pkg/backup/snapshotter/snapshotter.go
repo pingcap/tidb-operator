@@ -15,6 +15,7 @@ package snapshotter
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -37,6 +39,8 @@ type Snapshotter interface {
 	GetVolumeID(pv *corev1.PersistentVolume) (string, error)
 
 	PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error)
+
+	PrepareRestoreMetadata(r *v1alpha1.Restore) (string, error)
 
 	// SetVolumeID sets the cloud provider specific identifier for the PersistentVolume.
 	SetVolumeID(pv *corev1.PersistentVolume, volumeID string) (*corev1.PersistentVolume, error)
@@ -109,9 +113,11 @@ type StoresBackup struct {
 }
 
 type VolumeBackup struct {
-	VolumeID  string `json:"volume_id"`
-	Type      string `json:"type"`
-	MountPath string `json:"mount_path"`
+	VolumeID        string `json:"volume_id"`
+	Type            string `json:"type"`
+	MountPath       string `json:"mount_path"`
+	SnapshotID      string `json:"snapshot_id"`
+	RestoreVolumeID string `json:"restore_volume_id"`
 }
 
 func NewCloudSnapshotBackup(tc *v1alpha1.TidbCluster) (csb *CloudSnapBackup) {
@@ -252,6 +258,12 @@ func (m *StoresMixture) extractVolumeIDs() (string, error) {
 			return "GetVolumeIDFailed", err
 		}
 		mpVolIDMap[mp] = volID
+
+		// set volume-id into pv-annotation temporarily for restore to locate pv mapping volume-id quickly
+		if pv.Annotations == nil {
+			pv.Annotations = make(map[string]string)
+		}
+		pv.Annotations[constants.AnnTemporaryVolumeID] = volID
 	}
 
 	m.mpVolIDMap = mpVolIDMap
@@ -336,6 +348,98 @@ func (s *BaseSnapshotter) prepareBackupMetadata(
 	if err != nil {
 		return "ParseCloudSnapshotBackupFailed", err
 	}
-	b.Annotations[label.AnnBackupCloudSnapKey] = string(out)
+	b.Annotations[label.AnnBackupCloudSnapKey] = util.BytesToString(out)
 	return "", nil
+}
+
+func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snapshotter) (string, error) {
+	str, ok := r.Annotations[label.AnnBackupCloudSnapKey]
+	if !ok {
+		return "GetCloudSnapshotBackupFailed", errors.New("restore.annotation for CloudSnapshotBackup not found")
+	}
+	csb := &CloudSnapBackup{}
+	err := json.Unmarshal(util.StringToBytes(str), csb)
+	if err != nil {
+		return "ParseCloudSnapshotBackupFailed", err
+	}
+
+	reason, err := checkCloudSnapshotBackup(csb)
+	if err != nil {
+		return reason, err
+	}
+
+	for i := range csb.Kubernetes.PVs {
+		// Reset the PV's binding status so that Kubernetes can properly
+		// associate it with the restored PVC.
+		resetVolumeBindingInfo(csb.Kubernetes.PVCs[i], csb.Kubernetes.PVs[i])
+
+		// Clear out non-core metadata fields and status
+		resetMetadataAndStatus(csb.Kubernetes.PVCs[i], csb.Kubernetes.PVs[i])
+	}
+
+	// pvs -> pv rename or retain name
+	// pvs -> pv.SetVolumeID, return pvs
+
+	// commit pvs to k8s
+	//s.deps.PVControl.CreatePV()
+
+	// commit pvcs to k8s
+	//s.deps.PVCControl.CreatePVC()
+
+	return "", nil
+}
+
+func checkCloudSnapshotBackup(b *CloudSnapBackup) (string, error) {
+	if b.Kubernetes == nil {
+		return "GetKubernetesFailed", errors.New(".kubernetes for CloudSnapshotBackup not found")
+	}
+
+	pvsLen := len(b.Kubernetes.PVs)
+	pvcsLen := len(b.Kubernetes.PVCs)
+	if len(b.Kubernetes.PVs) == 0 || len(b.Kubernetes.PVCs) == 0 {
+		return "GetKubernetesResourceFailed", errors.New(".kubernetes.pvcs or pvs for CloudSnapshotBackup not found")
+	}
+
+	if pvsLen != pvcsLen {
+		return "InvalidKubernetesResource", errors.New(".kubernetes.pvcs and pvs for CloudSnapshotBackup not matched")
+	}
+
+	if b.TiKV == nil || len(b.TiKV.Stores) == 0 {
+		return "GetTiKVStoresFailed", errors.New(".tikv.stores for CloudSnapshotBackup not found")
+	}
+
+	return "", nil
+}
+
+// resetVolumeBindingInfo clears any necessary metadata out of a PersistentVolume
+// or PersistentVolumeClaim that would make it ineligible to be re-bound.
+func resetVolumeBindingInfo(pvc *corev1.PersistentVolumeClaim, pv *corev1.PersistentVolume) {
+	// Upon restore, this new PV will look like a statically provisioned, manually-
+	// bound volume rather than one bound by the controller, so remove the annotation
+	// that signals that a controller bound it.
+	delete(pvc.Annotations, constants.KubeAnnBindCompleted)
+	// Remove the annotation that signals that the PV is already bound; we want
+	// the PV(C) controller to take the two objects and bind them again.
+	delete(pvc.Annotations, constants.KubeAnnBoundByController)
+
+	// Clean out ClaimRef UID and resourceVersion, since this information is
+	// highly unique.
+	if pv.Spec.ClaimRef != nil {
+		pv.Spec.ClaimRef.ResourceVersion = ""
+		pv.Spec.ClaimRef.UID = ""
+	}
+
+	// Remove the provisioned-by annotation which signals that the persistent
+	// volume was dynamically provisioned; it is now statically provisioned.
+	delete(pv.Annotations, constants.KubeAnnDynamicallyProvisioned)
+}
+
+// clear out status and metadata: "name", "namespace", "labels", "annotations" for pvs and pvcs
+func resetMetadataAndStatus(pvc *corev1.PersistentVolumeClaim, pv *corev1.PersistentVolume) {
+
+	// clear out metadata: "name", "namespace", "labels", "annotations"
+
+	// Never restore status
+	pv.Status = corev1.PersistentVolumeStatus{}
+	pvc.Status = corev1.PersistentVolumeClaimStatus{}
 }

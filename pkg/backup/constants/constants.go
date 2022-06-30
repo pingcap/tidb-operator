@@ -82,4 +82,15 @@ const (
 
 	// the metadata for cloud provider to take snapshot
 	EnvCloudSnapMeta = "CLOUD_SNAPSHOT_METADATA"
+
+	// the annotation for store temporary volumeID
+	AnnTemporaryVolumeID = "temporary/volume-id"
+
+	// These annotations are taken from the Kubernetes persistent volume/persistent volume claim controller.
+	// They cannot be directly importing because they are part of the kubernetes/kubernetes package, and importing that package is unsupported.
+	// Their values are well-known and slow changing. They're duplicated here as constants to provide compile-time checking.
+	// Originals can be found in kubernetes/kubernetes/pkg/controller/volume/persistentvolume/util/util.go.
+	KubeAnnBindCompleted          = "pv.kubernetes.io/bind-completed"
+	KubeAnnBoundByController      = "pv.kubernetes.io/bound-by-controller"
+	KubeAnnDynamicallyProvisioned = "pv.kubernetes.io/provisioned-by"
 )
