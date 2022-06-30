@@ -14,6 +14,7 @@
 package snapshotter
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -24,6 +25,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// The GCPSnapshotter for creating snapshots from volumes (during a backup)
+// and volumes from snapshots (during a restore) on Google Compute Engine Disks.
 type GCPSnapshotter struct {
 	BaseSnapshotter
 }
@@ -65,4 +68,31 @@ func (s *GCPSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, error
 
 func (s *GCPSnapshotter) PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error) {
 	return s.BaseSnapshotter.prepareBackupMetadata(b, tc, ns, s)
+}
+
+func (s *GCPSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID string) (*corev1.PersistentVolume, error) {
+	newPV := pv.DeepCopy()
+
+	if pv.Spec.CSI != nil {
+		// PV is provisioned by CSI driver
+		driver := pv.Spec.CSI.Driver
+		if driver == constants.PdCSIDriver {
+			handle := pv.Spec.CSI.VolumeHandle
+			// To restore in the same AZ, here we only replace the 'disk' chunk.
+			if !s.volRegexp.MatchString(handle) {
+				return nil, fmt.Errorf("invalid volumeHandle for restore with CSI driver:%s, expected projects/{project}/zones/{zone}/disks/{name}, got %s",
+					constants.PdCSIDriver, handle)
+			}
+			newPV.Spec.CSI.VolumeHandle = handle[:strings.LastIndex(handle, "/")+1] + volumeID
+		} else {
+			return nil, fmt.Errorf("unable to handle CSI driver: %s", driver)
+		}
+	} else if pv.Spec.GCEPersistentDisk != nil {
+		// PV is provisioned by in-tree driver
+		newPV.Spec.GCEPersistentDisk.PDName = volumeID
+	} else {
+		return nil, errors.New("spec.csi and spec.gcePersistentDisk not found")
+	}
+
+	return newPV, nil
 }

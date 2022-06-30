@@ -39,7 +39,7 @@ type Snapshotter interface {
 	PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error)
 
 	// SetVolumeID sets the cloud provider specific identifier for the PersistentVolume.
-	// SetVolumeID(pv *corev1.PersistentVolume, volumeID string) (*corev1.PersistentVolume, error)
+	SetVolumeID(pv *corev1.PersistentVolume, volumeID string) (*corev1.PersistentVolume, error)
 }
 
 type BaseSnapshotter struct {
