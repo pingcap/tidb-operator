@@ -234,7 +234,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 	var err error
 	podSpec.Containers, err = MergePatchContainers(podSpec.Containers, baseSpec.AdditionalContainers())
 	if err != nil {
-		return nil, fmt.Errorf("discovery[%s/%s] failed to merge containers spec , error: %v", meta.Namespace, meta.Name, err)
+		return nil, fmt.Errorf("failed to merge containers spec for Discovery of [%s/%s], error: %v", meta.Namespace, meta.Name, err)
 	}
 
 	podSpec.InitContainers = append(podSpec.InitContainers, baseSpec.InitContainers()...)
