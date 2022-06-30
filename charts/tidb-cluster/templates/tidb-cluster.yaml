@@ -34,7 +34,7 @@ spec:
     image: {{ .Values.helper.image }}
   pd:
     replicas: {{ .Values.pd.replicas }}
-    image: {{ .Values.pd.image }}
+    baseImage: {{ .Values.pd.image }}
     imagePullPolicy: {{ .Values.pd.imagePullPolicy | default "IfNotPresent" }}
   {{- if .Values.pd.storageClassName }}
     storageClassName: {{ .Values.pd.storageClassName }}
@@ -69,7 +69,7 @@ spec:
   {{- end }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
-    image: {{ .Values.tikv.image }}
+    baseImage: {{ .Values.tikv.image }}
     imagePullPolicy: {{ .Values.tikv.imagePullPolicy | default "IfNotPresent" }}
   {{- if .Values.tikv.storageClassName }}
     storageClassName: {{ .Values.tikv.storageClassName }}
@@ -104,7 +104,7 @@ spec:
 {{ toYaml .Values.tidb.tlsClient | indent 6 }}
   {{- end }}
     replicas: {{ .Values.tidb.replicas }}
-    image: {{ .Values.tidb.image }}
+    baseImage: {{ .Values.tidb.image }}
     imagePullPolicy: {{ .Values.tidb.imagePullPolicy | default "IfNotPresent" }}
   {{- if .Values.tidb.resources }}
 {{ toYaml .Values.tidb.resources | indent 4 }}
