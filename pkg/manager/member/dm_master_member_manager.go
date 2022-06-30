@@ -678,7 +678,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 
 	podSpec.Containers, err = MergePatchContainers([]corev1.Container{masterContainer}, baseMasterSpec.AdditionalContainers())
 	if err != nil {
-		return nil, fmt.Errorf("dc[%s/%s] failed to merge containers spec , error: %v", dc.Namespace, dc.Name, err)
+		return nil, fmt.Errorf("failed to merge containers spec for dc [%s/%s], error: %v", dc.Namespace, dc.Name, err)
 	}
 
 	var initContainers []corev1.Container // no default initContainers now

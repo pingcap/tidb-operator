@@ -561,7 +561,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 
 	podSpec.Containers, err = MergePatchContainers(podSpec.Containers, baseTiFlashSpec.AdditionalContainers())
 	if err != nil {
-		return nil, fmt.Errorf("tiflash[%s:%s] failed to merge containers spec,err:%v", ns, setName, err)
+		return nil, fmt.Errorf("failed to merge containers spec for TiFlash of [%s:%s], err: %v", ns, tcName, err)
 	}
 
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
