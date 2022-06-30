@@ -22,8 +22,6 @@ import (
 	"strconv"
 	"strings"
 
-	errors2 "github.com/pingcap/errors"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -619,7 +617,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	podSpec.Containers, err = MergePatchContainers(containers, baseTiKVSpec.AdditionalContainers())
 	if err != nil {
-		return nil, errors2.Wrap(err, "failed to merge containers spec")
+		return nil, fmt.Errorf("failed to merge containers spec,error:%v", err)
 	}
 
 	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount

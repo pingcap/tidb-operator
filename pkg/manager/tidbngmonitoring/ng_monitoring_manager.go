@@ -393,7 +393,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 	// additional containers
 	builder.PodTemplateSpecBuilder().Get().Spec.Containers, err = member.MergePatchContainers(builder.PodTemplateSpecBuilder().Get().Spec.Containers, spec.AdditionalContainers())
 	if err != nil {
-		return nil, fmt.Errorf("tngm[%s/%s] failed to merge containers spec , error: %v", tngm.Namespace, tngm.Name, err)
+		return nil, fmt.Errorf("failed to merge containers spec for TNGM of [%s/%s] , error: %v", tngm.Namespace, tngm.Name, err)
 	}
 
 	// tc enable tls

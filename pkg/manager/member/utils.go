@@ -21,9 +21,6 @@ import (
 	"strings"
 	"time"
 
-	errors2 "github.com/pingcap/errors"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
-
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -39,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
@@ -504,23 +502,23 @@ func MergePatchContainers(base, patches []corev1.Container) ([]corev1.Container,
 
 		containerBytes, err := json.Marshal(container)
 		if err != nil {
-			return nil, errors2.Wrap(err, fmt.Sprintf("failed to marshal JSON for container %s", container.Name))
+			return nil, fmt.Errorf("failed to marshal JSON for container %s,error:%v", container.Name, err)
 		}
 
 		patchBytes, err := json.Marshal(patchContainer)
 		if err != nil {
-			return nil, errors2.Wrap(err, fmt.Sprintf("failed to marshal JSON for patch container %s", container.Name))
+			return nil, fmt.Errorf("failed to marshal JSON for patch container %s,error:%v", container.Name, err)
 		}
 
 		// Calculate the patch result.
 		jsonResult, err := strategicpatch.StrategicMergePatch(containerBytes, patchBytes, corev1.Container{})
 		if err != nil {
-			return nil, errors2.Wrap(err, fmt.Sprintf("failed to generate merge patch for container %s", container.Name))
+			return nil, fmt.Errorf("failed to generate merge patch for container %s,error:%v", container.Name, err)
 		}
 
 		var patchResult corev1.Container
 		if err := json.Unmarshal(jsonResult, &patchResult); err != nil {
-			return nil, errors2.Wrap(err, fmt.Sprintf("failed to unmarshal merged container %s", container.Name))
+			return nil, fmt.Errorf("failed to unmarshal merged container %s,error:%v", container.Name, err)
 		}
 
 		// Add the patch result and remove the corresponding key from the to do list.

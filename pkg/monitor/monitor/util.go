@@ -1239,7 +1239,7 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 		var err error
 		statefulSet.Spec.Template.Spec.Containers, err = member.MergePatchContainers(statefulSet.Spec.Template.Spec.Containers, additionalContainers)
 		if err != nil {
-			return nil, fmt.Errorf("tidbmonitor[%s/%s] failed to merge containers spec , error: %v", monitor.Namespace, monitor.Name, err)
+			return nil, fmt.Errorf("failed to merge containers spec for tidbmonitor of [%s/%s], error: %v", monitor.Namespace, monitor.Name, err)
 		}
 	}
 	if monitor.Spec.Grafana != nil {
