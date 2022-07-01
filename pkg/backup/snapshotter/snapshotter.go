@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -368,24 +369,83 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snap
 		return reason, err
 	}
 
-	for i := range csb.Kubernetes.PVs {
+	pvcs := csb.Kubernetes.PVCs
+	pvs := csb.Kubernetes.PVs
+
+	rsVolIDMap := generateRestoreVolumeIDMap(csb.TiKV.Stores)
+
+	for i, pv := range pvs {
 		// Reset the PV's binding status so that Kubernetes can properly
 		// associate it with the restored PVC.
-		resetVolumeBindingInfo(csb.Kubernetes.PVCs[i], csb.Kubernetes.PVs[i])
+		resetVolumeBindingInfo(pvcs[i], pv)
+
+		// Reset the PV's volumeID for restore from snapshot
+		// Note: This function has to precede the following `resetMetadataAndStatus`
+		if reason, err := resetRestoreVolumeID(pv, rsVolIDMap, execr); err != nil {
+			return reason, err
+		}
 
 		// Clear out non-core metadata fields and status
-		resetMetadataAndStatus(csb.Kubernetes.PVCs[i], csb.Kubernetes.PVs[i])
+		resetMetadataAndStatus(pvcs[i], pv)
+
 	}
 
-	// pvs -> pv rename or retain name
-	// pvs -> pv.SetVolumeID, return pvs
+	// commit new PVs and PVCs to kubernetes api-server
+	if reason, err := commitPVsAndPVCsToK8S(s.deps, r, pvcs, pvs); err != nil {
+		return reason, err
+	}
 
-	// commit pvs to k8s
-	//s.deps.PVControl.CreatePV()
+	return "", nil
+}
 
-	// commit pvcs to k8s
-	//s.deps.PVCControl.CreatePVC()
+func commitPVsAndPVCsToK8S(
+	deps *controller.Dependencies,
+	r *v1alpha1.Restore,
+	pvcs []*corev1.PersistentVolumeClaim,
+	pvs []*corev1.PersistentVolume) (string, error) {
+	for _, pv := range pvs {
+		if err := deps.PVControl.CreatePV(r, pv); err != nil {
+			return "CreatePVFailed", err
+		}
+	}
 
+	for _, pvc := range pvcs {
+		if err := deps.PVCControl.CreatePVC(r, pvc); err != nil {
+			return "CreatePVCFailed", err
+		}
+	}
+
+	return "", nil
+}
+
+func generateRestoreVolumeIDMap(stores []*StoresBackup) map[string]string {
+	vols := []*VolumeBackup{}
+	for _, store := range stores {
+		vols = append(vols, store.Volumes...)
+	}
+	volIDMap := make(map[string]string)
+	for _, vol := range vols {
+		volIDMap[vol.VolumeID] = vol.RestoreVolumeID
+	}
+	return volIDMap
+}
+
+func resetRestoreVolumeID(pv *corev1.PersistentVolume, volIDMap map[string]string, s Snapshotter) (string, error) {
+	var ok bool
+	var volID string
+	if volID, ok = pv.Annotations[constants.AnnTemporaryVolumeID]; !ok {
+		return "GetVolumeIDFailed", fmt.Errorf("%s pv.annotations[%s] not found", pv.GetName(), constants.AnnTemporaryVolumeID)
+	}
+
+	var rsVolID string
+	if rsVolID, ok = volIDMap[volID]; !ok {
+		return "GetRestoreVolumeIDFailed", fmt.Errorf("%s volumeID-%s mapping restoreVolumeID not found", pv.GetName(), volID)
+	}
+
+	var err error
+	if pv, err = s.SetVolumeID(pv, rsVolID); err != nil {
+		return "ResetRestoreVolumeIDFailed", fmt.Errorf("failed to set pv-%s, %s", pv.Name, err.Error())
+	}
 	return "", nil
 }
 
@@ -434,12 +494,22 @@ func resetVolumeBindingInfo(pvc *corev1.PersistentVolumeClaim, pv *corev1.Persis
 	delete(pv.Annotations, constants.KubeAnnDynamicallyProvisioned)
 }
 
-// clear out status and metadata: "name", "namespace", "labels", "annotations" for pvs and pvcs
 func resetMetadataAndStatus(pvc *corev1.PersistentVolumeClaim, pv *corev1.PersistentVolume) {
-
-	// clear out metadata: "name", "namespace", "labels", "annotations"
+	// clear out metadata except core fields: "name", "namespace", "labels", "annotations"
+	pvc.ObjectMeta = newMetaWithCoreFields(pvc.ObjectMeta)
+	pv.ObjectMeta = newMetaWithCoreFields(pv.ObjectMeta)
 
 	// Never restore status
-	pv.Status = corev1.PersistentVolumeStatus{}
 	pvc.Status = corev1.PersistentVolumeClaimStatus{}
+	pv.Status = corev1.PersistentVolumeStatus{}
+}
+
+func newMetaWithCoreFields(meta metav1.ObjectMeta) metav1.ObjectMeta {
+	newMeta := metav1.ObjectMeta{
+		Name:        meta.GetName(),
+		Namespace:   meta.GetNamespace(),
+		Labels:      meta.GetLabels(),
+		Annotations: meta.GetAnnotations(),
+	}
+	return newMeta
 }

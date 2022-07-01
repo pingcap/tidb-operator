@@ -834,3 +834,22 @@ func TestSetVolumeIDForCSI(t *testing.T) {
 		})
 	}
 }
+
+func TestPrepareRestoreMetadata(t *testing.T) {
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	restore := &v1alpha1.Restore{
+		Spec: v1alpha1.RestoreSpec{
+			Type: "ebs",
+		},
+	}
+
+	cpFactory := &CloudProviderFactory{}
+	s := cpFactory.CreateSnapshotter(restore.Spec.Type)
+	s.Init(deps, nil)
+
+	_, err := s.PrepareRestoreMetadata(restore)
+	assert.Error(t, err)
+}
