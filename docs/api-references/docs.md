@@ -4325,6 +4325,10 @@ FlashSecurity
 <p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
 and component-level overrides</p>
 </p>
+<h3 id="componentconditiontype">ComponentConditionType</h3>
+<p>
+<p>ComponentConditionType represents a component condition value.</p>
+</p>
 <h3 id="componentspec">ComponentSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -4733,6 +4737,9 @@ All topologySpreadConstraints are ANDed.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="componentstatus">ComponentStatus</h3>
+<p>
+</p>
 <h3 id="configmapref">ConfigMapRef</h3>
 <p>
 (<em>Appears on:</em>
@@ -8343,6 +8350,20 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="memberphase">MemberPhase</h3>
@@ -10717,6 +10738,20 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstorelabel">PDStoreLabel</h3>
@@ -11934,6 +11969,20 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 </td>
 <td>
 <p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
 </td>
 </tr>
 </tbody>
@@ -14413,6 +14462,20 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbaccessconfig">TiDBAccessConfig</h3>
@@ -15799,6 +15862,20 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 </td>
 <td>
 <p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
 </td>
 </tr>
 </tbody>
@@ -20434,6 +20511,20 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstorageconfig">TiKVStorageConfig</h3>
@@ -23791,6 +23882,20 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 </td>
 <td>
 <p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
 </td>
 </tr>
 </tbody>

@@ -78,19 +78,30 @@ var (
 	dmWorkerRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.DMWorkerLabelVal})
 )
 
-type pvcResizer struct {
-	deps *controller.Dependencies
+type volumePhase string
+
+const (
+	// needResize means the storage request of PVC is less than the storage request in TC/DC.
+	needResize volumePhase = "NeedResize"
+	// needResize means the storage request of PVC is equal to the storage request in TC/DC And PVC is resizing.
+	resizing volumePhase = "Resizing"
+	// needResize means the storage request of PVC is equal to the storage request in TC/DC And PVC is resized.
+	resized volumePhase = "Resized"
+)
+
+type volume struct {
+	name v1alpha1.StorageVolumeName
+	pvc  *corev1.PersistentVolumeClaim
 }
 
 type podVolumeContext struct {
-	pod       *corev1.Pod
-	volToPVCs map[v1alpha1.StorageVolumeName]*corev1.PersistentVolumeClaim
+	pod     *corev1.Pod
+	volumes []*volume
 }
 
 type componentVolumeContext struct {
-	comp      v1alpha1.MemberType
-	namespace string
-	name      string
+	cluster metav1.Object
+	status  v1alpha1.ComponentStatus
 
 	// label selector for pvc and pod
 	selector labels.Selector
@@ -98,40 +109,30 @@ type componentVolumeContext struct {
 	desiredVolumeQuantity map[v1alpha1.StorageVolumeName]resource.Quantity
 	// actualPodVolumes is the actual status for all volumes
 	actualPodVolumes []*podVolumeContext
+}
 
-	// sourceVolumeStatus is the volume status in tc status
-	// NOTE: modifying it will modify the status in tc
-	sourceVolumeStatus map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus
+func (c *componentVolumeContext) ComponentID() string {
+	return fmt.Sprintf("%s/%s:%s", c.cluster.GetNamespace(), c.cluster.GetName(), c.status.GetMemberType())
+}
+
+type pvcResizer struct {
+	deps *controller.Dependencies
+}
+
+func NewPVCResizer(deps *controller.Dependencies) PVCResizerInterface {
+	return &pvcResizer{
+		deps: deps,
+	}
 }
 
 func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
-	id := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
-
-	components := []v1alpha1.MemberType{}
-	if tc.Spec.PD != nil {
-		components = append(components, v1alpha1.PDMemberType)
-	}
-	if tc.Spec.TiDB != nil {
-		components = append(components, v1alpha1.TiDBMemberType)
-	}
-	if tc.Spec.TiKV != nil {
-		components = append(components, v1alpha1.TiKVMemberType)
-	}
-	if tc.Spec.TiFlash != nil {
-		components = append(components, v1alpha1.TiFlashMemberType)
-	}
-	if tc.Spec.TiCDC != nil {
-		components = append(components, v1alpha1.TiCDCMemberType)
-	}
-	if tc.Spec.Pump != nil {
-		components = append(components, v1alpha1.PumpMemberType)
-	}
-
+	components := v1alpha1.ComponentStatusFromTC(tc)
 	errs := []error{}
+
 	for _, comp := range components {
 		ctx, err := p.buildContextForTC(tc, comp)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("sync pvc for %q in tc %q failed: failed to prepare: %v", comp, id, err))
+			errs = append(errs, fmt.Errorf("build ctx used by resize for %s failed: %w", ctx.ComponentID(), err))
 			continue
 		}
 
@@ -139,7 +140,7 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 
 		err = p.resizeVolumes(ctx)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("sync pvc for %q in tc %q failed: resize volumes failed: %v", comp, id, err))
+			errs = append(errs, fmt.Errorf("resize volumes for %s failed: %w", ctx.ComponentID(), err))
 			continue
 		}
 	}
@@ -148,19 +149,13 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
-	id := fmt.Sprintf("%s/%s", dc.Namespace, dc.Name)
-
-	components := []v1alpha1.MemberType{}
-	components = append(components, v1alpha1.DMMasterMemberType)
-	if dc.Spec.Worker != nil {
-		components = append(components, v1alpha1.DMWorkerMemberType)
-	}
-
+	components := v1alpha1.ComponentStatusFromDC(dc)
 	errs := []error{}
+
 	for _, comp := range components {
 		ctx, err := p.buildContextForDM(dc, comp)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("sync pvc for %q in dc %q failed: failed to prepare: %v", comp, id, err))
+			errs = append(errs, fmt.Errorf("build ctx used by resize for %s failed: %w", ctx.ComponentID(), err))
 			continue
 		}
 
@@ -168,7 +163,7 @@ func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
 
 		err = p.resizeVolumes(ctx)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("sync pvc for %q in dc %q failed: resize volumes failed: %v", comp, id, err))
+			errs = append(errs, fmt.Errorf("resize volumes for %s failed: %w", ctx.ComponentID(), err))
 			continue
 		}
 	}
@@ -176,14 +171,12 @@ func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
 	return errutil.NewAggregate(errs)
 }
 
-func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType) (*componentVolumeContext, error) {
-	ns := tc.Namespace
-	name := tc.Name
+func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, status v1alpha1.ComponentStatus) (*componentVolumeContext, error) {
+	comp := status.GetMemberType()
 
 	ctx := &componentVolumeContext{
-		comp:                  comp,
-		namespace:             ns,
-		name:                  name,
+		cluster:               tc,
+		status:                status,
 		desiredVolumeQuantity: map[v1alpha1.StorageVolumeName]resource.Quantity{},
 	}
 
@@ -198,7 +191,6 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 		if tc.Status.PD.Volumes == nil {
 			tc.Status.PD.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
-		ctx.sourceVolumeStatus = tc.Status.PD.Volumes
 		if quantity, ok := tc.Spec.PD.Requests[corev1.ResourceStorage]; ok {
 			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.PDMemberType)] = quantity
 		}
@@ -208,14 +200,12 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 		if tc.Status.TiDB.Volumes == nil {
 			tc.Status.TiDB.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
-		ctx.sourceVolumeStatus = tc.Status.TiDB.Volumes
 		storageVolumes = tc.Spec.TiDB.StorageVolumes
 	case v1alpha1.TiKVMemberType:
 		ctx.selector = selector.Add(*tikvRequirement)
 		if tc.Status.TiKV.Volumes == nil {
 			tc.Status.TiKV.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
-		ctx.sourceVolumeStatus = tc.Status.TiKV.Volumes
 		if quantity, ok := tc.Spec.TiKV.Requests[corev1.ResourceStorage]; ok {
 			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.TiKVMemberType)] = quantity
 		}
@@ -225,7 +215,6 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 		if tc.Status.TiFlash.Volumes == nil {
 			tc.Status.TiFlash.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
-		ctx.sourceVolumeStatus = tc.Status.TiFlash.Volumes
 		for i, claim := range tc.Spec.TiFlash.StorageClaims {
 			if quantity, ok := claim.Resources.Requests[corev1.ResourceStorage]; ok {
 				ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeNameForTiFlash(i)] = quantity
@@ -236,14 +225,12 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 		if tc.Status.TiCDC.Volumes == nil {
 			tc.Status.TiCDC.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
-		ctx.sourceVolumeStatus = tc.Status.TiCDC.Volumes
 		storageVolumes = tc.Spec.TiCDC.StorageVolumes
 	case v1alpha1.PumpMemberType:
 		ctx.selector = selector.Add(*pumpRequirement)
 		if tc.Status.Pump.Volumes == nil {
 			tc.Status.Pump.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
-		ctx.sourceVolumeStatus = tc.Status.Pump.Volumes
 		if quantity, ok := tc.Spec.Pump.Requests[corev1.ResourceStorage]; ok {
 			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.PumpMemberType)] = quantity
 		}
@@ -255,11 +242,11 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 		if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
 			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName(sv.Name, comp)] = quantity
 		} else {
-			klog.Warningf("StorageVolume %q in %s/%s .spec.%s is invalid", sv.Name, ns, name, comp)
+			klog.Warningf("StorageVolume %q in %s .spec.%s is invalid", sv.Name, ctx.ComponentID(), comp)
 		}
 	}
 
-	podVolumes, err := p.collectAcutalStatus(ns, ctx.selector)
+	podVolumes, err := p.collectAcutalStatus(ctx.cluster.GetNamespace(), ctx.selector)
 	if err != nil {
 		return nil, err
 	}
@@ -268,14 +255,12 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, comp v1alpha1.M
 	return ctx, nil
 }
 
-func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.MemberType) (*componentVolumeContext, error) {
-	ns := dc.Namespace
-	name := dc.Name
+func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, status v1alpha1.ComponentStatus) (*componentVolumeContext, error) {
+	comp := status.GetMemberType()
 
 	ctx := &componentVolumeContext{
-		comp:                  comp,
-		namespace:             ns,
-		name:                  name,
+		cluster:               dc,
+		status:                status,
 		desiredVolumeQuantity: map[v1alpha1.StorageVolumeName]resource.Quantity{},
 	}
 
@@ -289,7 +274,6 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 		if dc.Status.Master.Volumes == nil {
 			dc.Status.Master.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
-		ctx.sourceVolumeStatus = dc.Status.Master.Volumes
 		if quantity, err := resource.ParseQuantity(dc.Spec.Master.StorageSize); err == nil {
 			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.DMMasterMemberType)] = quantity
 		}
@@ -298,7 +282,6 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 		if dc.Status.Worker.Volumes == nil {
 			dc.Status.Worker.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
-		ctx.sourceVolumeStatus = dc.Status.Worker.Volumes
 		if quantity, err := resource.ParseQuantity(dc.Spec.Worker.StorageSize); err == nil {
 			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.DMWorkerMemberType)] = quantity
 		}
@@ -306,7 +289,7 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 		return nil, fmt.Errorf("unsupported member type %s", comp)
 	}
 
-	podVolumes, err := p.collectAcutalStatus(ns, ctx.selector)
+	podVolumes, err := p.collectAcutalStatus(ctx.cluster.GetNamespace(), ctx.selector)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +300,8 @@ func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, comp v1alpha1.Mem
 
 // updateVolumeStatus build volume status from `actualPodVolumes` and update `sourceVolumeStatus`.
 func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
-	if ctx.sourceVolumeStatus == nil {
+	sourceVolumeStatus := ctx.status.GetVolumes()
+	if sourceVolumeStatus == nil {
 		return
 	}
 
@@ -345,8 +329,11 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 
 	// build observed status from `actualPodVolumes`
 	observedStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus{}
-	for _, podVolume := range ctx.actualPodVolumes {
-		for volName, pvc := range podVolume.volToPVCs {
+	for _, podVolumes := range ctx.actualPodVolumes {
+		for _, volume := range podVolumes.volumes {
+			volName := volume.name
+			pvc := volume.pvc
+
 			desiredQuantity, actualQuantity, pred := getCapacity(volName, pvc)
 			if !pred {
 				continue
@@ -385,132 +372,299 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 
 	// sync volume status for `sourceVolumeStatus`
 	for volName, status := range observedStatus {
-		if _, exist := ctx.sourceVolumeStatus[volName]; !exist {
-			ctx.sourceVolumeStatus[volName] = &v1alpha1.StorageVolumeStatus{
+		if _, exist := sourceVolumeStatus[volName]; !exist {
+			sourceVolumeStatus[volName] = &v1alpha1.StorageVolumeStatus{
 				Name: volName,
 			}
 		}
-		ctx.sourceVolumeStatus[volName].ObservedStorageVolumeStatus = *status
+		sourceVolumeStatus[volName].ObservedStorageVolumeStatus = *status
 	}
-	for _, status := range ctx.sourceVolumeStatus {
+	for _, status := range sourceVolumeStatus {
 		if _, exist := observedStatus[status.Name]; !exist {
-			delete(ctx.sourceVolumeStatus, status.Name)
+			delete(sourceVolumeStatus, status.Name)
 		}
 	}
 }
 
 // resizeVolumes resize PVCs by comparing `desiredVolumeQuantity` and `actualVolumeQuantity` in context.
 func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
-	desiredVolumeQuantity := ctx.desiredVolumeQuantity
-	podVolumes := ctx.actualPodVolumes
+	var (
+		resizingPod       *corev1.Pod
+		classifiedVolumes map[volumePhase][]*volume
+	)
 
-	id := fmt.Sprintf("%s/%s", ctx.namespace, ctx.name)
-
-	for _, podVolume := range podVolumes {
-
-		allResized := true
-		errors := []error{}
-
-		for volName, pvc := range podVolume.volToPVCs {
-			pvcID := fmt.Sprintf("%s/%s", pvc.Namespace, pvc.Name)
-
-			// check whether the PVC is resized
-			quantityInSpec, exist := desiredVolumeQuantity[volName]
-			if !exist {
-				klog.Errorf("Check PVC %q of %q resized failed: not exist in desired volumes", pvcID, id)
-				continue
-			}
-			currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
-			if !ok {
-				klog.Errorf("Check PVC %q of %q resized failed: storage request is empty", pvcID, id)
-				continue
-			}
-			currentCapacity, ok := pvc.Status.Capacity[corev1.ResourceStorage]
-			if !ok {
-				klog.Errorf("Check PVC %q of %q resized failed: storage capacity is empty", pvcID, id)
-				continue
-			}
-
-			cmpVal := quantityInSpec.Cmp(currentRequest)
-			resizing := currentRequest.Cmp(currentCapacity) != 0
-			if cmpVal == 0 {
-				if resizing {
-					allResized = false
-					klog.Infof("PVC %q of %q is resizing, request: %s capcaity: %s",
-						pvcID, id, currentRequest.String(), currentCapacity.String())
-				} else {
-					klog.V(4).Infof("PVC %q of %q is already resized, request: %s",
-						pvcID, id, quantityInSpec.String())
-				}
-				continue
-			}
-
-			// check whether the PVC can be resized
-
-			// not support shrink
-			if cmpVal < 0 {
-				klog.Warningf("Skip to resize PVC %q of %q: storage request cannot be shrunk (%s to %s)",
-					pvcID, id, currentRequest.String(), quantityInSpec.String())
-				continue
-			}
-			// not support default storage class
-			if pvc.Spec.StorageClassName == nil {
-				klog.Warningf("Skip to resize PVC %q of %q: PVC have no storage class", pvcID, id)
-				continue
-			}
-			// check whether the storage class support
-			if p.deps.StorageClassLister != nil {
-				volumeExpansionSupported, err := p.isVolumeExpansionSupported(*pvc.Spec.StorageClassName)
-				if err != nil {
-					return err
-				}
-				if !volumeExpansionSupported {
-					klog.Warningf("Skip to resize PVC %q of %q: storage class %q does not support volume expansion",
-						*pvc.Spec.StorageClassName, pvcID, id)
-					continue
-				}
-			} else {
-				klog.V(4).Infof("Storage classes lister is unavailable, skip checking volume expansion support for PVC %q of %q with storage class %s. This may be caused by no relevant permissions",
-					pvcID, id, *pvc.Spec.StorageClassName)
-			}
-
-			allResized = false
-
-			// patch PVC to expand the storage
-			mergePatch, err := json.Marshal(map[string]interface{}{
-				"spec": map[string]interface{}{
-					"resources": corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceStorage: quantityInSpec,
-						},
-					},
-				},
-			})
-			if err != nil {
-				errors = append(errors, err)
-				continue
-			}
-			_, err = p.deps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(context.TODO(), pvc.Name, types.MergePatchType, mergePatch, metav1.PatchOptions{})
-			if err != nil {
-				errors = append(errors, err)
-				continue
-			}
-
-			klog.V(2).Infof("PVC %q of %q storage request is updated from %s to %s",
-				pvcID, id, currentRequest.String(), quantityInSpec.String())
+	// choose one pod whose volume need to be resized
+	for _, podVolumes := range ctx.actualPodVolumes {
+		curClassifiedVolumes, err := p.classifyVolumes(ctx, podVolumes.volumes)
+		if err != nil {
+			return fmt.Errorf("classify volumes for %s failed: %w", ctx.ComponentID(), err)
 		}
 
-		if len(errors) > 0 {
-			return errutil.NewAggregate(errors)
-		}
-
-		if !allResized {
-			klog.Infof("Skip to resize other PVCs of %q: wait all PVCs in Pod %s/%s to be resized",
-				id, podVolume.pod.Namespace, podVolume.pod.Name)
+		if len(curClassifiedVolumes[resizing]) != 0 || len(curClassifiedVolumes[needResize]) != 0 {
+			resizingPod = podVolumes.pod
+			classifiedVolumes = curClassifiedVolumes
 			break
 		}
 	}
 
+	conditions := ctx.status.GetConditions()
+	exist := v1alpha1.IsComponentVolumeResizing(conditions)
+
+	// remove condition and return when all volumes are resized
+	if resizingPod == nil {
+		if exist {
+			err := p.endResize(ctx)
+			if err != nil {
+				return fmt.Errorf("end resize for %s failed: %w", ctx.ComponentID(), err)
+			}
+
+			ctx.status.RemoveCondition(v1alpha1.ComponentVolumeResizing)
+			klog.Infof("after resizing all volumes for %s: remove condition", ctx.ComponentID())
+		}
+
+		klog.V(4).Infof("all volumes are resized for %s", ctx.ComponentID())
+		return nil
+	}
+
+	// ensure condition exist befor resizing when any volume need to be resized
+	if !exist {
+		ctx.status.SetCondition(metav1.Condition{
+			Type:    v1alpha1.ComponentVolumeResizing,
+			Status:  metav1.ConditionTrue,
+			Reason:  "BeginResizing",
+			Message: "Set condition before resizing volumes",
+		})
+
+		klog.Infof("before resizing volumes for %s: set condition", ctx.ComponentID())
+
+		// FIXME: remove err?
+		return controller.RequeueErrorf("set condition before resizing volumes for %s", ctx.ComponentID())
+	}
+
+	if len(classifiedVolumes[needResize]) != 0 {
+		if ctx.status.GetPhase() == v1alpha1.UpgradePhase {
+			return controller.RequeueErrorf("wait upgrade to complete before resizing volumes for %s", ctx.ComponentID())
+		}
+
+		klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
+		return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
+	}
+
+	for _, volume := range classifiedVolumes[resizing] {
+		klog.V(4).Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
+	}
+	return nil
+}
+
+func (p *pvcResizer) classifyVolumes(ctx *componentVolumeContext, volumes []*volume) (map[volumePhase][]*volume, error) {
+	desiredVolumeQuantity := ctx.desiredVolumeQuantity
+	cid := ctx.ComponentID()
+
+	needResizeVolumes := []*volume{}
+	resizingVolumes := []*volume{}
+	resizedVolumes := []*volume{}
+
+	for _, volume := range volumes {
+		volName := volume.name
+		pvc := volume.pvc
+		pvcID := fmt.Sprintf("%s/%s", pvc.Namespace, pvc.Name)
+
+		// check whether the PVC is resized
+		quantityInSpec, exist := desiredVolumeQuantity[volName]
+		if !exist {
+			klog.Errorf("Check PVC %q of %q resized failed: not exist in desired volumes", pvcID, cid)
+			continue
+		}
+		currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+		if !ok {
+			klog.Errorf("Check PVC %q of %q resized failed: storage request is empty", pvcID, cid)
+			continue
+		}
+		currentCapacity, ok := pvc.Status.Capacity[corev1.ResourceStorage]
+		if !ok {
+			klog.Errorf("Check PVC %q of %q resized failed: storage capacity is empty", pvcID, cid)
+			continue
+		}
+
+		cmpVal := quantityInSpec.Cmp(currentRequest)
+		resizing := currentRequest.Cmp(currentCapacity) != 0
+		if cmpVal == 0 {
+			if resizing {
+				resizingVolumes = append(resizingVolumes, volume)
+			} else {
+				resizedVolumes = append(resizedVolumes, volume)
+			}
+			continue
+		}
+
+		// check whether the PVC can be resized
+
+		// not support shrink
+		if cmpVal < 0 {
+			klog.Warningf("Skip to resize PVC %q of %q: storage request cannot be shrunk (%s to %s)",
+				pvcID, cid, currentRequest.String(), quantityInSpec.String())
+			continue
+		}
+		// not support default storage class
+		if pvc.Spec.StorageClassName == nil {
+			klog.Warningf("Skip to resize PVC %q of %q: PVC have no storage class", pvcID, cid)
+			continue
+		}
+		// check whether the storage class support
+		if p.deps.StorageClassLister != nil {
+			volumeExpansionSupported, err := p.isVolumeExpansionSupported(*pvc.Spec.StorageClassName)
+			if err != nil {
+				return nil, err
+			}
+			if !volumeExpansionSupported {
+				klog.Warningf("Skip to resize PVC %q of %q: storage class %q does not support volume expansion",
+					*pvc.Spec.StorageClassName, pvcID, cid)
+				continue
+			}
+		} else {
+			klog.V(4).Infof("Storage classes lister is unavailable, skip checking volume expansion support for PVC %q of %q with storage class %s. This may be caused by no relevant permissions",
+				pvcID, cid, *pvc.Spec.StorageClassName)
+		}
+
+		needResizeVolumes = append(needResizeVolumes, volume)
+	}
+
+	return map[volumePhase][]*volume{
+		needResize: needResizeVolumes,
+		resizing:   resizingVolumes,
+		resized:    resizedVolumes,
+	}, nil
+}
+
+func (p *pvcResizer) resizeVolumesForPod(ctx *componentVolumeContext, pod *corev1.Pod, volumes []*volume) error {
+	if err := p.beforeResizeForPod(ctx, pod, volumes); err != nil {
+		return err
+	}
+
+	desiredVolumeQuantity := ctx.desiredVolumeQuantity
+	errs := []error{}
+
+	for _, volume := range volumes {
+		volName := volume.name
+		pvc := volume.pvc
+		pvcID := fmt.Sprintf("%s/%s", pvc.Namespace, pvc.Name)
+
+		currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+		if !ok {
+			errs = append(errs, fmt.Errorf("resize PVC %s failed: storage request is empty", pvcID))
+			continue
+		}
+		quantityInSpec, exist := desiredVolumeQuantity[volName]
+		if !exist {
+			errs = append(errs, fmt.Errorf("resize PVC %s failed: not exist in desired volumes", pvcID))
+			continue
+		}
+
+		mergePatch, err := json.Marshal(map[string]interface{}{
+			"spec": map[string]interface{}{
+				"resources": corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: quantityInSpec,
+					},
+				},
+			},
+		})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("resize PVC %s failed: %s", pvcID, err))
+			continue
+		}
+		_, err = p.deps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(context.TODO(), pvc.Name, types.MergePatchType, mergePatch, metav1.PatchOptions{})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("resize PVC %s failed: %s", pvcID, err))
+			continue
+		}
+
+		klog.Infof("resize PVC %s of %s: storage request is updated from %s to %s",
+			pvcID, ctx.ComponentID(), currentRequest.String(), quantityInSpec.String())
+	}
+
+	return errutil.NewAggregate(errs)
+}
+
+func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *corev1.Pod, volumes []*volume) error {
+	logPrefix := fmt.Sprintf("before resizing volumes of Pod %s/%s for %s", resizePod.Namespace, resizePod.Name, ctx.ComponentID())
+
+	switch ctx.status.GetMemberType() {
+	case v1alpha1.TiKVMemberType:
+		tc, ok := ctx.cluster.(*v1alpha1.TidbCluster)
+		if !ok {
+			return fmt.Errorf("%s: cluster is not tidb cluster", logPrefix)
+		}
+
+		if !tc.TiKVAllStoresReady() {
+			return fmt.Errorf("%s: any store is not ready", logPrefix)
+		}
+
+		// check whether resized pods is ready
+		for _, podVolume := range ctx.actualPodVolumes {
+			pod := podVolume.pod
+
+			if pod.Name == resizePod.Name {
+				break
+			}
+
+			if _, exist := pod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize]; exist {
+				delete(pod.Annotations, v1alpha1.EvictLeaderAnnKeyForResize)
+				_, err := p.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
+				if err != nil {
+					return fmt.Errorf("%s: remove leader eviction annotation of pod %s/%s failed: %s",
+						logPrefix, pod.Namespace, pod.Name, err)
+				}
+
+				klog.Infof("%s: remove annotation %s in pod %s/%s",
+					logPrefix, v1alpha1.EvictLeaderAnnKeyForResize, pod.Namespace, pod.Name)
+			}
+		}
+
+		// ensure the pod is evicted
+		//	1. add ann to the pod
+		if _, exist := resizePod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize]; !exist {
+			resizePod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize] = v1alpha1.EvictLeaderValueNone
+			_, err := p.deps.KubeClientset.CoreV1().Pods(resizePod.Namespace).Update(context.TODO(), resizePod, metav1.UpdateOptions{})
+			if err != nil {
+				return fmt.Errorf("add ann %s to pod failed: %s", v1alpha1.EvictLeaderAnnKeyForResize, err)
+			}
+
+			klog.Infof("%s: add leader eviction annotation to pod", logPrefix)
+		}
+		//	2. wait for the leader count to be 0
+		for _, store := range tc.Status.TiKV.Stores {
+			if store.PodName == resizePod.Name {
+				if store.LeaderCount == 0 {
+					klog.V(4).Infof("%s: leader count of store %s become 0", logPrefix, store.ID)
+					return nil
+				} else {
+					return controller.RequeueErrorf("%s: wait for leader count of store %s to be 0,", logPrefix, store.ID)
+				}
+			}
+		}
+
+		return fmt.Errorf("%s: can't find store in tc", logPrefix)
+	}
+
+	return nil
+}
+
+func (p *pvcResizer) endResize(ctx *componentVolumeContext) error {
+	switch ctx.status.GetMemberType() {
+	case v1alpha1.TiKVMemberType:
+		// ensure all eviction annotations are removed
+		for _, podVolume := range ctx.actualPodVolumes {
+			pod := podVolume.pod
+			if _, exist := pod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize]; exist {
+				delete(pod.Annotations, v1alpha1.EvictLeaderAnnKeyForResize)
+				_, err := p.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
+				if err != nil {
+					return fmt.Errorf("remove ann %s of pod failed: %s", v1alpha1.EvictLeaderAnnKeyForResize, err)
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -536,7 +690,7 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 	}
 
 	for _, pod := range pods {
-		volToPVCs := map[v1alpha1.StorageVolumeName]*corev1.PersistentVolumeClaim{}
+		volumes := []*volume{}
 
 		for _, vol := range pod.Spec.Volumes {
 			if vol.PersistentVolumeClaim != nil {
@@ -546,13 +700,16 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 						vol.PersistentVolumeClaim.ClaimName, pod.Namespace, pod.Name)
 					continue
 				}
-				volToPVCs[v1alpha1.StorageVolumeName(vol.Name)] = pvc
+				volumes = append(volumes, &volume{
+					name: v1alpha1.StorageVolumeName(vol.Name),
+					pvc:  pvc.DeepCopy(),
+				})
 			}
 		}
 
 		result = append(result, &podVolumeContext{
-			pod:       pod,
-			volToPVCs: volToPVCs,
+			pod:     pod.DeepCopy(),
+			volumes: volumes,
 		})
 	}
 
@@ -573,12 +730,6 @@ func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, 
 		return false, nil
 	}
 	return *sc.AllowVolumeExpansion, nil
-}
-
-func NewPVCResizer(deps *controller.Dependencies) PVCResizerInterface {
-	return &pvcResizer{
-		deps: deps,
-	}
 }
 
 type fakePVCResizer struct {
