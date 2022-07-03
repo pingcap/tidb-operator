@@ -79,7 +79,8 @@ func RequeueErrorf(format string, a ...interface{}) error {
 
 // IsRequeueError returns whether err is a RequeueError
 func IsRequeueError(err error) bool {
-	return stderrs.Is(err, &RequeueError{})
+	rerr := &RequeueError{}
+	return stderrs.As(err, &rerr)
 }
 
 // IgnoreError is used to ignore this item, this error type should't be considered as a real error, no need to requeue

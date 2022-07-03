@@ -760,7 +760,6 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 
 	// If phase changes from UpgradePhase to NormalPhase, try to endEvictLeader for the last store.
-	// FIXME: end evict leader after Reiszed is done.
 	if !upgrading && tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		if err = endEvictLeader(m.deps, tc, helper.GetMinPodOrdinal(*set.Spec.Replicas, set)); err != nil {
 			return err

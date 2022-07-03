@@ -59,7 +59,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
 		if ready, reason := isTiKVReadyToUpgrade(meta); !ready {
-			klog.Infof("TidbCluster: [%s/%s], can not upgrade tikv because %s", ns, tcName, reason)
+			klog.Infof("TidbCluster: [%s/%s], can not upgrade tikv because: %s", ns, tcName, reason)
 			_, podSpec, err := GetLastAppliedConfig(oldSet)
 			if err != nil {
 				return err
@@ -330,7 +330,7 @@ func isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) (bool, string) {
 	if tc.TiKVScaling() {
 		return false, fmt.Sprintf("tikv status is %s", tc.Status.TiKV.Phase)
 	}
-	if conds := tc.Status.TiKV.GetConditions(); v1alpha1.IsComponentVolumeResizing(conds) {
+	if tc.IsComponentVolumeResizing(v1alpha1.TiKVMemberType) {
 		return false, fmt.Sprintf("tikv is resizing volumes")
 	}
 

@@ -25,12 +25,15 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	errutil "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/kubernetes"
+	storagelister "k8s.io/client-go/listers/storage/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -45,7 +48,7 @@ import (
 //  if storageClass does not support VolumeExpansion, skip and continue
 //  if not patched, patch
 //
-// We patch all PVCs at the same time. For many cloud storage plugins (e.g.
+// We patch all PVCs of one Pod  at the same time. For many cloud storage plugins (e.g.
 // AWS-EBS, GCE-PD), they support online file system expansion in latest
 // Kubernetes (1.15+).
 //
@@ -407,52 +410,31 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 		}
 	}
 
-	conditions := ctx.status.GetConditions()
-	exist := v1alpha1.IsComponentVolumeResizing(conditions)
+	allResized := resizingPod == nil
+	condExist := meta.IsStatusConditionTrue(ctx.status.GetConditions(), v1alpha1.ComponentVolumeResizing)
 
-	// remove condition and return when all volumes are resized
-	if resizingPod == nil {
-		if exist {
-			err := p.endResize(ctx)
-			if err != nil {
-				return fmt.Errorf("end resize for %s failed: %w", ctx.ComponentID(), err)
-			}
-
-			ctx.status.RemoveCondition(v1alpha1.ComponentVolumeResizing)
-			klog.Infof("after resizing all volumes for %s: remove condition", ctx.ComponentID())
+	if allResized {
+		if condExist {
+			return p.endResize(ctx)
 		}
-
 		klog.V(4).Infof("all volumes are resized for %s", ctx.ComponentID())
-		return nil
-	}
-
-	// ensure condition exist befor resizing when any volume need to be resized
-	if !exist {
-		ctx.status.SetCondition(metav1.Condition{
-			Type:    v1alpha1.ComponentVolumeResizing,
-			Status:  metav1.ConditionTrue,
-			Reason:  "BeginResizing",
-			Message: "Set condition before resizing volumes",
-		})
-
-		klog.Infof("before resizing volumes for %s: set condition", ctx.ComponentID())
-
-		// FIXME: remove err?
-		return controller.RequeueErrorf("set condition before resizing volumes for %s", ctx.ComponentID())
-	}
-
-	if len(classifiedVolumes[needResize]) != 0 {
-		if ctx.status.GetPhase() == v1alpha1.UpgradePhase {
-			return controller.RequeueErrorf("wait upgrade to complete before resizing volumes for %s", ctx.ComponentID())
+	} else {
+		if !condExist {
+			return p.beginResize(ctx)
 		}
 
-		klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
-		return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
+		// some volumes need to be resized
+		if len(classifiedVolumes[needResize]) != 0 {
+			klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
+			return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
+		}
+
+		// some volumes are resizing
+		for _, volume := range classifiedVolumes[resizing] {
+			klog.Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
+		}
 	}
 
-	for _, volume := range classifiedVolumes[resizing] {
-		klog.V(4).Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
-	}
 	return nil
 }
 
@@ -512,7 +494,7 @@ func (p *pvcResizer) classifyVolumes(ctx *componentVolumeContext, volumes []*vol
 		}
 		// check whether the storage class support
 		if p.deps.StorageClassLister != nil {
-			volumeExpansionSupported, err := p.isVolumeExpansionSupported(*pvc.Spec.StorageClassName)
+			volumeExpansionSupported, err := isVolumeExpansionSupported(p.deps.StorageClassLister, *pvc.Spec.StorageClassName)
 			if err != nil {
 				return nil, err
 			}
@@ -587,7 +569,7 @@ func (p *pvcResizer) resizeVolumesForPod(ctx *componentVolumeContext, pod *corev
 }
 
 func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *corev1.Pod, volumes []*volume) error {
-	logPrefix := fmt.Sprintf("before resizing volumes of Pod %s/%s for %s", resizePod.Namespace, resizePod.Name, ctx.ComponentID())
+	logPrefix := fmt.Sprintf("before resizing volumes of Pod %s/%s for %q", resizePod.Namespace, resizePod.Name, ctx.ComponentID())
 
 	switch ctx.status.GetMemberType() {
 	case v1alpha1.TiKVMemberType:
@@ -600,7 +582,7 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			return fmt.Errorf("%s: any store is not ready", logPrefix)
 		}
 
-		// check whether resized pods is ready
+		// remove leader eviction ann from reized pod
 		for _, podVolume := range ctx.actualPodVolumes {
 			pod := podVolume.pod
 
@@ -608,38 +590,30 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 				break
 			}
 
-			if _, exist := pod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize]; exist {
-				delete(pod.Annotations, v1alpha1.EvictLeaderAnnKeyForResize)
-				_, err := p.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
-				if err != nil {
-					return fmt.Errorf("%s: remove leader eviction annotation of pod %s/%s failed: %s",
-						logPrefix, pod.Namespace, pod.Name, err)
-				}
-
-				klog.Infof("%s: remove annotation %s in pod %s/%s",
-					logPrefix, v1alpha1.EvictLeaderAnnKeyForResize, pod.Namespace, pod.Name)
+			updated, err := updateResizeAnnForTiKVPod(p.deps.KubeClientset, false, pod)
+			if err != nil {
+				return err
+			}
+			if updated {
+				klog.Infof("%s: remove leader eviction annotation from pod %s/%s", logPrefix, pod.Namespace, pod.Name)
 			}
 		}
 
-		// ensure the pod is evicted
-		//	1. add ann to the pod
-		if _, exist := resizePod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize]; !exist {
-			resizePod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize] = v1alpha1.EvictLeaderValueNone
-			_, err := p.deps.KubeClientset.CoreV1().Pods(resizePod.Namespace).Update(context.TODO(), resizePod, metav1.UpdateOptions{})
-			if err != nil {
-				return fmt.Errorf("add ann %s to pod failed: %s", v1alpha1.EvictLeaderAnnKeyForResize, err)
-			}
-
+		// add leader eviction ann to the pod and wait the leader count to be 0
+		updated, err := updateResizeAnnForTiKVPod(p.deps.KubeClientset, true, resizePod)
+		if err != nil {
+			return err
+		}
+		if updated {
 			klog.Infof("%s: add leader eviction annotation to pod", logPrefix)
 		}
-		//	2. wait for the leader count to be 0
 		for _, store := range tc.Status.TiKV.Stores {
 			if store.PodName == resizePod.Name {
 				if store.LeaderCount == 0 {
 					klog.V(4).Infof("%s: leader count of store %s become 0", logPrefix, store.ID)
 					return nil
 				} else {
-					return controller.RequeueErrorf("%s: wait for leader count of store %s to be 0,", logPrefix, store.ID)
+					return controller.RequeueErrorf("%s: wait for leader count of store %s to be 0", logPrefix, store.ID)
 				}
 			}
 		}
@@ -650,21 +624,35 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 	return nil
 }
 
+func (p *pvcResizer) beginResize(ctx *componentVolumeContext) error {
+	ctx.status.SetCondition(metav1.Condition{
+		Type:    v1alpha1.ComponentVolumeResizing,
+		Status:  metav1.ConditionTrue,
+		Reason:  "BeginResizing",
+		Message: "Set resizing condition to begin resizing",
+	})
+	klog.Infof("begin resizing for %s: set resizing condition", ctx.ComponentID())
+	return controller.RequeueErrorf("set condition before resizing volumes for %s", ctx.ComponentID())
+}
+
 func (p *pvcResizer) endResize(ctx *componentVolumeContext) error {
 	switch ctx.status.GetMemberType() {
 	case v1alpha1.TiKVMemberType:
 		// ensure all eviction annotations are removed
 		for _, podVolume := range ctx.actualPodVolumes {
-			pod := podVolume.pod
-			if _, exist := pod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize]; exist {
-				delete(pod.Annotations, v1alpha1.EvictLeaderAnnKeyForResize)
-				_, err := p.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
-				if err != nil {
-					return fmt.Errorf("remove ann %s of pod failed: %s", v1alpha1.EvictLeaderAnnKeyForResize, err)
-				}
+			updated, err := updateResizeAnnForTiKVPod(p.deps.KubeClientset, false, podVolume.pod)
+			if err != nil {
+				return fmt.Errorf("remove leader eviction annotation from pod failed: %s", err)
+			}
+			if updated {
+				klog.Infof("end resizing for %s: remove leader eviction annotation from pod %s/%s",
+					ctx.ComponentID(), podVolume.pod.Namespace, podVolume.pod.Name)
 			}
 		}
 	}
+
+	ctx.status.RemoveCondition(v1alpha1.ComponentVolumeResizing)
+	klog.Infof("end resizing for %s: remove resizing condition", ctx.ComponentID())
 	return nil
 }
 
@@ -721,8 +709,8 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 	return result, nil
 }
 
-func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, error) {
-	sc, err := p.deps.StorageClassLister.Get(storageClassName)
+func isVolumeExpansionSupported(lister storagelister.StorageClassLister, storageClassName string) (bool, error) {
+	sc, err := lister.Get(storageClassName)
 	if err != nil {
 		return false, err
 	}
@@ -730,6 +718,32 @@ func (p *pvcResizer) isVolumeExpansionSupported(storageClassName string) (bool, 
 		return false, nil
 	}
 	return *sc.AllowVolumeExpansion, nil
+}
+
+func updateResizeAnnForTiKVPod(client kubernetes.Interface, need bool, pod *corev1.Pod) (bool /*updated*/, error) {
+	_, exist := pod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize]
+
+	if need && !exist {
+		if pod.Annotations == nil {
+			pod.Annotations = map[string]string{}
+		}
+		pod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize] = v1alpha1.EvictLeaderValueNone
+		_, err := client.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
+		if err != nil {
+			return false, fmt.Errorf("add ann %s to pod failed: %s", v1alpha1.EvictLeaderAnnKeyForResize, err)
+		}
+		return true, nil
+	}
+	if !need && exist {
+		delete(pod.Annotations, v1alpha1.EvictLeaderAnnKeyForResize)
+		_, err := client.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
+		if err != nil {
+			return false, fmt.Errorf("remove ann %s of pod failed: %s", v1alpha1.EvictLeaderAnnKeyForResize, err)
+		}
+		return true, nil
+	}
+
+	return false, nil
 }
 
 type fakePVCResizer struct {

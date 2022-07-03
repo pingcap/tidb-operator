@@ -108,11 +108,6 @@ func GetStorageVolumeNameForTiFlash(index int) StorageVolumeName {
 	return StorageVolumeName(fmt.Sprintf("data%d", index))
 }
 
-// IsComponentVolumeResizing returns true if any volume of component is resizing.
-func IsComponentVolumeResizing(conds []metav1.Condition) bool {
-	return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
-}
-
 var (
 	_ ComponentStatus = &PDStatus{}
 	_ ComponentStatus = &TiKVStatus{}

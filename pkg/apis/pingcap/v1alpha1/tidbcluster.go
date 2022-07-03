@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
@@ -963,4 +964,16 @@ func (tc *TidbCluster) WithoutLocalTiDB() bool {
 
 func (tc *TidbCluster) AcrossK8s() bool {
 	return tc.Spec.AcrossK8s
+}
+
+// IsComponentVolumeResizing returns true if any volume of component is resizing.
+func (tc *TidbCluster) IsComponentVolumeResizing(compType MemberType) bool {
+	comps := ComponentStatusFromTC(tc)
+	for _, comp := range comps {
+		if comp.GetMemberType() == compType {
+			conds := comp.GetConditions()
+			return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
+		}
+	}
+	return false
 }
