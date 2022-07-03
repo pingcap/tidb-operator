@@ -331,7 +331,7 @@ func isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) (bool, string) {
 		return false, fmt.Sprintf("tikv status is %s", tc.Status.TiKV.Phase)
 	}
 	if tc.IsComponentVolumeResizing(v1alpha1.TiKVMemberType) {
-		return false, fmt.Sprintf("tikv is resizing volumes")
+		return false, "tikv is resizing volumes"
 	}
 
 	return true, ""

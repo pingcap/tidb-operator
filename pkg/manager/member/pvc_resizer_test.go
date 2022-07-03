@@ -961,6 +961,8 @@ func TestResizeHook(t *testing.T) {
 					}
 				},
 				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
+					g.Expect(err).To(Succeed())
+
 					cli := p.deps.KubeClientset.CoreV1().Pods(ctx.cluster.GetNamespace())
 					pod, err := cli.Get(context.TODO(), "test-cluster-tikv-0", metav1.GetOptions{})
 					g.Expect(err).To(Succeed())
