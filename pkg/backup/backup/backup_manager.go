@@ -536,18 +536,12 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 }
 
 func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error) {
-	cpFactory := snapshotter.NewCloudProviderFactory()
-	s := cpFactory.CreateSnapshotter(b.Spec.Type)
-	if s == nil {
-		return "", nil
+	if s, reason, err := snapshotter.NewDefaultSnapshotter(b.Spec.Type, bm.deps); err != nil {
+		return reason, err
+	} else if s != nil {
+		return s.PrepareBackupMetadata(b, tc, ns)
 	}
-
-	err := s.Init(bm.deps, nil)
-	if err != nil {
-		return "InitSnapshotterFailed", err
-	}
-
-	return s.PrepareBackupMetadata(b, tc, ns)
+	return "", nil
 }
 
 func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, error) {

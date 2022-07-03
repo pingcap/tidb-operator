@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/backup/snapshotter"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -501,16 +502,38 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 }
 
 func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster, ns string) (string, error) {
-	// TODO: snapshotter for restore by factory
+	s, reason, err := snapshotter.NewDefaultSnapshotter(r.Spec.Type, rm.deps)
+	if err != nil {
+		return reason, err
+	} else if s == nil {
+		return "", nil
+	}
+
 	switch r.Status.Phase {
 	case v1alpha1.RestoreVolumeComplete:
-		// TODO: setVolumeID for all PVs, and debound PVCs, then commit all PVs and PVCs
+		// setRestoreVolumeID for all PVs, and reset PVC/PVs, then commit all PVC/PVs
+		if reason, err := s.PrepareRestoreMetadata(r); err != nil {
+			return reason, err
+		}
+
+		if _, ok := tc.Annotations[label.AnnWaitTiKVVolumesKey]; !ok {
+			tc.Annotations[label.AnnWaitTiKVVolumesKey] = "yes"
+			if _, err := rm.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil); err != nil {
+				return "AddTCAnnWaitTiKVFailed", err
+			}
+		}
+
 		// TODO: wait for TiKV running then spwan new Job for BR to deal with data consistency
 		// TODO: set special parameters for passsing them to Pod as Job by ENV maybe using DownwardAPI
 	case v1alpha1.RestoreDataComplete:
-		// TODO: set TidbCluster.Spec.RecoveryMode = false, maybe restart the cluster or all TiKVs
+		// clear out the recovery marks in TidbCluster, may restart the the cluster or all TiKVs
+		tc.Spec.RecoveryMode = false
+		delete(tc.Annotations, label.AnnWaitTiKVVolumesKey)
+		if _, err := rm.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil); err != nil {
+			return "ClearTCRecoveryMarkFailed", err
+		}
 	default:
-		// still using previous code logic
+		// do nothing, still using previous code logic
 	}
 	return "", nil
 }

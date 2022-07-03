@@ -849,6 +849,56 @@ func TestSetVolumeIDForCSI(t *testing.T) {
 	}
 }
 
+func TestNewDefaultSnapshotter(t *testing.T) {
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	cases := []struct {
+		name       string
+		bt         v1alpha1.BackupType
+		wantErr    bool
+		wantIgnore bool
+	}{
+		{
+			name:       "aws-snapshotter",
+			bt:         "ebs",
+			wantErr:    false,
+			wantIgnore: false,
+		},
+		{
+			name:       "gcp-snapshotter",
+			bt:         "gcepd",
+			wantErr:    false,
+			wantIgnore: false,
+		},
+		{
+			name:       "non-snapshotter",
+			bt:         "full",
+			wantErr:    false,
+			wantIgnore: true,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			s, reason, err := NewDefaultSnapshotter(tt.bt, deps)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.NotEmpty(t, reason)
+			} else {
+				assert.NoError(t, err)
+				assert.Empty(t, reason)
+				if tt.wantIgnore {
+					assert.Empty(t, s)
+				} else {
+					assert.NotEmpty(t, s)
+				}
+			}
+		})
+	}
+}
+
 func TestPrepareRestoreMetadata(t *testing.T) {
 	helper := newHelper(t)
 	defer helper.Close()

@@ -103,7 +103,7 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.RecoveryMode {
 		anns := tc.GetAnnotations()
 		if _, ok := anns[label.AnnWaitTiKVVolumesKey]; !ok {
-			return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for volumes restore complete", ns, tcName)
+			return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for volumes restore completed", ns, tcName)
 		}
 	}
 

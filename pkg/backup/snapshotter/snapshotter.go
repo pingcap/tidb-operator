@@ -549,3 +549,18 @@ func newMetaWithCoreFields(meta metav1.ObjectMeta) metav1.ObjectMeta {
 	}
 	return newMeta
 }
+
+func NewDefaultSnapshotter(t v1alpha1.BackupType, d *controller.Dependencies) (Snapshotter, string, error) {
+	f := NewCloudProviderFactory()
+	s := f.CreateSnapshotter(t)
+	if s == nil {
+		return nil, "", nil
+	}
+
+	err := s.Init(d, nil)
+	if err != nil {
+		return s, "InitSnapshotterFailed", err
+	}
+
+	return s, "", nil
+}
