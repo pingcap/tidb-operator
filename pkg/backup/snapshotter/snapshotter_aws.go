@@ -62,30 +62,28 @@ func (s *AWSSnapshotter) PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.
 	return s.BaseSnapshotter.prepareBackupMetadata(b, tc, ns, s)
 }
 
-func (s *AWSSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID string) (*corev1.PersistentVolume, error) {
-	newPV := pv.DeepCopy()
-
+func (s *AWSSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error {
 	if pv.Spec.CSI != nil {
 		// PV is provisioned by CSI driver
 		driver := pv.Spec.CSI.Driver
 		if driver == constants.EbsCSIDriver {
-			newPV.Spec.CSI.VolumeHandle = volumeID
+			pv.Spec.CSI.VolumeHandle = volumeID
 		} else {
-			return nil, fmt.Errorf("unable to handle CSI driver: %s", driver)
+			return fmt.Errorf("unable to handle CSI driver: %s", driver)
 		}
 	} else if pv.Spec.AWSElasticBlockStore != nil {
 		// PV is provisioned by in-tree driver
 		pvFailureDomainZone := pv.Labels["failure-domain.beta.kubernetes.io/zone"]
 		if len(pvFailureDomainZone) > 0 {
-			newPV.Spec.AWSElasticBlockStore.VolumeID = fmt.Sprintf("aws://%s/%s", pvFailureDomainZone, volumeID)
+			pv.Spec.AWSElasticBlockStore.VolumeID = fmt.Sprintf("aws://%s/%s", pvFailureDomainZone, volumeID)
 		} else {
-			newPV.Spec.AWSElasticBlockStore.VolumeID = volumeID
+			pv.Spec.AWSElasticBlockStore.VolumeID = volumeID
 		}
 	} else {
-		return nil, errors.New("spec.csi and spec.awsElasticBlockStore not found")
+		return errors.New("spec.csi and spec.awsElasticBlockStore not found")
 	}
 
-	return newPV, nil
+	return nil
 }
 
 func (s *AWSSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore) (string, error) {

@@ -44,7 +44,7 @@ type Snapshotter interface {
 	PrepareRestoreMetadata(r *v1alpha1.Restore) (string, error)
 
 	// SetVolumeID sets the cloud provider specific identifier for the PersistentVolume.
-	SetVolumeID(pv *corev1.PersistentVolume, volumeID string) (*corev1.PersistentVolume, error)
+	SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error
 }
 
 type BaseSnapshotter struct {
@@ -163,6 +163,8 @@ type StoresMixture struct {
 	mpTypeMap map[string]string
 	// key: mountPath, value: volumeID
 	mpVolIDMap map[string]string
+	// key: volumeID, value: restoreVolumeID, for restore
+	rsVolIDMap map[string]string
 	// support snapshot for the cloudprovider
 	snapshotter Snapshotter
 }
@@ -188,7 +190,7 @@ func NewIntactStoresMixture(
 	}
 }
 
-func NewStoresMixture(
+func NewBackupStoresMixture(
 	tc *v1alpha1.TidbCluster,
 	pvcs []*corev1.PersistentVolumeClaim,
 	pvs []*corev1.PersistentVolume,
@@ -200,6 +202,13 @@ func NewStoresMixture(
 		volsMap:     make(map[string]string),
 		mpTypeMap:   make(map[string]string),
 		mpVolIDMap:  make(map[string]string),
+		snapshotter: s,
+	}
+}
+
+func NewRestoreStoresMixture(s Snapshotter) *StoresMixture {
+	return &StoresMixture{
+		rsVolIDMap:  make(map[string]string),
 		snapshotter: s,
 	}
 }
@@ -339,40 +348,33 @@ func (s *BaseSnapshotter) prepareBackupMetadata(
 		return reason, err
 	}
 
-	storesMix := NewStoresMixture(tc, csb.Kubernetes.PVCs, csb.Kubernetes.PVs, execr)
-	reason, err = storesMix.PrepareCSBStoresMeta(csb, pods)
-	if err != nil {
+	m := NewBackupStoresMixture(tc, csb.Kubernetes.PVCs, csb.Kubernetes.PVs, execr)
+	if reason, err := m.PrepareCSBStoresMeta(csb, pods); err != nil {
 		return reason, err
 	}
 
+	if reason, err := placeCloudSnapBackup(b, csb); err != nil {
+		return reason, err
+	}
+
+	return "", nil
+}
+
+func placeCloudSnapBackup(b *v1alpha1.Backup, csb *CloudSnapBackup) (string, error) {
 	out, err := json.Marshal(csb)
 	if err != nil {
 		return "ParseCloudSnapshotBackupFailed", err
 	}
+
 	b.Annotations[label.AnnBackupCloudSnapKey] = util.BytesToString(out)
 	return "", nil
 }
 
-func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snapshotter) (string, error) {
-	str, ok := r.Annotations[label.AnnBackupCloudSnapKey]
-	if !ok {
-		return "GetCloudSnapshotBackupFailed", errors.New("restore.annotation for CloudSnapshotBackup not found")
-	}
-	csb := &CloudSnapBackup{}
-	err := json.Unmarshal(util.StringToBytes(str), csb)
-	if err != nil {
-		return "ParseCloudSnapshotBackupFailed", err
-	}
-
-	reason, err := checkCloudSnapshotBackup(csb)
-	if err != nil {
-		return reason, err
-	}
-
+func (m *StoresMixture) ProcessCSBPVCsAndPVs(csb *CloudSnapBackup) (string, error) {
 	pvcs := csb.Kubernetes.PVCs
 	pvs := csb.Kubernetes.PVs
 
-	rsVolIDMap := generateRestoreVolumeIDMap(csb.TiKV.Stores)
+	m.generateRestoreVolumeIDMap(csb.TiKV.Stores)
 
 	for i, pv := range pvs {
 		// Reset the PV's binding status so that Kubernetes can properly
@@ -381,21 +383,50 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snap
 
 		// Reset the PV's volumeID for restore from snapshot
 		// Note: This function has to precede the following `resetMetadataAndStatus`
-		if reason, err := resetRestoreVolumeID(pv, rsVolIDMap, execr); err != nil {
+		if reason, err := m.resetRestoreVolumeID(pv); err != nil {
 			return reason, err
 		}
 
 		// Clear out non-core metadata fields and status
 		resetMetadataAndStatus(pvcs[i], pv)
-
 	}
 
+	return "", nil
+}
+
+func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snapshotter) (string, error) {
+	csb, reason, err := extractCloudSnapBackup(r)
+	if err != nil {
+		return reason, err
+	}
+
+	if reason, err := checkCloudSnapBackup(csb); err != nil {
+		return reason, err
+	}
+
+	m := NewRestoreStoresMixture(execr)
+	m.ProcessCSBPVCsAndPVs(csb)
+
 	// commit new PVs and PVCs to kubernetes api-server
-	if reason, err := commitPVsAndPVCsToK8S(s.deps, r, pvcs, pvs); err != nil {
+	if reason, err := commitPVsAndPVCsToK8S(s.deps, r, csb.Kubernetes.PVCs, csb.Kubernetes.PVs); err != nil {
 		return reason, err
 	}
 
 	return "", nil
+}
+
+func extractCloudSnapBackup(r *v1alpha1.Restore) (*CloudSnapBackup, string, error) {
+	str, ok := r.Annotations[label.AnnBackupCloudSnapKey]
+	if !ok {
+		return nil, "GetCloudSnapBackupFailed", errors.New("restore.annotation for CloudSnapBackup not found")
+	}
+
+	csb := &CloudSnapBackup{}
+	err := json.Unmarshal(util.StringToBytes(str), csb)
+	if err != nil {
+		return nil, "ParseCloudSnapBackupFailed", err
+	}
+	return csb, "", nil
 }
 
 func commitPVsAndPVCsToK8S(
@@ -418,54 +449,56 @@ func commitPVsAndPVCsToK8S(
 	return "", nil
 }
 
-func generateRestoreVolumeIDMap(stores []*StoresBackup) map[string]string {
+func (m *StoresMixture) generateRestoreVolumeIDMap(stores []*StoresBackup) {
 	vols := []*VolumeBackup{}
 	for _, store := range stores {
 		vols = append(vols, store.Volumes...)
 	}
-	volIDMap := make(map[string]string)
 	for _, vol := range vols {
-		volIDMap[vol.VolumeID] = vol.RestoreVolumeID
+		m.rsVolIDMap[vol.VolumeID] = vol.RestoreVolumeID
 	}
-	return volIDMap
 }
 
-func resetRestoreVolumeID(pv *corev1.PersistentVolume, volIDMap map[string]string, s Snapshotter) (string, error) {
-	var ok bool
-	var volID string
-	if volID, ok = pv.Annotations[constants.AnnTemporaryVolumeID]; !ok {
+func (m *StoresMixture) resetRestoreVolumeID(pv *corev1.PersistentVolume) (string, error) {
+	// the reason for not using `snapshotter.GetVolumeID` directly here is to consider using
+	// a different driver or provisioner for backup and restore to extend conveniently later
+	volID, ok := pv.Annotations[constants.AnnTemporaryVolumeID]
+	if !ok {
 		return "GetVolumeIDFailed", fmt.Errorf("%s pv.annotations[%s] not found", pv.GetName(), constants.AnnTemporaryVolumeID)
 	}
 
 	var rsVolID string
-	if rsVolID, ok = volIDMap[volID]; !ok {
+	if rsVolID, ok = m.rsVolIDMap[volID]; !ok {
 		return "GetRestoreVolumeIDFailed", fmt.Errorf("%s volumeID-%s mapping restoreVolumeID not found", pv.GetName(), volID)
 	}
 
-	var err error
-	if pv, err = s.SetVolumeID(pv, rsVolID); err != nil {
+	if err := m.snapshotter.SetVolumeID(pv, rsVolID); err != nil {
 		return "ResetRestoreVolumeIDFailed", fmt.Errorf("failed to set pv-%s, %s", pv.Name, err.Error())
 	}
+
 	return "", nil
 }
 
-func checkCloudSnapshotBackup(b *CloudSnapBackup) (string, error) {
+func checkCloudSnapBackup(b *CloudSnapBackup) (string, error) {
+	if b == nil {
+		return "GetCloudSnapBackupFailed", errors.New("restore for CloudSnapBackup not found")
+	}
 	if b.Kubernetes == nil {
-		return "GetKubernetesFailed", errors.New(".kubernetes for CloudSnapshotBackup not found")
+		return "GetKubernetesFailed", errors.New(".kubernetes for CloudSnapBackup not found")
 	}
 
 	pvsLen := len(b.Kubernetes.PVs)
 	pvcsLen := len(b.Kubernetes.PVCs)
 	if len(b.Kubernetes.PVs) == 0 || len(b.Kubernetes.PVCs) == 0 {
-		return "GetKubernetesResourceFailed", errors.New(".kubernetes.pvcs or pvs for CloudSnapshotBackup not found")
+		return "GetKubernetesResourceFailed", errors.New(".kubernetes.pvcs or pvs for CloudSnapBackup not found")
 	}
 
 	if pvsLen != pvcsLen {
-		return "InvalidKubernetesResource", errors.New(".kubernetes.pvcs and pvs for CloudSnapshotBackup not matched")
+		return "InvalidKubernetesResource", errors.New(".kubernetes.pvcs and pvs for CloudSnapBackup not matched")
 	}
 
 	if b.TiKV == nil || len(b.TiKV.Stores) == 0 {
-		return "GetTiKVStoresFailed", errors.New(".tikv.stores for CloudSnapshotBackup not found")
+		return "GetTiKVStoresFailed", errors.New(".tikv.stores for CloudSnapBackup not found")
 	}
 
 	return "", nil
@@ -498,6 +531,9 @@ func resetMetadataAndStatus(pvc *corev1.PersistentVolumeClaim, pv *corev1.Persis
 	// clear out metadata except core fields: "name", "namespace", "labels", "annotations"
 	pvc.ObjectMeta = newMetaWithCoreFields(pvc.ObjectMeta)
 	pv.ObjectMeta = newMetaWithCoreFields(pv.ObjectMeta)
+
+	// clear out the annotation for store temporary volumeID
+	delete(pv.Annotations, constants.AnnTemporaryVolumeID)
 
 	// Never restore status
 	pvc.Status = corev1.PersistentVolumeClaimStatus{}

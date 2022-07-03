@@ -304,7 +304,7 @@ func TestPrepareCSBStoresMeta(t *testing.T) {
 
 	tc, pods, pvcs, pvs := constructTidbClusterWithSpecTiKV()
 
-	b := NewStoresMixture(tc, pvcs, pvs, sAWS)
+	b := NewBackupStoresMixture(tc, pvcs, pvs, sAWS)
 	b.collectVolumesInfo()
 
 	volsMapWanted := map[string]string{
@@ -513,93 +513,106 @@ func constructTidbClusterWithSpecTiKV() (
 	}
 
 	for i := 0; i < 3; i++ {
-		pods = append(pods, &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "test-db-tikv-" + strconv.Itoa(i),
-				Labels: map[string]string{
-					label.ComponentLabelKey: label.TiKVLabelVal,
-					label.StoreIDLabelKey:   strconv.Itoa(i + 1),
-				},
-			},
-			Spec: corev1.PodSpec{
-				Volumes: []corev1.Volume{
-					{
-						Name: label.TiKVLabelVal,
-						VolumeSource: corev1.VolumeSource{
-							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-								ClaimName: "tikv-test-db-tikv-" + strconv.Itoa(i),
-							},
-						},
-					},
-					{
-						Name: label.TiKVLabelVal + "-add-vol",
-						VolumeSource: corev1.VolumeSource{
-							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-								ClaimName: "tikv-add-vol-test-db-tikv-" + strconv.Itoa(i),
-							},
-						},
-					},
-				},
-			},
-		})
-
-		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "tikv-test-db-tikv-" + strconv.Itoa(i),
-				Labels: map[string]string{
-					label.ComponentLabelKey: label.TiKVLabelVal,
-				},
-			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				VolumeName: "pv-test-aaa" + strconv.Itoa(i),
-			},
-		})
-		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "tikv-add-vol-test-db-tikv-" + strconv.Itoa(i),
-				Labels: map[string]string{
-					label.ComponentLabelKey: label.TiKVLabelVal,
-				},
-			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				VolumeName: "pv-test-bbb" + strconv.Itoa(i),
-			},
-		})
-
-		pvs = append(pvs, &corev1.PersistentVolume{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pv-test-aaa" + strconv.Itoa(i),
-				Labels: map[string]string{
-					label.ComponentLabelKey: label.TiKVLabelVal,
-				},
-			},
-			Spec: corev1.PersistentVolumeSpec{
-				PersistentVolumeSource: corev1.PersistentVolumeSource{
-					CSI: &corev1.CSIPersistentVolumeSource{
-						Driver:       "ebs.csi.aws.com",
-						VolumeHandle: "vol-0e444aca5b73faaa" + strconv.Itoa(i),
-					},
-				},
-			},
-		})
-		pvs = append(pvs, &corev1.PersistentVolume{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pv-test-bbb" + strconv.Itoa(i),
-				Labels: map[string]string{
-					label.ComponentLabelKey: label.TiKVLabelVal,
-				},
-			},
-			Spec: corev1.PersistentVolumeSpec{
-				PersistentVolumeSource: corev1.PersistentVolumeSource{
-					CSI: &corev1.CSIPersistentVolumeSource{
-						Driver:       "ebs.csi.aws.com",
-						VolumeHandle: "vol-0e444aca5b73fbbb" + strconv.Itoa(i),
-					},
-				},
-			},
-		})
+		pods = append(pods, constructPods(i)...)
+		pvcs = append(pvcs, constructPVCs(i)...)
+		pvs = append(pvs, constructPVs(i)...)
 	}
 
+	return
+}
+
+func constructPods(ordinal int) (pods []*corev1.Pod) {
+	pods = append(pods, &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-db-tikv-" + strconv.Itoa(ordinal),
+			Labels: map[string]string{
+				label.ComponentLabelKey: label.TiKVLabelVal,
+				label.StoreIDLabelKey:   strconv.Itoa(ordinal + 1),
+			},
+		},
+		Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{
+				{
+					Name: label.TiKVLabelVal,
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "tikv-test-db-tikv-" + strconv.Itoa(ordinal),
+						},
+					},
+				},
+				{
+					Name: label.TiKVLabelVal + "-add-vol",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "tikv-add-vol-test-db-tikv-" + strconv.Itoa(ordinal),
+						},
+					},
+				},
+			},
+		},
+	})
+	return
+}
+
+func constructPVs(ordinal int) (pvs []*corev1.PersistentVolume) {
+	pvs = append(pvs, &corev1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pv-test-aaa" + strconv.Itoa(ordinal),
+			Labels: map[string]string{
+				label.ComponentLabelKey: label.TiKVLabelVal,
+			},
+		},
+		Spec: corev1.PersistentVolumeSpec{
+			PersistentVolumeSource: corev1.PersistentVolumeSource{
+				CSI: &corev1.CSIPersistentVolumeSource{
+					Driver:       "ebs.csi.aws.com",
+					VolumeHandle: "vol-0e444aca5b73faaa" + strconv.Itoa(ordinal),
+				},
+			},
+		},
+	})
+	pvs = append(pvs, &corev1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pv-test-bbb" + strconv.Itoa(ordinal),
+			Labels: map[string]string{
+				label.ComponentLabelKey: label.TiKVLabelVal,
+			},
+		},
+		Spec: corev1.PersistentVolumeSpec{
+			PersistentVolumeSource: corev1.PersistentVolumeSource{
+				CSI: &corev1.CSIPersistentVolumeSource{
+					Driver:       "ebs.csi.aws.com",
+					VolumeHandle: "vol-0e444aca5b73fbbb" + strconv.Itoa(ordinal),
+				},
+			},
+		},
+	})
+	return
+}
+
+func constructPVCs(ordinal int) (pvcs []*corev1.PersistentVolumeClaim) {
+	pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "tikv-test-db-tikv-" + strconv.Itoa(ordinal),
+			Labels: map[string]string{
+				label.ComponentLabelKey: label.TiKVLabelVal,
+			},
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			VolumeName: "pv-test-aaa" + strconv.Itoa(ordinal),
+		},
+	})
+	pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "tikv-add-vol-test-db-tikv-" + strconv.Itoa(ordinal),
+			Labels: map[string]string{
+				label.ComponentLabelKey: label.TiKVLabelVal,
+			},
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			VolumeName: "pv-test-bbb" + strconv.Itoa(ordinal),
+		},
+	})
 	return
 }
 
@@ -686,15 +699,15 @@ func TestSetVolumeID(t *testing.T) {
 			tt.s.Init(nil, nil)
 
 			// missing spec.awsElasticBlockStore/gcePersistentDisk -> error
-			_, err := tt.s.SetVolumeID(tt.pv, tt.volName)
+			err := tt.s.SetVolumeID(tt.pv, tt.volName)
 			require.Error(t, err)
 
 			// happy path
 			for _, fSetPVWanted := range tt.funcs {
 				wanted := fSetPVWanted(tt.pv)
-				newPV, err := tt.s.SetVolumeID(tt.pv, tt.volName)
+				err := tt.s.SetVolumeID(tt.pv, tt.volName)
 				require.NoError(t, err)
-				tt.testPVVolumeWanted(t, newPV, wanted)
+				tt.testPVVolumeWanted(t, tt.pv, wanted)
 			}
 		})
 	}
@@ -815,7 +828,7 @@ func TestSetVolumeIDForCSI(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			newPV, err := tt.s.SetVolumeID(tt.csiPV, tt.volumeID)
+			err := tt.s.SetVolumeID(tt.csiPV, tt.volumeID)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -823,6 +836,7 @@ func TestSetVolumeIDForCSI(t *testing.T) {
 
 			// happy path
 			require.NoError(t, err)
+			newPV := tt.csiPV.DeepCopy()
 			if _, ok := tt.s.(*GCPSnapshotter); ok {
 				orilVolHandle := tt.csiPV.Spec.CSI.VolumeHandle
 				ind := strings.LastIndex(newPV.Spec.CSI.VolumeHandle, "/")
@@ -841,6 +855,9 @@ func TestPrepareRestoreMetadata(t *testing.T) {
 	deps := helper.Deps
 
 	restore := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{},
+		},
 		Spec: v1alpha1.RestoreSpec{
 			Type: "ebs",
 		},
@@ -850,6 +867,611 @@ func TestPrepareRestoreMetadata(t *testing.T) {
 	s := cpFactory.CreateSnapshotter(restore.Spec.Type)
 	s.Init(deps, nil)
 
-	_, err := s.PrepareRestoreMetadata(restore)
+	// missing .annotation["tidb.pingcap.com/backup-cloud-snapshot"] as metadata
+	reason, err := s.PrepareRestoreMetadata(restore)
+	assert.NotEmpty(t, reason)
 	assert.Error(t, err)
+
+	meta := constructRestoreMetaStr()
+	restore.Annotations[label.AnnBackupCloudSnapKey] = meta
+
+	// happy path
+	reason, err = s.PrepareRestoreMetadata(restore)
+	assert.Empty(t, reason)
+	assert.NoError(t, err)
+}
+
+func TestProcessCSBPVCsAndPVs(t *testing.T) {
+	sAWS := &AWSSnapshotter{}
+	sAWS.Init(nil, nil)
+
+	csb := &CloudSnapBackup{
+		TiKV: &TiKVBackup{
+			Stores: []*StoresBackup{
+				{
+					StoreID: 1,
+					Volumes: []*VolumeBackup{
+						{
+							VolumeID:        "vol-0e65f40961a9f6244",
+							SnapshotID:      "snap-1234567890abcdef0",
+							RestoreVolumeID: "vol-0e65f40961a9f0001",
+						},
+					},
+				},
+				{
+					StoreID: 2,
+					Volumes: []*VolumeBackup{
+						{
+							VolumeID:        "vol-0e65f40961a9f6245",
+							SnapshotID:      "snap-1234567890abcdef1",
+							RestoreVolumeID: "vol-0e65f40961a9f0002",
+						},
+					},
+				},
+				{
+					StoreID: 3,
+					Volumes: []*VolumeBackup{
+						{
+							VolumeID:        "vol-0e65f40961a9f6246",
+							SnapshotID:      "snap-1234567890abcdef2",
+							RestoreVolumeID: "vol-0e65f40961a9f0003",
+						},
+					},
+				},
+			},
+		},
+		Kubernetes: &KubernetesBackup{
+			PVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-1",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+							constants.AnnTemporaryVolumeID:          "vol-0e65f40961a9f6244",
+							"test/annotation":                       "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3122",
+						ResourceVersion: "1958",
+						Finalizers: []string{
+							"kubernetes.io/pv-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeSource: corev1.PersistentVolumeSource{
+							CSI: &corev1.CSIPersistentVolumeSource{
+								Driver:       "ebs.csi.aws.com",
+								VolumeHandle: "vol-0e65f40961a9f6244",
+								FSType:       "ext4",
+							},
+						},
+						ClaimRef: &corev1.ObjectReference{
+							Name:            "pvc-1",
+							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
+							ResourceVersion: "1957",
+						},
+					},
+					Status: corev1.PersistentVolumeStatus{
+						Phase: corev1.VolumeBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-2",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+							constants.AnnTemporaryVolumeID:          "vol-0e65f40961a9f6245",
+							"test/annotation":                       "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3124",
+						ResourceVersion: "1960",
+						Finalizers: []string{
+							"kubernetes.io/pv-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeSource: corev1.PersistentVolumeSource{
+							CSI: &corev1.CSIPersistentVolumeSource{
+								Driver:       "ebs.csi.aws.com",
+								VolumeHandle: "vol-0e65f40961a9f6245",
+								FSType:       "ext4",
+							},
+						},
+						ClaimRef: &corev1.ObjectReference{
+							Name:            "pvc-2",
+							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
+							ResourceVersion: "1959",
+						},
+					},
+					Status: corev1.PersistentVolumeStatus{
+						Phase: corev1.VolumeBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-3",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+							constants.AnnTemporaryVolumeID:          "vol-0e65f40961a9f6246",
+							"test/annotation":                       "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3126",
+						ResourceVersion: "1962",
+						Finalizers: []string{
+							"kubernetes.io/pv-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeSource: corev1.PersistentVolumeSource{
+							CSI: &corev1.CSIPersistentVolumeSource{
+								Driver:       "ebs.csi.aws.com",
+								VolumeHandle: "vol-0e65f40961a9f6246",
+								FSType:       "ext4",
+							},
+						},
+						ClaimRef: &corev1.ObjectReference{
+							Name:            "pvc-3",
+							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
+							ResourceVersion: "1961",
+						},
+					},
+					Status: corev1.PersistentVolumeStatus{
+						Phase: corev1.VolumeBound,
+					},
+				},
+			},
+			PVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-1",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnBindCompleted:     "yes",
+							constants.KubeAnnBoundByController: "yes",
+							"test/annotation":                  "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
+						ResourceVersion: "1957",
+						Finalizers: []string{
+							"kubernetes.io/pvc-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-1",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-2",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnBindCompleted:     "yes",
+							constants.KubeAnnBoundByController: "yes",
+							"test/annotation":                  "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
+						ResourceVersion: "1959",
+						Finalizers: []string{
+							"kubernetes.io/pvc-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-2",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-3",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnBindCompleted:     "yes",
+							constants.KubeAnnBoundByController: "yes",
+							"test/annotation":                  "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
+						ResourceVersion: "1961",
+						Finalizers: []string{
+							"kubernetes.io/pvc-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-3",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			TiDBCluster:  &v1alpha1.TidbCluster{},
+			Unstructured: nil,
+		},
+	}
+
+	m := NewRestoreStoresMixture(sAWS)
+	m.ProcessCSBPVCsAndPVs(csb)
+
+	// happy path for backup-volumeID mapping restore-volumeID
+	volIDMapWanted := map[string]string{
+		"vol-0e65f40961a9f6244": "vol-0e65f40961a9f0001",
+		"vol-0e65f40961a9f6245": "vol-0e65f40961a9f0002",
+		"vol-0e65f40961a9f6246": "vol-0e65f40961a9f0003",
+	}
+	require.Equal(t, volIDMapWanted, m.rsVolIDMap)
+
+	// happy path for reformed PVs as the reborn resource
+	pvsWanted := []*corev1.PersistentVolume{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pv-1",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					"test/annotation": "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeSpec{
+				PersistentVolumeSource: corev1.PersistentVolumeSource{
+					CSI: &corev1.CSIPersistentVolumeSource{
+						Driver:       "ebs.csi.aws.com",
+						VolumeHandle: "vol-0e65f40961a9f0001",
+						FSType:       "ext4",
+					},
+				},
+				ClaimRef: &corev1.ObjectReference{
+					Name: "pvc-1",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pv-2",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					"test/annotation": "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeSpec{
+				PersistentVolumeSource: corev1.PersistentVolumeSource{
+					CSI: &corev1.CSIPersistentVolumeSource{
+						Driver:       "ebs.csi.aws.com",
+						VolumeHandle: "vol-0e65f40961a9f0002",
+						FSType:       "ext4",
+					},
+				},
+				ClaimRef: &corev1.ObjectReference{
+					Name: "pvc-2",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pv-3",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					"test/annotation": "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeSpec{
+				PersistentVolumeSource: corev1.PersistentVolumeSource{
+					CSI: &corev1.CSIPersistentVolumeSource{
+						Driver:       "ebs.csi.aws.com",
+						VolumeHandle: "vol-0e65f40961a9f0003",
+						FSType:       "ext4",
+					},
+				},
+				ClaimRef: &corev1.ObjectReference{
+					Name: "pvc-3",
+				},
+			},
+		},
+	}
+	assert.Equal(t, pvsWanted, csb.Kubernetes.PVs)
+
+	// happy path for reformed PVCs as the reborn resource
+	pvcsWanted := []*corev1.PersistentVolumeClaim{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pvc-1",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					"test/annotation": "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				VolumeName: "pv-1",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pvc-2",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					"test/annotation": "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				VolumeName: "pv-2",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pvc-3",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					"test/annotation": "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				VolumeName: "pv-3",
+			},
+		},
+	}
+	assert.Equal(t, pvcsWanted, csb.Kubernetes.PVCs)
+}
+
+func constructRestoreMetaStr() string {
+	return `{
+		"tikv": {
+			"replicas": 3,
+			"stores": [{
+				"store_id": 1,
+				"volumes": [{
+					"volume_id": "vol-0e65f40961a9f6244",
+					"type": "",
+					"mount_path": "",
+					"snapshot_id": "snap-1234567890abcdef0",
+					"restore_volume_id": "vol-0e65f40961a9f0001"
+				}]
+			}, {
+				"store_id": 2,
+				"volumes": [{
+					"volume_id": "vol-0e65f40961a9f6245",
+					"type": "",
+					"mount_path": "",
+					"snapshot_id": "snap-1234567890abcdef1",
+					"restore_volume_id": "vol-0e65f40961a9f0002"
+				}]
+			}, {
+				"store_id": 3,
+				"volumes": [{
+					"volume_id": "vol-0e65f40961a9f6246",
+					"type": "",
+					"mount_path": "",
+					"snapshot_id": "snap-1234567890abcdef2",
+					"restore_volume_id": "vol-0e65f40961a9f0003"
+				}]
+			}]
+		},
+		"pd": {
+			"replicas": 0
+		},
+		"tidb": {
+			"replicas": 0
+		},
+		"kubernetes": {
+			"pvcs": [{
+				"metadata": {
+					"name": "pvc-1",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
+					"resourceVersion": "1957",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/bind-completed": "yes",
+						"pv.kubernetes.io/bound-by-controller": "yes",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pvc-protection"]
+				},
+				"spec": {
+					"resources": {},
+					"volumeName": "pv-1"
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}, {
+				"metadata": {
+					"name": "pvc-2",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
+					"resourceVersion": "1959",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/bind-completed": "yes",
+						"pv.kubernetes.io/bound-by-controller": "yes",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pvc-protection"]
+				},
+				"spec": {
+					"resources": {},
+					"volumeName": "pv-2"
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}, {
+				"metadata": {
+					"name": "pvc-3",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
+					"resourceVersion": "1961",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/bind-completed": "yes",
+						"pv.kubernetes.io/bound-by-controller": "yes",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pvc-protection"]
+				},
+				"spec": {
+					"resources": {},
+					"volumeName": "pv-3"
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}],
+			"pvs": [{
+				"metadata": {
+					"name": "pv-1",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3122",
+					"resourceVersion": "1958",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/provisioned-by": "ebs.csi.aws.com",
+						"temporary/volume-id": "vol-0e65f40961a9f6244",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pv-protection"]
+				},
+				"spec": {
+					"csi": {
+						"driver": "ebs.csi.aws.com",
+						"volumeHandle": "vol-0e65f40961a9f6244",
+						"fsType": "ext4"
+					},
+					"claimRef": {
+						"name": "pvc-1",
+						"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
+						"resourceVersion": "1957"
+					}
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}, {
+				"metadata": {
+					"name": "pv-2",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3124",
+					"resourceVersion": "1960",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/provisioned-by": "ebs.csi.aws.com",
+						"temporary/volume-id": "vol-0e65f40961a9f6245",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pv-protection"]
+				},
+				"spec": {
+					"csi": {
+						"driver": "ebs.csi.aws.com",
+						"volumeHandle": "vol-0e65f40961a9f6245",
+						"fsType": "ext4"
+					},
+					"claimRef": {
+						"name": "pvc-2",
+						"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
+						"resourceVersion": "1959"
+					}
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}, {
+				"metadata": {
+					"name": "pv-3",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3126",
+					"resourceVersion": "1962",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/provisioned-by": "ebs.csi.aws.com",
+						"temporary/volume-id": "vol-0e65f40961a9f6246",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pv-protection"]
+				},
+				"spec": {
+					"csi": {
+						"driver": "ebs.csi.aws.com",
+						"volumeHandle": "vol-0e65f40961a9f6246",
+						"fsType": "ext4"
+					},
+					"claimRef": {
+						"name": "pvc-3",
+						"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
+						"resourceVersion": "1961"
+					}
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}],
+			"crd_tidb_cluster": {
+				"metadata": {
+					"creationTimestamp": null
+				},
+				"spec": {
+					"discovery": {},
+					"version": ""
+				},
+				"status": {
+					"pd": {
+						"synced": false,
+						"leader": {
+							"name": "",
+							"id": "",
+							"clientURL": "",
+							"health": false,
+							"lastTransitionTime": null
+						}
+					},
+					"tikv": {},
+					"tidb": {},
+					"pump": {},
+					"tiflash": {},
+					"ticdc": {}
+				}
+			},
+			"options": null
+		},
+		"options": null
+	}`
 }

@@ -70,9 +70,7 @@ func (s *GCPSnapshotter) PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.
 	return s.BaseSnapshotter.prepareBackupMetadata(b, tc, ns, s)
 }
 
-func (s *GCPSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID string) (*corev1.PersistentVolume, error) {
-	newPV := pv.DeepCopy()
-
+func (s *GCPSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error {
 	if pv.Spec.CSI != nil {
 		// PV is provisioned by CSI driver
 		driver := pv.Spec.CSI.Driver
@@ -80,21 +78,21 @@ func (s *GCPSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID strin
 			handle := pv.Spec.CSI.VolumeHandle
 			// To restore in the same AZ, here we only replace the 'disk' chunk.
 			if !s.volRegexp.MatchString(handle) {
-				return nil, fmt.Errorf("invalid volumeHandle for restore with CSI driver:%s, expected projects/{project}/zones/{zone}/disks/{name}, got %s",
+				return fmt.Errorf("invalid volumeHandle for restore with CSI driver:%s, expected projects/{project}/zones/{zone}/disks/{name}, got %s",
 					constants.PdCSIDriver, handle)
 			}
-			newPV.Spec.CSI.VolumeHandle = handle[:strings.LastIndex(handle, "/")+1] + volumeID
+			pv.Spec.CSI.VolumeHandle = handle[:strings.LastIndex(handle, "/")+1] + volumeID
 		} else {
-			return nil, fmt.Errorf("unable to handle CSI driver: %s", driver)
+			return fmt.Errorf("unable to handle CSI driver: %s", driver)
 		}
 	} else if pv.Spec.GCEPersistentDisk != nil {
 		// PV is provisioned by in-tree driver
-		newPV.Spec.GCEPersistentDisk.PDName = volumeID
+		pv.Spec.GCEPersistentDisk.PDName = volumeID
 	} else {
-		return nil, errors.New("spec.csi and spec.gcePersistentDisk not found")
+		return errors.New("spec.csi and spec.gcePersistentDisk not found")
 	}
 
-	return newPV, nil
+	return nil
 }
 
 func (s *GCPSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore) (string, error) {
