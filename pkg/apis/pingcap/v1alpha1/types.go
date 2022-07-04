@@ -376,6 +376,12 @@ const (
 	TidbClusterReady TidbClusterConditionType = "Ready"
 )
 
+// The `Type` of the component condition
+const (
+	// ComponentVolumeResizing indicates that any volume of this component is resizing.
+	ComponentVolumeResizing string = "ComponentVolumeResizing"
+)
+
 // +k8s:openapi-gen=true
 // DiscoverySpec contains details of Discovery members
 type DiscoverySpec struct {
@@ -1130,6 +1136,10 @@ type PDStatus struct {
 	Image           string                     `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // PDMember is PD member
@@ -1181,6 +1191,10 @@ type TiDBStatus struct {
 	PasswordInitialized      *bool                        `json:"passwordInitialized,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -1201,7 +1215,16 @@ type TiDBFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-const EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
+var (
+	EvictLeaderAnnKeys = []string{EvictLeaderAnnKey, EvictLeaderAnnKeyForResize}
+)
+
+const (
+	// EvictLeaderAnnKey is the annotation key to evict leader used by user.
+	EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
+	// EvictLeaderAnnKeyForResize is the annotation key to evict leader user by pvc resizer.
+	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
+)
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
 //
@@ -1232,6 +1255,10 @@ type TiKVStatus struct {
 	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status
@@ -1247,6 +1274,10 @@ type TiFlashStatus struct {
 	Image           string                      `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiCDCStatus is TiCDC status
@@ -1257,6 +1288,10 @@ type TiCDCStatus struct {
 	Captures    map[string]TiCDCCapture `json:"captures,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiCDCCapture is TiCDC Capture status
@@ -1310,6 +1345,10 @@ type PumpStatus struct {
 	Members     []*PumpNodeStatus       `json:"members,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
@@ -2364,6 +2403,10 @@ type MasterStatus struct {
 	Image           string                         `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // MasterMember is dm-master member status
@@ -2400,6 +2443,10 @@ type WorkerStatus struct {
 	Image          string                         `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // WorkerMember is dm-worker member status
