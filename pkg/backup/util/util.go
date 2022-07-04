@@ -554,7 +554,8 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 			restore.Spec.Type != v1alpha1.BackupTypeFull &&
 			restore.Spec.Type != v1alpha1.BackupTypeDB &&
 			restore.Spec.Type != v1alpha1.BackupTypeTable &&
-			restore.Spec.Type != v1alpha1.BackupTypeEBS {
+			restore.Spec.Type != v1alpha1.BackupTypeEBS &&
+			restore.Spec.Type != v1alpha1.BackupTypeData {
 			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", restore.Spec.Type, ns, name)
 		}
 

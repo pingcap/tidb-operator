@@ -59,16 +59,21 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	name := restore.GetName()
 	restoreJobName := restore.GetRestoreJobName()
 
-	var err error
+	var (
+		err              error
+		tc               *v1alpha1.TidbCluster
+		continueSync     bool
+		restoreNamespace string
+	)
+
 	if restore.Spec.BR == nil {
 		err = backuputil.ValidateRestore(restore, "")
 	} else {
-		restoreNamespace := restore.GetNamespace()
+		restoreNamespace = restore.GetNamespace()
 		if restore.Spec.BR.ClusterNamespace != "" {
 			restoreNamespace = restore.Spec.BR.ClusterNamespace
 		}
 
-		var tc *v1alpha1.TidbCluster
 		tc, err = rm.deps.TiDBClusterLister.TidbClusters(restoreNamespace).Get(restore.Spec.BR.Cluster)
 		if err != nil {
 			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster)
@@ -96,13 +101,29 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return controller.IgnoreErrorf("invalid restore spec %s/%s", ns, name)
 	}
 
-	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
-	if err == nil {
-		// already have a backup job running，return directly
-		return nil
+	if restore.Spec.BR != nil {
+		// restore based snapshot for cloudprovider
+		needCreateJob, reason, err := rm.tryRestoreIfCanSnapshot(restore, tc, restoreNamespace)
+		if err != nil {
+			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreRetryFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			}, nil)
+			return err
+		}
+		continueSync = needCreateJob
 	}
 
-	if !errors.IsNotFound(err) {
+	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
+	if err == nil {
+		// already have a restore job running, return directly
+		// except for the condition `continueSync` from restore based snapshot
+		if !continueSync {
+			return nil
+		}
+	} else if !errors.IsNotFound(err) {
 		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
 	}
 
@@ -160,6 +181,69 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		Type:   v1alpha1.RestoreScheduled,
 		Status: corev1.ConditionTrue,
 	}, nil)
+}
+
+func (rm *restoreManager) tryRestoreIfCanSnapshot(
+	r *v1alpha1.Restore, tc *v1alpha1.TidbCluster, ns string) (bool, string, error) {
+	s, reason, err := snapshotter.NewDefaultSnapshotter(r.Spec.Type, rm.deps)
+	if err != nil {
+		return false, reason, err
+	} else if s == nil {
+		return true, "", nil
+	}
+
+	switch r.Status.Phase {
+	case v1alpha1.RestoreVolumeComplete:
+		// setRestoreVolumeID for all PVs, and reset PVC/PVs,
+		// then commit all PVC/PVs for TiKV restore volumes
+		if reason, err := s.PrepareRestoreMetadata(r); err != nil {
+			// wait for TiKV running then spwan new Job for BR to
+			// deal with data consistency for TiKV restore data
+			if _, ok := err.(*snapshotter.NoPreparedError); ok {
+				return true, "", nil
+			}
+
+			return false, reason, err
+		}
+
+		// unset TiKV member reconcile block mark, meanwhile,
+		// as followed TiDB member sync recovery for TidbCluster
+		if _, ok := tc.Annotations[label.AnnWaitTiKVVolumesKey]; !ok {
+			restoreMark := fmt.Sprintf("%s-%s", r.Namespace, r.Name)
+			if len(tc.GetAnnotations()) == 0 {
+				tc.Annotations = make(map[string]string)
+			}
+			tc.Annotations[label.AnnWaitTiKVVolumesKey] = restoreMark
+			if _, err := rm.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil); err != nil {
+				return false, "AddTCAnnWaitTiKVFailed", err
+			}
+		}
+		return false, "", nil
+
+	case v1alpha1.RestoreDataComplete:
+		// clear out the recovery marks in TidbCluster,
+		// may manual restart the the cluster or all TiKVs
+		tc.Spec.RecoveryMode = false
+		delete(tc.Annotations, label.AnnWaitTiKVVolumesKey)
+		if _, err := rm.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil); err != nil {
+			return false, "ClearTCRecoveryMarkFailed", err
+		}
+
+		// restore TidbCluster completed
+		err := rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreComplete,
+			Status: corev1.ConditionTrue,
+		}, nil)
+		if err != nil {
+			return false, "UpdateRestoreCompleteFailed", err
+		}
+		return false, "", nil
+
+	default:
+		// do nothing, still continue with previous code logic
+	}
+
+	return false, "", nil
 }
 
 func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
@@ -354,11 +438,6 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	reason, err = rm.tryRestoreIfCanSnapshot(restore, tc, restoreNamespace)
-	if err != nil {
-		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
-	}
-
 	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
 	podLabels := jobLabels
 	jobAnnotations := restore.Annotations
@@ -499,43 +578,6 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	}
 
 	return job, "", nil
-}
-
-func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster, ns string) (string, error) {
-	s, reason, err := snapshotter.NewDefaultSnapshotter(r.Spec.Type, rm.deps)
-	if err != nil {
-		return reason, err
-	} else if s == nil {
-		return "", nil
-	}
-
-	switch r.Status.Phase {
-	case v1alpha1.RestoreVolumeComplete:
-		// setRestoreVolumeID for all PVs, and reset PVC/PVs, then commit all PVC/PVs
-		if reason, err := s.PrepareRestoreMetadata(r); err != nil {
-			return reason, err
-		}
-
-		if _, ok := tc.Annotations[label.AnnWaitTiKVVolumesKey]; !ok {
-			tc.Annotations[label.AnnWaitTiKVVolumesKey] = "yes"
-			if _, err := rm.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil); err != nil {
-				return "AddTCAnnWaitTiKVFailed", err
-			}
-		}
-
-		// TODO: wait for TiKV running then spwan new Job for BR to deal with data consistency
-		// TODO: set special parameters for passsing them to Pod as Job by ENV maybe using DownwardAPI
-	case v1alpha1.RestoreDataComplete:
-		// clear out the recovery marks in TidbCluster, may restart the the cluster or all TiKVs
-		tc.Spec.RecoveryMode = false
-		delete(tc.Annotations, label.AnnWaitTiKVVolumesKey)
-		if _, err := rm.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil); err != nil {
-			return "ClearTCRecoveryMarkFailed", err
-		}
-	default:
-		// do nothing, still using previous code logic
-	}
-	return "", nil
 }
 
 func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (string, error) {

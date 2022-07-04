@@ -12703,7 +12703,7 @@ string
 </em>
 </td>
 <td>
-<p>The current progress of the backup.</p>
+<p>The current progress of the restore.</p>
 </td>
 </tr>
 <tr>

@@ -93,6 +93,11 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 
+	// Sync TidbCluster Recovery
+	if err := m.syncRecoveryForTidbCluster(tc); err != nil {
+		return err
+	}
+
 	if tc.Spec.Pump != nil && !tc.PumpIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
 	}
@@ -119,6 +124,35 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	// Sync TiDB StatefulSet
 	return m.syncTiDBStatefulSetForTidbCluster(tc)
+}
+
+func (m *tidbMemberManager) syncRecoveryForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	// Check whether the cluster is in recovery mode
+	// and whether the volumes have been restored for TiKV
+	if !tc.Spec.RecoveryMode {
+		return nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	anns := tc.GetAnnotations()
+
+	if rMark, ok := anns[label.AnnWaitTiKVVolumesKey]; ok {
+		strs := strings.Split(rMark, "-")
+		rNs := strs[0]
+		rName := strs[1]
+		if r, err := m.deps.RestoreLister.Restores(rNs).Get(rName); err != nil {
+			return err
+		} else if r.Spec.Type != v1alpha1.BackupTypeData {
+			r.Spec.Type = v1alpha1.BackupTypeData
+			if _, err := m.deps.RestoreControl.UpdateRestore(r); err != nil {
+				return err
+			}
+		}
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV restore data completed", ns, tcName)
+	}
+
+	return nil
 }
 
 func (m *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error {

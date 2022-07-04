@@ -19,12 +19,16 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strings"
 
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
@@ -34,7 +38,11 @@ type Options struct {
 	backupUtil.GenericOptions
 }
 
-func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore) error {
+func (ro *Options) restoreData(
+	ctx context.Context,
+	restore *v1alpha1.Restore,
+	statusUpdater controller.RestoreConditionUpdaterInterface,
+	restoreControl controller.RestoreControlInterface) (bool, error) {
 	clusterNamespace := restore.Spec.BR.ClusterNamespace
 	if restore.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = restore.Namespace
@@ -46,10 +54,25 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore) e
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
+
+	// CloudSnapBackup is the metadata for restore TiDBCluster,
+	// especially TiKV-volumes for BR to restore snapshot
+	var (
+		isCSB   bool
+		csbPath string
+		ts      string
+	)
+	switch restore.Spec.Type {
+	case v1alpha1.BackupTypeEBS, v1alpha1.BackupTypeGCEPD:
+		isCSB = true
+		csbPath = path.Join(util.BRBinPath, "csb_restore.json")
+		args = append(args, fmt.Sprintf("--volume-file=%s", csbPath))
+	}
+
 	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
 	dataArgs, err := constructBROptions(restore)
 	if err != nil {
-		return err
+		return false, err
 	}
 	args = append(args, dataArgs...)
 
@@ -70,28 +93,24 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore) e
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
+		return false, fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
 	}
 	stdErr, err := cmd.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
+		return false, fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
+		return false, fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
 	}
+
 	var errMsg string
-	reader := bufio.NewReader(stdOut)
-	for {
-		line, err := reader.ReadString('\n')
-		if strings.Contains(line, "[ERROR]") {
-			errMsg += line
-		}
-		klog.Info(strings.Replace(line, "\n", "", -1))
-		if err != nil || io.EOF == err {
-			break
-		}
+	if isCSB {
+		ts, errMsg = ro.processExecOutputForCSB(restoreType, stdOut)
+	} else {
+		errMsg = ro.processExecOutput(stdOut)
 	}
+
 	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
@@ -100,10 +119,111 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore) e
 
 	err = cmd.Wait()
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
+		return false, fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
 	}
-	klog.Infof("Restore data for cluster %s successfully", ro)
-	return nil
+
+	return ro.processRestoreResult(csbPath, ts, restore, statusUpdater, restoreControl)
+}
+
+func (ro *Options) processRestoreResult(
+	csbPath, resolvedTS string,
+	restore *v1alpha1.Restore,
+	statusUpdater controller.RestoreConditionUpdaterInterface,
+	restoreControl controller.RestoreControlInterface) (bool, error) {
+	switch restore.Spec.Type {
+	case v1alpha1.BackupTypeEBS, v1alpha1.BackupTypeGCEPD:
+		if !backupUtil.IsFileExist(csbPath) {
+			return false, fmt.Errorf("cluster %s, the CSB file not found, path: %s", ro, csbPath)
+		}
+		file, err := os.Open(csbPath)
+		if err != nil {
+			return false, fmt.Errorf("cluster %s, open the CSB file failed, path: %s, err: %v", ro, csbPath, err)
+		}
+		defer file.Close()
+		if bs, err := ioutil.ReadAll(file); err != nil {
+			return false, fmt.Errorf("cluster %s, read the CSB file failed, path: %s, err: %v", ro, csbPath, err)
+		} else {
+			if len(restore.GetAnnotations()) == 0 {
+				restore.Annotations = make(map[string]string)
+			}
+			restore.Annotations[label.AnnBackupCloudSnapKey] = string(bs)
+			if _, err := restoreControl.UpdateRestore(restore); err != nil {
+				return false, fmt.Errorf("cluster %s, update restore annotation for CSB failed, err: %v", ro, err)
+			}
+			updateStatus := &controller.RestoreUpdateStatus{
+				CommitTs: &resolvedTS,
+			}
+			if err := statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:   v1alpha1.RestoreVolumeComplete,
+				Status: corev1.ConditionTrue,
+			}, updateStatus); err != nil {
+				return false, fmt.Errorf("cluster %s, update restore status volume-complete failed, err: %v", ro, err)
+			}
+			klog.Infof("Restore TiKV-volumes for cluster %s successfully", ro)
+			return true, nil
+		}
+
+	case v1alpha1.BackupTypeData:
+		if err := statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreDataComplete,
+			Status: corev1.ConditionTrue,
+		}, nil); err != nil {
+			return false, fmt.Errorf("cluster %s, update restore status data-complete failed, err: %v", ro, err)
+		}
+		klog.Infof("Restore TiKV-data for cluster %s successfully", ro)
+		return true, nil
+
+	default:
+		klog.Infof("Restore data for cluster %s successfully", ro)
+	}
+	return false, nil
+}
+
+// processExecOutput processes the output from exec br binary
+// NOTE: keep original logic for code
+func (ro *Options) processExecOutput(stdOut io.ReadCloser) (errMsg string) {
+	var err error
+	reader := bufio.NewReader(stdOut)
+	for {
+		_, errMsg, err = readExecOutputLine(reader)
+		if err != nil || io.EOF == err {
+			break
+		}
+	}
+	return
+}
+
+// processExecOutputForCSB processes the output from exec br binary for CloudSnapBackup
+// NOTE: distinguish between previous code logic
+func (ro *Options) processExecOutputForCSB(restoreType string, stdOut io.ReadCloser) (ts, errMsg string) {
+	var line string
+	var err error
+	successTag := fmt.Sprintf("[\"%s restore success\"]", strings.ToUpper(restoreType))
+	reader := bufio.NewReader(stdOut)
+	for {
+		line, errMsg, err = readExecOutputLine(reader)
+
+		if strings.Contains(line, successTag) {
+			extract := strings.Split(line, successTag)[1]
+			tsStr := regexp.MustCompile(`resolved_ts=\d+`).FindString(extract)
+			ts = strings.ReplaceAll(tsStr, "resolved_ts=", "")
+			klog.Infof("%s resolved_ts: %s", successTag, ts)
+		}
+
+		if err != nil || io.EOF == err {
+			break
+		}
+	}
+	return
+}
+
+func readExecOutputLine(reader *bufio.Reader) (line, errMsg string, err error) {
+	line, err = reader.ReadString('\n')
+	if strings.Contains(line, "[ERROR]") {
+		errMsg += line
+	}
+	klog.Info(strings.Replace(line, "\n", "", -1))
+	return
 }
 
 func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {

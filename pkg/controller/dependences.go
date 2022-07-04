@@ -172,6 +172,7 @@ type Controls struct {
 	CDCControl         TiCDCControlInterface
 	TiDBControl        TiDBControlInterface
 	BackupControl      BackupControlInterface
+	RestoreControl     RestoreControlInterface
 	SecretControl      SecretControlInterface
 }
 
@@ -237,6 +238,7 @@ func newRealControls(
 		genericCtrl       = NewRealGenericControl(genericCli, recorder)
 		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 		dmClusterLister   = informerFactory.Pingcap().V1alpha1().DMClusters().Lister()
+		restoreLister     = informerFactory.Pingcap().V1alpha1().Restores().Lister()
 		statefulSetLister = kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 		serviceLister     = kubeInformerFactory.Core().V1().Services().Lister()
 		pvcLister         = kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
@@ -267,6 +269,7 @@ func newRealControls(
 		CDCControl:         NewDefaultTiCDCControl(secretLister),
 		TiDBControl:        NewDefaultTiDBControl(secretLister),
 		BackupControl:      NewRealBackupControl(clientset, recorder),
+		RestoreControl:     NewRealRestoreControl(clientset, restoreLister, recorder),
 		SecretControl:      NewRealSecretControl(kubeClientset, secretLister, recorder),
 	}
 }

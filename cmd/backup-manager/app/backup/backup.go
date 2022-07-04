@@ -60,7 +60,8 @@ func (bo *Options) backupData(
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
 
-	// CloudSnapshotBackup is the metadata for backup TiDBCluster, especially TiKV-volumes for BR to take snapshot
+	// CloudSnapBackup is the metadata for backup TiDBCluster,
+	// especially TiKV-volumes for BR to take snapshot
 	var isCSB bool
 	csb := os.Getenv(backupConst.EnvCloudSnapMeta)
 	if csb != "" {
@@ -147,7 +148,7 @@ func (bo *Options) processExecOutput(stdOut io.ReadCloser) (errMsg string) {
 	return
 }
 
-// processExecOutputForCSB processes the output from exec br binary for CloudSnapshotBackup
+// processExecOutputForCSB processes the output from exec br binary for CloudSnapBackup
 // NOTE: distinguish between previous code logic
 func (bo *Options) processExecOutputForCSB(
 	backup *v1alpha1.Backup,

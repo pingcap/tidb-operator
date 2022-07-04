@@ -63,6 +63,7 @@ func runRestore(restoreOpts restore.Options, kubecfg string) error {
 	recorder := util.NewEventRecorder(kubeCli, "restore")
 	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
 	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
+	restoreControl := controller.NewRealRestoreControl(cli, restoreInformer.Lister(), recorder)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -72,6 +73,6 @@ func runRestore(restoreOpts restore.Options, kubecfg string) error {
 	cache.WaitForCacheSync(ctx.Done(), restoreInformer.Informer().HasSynced)
 
 	klog.Infof("start to process restore %s", restoreOpts.String())
-	rm := restore.NewManager(restoreInformer.Lister(), statusUpdater, restoreOpts)
+	rm := restore.NewManager(restoreInformer.Lister(), statusUpdater, restoreControl, restoreOpts)
 	return rm.ProcessRestore()
 }

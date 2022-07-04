@@ -35,8 +35,9 @@ import (
 )
 
 type Manager struct {
-	restoreLister listers.RestoreLister
-	StatusUpdater controller.RestoreConditionUpdaterInterface
+	restoreLister  listers.RestoreLister
+	StatusUpdater  controller.RestoreConditionUpdaterInterface
+	RestoreControl controller.RestoreControlInterface
 	Options
 }
 
@@ -44,10 +45,12 @@ type Manager struct {
 func NewManager(
 	restoreLister listers.RestoreLister,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
+	restoreControl controller.RestoreControlInterface,
 	restoreOpts Options) *Manager {
 	return &Manager{
 		restoreLister,
 		statusUpdater,
+		restoreControl,
 		restoreOpts,
 	}
 }
@@ -249,7 +252,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		}
 	}
 
-	restoreErr := rm.restoreData(ctx, restore)
+	isCompletetd, restoreErr := rm.restoreData(ctx, restore, rm.StatusUpdater, rm.RestoreControl)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
@@ -287,7 +290,12 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
+
+	// The status update has been completed, so return success directly
 	klog.Infof("restore cluster %s from %s succeed", rm, restore.Spec.Type)
+	if isCompletetd {
+		return nil
+	}
 
 	finish := time.Now()
 	ts := strconv.FormatUint(commitTs, 10)

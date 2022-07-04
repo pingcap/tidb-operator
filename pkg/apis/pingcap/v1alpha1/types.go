@@ -1523,8 +1523,12 @@ const (
 	BackupTypeDB BackupType = "db"
 	// BackupTypeTable represents the backup of one table for the tidb cluster.
 	BackupTypeTable BackupType = "table"
-	// BackupTypeEBS represents the backup based EBS snaphot for the tidb cluster.
+	// BackupTypeEBS represents the backup based EBS snapshot for the tidb cluster.
 	BackupTypeEBS BackupType = "ebs"
+	// BackupTypeGCEPD represents the backup based GCEPD snapshot for the tidb cluster.
+	BackupTypeGCEPD BackupType = "gcepd"
+	// BackupTypeData represents the backup based volume to deal with data consistency for the tidb cluster.
+	BackupTypeData BackupType = "data"
 	// BackupTypeTiFlashReplica represents restoring the tiflash replica removed by a failed restore of the older version BR
 	BackupTypeTiFlashReplica BackupType = "tiflash-replica"
 )

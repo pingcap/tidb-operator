@@ -73,10 +73,12 @@ type CloudProviderInter interface {
 // AWSElasticBlockStore/GCEPersistentDisk
 func (cpf *CloudProviderFactory) CreateSnapshotter(bt v1alpha1.BackupType) (s Snapshotter) {
 	switch bt {
-	case "ebs":
+	case v1alpha1.BackupTypeEBS:
 		s = new(AWSSnapshotter)
-	case "gcepd":
+	case v1alpha1.BackupTypeGCEPD:
 		s = new(GCPSnapshotter)
+	case v1alpha1.BackupTypeData:
+		s = new(NoneSnapshotter)
 	default:
 		// do nothing and return nil directly
 		return
