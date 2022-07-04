@@ -23,7 +23,8 @@ spec:
     version: v0.49.0
   imagePullPolicy: IfNotPresent
   additionalContainers:
-    - name: pd
+    - name: test
+      image: busybox:1.34.1
       lifecycle:
         preStop:
           exec:
