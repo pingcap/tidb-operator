@@ -330,7 +330,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 	// base statefulset
 	storageRequest, err := controller.ParseStorageRequest(tngm.Spec.NGMonitoring.Requests)
 	if err != nil {
-		return nil, fmt.Errorf("tidb ng monitoring[%s/%s] cannot parse storage request for ng monitoring, error: %v", ns, name, err)
+		return nil, fmt.Errorf("tidb ng monitoring [%s/%s] cannot parse storage request, error: %v", ns, name, err)
 	}
 	baseSts := &apps.StatefulSet{
 		ObjectMeta: meta,
