@@ -890,6 +890,9 @@ func TestResizeHook(t *testing.T) {
 		resizer := &pvcResizer{}
 		tc := &v1alpha1.TidbCluster{
 			ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster"},
+			Spec: v1alpha1.TidbClusterSpec{
+				TiKV:  &v1alpha1.TiKVSpec{},
+			},
 		}
 		ctx := &componentVolumeContext{
 			cluster: tc,
@@ -899,14 +902,9 @@ func TestResizeHook(t *testing.T) {
 		err := resizer.beginResize(ctx)
 		g.Expect(err).To(MatchError(controller.RequeueErrorf("set condition before resizing volumes for test-ns/test-cluster:tikv")))
 		g.Expect(len(tc.Status.TiKV.Conditions)).To(Equal(1))
-		expectCond := metav1.Condition{
-			Type:               v1alpha1.ComponentVolumeResizing,
-			Status:             metav1.ConditionTrue,
-			LastTransitionTime: tc.Status.TiKV.Conditions[0].LastTransitionTime,
-			Reason:             "BeginResizing",
-			Message:            "Set resizing condition to begin resizing",
-		}
-		g.Expect(tc.Status.TiKV.Conditions[0]).To(Equal(expectCond))
+		g.Expect(tc.Status.TiKV.Conditions[0].Reason).To(Equal("BeginResizing"))
+		g.Expect(tc.Status.TiKV.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
+		g.Expect(tc.IsComponentVolumeResizing(v1alpha1.TiKVMemberType)).To(BeTrue())
 	})
 
 	t.Run("endResize", func(t *testing.T) {
@@ -914,7 +912,7 @@ func TestResizeHook(t *testing.T) {
 			setup  func(ctx *componentVolumeContext)
 			expect func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error)
 		}{
-			"remove condition": {
+			"set condition": {
 				setup: func(ctx *componentVolumeContext) {
 					ctx.status = &v1alpha1.PDStatus{
 						Conditions: []metav1.Condition{
@@ -929,7 +927,10 @@ func TestResizeHook(t *testing.T) {
 				},
 				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
 					conds := ctx.status.GetConditions()
-					g.Expect(len(conds)).To(Equal(0))
+					g.Expect(len(conds)).To(Equal(1))
+					g.Expect(conds[0].Reason).To(Equal("EndResizing"))
+					g.Expect(conds[0].Status).To(Equal(metav1.ConditionFalse))
+					g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(v1alpha1.TiKVMemberType)).To(BeFalse())
 				},
 			},
 			"remove eviction annotation for tikv": {

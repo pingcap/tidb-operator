@@ -652,7 +652,12 @@ func (p *pvcResizer) endResize(ctx *componentVolumeContext) error {
 		}
 	}
 
-	ctx.status.RemoveCondition(v1alpha1.ComponentVolumeResizing)
+	ctx.status.SetCondition(metav1.Condition{
+		Type:    v1alpha1.ComponentVolumeResizing,
+		Status:  metav1.ConditionFalse,
+		Reason:  "EndResizing",
+		Message: "All volumes are resized",
+	})
 	klog.Infof("end resizing for %s: remove resizing condition", ctx.ComponentID())
 	return nil
 }
