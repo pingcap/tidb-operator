@@ -261,7 +261,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 	nmContainerName := v1alpha1.NGMonitoringMemberType.String()
 	startScript, err := GenerateNGMonitoringStartScript(tngm, tc)
 	if err != nil {
-		return nil, fmt.Errorf("tidb ng monitoring[%s:%s] cannot render start-script for ng monitoring, tidb ng monitoring, error: %v", ns, name, err)
+		return nil, fmt.Errorf("tidb ng monitoring [%s/%s] cannot render start-script, error: %v", ns, name, err)
 	}
 	nmVolumeMounts := []corev1.VolumeMount{
 		{Name: configVolumeName, ReadOnly: true, MountPath: ngmPodConfigVolumeMountDir}, // config
