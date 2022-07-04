@@ -246,7 +246,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 	name := tngm.GetName()
 
 	if cm == nil {
-		return nil, fmt.Errorf("tidb ng monitoring[%s:%s] config map is nil", ns, name)
+		return nil, fmt.Errorf("tidb ng monitoring [%s/%s] config map is nil", ns, name)
 	}
 
 	spec := tngm.BaseNGMonitoringSpec()
