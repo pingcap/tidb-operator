@@ -710,7 +710,11 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 
 	// sort by pod name to ensure the order is stable
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].pod.Name < result[j].pod.Name
+		name1, name2 := result[i].pod.Name, result[j].pod.Name
+		if len(name1) != len(name2) {
+			return len(name1) < len(name2)
+		}
+		return name1 < name2
 	})
 
 	return result, nil
