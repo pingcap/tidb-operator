@@ -4325,10 +4325,6 @@ FlashSecurity
 <p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
 and component-level overrides</p>
 </p>
-<h3 id="componentconditiontype">ComponentConditionType</h3>
-<p>
-<p>ComponentConditionType represents a component condition value.</p>
-</p>
 <h3 id="componentspec">ComponentSpec</h3>
 <p>
 (<em>Appears on:</em>

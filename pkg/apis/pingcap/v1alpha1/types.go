@@ -376,9 +376,7 @@ const (
 	TidbClusterReady TidbClusterConditionType = "Ready"
 )
 
-// ComponentConditionType represents a component condition value.
-type ComponentConditionType string
-
+// The `Type` of the component condition
 const (
 	// ComponentVolumeResizing indicates that any volume of this component is resizing.
 	ComponentVolumeResizing string = "ComponentVolumeResizing"
