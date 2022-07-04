@@ -891,7 +891,7 @@ func TestResizeHook(t *testing.T) {
 		tc := &v1alpha1.TidbCluster{
 			ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster"},
 			Spec: v1alpha1.TidbClusterSpec{
-				TiKV:  &v1alpha1.TiKVSpec{},
+				TiKV: &v1alpha1.TiKVSpec{},
 			},
 		}
 		ctx := &componentVolumeContext{
