@@ -578,14 +578,10 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			return fmt.Errorf("%s: cluster is not tidb cluster", logPrefix)
 		}
 
-		if !tc.TiKVAllStoresReady() {
-			return fmt.Errorf("%s: any store is not ready", logPrefix)
-		}
-
-		// remove leader eviction ann from reized pod
+		// remove leader eviction ann from resized pods and ensure the store is UP.
+		// leader eviction ann of the lastest pod is removed in `endResize`.
 		for _, podVolume := range ctx.actualPodVolumes {
 			pod := podVolume.pod
-
 			if pod.Name == resizePod.Name {
 				break
 			}
@@ -596,6 +592,11 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			}
 			if updated {
 				klog.Infof("%s: remove leader eviction annotation from pod %s/%s", logPrefix, pod.Namespace, pod.Name)
+			}
+			for _, store := range tc.Status.TiKV.Stores {
+				if store.PodName == pod.Name && store.State != v1alpha1.TiKVStateUp {
+					return fmt.Errorf("%s: store %s is not ready", logPrefix, store.ID)
+				}
 			}
 		}
 

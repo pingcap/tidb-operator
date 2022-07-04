@@ -1119,11 +1119,11 @@ func TestResizeHook(t *testing.T) {
 						},
 					}
 
-					return ctx.actualPodVolumes[0].pod
+					return ctx.actualPodVolumes[2].pod
 				},
 				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
 					g.Expect(err).To(HaveOccurred())
-					g.Expect(err.Error()).To(ContainSubstring("any store is not ready"))
+					g.Expect(err.Error()).To(ContainSubstring("store 1 is not ready"))
 				},
 			},
 			"sync leader eviction annotation": {
