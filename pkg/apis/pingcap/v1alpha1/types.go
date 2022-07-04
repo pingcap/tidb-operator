@@ -1224,7 +1224,7 @@ var (
 const (
 	// EvictLeaderAnnKey is the annotation key to evict leader used by user.
 	EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
-	// EvictLeaderAnnKey is the annotation key to evict leader user by pvc resizer.
+	// EvictLeaderAnnKeyForResize is the annotation key to evict leader user by pvc resizer.
 	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
 )
 
