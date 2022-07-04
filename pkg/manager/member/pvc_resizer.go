@@ -418,21 +418,22 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 			return p.endResize(ctx)
 		}
 		klog.V(4).Infof("all volumes are resized for %s", ctx.ComponentID())
-	} else {
-		if !condExist {
-			return p.beginResize(ctx)
-		}
+		return nil
+	}
 
-		// some volumes need to be resized
-		if len(classifiedVolumes[needResize]) != 0 {
-			klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
-			return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
-		}
+	if !condExist {
+		return p.beginResize(ctx)
+	}
 
-		// some volumes are resizing
-		for _, volume := range classifiedVolumes[resizing] {
-			klog.Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
-		}
+	// some volumes need to be resized
+	if len(classifiedVolumes[needResize]) != 0 {
+		klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
+		return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
+	}
+
+	// some volumes are resizing
+	for _, volume := range classifiedVolumes[resizing] {
+		klog.Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
 	}
 
 	return nil
