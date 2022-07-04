@@ -84,11 +84,11 @@ var (
 type volumePhase string
 
 const (
-	// needResize means the storage request of PVC is less than the storage request in TC/DC.
+	// needResize means the storage request of PVC is different from the storage request in TC/DC.
 	needResize volumePhase = "NeedResize"
-	// needResize means the storage request of PVC is equal to the storage request in TC/DC And PVC is resizing.
+	// resizing means the storage request of PVC is equal to the storage request in TC/DC and PVC is resizing.
 	resizing volumePhase = "Resizing"
-	// needResize means the storage request of PVC is equal to the storage request in TC/DC And PVC is resized.
+	// resized means the storage request of PVC is equal to the storage request in TC/DC and PVC has been resized.
 	resized volumePhase = "Resized"
 )
 
