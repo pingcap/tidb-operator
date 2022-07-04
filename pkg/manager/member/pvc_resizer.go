@@ -425,15 +425,15 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 		return p.beginResize(ctx)
 	}
 
+	// some volumes are resizing
+	for _, volume := range classifiedVolumes[resizing] {
+		klog.Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
+	}
+
 	// some volumes need to be resized
 	if len(classifiedVolumes[needResize]) != 0 {
 		klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
 		return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
-	}
-
-	// some volumes are resizing
-	for _, volume := range classifiedVolumes[resizing] {
-		klog.Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
 	}
 
 	return nil
@@ -737,7 +737,7 @@ func updateResizeAnnForTiKVPod(client kubernetes.Interface, need bool, pod *core
 		pod.Annotations[v1alpha1.EvictLeaderAnnKeyForResize] = v1alpha1.EvictLeaderValueNone
 		_, err := client.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
 		if err != nil {
-			return false, fmt.Errorf("add ann %s to pod failed: %s", v1alpha1.EvictLeaderAnnKeyForResize, err)
+			return false, fmt.Errorf("add leader eviction annotation to pod %s/%s failed: %s", pod.Namespace, pod.Name, err)
 		}
 		return true, nil
 	}
@@ -745,7 +745,7 @@ func updateResizeAnnForTiKVPod(client kubernetes.Interface, need bool, pod *core
 		delete(pod.Annotations, v1alpha1.EvictLeaderAnnKeyForResize)
 		_, err := client.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
 		if err != nil {
-			return false, fmt.Errorf("remove ann %s of pod failed: %s", v1alpha1.EvictLeaderAnnKeyForResize, err)
+			return false, fmt.Errorf("remove leader eviction annotation from pod %s/%s failed: %s", pod.Namespace, pod.Name, err)
 		}
 		return true, nil
 	}
