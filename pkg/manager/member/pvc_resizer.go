@@ -411,17 +411,17 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 	}
 
 	allResized := resizingPod == nil
-	condExist := meta.IsStatusConditionTrue(ctx.status.GetConditions(), v1alpha1.ComponentVolumeResizing)
+	condResizing := meta.IsStatusConditionTrue(ctx.status.GetConditions(), v1alpha1.ComponentVolumeResizing)
 
 	if allResized {
-		if condExist {
+		if condResizing {
 			return p.endResize(ctx)
 		}
 		klog.V(4).Infof("all volumes are resized for %s", ctx.ComponentID())
 		return nil
 	}
 
-	if !condExist {
+	if !condResizing {
 		return p.beginResize(ctx)
 	}
 
@@ -596,7 +596,7 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			}
 			for _, store := range tc.Status.TiKV.Stores {
 				if store.PodName == pod.Name && store.State != v1alpha1.TiKVStateUp {
-					return fmt.Errorf("%s: store %s is not ready", logPrefix, store.ID)
+					return fmt.Errorf("%s: store %s of pod %s is not ready", logPrefix, store.ID, store.PodName)
 				}
 			}
 		}
@@ -659,7 +659,7 @@ func (p *pvcResizer) endResize(ctx *componentVolumeContext) error {
 		Reason:  "EndResizing",
 		Message: "All volumes are resized",
 	})
-	klog.Infof("end resizing for %s: remove resizing condition", ctx.ComponentID())
+	klog.Infof("end resizing for %s: update resizing condition", ctx.ComponentID())
 	return nil
 }
 
