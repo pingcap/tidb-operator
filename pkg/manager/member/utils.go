@@ -502,23 +502,23 @@ func MergePatchContainers(base, patches []corev1.Container) ([]corev1.Container,
 
 		containerBytes, err := json.Marshal(container)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal JSON for container %s,error:%v", container.Name, err)
+			return nil, fmt.Errorf("failed to marshal JSON for container %s, error: %v", container.Name, err)
 		}
 
 		patchBytes, err := json.Marshal(patchContainer)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal JSON for patch container %s,error:%v", container.Name, err)
+			return nil, fmt.Errorf("failed to marshal JSON for patch container %s, error: %v", container.Name, err)
 		}
 
 		// Calculate the patch result.
 		jsonResult, err := strategicpatch.StrategicMergePatch(containerBytes, patchBytes, corev1.Container{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to generate merge patch for container %s,error:%v", container.Name, err)
+			return nil, fmt.Errorf("failed to generate merge patch for container %s, error: %v", container.Name, err)
 		}
 
 		var patchResult corev1.Container
 		if err := json.Unmarshal(jsonResult, &patchResult); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal merged container %s,error:%v", container.Name, err)
+			return nil, fmt.Errorf("failed to unmarshal merged container %s, error: %v", container.Name, err)
 		}
 
 		// Add the patch result and remove the corresponding key from the to do list.
