@@ -126,6 +126,28 @@ func TestPodControllerSync(t *testing.T) {
 	}, timeout, interval).ShouldNot(Equal(0), "should finish annotation")
 }
 
+func TestNeedEvictLeader(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	pod := &corev1.Pod{}
+	pod.Annotations = map[string]string{}
+
+	// none key
+	_, _, exist := needEvictLeader(pod.DeepCopy())
+	g.Expect(exist).To(BeFalse())
+
+	// any key is exist
+	for _, key := range v1alpha1.EvictLeaderAnnKeys {
+		cur := pod.DeepCopy()
+		cur.Annotations[key] = v1alpha1.EvictLeaderValueDeletePod
+		usedkey, val, exist := needEvictLeader(cur)
+		g.Expect(exist).To(BeTrue())
+		g.Expect(key).To(Equal(usedkey))
+		g.Expect(val).To(Equal(cur.Annotations[key]))
+	}
+
+}
+
 func newTiKVPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

@@ -51,8 +51,8 @@ require (
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
-	github.com/pingcap/tidb-operator/pkg/apis v1.3.5
-	github.com/pingcap/tidb-operator/pkg/client v1.3.5
+	github.com/pingcap/tidb-operator/pkg/apis v1.3.6
+	github.com/pingcap/tidb-operator/pkg/client v1.3.6
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.26.0
