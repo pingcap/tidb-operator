@@ -238,7 +238,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		return err
 	}
 
-	if m.deps.CLIConfig.AutoFailover {
+	if m.deps.CLIConfig.AutoFailover && tc.Spec.PD.MaxFailoverCount != nil && *tc.Spec.PD.MaxFailoverCount > 0 {
 		if m.shouldRecover(tc) {
 			m.failover.Recover(tc)
 		} else if tc.PDAllPodsStarted() && !tc.PDAllMembersReady() || tc.PDAutoFailovering() {
