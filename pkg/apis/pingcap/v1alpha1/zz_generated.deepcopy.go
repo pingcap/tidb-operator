@@ -25,6 +25,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
 )
@@ -2674,6 +2675,13 @@ func (in *MasterStatus) DeepCopyInto(out *MasterStatus) {
 			(*out)[key] = outVal
 		}
 	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -3710,6 +3718,13 @@ func (in *PDStatus) DeepCopyInto(out *PDStatus) {
 			(*out)[key] = outVal
 		}
 	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -4318,6 +4333,13 @@ func (in *PumpStatus) DeepCopyInto(out *PumpStatus) {
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
+		}
+	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	return
@@ -5222,6 +5244,13 @@ func (in *TiCDCStatus) DeepCopyInto(out *TiCDCStatus) {
 			(*out)[key] = outVal
 		}
 	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -5788,6 +5817,13 @@ func (in *TiDBStatus) DeepCopyInto(out *TiDBStatus) {
 			(*out)[key] = outVal
 		}
 	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -6013,6 +6049,13 @@ func (in *TiFlashStatus) DeepCopyInto(out *TiFlashStatus) {
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
+		}
+	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	return
@@ -7901,6 +7944,13 @@ func (in *TiKVStatus) DeepCopyInto(out *TiKVStatus) {
 			(*out)[key] = outVal
 		}
 	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -9420,6 +9470,13 @@ func (in *WorkerStatus) DeepCopyInto(out *WorkerStatus) {
 				(*in).DeepCopyInto(*out)
 			}
 			(*out)[key] = outVal
+		}
+	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	return
