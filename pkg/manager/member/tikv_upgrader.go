@@ -58,13 +58,8 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	var status *v1alpha1.TiKVStatus
 	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
-		if meta.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
-			meta.Status.PD.Phase == v1alpha1.UpgradePhase ||
-			meta.TiKVScaling() {
-			klog.Infof("TidbCluster: [%s/%s]'s tiflash status is %v, pd status is %v, "+
-				"tikv status is %v, can not upgrade tikv",
-				ns, tcName,
-				meta.Status.TiFlash.Phase, meta.Status.PD.Phase, meta.Status.TiKV.Phase)
+		if ready, reason := isTiKVReadyToUpgrade(meta); !ready {
+			klog.Infof("TidbCluster: [%s/%s], can not upgrade tikv because: %s", ns, tcName, reason)
 			_, podSpec, err := GetLastAppliedConfig(oldSet)
 			if err != nil {
 				return err
@@ -323,6 +318,23 @@ func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *
 		}
 	}
 	return nil
+}
+
+func isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) (bool, string) {
+	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase {
+		return false, fmt.Sprintf("tiflash status is %s", tc.Status.TiFlash.Phase)
+	}
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+		return false, fmt.Sprintf("pd status is %s", tc.Status.PD.Phase)
+	}
+	if tc.TiKVScaling() {
+		return false, fmt.Sprintf("tikv status is %s", tc.Status.TiKV.Phase)
+	}
+	if tc.IsComponentVolumeResizing(v1alpha1.TiKVMemberType) {
+		return false, "tikv is resizing volumes"
+	}
+
+	return true, ""
 }
 
 type fakeTiKVUpgrader struct{}
