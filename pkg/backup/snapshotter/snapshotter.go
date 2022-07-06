@@ -237,28 +237,27 @@ func (m *StoresMixture) collectVolumesInfo() {
 }
 
 func (m *StoresMixture) extractVolumeIDs() (string, error) {
-	// key: mountPath, value: Volume
-	mpVolMap := make(map[string]corev1.Volume)
+	// key: volumePVCClaimName, value: mountPath
+	claimMpMap := make(map[string]string)
 	for _, vol := range m.pod.Spec.Volumes {
 		if mp, ok := m.volsMap[vol.Name]; ok {
-			mpVolMap[mp] = vol
+			claimMpMap[vol.VolumeSource.PersistentVolumeClaim.ClaimName] = mp
+		}
+	}
+
+	// key: pvcName, value: mountPath
+	pvcMpMap := make(map[string]string)
+	for _, pvc := range m.pvcs {
+		if mp, ok := claimMpMap[pvc.Name]; ok {
+			pvcMpMap[pvc.Spec.VolumeName] = mp
 		}
 	}
 
 	// key: mountPath, value: PV
-	// TODO: optimize the loop as repeated comparisons
 	mpPVMap := make(map[string]*corev1.PersistentVolume)
-	for mp, vol := range mpVolMap {
-		for _, pvc := range m.pvcs {
-			if pvc.Name == vol.VolumeSource.PersistentVolumeClaim.ClaimName {
-				for _, pv := range m.pvs {
-					if pvc.Spec.VolumeName == pv.Name {
-						mpPVMap[mp] = pv
-						break
-					}
-				}
-				break
-			}
+	for _, pv := range m.pvs {
+		if mp, ok := pvcMpMap[pv.Name]; ok {
+			mpPVMap[mp] = pv
 		}
 	}
 
