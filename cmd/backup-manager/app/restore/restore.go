@@ -66,7 +66,7 @@ func (ro *Options) restoreData(
 	case v1alpha1.BackupTypeEBS, v1alpha1.BackupTypeGCEPD:
 		isCSB = true
 		csbPath = path.Join(util.BRBinPath, "csb_restore.json")
-		args = append(args, fmt.Sprintf("--volume-file=%s", csbPath))
+		args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
 	}
 
 	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
