@@ -480,12 +480,14 @@ func (p *pvcResizer) classifyVolumes(ctx *componentVolumeContext, volumes []*vol
 			continue
 		}
 
-		if cmpVal < 0 { // not support shrink
+		// check whether the PVC can be resized
+
+		// not support shrink
+		if cmpVal < 0 {
 			klog.Warningf("Skip to resize PVC %q of %q: storage request cannot be shrunk (%s to %s)",
 				pvcID, cid, currentRequest.String(), quantityInSpec.String())
 			continue
 		}
-
 		// not support default storage class
 		if pvc.Spec.StorageClassName == nil {
 			klog.Warningf("Skip to resize PVC %q of %q: PVC have no storage class", pvcID, cid)
