@@ -469,6 +469,17 @@ func (p *pvcResizer) classifyVolumes(ctx *componentVolumeContext, volumes []*vol
 			continue
 		}
 
+		cmpVal := quantityInSpec.Cmp(currentRequest)
+		resizing := currentRequest.Cmp(currentCapacity) > 0
+		if cmpVal == 0 {
+			if resizing {
+				resizingVolumes = append(resizingVolumes, volume)
+			} else {
+				resizedVolumes = append(resizedVolumes, volume)
+			}
+			continue
+		}
+
 		// not support default storage class
 		if pvc.Spec.StorageClassName == nil {
 			klog.Warningf("Skip to resize PVC %q of %q: PVC have no storage class", pvcID, cid)
@@ -488,17 +499,6 @@ func (p *pvcResizer) classifyVolumes(ctx *componentVolumeContext, volumes []*vol
 		} else {
 			klog.V(4).Infof("Storage classes lister is unavailable, skip checking volume expansion support for PVC %q of %q with storage class %s. This may be caused by no relevant permissions",
 				pvcID, cid, *pvc.Spec.StorageClassName)
-		}
-
-		cmpVal := quantityInSpec.Cmp(currentRequest)
-		resizing := currentRequest.Cmp(currentCapacity) > 0
-		if cmpVal == 0 {
-			if resizing {
-				resizingVolumes = append(resizingVolumes, volume)
-			} else {
-				resizedVolumes = append(resizedVolumes, volume)
-			}
-			continue
 		}
 
 		if cmpVal < 0 { // not support shrink
