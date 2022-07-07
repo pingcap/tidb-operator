@@ -853,6 +853,37 @@ func TestClassifyVolumes(t *testing.T) {
 				diffVolumes(g, volumes, expectVolumes)
 			},
 		},
+		"skip resize when resize pv manually": {
+			setup: func(ctx *componentVolumeContext) []*volume {
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+					"volume-2": resource.MustParse("2Gi"),
+					"volume-3": resource.MustParse("2Gi"),
+				}
+				volumes := []*volume{
+					newVolume("volume-1", newMockPVC("volume-1-pvc-1", scName, "2Gi", "3Gi")),
+					newVolume("volume-2", newMockPVC("volume-2-pvc-1", scName, "2Gi", "3Gi")),
+					newVolume("volume-3", newMockPVC("volume-3-pvc-1", scName, "2Gi", "3Gi")),
+				}
+
+				return volumes
+			},
+			sc: newStorageClass(scName, true),
+			expect: func(g *GomegaWithT, volumes map[volumePhase][]*volume, err error) {
+				expectVolumes := map[volumePhase][]*volume{
+					needResize: {},
+					resized: {
+						newVolume("volume-1", newMockPVC("volume-1-pvc-1", scName, "2Gi", "3Gi")),
+						newVolume("volume-2", newMockPVC("volume-2-pvc-1", scName, "2Gi", "3Gi")),
+						newVolume("volume-3", newMockPVC("volume-3-pvc-1", scName, "2Gi", "3Gi")),
+					},
+					resizing: {},
+				}
+
+				g.Expect(err).To(Succeed())
+				diffVolumes(g, volumes, expectVolumes)
+			},
+		},
 	}
 
 	for name, tt := range tests {
