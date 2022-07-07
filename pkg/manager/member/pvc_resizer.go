@@ -480,6 +480,12 @@ func (p *pvcResizer) classifyVolumes(ctx *componentVolumeContext, volumes []*vol
 			continue
 		}
 
+		if cmpVal < 0 { // not support shrink
+			klog.Warningf("Skip to resize PVC %q of %q: storage request cannot be shrunk (%s to %s)",
+				pvcID, cid, currentRequest.String(), quantityInSpec.String())
+			continue
+		}
+
 		// not support default storage class
 		if pvc.Spec.StorageClassName == nil {
 			klog.Warningf("Skip to resize PVC %q of %q: PVC have no storage class", pvcID, cid)
@@ -499,12 +505,6 @@ func (p *pvcResizer) classifyVolumes(ctx *componentVolumeContext, volumes []*vol
 		} else {
 			klog.V(4).Infof("Storage classes lister is unavailable, skip checking volume expansion support for PVC %q of %q with storage class %s. This may be caused by no relevant permissions",
 				pvcID, cid, *pvc.Spec.StorageClassName)
-		}
-
-		if cmpVal < 0 { // not support shrink
-			klog.Warningf("Skip to resize PVC %q of %q: storage request cannot be shrunk (%s to %s)",
-				pvcID, cid, currentRequest.String(), quantityInSpec.String())
-			continue
 		}
 
 		needResizeVolumes = append(needResizeVolumes, volume)
