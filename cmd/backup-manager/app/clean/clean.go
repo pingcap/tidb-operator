@@ -49,8 +49,9 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 
 	klog.Infof("cleanning cluster %s backup data with opt: %+v", bo, opt)
 
-	iter := s.ListPage(nil)
 	for {
+		// Query from scratch each time
+		iter := s.ListPage(nil)
 		// list one page of object
 		objs, err := iter.Next(ctx, int(opt.PageSize))
 		if err == io.EOF {
