@@ -72,7 +72,7 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 		failedCount += len(result.Errors)
 
 		if len(result.Deleted) != 0 {
-			klog.Infof("For backup %s, delete some objects successfully, index:%d deleted:%s", bo, index, len(result.Deleted))
+			klog.Infof("For backup %s, delete some objects successfully, index:%d deleted:%d", bo, index, len(result.Deleted))
 			for _, obj := range result.Deleted {
 				klog.V(4).Infof("For backup %s, delete object %s successfully", bo, obj)
 			}
@@ -86,7 +86,7 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 		}
 
 		if len(result.Deleted)+len(result.Errors) < len(objs) {
-			klog.Errorf("For backup %s, sum of deleted and failed is less than total, index:%d total:%d deleted:%d failed:%s",
+			klog.Errorf("For backup %s, sum of deleted and failed is less than total, index:%d total:%d deleted:%d failed:%d",
 				bo, len(objs), index, len(result.Deleted), len(result.Errors))
 		}
 	}
