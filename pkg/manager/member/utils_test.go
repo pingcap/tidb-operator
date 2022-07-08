@@ -912,13 +912,13 @@ func TestPodLabelsAnnotations(t *testing.T) {
 			name:    "port name conflict",
 			base:    []v1.Container{build("c1", "image:A", port1A)},
 			patches: []v1.Container{build("c1", "image:A", port2A)},
-			result:  []v1.Container{build("c1", "image:A", port2A, port1A)}, // port ordering doesn't matter here
+			result:  []v1.Container{build("c1", "image:A", port2A, port1A)},
 		},
 		{
 			name:    "port value conflict",
 			base:    []v1.Container{build("c1", "image:A", port1A)},
 			patches: []v1.Container{build("c1", "image:A", port1B)},
-			result:  []v1.Container{build("c1", "image:A", port1B)}, // port ordering doesn't matter here
+			result:  []v1.Container{build("c1", "image:A", port1B)},
 		},
 		{
 			name:    "empty image, add port",
