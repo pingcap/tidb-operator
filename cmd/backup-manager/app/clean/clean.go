@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"strings"
 
 	"k8s.io/klog/v2"
 
@@ -73,19 +72,22 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 		failedCount += len(result.Errors)
 
 		if len(result.Deleted) != 0 {
-			klog.Infof("For backup %s, delete objects successfully, index:%d deleted:%s", bo, index, len(result.Deleted))
-			klog.V(4).Infof("For backup %s, all objects deleted: %s", bo, strings.Join(result.Deleted, ","))
+			klog.Infof("For backup %s, delete some objects successfully, index:%d deleted:%s", bo, index, len(result.Deleted))
+			for _, obj := range result.Deleted {
+				klog.V(4).Infof("For backup %s, delete object %s successfully", bo, obj)
+			}
 		}
 
 		if len(result.Errors) != 0 {
-			klog.Errorf("For backup %s, delete objects failed, index:%d failed:%d", bo, index, len(result.Errors))
+			klog.Errorf("For backup %s, delete some objects failed, index:%d failed:%d", bo, index, len(result.Errors))
 			for _, oerr := range result.Errors {
 				klog.V(4).Infof("For backup %s, delete object %s failed: %s", bo, oerr.Key, oerr.Err)
 			}
 		}
 
-		if len(result.Deleted) < len(objs) {
-			klog.Errorf("For backup %s, deleted objects are less than expected, index:%d deleted:%d", bo, index, len(result.Deleted))
+		if len(result.Deleted)+len(result.Errors) < len(objs) {
+			klog.Errorf("For backup %s, sum of deleted and failed is less than total, index:%d total:%d deleted:%d failed:%s",
+				bo, len(objs), index, len(result.Deleted), len(result.Errors))
 		}
 	}
 
