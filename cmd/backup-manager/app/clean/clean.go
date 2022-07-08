@@ -47,8 +47,10 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 
 	opt := backup.GetCleanOption()
 
-	klog.Infof("cleanning cluster %s backup data with opt: %+v", bo, opt)
+	klog.Infof("For backup %s, start to clean backup data with opt: %+v", bo, opt)
 
+	index := 0
+	count, deletedCount, failedCount := 0, 0, 0
 	iter := s.ListPage(nil)
 	for {
 		// list one page of object
@@ -60,28 +62,38 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 			return err
 		}
 
-		klog.Infof("For backup %s, try to delete %d objects", bo, len(objs))
+		klog.Infof("For backup %s, start to delete objects, index:%d total:%d", bo, index, len(objs))
 
 		// batch delete objects
 		result := s.BatchDeleteObjects(ctx, objs, opt.BatchDeleteOption)
 
+		index++
+		count += len(objs)
+		deletedCount += len(result.Deleted)
+		failedCount += len(result.Errors)
+
 		if len(result.Deleted) != 0 {
-			klog.Infof("For backup %s, delete %d objects successfully", bo, len(result.Deleted))
+			klog.Infof("For backup %s, delete objects successfully, index:%d deleted:%s", bo, index, len(result.Deleted))
 			klog.V(4).Infof("For backup %s, all objects deleted: %s", bo, strings.Join(result.Deleted, ","))
 		}
+
 		if len(result.Errors) != 0 {
-			klog.Errorf("For backup %s, delete %d objects failed", bo, len(result.Errors))
+			klog.Errorf("For backup %s, delete objects failed, index:%d failed:%d", bo, index, len(result.Errors))
 			for _, oerr := range result.Errors {
 				klog.V(4).Infof("For backup %s, delete object %s failed: %s", bo, oerr.Key, oerr.Err)
 			}
-			return fmt.Errorf("some objects failed to delete")
 		}
+
 		if len(result.Deleted) < len(objs) {
-			klog.Errorf("For backup %s, deleted objects are less than expected, deleted: %d, expected: %d", bo, len(result.Deleted), len(objs))
-			return fmt.Errorf("some objects remain to delete")
+			klog.Errorf("For backup %s, deleted objects are less than expected, index:%d deleted:%d", bo, index, len(result.Deleted))
 		}
 	}
 
+	klog.Infof("For backup %s, clean backup finished, total:%d deleted:%d failed:%d", bo, count, deletedCount, failedCount)
+
+	if deletedCount < count {
+		return fmt.Errorf("some objects remain to delete")
+	}
 	return nil
 }
 
