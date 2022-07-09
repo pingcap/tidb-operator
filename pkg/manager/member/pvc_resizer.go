@@ -470,7 +470,7 @@ func (p *pvcResizer) classifyVolumes(ctx *componentVolumeContext, volumes []*vol
 		}
 
 		cmpVal := quantityInSpec.Cmp(currentRequest)
-		resizing := currentRequest.Cmp(currentCapacity) != 0
+		resizing := currentRequest.Cmp(currentCapacity) > 0
 		if cmpVal == 0 {
 			if resizing {
 				resizingVolumes = append(resizingVolumes, volume)
