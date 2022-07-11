@@ -15,7 +15,6 @@ package util
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -510,12 +509,6 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 		g.Expect(result == expectedResult).Should(gomega.BeTrue())
 
 	}
-}
-
-func TestXxx(t *testing.T) {
-	result := &BatchDeleteObjectsResult{}
-	result.Errors = append(result.Errors, ObjectError{Key: "key1", Err: errors.New("error1")})
-	t.Log(result)
 }
 
 func TestBatchDeleteObjectsOfS3(t *testing.T) {
