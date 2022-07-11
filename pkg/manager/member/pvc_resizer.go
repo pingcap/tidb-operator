@@ -467,7 +467,7 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 
 	// recreate sts
 	if !stsResized {
-		return p.updateSts(ctx, sts)
+		return p.recreateSts(ctx, sts)
 	}
 
 	return nil
@@ -660,12 +660,15 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 	return nil
 }
 
-func (p *pvcResizer) updateSts(ctx *componentVolumeContext, sts *appsv1.StatefulSet) error {
-	option := metav1.DeleteOptions{
-		PropagationPolicy: metav1.DeletePropagationOrphan,
+func (p *pvcResizer) recreateSts(ctx *componentVolumeContext, sts *appsv1.StatefulSet) error {
+	orphan := metav1.DeletePropagationOrphan
+	err := p.deps.KubeClientset.AppsV1().StatefulSets(sts.Namespace).Delete(context.TODO(), sts.Name, metav1.DeleteOptions{PropagationPolicy: &orphan})
+	if err != nil {
+		return fmt.Errorf("delete sts %s/%s for cluster %s failed: %s", sts.Namespace, sts.Name, ctx.ComponentID(), err)
 	}
-	p.deps.KubeClientset.AppsV1().StatefulSets(sts.Namespace).Delete(context.TODO(), sts.Name, option)
-	return nil
+
+	// component manager will create the sts in next reconciliation
+	return controller.RequeueErrorf("recreate sts %s/%s for cluster %s", sts.Namespace, sts.Name, ctx.ComponentID())
 }
 
 func (p *pvcResizer) beginResize(ctx *componentVolumeContext) error {
