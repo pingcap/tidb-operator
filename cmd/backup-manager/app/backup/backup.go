@@ -35,6 +35,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -159,6 +160,7 @@ func (bo *Options) processExecOutputForCSB(
 		progress, backupSize, resolvedTs *string
 	}
 
+	started := time.Now()
 	quit := make(chan struct{})
 	update := make(chan *progressUpdate)
 	progressFile := path.Join(util.BRBinPath, "progress.txt")
@@ -189,6 +191,9 @@ func (bo *Options) processExecOutputForCSB(
 					} else {
 						klog.Warningf("Failed to parse BackupSize %s, %s", *val.backupSize, err.Error())
 					}
+
+					updateStatus.TimeStarted = &metav1.Time{Time: started}
+					updateStatus.TimeCompleted = &metav1.Time{Time: time.Now()}
 					err = statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 						Type:   v1alpha1.BackupComplete,
 						Status: corev1.ConditionTrue,
