@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -391,16 +392,26 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 
 // resizeVolumes resize PVCs by comparing `desiredVolumeQuantity` and `actualVolumeQuantity` in context.
 func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
+	ns := ctx.cluster.GetNamespace()
+	name := ctx.cluster.GetName()
+
+	stsName := controller.MemberName(name, ctx.status.GetMemberType())
+	sts, err := p.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
+	if err != nil {
+		return fmt.Errorf("failed to get sts %s: %s", stsName, err)
+	}
+
 	var (
 		resizingPod       *corev1.Pod
 		classifiedVolumes map[volumePhase][]*volume
+		stsResized        = true
 	)
 
 	// choose one pod whose volume need to be resized
 	for _, podVolumes := range ctx.actualPodVolumes {
 		curClassifiedVolumes, err := p.classifyVolumes(ctx, podVolumes.volumes)
 		if err != nil {
-			return fmt.Errorf("classify volumes for %s failed: %w", ctx.ComponentID(), err)
+			return fmt.Errorf("classify volumes failed: %w", err)
 		}
 
 		if len(curClassifiedVolumes[resizing]) != 0 || len(curClassifiedVolumes[needResize]) != 0 {
@@ -409,11 +420,29 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 			break
 		}
 	}
+	// check sts is desired
+	for _, volTemplate := range sts.Spec.VolumeClaimTemplates {
+		volName := v1alpha1.StorageVolumeName(volTemplate.Name)
+		size, exist := volTemplate.Spec.Resources.Requests[corev1.ResourceStorage]
+		if !exist {
+			klog.Warningf("volume %s in sts for cluster %s dose not set storage request", volName, ctx.ComponentID())
+			continue
+		}
+		desiredSize, exist := ctx.desiredVolumeQuantity[volName]
+		if !exist {
+			klog.Warningf("volume %s in sts for cluster %s dose not exist in desired volumes", volName, ctx.ComponentID())
+			continue
+		}
+		if desiredSize.Cmp(size) != 0 {
+			stsResized = false
+			break
+		}
+	}
 
-	allResized := resizingPod == nil
+	allExpected := resizingPod == nil && stsResized
 	condResizing := meta.IsStatusConditionTrue(ctx.status.GetConditions(), v1alpha1.ComponentVolumeResizing)
 
-	if allResized {
+	if allExpected {
 		if condResizing {
 			return p.endResize(ctx)
 		}
@@ -434,6 +463,11 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 	if len(classifiedVolumes[needResize]) != 0 {
 		klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
 		return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
+	}
+
+	// recreate sts
+	if !stsResized {
+		return p.updateSts(ctx, sts)
 	}
 
 	return nil
@@ -501,7 +535,7 @@ func (p *pvcResizer) classifyVolumes(ctx *componentVolumeContext, volumes []*vol
 			}
 			if !volumeExpansionSupported {
 				klog.Warningf("Skip to resize PVC %q of %q: storage class %q does not support volume expansion",
-					*pvc.Spec.StorageClassName, pvcID, cid)
+					pvcID, cid, *pvc.Spec.StorageClassName)
 				continue
 			}
 		} else {
@@ -623,6 +657,14 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 		return fmt.Errorf("%s: can't find store in tc", logPrefix)
 	}
 
+	return nil
+}
+
+func (p *pvcResizer) updateSts(ctx *componentVolumeContext, sts *appsv1.StatefulSet) error {
+	option := metav1.DeleteOptions{
+		PropagationPolicy: metav1.DeletePropagationOrphan,
+	}
+	p.deps.KubeClientset.AppsV1().StatefulSets(sts.Namespace).Delete(context.TODO(), sts.Name, option)
 	return nil
 }
 
