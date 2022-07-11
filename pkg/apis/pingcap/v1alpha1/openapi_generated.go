@@ -7940,6 +7940,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBProbe(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"initialDelaySeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Number of seconds after the container has started before liveness probes are initiated. Default to 10 seconds.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"periodSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "How often (in seconds) to perform the probe. Default to Kubernetes default (10 seconds). Minimum value is 1.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 			},
 		},
