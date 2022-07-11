@@ -825,6 +825,16 @@ type TiDBProbe struct {
 	// +kubebuilder:validation:Enum=tcp;command
 	// +optional
 	Type *string `json:"type,omitempty"` // tcp or command
+	// Number of seconds after the container has started before liveness probes are initiated.
+	// Default to 10 seconds.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	InitialDelaySeconds *int32 `json:"initialDelaySeconds,omitempty"`
+	// How often (in seconds) to perform the probe.
+	// Default to Kubernetes default (10 seconds). Minimum value is 1.
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	PeriodSeconds *int32 `json:"periodSeconds,omitempty"`
 }
 
 // PumpSpec contains details of Pump members

@@ -1197,6 +1197,28 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				}))
 			},
 		},
+		{
+			name: "tidb spec initialDelaySeconds, periodSeconds",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{ReadinessProbe: &v1alpha1.TiDBProbe{
+						InitialDelaySeconds: pointer.Int32Ptr(5),
+						PeriodSeconds:       pointer.Int32Ptr(2),
+					}},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.Containers[1].ReadinessProbe.InitialDelaySeconds).To(Equal(int32(5)))
+				g.Expect(sts.Spec.Template.Spec.Containers[1].ReadinessProbe.PeriodSeconds).To(Equal(int32(2)))
+			},
+		},
 		// TODO add more tests
 	}
 
