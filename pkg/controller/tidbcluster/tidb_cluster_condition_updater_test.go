@@ -274,6 +274,74 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			wantMessage: "TiFlash store(s) are not up",
 		},
 		{
+			name: "ticdc(s) not ready",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						Replicas: 1,
+					},
+					TiKV: &v1alpha1.TiKVSpec{
+						Replicas: 1,
+					},
+					TiDB: &v1alpha1.TiDBSpec{
+						Replicas: 1,
+					},
+					TiCDC: &v1alpha1.TiCDCSpec{
+						Replicas: 1,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					PD: v1alpha1.PDStatus{
+						Members: map[string]v1alpha1.PDMember{
+							"pd-0": {
+								Health: true,
+							},
+						},
+						StatefulSet: &appsv1.StatefulSetStatus{
+							CurrentRevision: "2",
+							UpdateRevision:  "2",
+						},
+					},
+					TiDB: v1alpha1.TiDBStatus{
+						Members: map[string]v1alpha1.TiDBMember{
+							"tidb-0": {
+								Health: true,
+							},
+						},
+						StatefulSet: &appsv1.StatefulSetStatus{
+							CurrentRevision: "2",
+							UpdateRevision:  "2",
+						},
+					},
+					TiKV: v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"tikv-0": {
+								State: "Up",
+							},
+						},
+						StatefulSet: &appsv1.StatefulSetStatus{
+							CurrentRevision: "2",
+							UpdateRevision:  "2",
+						},
+					},
+					TiCDC: v1alpha1.TiCDCStatus{
+						Captures: map[string]v1alpha1.TiCDCCapture{
+							"cdc-0": {
+								Ready: false,
+							},
+						},
+						StatefulSet: &appsv1.StatefulSetStatus{
+							CurrentRevision: "2",
+							UpdateRevision:  "2",
+						},
+					},
+				},
+			},
+			wantStatus:  v1.ConditionFalse,
+			wantReason:  utiltidbcluster.TiCDCCaptureNotReady,
+			wantMessage: "TiCDC capture(s) are not up",
+		},
+		{
 			name: "all ready",
 			tc: &v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{

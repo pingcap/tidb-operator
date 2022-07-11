@@ -90,14 +90,18 @@ func (s *ticdcScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	if err != nil {
 		return fmt.Errorf("ticdcScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
+	tc, _ := meta.(*v1alpha1.TidbCluster)
 
-	// when scaling in TiCDC pods, we let the "capture info" in PD's etcd to be deleted automatically when shutting down the TiCDC process or after TTL expired.
+	err = gracefulShutdownTiCDC(tc, s.deps.CDCControl, ordinal, podName, "ScaleIn")
+	if err != nil {
+		return err
+	}
+	klog.Infof("ticdc has graceful shutdown, %s in cluster %s/%s", podName, meta.GetNamespace(), meta.GetName())
 
 	pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("ticdcScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 	}
-	tc, _ := meta.(*v1alpha1.TidbCluster)
 	for _, pvc := range pvcs {
 		if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
 			return err
@@ -105,5 +109,34 @@ func (s *ticdcScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	}
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+	return nil
+}
+
+func gracefulShutdownTiCDC(
+	tc *v1alpha1.TidbCluster, cdcCtl controller.TiCDCControlInterface,
+	ordinal int32, podName, action string,
+) error {
+	// To graceful shutdown a TiCDC pod, we need to
+	//
+	// 1. Remove ownership from the capture.
+	resigned, err := cdcCtl.ResignOwner(tc, ordinal)
+	if err != nil {
+		return err
+	}
+	if !resigned {
+		return controller.RequeueErrorf(
+			"ticdc.%s, cluster %s/%s %s is still the owner, try resign owner again",
+			action, tc.GetNamespace(), tc.GetName(), podName)
+	}
+	// 2. Drain the capture, move out all its tables.
+	tableCount, err := cdcCtl.DrainCapture(tc, ordinal)
+	if err != nil {
+		return err
+	}
+	if tableCount != 0 {
+		return controller.RequeueErrorf(
+			"ticdc.%s, cluster %s/%s %s still has %d tables, wait draining",
+			action, tc.GetNamespace(), tc.GetName(), podName, tableCount)
+	}
 	return nil
 }
