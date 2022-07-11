@@ -48,9 +48,10 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 
 	klog.Infof("For backup %s, start to clean backup data with opt: %+v", bo, opt)
 
-	index := 0
+	iterIndex := 0
 	count, deletedCount, failedCount := 0, 0, 0
 	for {
+
 		iter := s.ListPage(nil)
 		objs, err := iter.Next(ctx, int(opt.PageSize))
 		if err == io.EOF {
@@ -60,28 +61,32 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 			return err
 		}
 
+		iterIndex++
+		delIndex := 0
 		for {
 			// batch delete objects
 			result := s.BatchDeleteObjects(ctx, objs, opt.BatchDeleteOption)
 
-			index++
+			delIndex++
 			count += len(objs)
 			deletedCount += len(result.Deleted)
 			failedCount += len(result.Errors)
+			index := fmt.Sprintf("%d-%d", iterIndex, delIndex)
+
 			if len(result.Deleted) != 0 {
-				klog.Infof("For backup %s, delete some objects successfully, index:%d deleted:%d", bo, index, len(result.Deleted))
+				klog.Infof("For backup %s, delete some objects successfully, index:%s deleted:%d", bo, index, len(result.Deleted))
 				for _, obj := range result.Deleted {
 					klog.V(4).Infof("For backup %s, delete object %s successfully", bo, obj)
 				}
 			}
 			if len(result.Errors) != 0 {
-				klog.Errorf("For backup %s, delete some objects failed, index:%d failed:%d", bo, index, len(result.Errors))
+				klog.Errorf("For backup %s, delete some objects failed, index:%s failed:%d", bo, index, len(result.Errors))
 				for _, oerr := range result.Errors {
 					klog.V(4).Infof("For backup %s, delete object %s failed: %s", bo, oerr.Key, oerr.Err)
 				}
 			}
 			if len(result.Deleted)+len(result.Errors) < len(objs) {
-				klog.Errorf("For backup %s, sum of deleted and failed is less than total, index:%d total:%d deleted:%d failed:%d",
+				klog.Errorf("For backup %s, sum of deleted and failed is less than total, index:%s total:%d deleted:%d failed:%d",
 					bo, len(objs), index, len(result.Deleted), len(result.Errors))
 			}
 
