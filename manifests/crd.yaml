@@ -24481,6 +24481,14 @@ spec:
                     type: string
                   readinessProbe:
                     properties:
+                      initialDelaySeconds:
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      periodSeconds:
+                        format: int32
+                        minimum: 1
+                        type: integer
                       type:
                         enum:
                         - tcp
