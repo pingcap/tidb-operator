@@ -404,6 +404,7 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 	var (
 		resizingPod       *corev1.Pod
 		classifiedVolumes map[volumePhase][]*volume
+		volResized        = true
 		stsResized        = true
 	)
 
@@ -415,11 +416,13 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 		}
 
 		if len(curClassifiedVolumes[resizing]) != 0 || len(curClassifiedVolumes[needResize]) != 0 {
+			volResized = false
 			resizingPod = podVolumes.pod
 			classifiedVolumes = curClassifiedVolumes
 			break
 		}
 	}
+
 	// check sts is desired
 	for _, volTemplate := range sts.Spec.VolumeClaimTemplates {
 		volName := v1alpha1.StorageVolumeName(volTemplate.Name)
@@ -439,7 +442,7 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 		}
 	}
 
-	allExpected := resizingPod == nil && stsResized
+	allExpected := volResized && stsResized
 	condResizing := meta.IsStatusConditionTrue(ctx.status.GetConditions(), v1alpha1.ComponentVolumeResizing)
 
 	if allExpected {
@@ -454,15 +457,18 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 		return p.beginResize(ctx)
 	}
 
-	// some volumes are resizing
-	for _, volume := range classifiedVolumes[resizing] {
-		klog.Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
-	}
+	// resize volumes
+	if !volResized {
+		for _, volume := range classifiedVolumes[resizing] {
+			klog.Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
+		}
 
-	// some volumes need to be resized
-	if len(classifiedVolumes[needResize]) != 0 {
-		klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
-		return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
+		if len(classifiedVolumes[needResize]) != 0 {
+			klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
+			return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
+		}
+
+		return nil
 	}
 
 	// recreate sts
@@ -667,8 +673,10 @@ func (p *pvcResizer) recreateSts(ctx *componentVolumeContext, sts *appsv1.Statef
 		return fmt.Errorf("delete sts %s/%s for cluster %s failed: %s", sts.Namespace, sts.Name, ctx.ComponentID(), err)
 	}
 
+	klog.Infof("recreate statefulset %s/%s for cluster %s resize", sts.Namespace, sts.Name, ctx.ComponentID())
+
 	// component manager will create the sts in next reconciliation
-	return controller.RequeueErrorf("recreate sts %s/%s for cluster %s", sts.Namespace, sts.Name, ctx.ComponentID())
+	return nil
 }
 
 func (p *pvcResizer) beginResize(ctx *componentVolumeContext) error {
