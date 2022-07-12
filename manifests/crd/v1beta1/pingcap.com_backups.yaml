@@ -381,6 +381,8 @@ spec:
                 pageSize:
                   format: int64
                   type: integer
+                retryCount:
+                  type: integer
                 routineConcurrency:
                   format: int32
                   type: integer
