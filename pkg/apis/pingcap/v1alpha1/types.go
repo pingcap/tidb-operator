@@ -1626,6 +1626,9 @@ type CleanOption struct {
 	// default is 10000
 	PageSize uint64 `json:"pageSize,omitempty"`
 
+	// RetryCount represents the number of retries in pod when the cleanup fails.
+	RetryCount int `json:"retryCount,omitempty"`
+
 	BatchDeleteOption `json:",inline"`
 }
 

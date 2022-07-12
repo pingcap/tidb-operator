@@ -30,6 +30,7 @@ var (
 	// defaultCleanOption is default clean option
 	defaultCleanOption = CleanOption{
 		PageSize:          10000,
+		RetryCount:        3,
 		BatchDeleteOption: DefaultBatchDeleteOption,
 	}
 )
@@ -73,6 +74,9 @@ func (bk *Backup) GetCleanOption() CleanOption {
 	ropt := *bk.Spec.CleanOption
 	if ropt.PageSize <= 0 {
 		ropt.PageSize = defaultCleanOption.PageSize
+	}
+	if ropt.RetryCount <= 0 {
+		ropt.RetryCount = defaultCleanOption.RetryCount
 	}
 	if ropt.BatchConcurrency <= 0 {
 		ropt.BatchConcurrency = defaultCleanOption.BatchConcurrency
