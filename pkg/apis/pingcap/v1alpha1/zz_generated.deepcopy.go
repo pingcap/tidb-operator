@@ -5654,6 +5654,16 @@ func (in *TiDBProbe) DeepCopyInto(out *TiDBProbe) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.InitialDelaySeconds != nil {
+		in, out := &in.InitialDelaySeconds, &out.InitialDelaySeconds
+		*out = new(int32)
+		**out = **in
+	}
+	if in.PeriodSeconds != nil {
+		in, out := &in.PeriodSeconds, &out.PeriodSeconds
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 
