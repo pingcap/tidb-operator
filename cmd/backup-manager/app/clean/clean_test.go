@@ -1,0 +1,181 @@
+package clean
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"testing"
+
+	"github.com/agiledragon/gomonkey/v2"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	. "github.com/onsi/gomega"
+	"gocloud.dev/blob"
+	"gocloud.dev/blob/driver"
+
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+)
+
+func TestCleanBRRemoteBackupDataOnce(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	genTestObjs := func(size int) []*driver.ListObject {
+		orginObjs := make([]*driver.ListObject, 0, size)
+		for i := 0; i < size; i++ {
+			orginObjs = append(orginObjs, &driver.ListObject{
+				Key: strconv.Itoa(i),
+			})
+		}
+		return orginObjs
+	}
+	pageSize := 10000
+
+	type batchDel func(objs []*blob.ListObject) *util.BatchDeleteObjectsResult
+
+	cases := map[string]struct {
+		setup  func(drv *util.MockDriver) batchDel
+		expect func(err error)
+	}{
+		"all objects deleted": {
+			setup: func(drv *util.MockDriver) batchDel {
+				size := 123456
+				objs := genTestObjs(size)
+				drv.SetListPaged(objs, nil)
+
+				// mock delete function
+				callCount := 0
+				expectCallCount := size/pageSize + 1
+				return func(objs []*blob.ListObject) *util.BatchDeleteObjectsResult {
+					result := &util.BatchDeleteObjectsResult{}
+					for _, obj := range objs {
+						result.Deleted = append(result.Deleted, obj.Key) // all objects are deleted
+					}
+
+					callCount++
+					g.Expect(callCount).Should(BeNumerically("<=", expectCallCount)) // check number of call BatchDeleteObjects
+					if callCount == expectCallCount {
+						drv.SetListPaged([]*driver.ListObject{}, nil) // mock delete all objects successfully
+					}
+					return result
+				}
+			},
+			expect: func(err error) {
+				g.Expect(err).Should(Succeed())
+			},
+		},
+		"some objects failed to be deleted": {
+			setup: func(drv *util.MockDriver) batchDel {
+				size := 123456
+				objs := genTestObjs(size)
+				drv.SetListPaged(objs, nil)
+
+				// mock delete function
+				callCount := 0
+				expectCallCount := size/pageSize + 1
+				return func(objs []*blob.ListObject) *util.BatchDeleteObjectsResult {
+					result := &util.BatchDeleteObjectsResult{}
+					if callCount%2 == 0 {
+						for _, obj := range objs {
+							result.Deleted = append(result.Deleted, obj.Key)
+						}
+					} else {
+						for _, obj := range objs {
+							result.Errors = append(result.Errors, util.ObjectError{Key: obj.Key, Err: fmt.Errorf("delete failed")})
+						}
+					}
+
+					callCount++
+					g.Expect(callCount).Should(BeNumerically("<=", expectCallCount)) // check number of call BatchDeleteObjects
+
+					return result
+				}
+			},
+			expect: func(err error) {
+				g.Expect(err).Should(MatchError("some objects failed to be deleted"))
+			},
+		},
+		"some objects failed silently to be deleted": {
+			setup: func(drv *util.MockDriver) batchDel {
+				size := 123456
+				objs := genTestObjs(size)
+				drv.SetListPaged(objs, nil)
+
+				// mock delete function
+				callCount := 0
+				expectCallCount := size/pageSize + 1
+				return func(objs []*blob.ListObject) *util.BatchDeleteObjectsResult {
+					result := &util.BatchDeleteObjectsResult{}
+					if callCount%2 == 0 {
+						for _, obj := range objs {
+							result.Deleted = append(result.Deleted, obj.Key)
+						}
+					} else {
+						// failed to delete but not report
+					}
+
+					callCount++
+					g.Expect(callCount).Should(BeNumerically("<=", expectCallCount)) // check number of call BatchDeleteObjects
+					if callCount == expectCallCount {
+						drv.SetListPaged(genTestObjs(123), nil) // mock some objects are missing
+					}
+
+					return result
+				}
+			},
+			expect: func(err error) {
+				g.Expect(err).Should(MatchError("some objects failed to be deleted"))
+			},
+		},
+		"some objects are missing": {
+			setup: func(drv *util.MockDriver) batchDel {
+				size := 123456
+				objs := genTestObjs(size)
+				drv.SetListPaged(objs, nil)
+
+				// mock delete function
+				callCount := 0
+				expectCallCount := size/pageSize + 1
+				return func(objs []*blob.ListObject) *util.BatchDeleteObjectsResult {
+					result := &util.BatchDeleteObjectsResult{}
+					for _, obj := range objs {
+						result.Deleted = append(result.Deleted, obj.Key) // all objects are deleted
+					}
+
+					callCount++
+					g.Expect(callCount).Should(BeNumerically("<=", expectCallCount)) // check number of call BatchDeleteObjects
+
+					return result
+				}
+			},
+			expect: func(err error) {
+				g.Expect(err).Should(MatchError("some objects are missing to be deleted"))
+			},
+		},
+	}
+
+	for name, tt := range cases {
+		t.Logf("testcase: %s\n", name)
+
+		drv := &util.MockDriver{
+			Type: v1alpha1.BackupStorageTypeS3,
+		}
+		backend := &util.StorageBackend{}
+		backend.Bucket = blob.NewBucket(drv)
+		bo := &Options{
+			Namespace:  "default",
+			BackupName: "test",
+		}
+		opt := v1alpha1.CleanOption{
+			PageSize: uint64(pageSize),
+		}
+
+		batchDel := tt.setup(drv)
+		s3patch := gomonkey.ApplyFunc(util.BatchDeleteObjectsOfS3, func(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket string, prefix string, concurrency int) *util.BatchDeleteObjectsResult {
+			return batchDel(objs)
+		})
+		defer s3patch.Reset()
+
+		err := bo.cleanBRRemoteBackupDataOnce(context.TODO(), backend, opt, 1)
+		tt.expect(err)
+	}
+}

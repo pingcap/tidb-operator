@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	appconstant "github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
@@ -491,6 +492,50 @@ func TestConstructRcloneArgs(t *testing.T) {
 		})
 	}
 
+}
+
+func TestRetryOnError(t *testing.T) {
+	cases := map[string]struct {
+		setupFunc func() func() error
+		attempts  int
+		sleep     time.Duration
+		expect    func(*WithT, error)
+	}{
+		"succeeded": {
+			setupFunc: func() func() error {
+				return func() error {
+					return nil
+				}
+			},
+			attempts: 5,
+			sleep:    0,
+			expect: func(g *WithT, err error) {
+				g.Expect(err).Should(Succeed())
+			},
+		},
+		"failed": {
+			setupFunc: func() func() error {
+				i := 0
+				return func() error {
+					i++
+					return fmt.Errorf("index %d failed", i)
+				}
+			},
+			attempts: 5,
+			sleep:    0,
+			expect: func(g *WithT, err error) {
+				g.Expect(err).Should(MatchError("index 5 failed"))
+			},
+		},
+	}
+
+	for name, tt := range cases {
+		t.Run(name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			err := RetryOnError(tt.attempts, tt.sleep, tt.setupFunc())
+			tt.expect(g, err)
+		})
+	}
 }
 
 func newBackup() *v1alpha1.Backup {

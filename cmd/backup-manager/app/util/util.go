@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/gogo/protobuf/proto"
@@ -430,4 +431,23 @@ func GetContextForTerminationSignals(op string) (context.Context, context.Cancel
 		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
 	}()
 	return ctx, cancel
+}
+
+// RetryOnError allows the caller to retry fn in case the error returned by fn.
+// sleep define the interval between two retries.
+func RetryOnError(attempts int, sleep time.Duration, fn func() error) error {
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		err := fn()
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+		if sleep != 0 {
+			time.Sleep(sleep)
+		}
+	}
+
+	return lastErr
 }
