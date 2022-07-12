@@ -891,6 +891,14 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	if tc.Spec.TiDB.Lifecycle != nil {
 		c.Lifecycle = tc.Spec.TiDB.Lifecycle
 	}
+	if tc.Spec.TiDB.ReadinessProbe != nil {
+		if tc.Spec.TiDB.ReadinessProbe.InitialDelaySeconds != nil {
+			c.ReadinessProbe.InitialDelaySeconds = *tc.Spec.TiDB.ReadinessProbe.InitialDelaySeconds
+		}
+		if tc.Spec.TiDB.ReadinessProbe.PeriodSeconds != nil {
+			c.ReadinessProbe.PeriodSeconds = *tc.Spec.TiDB.ReadinessProbe.PeriodSeconds
+		}
+	}
 
 	containers = append(containers, c)
 
