@@ -124,6 +124,41 @@ func TestTiCDCControllerResignOwner(t *testing.T) {
 			expectedOk:  BeTrue(),
 			expectedErr: BeNil(),
 		},
+		{
+			caseName: "2 captures, resign owner 503",
+			handlers: map[string]func(http.ResponseWriter, *http.Request){
+				"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+					cp := []captureInfo{{
+						ID:            "1",
+						IsOwner:       true,
+						AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 1),
+					}, {
+						ID:            "2",
+						AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 2),
+					}}
+					payload, err := json.Marshal(cp)
+					g.Expect(err).Should(BeNil())
+					fmt.Fprintf(w, string(payload))
+				},
+				"/api/v1/owner/resign": func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusServiceUnavailable)
+				},
+			},
+			ordinal:     1,
+			expectedOk:  BeFalse(),
+			expectedErr: BeNil(),
+		},
+		{
+			caseName: "2 captures, get captures 503",
+			handlers: map[string]func(http.ResponseWriter, *http.Request){
+				"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusServiceUnavailable)
+				},
+			},
+			ordinal:     1,
+			expectedOk:  BeFalse(),
+			expectedErr: BeNil(),
+		},
 	}
 
 	for _, c := range cases {
@@ -152,6 +187,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 		ordinal       int32
 		expectedCount types.GomegaMatcher
 		expectedErr   types.GomegaMatcher
+		expectedRetry types.GomegaMatcher
 	}{
 		{
 			caseName: "1 captures",
@@ -170,6 +206,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 			ordinal:       1,
 			expectedCount: BeZero(),
 			expectedErr:   BeNil(),
+			expectedRetry: BeFalse(),
 		},
 		{
 			caseName: "2 captures, no self",
@@ -190,6 +227,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 			ordinal:       3,
 			expectedCount: BeZero(),
 			expectedErr:   Not(BeNil()),
+			expectedRetry: BeFalse(),
 		},
 		{
 			caseName: "2 captures, no owner",
@@ -210,6 +248,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 			ordinal:       1,
 			expectedCount: BeZero(),
 			expectedErr:   Not(BeNil()),
+			expectedRetry: BeFalse(),
 		},
 		{
 			caseName: "2 captures, drain capture ok 0",
@@ -236,6 +275,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 			ordinal:       1,
 			expectedCount: BeZero(),
 			expectedErr:   BeNil(),
+			expectedRetry: BeFalse(),
 		},
 		{
 			caseName: "2 captures, drain capture ok 1",
@@ -269,6 +309,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 			ordinal:       1,
 			expectedCount: Equal(1),
 			expectedErr:   BeNil(),
+			expectedRetry: BeFalse(),
 		},
 		{
 			caseName: "2 captures, drain capture 404",
@@ -293,6 +334,44 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 			ordinal:       1,
 			expectedCount: BeZero(),
 			expectedErr:   BeNil(),
+			expectedRetry: BeFalse(),
+		},
+		{
+			caseName: "2 captures, drain capture 503",
+			handlers: map[string]func(http.ResponseWriter, *http.Request){
+				"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+					cp := []captureInfo{{
+						ID:            "1",
+						IsOwner:       true,
+						AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 1),
+					}, {
+						ID:            "2",
+						AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 2),
+					}}
+					payload, err := json.Marshal(cp)
+					g.Expect(err).Should(BeNil())
+					fmt.Fprintf(w, string(payload))
+				},
+				"/api/v1/captures/drain": func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusServiceUnavailable)
+				},
+			},
+			ordinal:       1,
+			expectedCount: BeZero(),
+			expectedErr:   BeNil(),
+			expectedRetry: BeTrue(),
+		},
+		{
+			caseName: "2 captures, get captures 503",
+			handlers: map[string]func(http.ResponseWriter, *http.Request){
+				"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusServiceUnavailable)
+				},
+			},
+			ordinal:       1,
+			expectedCount: BeZero(),
+			expectedErr:   BeNil(),
+			expectedRetry: BeTrue(),
 		},
 	}
 
@@ -303,9 +382,10 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 			mux.HandleFunc(p, h)
 		}
 		cdc.testURL = svr.URL
-		count, err := cdc.DrainCapture(tc, c.ordinal)
+		count, retry, err := cdc.DrainCapture(tc, c.ordinal)
 		g.Expect(count).Should(c.expectedCount, c.caseName)
 		g.Expect(err).Should(c.expectedErr, c.caseName)
+		g.Expect(retry).Should(c.expectedRetry, c.caseName)
 		svr.Close()
 	}
 }

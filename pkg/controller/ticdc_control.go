@@ -56,7 +56,7 @@ type TiCDCControlInterface interface {
 	// DrainCapture remove capture ownership and moves its tables to other captures.
 	// Returns the number of tables in the capture.
 	// If there is only one capture, it always return 0.
-	DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, err error)
+	DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error)
 	// ResignOwner tries to resign ownership from the current capture.
 	// Returns true if the capture has already resigned ownership,
 	// otherwise caller should retry resign owner.
@@ -94,32 +94,36 @@ func (c *defaultTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32)
 	return &status, err
 }
 
-func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (int, error) {
+func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
 	httpClient, err := c.getHTTPClient(tc)
 	if err != nil {
 		klog.Warningf("drain capture is failed, error: %s", err)
-		return 0, err
+		return 0, false, err
 	}
 
 	baseURL := c.getBaseURL(tc, ordinal)
 
-	captures, err := getCaptures(httpClient, baseURL)
+	captures, retry, err := getCaptures(httpClient, baseURL)
 	if err != nil {
 		klog.Warningf("drain capture is failed, error: %s", err)
-		return 0, err
+		return 0, false, err
+	}
+	if retry {
+		// Let caller retry drain capture.
+		return 0, true, nil
 	}
 	if len(captures) == 1 {
 		// No way to drain a single node TiCDC cluster, ignore.
-		return 0, nil
+		return 0, false, nil
 	}
 
 	this, owner := getOrdinalAndOwnerCaptureInfo(tc, ordinal, captures)
 	if this == nil {
 		addr := getCaptureAdvertiseAddressPrefix(tc, ordinal)
-		return 0, fmt.Errorf("capture not found, address: %s %+v", addr, captures)
+		return 0, false, fmt.Errorf("capture not found, address: %s %+v", addr, captures)
 	}
 	if owner == nil {
-		return 0, fmt.Errorf("owner not found")
+		return 0, false, fmt.Errorf("owner not found")
 	}
 
 	payload := drainCaptureRequest{
@@ -127,33 +131,37 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 	}
 	payloadBody, err := json.Marshal(payload)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	req, err := http.NewRequest("PUT", baseURL+"/api/v1/captures/drain", bytes.NewReader(payloadBody))
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	res, err := httpClient.Do(req)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	defer httputil.DeferClose(res.Body)
-	if res.StatusCode >= 400 {
+	if res.StatusCode == http.StatusNotFound {
 		// It is likely the TiCDC does not support the API, ignore.
-		return 0, nil
+		return 0, false, nil
+	}
+	if res.StatusCode == http.StatusServiceUnavailable {
+		// TiCDC is not ready, retry.
+		return 0, true, nil
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	var resp drainCaptureResp
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
 		// It is likely the TiCDC does not support the API, ignore.
-		return 0, nil
+		return 0, false, nil
 	}
-	return resp.CurrentTableCount, nil
+	return resp.CurrentTableCount, false, nil
 }
 
 func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
@@ -164,10 +172,14 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 	}
 
 	baseURL := c.getBaseURL(tc, ordinal)
-	captures, err := getCaptures(httpClient, baseURL)
+	captures, retry, err := getCaptures(httpClient, baseURL)
 	if err != nil {
 		klog.Warningf("resign owner failed, error: %s", err)
 		return false, err
+	}
+	if retry {
+		// Let caller retry resign owner.
+		return false, nil
 	}
 	if len(captures) == 1 {
 		// No way to resign owner in a single node TiCDC cluster, ignore.
@@ -191,9 +203,13 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 		return false, err
 	}
 	httputil.DeferClose(res.Body)
-	if res.StatusCode >= 400 {
+	if res.StatusCode == http.StatusNotFound {
 		// It is likely the TiCDC does not support the API, ignore.
 		return true, nil
+	}
+	if res.StatusCode == http.StatusServiceUnavailable {
+		// Let caller retry resign owner.
+		return false, nil
 	}
 	return false, nil
 }
@@ -219,28 +235,32 @@ func getCaptureAdvertiseAddressPrefix(tc *v1alpha1.TidbCluster, ordinal int32) s
 	return fmt.Sprintf("%s.%s.%s", hostName, TiCDCPeerMemberName(tcName), ns)
 }
 
-func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, error) {
+func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, bool, error) {
 	res, err := httpClient.Get(baseURL + "/api/v1/captures")
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	defer httputil.DeferClose(res.Body)
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	if res.StatusCode >= 400 {
+	if res.StatusCode == http.StatusNotFound {
 		// It is likely the TiCDC does not support the API, ignore.
-		return nil, nil
+		return nil, false, nil
+	}
+	if res.StatusCode == http.StatusServiceUnavailable {
+		// TiCDC is not ready, retry.
+		return nil, true, nil
 	}
 
 	var resp []captureInfo
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
 		// It is likely the TiCDC does not support the API, ignore.
-		return nil, nil
+		return nil, false, nil
 	}
-	return resp, nil
+	return resp, false, nil
 }
 
 func getOrdinalAndOwnerCaptureInfo(
@@ -281,8 +301,8 @@ func (c *FakeTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32) (*
 	return c.getStatus(tc, ordinal)
 }
 
-func (c *FakeTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, err error) {
-	return 0, nil
+func (c *FakeTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+	return 0, false, nil
 }
 
 func (c *FakeTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {

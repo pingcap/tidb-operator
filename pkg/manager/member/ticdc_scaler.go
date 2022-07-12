@@ -129,9 +129,14 @@ func gracefulShutdownTiCDC(
 			action, tc.GetNamespace(), tc.GetName(), podName)
 	}
 	// 2. Drain the capture, move out all its tables.
-	tableCount, err := cdcCtl.DrainCapture(tc, ordinal)
+	tableCount, retry, err := cdcCtl.DrainCapture(tc, ordinal)
 	if err != nil {
 		return err
+	}
+	if retry {
+		return controller.RequeueErrorf(
+			"ticdc.%s, cluster %s/%s %s needs to retry drain capture",
+			action, tc.GetNamespace(), tc.GetName())
 	}
 	if tableCount != 0 {
 		return controller.RequeueErrorf(
