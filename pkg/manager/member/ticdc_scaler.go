@@ -15,8 +15,10 @@ package member
 
 import (
 	"fmt"
+	"time"
 
 	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,6 +27,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
+)
+
+const (
+	// GracefulShutdownTiCDCBeginTime is the key of evict Leader begin time
+	GracefulShutdownTiCDCBeginTime = "gracefulShutdownTiCDCBeginTime"
 )
 
 type ticdcScaler struct {
@@ -92,11 +99,11 @@ func (s *ticdcScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	}
 	tc, _ := meta.(*v1alpha1.TidbCluster)
 
-	err = gracefulShutdownTiCDC(tc, s.deps.CDCControl, ordinal, podName, "ScaleIn")
+	err = gracefulShutdownTiCDC(tc, s.deps.CDCControl, s.deps.PodControl, pod, ordinal, "ScaleIn")
 	if err != nil {
 		return err
 	}
-	klog.Infof("ticdc has graceful shutdown, %s in cluster %s/%s", podName, meta.GetNamespace(), meta.GetName())
+	klog.Infof("ticdcScaler.ScaleIn: %s has graceful shutdown in cluster %s/%s", podName, meta.GetNamespace(), meta.GetName())
 
 	pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
 	if err != nil && !errors.IsNotFound(err) {
@@ -113,9 +120,22 @@ func (s *ticdcScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newS
 }
 
 func gracefulShutdownTiCDC(
-	tc *v1alpha1.TidbCluster, cdcCtl controller.TiCDCControlInterface,
-	ordinal int32, podName, action string,
+	tc *v1alpha1.TidbCluster,
+	cdcCtl controller.TiCDCControlInterface,
+	podCtl controller.PodControlInterface,
+	pod *corev1.Pod,
+	ordinal int32,
+	action string,
 ) error {
+	isTimeout, err := checkTiCDCGracefulShutdownTimeout(tc, podCtl, pod, action)
+	if err != nil {
+		return err
+	}
+	if isTimeout {
+		return nil
+	}
+	podName := pod.GetName()
+
 	// To graceful shutdown a TiCDC pod, we need to
 	//
 	// 1. Remove ownership from the capture.
@@ -125,7 +145,7 @@ func gracefulShutdownTiCDC(
 	}
 	if !resigned {
 		return controller.RequeueErrorf(
-			"ticdc.%s, cluster %s/%s %s is still the owner, try resign owner again",
+			"ticdc.%s: cluster %s/%s %s is still the owner, try resign owner again",
 			action, tc.GetNamespace(), tc.GetName(), podName)
 	}
 	// 2. Drain the capture, move out all its tables.
@@ -135,13 +155,63 @@ func gracefulShutdownTiCDC(
 	}
 	if retry {
 		return controller.RequeueErrorf(
-			"ticdc.%s, cluster %s/%s %s needs to retry drain capture",
-			action, tc.GetNamespace(), tc.GetName())
+			"ticdc.%s: cluster %s/%s %s needs to retry drain capture",
+			action, tc.GetNamespace(), tc.GetName(), podName)
 	}
 	if tableCount != 0 {
 		return controller.RequeueErrorf(
-			"ticdc.%s, cluster %s/%s %s still has %d tables, wait draining",
+			"ticdc.%s: cluster %s/%s %s still has %d tables, wait draining",
 			action, tc.GetNamespace(), tc.GetName(), podName, tableCount)
 	}
 	return nil
+}
+
+// TODO: support configurable graceful shutdown timeout.
+var ticdcGracefulShutdownTimeout time.Duration = 10 * time.Second
+
+func checkTiCDCGracefulShutdownTimeout(
+	tc *v1alpha1.TidbCluster,
+	podCtl controller.PodControlInterface,
+	pod *corev1.Pod,
+	action string,
+) (bool, error) {
+	ns := tc.GetNamespace()
+	podName := pod.GetName()
+	if pod.Annotations == nil {
+		pod.Annotations = map[string]string{}
+	}
+	begin, ok := pod.Annotations[GracefulShutdownTiCDCBeginTime]
+	if ok {
+		// Check graceful shutdown timeout.
+		beginTime, err := time.Parse(time.RFC3339, begin)
+		if err != nil {
+			klog.Errorf("ticdc.%s: parse annotation:[%s] \"%s\" to time failed, skip graceful shutdown",
+				action, GracefulShutdownTiCDCBeginTime, begin)
+			return true, nil
+		}
+
+		gracefulShutdownTimeout := ticdcGracefulShutdownTimeout
+		if time.Now().After(beginTime.Add(gracefulShutdownTimeout)) {
+			klog.Infof("ticdc.%s: graceful shutdown timeout (threshold: %v) for Pod %s in cluster %s/%s",
+				action, gracefulShutdownTimeout, podName, ns, tc.GetName())
+			return true, nil
+		}
+		return false, nil
+	}
+
+	klog.Infof("ticdc.%s: begin graceful shutdown %s in cluster %s/%s",
+		action, podName, ns, tc.GetName())
+
+	// Set graceful shutdown begin time.
+	now := time.Now().Format(time.RFC3339)
+	pod.Annotations[GracefulShutdownTiCDCBeginTime] = now
+	_, err := podCtl.UpdatePod(tc, pod)
+	if err != nil {
+		klog.Errorf("ticdc.%s: failed to set pod %s in cluster %s/%s annotation %s to %s, %v",
+			action, podName, ns, tc.GetName(), GracefulShutdownTiCDCBeginTime, now, err)
+		return false, err
+	}
+	klog.Infof("ticdc.%s: set pod %s in cluster %s/%s annotation %s to %s successfully",
+		action, podName, ns, tc.GetName(), GracefulShutdownTiCDCBeginTime, now)
+	return false, nil
 }

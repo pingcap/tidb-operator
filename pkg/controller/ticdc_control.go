@@ -97,7 +97,7 @@ func (c *defaultTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32)
 func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
 	httpClient, err := c.getHTTPClient(tc)
 	if err != nil {
-		klog.Warningf("drain capture is failed, error: %s", err)
+		klog.Warningf("ticdc control: drain capture is failed, error: %s", err)
 		return 0, false, err
 	}
 
@@ -105,7 +105,7 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 
 	captures, retry, err := getCaptures(httpClient, baseURL)
 	if err != nil {
-		klog.Warningf("drain capture is failed, error: %s", err)
+		klog.Warningf("ticdc control: drain capture is failed, error: %s", err)
 		return 0, false, err
 	}
 	if retry {
@@ -144,10 +144,12 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusNotFound {
 		// It is likely the TiCDC does not support the API, ignore.
+		klog.Infof("ticdc control: %s does not support drain capture, skip", this.AdvertiseAddr)
 		return 0, false, nil
 	}
 	if res.StatusCode == http.StatusServiceUnavailable {
 		// TiCDC is not ready, retry.
+		klog.Infof("ticdc control: %s service unavailable drain capture, retry", this.AdvertiseAddr)
 		return 0, true, nil
 	}
 	body, err := ioutil.ReadAll(res.Body)
@@ -167,14 +169,14 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	httpClient, err := c.getHTTPClient(tc)
 	if err != nil {
-		klog.Warningf("resign owner failed, error: %s", err)
+		klog.Warningf("ticdc control: resign owner failed, error: %s", err)
 		return false, err
 	}
 
 	baseURL := c.getBaseURL(tc, ordinal)
 	captures, retry, err := getCaptures(httpClient, baseURL)
 	if err != nil {
-		klog.Warningf("resign owner failed, error: %s", err)
+		klog.Warningf("ticdc control: resign owner failed, error: %s", err)
 		return false, err
 	}
 	if retry {
@@ -205,10 +207,12 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 	httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusNotFound {
 		// It is likely the TiCDC does not support the API, ignore.
+		klog.Infof("ticdc control: %s does not support resign owner, skip", this.AdvertiseAddr)
 		return true, nil
 	}
 	if res.StatusCode == http.StatusServiceUnavailable {
 		// Let caller retry resign owner.
+		klog.Infof("ticdc control: %s service unavailable resign owner, retry", this.AdvertiseAddr)
 		return false, nil
 	}
 	return false, nil
