@@ -61,7 +61,11 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 	round := 0
 	return util.RetryOnError(opt.RetryCount, 0, func() error {
 		round++
-		return bo.cleanBRRemoteBackupDataOnce(ctx, backend, opt, round)
+		err := bo.cleanBRRemoteBackupDataOnce(ctx, backend, opt, round)
+		if err != nil {
+			klog.Errorf("For backup %s clean %d, failed to clean backup: %s", bo, round, err)
+		}
+		return err
 	})
 }
 
