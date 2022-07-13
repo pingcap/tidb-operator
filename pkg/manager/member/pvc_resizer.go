@@ -601,6 +601,12 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			}
 		}
 
+		// skip evicting leader if only one tikv is exist
+		if len(tc.Status.TiKV.Stores) < 2 && len(tc.Status.TiKV.PeerStores) == 0 {
+			klog.Infof("%s: skip evicting leader because only one tikv", logPrefix)
+			return nil
+		}
+
 		// add leader eviction ann to the pod and wait the leader count to be 0
 		updated, err := updateResizeAnnForTiKVPod(p.deps.KubeClientset, true, resizePod)
 		if err != nil {
