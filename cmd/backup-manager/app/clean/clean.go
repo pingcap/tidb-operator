@@ -110,10 +110,12 @@ func (bo *Options) cleanBRRemoteBackupDataOnce(ctx context.Context, backend *uti
 			needBackoff = true
 		}
 
-		if needBackoff {
-			time.Sleep(backoff.Step())
-		} else {
-			backoff = defaultBackoff
+		if opt.BackoffEnabled {
+			if needBackoff {
+				time.Sleep(backoff.Step())
+			} else {
+				backoff = defaultBackoff // reset backoff
+			}
 		}
 	}
 

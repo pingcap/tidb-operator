@@ -373,6 +373,8 @@ spec:
                 type: object
               cleanOption:
                 properties:
+                  backoffEnabled:
+                    type: boolean
                   batchConcurrency:
                     format: int32
                     type: integer

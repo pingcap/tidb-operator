@@ -4134,6 +4134,29 @@ default is 10000</p>
 </tr>
 <tr>
 <td>
+<code>retryCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>RetryCount represents the number of retries in pod when the cleanup fails.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffEnabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>BackoffEnabled represents whether to enable the backoff when a deletion API fails.
+It is useful when the deletion API is rate limited.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>BatchDeleteOption</code></br>
 <em>
 <a href="#batchdeleteoption">
@@ -8847,7 +8870,7 @@ int
 <td>
 <code>buffer-flush-interval</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -8943,7 +8966,7 @@ int
 <td>
 <code>sampling-refresh-interval</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -12049,7 +12072,7 @@ int
 <td>
 <code>batchSendDeadline</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -12071,7 +12094,7 @@ int
 <td>
 <code>minBackoff</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -12082,7 +12105,7 @@ time.Duration
 <td>
 <code>maxBackoff</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -16928,7 +16951,7 @@ Optional: Defaults to 200</p>
 <td>
 <code>max-batch-wait-time</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
