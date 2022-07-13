@@ -95,7 +95,7 @@ func (s *ticdcScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	}
 	pod, err := s.deps.PodLister.Pods(ns).Get(podName)
 	if err != nil {
-		return fmt.Errorf("ticdcScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
+		return fmt.Errorf("ticdcScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %v", podName, ns, tcName, err)
 	}
 	tc, _ := meta.(*v1alpha1.TidbCluster)
 
@@ -107,7 +107,7 @@ func (s *ticdcScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newS
 
 	pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("ticdcScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
+		return fmt.Errorf("ticdcScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %v", ns, pod.Name, ns, tcName, err)
 	}
 	for _, pvc := range pvcs {
 		if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
@@ -207,7 +207,7 @@ func checkTiCDCGracefulShutdownTimeout(
 	pod.Annotations[GracefulShutdownTiCDCBeginTime] = now
 	_, err := podCtl.UpdatePod(tc, pod)
 	if err != nil {
-		klog.Errorf("ticdc.%s: failed to set pod %s in cluster %s/%s annotation %s to %s, %v",
+		klog.Errorf("ticdc.%s: failed to set pod %s in cluster %s/%s annotation %s to %s, error: %v",
 			action, podName, ns, tc.GetName(), GracefulShutdownTiCDCBeginTime, now, err)
 		return false, err
 	}

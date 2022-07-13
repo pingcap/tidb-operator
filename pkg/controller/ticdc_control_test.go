@@ -49,7 +49,7 @@ func TestTiCDCControllerResignOwner(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 			},
 			ordinal:     1,
@@ -69,7 +69,7 @@ func TestTiCDCControllerResignOwner(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 			},
 			ordinal:     1,
@@ -90,7 +90,7 @@ func TestTiCDCControllerResignOwner(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 				"/api/v1/owner/resign": func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusAccepted)
@@ -114,7 +114,7 @@ func TestTiCDCControllerResignOwner(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 				"/api/v1/owner/resign": func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusNotFound)
@@ -138,7 +138,7 @@ func TestTiCDCControllerResignOwner(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 				"/api/v1/owner/resign": func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusServiceUnavailable)
@@ -200,7 +200,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 			},
 			ordinal:       1,
@@ -221,7 +221,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 			},
 			ordinal:       3,
@@ -242,7 +242,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 			},
 			ordinal:       1,
@@ -264,12 +264,12 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 				"/api/v1/captures/drain": func(w http.ResponseWriter, req *http.Request) {
 					payload, err := json.Marshal(drainCaptureResp{CurrentTableCount: 0})
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 			},
 			ordinal:       1,
@@ -291,7 +291,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 				"/api/v1/captures/drain": func(w http.ResponseWriter, req *http.Request) {
 					body, err := io.ReadAll(req.Body)
@@ -303,7 +303,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 
 					payload, err := json.Marshal(drainCaptureResp{CurrentTableCount: 1})
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 			},
 			ordinal:       1,
@@ -325,7 +325,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 				"/api/v1/captures/drain": func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusNotFound)
@@ -350,7 +350,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 					}}
 					payload, err := json.Marshal(cp)
 					g.Expect(err).Should(BeNil())
-					fmt.Fprintf(w, string(payload))
+					fmt.Fprint(w, string(payload))
 				},
 				"/api/v1/captures/drain": func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusServiceUnavailable)

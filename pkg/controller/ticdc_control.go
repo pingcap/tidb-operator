@@ -97,7 +97,7 @@ func (c *defaultTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32)
 func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
 	httpClient, err := c.getHTTPClient(tc)
 	if err != nil {
-		klog.Warningf("ticdc control: drain capture is failed, error: %s", err)
+		klog.Warningf("ticdc control: drain capture is failed, error: %v", err)
 		return 0, false, err
 	}
 
@@ -105,7 +105,7 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 
 	captures, retry, err := getCaptures(httpClient, baseURL)
 	if err != nil {
-		klog.Warningf("ticdc control: drain capture is failed, error: %s", err)
+		klog.Warningf("ticdc control: drain capture is failed, error: %v", err)
 		return 0, false, err
 	}
 	if retry {
@@ -120,7 +120,7 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 	this, owner := getOrdinalAndOwnerCaptureInfo(tc, ordinal, captures)
 	if this == nil {
 		addr := getCaptureAdvertiseAddressPrefix(tc, ordinal)
-		return 0, false, fmt.Errorf("capture not found, address: %s %+v", addr, captures)
+		return 0, false, fmt.Errorf("capture not found, address: %s, captures: %+v", addr, captures)
 	}
 	if owner == nil {
 		return 0, false, fmt.Errorf("owner not found")
@@ -169,14 +169,14 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	httpClient, err := c.getHTTPClient(tc)
 	if err != nil {
-		klog.Warningf("ticdc control: resign owner failed, error: %s", err)
+		klog.Warningf("ticdc control: resign owner failed, error: %v", err)
 		return false, err
 	}
 
 	baseURL := c.getBaseURL(tc, ordinal)
 	captures, retry, err := getCaptures(httpClient, baseURL)
 	if err != nil {
-		klog.Warningf("ticdc control: resign owner failed, error: %s", err)
+		klog.Warningf("ticdc control: resign owner failed, error: %v", err)
 		return false, err
 	}
 	if retry {
@@ -245,10 +245,6 @@ func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, bool, 
 		return nil, false, err
 	}
 	defer httputil.DeferClose(res.Body)
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, false, err
-	}
 	if res.StatusCode == http.StatusNotFound {
 		// It is likely the TiCDC does not support the API, ignore.
 		return nil, false, nil
@@ -258,6 +254,10 @@ func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, bool, 
 		return nil, true, nil
 	}
 
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, false, err
+	}
 	var resp []captureInfo
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
