@@ -125,9 +125,8 @@ func TestCleanBRRemoteBackupDataOnce(t *testing.T) {
 						for _, obj := range objs {
 							result.Deleted = append(result.Deleted, obj.Key)
 						}
-					} else {
-						// failed to delete but not report
 					}
+					// failed to delete but not report
 
 					callCount++
 					g.Expect(callCount).Should(BeNumerically("<=", expectCallCount)) // check number of call BatchDeleteObjects
@@ -247,9 +246,8 @@ func TestCleanBRRemoteBackupDataOnce(t *testing.T) {
 						for _, obj := range objs {
 							result.Deleted = append(result.Deleted, obj.Key)
 						}
-					} else {
-						// failed to delete but not report
 					}
+					// failed to delete but not report
 
 					callCount++
 					g.Expect(callCount).Should(BeNumerically("<=", expectCallCount)) // check number of call BatchDeleteObjects
