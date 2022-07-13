@@ -233,7 +233,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 			Value:         value,
 		}
 		nowStatus := tc.Status.TiKV.EvictLeader[pod.Name]
-		if nowStatus != nil {
+		if nowStatus != nil && !nowStatus.BeginTime.IsZero() {
 			evictStatus.BeginTime = nowStatus.BeginTime
 		}
 
