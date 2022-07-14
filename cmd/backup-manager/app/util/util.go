@@ -433,21 +433,25 @@ func GetContextForTerminationSignals(op string) (context.Context, context.Cancel
 	return ctx, cancel
 }
 
+func RetriableOnAnyError(err error) bool {
+	return err != nil
+}
+
 // RetryOnError allows the caller to retry fn in case the error returned by fn.
 // sleep define the interval between two retries.
-func RetryOnError(attempts int, sleep time.Duration, fn func() error) error {
-	var lastErr error
+func RetryOnError(attempts int, sleep time.Duration, retriable func(error) bool, fn func() error) error {
+	var err error
 	for i := 0; i < attempts; i++ {
-		err := fn()
-		if err == nil {
-			return nil
+		err = fn()
+
+		if !retriable(err) {
+			return err
 		}
 
-		lastErr = err
 		if sleep != 0 {
 			time.Sleep(sleep)
 		}
 	}
 
-	return lastErr
+	return err
 }
