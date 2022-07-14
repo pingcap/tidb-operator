@@ -15,15 +15,17 @@ RUN wget -nv https://github.com/realestate-com-au/shush/releases/download/${SHUS
   && mv shush_linux_${TARGETARCH} /usr/local/bin/shush \
   && chmod 755 /usr/local/bin/shush
 
+ARG TOOLKIT_NAME=${TOOLKIT_VERSION}-linux-${TARGETARCH}
+ARG TOOLKIT_PKG_NAME=tidb-community-toolkit-${TOOLKIT_NAME}
 RUN \
-  wget -nv https://download.pingcap.org/tidb-community-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}.tar.gz -O tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}.tar.gz \
-  && tar -xzf tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}.tar.gz \
-  && mv tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}/bin/tidb-lightning /tidb-lightning \
-  && mv tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}/bin/tidb-lightning-ctl /tidb-lightning-ctl \
-  && mv tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}/bin/dumpling /dumpling \
+  wget -nv https://download.pingcap.org/${TOOLKIT_PKG_NAME}.tar.gz \
+  && tar -xzf ${TOOLKIT_PKG_NAME}.tar.gz \
+  && tar -xzf ${TOOLKIT_PKG_NAME}/tidb-lightning-${TOOLKIT_NAME}.tar.gz && mv tidb-lightning /tidb-lightning \
+  && mv ${TOOLKIT_PKG_NAME}/tidb-lightning-ctl /tidb-lightning-ctl \
+  && tar -xzf ${TOOLKIT_PKG_NAME}/dumpling-${TOOLKIT_NAME}.tar.gz && mv dumpling /dumpling \
   && chmod 755 /dumpling /tidb-lightning /tidb-lightning-ctl \
-  && rm -rf tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}.tar.gz \
-  && rm -rf tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}
+  && rm -rf ${TOOLKIT_PKG_NAME}.tar.gz \
+  && rm -rf ${TOOLKIT_PKG_NAME}
 
 COPY bin/${TARGETARCH}/tidb-backup-manager /tidb-backup-manager
 COPY entrypoint.sh /entrypoint.sh
