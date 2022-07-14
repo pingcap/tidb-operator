@@ -36,7 +36,7 @@ variable "cluster_name" {
 
 variable "tidb_version" {
   description = "TiDB cluster version"
-  default     = "v5.4.1"
+  default     = "v6.1.0"
 }
 variable "tidb_cluster_chart_version" {
   description = "tidb-cluster chart version"
