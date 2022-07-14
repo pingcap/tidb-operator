@@ -632,7 +632,7 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 
 				if status, exist := tc.Status.TiKV.EvictLeader[resizePod.Name]; exist && !status.BeginTime.IsZero() {
 					timeout := tc.TiKVEvictLeaderTimeout()
-					if time.Since(status.BeginTime.Time) > tc.TiKVEvictLeaderTimeout() {
+					if time.Since(status.BeginTime.Time) > timeout {
 						klog.Infof("%s: leader eviction begins at %q but timeout (threshold: %v)", logPrefix, status.BeginTime.Time.Format(time.RFC3339), timeout)
 						return nil
 					}
