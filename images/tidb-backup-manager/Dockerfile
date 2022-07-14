@@ -16,7 +16,7 @@ RUN wget -nv https://github.com/realestate-com-au/shush/releases/download/${SHUS
   && chmod 755 /usr/local/bin/shush
 
 RUN \
-  wget -nv https://download.pingcap.org/tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}.tar.gz \
+  wget -nv https://download.pingcap.org/tidb-community-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}.tar.gz \
   && tar -xzf tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}.tar.gz \
   && mv tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}/bin/tidb-lightning /tidb-lightning \
   && mv tidb-toolkit-${TOOLKIT_VERSION}-linux-${TARGETARCH}/bin/tidb-lightning-ctl /tidb-lightning-ctl \
