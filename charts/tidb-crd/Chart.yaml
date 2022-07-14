@@ -1,0 +1,9 @@
+apiVersion: v2
+name: tidb-crd
+description: TiDB CRD
+version: dev
+home: https://github.com/pingcap/tidb-operator
+sources:
+  - https://github.com/pingcap/tidb-operator
+keywords:
+  - crd
