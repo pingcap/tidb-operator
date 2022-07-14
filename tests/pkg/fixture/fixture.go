@@ -107,8 +107,11 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			ImagePullPolicy:      corev1.PullIfNotPresent,
 			PVReclaimPolicy:      &deletePVP,
 			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyRollingUpdate,
-			SchedulerName:        "tidb-scheduler",
-			Timezone:             "Asia/Shanghai",
+			Helper: &v1alpha1.HelperSpec{
+				Image: pointer.StringPtr(utilimage.HelperImage),
+			},
+			SchedulerName: "tidb-scheduler",
+			Timezone:      "Asia/Shanghai",
 			Labels: map[string]string{
 				ClusterCustomKey: "value",
 			},
