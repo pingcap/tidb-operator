@@ -50,11 +50,11 @@ const (
 	GrafanaVersion                = "6.1.6"
 	ThanosImage                   = "thanosio/thanos"
 	ThanosVersion                 = "v0.17.2"
-	DMV2Prev                      = "v2.0.7"
+	DMV2Prev                      = TiDBLatestPrev
 	DMV2                          = TiDBLatest
 	DMMonitorInitializerImage     = "pingcap/dm-monitor-initializer"
 	DMMonitorInitializerVersion   = DMV2
-	TiDBNGMonitoringLatest        = "v5.4.0"
+	TiDBNGMonitoringLatest        = TiDBLatest
 )
 
 func ListImages() []string {
