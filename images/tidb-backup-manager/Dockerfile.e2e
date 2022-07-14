@@ -27,7 +27,7 @@ RUN \
   && rm -rf ${TOOLKIT_PKG_NAME}.tar.gz \
   && rm -rf ${TOOLKIT_PKG_NAME}
 
-COPY bin/${TARGETARCH}/tidb-backup-manager /tidb-backup-manager
+COPY bin/tidb-backup-manager /tidb-backup-manager
 COPY entrypoint.sh /entrypoint.sh
 
 COPY bin/tidb-backup-manager /tidb-backup-manager
