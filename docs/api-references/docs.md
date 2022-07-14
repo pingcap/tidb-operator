@@ -4733,6 +4733,9 @@ All topologySpreadConstraints are ANDed.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="componentstatus">ComponentStatus</h3>
+<p>
+</p>
 <h3 id="configmapref">ConfigMapRef</h3>
 <p>
 (<em>Appears on:</em>
@@ -8330,6 +8333,33 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="memberphase">MemberPhase</h3>
@@ -8637,6 +8667,83 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="observedstoragevolumestatus">ObservedStorageVolumeStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storagevolumestatus">StorageVolumeStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>boundCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BoundCount is the count of bound volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CurrentCount is the count of volumes whose capacity is equal to <code>currentCapacity</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resizedCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResizedCount is the count of volumes whose capacity is equal to <code>resizedCapacity</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentCapacity</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>CurrentCapacity is the current capacity of the volume.
+If any volume is resizing, it is the capacity before resizing.
+If all volumes are resized, it is the resized capacity and same as desired capacity.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resizedCapacity</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>ResizedCapacity is the desired capacity of the volume.</p>
 </td>
 </tr>
 </tbody>
@@ -10614,6 +10721,33 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstorelabel">PDStoreLabel</h3>
@@ -11820,6 +11954,33 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="queueconfig">QueueConfig</h3>
@@ -12836,7 +12997,7 @@ string
 </em>
 </td>
 <td>
-<p>Options Rclone options for backup and restore with mydumper and lightning.</p>
+<p>Options Rclone options for backup and restore with dumpling and lightning.</p>
 </td>
 </tr>
 </tbody>
@@ -13618,6 +13779,56 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="storagevolumename">StorageVolumeName</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storagevolumestatus">StorageVolumeStatus</a>)
+</p>
+<p>
+<p>StorageVolumeName is the volume name which is same as <code>volumes.name</code> in Pod spec.</p>
+</p>
+<h3 id="storagevolumestatus">StorageVolumeStatus</h3>
+<p>
+<p>StorageVolumeStatus is the actual status for a storage</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ObservedStorageVolumeStatus</code></br>
+<em>
+<a href="#observedstoragevolumestatus">
+ObservedStorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ObservedStorageVolumeStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+<a href="#storagevolumename">
+StorageVolumeName
+</a>
+</em>
+</td>
+<td>
+<p>Name is the volume name which is same as <code>volumes.name</code> in Pod spec.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tlscluster">TLSCluster</h3>
 <p>
 (<em>Appears on:</em>
@@ -14232,6 +14443,33 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCaptu
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
 </td>
 </tr>
 </tbody>
@@ -15077,6 +15315,32 @@ This will use curl command to request tidb, before v4.0.9 there is no curl in th
 So do not use this before v4.0.9.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>initialDelaySeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Number of seconds after the container has started before liveness probes are initiated.
+Default to 10 seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>periodSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>How often (in seconds) to perform the probe.
+Default to Kubernetes default (10 seconds). Minimum value is 1.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbservicespec">TiDBServiceSpec</h3>
@@ -15607,6 +15871,33 @@ bool
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
 </td>
 </tr>
 </tbody>
@@ -20229,6 +20520,33 @@ map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLead
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstorageconfig">TiKVStorageConfig</h3>
@@ -23573,6 +23891,33 @@ string
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
 </td>
 </tr>
 </tbody>

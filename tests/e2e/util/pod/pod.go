@@ -84,3 +84,13 @@ func MustListPods(labelSelector string, ns string, c clientset.Interface) []v1.P
 
 	return pods
 }
+
+func ListContainerFromPod(spec v1.PodSpec, pred func(container v1.Container) bool) []v1.Container {
+	list := make([]v1.Container, 0)
+	for _, container := range spec.Containers {
+		if pred(container) {
+			list = append(list, container)
+		}
+	}
+	return list
+}

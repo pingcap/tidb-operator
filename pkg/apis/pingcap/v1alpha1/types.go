@@ -17,6 +17,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -373,6 +374,12 @@ const (
 	// - All TiKV stores are up.
 	// - All TiFlash stores are up.
 	TidbClusterReady TidbClusterConditionType = "Ready"
+)
+
+// The `Type` of the component condition
+const (
+	// ComponentVolumeResizing indicates that any volume of this component is resizing.
+	ComponentVolumeResizing string = "ComponentVolumeResizing"
 )
 
 // +k8s:openapi-gen=true
@@ -818,6 +825,16 @@ type TiDBProbe struct {
 	// +kubebuilder:validation:Enum=tcp;command
 	// +optional
 	Type *string `json:"type,omitempty"` // tcp or command
+	// Number of seconds after the container has started before liveness probes are initiated.
+	// Default to 10 seconds.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	InitialDelaySeconds *int32 `json:"initialDelaySeconds,omitempty"`
+	// How often (in seconds) to perform the probe.
+	// Default to Kubernetes default (10 seconds). Minimum value is 1.
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	PeriodSeconds *int32 `json:"periodSeconds,omitempty"`
 }
 
 // PumpSpec contains details of Pump members
@@ -1127,6 +1144,12 @@ type PDStatus struct {
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
 	Image           string                     `json:"image,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // PDMember is PD member
@@ -1176,6 +1199,12 @@ type TiDBStatus struct {
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
 	Image                    string                       `json:"image,omitempty"`
 	PasswordInitialized      *bool                        `json:"passwordInitialized,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -1196,7 +1225,16 @@ type TiDBFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-const EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
+var (
+	EvictLeaderAnnKeys = []string{EvictLeaderAnnKey, EvictLeaderAnnKeyForResize}
+)
+
+const (
+	// EvictLeaderAnnKey is the annotation key to evict leader used by user.
+	EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
+	// EvictLeaderAnnKeyForResize is the annotation key to evict leader user by pvc resizer.
+	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
+)
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
 //
@@ -1225,6 +1263,12 @@ type TiKVStatus struct {
 	FailoverUID     types.UID                     `json:"failoverUID,omitempty"`
 	Image           string                        `json:"image,omitempty"`
 	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status
@@ -1238,6 +1282,12 @@ type TiFlashStatus struct {
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 	FailoverUID     types.UID                   `json:"failoverUID,omitempty"`
 	Image           string                      `json:"image,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiCDCStatus is TiCDC status
@@ -1246,6 +1296,12 @@ type TiCDCStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Captures    map[string]TiCDCCapture `json:"captures,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiCDCCapture is TiCDC Capture status
@@ -1297,6 +1353,12 @@ type PumpStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Members     []*PumpNodeStatus       `json:"members,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
@@ -1458,7 +1520,7 @@ type S3StorageProvider struct {
 	Prefix string `json:"prefix,omitempty"`
 	// SSE Sever-Side Encryption.
 	SSE string `json:"sse,omitempty"`
-	// Options Rclone options for backup and restore with mydumper and lightning.
+	// Options Rclone options for backup and restore with dumpling and lightning.
 	Options []string `json:"options,omitempty"`
 }
 
@@ -2349,6 +2411,12 @@ type MasterStatus struct {
 	FailureMembers  map[string]MasterFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember      `json:"unjoinedMembers,omitempty"`
 	Image           string                         `json:"image,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // MasterMember is dm-master member status
@@ -2383,6 +2451,12 @@ type WorkerStatus struct {
 	FailureMembers map[string]WorkerFailureMember `json:"failureMembers,omitempty"`
 	FailoverUID    types.UID                      `json:"failoverUID,omitempty"`
 	Image          string                         `json:"image,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // WorkerMember is dm-worker member status
@@ -2412,6 +2486,34 @@ type StorageVolume struct {
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	StorageSize      string  `json:"storageSize"`
 	MountPath        string  `json:"mountPath,omitempty"`
+}
+
+type ObservedStorageVolumeStatus struct {
+	// BoundCount is the count of bound volumes.
+	// +optional
+	BoundCount int `json:"boundCount"`
+	// CurrentCount is the count of volumes whose capacity is equal to `currentCapacity`.
+	// +optional
+	CurrentCount int `json:"currentCount"`
+	// ResizedCount is the count of volumes whose capacity is equal to `resizedCapacity`.
+	// +optional
+	ResizedCount int `json:"resizedCount"`
+	// CurrentCapacity is the current capacity of the volume.
+	// If any volume is resizing, it is the capacity before resizing.
+	// If all volumes are resized, it is the resized capacity and same as desired capacity.
+	CurrentCapacity resource.Quantity `json:"currentCapacity"`
+	// ResizedCapacity is the desired capacity of the volume.
+	ResizedCapacity resource.Quantity `json:"resizedCapacity"`
+}
+
+// StorageVolumeName is the volume name which is same as `volumes.name` in Pod spec.
+type StorageVolumeName string
+
+// StorageVolumeStatus is the actual status for a storage
+type StorageVolumeStatus struct {
+	ObservedStorageVolumeStatus `json:",inline"`
+	// Name is the volume name which is same as `volumes.name` in Pod spec.
+	Name StorageVolumeName `json:"name"`
 }
 
 // TopologySpreadConstraint specifies how to spread matching pods among the given topology.

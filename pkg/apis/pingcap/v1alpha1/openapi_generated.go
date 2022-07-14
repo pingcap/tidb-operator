@@ -6697,7 +6697,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 					},
 					"options": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Options Rclone options for backup and restore with mydumper and lightning.",
+							Description: "Options Rclone options for backup and restore with dumpling and lightning.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -7938,6 +7938,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBProbe(ref common.ReferenceCallback) co
 							Description: "\"tcp\" will use TCP socket to connetct port 4000\n\n\"command\" will probe the status api of tidb. This will use curl command to request tidb, before v4.0.9 there is no curl in the image, So do not use this before v4.0.9.",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"initialDelaySeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Number of seconds after the container has started before liveness probes are initiated. Default to 10 seconds.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"periodSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "How often (in seconds) to perform the probe. Default to Kubernetes default (10 seconds). Minimum value is 1.",
+							Type:        []string{"integer"},
+							Format:      "int32",
 						},
 					},
 				},

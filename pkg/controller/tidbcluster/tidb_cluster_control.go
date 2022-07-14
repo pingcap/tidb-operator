@@ -246,7 +246,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	}
 
 	// resize PVC if necessary
-	if err := c.pvcResizer.Resize(tc); err != nil {
+	if err := c.pvcResizer.Sync(tc); err != nil {
 		return err
 	}
 

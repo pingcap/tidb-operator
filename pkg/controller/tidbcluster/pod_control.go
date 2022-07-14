@@ -214,14 +214,14 @@ func (c *PodController) getPDClient(tc *v1alpha1.TidbCluster) pdapi.PDClient {
 }
 
 func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
-	value, ok := pod.Annotations[v1alpha1.EvictLeaderAnnKey]
+	key, value, ok := needEvictLeader(pod)
 
 	if ok {
 		switch value {
 		case v1alpha1.EvictLeaderValueNone:
 		case v1alpha1.EvictLeaderValueDeletePod:
 		default:
-			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.EvictLeaderAnnKey, pod.Namespace, pod.Name)
+			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, key, pod.Namespace, pod.Name)
 			return reconcile.Result{}, nil
 		}
 	}
@@ -339,4 +339,15 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func needEvictLeader(pod *corev1.Pod) (string, string, bool) {
+	for _, key := range v1alpha1.EvictLeaderAnnKeys {
+		value, exist := pod.Annotations[key]
+		if exist {
+			return key, value, true
+		}
+	}
+
+	return "", "", false
 }
