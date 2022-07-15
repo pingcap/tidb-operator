@@ -96,6 +96,8 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 
 	tidbConfig := v1alpha1.NewTiDBConfig()
 	tidbConfig.Set("log.level", "info")
+	// workaround for https://docs.pingcap.com/tidb/stable/backup-and-restore-faq#why-does-br-report-new_collations_enabled_on_first_bootstrap-mismatch
+	tidbConfig.Set("new_collations_enabled_on_first_bootstrap", false)
 
 	return &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
