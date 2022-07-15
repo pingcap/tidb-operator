@@ -172,6 +172,8 @@ spec:
     ## Checksum specifies whether to verify the files after the backup is completed.
     ## Defaults to `true``.
     # checksum: true
+    ## CheckRequirements specifies whether to check requirements before restore
+    # checkRequirements: true
     ## SendCredToTikv specifies whether the BR process passes its AWS or GCP privileges to the TiKV process.
     ## Defaults to `true``.
     # sendCredToTikv: true
