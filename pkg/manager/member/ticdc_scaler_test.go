@@ -398,7 +398,7 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 					pod.Annotations = map[string]string{}
 				}
 				now := time.Now().Add(-2 * ticdcGracefulShutdownTimeout).Format(time.RFC3339)
-				pod.Annotations[GracefulShutdownTiCDCBeginTime] = now
+				pod.Annotations[label.AnnTiCDCGracefulShutdownBeginTime] = now
 				return pod
 			},
 			expectedErr: func(err error, name string) {
@@ -414,7 +414,7 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 				if pod.Annotations == nil {
 					pod.Annotations = map[string]string{}
 				}
-				pod.Annotations[GracefulShutdownTiCDCBeginTime] = "malformed"
+				pod.Annotations[label.AnnTiCDCGracefulShutdownBeginTime] = "malformed"
 				return pod
 			},
 			expectedErr: func(err error, name string) {
@@ -438,7 +438,7 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 					pod.Annotations = map[string]string{}
 				}
 				now := time.Now().Format(time.RFC3339)
-				pod.Annotations[GracefulShutdownTiCDCBeginTime] = now
+				pod.Annotations[label.AnnTiCDCGracefulShutdownBeginTime] = now
 				return pod
 			},
 			expectedErr: func(err error, name string) {

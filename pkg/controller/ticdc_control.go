@@ -123,7 +123,7 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 		return 0, false, fmt.Errorf("capture not found, address: %s, captures: %+v", addr, captures)
 	}
 	if owner == nil {
-		return 0, false, fmt.Errorf("owner not found")
+		return 0, false, fmt.Errorf("owner not found, captures: %+v", captures)
 	}
 
 	payload := drainCaptureRequest{
@@ -131,15 +131,15 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 	}
 	payloadBody, err := json.Marshal(payload)
 	if err != nil {
-		return 0, false, err
+		return 0, false, fmt.Errorf("ticdc drain capture failed, marshal request error: %v", err)
 	}
 	req, err := http.NewRequest("PUT", baseURL+"/api/v1/captures/drain", bytes.NewReader(payloadBody))
 	if err != nil {
-		return 0, false, err
+		return 0, false, fmt.Errorf("ticdc drain capture failed, new request error: %v", err)
 	}
 	res, err := httpClient.Do(req)
 	if err != nil {
-		return 0, false, err
+		return 0, false, fmt.Errorf("ticdc drain capture failed, request error: %v", err)
 	}
 	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusNotFound {
@@ -154,7 +154,7 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return 0, false, err
+		return 0, false, fmt.Errorf("ticdc drain capture failed, read response error: %v", err)
 	}
 
 	var resp drainCaptureResp
@@ -202,7 +202,7 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 
 	res, err := httpClient.Post(baseURL+"/api/v1/owner/resign", "", nil)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("ticdc resign owner failed, request error: %v", err)
 	}
 	httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusNotFound {
@@ -242,7 +242,7 @@ func getCaptureAdvertiseAddressPrefix(tc *v1alpha1.TidbCluster, ordinal int32) s
 func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, bool, error) {
 	res, err := httpClient.Get(baseURL + "/api/v1/captures")
 	if err != nil {
-		return nil, false, err
+		return nil, false, fmt.Errorf("ticdc get captures failed, request error: %v", err)
 	}
 	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusNotFound {
@@ -256,7 +256,7 @@ func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, bool, 
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, false, err
+		return nil, false, fmt.Errorf("ticdc get captures failed, read response error: %v", err)
 	}
 	var resp []captureInfo
 	err = json.Unmarshal(body, &resp)

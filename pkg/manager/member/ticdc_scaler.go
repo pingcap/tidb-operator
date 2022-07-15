@@ -24,14 +24,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
-)
-
-const (
-	// GracefulShutdownTiCDCBeginTime is the key of evict Leader begin time
-	GracefulShutdownTiCDCBeginTime = "gracefulShutdownTiCDCBeginTime"
 )
 
 type ticdcScaler struct {
@@ -180,13 +176,13 @@ func checkTiCDCGracefulShutdownTimeout(
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	begin, ok := pod.Annotations[GracefulShutdownTiCDCBeginTime]
+	begin, ok := pod.Annotations[label.AnnTiCDCGracefulShutdownBeginTime]
 	if ok {
 		// Check graceful shutdown timeout.
 		beginTime, err := time.Parse(time.RFC3339, begin)
 		if err != nil {
 			klog.Errorf("ticdc.%s: parse annotation:[%s] \"%s\" to time failed, skip graceful shutdown",
-				action, GracefulShutdownTiCDCBeginTime, begin)
+				action, label.AnnTiCDCGracefulShutdownBeginTime, begin)
 			return true, nil
 		}
 
@@ -204,14 +200,14 @@ func checkTiCDCGracefulShutdownTimeout(
 
 	// Set graceful shutdown begin time.
 	now := time.Now().Format(time.RFC3339)
-	pod.Annotations[GracefulShutdownTiCDCBeginTime] = now
+	pod.Annotations[label.AnnTiCDCGracefulShutdownBeginTime] = now
 	_, err := podCtl.UpdatePod(tc, pod)
 	if err != nil {
 		klog.Errorf("ticdc.%s: failed to set pod %s in cluster %s/%s annotation %s to %s, error: %v",
-			action, podName, ns, tc.GetName(), GracefulShutdownTiCDCBeginTime, now, err)
+			action, podName, ns, tc.GetName(), label.AnnTiCDCGracefulShutdownBeginTime, now, err)
 		return false, err
 	}
 	klog.Infof("ticdc.%s: set pod %s in cluster %s/%s annotation %s to %s successfully",
-		action, podName, ns, tc.GetName(), GracefulShutdownTiCDCBeginTime, now)
+		action, podName, ns, tc.GetName(), label.AnnTiCDCGracefulShutdownBeginTime, now)
 	return false, nil
 }
