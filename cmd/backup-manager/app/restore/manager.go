@@ -151,19 +151,23 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	}
 
 	var errs []error
-
-	commitTs, err := util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
-		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetCommitTsFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
+	var commitTs uint64
+	switch restore.Spec.Type {
+	case v1alpha1.BackupTypeEBS, v1alpha1.BackupTypeGCEPD, v1alpha1.BackupTypeData:
+	default:
+		commitTs, err = util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
+		if err != nil {
+			errs = append(errs, err)
+			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
+			uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "GetCommitTsFailed",
+				Message: err.Error(),
+			}, nil)
+			errs = append(errs, uerr)
+			return errorutils.NewAggregate(errs)
+		}
 	}
 
 	var (
@@ -252,7 +256,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		}
 	}
 
-	isCompletetd, restoreErr := rm.restoreData(ctx, restore, rm.StatusUpdater, rm.RestoreControl)
+	isCompletetd, restoreErr := rm.restoreData(ctx, restore, started, rm.StatusUpdater, rm.RestoreControl)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.

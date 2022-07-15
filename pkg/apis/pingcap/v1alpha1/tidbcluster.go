@@ -732,6 +732,10 @@ func (tc *TidbCluster) IsTLSClusterEnabled() bool {
 	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
 }
 
+func (tc *TidbCluster) IsRecoveryMode() bool {
+	return tc.Spec.RecoveryMode
+}
+
 func (tc *TidbCluster) NeedToSyncTiDBInitializer() bool {
 	return tc.Spec.TiDB != nil && tc.Spec.TiDB.Initializer != nil && tc.Spec.TiDB.Initializer.CreatePassword && tc.Status.TiDB.PasswordInitialized == nil
 }

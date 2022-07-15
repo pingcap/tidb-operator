@@ -1241,6 +1241,17 @@ string
 </tr>
 <tr>
 <td>
+<code>dryRun</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>DryRun mode for local test</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>toolImage</code></br>
 <em>
 string
@@ -12574,6 +12585,17 @@ string
 </td>
 <td>
 <p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dryRun</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>DryRun mode for local test</p>
 </td>
 </tr>
 <tr>

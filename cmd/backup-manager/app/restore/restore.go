@@ -24,6 +24,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -31,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -41,6 +43,7 @@ type Options struct {
 func (ro *Options) restoreData(
 	ctx context.Context,
 	restore *v1alpha1.Restore,
+	started time.Time,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
 	restoreControl controller.RestoreControlInterface) (bool, error) {
 	clusterNamespace := restore.Spec.BR.ClusterNamespace
@@ -67,6 +70,11 @@ func (ro *Options) restoreData(
 		isCSB = true
 		csbPath = path.Join(util.BRBinPath, "csb_restore.json")
 		args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
+	case v1alpha1.BackupTypeData:
+		if restore.Spec.DryRun {
+			args = append(args, "--dry-run=true")
+		}
+		restore.Spec.BR.Options = backupUtil.GetSliceExcludeOneString(restore.Spec.BR.Options, "--skip-aws")
 	}
 
 	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
@@ -122,12 +130,13 @@ func (ro *Options) restoreData(
 		return false, fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
 	}
 
-	return ro.processRestoreResult(csbPath, ts, restore, statusUpdater, restoreControl)
+	return ro.processRestoreResult(csbPath, ts, restore, started, statusUpdater, restoreControl)
 }
 
 func (ro *Options) processRestoreResult(
 	csbPath, resolvedTS string,
 	restore *v1alpha1.Restore,
+	started time.Time,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
 	restoreControl controller.RestoreControlInterface) (bool, error) {
 	switch restore.Spec.Type {
@@ -146,12 +155,16 @@ func (ro *Options) processRestoreResult(
 			if len(restore.GetAnnotations()) == 0 {
 				restore.Annotations = make(map[string]string)
 			}
+			klog.Infof("Get restore for cluster %s, annotations: %v", ro, restore.GetAnnotations())
 			restore.Annotations[label.AnnBackupCloudSnapKey] = string(bs)
-			if _, err := restoreControl.UpdateRestore(restore); err != nil {
+			if _, err = restoreControl.UpdateRestore(restore); err != nil {
 				return false, fmt.Errorf("cluster %s, update restore annotation for CSB failed, err: %v", ro, err)
 			}
+
 			updateStatus := &controller.RestoreUpdateStatus{
-				CommitTs: &resolvedTS,
+				TimeStarted:   &metav1.Time{Time: started},
+				TimeCompleted: &metav1.Time{Time: time.Now()},
+				CommitTs:      &resolvedTS,
 			}
 			if err := statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:   v1alpha1.RestoreVolumeComplete,
@@ -164,10 +177,16 @@ func (ro *Options) processRestoreResult(
 		}
 
 	case v1alpha1.BackupTypeData:
+		updateStatus := &controller.RestoreUpdateStatus{
+			TimeCompleted: &metav1.Time{Time: time.Now()},
+		}
+		if restore.Status.TimeStarted.IsZero() {
+			updateStatus.TimeStarted = &metav1.Time{Time: started}
+		}
 		if err := statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:   v1alpha1.RestoreDataComplete,
 			Status: corev1.ConditionTrue,
-		}, nil); err != nil {
+		}, updateStatus); err != nil {
 			return false, fmt.Errorf("cluster %s, update restore status data-complete failed, err: %v", ro, err)
 		}
 		klog.Infof("Restore TiKV-data for cluster %s successfully", ro)

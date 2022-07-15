@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 
@@ -194,12 +195,15 @@ func (rm *restoreManager) tryRestoreIfCanSnapshot(
 
 	switch r.Status.Phase {
 	case v1alpha1.RestoreVolumeComplete:
+		klog.Infof("restore-manager prepares to deal with the phase VolumeComplete")
+
 		// setRestoreVolumeID for all PVs, and reset PVC/PVs,
 		// then commit all PVC/PVs for TiKV restore volumes
 		if reason, err := s.PrepareRestoreMetadata(r); err != nil {
 			// wait for TiKV running then spwan new Job for BR to
 			// deal with data consistency for TiKV restore data
 			if _, ok := err.(*snapshotter.NoPreparedError); ok {
+				r.Annotations[label.AnnJobNameSuffixKey] = string(r.Spec.Type)
 				return true, "", nil
 			}
 
@@ -214,18 +218,20 @@ func (rm *restoreManager) tryRestoreIfCanSnapshot(
 				tc.Annotations = make(map[string]string)
 			}
 			tc.Annotations[label.AnnWaitTiKVVolumesKey] = restoreMark
-			if _, err := rm.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil); err != nil {
+			if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
 				return false, "AddTCAnnWaitTiKVFailed", err
 			}
 		}
 		return false, "", nil
 
 	case v1alpha1.RestoreDataComplete:
+		klog.Infof("restore-manager prepares to deal with the phase DataComplete")
+
 		// clear out the recovery marks in TidbCluster,
 		// may manual restart the the cluster or all TiKVs
 		tc.Spec.RecoveryMode = false
 		delete(tc.Annotations, label.AnnWaitTiKVVolumesKey)
-		if _, err := rm.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil); err != nil {
+		if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
 			return false, "ClearTCRecoveryMarkFailed", err
 		}
 

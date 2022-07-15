@@ -1157,7 +1157,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 		},
 	}
 
-	m := NewRestoreStoresMixture(sAWS)
+	m := NewRestoreStoresMixture(sAWS, false)
 	m.ProcessCSBPVCsAndPVs(csb)
 
 	// happy path for backup-volumeID mapping restore-volumeID

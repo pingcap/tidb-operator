@@ -431,3 +431,13 @@ func GetContextForTerminationSignals(op string) (context.Context, context.Cancel
 	}()
 	return ctx, cancel
 }
+
+// GetSliceExcludeString get a slice of strings that excludes the specified substring
+func GetSliceExcludeOneString(strs []string, str string) []string {
+	for i := range strs {
+		if strings.Contains(strs[i], str) {
+			return append(strs[:i], strs[i+1:]...)
+		}
+	}
+	return strs
+}

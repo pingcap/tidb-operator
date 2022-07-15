@@ -1,7 +1,7 @@
 apiVersion: pingcap.com/v1alpha1
 kind: Backup
 metadata:
-  name: basic-backup-ebs
+  name: bk-ebs
   namespace: default
 spec:
   cleanPolicy: Delete
@@ -25,12 +25,10 @@ spec:
     options:
     - --skip-aws=true
     - --check-requirements=false
-  local:
-    volume:
-      name: xhostpath
-      hostPath:
-        path: /home
-        type: DirectoryOrCreate
-    volumeMount:
-      name: xhostpath
-      mountPath: /mnt
+  s3:
+    provider: aws
+    secretName: minio-secret
+    region: minio
+    bucket: test-br
+    prefix: prefix-1
+    endpoint: http://minio.velero.svc:9000

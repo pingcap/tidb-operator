@@ -99,7 +99,7 @@ func (c *Controller) processNextWorkItem() bool {
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			klog.V(4).Infof("Restore: %v, ignore err: %v", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("Restore: %v, sync failed, err: %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("restore: %v, sync failed, err: %v, requeuing", key.(string), err))
 			c.queue.AddRateLimited(key)
 		}
 	} else {
@@ -110,6 +110,7 @@ func (c *Controller) processNextWorkItem() bool {
 
 // sync syncs the given restore.
 func (c *Controller) sync(key string) error {
+	klog.Infof("restore-manager sync-key %s", key)
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing Restore %q (%v)", key, time.Since(startTime))
@@ -120,6 +121,7 @@ func (c *Controller) sync(key string) error {
 		return err
 	}
 	restore, err := c.deps.RestoreLister.Restores(ns).Get(name)
+	klog.Infof("restore-manager sync %v", restore)
 	if errors.IsNotFound(err) {
 		klog.Infof("Restore has been deleted %v", key)
 		return nil
@@ -131,12 +133,16 @@ func (c *Controller) sync(key string) error {
 	return c.syncRestore(restore.DeepCopy())
 }
 
-func (c *Controller) syncRestore(tc *v1alpha1.Restore) error {
-	return c.control.UpdateRestore(tc)
+func (c *Controller) syncRestore(restore *v1alpha1.Restore) error {
+	return c.control.UpdateRestore(restore)
 }
 
 func (c *Controller) updateRestore(cur interface{}) {
 	newRestore := cur.(*v1alpha1.Restore)
+	klog.Infof("restore-manager update %v", newRestore)
+	klog.Infof("restore-manager update status- %s", newRestore.Status.Phase)
+	klog.Infof("restore-manager update conditions- %v", newRestore.Status.Conditions)
+
 	ns := newRestore.GetNamespace()
 	name := newRestore.GetName()
 
@@ -152,6 +158,42 @@ func (c *Controller) updateRestore(cur interface{}) {
 
 	if v1alpha1.IsRestoreFailed(newRestore) {
 		klog.V(4).Infof("restore %s/%s is Failed, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsRestoreDataComplete(newRestore) {
+		tc, err := c.getTC(newRestore)
+		if err != nil {
+			klog.Errorf("Fail to get tidbcluster for restore %s/%s, %v", ns, name, err)
+			return
+		}
+		if tc.IsRecoveryMode() {
+			c.enqueueRestore(newRestore)
+			return
+		}
+
+		klog.V(4).Infof("restore %s/%s is DataComplete, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsRestoreVolumeComplete(newRestore) {
+		tc, err := c.getTC(newRestore)
+		if err != nil {
+			klog.Errorf("Fail to get tidbcluster for restore %s/%s, %v", ns, name, err)
+			return
+		}
+
+		if newRestore.Spec.Type == v1alpha1.BackupTypeData {
+			c.enqueueRestore(newRestore)
+			return
+		}
+
+		if _, ok := tc.Annotations[label.AnnWaitTiKVVolumesKey]; ok {
+			klog.V(4).Infof("restore %s/%s is already VolumeComplete, skipping.", ns, name)
+			return
+		}
+
+		c.enqueueRestore(newRestore)
 		return
 	}
 
@@ -185,6 +227,7 @@ func (c *Controller) updateRestore(cur interface{}) {
 		return
 	}
 
+	klog.Infof("restore-manager object %s/%s enqueue, status: %v", ns, name, newRestore.Status)
 	klog.V(4).Infof("restore object %s/%s enqueue", ns, name)
 	c.enqueueRestore(newRestore)
 }
@@ -193,8 +236,17 @@ func (c *Controller) updateRestore(cur interface{}) {
 func (c *Controller) enqueueRestore(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
+		utilruntime.HandleError(fmt.Errorf("cound't get key for object %+v: %v", obj, err))
 		return
 	}
 	c.queue.Add(key)
+}
+
+func (c *Controller) getTC(restore *v1alpha1.Restore) (*v1alpha1.TidbCluster, error) {
+	restoreNamespace := restore.GetNamespace()
+	if restore.Spec.BR.ClusterNamespace != "" {
+		restoreNamespace = restore.Spec.BR.ClusterNamespace
+	}
+
+	return c.deps.TiDBClusterLister.TidbClusters(restoreNamespace).Get(restore.Spec.BR.Cluster)
 }

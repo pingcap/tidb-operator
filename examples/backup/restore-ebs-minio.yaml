@@ -1,10 +1,9 @@
 apiVersion: pingcap.com/v1alpha1
-kind: Backup
+kind: Restore
 metadata:
-  name: basic-backup-ebs
+  name: rt-ebs
   namespace: default
 spec:
-  cleanPolicy: Delete
   backupType: ebs
   # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
   # from:
@@ -13,6 +12,7 @@ spec:
   #   user: ${tidb-user}
   #   secretName: backup-basic-tidb-secret
   toolImage: localhost:5000/pingcap/br:latest
+  dryRun: true
   br:
     cluster: basic
     clusterNamespace: default
@@ -22,15 +22,15 @@ spec:
     # rateLimit: 0
     # checksum: true
     # sendCredToTikv: true
+    # options:
+    # - --lastbackupts=420134118382108673
     options:
     - --skip-aws=true
     - --check-requirements=false
-  local:
-    volume:
-      name: xhostpath
-      hostPath:
-        path: /home
-        type: DirectoryOrCreate
-    volumeMount:
-      name: xhostpath
-      mountPath: /mnt
+  s3:
+    provider: aws
+    secretName: minio-secret
+    region: minio
+    bucket: test-br
+    prefix: prefix-1
+    endpoint: http://minio.velero.svc:9000

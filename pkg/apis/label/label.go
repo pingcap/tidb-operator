@@ -125,6 +125,9 @@ const (
 	// AnnWaitTiKVVolumesKey is the annotation key for TiKV wait volumes from snapshot to restore
 	AnnWaitTiKVVolumesKey string = "tidb.pingcap.com/wait-tikv-volumes"
 
+	// AnnJobNameSuffixKey is the annotation key for the suffix of job name
+	AnnJobNameSuffixKey string = "tidb.pingcap.com/job-name-suffix"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value

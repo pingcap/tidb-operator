@@ -30,20 +30,28 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/klog/v2"
 )
 
 type Snapshotter interface {
-	// Init prepares the Snapshotter for usage, it would add specific parameters as config map[string]string in the future.
+	// Init prepares the Snapshotter for usage, it would add
+	// specific parameters as config map[string]string in the future.
 	Init(deps *controller.Dependencies, conf map[string]string) error
 
-	// GetVolumeID returns the cloud provider specific identifier for the PersistentVolume.
+	// GetVolumeID returns the cloud provider specific identifier
+	// for the PersistentVolume-PV.
 	GetVolumeID(pv *corev1.PersistentVolume) (string, error)
 
+	// PrepareBackupMetadata performs the preparations for creating
+	// a snapshot from the used volume for PV/PVC.
 	PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error)
 
+	// PrepareRestoreMetadata performs the preparations for creating
+	// a volume from the snapshot that has been backed up.
 	PrepareRestoreMetadata(r *v1alpha1.Restore) (string, error)
 
-	// SetVolumeID sets the cloud provider specific identifier for the PersistentVolume.
+	// SetVolumeID sets the cloud provider specific identifier
+	// for the PersistentVolume-PV.
 	SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error
 }
 
@@ -169,6 +177,8 @@ type StoresMixture struct {
 	rsVolIDMap map[string]string
 	// support snapshot for the cloudprovider
 	snapshotter Snapshotter
+	// dry-run mode for local pv test
+	dryRun bool
 }
 
 func NewIntactStoresMixture(
@@ -208,10 +218,11 @@ func NewBackupStoresMixture(
 	}
 }
 
-func NewRestoreStoresMixture(s Snapshotter) *StoresMixture {
+func NewRestoreStoresMixture(s Snapshotter, dryRun bool) *StoresMixture {
 	return &StoresMixture{
 		rsVolIDMap:  make(map[string]string),
 		snapshotter: s,
+		dryRun:      dryRun,
 	}
 }
 
@@ -270,7 +281,8 @@ func (m *StoresMixture) extractVolumeIDs() (string, error) {
 		}
 		mpVolIDMap[mp] = volID
 
-		// set volume-id into pv-annotation temporarily for restore to locate pv mapping volume-id quickly
+		// set volume-id into pv-annotation temporarily for
+		// restore to locate pv mapping volume-id quickly
 		if pv.Annotations == nil {
 			pv.Annotations = make(map[string]string)
 		}
@@ -378,6 +390,9 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(csb *CloudSnapBackup) (string, erro
 	m.generateRestoreVolumeIDMap(csb.TiKV.Stores)
 
 	for i, pv := range pvs {
+
+		klog.Infof("snapshotter-pv: %v", pv)
+
 		// Reset the PV's binding status so that Kubernetes can properly
 		// associate it with the restored PVC.
 		resetVolumeBindingInfo(pvcs[i], pv)
@@ -405,8 +420,10 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snap
 		return reason, err
 	}
 
-	m := NewRestoreStoresMixture(execr)
-	m.ProcessCSBPVCsAndPVs(csb)
+	m := NewRestoreStoresMixture(execr, r.Spec.DryRun)
+	if reason, err := m.ProcessCSBPVCsAndPVs(csb); err != nil {
+		return reason, err
+	}
 
 	// commit new PVs and PVCs to kubernetes api-server
 	if reason, err := commitPVsAndPVCsToK8S(s.deps, r, csb.Kubernetes.PVCs, csb.Kubernetes.PVs); err != nil {
@@ -435,6 +452,10 @@ func commitPVsAndPVCsToK8S(
 	r *v1alpha1.Restore,
 	pvcs []*corev1.PersistentVolumeClaim,
 	pvs []*corev1.PersistentVolume) (string, error) {
+	if r.Spec.DryRun {
+		return "", nil
+	}
+
 	for _, pv := range pvs {
 		if err := deps.PVControl.CreatePV(r, pv); err != nil {
 			return "CreatePVFailed", err
@@ -471,6 +492,10 @@ func (m *StoresMixture) resetRestoreVolumeID(pv *corev1.PersistentVolume) (strin
 	var rsVolID string
 	if rsVolID, ok = m.rsVolIDMap[volID]; !ok {
 		return "GetRestoreVolumeIDFailed", fmt.Errorf("%s volumeID-%s mapping restoreVolumeID not found", pv.GetName(), volID)
+	}
+
+	if m.dryRun {
+		return "", nil
 	}
 
 	if err := m.snapshotter.SetVolumeID(pv, rsVolID); err != nil {

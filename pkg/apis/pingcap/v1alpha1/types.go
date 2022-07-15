@@ -1956,6 +1956,10 @@ type RestoreSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of restore
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// DryRun mode for local test
+	DryRun bool `json:"dryRun,omitempty"`
+
 	// ToolImage specifies the tool image used in `Restore`, which supports BR and TiDB Lightning images.
 	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/tidb-lightning:v4.0.8`
 	// For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.

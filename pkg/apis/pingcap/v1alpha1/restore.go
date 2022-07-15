@@ -23,7 +23,11 @@ import (
 
 // GetRestoreJobName return the restore job name
 func (rs *Restore) GetRestoreJobName() string {
-	return fmt.Sprintf("restore-%s", rs.GetName())
+	name := fmt.Sprintf("restore-%s", rs.GetName())
+	if suffix, ok := rs.Annotations[label.AnnJobNameSuffixKey]; ok {
+		name = fmt.Sprintf("%s-%s", name, suffix)
+	}
+	return name
 }
 
 // GetInstanceName return the restore instance name
@@ -116,5 +120,17 @@ func IsRestoreRunning(restore *Restore) bool {
 // IsRestoreFailed returns true if a Restore is Failed
 func IsRestoreFailed(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreFailed)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreVolumeComplete returns true if a Restore for volume has successfully completed
+func IsRestoreVolumeComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreVolumeComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreDataComplete returns true if a Restore for data consistency has successfully completed
+func IsRestoreDataComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreDataComplete)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }

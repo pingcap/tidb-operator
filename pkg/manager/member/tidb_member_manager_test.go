@@ -555,6 +555,32 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 }
 
+func TestSyncRecoveryForTidbCluster(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbClusterForTiDB()
+	tmm, _, _, _ := newFakeTiDBMemberManager()
+	err := tmm.syncRecoveryForTidbCluster(tc)
+	g.Expect(err).To(BeNil())
+
+	tc.Spec.RecoveryMode = true
+	err = tmm.syncRecoveryForTidbCluster(tc)
+	g.Expect(err).To(BeNil())
+
+	if len(tc.GetAnnotations()) == 0 {
+		tc.Annotations = make(map[string]string)
+	}
+	tc.Annotations[label.AnnWaitTiKVVolumesKey] = "default-rt-cloud-test"
+	err = tmm.syncRecoveryForTidbCluster(tc)
+	g.Expect(err).NotTo(BeNil())
+
+	ann := tc.Annotations[label.AnnWaitTiKVVolumesKey]
+	strs := strings.SplitN(ann, "-", 2)
+	rtNs := strs[0]
+	rtName := strs[1]
+	g.Expect(rtNs).To(Equal("default"))
+	g.Expect(rtName).To(Equal("rt-cloud-test"))
+}
+
 func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {

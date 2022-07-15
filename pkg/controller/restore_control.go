@@ -57,7 +57,6 @@ func (c *realRestoreControl) UpdateRestore(rs *v1alpha1.Restore) (*v1alpha1.Rest
 	ns := rs.GetNamespace()
 	rsName := rs.GetName()
 
-	status := rs.Status.DeepCopy()
 	var updateRs *v1alpha1.Restore
 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
@@ -71,9 +70,7 @@ func (c *realRestoreControl) UpdateRestore(rs *v1alpha1.Restore) (*v1alpha1.Rest
 		klog.V(4).Infof("failed to update Restore: [%s/%s], error: %v", ns, rsName, updateErr)
 
 		if updated, err := c.rsLister.Restores(ns).Get(rsName); err == nil {
-			// make a copy so we don't mutate the shared cache
-			rs = updated.DeepCopy()
-			rs.Status = *status
+			rs.ResourceVersion = updated.ResourceVersion
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated Restore %s/%s from lister: %v", ns, rsName, err))
 		}

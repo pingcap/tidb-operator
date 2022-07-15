@@ -6563,6 +6563,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"dryRun": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DryRun mode for local test",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"toolImage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ToolImage specifies the tool image used in `Restore`, which supports BR and TiDB Lightning images. For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/tidb-lightning:v4.0.8` For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.",
