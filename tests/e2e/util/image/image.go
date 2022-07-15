@@ -57,6 +57,7 @@ const (
 	DMMonitorInitializerImage     = "pingcap/dm-monitor-initializer"
 	DMMonitorInitializerVersion   = DMV2
 	TiDBNGMonitoringLatest        = "v5.4.0"
+	HelperImage                   = "alpine:3.16.0"
 )
 
 func ListImages() []string {
