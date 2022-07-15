@@ -114,6 +114,11 @@ func (in *BRConfig) DeepCopyInto(out *BRConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.CheckRequirements != nil {
+		in, out := &in.CheckRequirements, &out.CheckRequirements
+		*out = new(bool)
+		**out = **in
+	}
 	if in.SendCredToTikv != nil {
 		in, out := &in.SendCredToTikv, &out.SendCredToTikv
 		*out = new(bool)

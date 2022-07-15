@@ -1748,6 +1748,8 @@ type BRConfig struct {
 	TimeAgo string `json:"timeAgo,omitempty"`
 	// Checksum specifies whether to run checksum after backup
 	Checksum *bool `json:"checksum,omitempty"`
+	// CheckRequirements specifies whether to check requirements
+	CheckRequirements *bool `json:"checkRequirements,omitempty"`
 	// SendCredToTikv specifies whether to send credentials to TiKV
 	SendCredToTikv *bool `json:"sendCredToTikv,omitempty"`
 	// OnLine specifies whether online during restore
