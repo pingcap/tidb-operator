@@ -15,18 +15,15 @@ package member
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -55,25 +52,6 @@ func newMockPVC(name, storageClass, storageRequest, capacity string) *v1.Persist
 	}
 }
 
-func newFullPVC(name, component, storageClass, storageRequest, capacity, nameLabel, instance string) *v1.PersistentVolumeClaim {
-	pvc := newMockPVC(name, storageClass, storageRequest, capacity)
-	pvc.Labels = map[string]string{
-		label.NameLabelKey:      nameLabel,
-		label.ManagedByLabelKey: label.TiDBOperator,
-		label.InstanceLabelKey:  instance,
-		label.ComponentLabelKey: component,
-	}
-	return pvc
-}
-
-func newPVCWithStorage(name string, component string, storageClass, storageRequest string) *v1.PersistentVolumeClaim {
-	return newFullPVC(name, component, storageClass, storageRequest, storageRequest, "tidb-cluster", "tc")
-}
-
-func newDMPVCWithStorage(name string, component string, storageClass, storageRequest string) *v1.PersistentVolumeClaim {
-	return newFullPVC(name, component, storageClass, storageRequest, storageRequest, "dm-cluster", "dc")
-}
-
 func newStorageClass(name string, volumeExpansion bool) *storagev1.StorageClass {
 	return &storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
@@ -83,607 +61,309 @@ func newStorageClass(name string, volumeExpansion bool) *storagev1.StorageClass 
 	}
 }
 
-func TestPVCResizer(t *testing.T) {
-	tests := []struct {
-		name     string
-		tc       *v1alpha1.TidbCluster
-		sc       *storagev1.StorageClass
-		pvcs     []*v1.PersistentVolumeClaim
-		wantPVCs []*v1.PersistentVolumeClaim
-		wantErr  error
-		expect   func(g *gomega.WithT, tc *v1alpha1.TidbCluster)
+func TestResizeVolumes(t *testing.T) {
+	scName := "sc"
+
+	testcases := map[string]struct {
+		setup  func(ctx *componentVolumeContext)
+		expect func(g *GomegaWithT, resizer *pvcResizer, ctx *componentVolumeContext, err error)
 	}{
-		{
-			name: "no PVCs",
-			tc: &v1alpha1.TidbCluster{
-				Spec: v1alpha1.TidbClusterSpec{},
-			},
-		},
-		{
-			name: "resize PD PVCs",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "tc",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					PD: &v1alpha1.PDSpec{
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("2Gi"),
-							},
+		"all volumes are resized": {
+			setup: func(ctx *componentVolumeContext) {
+				tc := ctx.cluster.(*v1alpha1.TidbCluster)
+				ctx.status = &tc.Status.PD
+
+				tc.Status.PD.Conditions = nil
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				ctx.actualPodVolumes = []*podVolumeContext{
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-0"},
 						},
-						StorageClassName: pointer.StringPtr("sc"),
-						Replicas:         3,
-						StorageVolumes: []v1alpha1.StorageVolume{
-							{
-								Name:        "log",
-								StorageSize: "2Gi",
-							},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")},
 						},
 					},
-				},
-			},
-			sc: newStorageClass("sc", true),
-			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("pd-tc-pd-1", label.PDLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("pd-tc-pd-2", label.PDLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("pd-log-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("pd-log-tc-pd-1", label.PDLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("pd-log-tc-pd-2", label.PDLabelVal, "sc", "1Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("pd-tc-pd-1", label.PDLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("pd-tc-pd-2", label.PDLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("pd-log-tc-pd-0", label.PDLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("pd-log-tc-pd-1", label.PDLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("pd-log-tc-pd-2", label.PDLabelVal, "sc", "2Gi"),
-			},
-			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
-					"pd": {
-						Name: "pd",
-						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
-							BoundCount:      3,
-							CurrentCount:    3,
-							ResizedCount:    0,
-							CurrentCapacity: resource.MustParse("1Gi"),
-							ResizedCapacity: resource.MustParse("2Gi"),
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-2"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi")},
 						},
 					},
-					"pd-log": {
-						Name: "pd-log",
-						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
-							BoundCount:      3,
-							CurrentCount:    3,
-							ResizedCount:    0,
-							CurrentCapacity: resource.MustParse("1Gi"),
-							ResizedCapacity: resource.MustParse("2Gi"),
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-3"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi")},
 						},
 					},
 				}
-				diff := cmp.Diff(expectStatus, tc.Status.PD.Volumes)
-				g.Expect(diff).To(gomega.BeEmpty(), "unexpected (-want, +got): %s", diff)
+			},
+			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
+				g.Expect(err).Should(Succeed())
 			},
 		},
-		{
-			name: "resize TiDB PVCs",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "tc",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: &v1alpha1.TiDBSpec{
-						StorageVolumes: []v1alpha1.StorageVolume{
-							{
-								Name:        "log",
-								StorageSize: "2Gi",
-							},
-						},
-						Replicas: 3,
+		"end resizing": {
+			setup: func(ctx *componentVolumeContext) {
+				tc := ctx.cluster.(*v1alpha1.TidbCluster)
+				ctx.status = &tc.Status.PD
+
+				tc.Status.PD.Conditions = []metav1.Condition{
+					{
+						Type:    v1alpha1.ComponentVolumeResizing,
+						Status:  metav1.ConditionTrue,
+						Reason:  "BeginResizing",
+						Message: "Set resizing condition to begin resizing",
 					},
-				},
-			},
-			sc: newStorageClass("sc", true),
-			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("tidb-log-tc-tidb-0", label.TiDBLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tidb-log-tc-tidb-1", label.TiDBLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tidb-log-tc-tidb-2", label.TiDBLabelVal, "sc", "1Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("tidb-log-tc-tidb-0", label.TiDBLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tidb-log-tc-tidb-1", label.TiDBLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tidb-log-tc-tidb-2", label.TiDBLabelVal, "sc", "2Gi"),
-			},
-			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
-					"tidb-log": {
-						Name: "tidb-log",
-						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
-							BoundCount:      3,
-							CurrentCount:    3,
-							ResizedCount:    0,
-							CurrentCapacity: resource.MustParse("1Gi"),
-							ResizedCapacity: resource.MustParse("2Gi"),
+				}
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				ctx.actualPodVolumes = []*podVolumeContext{
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-0"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")},
+						},
+					},
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-2"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi")},
+						},
+					},
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-3"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi")},
 						},
 					},
 				}
-				diff := cmp.Diff(expectStatus, tc.Status.TiDB.Volumes)
-				g.Expect(diff).To(gomega.BeEmpty(), "unexpected (-want, +got): %s", diff)
+			},
+			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
+				g.Expect(err).Should(Succeed())
+				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.GetMemberType())).Should(BeFalse())
 			},
 		},
-		{
-			name: "resize TiKV PVCs",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "tc",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: &v1alpha1.TiKVSpec{
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("2Gi"),
-							},
+		"begin resizing": {
+			setup: func(ctx *componentVolumeContext) {
+				tc := ctx.cluster.(*v1alpha1.TidbCluster)
+				ctx.status = &tc.Status.PD
+
+				tc.Status.PD.Conditions = nil
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				ctx.actualPodVolumes = []*podVolumeContext{
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-0"},
 						},
-						StorageClassName: pointer.StringPtr("sc"),
-						StorageVolumes: []v1alpha1.StorageVolume{
-							{
-								Name:        "log",
-								StorageSize: "2Gi",
-							},
-						},
-						Replicas: 3,
-					},
-				},
-			},
-			sc: newStorageClass("sc", true),
-			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("tikv-tc-tikv-0", label.TiKVLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tikv-tc-tikv-1", label.TiKVLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tikv-tc-tikv-2", label.TiKVLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tikv-log-tc-tikv-0", label.TiKVLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tikv-log-tc-tikv-1", label.TiKVLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("tikv-log-tc-tikv-2", label.TiKVLabelVal, "sc", "1Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("tikv-tc-tikv-0", label.TiKVLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tikv-tc-tikv-1", label.TiKVLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tikv-tc-tikv-2", label.TiKVLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tikv-log-tc-tikv-0", label.TiKVLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tikv-log-tc-tikv-1", label.TiKVLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("tikv-log-tc-tikv-2", label.TiKVLabelVal, "sc", "2Gi"),
-			},
-			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
-					"tikv": {
-						Name: "tikv",
-						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
-							BoundCount:      3,
-							CurrentCount:    3,
-							ResizedCount:    0,
-							CurrentCapacity: resource.MustParse("1Gi"),
-							ResizedCapacity: resource.MustParse("2Gi"),
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "1Gi")},
 						},
 					},
-					"tikv-log": {
-						Name: "tikv-log",
-						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
-							BoundCount:      3,
-							CurrentCount:    3,
-							ResizedCount:    0,
-							CurrentCapacity: resource.MustParse("1Gi"),
-							ResizedCapacity: resource.MustParse("2Gi"),
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-2"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi")},
+						},
+					},
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-3"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi")},
 						},
 					},
 				}
-				diff := cmp.Diff(expectStatus, tc.Status.TiKV.Volumes)
-				g.Expect(diff).To(gomega.BeEmpty(), "unexpected (-want, +got): %s", diff)
+			},
+			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
+				g.Expect(err).Should(HaveOccurred())
+				g.Expect(err.Error()).Should(ContainSubstring("set condition before resizing volumes"))
+				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.GetMemberType())).Should(BeTrue())
 			},
 		},
-		{
-			name: "resize TiFlash PVCs",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "tc",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TiFlash: &v1alpha1.TiFlashSpec{
-						Replicas: 1,
-						StorageClaims: []v1alpha1.StorageClaim{
-							{
-								Resources: v1.ResourceRequirements{
-									Requests: v1.ResourceList{
-										v1.ResourceStorage: resource.MustParse("2Gi"),
-									},
-								},
-								StorageClassName: pointer.StringPtr("sc"),
-							},
-							{
-								Resources: v1.ResourceRequirements{
-									Requests: v1.ResourceList{
-										v1.ResourceStorage: resource.MustParse("3Gi"),
-									},
-								},
-								StorageClassName: pointer.StringPtr("sc"),
-							},
+		"need to resize some volumes": {
+			setup: func(ctx *componentVolumeContext) {
+				tc := ctx.cluster.(*v1alpha1.TidbCluster)
+				ctx.status = &tc.Status.PD
+
+				tc.Status.PD.Conditions = []metav1.Condition{
+					{
+						Type:    v1alpha1.ComponentVolumeResizing,
+						Status:  metav1.ConditionTrue,
+						Reason:  "BeginResizing",
+						Message: "Set resizing condition to begin resizing",
+					},
+				}
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				ctx.actualPodVolumes = []*podVolumeContext{
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-0"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")},
 						},
 					},
-				},
-			},
-			sc: newStorageClass("sc", true),
-			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("data0-tc-tiflash-0", label.TiFlashLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("data1-tc-tiflash-0", label.TiFlashLabelVal, "sc", "1Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("data0-tc-tiflash-0", label.TiFlashLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("data1-tc-tiflash-0", label.TiFlashLabelVal, "sc", "3Gi"),
-			},
-			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
-					"data0": {
-						Name: "data0",
-						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
-							BoundCount:      1,
-							CurrentCount:    1,
-							ResizedCount:    0,
-							CurrentCapacity: resource.MustParse("1Gi"),
-							ResizedCapacity: resource.MustParse("2Gi"),
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-2"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-2", scName, "1Gi", "1Gi")},
 						},
 					},
-					"data1": {
-						Name: "data1",
-						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
-							BoundCount:      1,
-							CurrentCount:    1,
-							ResizedCount:    0,
-							CurrentCapacity: resource.MustParse("1Gi"),
-							ResizedCapacity: resource.MustParse("3Gi"),
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-3"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-3", scName, "1Gi", "1Gi")},
 						},
 					},
 				}
-				diff := cmp.Diff(expectStatus, tc.Status.TiFlash.Volumes)
-				g.Expect(diff).To(gomega.BeEmpty(), "unexpected (-want, +got): %s", diff)
+			},
+			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
+				g.Expect(err).Should(Succeed())
+				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.GetMemberType())).Should(BeTrue())
+
+				cli := resizer.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ctx.cluster.GetNamespace())
+
+				pvc, err := cli.Get(context.TODO(), "volume-1-pvc-1", metav1.GetOptions{})
+				g.Expect(err).To(Succeed())
+				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"))).To(BeEmpty(), "-want, +got")
+
+				pvc, err = cli.Get(context.TODO(), "volume-1-pvc-2", metav1.GetOptions{})
+				g.Expect(err).To(Succeed())
+				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi"))).To(BeEmpty(), "-want, +got")
+
+				pvc, err = cli.Get(context.TODO(), "volume-1-pvc-3", metav1.GetOptions{})
+				g.Expect(err).To(Succeed())
+				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-3", scName, "1Gi", "1Gi"))).To(BeEmpty(), "-want, +got")
 			},
 		},
-		{
-			name: "resize TiCDC PVCs",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "tc",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TiCDC: &v1alpha1.TiCDCSpec{
-						Replicas: 3,
-						StorageVolumes: []v1alpha1.StorageVolume{
-							{
-								Name:        "sort-dir",
-								StorageSize: "2Gi",
-							},
+		"some volumes are resizing": {
+			setup: func(ctx *componentVolumeContext) {
+				tc := ctx.cluster.(*v1alpha1.TidbCluster)
+				ctx.status = &tc.Status.PD
+
+				tc.Status.PD.Conditions = []metav1.Condition{
+					{
+						Type:    v1alpha1.ComponentVolumeResizing,
+						Status:  metav1.ConditionTrue,
+						Reason:  "BeginResizing",
+						Message: "Set resizing condition to begin resizing",
+					},
+				}
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				ctx.actualPodVolumes = []*podVolumeContext{
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-0"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")},
 						},
 					},
-				},
-			},
-			sc: newStorageClass("sc", true),
-			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-0", label.TiCDCLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-1", label.TiCDCLabelVal, "sc", "1Gi"),
-				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-2", label.TiCDCLabelVal, "sc", "1Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-0", label.TiCDCLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-1", label.TiCDCLabelVal, "sc", "2Gi"),
-				newPVCWithStorage("ticdc-sort-dir-tc-ticdc-2", label.TiCDCLabelVal, "sc", "2Gi"),
-			},
-			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
-					"ticdc-sort-dir": {
-						Name: "ticdc-sort-dir",
-						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
-							BoundCount:      3,
-							CurrentCount:    3,
-							ResizedCount:    0,
-							CurrentCapacity: resource.MustParse("1Gi"),
-							ResizedCapacity: resource.MustParse("2Gi"),
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-2"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi")},
+						},
+					},
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-3"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-3", scName, "1Gi", "1Gi")},
 						},
 					},
 				}
-				diff := cmp.Diff(expectStatus, tc.Status.TiCDC.Volumes)
-				g.Expect(diff).To(gomega.BeEmpty(), "unexpected (-want, +got): %s", diff)
 			},
-		},
-		{
-			name: "resize Pump PVCs",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "tc",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					Pump: &v1alpha1.PumpSpec{
-						StorageClassName: pointer.StringPtr("sc"),
-						Replicas:         1,
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("2Gi"),
-							},
-						},
-					},
-				},
+			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
+				g.Expect(err).Should(Succeed())
+				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.GetMemberType())).Should(BeTrue())
+
+				cli := resizer.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ctx.cluster.GetNamespace())
+
+				pvc, err := cli.Get(context.TODO(), "volume-1-pvc-1", metav1.GetOptions{})
+				g.Expect(err).To(Succeed())
+				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"))).To(BeEmpty(), "-want, +got")
+
+				pvc, err = cli.Get(context.TODO(), "volume-1-pvc-2", metav1.GetOptions{})
+				g.Expect(err).To(Succeed())
+				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi"))).To(BeEmpty(), "-want, +got")
+
+				pvc, err = cli.Get(context.TODO(), "volume-1-pvc-3", metav1.GetOptions{})
+				g.Expect(err).To(Succeed())
+				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-3", scName, "1Gi", "1Gi"))).To(BeEmpty(), "-want, +got")
 			},
-			sc: newStorageClass("sc", true),
-			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("data-tc-pump-0", label.PumpLabelVal, "sc", "1Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("data-tc-pump-0", label.PumpLabelVal, "sc", "2Gi"),
-			},
-			expect: func(g *gomega.WithT, tc *v1alpha1.TidbCluster) {
-				expectStatus := map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
-					"data": {
-						Name: "data",
-						ObservedStorageVolumeStatus: v1alpha1.ObservedStorageVolumeStatus{
-							BoundCount:      1,
-							CurrentCount:    1,
-							ResizedCount:    0,
-							CurrentCapacity: resource.MustParse("1Gi"),
-							ResizedCapacity: resource.MustParse("2Gi"),
-						},
-					},
-				}
-				diff := cmp.Diff(expectStatus, tc.Status.Pump.Volumes)
-				g.Expect(diff).To(gomega.BeEmpty(), "unexpected (-want, +got): %s", diff)
-			},
-		},
-		{
-			name: "storage class is missing",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "tc",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					PD: &v1alpha1.PDSpec{
-						Replicas:         1,
-						StorageClassName: pointer.StringPtr("sc"),
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("2Gi"),
-							},
-						},
-					},
-				},
-			},
-			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-tc-pd-0", label.PDLabelVal, "sc", "1Gi"),
-			},
-			wantErr: apierrors.NewNotFound(storagev1.Resource("storageclass"), "sc"),
-		},
-		{
-			name: "storage class does not support volume expansion",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "tc",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					PD: &v1alpha1.PDSpec{
-						Replicas:         1,
-						StorageClassName: pointer.StringPtr("sc"),
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("2Gi"),
-							},
-						},
-					},
-				},
-			},
-			sc: newStorageClass("sc", false),
-			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "1Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "1Gi"),
-			},
-			wantErr: nil,
-		},
-		{
-			name: "shrinking is not supported",
-			tc: &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "tc",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					PD: &v1alpha1.PDSpec{
-						Replicas:         1,
-						StorageClassName: pointer.StringPtr("sc"),
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("1Gi"),
-							},
-						},
-					},
-				},
-			},
-			sc: newStorageClass("sc", false),
-			pvcs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "2Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "2Gi"),
-			},
-			wantErr: nil,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := gomega.NewGomegaWithT(t)
-
+	for name, tt := range testcases {
+		t.Run(name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-
 			fakeDeps := controller.NewFakeDependencies()
-			for _, pvc := range tt.pvcs {
-				fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
-			}
-			if tt.sc != nil {
-				fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(context.TODO(), tt.sc, metav1.CreateOptions{})
-			}
-			for _, pod := range newPodsFromTC(tt.tc) {
-				fakeDeps.KubeClientset.CoreV1().Pods(tt.tc.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
-			}
-
-			resizer := NewPVCResizer(fakeDeps)
-
 			informerFactory := fakeDeps.KubeInformerFactory
+
+			resizer := &pvcResizer{
+				deps: fakeDeps,
+			}
+			tc := &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{Namespace: v1.NamespaceDefault, Name: "test-cluster"},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						Replicas: 3,
+					},
+				},
+			}
+			vctx := &componentVolumeContext{
+				cluster: tc,
+			}
+			tt.setup(vctx)
+
+			for _, podVol := range vctx.actualPodVolumes {
+				if podVol.pod != nil {
+					fakeDeps.KubeClientset.CoreV1().Pods(tc.Namespace).Create(context.TODO(), podVol.pod, metav1.CreateOptions{})
+				}
+				for _, vol := range podVol.volumes {
+					if vol.pvc != nil {
+						fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(tc.Namespace).Create(context.TODO(), vol.pvc, metav1.CreateOptions{})
+					}
+				}
+			}
+			fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(context.TODO(), newStorageClass(scName, true), metav1.CreateOptions{})
 			informerFactory.Start(ctx.Done())
 			informerFactory.WaitForCacheSync(ctx.Done())
 
-			err := resizer.Sync(tt.tc)
-			if tt.wantErr != nil {
-				g.Expect(err.Error()).To(gomega.ContainSubstring(tt.wantErr.Error()))
-			} else {
-				g.Expect(err).To(gomega.Succeed())
-			}
-
-			for i, pvc := range tt.pvcs {
-				wantPVC := tt.wantPVCs[i]
-				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
-				g.Expect(err).To(gomega.Succeed())
-				got.Status.Capacity[v1.ResourceStorage] = got.Spec.Resources.Requests[v1.ResourceStorage] // to ignore resource status
-				diff := cmp.Diff(wantPVC, got)
-				g.Expect(diff).To(gomega.BeEmpty(), "unexpected (-want, +got): %s", diff)
-			}
-
-			if tt.expect != nil {
-				tt.expect(g, tt.tc)
-			}
-		})
-	}
-}
-
-func TestDMPVCResizer(t *testing.T) {
-	tests := []struct {
-		name     string
-		dc       *v1alpha1.DMCluster
-		sc       *storagev1.StorageClass
-		pvcs     []*v1.PersistentVolumeClaim
-		wantPVCs []*v1.PersistentVolumeClaim
-		wantErr  error
-	}{
-		{
-			name: "no PVCs",
-			dc: &v1alpha1.DMCluster{
-				Spec: v1alpha1.DMClusterSpec{},
-			},
-		},
-		{
-			name: "resize dm-master PVCs",
-			dc: &v1alpha1.DMCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "dc",
-				},
-				Spec: v1alpha1.DMClusterSpec{
-					Master: v1alpha1.MasterSpec{
-						StorageSize:      "2Gi",
-						StorageClassName: pointer.StringPtr("sc"),
-						Replicas:         3,
-					},
-				},
-			},
-			sc: newStorageClass("sc", true),
-			pvcs: []*v1.PersistentVolumeClaim{
-				newDMPVCWithStorage("dm-master-dc-dm-master-0", label.DMMasterLabelVal, "sc", "1Gi"),
-				newDMPVCWithStorage("dm-master-dc-dm-master-1", label.DMMasterLabelVal, "sc", "1Gi"),
-				newDMPVCWithStorage("dm-master-dc-dm-master-2", label.DMMasterLabelVal, "sc", "1Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newDMPVCWithStorage("dm-master-dc-dm-master-0", label.DMMasterLabelVal, "sc", "2Gi"),
-				newDMPVCWithStorage("dm-master-dc-dm-master-1", label.DMMasterLabelVal, "sc", "2Gi"),
-				newDMPVCWithStorage("dm-master-dc-dm-master-2", label.DMMasterLabelVal, "sc", "2Gi"),
-			},
-		},
-		{
-			name: "resize dm-worker PVCs",
-			dc: &v1alpha1.DMCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: v1.NamespaceDefault,
-					Name:      "dc",
-				},
-				Spec: v1alpha1.DMClusterSpec{
-					Worker: &v1alpha1.WorkerSpec{
-						StorageSize:      "2Gi",
-						StorageClassName: pointer.StringPtr("sc"),
-						Replicas:         3,
-					},
-				},
-			},
-			sc: newStorageClass("sc", true),
-			pvcs: []*v1.PersistentVolumeClaim{
-				newDMPVCWithStorage("dm-worker-dc-dm-worker-0", label.DMWorkerLabelVal, "sc", "1Gi"),
-				newDMPVCWithStorage("dm-worker-dc-dm-worker-1", label.DMWorkerLabelVal, "sc", "1Gi"),
-				newDMPVCWithStorage("dm-worker-dc-dm-worker-2", label.DMWorkerLabelVal, "sc", "1Gi"),
-			},
-			wantPVCs: []*v1.PersistentVolumeClaim{
-				newDMPVCWithStorage("dm-worker-dc-dm-worker-0", label.DMWorkerLabelVal, "sc", "2Gi"),
-				newDMPVCWithStorage("dm-worker-dc-dm-worker-1", label.DMWorkerLabelVal, "sc", "2Gi"),
-				newDMPVCWithStorage("dm-worker-dc-dm-worker-2", label.DMWorkerLabelVal, "sc", "2Gi"),
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := gomega.NewGomegaWithT(t)
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			fakeDeps := controller.NewFakeDependencies()
-
-			for _, pvc := range tt.pvcs {
-				fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
-			}
-			if tt.sc != nil {
-				fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(context.TODO(), tt.sc, metav1.CreateOptions{})
-			}
-			for _, pod := range newPodsFromDC(tt.dc) {
-				fakeDeps.KubeClientset.CoreV1().Pods(tt.dc.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
-			}
-
-			informerFactory := fakeDeps.KubeInformerFactory
-			resizer := NewPVCResizer(fakeDeps)
-
-			informerFactory.Start(ctx.Done())
-			informerFactory.WaitForCacheSync(ctx.Done())
-
-			err := resizer.SyncDM(tt.dc)
-			if tt.wantErr != nil {
-				g.Expect(err.Error()).To(gomega.ContainSubstring(tt.wantErr.Error()))
-			} else {
-				g.Expect(err).To(gomega.Succeed())
-			}
-
-			for i, pvc := range tt.pvcs {
-				wantPVC := tt.wantPVCs[i]
-				got, err := fakeDeps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
-				g.Expect(err).To(gomega.Succeed())
-				got.Status.Capacity[v1.ResourceStorage] = got.Spec.Resources.Requests[v1.ResourceStorage] // to ignore resource status
-				diff := cmp.Diff(wantPVC, got)
-				g.Expect(diff).To(gomega.BeEmpty(), "unexpected (-want, +got): %s", diff)
-			}
+			err := resizer.resizeVolumes(vctx)
+			tt.expect(g, resizer, vctx, err)
 		})
 	}
 }
@@ -705,21 +385,39 @@ func TestUpdateVolumeStatus(t *testing.T) {
 				}
 				ctx.actualPodVolumes = []*podVolumeContext{
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-1", scName, "2Gi", "1Gi"),
-							"volume-2": newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-1", scName, "2Gi", "1Gi"),
+							},
+							{
+								name: "volume-2",
+								pvc:  newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi"),
+							},
 						},
 					},
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi"),
-							"volume-2": newMockPVC("volume-2-pvc-2", scName, "2Gi", "1Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi"),
+							},
+							{
+								name: "volume-2",
+								pvc:  newMockPVC("volume-2-pvc-2", scName, "2Gi", "1Gi"),
+							},
 						},
 					},
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-3", scName, "2Gi", "1Gi"),
-							"volume-2": newMockPVC("volume-2-pvc-3", scName, "2Gi", "1Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-3", scName, "2Gi", "1Gi"),
+							},
+							{
+								name: "volume-2",
+								pvc:  newMockPVC("volume-2-pvc-3", scName, "2Gi", "1Gi"),
+							},
 						},
 					},
 				}
@@ -756,21 +454,39 @@ func TestUpdateVolumeStatus(t *testing.T) {
 				}
 				ctx.actualPodVolumes = []*podVolumeContext{
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"), // resized
-							"volume-2": newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"), // resized
+							},
+							{
+								name: "volume-2",
+								pvc:  newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi"),
+							},
 						},
 					},
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi"),
-							"volume-2": newMockPVC("volume-2-pvc-2", scName, "2Gi", "2Gi"), // resized
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi"),
+							},
+							{
+								name: "volume-2",
+								pvc:  newMockPVC("volume-2-pvc-2", scName, "2Gi", "2Gi"), // resized
+							},
 						},
 					},
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-3", scName, "2Gi", "1Gi"),
-							"volume-2": newMockPVC("volume-2-pvc-3", scName, "2Gi", "2Gi"), // resized
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-3", scName, "2Gi", "1Gi"),
+							},
+							{
+								name: "volume-2",
+								pvc:  newMockPVC("volume-2-pvc-3", scName, "2Gi", "2Gi"), // resized
+							},
 						},
 					},
 				}
@@ -807,21 +523,39 @@ func TestUpdateVolumeStatus(t *testing.T) {
 				}
 				ctx.actualPodVolumes = []*podVolumeContext{
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"),
-							"volume-2": newMockPVC("volume-2-pvc-1", scName, "2Gi", "2Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"),
+							},
+							{
+								name: "volume-2",
+								pvc:  newMockPVC("volume-2-pvc-1", scName, "2Gi", "2Gi"),
+							},
 						},
 					},
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi"),
-							"volume-2": newMockPVC("volume-2-pvc-2", scName, "2Gi", "2Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi"),
+							},
+							{
+								name: "volume-2",
+								pvc:  newMockPVC("volume-2-pvc-2", scName, "2Gi", "2Gi"),
+							},
 						},
 					},
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi"),
-							"volume-2": newMockPVC("volume-2-pvc-3", scName, "2Gi", "2Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi"),
+							},
+							{
+								name: "volume-2",
+								pvc:  newMockPVC("volume-2-pvc-3", scName, "2Gi", "2Gi"),
+							},
 						},
 					},
 				}
@@ -852,27 +586,38 @@ func TestUpdateVolumeStatus(t *testing.T) {
 		{
 			name: "remove lost volume status",
 			setup: func(ctx *componentVolumeContext) {
-				ctx.sourceVolumeStatus = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
-					"volume-1": {Name: "volume-1"},
-					"volume-2": {Name: "volume-2"},
+				ctx.status = &v1alpha1.PDStatus{
+					Volumes: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
+						"volume-1": {Name: "volume-1"},
+						"volume-2": {Name: "volume-2"},
+					},
 				}
 				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
 					"volume-1": resource.MustParse("2Gi"),
 				}
 				ctx.actualPodVolumes = []*podVolumeContext{
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"),
+							},
 						},
 					},
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi"),
+							},
 						},
 					},
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi"),
+							},
 						},
 					},
 				}
@@ -893,26 +638,37 @@ func TestUpdateVolumeStatus(t *testing.T) {
 		{
 			name: "update existing volume status",
 			setup: func(ctx *componentVolumeContext) {
-				ctx.sourceVolumeStatus = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
-					"volume-1": {Name: "volume-1"},
+				ctx.status = &v1alpha1.PDStatus{
+					Volumes: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{
+						"volume-1": {Name: "volume-1"},
+					},
 				}
 				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
 					"volume-1": resource.MustParse("2Gi"),
 				}
 				ctx.actualPodVolumes = []*podVolumeContext{
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"),
+							},
 						},
 					},
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi"),
+							},
 						},
 					},
 					{
-						volToPVCs: map[v1alpha1.StorageVolumeName]*v1.PersistentVolumeClaim{
-							"volume-1": newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi"),
+						volumes: []*volume{
+							{
+								name: "volume-1",
+								pvc:  newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi"),
+							},
 						},
 					},
 				}
@@ -934,140 +690,621 @@ func TestUpdateVolumeStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := gomega.NewGomegaWithT(t)
+			g := NewGomegaWithT(t)
 			resizer := &pvcResizer{
 				deps: controller.NewFakeDependencies(),
 			}
 
 			ctx := &componentVolumeContext{}
-			ctx.sourceVolumeStatus = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
+			ctx.status = &v1alpha1.PDStatus{
+				Volumes: map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{},
+			}
 			if tt.setup != nil {
 				tt.setup(ctx)
 			}
 
 			resizer.updateVolumeStatus(ctx)
-			diff := cmp.Diff(ctx.sourceVolumeStatus, tt.expect)
-			g.Expect(diff).Should(gomega.BeEmpty(), "unexpected (-want, +got)")
+			diff := cmp.Diff(ctx.status.GetVolumes(), tt.expect)
+			g.Expect(diff).Should(BeEmpty(), "unexpected (-want, +got)")
 		})
 	}
 }
 
-func newPodsFromTC(tc *v1alpha1.TidbCluster) []*corev1.Pod {
-	pods := []*corev1.Pod{}
+func TestClassifyVolumes(t *testing.T) {
+	scName := "sc-1"
 
-	addPods := func(replica int32, comp v1alpha1.MemberType,
-		dataVolumeStorageClass *string, storageVolumes []v1alpha1.StorageVolume, storageClaims []v1alpha1.StorageClaim) {
-		for i := int32(0); i < replica; i++ {
-			pods = append(pods, &corev1.Pod{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Pod",
-					APIVersion: "v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name: func() string {
-						name, _ := MemberPodName(tc.Name, v1alpha1.TiDBClusterKind, i, comp)
-						return name
-					}(),
-					Namespace: tc.GetNamespace(),
-					Labels: map[string]string{
-						label.NameLabelKey:      "tidb-cluster",
-						label.ComponentLabelKey: comp.String(),
-						label.ManagedByLabelKey: label.TiDBOperator,
-						label.InstanceLabelKey:  tc.GetInstanceName(),
-					},
-				},
-				Spec: corev1.PodSpec{
-					Volumes: []corev1.Volume{},
-				},
-			})
-
-		}
-		addVolumeForPod(pods, comp, dataVolumeStorageClass, storageVolumes, storageClaims)
-	}
-
-	if tc.Spec.PD != nil {
-		addPods(tc.Spec.PD.Replicas, v1alpha1.PDMemberType, tc.Spec.PD.StorageClassName, tc.Spec.PD.StorageVolumes, nil)
-	}
-	if tc.Spec.TiDB != nil {
-		addPods(tc.Spec.TiDB.Replicas, v1alpha1.TiDBMemberType, nil, tc.Spec.TiDB.StorageVolumes, nil)
-	}
-	if tc.Spec.TiKV != nil {
-		addPods(tc.Spec.TiKV.Replicas, v1alpha1.TiKVMemberType, tc.Spec.TiKV.StorageClassName, tc.Spec.TiKV.StorageVolumes, nil)
-	}
-	if tc.Spec.TiFlash != nil {
-		addPods(tc.Spec.TiFlash.Replicas, v1alpha1.TiFlashMemberType, nil, nil, tc.Spec.TiFlash.StorageClaims)
-	}
-	if tc.Spec.TiCDC != nil {
-		addPods(tc.Spec.TiCDC.Replicas, v1alpha1.TiCDCMemberType, nil, tc.Spec.TiCDC.StorageVolumes, nil)
-	}
-	if tc.Spec.Pump != nil {
-		addPods(tc.Spec.Pump.Replicas, v1alpha1.PumpMemberType, tc.Spec.Pump.StorageClassName, nil, nil)
-	}
-
-	return pods
-}
-
-func newPodsFromDC(dc *v1alpha1.DMCluster) []*corev1.Pod {
-	pods := []*corev1.Pod{}
-
-	addPods := func(replica int32, comp v1alpha1.MemberType,
-		dataVolumeStorageClass *string, storageVolumes []v1alpha1.StorageVolume) {
-		for i := int32(0); i < replica; i++ {
-			pods = append(pods, &corev1.Pod{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Pod",
-					APIVersion: "v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      fmt.Sprintf("%s-%s-%d", dc.Name, comp.String(), i),
-					Namespace: dc.GetNamespace(),
-					Labels: map[string]string{
-						label.NameLabelKey:      "dm-cluster",
-						label.ComponentLabelKey: comp.String(),
-						label.ManagedByLabelKey: label.TiDBOperator,
-						label.InstanceLabelKey:  dc.GetInstanceName(),
-					},
-				},
-				Spec: corev1.PodSpec{
-					Volumes: []corev1.Volume{},
-				},
-			})
-
-		}
-		addVolumeForPod(pods, comp, dataVolumeStorageClass, storageVolumes, nil)
-	}
-
-	addPods(dc.Spec.Master.Replicas, v1alpha1.DMMasterMemberType, dc.Spec.Master.StorageClassName, nil)
-	if dc.Spec.Worker != nil {
-		addPods(dc.Spec.Worker.Replicas, v1alpha1.DMWorkerMemberType, dc.Spec.Worker.StorageClassName, nil)
-	}
-
-	return pods
-}
-
-func addVolumeForPod(pods []*corev1.Pod, comp v1alpha1.MemberType,
-	dataVolumeStorageClass *string, storageVolumes []v1alpha1.StorageVolume, storageClaims []v1alpha1.StorageClaim) {
-	volumeNames := []string{}
-
-	if dataVolumeStorageClass != nil {
-		volumeNames = append(volumeNames, string(v1alpha1.GetStorageVolumeName("", comp)))
-	}
-	for _, sv := range storageVolumes {
-		volumeNames = append(volumeNames, string(v1alpha1.GetStorageVolumeName(sv.Name, comp)))
-	}
-	for i := range storageClaims {
-		volumeNames = append(volumeNames, string(v1alpha1.GetStorageVolumeNameForTiFlash(i)))
-	}
-
-	for _, volName := range volumeNames {
-		for _, pod := range pods {
-			volume := corev1.Volume{}
-			volume.Name = volName
-			volume.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: fmt.Sprintf("%s-%s", volume.Name, pod.Name),
+	diffVolumes := func(g *GomegaWithT, vols1 map[volumePhase][]*volume, vols2 map[volumePhase][]*volume) {
+		phases := []volumePhase{needResize, resizing, resized}
+		for _, phase := range phases {
+			g.Expect(len(vols1[phase])).Should(Equal(len(vols2[phase])))
+			for i := range vols1[phase] {
+				g.Expect(diffVolume(vols1[phase][i], vols2[phase][i])).Should(BeEmpty(), "unexpected (-want, +got)")
 			}
-			pod.Spec.Volumes = append(pod.Spec.Volumes, volume)
+		}
+	}
+
+	tests := map[string]struct {
+		setup func(*componentVolumeContext) []*volume
+		sc    *storagev1.StorageClass
+
+		expect func(*GomegaWithT, map[volumePhase][]*volume, error)
+	}{
+		"normal": {
+			setup: func(ctx *componentVolumeContext) []*volume {
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+					"volume-2": resource.MustParse("2Gi"),
+					"volume-3": resource.MustParse("2Gi"),
+				}
+				volumes := []*volume{
+					newVolume("volume-1", newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")), // resized
+					newVolume("volume-2", newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi")), // resizing
+					newVolume("volume-3", newMockPVC("volume-3-pvc-1", scName, "1Gi", "1Gi")), // need resize
+				}
+
+				return volumes
+			},
+			sc: newStorageClass(scName, true),
+			expect: func(g *GomegaWithT, volumes map[volumePhase][]*volume, err error) {
+				expectVolumes := map[volumePhase][]*volume{
+					needResize: {
+						newVolume("volume-3", newMockPVC("volume-3-pvc-1", scName, "1Gi", "1Gi")), // need resize
+					},
+					resized: {
+						newVolume("volume-1", newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")), // resized
+					},
+					resizing: {
+						newVolume("volume-2", newMockPVC("volume-2-pvc-1", scName, "2Gi", "1Gi")), // resizing
+					},
+				}
+
+				g.Expect(err).To(Succeed())
+				diffVolumes(g, volumes, expectVolumes)
+			},
+		},
+		"shink storage": {
+			setup: func(ctx *componentVolumeContext) []*volume {
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				volumes := []*volume{
+					newVolume("volume-1", newMockPVC("volume-1-pvc-1", scName, "3Gi", "3Gi")), // need shink
+				}
+				return volumes
+			},
+			sc: newStorageClass(scName, true),
+			expect: func(g *GomegaWithT, volumes map[volumePhase][]*volume, err error) {
+				expectVolumes := map[volumePhase][]*volume{
+					needResize: {},
+					resized:    {},
+					resizing:   {},
+				}
+
+				g.Expect(err).To(Succeed())
+				diffVolumes(g, volumes, expectVolumes)
+			},
+		},
+		"default storage class": {
+			setup: func(ctx *componentVolumeContext) []*volume {
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				vol := newVolume("volume-1", newMockPVC("volume-1-pvc-1", scName, "1Gi", "1Gi"))
+				vol.pvc.Spec.StorageClassName = nil
+				volumes := []*volume{
+					vol,
+				}
+
+				return volumes
+			},
+			sc: newStorageClass(scName, true),
+			expect: func(g *GomegaWithT, volumes map[volumePhase][]*volume, err error) {
+				expectVolumes := map[volumePhase][]*volume{
+					needResize: {},
+					resized:    {},
+					resizing:   {},
+				}
+
+				g.Expect(err).To(Succeed())
+				diffVolumes(g, volumes, expectVolumes)
+			},
+		},
+		"unsupported storage class": {
+			setup: func(ctx *componentVolumeContext) []*volume {
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				volumes := []*volume{
+					newVolume("volume-1", newMockPVC("volume-1-pvc-1", scName, "1Gi", "1Gi")),
+				}
+
+				return volumes
+			},
+			sc: newStorageClass(scName, false),
+			expect: func(g *GomegaWithT, volumes map[volumePhase][]*volume, err error) {
+				expectVolumes := map[volumePhase][]*volume{
+					needResize: {},
+					resized:    {},
+					resizing:   {},
+				}
+
+				g.Expect(err).To(Succeed())
+				diffVolumes(g, volumes, expectVolumes)
+			},
+		},
+		"not exist in desired volumes": {
+			setup: func(ctx *componentVolumeContext) []*volume {
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{}
+				volumes := []*volume{
+					newVolume("volume-1", newMockPVC("volume-1-pvc-1", scName, "1Gi", "1Gi")),
+				}
+
+				return volumes
+			},
+			sc: newStorageClass(scName, false),
+			expect: func(g *GomegaWithT, volumes map[volumePhase][]*volume, err error) {
+				expectVolumes := map[volumePhase][]*volume{
+					needResize: {},
+					resized:    {},
+					resizing:   {},
+				}
+
+				g.Expect(err).To(Succeed())
+				diffVolumes(g, volumes, expectVolumes)
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			resizer := &pvcResizer{
+				deps: controller.NewFakeDependencies(),
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if tt.sc != nil {
+				resizer.deps.KubeClientset.StorageV1().StorageClasses().Create(context.TODO(), tt.sc, metav1.CreateOptions{})
+			}
+			informerFactory := resizer.deps.KubeInformerFactory
+			informerFactory.Start(ctx.Done())
+			informerFactory.WaitForCacheSync(ctx.Done())
+
+			vctx := &componentVolumeContext{}
+			vctx.cluster = &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster"},
+			}
+			vctx.status = &v1alpha1.PDStatus{}
+			vctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{}
+			volumes := tt.setup(vctx)
+			classifiedVolumes, err := resizer.classifyVolumes(vctx, volumes)
+			tt.expect(g, classifiedVolumes, err)
+		})
+	}
+}
+
+func TestResizeHook(t *testing.T) {
+	t.Run("beginResize", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		resizer := &pvcResizer{}
+		tc := &v1alpha1.TidbCluster{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster"},
+			Spec: v1alpha1.TidbClusterSpec{
+				TiKV: &v1alpha1.TiKVSpec{},
+			},
+		}
+		ctx := &componentVolumeContext{
+			cluster: tc,
+			status:  &tc.Status.TiKV,
 		}
 
+		err := resizer.beginResize(ctx)
+		g.Expect(err).To(MatchError(controller.RequeueErrorf("set condition before resizing volumes for test-ns/test-cluster:tikv")))
+		g.Expect(len(tc.Status.TiKV.Conditions)).To(Equal(1))
+		g.Expect(tc.Status.TiKV.Conditions[0].Reason).To(Equal("BeginResizing"))
+		g.Expect(tc.Status.TiKV.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
+		g.Expect(tc.IsComponentVolumeResizing(v1alpha1.TiKVMemberType)).To(BeTrue())
+	})
+
+	t.Run("endResize", func(t *testing.T) {
+		testcases := map[string]struct {
+			setup  func(ctx *componentVolumeContext)
+			expect func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error)
+		}{
+			"set condition": {
+				setup: func(ctx *componentVolumeContext) {
+					ctx.status = &v1alpha1.PDStatus{
+						Conditions: []metav1.Condition{
+							{
+								Type:    v1alpha1.ComponentVolumeResizing,
+								Status:  metav1.ConditionTrue,
+								Reason:  "BeginResizing",
+								Message: "Set resizing condition to begin resizing",
+							},
+						},
+					}
+				},
+				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
+					conds := ctx.status.GetConditions()
+					g.Expect(len(conds)).To(Equal(1))
+					g.Expect(conds[0].Reason).To(Equal("EndResizing"))
+					g.Expect(conds[0].Status).To(Equal(metav1.ConditionFalse))
+					g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(v1alpha1.TiKVMemberType)).To(BeFalse())
+				},
+			},
+			"remove eviction annotation for tikv": {
+				setup: func(ctx *componentVolumeContext) {
+					ctx.status = &v1alpha1.TiKVStatus{}
+					ctx.actualPodVolumes = []*podVolumeContext{
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-0",
+									Annotations: map[string]string{v1alpha1.EvictLeaderAnnKeyForResize: "1"},
+								},
+							},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-1",
+								}},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-2",
+									Annotations: map[string]string{v1alpha1.EvictLeaderAnnKeyForResize: "123"},
+								},
+							},
+						},
+					}
+				},
+				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
+					g.Expect(err).To(Succeed())
+
+					cli := p.deps.KubeClientset.CoreV1().Pods(ctx.cluster.GetNamespace())
+					pod, err := cli.Get(context.TODO(), "test-cluster-tikv-0", metav1.GetOptions{})
+					g.Expect(err).To(Succeed())
+					g.Expect(pod.Annotations).NotTo(HaveKey(v1alpha1.EvictLeaderAnnKeyForResize))
+					pod, err = cli.Get(context.TODO(), "test-cluster-tikv-1", metav1.GetOptions{})
+					g.Expect(err).To(Succeed())
+					g.Expect(pod.Annotations).NotTo(HaveKey(v1alpha1.EvictLeaderAnnKeyForResize))
+					pod, err = cli.Get(context.TODO(), "test-cluster-tikv-2", metav1.GetOptions{})
+					g.Expect(err).To(Succeed())
+					g.Expect(pod.Annotations).NotTo(HaveKey(v1alpha1.EvictLeaderAnnKeyForResize))
+				},
+			},
+		}
+
+		for name, tt := range testcases {
+			t.Run(name, func(t *testing.T) {
+				g := NewGomegaWithT(t)
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				fakeDeps := controller.NewFakeDependencies()
+				informerFactory := fakeDeps.KubeInformerFactory
+
+				resizer := &pvcResizer{
+					deps: fakeDeps,
+				}
+				tc := &v1alpha1.TidbCluster{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster"},
+				}
+				vctx := &componentVolumeContext{
+					cluster: tc,
+				}
+				tt.setup(vctx)
+
+				for _, podVol := range vctx.actualPodVolumes {
+					if podVol.pod != nil {
+						fakeDeps.KubeClientset.CoreV1().Pods(tc.Namespace).Create(context.TODO(), podVol.pod, metav1.CreateOptions{})
+					}
+				}
+				informerFactory.Start(ctx.Done())
+				informerFactory.WaitForCacheSync(ctx.Done())
+
+				err := resizer.endResize(vctx)
+				tt.expect(g, resizer, vctx, err)
+			})
+		}
+	})
+
+	t.Run("beforeResizeForPod", func(t *testing.T) {
+		testcases := map[string]struct {
+			setup  func(ctx *componentVolumeContext) *corev1.Pod
+			expect func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error)
+		}{
+			"succeed": {
+				setup: func(ctx *componentVolumeContext) *corev1.Pod {
+					tc := ctx.cluster.(*v1alpha1.TidbCluster)
+					ctx.status = &tc.Status.TiKV
+
+					tc.Status.TiKV = v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"0": {
+								ID:          "0",
+								PodName:     "test-cluster-tikv-0",
+								State:       v1alpha1.TiKVStateUp,
+								LeaderCount: 10,
+							},
+							"1": {
+								ID:          "1",
+								PodName:     "test-cluster-tikv-1",
+								State:       v1alpha1.TiKVStateUp,
+								LeaderCount: 0,
+							},
+							"2": {
+								ID:          "2",
+								PodName:     "test-cluster-tikv-2",
+								State:       v1alpha1.TiKVStateUp,
+								LeaderCount: 10,
+							},
+						},
+					}
+					ctx.actualPodVolumes = []*podVolumeContext{
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-0",
+								},
+							},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-1",
+									Annotations: map[string]string{v1alpha1.EvictLeaderAnnKeyForResize: "none"},
+								}},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-2",
+								},
+							},
+						},
+					}
+
+					return ctx.actualPodVolumes[1].pod
+				},
+				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
+					g.Expect(err).To(Succeed())
+				},
+			},
+			"any store is not Up": {
+				setup: func(ctx *componentVolumeContext) *corev1.Pod {
+					tc := ctx.cluster.(*v1alpha1.TidbCluster)
+					ctx.status = &tc.Status.TiKV
+
+					tc.Status.TiKV = v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"0": {
+								ID:      "0",
+								PodName: "test-cluster-tikv-0",
+								State:   v1alpha1.TiKVStateUp,
+							},
+							"1": {
+								ID:      "1",
+								PodName: "test-cluster-tikv-1",
+								State:   v1alpha1.TiKVStateDown,
+							},
+							"2": {
+								ID:      "2",
+								PodName: "test-cluster-tikv-2",
+								State:   v1alpha1.TiKVStateUp,
+							},
+						},
+					}
+					ctx.actualPodVolumes = []*podVolumeContext{
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-0",
+								},
+							},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-1",
+								}},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-2",
+								},
+							},
+						},
+					}
+
+					return ctx.actualPodVolumes[2].pod
+				},
+				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
+					g.Expect(err).To(HaveOccurred())
+					g.Expect(err.Error()).To(ContainSubstring("store 1 of pod test-cluster-tikv-1 is not ready"))
+				},
+			},
+			"sync leader eviction annotation": {
+				setup: func(ctx *componentVolumeContext) *corev1.Pod {
+					tc := ctx.cluster.(*v1alpha1.TidbCluster)
+					ctx.status = &tc.Status.TiKV
+
+					tc.Status.TiKV = v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"0": {
+								ID:      "0",
+								PodName: "test-cluster-tikv-0",
+								State:   v1alpha1.TiKVStateUp,
+							},
+							"1": {
+								ID:      "1",
+								PodName: "test-cluster-tikv-1",
+								State:   v1alpha1.TiKVStateUp,
+							},
+							"2": {
+								ID:      "2",
+								PodName: "test-cluster-tikv-2",
+								State:   v1alpha1.TiKVStateUp,
+							},
+						},
+					}
+					ctx.actualPodVolumes = []*podVolumeContext{
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-0",
+									Annotations: map[string]string{v1alpha1.EvictLeaderAnnKeyForResize: "none"},
+								},
+							},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-1",
+								}},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-2",
+									Annotations: map[string]string{v1alpha1.EvictLeaderAnnKeyForResize: "none"},
+								},
+							},
+						},
+					}
+
+					return ctx.actualPodVolumes[1].pod
+				},
+				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
+					g.Expect(err).To(Succeed())
+
+					cli := p.deps.KubeClientset.CoreV1().Pods(ctx.cluster.GetNamespace())
+					pod, err := cli.Get(context.TODO(), "test-cluster-tikv-0", metav1.GetOptions{})
+					g.Expect(err).To(Succeed())
+					g.Expect(pod.Annotations).NotTo(HaveKey(v1alpha1.EvictLeaderAnnKeyForResize))
+					pod, err = cli.Get(context.TODO(), "test-cluster-tikv-1", metav1.GetOptions{})
+					g.Expect(err).To(Succeed())
+					g.Expect(pod.Annotations).To(HaveKey(v1alpha1.EvictLeaderAnnKeyForResize))
+					pod, err = cli.Get(context.TODO(), "test-cluster-tikv-2", metav1.GetOptions{})
+					g.Expect(err).To(Succeed())
+					g.Expect(pod.Annotations).To(HaveKey(v1alpha1.EvictLeaderAnnKeyForResize))
+				},
+			},
+			"wait store to be 0": {
+				setup: func(ctx *componentVolumeContext) *corev1.Pod {
+					tc := ctx.cluster.(*v1alpha1.TidbCluster)
+					ctx.status = &tc.Status.TiKV
+
+					tc.Status.TiKV = v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"0": {
+								ID:          "0",
+								PodName:     "test-cluster-tikv-0",
+								State:       v1alpha1.TiKVStateUp,
+								LeaderCount: 10,
+							},
+							"1": {
+								ID:          "1",
+								PodName:     "test-cluster-tikv-1",
+								State:       v1alpha1.TiKVStateUp,
+								LeaderCount: 10,
+							},
+							"2": {
+								ID:          "2",
+								PodName:     "test-cluster-tikv-2",
+								State:       v1alpha1.TiKVStateUp,
+								LeaderCount: 10,
+							},
+						},
+					}
+					ctx.actualPodVolumes = []*podVolumeContext{
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-0",
+								},
+							},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-1",
+									Annotations: map[string]string{v1alpha1.EvictLeaderAnnKeyForResize: "none"},
+								}},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-2",
+								},
+							},
+						},
+					}
+
+					return ctx.actualPodVolumes[1].pod
+				},
+				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
+					g.Expect(err).To(HaveOccurred())
+					g.Expect(err.Error()).To(ContainSubstring("wait for leader count of store 1 to be 0"))
+				},
+			},
+		}
+
+		for name, tt := range testcases {
+			t.Run(name, func(t *testing.T) {
+				g := NewGomegaWithT(t)
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				fakeDeps := controller.NewFakeDependencies()
+				informerFactory := fakeDeps.KubeInformerFactory
+				informerFactory.Start(ctx.Done())
+				informerFactory.WaitForCacheSync(ctx.Done())
+
+				resizer := &pvcResizer{
+					deps: fakeDeps,
+				}
+				tc := &v1alpha1.TidbCluster{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster"},
+					Spec: v1alpha1.TidbClusterSpec{
+						TiKV: &v1alpha1.TiKVSpec{
+							Replicas: 3,
+						},
+					},
+				}
+				vctx := &componentVolumeContext{
+					cluster: tc,
+				}
+				resizePod := tt.setup(vctx)
+				volumes := []*volume{}
+				for _, podVol := range vctx.actualPodVolumes {
+					if podVol.pod != nil {
+						fakeDeps.KubeClientset.CoreV1().Pods(tc.Namespace).Create(context.TODO(), podVol.pod, metav1.CreateOptions{})
+					}
+					if podVol.pod == resizePod {
+						volumes = podVol.volumes
+					}
+				}
+
+				err := resizer.beforeResizeForPod(vctx, resizePod, volumes)
+				tt.expect(g, resizer, vctx, err)
+			})
+		}
+	})
+}
+
+func newVolume(name v1alpha1.StorageVolumeName, pvc *corev1.PersistentVolumeClaim) *volume {
+	return &volume{name: name, pvc: pvc}
+}
+
+func diffVolume(v1 *volume, v2 *volume) string {
+	if diff := cmp.Diff(v1.name, v2.name); diff != "" {
+		return diff
 	}
+	if diff := cmp.Diff(v1.pvc, v2.pvc); diff != "" {
+		return diff
+	}
+	return ""
 }
