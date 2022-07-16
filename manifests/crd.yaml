@@ -333,6 +333,8 @@ spec:
                     type: string
                   br:
                     properties:
+                      checkRequirements:
+                        type: boolean
                       checksum:
                         type: boolean
                       cluster:
@@ -1734,6 +1736,8 @@ spec:
                 type: string
               br:
                 properties:
+                  checkRequirements:
+                    type: boolean
                   checksum:
                     type: boolean
                   cluster:
@@ -11005,6 +11009,8 @@ spec:
                 type: string
               br:
                 properties:
+                  checkRequirements:
+                    type: boolean
                   checksum:
                     type: boolean
                   cluster:

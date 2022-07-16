@@ -647,6 +647,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"checkRequirements": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CheckRequirements specifies whether to check requirements",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"sendCredToTikv": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SendCredToTikv specifies whether to send credentials to TiKV",
