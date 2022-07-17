@@ -114,6 +114,11 @@ func (in *BRConfig) DeepCopyInto(out *BRConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.CheckRequirements != nil {
+		in, out := &in.CheckRequirements, &out.CheckRequirements
+		*out = new(bool)
+		**out = **in
+	}
 	if in.SendCredToTikv != nil {
 		in, out := &in.SendCredToTikv, &out.SendCredToTikv
 		*out = new(bool)
@@ -5652,6 +5657,16 @@ func (in *TiDBProbe) DeepCopyInto(out *TiDBProbe) {
 	if in.Type != nil {
 		in, out := &in.Type, &out.Type
 		*out = new(string)
+		**out = **in
+	}
+	if in.InitialDelaySeconds != nil {
+		in, out := &in.InitialDelaySeconds, &out.InitialDelaySeconds
+		*out = new(int32)
+		**out = **in
+	}
+	if in.PeriodSeconds != nil {
+		in, out := &in.PeriodSeconds, &out.PeriodSeconds
+		*out = new(int32)
 		**out = **in
 	}
 	return

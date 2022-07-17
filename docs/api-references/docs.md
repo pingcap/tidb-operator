@@ -3050,6 +3050,17 @@ bool
 </tr>
 <tr>
 <td>
+<code>checkRequirements</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>CheckRequirements specifies whether to check requirements</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>sendCredToTikv</code></br>
 <em>
 bool
@@ -15313,6 +15324,32 @@ string
 <p>&ldquo;command&rdquo; will probe the status api of tidb.
 This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
 So do not use this before v4.0.9.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initialDelaySeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Number of seconds after the container has started before liveness probes are initiated.
+Default to 10 seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>periodSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>How often (in seconds) to perform the probe.
+Default to Kubernetes default (10 seconds). Minimum value is 1.</p>
 </td>
 </tr>
 </tbody>
