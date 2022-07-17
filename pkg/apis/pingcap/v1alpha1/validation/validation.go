@@ -275,6 +275,11 @@ func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorL
 func validatePumpSpec(spec *v1alpha1.PumpSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	// fix pd spec
+	if _, ok := spec.ResourceRequirements.Requests["storage"]; !ok {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.ResourceRequirements.Requests"),
+			spec.ResourceRequirements.Requests, "spec.ResourceRequirements.Requests[storage]: Required value."))
+	}
 	return allErrs
 }
 
