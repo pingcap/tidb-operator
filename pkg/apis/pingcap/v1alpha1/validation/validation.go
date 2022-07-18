@@ -148,6 +148,9 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 	if len(spec.StorageVolumes) > 0 {
 		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
 	}
+	if spec.Service != nil {
+		allErrs = append(allErrs, validateService(spec.Service, fldPath)...)
+	}
 	return allErrs
 }
 
