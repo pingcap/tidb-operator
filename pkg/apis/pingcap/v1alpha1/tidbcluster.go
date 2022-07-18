@@ -968,12 +968,10 @@ func (tc *TidbCluster) AcrossK8s() bool {
 
 // IsComponentVolumeResizing returns true if any volume of component is resizing.
 func (tc *TidbCluster) IsComponentVolumeResizing(compType MemberType) bool {
-	comps := ComponentStatusFromTC(tc)
-	for _, comp := range comps {
-		if comp.GetMemberType() == compType {
-			conds := comp.GetConditions()
-			return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
-		}
+	comp := ComponentStatusFromTC(tc, compType)
+	if comp == nil {
+		return false
 	}
-	return false
+	conds := comp.GetConditions()
+	return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
 }
