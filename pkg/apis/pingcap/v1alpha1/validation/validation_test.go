@@ -341,7 +341,6 @@ func TestValidatePumpSpec(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tests := []struct {
 		name                 string
-		haveRequest          bool
 		replicas             int32
 		expectedErrors       int
 		resourceRequirements corev1.ResourceRequirements
