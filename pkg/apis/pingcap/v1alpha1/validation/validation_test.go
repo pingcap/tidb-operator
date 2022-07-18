@@ -375,6 +375,62 @@ func TestValidatePumpSpec(t *testing.T) {
 	}
 }
 
+func TestValidateTiFlashSpec(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tests := []struct {
+		name           string
+		replicas       int32
+		expectedErrors int
+		storageClaims  []v1alpha1.StorageClaim
+	}{
+		{
+			name:           "has storage request",
+			replicas:       1,
+			expectedErrors: 0,
+			storageClaims: []v1alpha1.StorageClaim{
+				{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("10G"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "no storage request",
+			replicas:       1,
+			expectedErrors: 3,
+			storageClaims: []v1alpha1.StorageClaim{
+				{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{},
+					},
+				},
+				{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{},
+					},
+				},
+				{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := newTidbClusterWithTiflash()
+			tc.Spec.TiFlash.StorageClaims = tt.storageClaims
+			err := validateTiFlashSpec(tc.Spec.TiFlash, field.NewPath("spec", "tiflash"))
+			r := len(err)
+			g.Expect(r).Should(Equal(tt.expectedErrors))
+		})
+	}
+}
+
 func TestValidateRequestsStorage(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tests := []struct {
@@ -539,6 +595,14 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 	}
 	tc.Name = "test-validate-requests-storage"
 	tc.Namespace = "default"
+	return tc
+}
+
+func newTidbClusterWithTiflash() *v1alpha1.TidbCluster {
+	tc := newTidbCluster()
+	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
+		Replicas: 1,
+	}
 	return tc
 }
 

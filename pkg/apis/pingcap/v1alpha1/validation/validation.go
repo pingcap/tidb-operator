@@ -199,6 +199,14 @@ func validateTiFlashSpec(spec *v1alpha1.TiFlashSpec, fldPath *field.Path) field.
 			spec.StorageClaims, "storageClaims should be configured at least one item."))
 	}
 	allErrs = append(allErrs, validateScalePolicy(&spec.ScalePolicy, fldPath.Child("scalePolicy"))...)
+
+	// fix storageClaim
+	for _, storageClaim := range spec.StorageClaims {
+		if _, ok := storageClaim.Resources.Requests["storage"]; !ok {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.StorageClaims.Resources.Requests"),
+				spec.StorageClaims, "spec.tiflash.storageClaims.resources[storage]: Required value."))
+		}
+	}
 	return allErrs
 }
 
