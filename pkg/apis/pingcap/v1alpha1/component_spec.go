@@ -52,6 +52,7 @@ type ComponentAccessor interface {
 	StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType
 	PodManagementPolicy() apps.PodManagementPolicyType
 	TopologySpreadConstraints() []corev1.TopologySpreadConstraint
+	SuspendAction() *SuspendAction
 }
 
 // AllComponentSpecFromTC return all component specs of tidb cluster
@@ -152,6 +153,7 @@ type componentAccessorImpl struct {
 	podManagementPolicy       apps.PodManagementPolicyType
 	podSecurityContext        *corev1.PodSecurityContext
 	topologySpreadConstraints []TopologySpreadConstraint
+	suspendAction             *SuspendAction
 
 	// ComponentSpec is the Component Spec
 	ComponentSpec *ComponentSpec
@@ -430,6 +432,14 @@ func (a *componentAccessorImpl) TopologySpreadConstraints() []corev1.TopologySpr
 	return ptscs
 }
 
+func (a *componentAccessorImpl) SuspendAction() *SuspendAction {
+	action := a.suspendAction
+	if a.ComponentSpec != nil && a.ComponentSpec.SuspendAction != nil {
+		action = a.ComponentSpec.SuspendAction
+	}
+	return action
+}
+
 func getComponentLabelValue(c MemberType) string {
 	switch c {
 	case PDMemberType:
@@ -481,6 +491,7 @@ func buildTidbClusterComponentAccessor(c MemberType, tc *TidbCluster, componentS
 		podManagementPolicy:       spec.PodManagementPolicy,
 		podSecurityContext:        spec.PodSecurityContext,
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
+		suspendAction:             spec.SuspendAction,
 
 		ComponentSpec: componentSpec,
 	}
@@ -509,6 +520,7 @@ func buildDMClusterComponentAccessor(c MemberType, dc *DMCluster, componentSpec 
 		podManagementPolicy:       spec.PodManagementPolicy,
 		podSecurityContext:        spec.PodSecurityContext,
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
+		suspendAction:             spec.SuspendAction,
 
 		ComponentSpec: componentSpec,
 	}
