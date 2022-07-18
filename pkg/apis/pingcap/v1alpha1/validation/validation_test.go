@@ -348,7 +348,6 @@ func TestValidatePumpSpec(t *testing.T) {
 	}{
 		{
 			name:           "has storage request",
-			haveRequest:    true,
 			replicas:       1,
 			expectedErrors: 0,
 			resourceRequirements: corev1.ResourceRequirements{
@@ -359,7 +358,6 @@ func TestValidatePumpSpec(t *testing.T) {
 		},
 		{
 			name:           "no storage request",
-			haveRequest:    false,
 			replicas:       1,
 			expectedErrors: 1,
 			resourceRequirements: corev1.ResourceRequirements{
