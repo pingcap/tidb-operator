@@ -796,7 +796,10 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 					ginkgo.By("Deploy original TiDB cluster with prev version")
 					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
-					selector := MustGetLabelSelectorForComponents(tcName, label.DiscoveryLabelVal) // ingore discovery
+					selector := MustGetLabelSelectorForComponents(tcName,
+						label.DiscoveryLabelVal, // ingore discovery
+						label.TiFlashLabelVal,   // TODO: ingore tiflash because of PR #4358, remove it after prev major version is greater than v1.2.x
+					)
 					pods := utilpod.MustListPods(selector.String(), ns, c)
 
 					dsn, fwcancel, err := utiltidb.PortForwardAndGetTiDBDSN(fw, ns, tcName, "root", "", dbName)
@@ -877,7 +880,8 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				selector := MustGetLabelSelectorForComponents(tcName,
 					label.DiscoveryLabelVal,
 					label.PumpLabelVal,
-					label.TiCDCLabelVal, // ingore ticdc because of PR #4494
+					label.TiCDCLabelVal,   // ingore ticdc because of PR #4494
+					label.TiFlashLabelVal, // ingore tiflash because of PR #4358
 				)
 				pods := utilpod.MustListPods(selector.String(), ns, c)
 
