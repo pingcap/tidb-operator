@@ -349,19 +349,19 @@ func (tc *TidbCluster) TiFlashScaling() bool {
 }
 
 func (tc *TidbCluster) ComponentIsUpgrading(typ MemberType) bool {
-	return tc.ComponentIs(typ, UpgradePhase)
+	return tc.ComponentPhaseIs(typ, UpgradePhase)
 }
 
 func (tc *TidbCluster) ComponentIsScaling(typ MemberType) bool {
-	return tc.ComponentIs(typ, ScalePhase)
+	return tc.ComponentPhaseIs(typ, ScalePhase)
 }
 
 func (tc *TidbCluster) ComponentIsSuspended(typ MemberType) bool {
-	return tc.ComponentIs(typ, SuspendedPhase)
+	return tc.ComponentPhaseIs(typ, SuspendedPhase)
 }
 
-func (tc *TidbCluster) ComponentIs(typ MemberType, phase MemberPhase) bool {
-	status := ComponentStatusFromTC(tc, typ)
+func (tc *TidbCluster) ComponentPhaseIs(typ MemberType, phase MemberPhase) bool {
+	status := tc.ComponentStatus(typ)
 	if status == nil {
 		return false
 	}
@@ -988,7 +988,7 @@ func (tc *TidbCluster) AcrossK8s() bool {
 
 // IsComponentVolumeResizing returns true if any volume of component is resizing.
 func (tc *TidbCluster) IsComponentVolumeResizing(compType MemberType) bool {
-	comp := ComponentStatusFromTC(tc, compType)
+	comp := tc.ComponentStatus(compType)
 	if comp == nil {
 		return false
 	}

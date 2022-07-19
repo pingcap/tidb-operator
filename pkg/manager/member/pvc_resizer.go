@@ -129,7 +129,7 @@ func NewPVCResizer(deps *controller.Dependencies) PVCResizerInterface {
 }
 
 func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
-	components := v1alpha1.AllComponentStatusFromTC(tc)
+	components := tc.AllComponentStatus()
 	errs := []error{}
 
 	for _, comp := range components {
@@ -152,7 +152,7 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
-	components := v1alpha1.AllComponentStatusFromDC(dc)
+	components := dc.AllComponentStatus()
 	errs := []error{}
 
 	for _, comp := range components {

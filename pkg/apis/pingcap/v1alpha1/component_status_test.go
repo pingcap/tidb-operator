@@ -42,8 +42,9 @@ func TestComponentStatus(t *testing.T) {
 
 	t.Run("MemberType", func(t *testing.T) {
 		g := NewGomegaWithT(t)
-		components := AllComponentStatusFromTC(tc.DeepCopy())
-		components = append(components, AllComponentStatusFromDC(dc.DeepCopy())...)
+
+		components := tc.DeepCopy().AllComponentStatus()
+		components = append(components, dc.DeepCopy().AllComponentStatus()...)
 		for _, status := range components {
 			switch status.MemberType() {
 			case PDMemberType:
@@ -77,8 +78,8 @@ func TestComponentStatus(t *testing.T) {
 	t.Run("Conditions", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 
-		components := AllComponentStatusFromTC(tc.DeepCopy())
-		components = append(components, AllComponentStatusFromDC(dc.DeepCopy())...)
+		components := tc.DeepCopy().AllComponentStatus()
+		components = append(components, dc.DeepCopy().AllComponentStatus()...)
 		for _, status := range components {
 			conds := status.GetConditions()
 			g.Expect(conds).To(BeNil())
