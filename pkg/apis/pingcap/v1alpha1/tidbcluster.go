@@ -348,6 +348,26 @@ func (tc *TidbCluster) TiFlashScaling() bool {
 	return tc.Status.TiFlash.Phase == ScalePhase
 }
 
+func (tc *TidbCluster) ComponentIsUpgrading(typ MemberType) bool {
+	return tc.ComponentIs(typ, UpgradePhase)
+}
+
+func (tc *TidbCluster) ComponentIsScaling(typ MemberType) bool {
+	return tc.ComponentIs(typ, ScalePhase)
+}
+
+func (tc *TidbCluster) ComponentIsSuspended(typ MemberType) bool {
+	return tc.ComponentIs(typ, SuspendedPhase)
+}
+
+func (tc *TidbCluster) ComponentIs(typ MemberType, phase MemberPhase) bool {
+	status := ComponentStatusFromTC(tc, typ)
+	if status == nil {
+		return false
+	}
+	return status.GetPhase() == phase
+}
+
 func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
 	deleteSlots = sets.NewInt32()
 	annotations := tc.GetAnnotations()

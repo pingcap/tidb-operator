@@ -23,14 +23,23 @@ type suspender struct {
 	comp v1alpha1.MemberType
 }
 
-func (s *suspender) Suspend(tc *v1alpha1.TidbCluster) error {
+func (s *suspender) Suspend(tc *v1alpha1.TidbCluster) (bool, error) {
+
+	status := v1alpha1.Compo
+	supsended := tc.ComponentIsSuspended(s.comp)
 
 	if !s.suspendable(tc) {
+		if supsended {
+			// transform phase firstly
+
+			return supsended, nil
+		}
 	}
 
-	return nil
+	return 
 }
 
 func (s *suspender) suspendable(tc *v1alpha1.TidbCluster) bool {
-	return true
+	// check if need to suspend
+	
 }
