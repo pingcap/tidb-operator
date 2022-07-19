@@ -3050,6 +3050,17 @@ bool
 </tr>
 <tr>
 <td>
+<code>checkRequirements</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>CheckRequirements specifies whether to check requirements</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>sendCredToTikv</code></br>
 <em>
 bool
