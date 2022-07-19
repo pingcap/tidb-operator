@@ -58,8 +58,8 @@ type ComponentStatus interface {
 	SetPhase(phase MemberPhase)
 }
 
-// AllComponentStatusFromTC return all component status of tidb cluster
-func AllComponentStatusFromTC(tc *TidbCluster) []ComponentStatus {
+// AllComponentStatus return all component status of tidb cluster
+func (tc *TidbCluster) AllComponentStatus() []ComponentStatus {
 	components := []ComponentStatus{}
 	if tc.Spec.PD != nil {
 		components = append(components, &tc.Status.PD)
@@ -82,8 +82,9 @@ func AllComponentStatusFromTC(tc *TidbCluster) []ComponentStatus {
 	return components
 }
 
-func ComponentStatusFromTC(tc *TidbCluster, typ MemberType) ComponentStatus {
-	components := AllComponentStatusFromTC(tc)
+// ComponentStatus return a component status of tidb cluster, return nil if not exist
+func (tc *TidbCluster) ComponentStatus(typ MemberType) ComponentStatus {
+	components := tc.AllComponentStatus()
 	for _, component := range components {
 		if component.MemberType() == typ {
 			return component
@@ -92,8 +93,8 @@ func ComponentStatusFromTC(tc *TidbCluster, typ MemberType) ComponentStatus {
 	return nil
 }
 
-// AllComponentStatusFromDC return all component status of dm cluster
-func AllComponentStatusFromDC(dc *DMCluster) []ComponentStatus {
+// AllComponentStatus return all component status of dm cluster
+func (dc *DMCluster) AllComponentStatus() []ComponentStatus {
 	components := []ComponentStatus{}
 	components = append(components, &dc.Status.Master)
 	if dc.Spec.Worker != nil {
@@ -102,8 +103,9 @@ func AllComponentStatusFromDC(dc *DMCluster) []ComponentStatus {
 	return components
 }
 
-func ComponentStatusFromDC(dc *DMCluster, typ MemberType) ComponentStatus {
-	components := AllComponentStatusFromDC(dc)
+// ComponentStatus return a component status of dm cluster, return nil if not exist
+func (dc *DMCluster) ComponentStatus(typ MemberType) ComponentStatus {
+	components := dc.AllComponentStatus()
 	for _, component := range components {
 		if component.MemberType() == typ {
 			return component

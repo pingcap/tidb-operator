@@ -54,8 +54,8 @@ type ComponentAccessor interface {
 	TopologySpreadConstraints() []corev1.TopologySpreadConstraint
 }
 
-// AllComponentSpecFromTC return all component specs of tidb cluster
-func AllComponentSpecFromTC(tc *TidbCluster) []ComponentAccessor {
+// AllComponentSpec return all component specs of tidb cluster
+func (tc *TidbCluster) AllComponentSpec() []ComponentAccessor {
 	components := []ComponentAccessor{}
 	components = append(components, tc.BaseDiscoverySpec())
 	if tc.Spec.PD != nil {
@@ -79,9 +79,9 @@ func AllComponentSpecFromTC(tc *TidbCluster) []ComponentAccessor {
 	return components
 }
 
-// ComponentSpecFromTC return a component spec of tidb cluster, return nil if not exist
-func ComponentSpecFromTC(tc *TidbCluster, typ MemberType) ComponentAccessor {
-	components := AllComponentSpecFromTC(tc)
+// ComponentSpec return a component spec of tidb cluster, return nil if not exist
+func (tc *TidbCluster) ComponentSpec(typ MemberType) ComponentAccessor {
+	components := tc.AllComponentSpec()
 	for _, component := range components {
 		if component.MemberType() == typ {
 			return component
@@ -90,8 +90,8 @@ func ComponentSpecFromTC(tc *TidbCluster, typ MemberType) ComponentAccessor {
 	return nil
 }
 
-// AllComponentSpecFromDC return all component specs of dm cluster
-func AllComponentSpecFromDC(dc *DMCluster) []ComponentAccessor {
+// AllComponentSpec return all component specs of dm cluster
+func (dc *DMCluster) AllComponentSpec() []ComponentAccessor {
 	components := []ComponentAccessor{}
 	components = append(components, dc.BaseDiscoverySpec())
 	components = append(components, dc.BaseMasterSpec())
@@ -101,9 +101,9 @@ func AllComponentSpecFromDC(dc *DMCluster) []ComponentAccessor {
 	return components
 }
 
-// ComponentSpecFromDC return a component spec of dm cluster, return nil if not exist
-func ComponentSpecFromDC(dc *DMCluster, typ MemberType) ComponentAccessor {
-	components := AllComponentSpecFromDC(dc)
+// ComponentSpec return a component spec of dm cluster, return nil if not exist
+func (dc *DMCluster) ComponentSpec(typ MemberType) ComponentAccessor {
+	components := dc.AllComponentSpec()
 	for _, component := range components {
 		if component.MemberType() == typ {
 			return component
@@ -112,16 +112,16 @@ func ComponentSpecFromDC(dc *DMCluster, typ MemberType) ComponentAccessor {
 	return nil
 }
 
-// AllComponentSpecFromDC return all component specs of ng monitoring
-func AllComponentSpecFromNGM(ngm *TidbNGMonitoring) []ComponentAccessor {
+// AllComponentSpec return all component specs of ng monitoring
+func (ngm *TidbNGMonitoring) AllComponentSpec() []ComponentAccessor {
 	components := []ComponentAccessor{}
 	components = append(components, ngm.BaseNGMonitoringSpec())
 	return components
 }
 
-// ComponentSpecFromNGM return a component spec of ng monitoring, return nil if not exist
-func ComponentSpecFromNGM(ngm *TidbNGMonitoring, typ MemberType) ComponentAccessor {
-	components := AllComponentSpecFromNGM(ngm)
+// ComponentSpec return a component spec of ng monitoring, return nil if not exist
+func (ngm *TidbNGMonitoring) ComponentSpec(typ MemberType) ComponentAccessor {
+	components := ngm.AllComponentSpec()
 	for _, component := range components {
 		if component.MemberType() == typ {
 			return component
