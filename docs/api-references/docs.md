@@ -4327,10 +4327,6 @@ FlashSecurity
 </tr>
 </tbody>
 </table>
-<h3 id="component">Component</h3>
-<p>
-<p>Component defines component identity of all components</p>
-</p>
 <h3 id="componentaccessor">ComponentAccessor</h3>
 <p>
 <p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
@@ -4802,6 +4798,9 @@ string
 </p>
 <p>
 <p>ConfigUpdateStrategy represents the strategy to update configuration</p>
+</p>
+<h3 id="containername">ContainerName</h3>
+<p>
 </p>
 <h3 id="coprocessorcache">CoprocessorCache</h3>
 <p>
