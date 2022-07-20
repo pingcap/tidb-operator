@@ -348,6 +348,22 @@ func (tc *TidbCluster) TiFlashScaling() bool {
 	return tc.Status.TiFlash.Phase == ScalePhase
 }
 
+func (tc *TidbCluster) ComponentIsUpgrading(typ MemberType) bool {
+	return tc.ComponentPhaseIs(typ, UpgradePhase)
+}
+
+func (tc *TidbCluster) ComponentIsScaling(typ MemberType) bool {
+	return tc.ComponentPhaseIs(typ, ScalePhase)
+}
+
+func (tc *TidbCluster) ComponentPhaseIs(typ MemberType, phase MemberPhase) bool {
+	status := tc.ComponentStatus(typ)
+	if status == nil {
+		return false
+	}
+	return status.GetPhase() == phase
+}
+
 func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
 	deleteSlots = sets.NewInt32()
 	annotations := tc.GetAnnotations()
@@ -968,12 +984,10 @@ func (tc *TidbCluster) AcrossK8s() bool {
 
 // IsComponentVolumeResizing returns true if any volume of component is resizing.
 func (tc *TidbCluster) IsComponentVolumeResizing(compType MemberType) bool {
-	comps := ComponentStatusFromTC(tc)
-	for _, comp := range comps {
-		if comp.GetMemberType() == compType {
-			conds := comp.GetConditions()
-			return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
-		}
+	comp := tc.ComponentStatus(compType)
+	if comp == nil {
+		return false
 	}
-	return false
+	conds := comp.GetConditions()
+	return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
 }
