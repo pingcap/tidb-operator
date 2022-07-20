@@ -14,6 +14,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -557,7 +558,7 @@ func TestRetryOnError(t *testing.T) {
 			if tt.retriable != nil {
 				retriable = tt.retriable
 			}
-			err := RetryOnError(tt.attempts, tt.sleep, retriable, tt.setupFunc())
+			err := RetryOnError(context.TODO(), tt.attempts, tt.sleep, retriable, tt.setupFunc())
 			tt.expect(g, err)
 		})
 	}

@@ -439,7 +439,8 @@ func RetriableOnAnyError(err error) bool {
 
 // RetryOnError allows the caller to retry fn in case the error returned by fn.
 // sleep define the interval between two retries.
-func RetryOnError(attempts int, sleep time.Duration, retriable func(error) bool, fn func() error) error {
+func RetryOnError(ctx context.Context, attempts int, sleep time.Duration,
+	retriable func(error) bool, fn func() error) error {
 	var err error
 	for i := 0; i < attempts; i++ {
 		err = fn()
@@ -449,7 +450,11 @@ func RetryOnError(attempts int, sleep time.Duration, retriable func(error) bool,
 		}
 
 		if sleep != 0 {
-			time.Sleep(sleep)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(sleep):
+			}
 		}
 	}
 
