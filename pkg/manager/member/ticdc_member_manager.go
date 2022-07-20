@@ -130,6 +130,8 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
+	// NB: All TiCDC operations, e.g. creation, scale, upgrade will be blocked.
+	//     if PD or TiKV is not available.
 	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCDC is waiting for PD cluster running", ns, tcName)
 	}
@@ -350,8 +352,8 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
 
+	// NB: TiCDC control relies the format.
 	// TODO move advertise addr format to package controller.
-	// TiCDC control relays the format.
 	advertiseAddr := fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:8301",
 		controller.FormatClusterDomain(tc.Spec.ClusterDomain))
 	cmdArgs := []string{"/cdc server", "--addr=0.0.0.0:8301", fmt.Sprintf("--advertise-addr=%s", advertiseAddr)}
