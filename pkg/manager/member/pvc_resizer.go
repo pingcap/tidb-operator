@@ -117,7 +117,7 @@ type componentVolumeContext struct {
 }
 
 func (c *componentVolumeContext) ComponentID() string {
-	return fmt.Sprintf("%s/%s:%s", c.cluster.GetNamespace(), c.cluster.GetName(), c.status.GetMemberType())
+	return fmt.Sprintf("%s/%s:%s", c.cluster.GetNamespace(), c.cluster.GetName(), c.status.MemberType())
 }
 
 type pvcResizer struct {
@@ -131,7 +131,7 @@ func NewPVCResizer(deps *controller.Dependencies) PVCResizerInterface {
 }
 
 func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
-	components := v1alpha1.ComponentStatusFromTC(tc)
+	components := tc.AllComponentStatus()
 	errs := []error{}
 
 	for _, comp := range components {
@@ -154,7 +154,7 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
-	components := v1alpha1.ComponentStatusFromDC(dc)
+	components := dc.AllComponentStatus()
 	errs := []error{}
 
 	for _, comp := range components {
@@ -177,7 +177,7 @@ func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
 }
 
 func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, status v1alpha1.ComponentStatus) (*componentVolumeContext, error) {
-	comp := status.GetMemberType()
+	comp := status.MemberType()
 
 	ctx := &componentVolumeContext{
 		cluster:               tc,
@@ -261,7 +261,7 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, status v1alpha1
 }
 
 func (p *pvcResizer) buildContextForDM(dc *v1alpha1.DMCluster, status v1alpha1.ComponentStatus) (*componentVolumeContext, error) {
-	comp := status.GetMemberType()
+	comp := status.MemberType()
 
 	ctx := &componentVolumeContext{
 		cluster:               dc,
@@ -613,7 +613,7 @@ func (p *pvcResizer) resizeVolumesForPod(ctx *componentVolumeContext, pod *corev
 func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *corev1.Pod, volumes []*volume) error {
 	logPrefix := fmt.Sprintf("before resizing volumes of Pod %s/%s for %q", resizePod.Namespace, resizePod.Name, ctx.ComponentID())
 
-	switch ctx.status.GetMemberType() {
+	switch ctx.status.MemberType() {
 	case v1alpha1.TiKVMemberType:
 		tc, ok := ctx.cluster.(*v1alpha1.TidbCluster)
 		if !ok {
@@ -713,7 +713,7 @@ func (p *pvcResizer) beginResize(ctx *componentVolumeContext) error {
 }
 
 func (p *pvcResizer) endResize(ctx *componentVolumeContext) error {
-	switch ctx.status.GetMemberType() {
+	switch ctx.status.MemberType() {
 	case v1alpha1.TiKVMemberType:
 		// ensure all eviction annotations are removed
 		for _, podVolume := range ctx.actualPodVolumes {
