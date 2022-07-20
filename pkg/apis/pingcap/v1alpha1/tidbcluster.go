@@ -708,6 +708,24 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 	return true
 }
 
+func (tc *TidbCluster) AllTiKVsAreAvailable() bool {
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State != TiKVStateUp {
+			return false
+		}
+	}
+
+	if tc.Status.TiKV.StatefulSet == nil {
+		return false
+	}
+
+	if tc.Status.TiKV.StatefulSet.ReadyReplicas != tc.Status.TiKV.StatefulSet.Replicas {
+		return false
+	}
+
+	return true
+}
+
 func (tc *TidbCluster) PumpIsAvailable() bool {
 	lowerLimit := 1
 	if len(tc.Status.Pump.Members) < lowerLimit {

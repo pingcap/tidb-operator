@@ -139,9 +139,7 @@ func (c *Controller) syncRestore(restore *v1alpha1.Restore) error {
 
 func (c *Controller) updateRestore(cur interface{}) {
 	newRestore := cur.(*v1alpha1.Restore)
-	klog.Infof("restore-manager update %v", newRestore)
-	klog.Infof("restore-manager update status- %s", newRestore.Status.Phase)
-	klog.Infof("restore-manager update conditions- %v", newRestore.Status.Conditions)
+	klog.V(4).Infof("restore-manager update %v", newRestore)
 
 	ns := newRestore.GetNamespace()
 	name := newRestore.GetName()
@@ -172,7 +170,7 @@ func (c *Controller) updateRestore(cur interface{}) {
 			return
 		}
 
-		klog.V(4).Infof("restore %s/%s is DataComplete, skipping.", ns, name)
+		klog.V(4).Infof("restore %s/%s is already DataComplete, skipping.", ns, name)
 		return
 	}
 
@@ -227,7 +225,6 @@ func (c *Controller) updateRestore(cur interface{}) {
 		return
 	}
 
-	klog.Infof("restore-manager object %s/%s enqueue, status: %v", ns, name, newRestore.Status)
 	klog.V(4).Infof("restore object %s/%s enqueue", ns, name)
 	c.enqueueRestore(newRestore)
 }

@@ -135,8 +135,12 @@ func (m *tidbMemberManager) syncRecoveryForTidbCluster(tc *v1alpha1.TidbCluster)
 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	anns := tc.GetAnnotations()
 
+	if !tc.AllTiKVsAreAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for all TiKVs running", ns, tcName)
+	}
+
+	anns := tc.GetAnnotations()
 	if rMark, ok := anns[label.AnnWaitTiKVVolumesKey]; ok {
 		strs := strings.SplitN(rMark, "-", 2)
 		rNs := strs[0]

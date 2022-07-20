@@ -390,7 +390,6 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(csb *CloudSnapBackup) (string, erro
 	m.generateRestoreVolumeIDMap(csb.TiKV.Stores)
 
 	for i, pv := range pvs {
-
 		klog.Infof("snapshotter-pv: %v", pv)
 
 		// Reset the PV's binding status so that Kubernetes can properly
