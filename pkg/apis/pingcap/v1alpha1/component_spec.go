@@ -24,6 +24,20 @@ const (
 	defaultHostNetwork = false
 )
 
+var (
+	_ Cluster = &TidbCluster{}
+	_ Cluster = &DMCluster{}
+)
+
+type Cluster interface {
+	metav1.Object
+
+	AllComponentSpec() []ComponentAccessor
+	AllComponentStatus() []ComponentStatus
+	ComponentSpec(typ MemberType) ComponentAccessor
+	ComponentStatus(typ MemberType) ComponentStatus
+}
+
 // ComponentAccessor is the interface to access component details, which respects the cluster-level properties
 // and component-level overrides
 type ComponentAccessor interface {

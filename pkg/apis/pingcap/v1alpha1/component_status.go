@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -42,11 +43,21 @@ type ComponentStatus interface {
 	//
 	// NOTE: change the map will modify the status.
 	GetVolumes() map[StorageVolumeName]*StorageVolumeStatus
-	// GetConditions return `status.conditions`
+	// GetConditions returns `status.conditions`
 	//
 	// If need to change the condition, please use `SetCondition`
 	GetConditions() []metav1.Condition
+	// GetStatefulSet returns `status.statefulset`
+	//
+	// NOTE: change the return will modify the status.
+	GetStatefulSet() *appsv1.StatefulSetStatus
 
+	// SetSynced set the `status.synced` field of the component
+	//
+	// Not supported for tidb and pump
+	SetSynced(bool)
+	// SetPhase sets the phase of the component.
+	SetPhase(phase MemberPhase)
 	// SetCondition sets the corresponding condition in conditions to newCondition.
 	// 1. if the condition of the specified type already exists (all fields of the existing condition are updated to
 	//    newCondition, LastTransitionTime is set to now if the new status differs from the old status)
@@ -54,8 +65,8 @@ type ComponentStatus interface {
 	SetCondition(condition metav1.Condition)
 	// RemoveStatusCondition removes the corresponding conditionType from conditions.
 	RemoveCondition(conditionType string)
-	// SetPhase sets the phase of the component.
-	SetPhase(phase MemberPhase)
+	// SetStatefulSet sets the `status.statefulset`
+	SetStatefulSet(sts *appsv1.StatefulSetStatus)
 }
 
 // AllComponentStatus return all component status of tidb cluster
@@ -129,6 +140,12 @@ func (s *PDStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
 func (s *PDStatus) GetConditions() []metav1.Condition {
 	return s.Conditions
 }
+func (s *PDStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *PDStatus) SetSynced(synced bool) {
+	s.Synced = synced
+}
 func (s *PDStatus) SetCondition(newCondition metav1.Condition) {
 	if s.Conditions == nil {
 		s.Conditions = []metav1.Condition{}
@@ -148,6 +165,9 @@ func (s *PDStatus) RemoveCondition(conditionType string) {
 func (s *PDStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
+func (s *PDStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
 
 func (s *TiKVStatus) MemberType() MemberType {
 	return TiKVMemberType
@@ -163,6 +183,12 @@ func (s *TiKVStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
 }
 func (s *TiKVStatus) GetConditions() []metav1.Condition {
 	return s.Conditions
+}
+func (s *TiKVStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *TiKVStatus) SetSynced(synced bool) {
+	s.Synced = synced
 }
 func (s *TiKVStatus) SetCondition(newCondition metav1.Condition) {
 	if s.Conditions == nil {
@@ -183,6 +209,9 @@ func (s *TiKVStatus) RemoveCondition(conditionType string) {
 func (s *TiKVStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
+func (s *TiKVStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
 
 func (s *TiDBStatus) MemberType() MemberType {
 	return TiDBMemberType
@@ -199,6 +228,10 @@ func (s *TiDBStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
 func (s *TiDBStatus) GetConditions() []metav1.Condition {
 	return s.Conditions
 }
+func (s *TiDBStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *TiDBStatus) SetSynced(synced bool) {}
 func (s *TiDBStatus) SetCondition(newCondition metav1.Condition) {
 	if s.Conditions == nil {
 		s.Conditions = []metav1.Condition{}
@@ -218,6 +251,9 @@ func (s *TiDBStatus) RemoveCondition(conditionType string) {
 func (s *TiDBStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
+func (s *TiDBStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
 
 func (s *PumpStatus) MemberType() MemberType {
 	return PumpMemberType
@@ -234,6 +270,10 @@ func (s *PumpStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
 func (s *PumpStatus) GetConditions() []metav1.Condition {
 	return s.Conditions
 }
+func (s *PumpStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *PumpStatus) SetSynced(synced bool) {}
 func (s *PumpStatus) SetCondition(newCondition metav1.Condition) {
 	if s.Conditions == nil {
 		s.Conditions = []metav1.Condition{}
@@ -253,6 +293,9 @@ func (s *PumpStatus) RemoveCondition(conditionType string) {
 func (s *PumpStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
+func (s *PumpStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
 
 func (s *TiFlashStatus) MemberType() MemberType {
 	return TiFlashMemberType
@@ -268,6 +311,12 @@ func (s *TiFlashStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus 
 }
 func (s *TiFlashStatus) GetConditions() []metav1.Condition {
 	return s.Conditions
+}
+func (s *TiFlashStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *TiFlashStatus) SetSynced(synced bool) {
+	s.Synced = synced
 }
 func (s *TiFlashStatus) SetCondition(newCondition metav1.Condition) {
 	if s.Conditions == nil {
@@ -288,6 +337,9 @@ func (s *TiFlashStatus) RemoveCondition(conditionType string) {
 func (s *TiFlashStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
+func (s *TiFlashStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
 
 func (s *TiCDCStatus) MemberType() MemberType {
 	return TiCDCMemberType
@@ -303,6 +355,12 @@ func (s *TiCDCStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
 }
 func (s *TiCDCStatus) GetConditions() []metav1.Condition {
 	return s.Conditions
+}
+func (s *TiCDCStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *TiCDCStatus) SetSynced(synced bool) {
+	s.Synced = synced
 }
 func (s *TiCDCStatus) SetCondition(newCondition metav1.Condition) {
 	if s.Conditions == nil {
@@ -323,6 +381,9 @@ func (s *TiCDCStatus) RemoveCondition(conditionType string) {
 func (s *TiCDCStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
+func (s *TiCDCStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
 
 func (s *MasterStatus) MemberType() MemberType {
 	return DMMasterMemberType
@@ -338,6 +399,12 @@ func (s *MasterStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
 }
 func (s *MasterStatus) GetConditions() []metav1.Condition {
 	return s.Conditions
+}
+func (s *MasterStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *MasterStatus) SetSynced(synced bool) {
+	s.Synced = synced
 }
 func (s *MasterStatus) SetCondition(newCondition metav1.Condition) {
 	if s.Conditions == nil {
@@ -358,6 +425,9 @@ func (s *MasterStatus) RemoveCondition(conditionType string) {
 func (s *MasterStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
+func (s *MasterStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
 
 func (s *WorkerStatus) MemberType() MemberType {
 	return DMWorkerMemberType
@@ -373,6 +443,12 @@ func (s *WorkerStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
 }
 func (s *WorkerStatus) GetConditions() []metav1.Condition {
 	return s.Conditions
+}
+func (s *WorkerStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *WorkerStatus) SetSynced(synced bool) {
+	s.Synced = synced
 }
 func (s *WorkerStatus) SetCondition(newCondition metav1.Condition) {
 	if s.Conditions == nil {
@@ -392,4 +468,7 @@ func (s *WorkerStatus) RemoveCondition(conditionType string) {
 }
 func (s *WorkerStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
+}
+func (s *WorkerStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
 }
