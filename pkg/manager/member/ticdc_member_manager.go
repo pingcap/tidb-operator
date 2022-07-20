@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -48,6 +49,7 @@ type ticdcMemberManager struct {
 	deps                     *controller.Dependencies
 	scaler                   Scaler
 	ticdcUpgrader            Upgrader
+	suspender                suspender.Suspender
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
@@ -85,11 +87,12 @@ func getTiCDCConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 // NewTiCDCMemberManager returns a *ticdcMemberManager
-func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader) manager.Manager {
+func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader, spder suspender.Suspender) manager.Manager {
 	m := &ticdcMemberManager{
 		deps:          deps,
 		scaler:        scaler,
 		ticdcUpgrader: ticdcUpgrader,
+		suspender:     spder,
 	}
 	m.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	return m
@@ -124,6 +127,17 @@ func (m *ticdcMemberManager) syncTiCDCConfigMap(tc *v1alpha1.TidbCluster, set *a
 // Sync fulfills the manager.Manager interface
 func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.TiCDC == nil {
+		return nil
+	}
+
+	// skip sync if ticdc is suspended
+	component := v1alpha1.TiCDCMemberType
+	suspended, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if suspended {
+		klog.V(4).Infof("component %s for cluster %s/%s is suspended, skip syncing", component, tc.GetNamespace(), tc.GetName())
 		return nil
 	}
 

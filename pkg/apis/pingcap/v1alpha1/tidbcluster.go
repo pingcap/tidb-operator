@@ -693,6 +693,10 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 		return false
 	}
 
+	if tc.Status.PD.Phase == SuspendedPhase {
+		return false
+	}
+
 	return true
 }
 
@@ -726,12 +730,20 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 		return false
 	}
 
+	if tc.Status.TiKV.Phase == SuspendedPhase {
+		return false
+	}
+
 	return true
 }
 
 func (tc *TidbCluster) PumpIsAvailable() bool {
 	lowerLimit := 1
 	if len(tc.Status.Pump.Members) < lowerLimit {
+		return false
+	}
+
+	if tc.Status.Pump.Phase == SuspendedPhase {
 		return false
 	}
 

@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -47,10 +48,11 @@ const (
 )
 
 type masterMemberManager struct {
-	deps     *controller.Dependencies
-	scaler   Scaler
-	upgrader DMUpgrader
-	failover DMFailover
+	deps      *controller.Dependencies
+	scaler    Scaler
+	upgrader  DMUpgrader
+	failover  DMFailover
+	suspender suspender.Suspender
 }
 
 // NewMasterMemberManager returns a *masterMemberManager
