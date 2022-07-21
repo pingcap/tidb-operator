@@ -135,6 +135,7 @@ func (s *suspender) suspendResources(ctx *suspendComponentCtx, action v1alpha1.S
 func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 	ns := ctx.cluster.GetNamespace()
 	name := ctx.cluster.GetName()
+	// FIXME: use common function to get the sts name
 	stsName := fmt.Sprintf("%s-%s", name, ctx.component)
 
 	_, err := s.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
@@ -143,35 +144,40 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 		return fmt.Errorf("failed to get sts %s/%s: %s", ns, stsName, err)
 	}
 
-	if !stsNotExist {
+	if stsNotExist {
+		// clear the status after the sts is deleted actually, so that we can
+		// use the `status.statefulset` is nil to determine whether sts suspension is done.
+		ctx.status.SetSynced(false)
+		ctx.status.SetStatefulSet(nil)
+		switch ctx.component {
+		case v1alpha1.PDMemberType:
+			ctx.status.(*v1alpha1.PDStatus).Members = nil
+			ctx.status.(*v1alpha1.PDStatus).Leader = v1alpha1.PDMember{}
+		case v1alpha1.TiDBMemberType:
+			ctx.status.(*v1alpha1.TiDBStatus).Members = nil
+		case v1alpha1.TiKVMemberType:
+			ctx.status.(*v1alpha1.TiKVStatus).Stores = nil
+		case v1alpha1.TiFlashMemberType:
+			ctx.status.(*v1alpha1.TiFlashStatus).Stores = nil
+		case v1alpha1.PumpMemberType:
+			ctx.status.(*v1alpha1.PumpStatus).Members = nil
+		case v1alpha1.TiCDCMemberType:
+			ctx.status.(*v1alpha1.TiCDCStatus).Captures = nil
+		case v1alpha1.DMMasterMemberType:
+			ctx.status.(*v1alpha1.MasterStatus).Members = nil
+			ctx.status.(*v1alpha1.MasterStatus).Leader = v1alpha1.MasterMember{}
+		case v1alpha1.DMWorkerMemberType:
+			ctx.status.(*v1alpha1.WorkerStatus).Members = nil
+		}
+	} else {
 		klog.Infof("suspend statefulset %s/%s for component %s", ns, stsName, ctx.ComponentID())
-		err = s.deps.KubeClientset.AppsV1().StatefulSets(ns).Delete(context.TODO(), stsName, metav1.DeleteOptions{})
+
+		foreground := metav1.DeletePropagationForeground
+		err = s.deps.KubeClientset.AppsV1().StatefulSets(ns).Delete(context.TODO(), stsName,
+			metav1.DeleteOptions{PropagationPolicy: &foreground})
 		if err != nil {
 			return fmt.Errorf("failed to delete sts %s/%s: %s", ns, stsName, err)
 		}
-	}
-
-	ctx.status.SetSynced(false)
-	ctx.status.SetStatefulSet(nil)
-	switch ctx.component {
-	case v1alpha1.PDMemberType:
-		ctx.status.(*v1alpha1.PDStatus).Members = nil
-		ctx.status.(*v1alpha1.PDStatus).Leader = v1alpha1.PDMember{}
-	case v1alpha1.TiDBMemberType:
-		ctx.status.(*v1alpha1.TiDBStatus).Members = nil
-	case v1alpha1.TiKVMemberType:
-		ctx.status.(*v1alpha1.TiKVStatus).Stores = nil
-	case v1alpha1.TiFlashMemberType:
-		ctx.status.(*v1alpha1.TiFlashStatus).Stores = nil
-	case v1alpha1.PumpMemberType:
-		ctx.status.(*v1alpha1.PumpStatus).Members = nil
-	case v1alpha1.TiCDCMemberType:
-		ctx.status.(*v1alpha1.TiCDCStatus).Captures = nil
-	case v1alpha1.DMMasterMemberType:
-		ctx.status.(*v1alpha1.MasterStatus).Members = nil
-		ctx.status.(*v1alpha1.MasterStatus).Leader = v1alpha1.MasterMember{}
-	case v1alpha1.DMWorkerMemberType:
-		ctx.status.(*v1alpha1.WorkerStatus).Members = nil
 	}
 
 	return nil
@@ -196,11 +202,25 @@ func (s *suspender) end(ctx *suspendComponentCtx) error {
 }
 
 func isComponentSuspended(ctx *suspendComponentCtx) bool {
+	spec := ctx.spec
 	status := ctx.status
-	if status == nil {
+
+	if spec == nil || status == nil {
 		return false
 	}
-	return status.GetPhase() == v1alpha1.SuspendedPhase
+	if status.GetPhase() != v1alpha1.SuspendedPhase {
+		return false
+	}
+
+	action := spec.SuspendAction()
+	if action != nil && action.SuspendStatefuleSet {
+
+	}
+	if status.GetStatefulSet() != nil {
+		// the statefulset is set to nil by suspender when the sts is deleted.
+		return false
+	}
+	return true
 }
 
 func needsSuspendComponent(ctx *suspendComponentCtx) bool {

@@ -104,17 +104,24 @@ func (c *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) 
 	var errs []error
 	oldStatus := tc.Status.DeepCopy()
 
+	klog.Infof("=== updateTidbCluster")
+
 	if err := c.updateTidbCluster(tc); err != nil {
 		errs = append(errs, err)
 	}
+
+	klog.Infof("=== conditionUpdater")
 
 	if err := c.conditionUpdater.Update(tc); err != nil {
 		errs = append(errs, err)
 	}
 
+	klog.Infof("=== diff status")
 	if apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
+
+	klog.Infof("=== update status")
 	if _, err := c.tcControl.UpdateTidbCluster(tc.DeepCopy(), &tc.Status, oldStatus); err != nil {
 		errs = append(errs, err)
 	}
