@@ -133,6 +133,11 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
+		// if can, reason := canResizeVolumesForComponent(comp.MemberType(), comp); !can {
+		// 	klog.Infof("skip to resize volumes for %s/%s:%s, reason: %s", tc.GetNamespace(), tc.GetName(), comp.MemberType(), reason)
+		// 	continue
+		// }
+
 		ctx, err := p.buildContextForTC(tc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by resize for %s failed: %w", ctx.ComponentID(), err))
@@ -156,6 +161,11 @@ func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
+		// if can, reason := canResizeVolumesForComponent(comp.MemberType(), comp); !can {
+		// 	klog.Infof("skip to resize volumes for %s/%s:%s, reason: %s", dc.GetNamespace(), dc.GetName(), comp.MemberType(), reason)
+		// 	continue
+		// }
+
 		ctx, err := p.buildContextForDM(dc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by resize for %s failed: %w", ctx.ComponentID(), err))
@@ -719,6 +729,18 @@ func (p *pvcResizer) collectAcutalStatus(ns string, selector labels.Selector) ([
 
 	return result, nil
 }
+
+// func canResizeVolumesForComponent(comp v1alpha1.MemberType, status v1alpha1.ComponentStatus) (bool, string) {
+// 	if status.GetPhase() == v1alpha1.SuspendedPhase {
+// 		return false, "component is suspended"
+// 	}
+
+// 	if !status.GetSynced() {
+// 		return false, "status is not synced"
+// 	}
+
+// 	return true, ""
+// }
 
 func isVolumeExpansionSupported(lister storagelister.StorageClassLister, storageClassName string) (bool, error) {
 	sc, err := lister.Get(storageClassName)
