@@ -56,15 +56,28 @@ type masterMemberManager struct {
 }
 
 // NewMasterMemberManager returns a *masterMemberManager
-func NewMasterMemberManager(deps *controller.Dependencies, masterScaler Scaler, masterUpgrader DMUpgrader, masterFailover DMFailover) manager.DMManager {
+func NewMasterMemberManager(deps *controller.Dependencies, masterScaler Scaler, masterUpgrader DMUpgrader, masterFailover DMFailover, spder suspender.Suspender) manager.DMManager {
 	return &masterMemberManager{
-		deps:     deps,
-		scaler:   masterScaler,
-		upgrader: masterUpgrader,
-		failover: masterFailover}
+		deps:      deps,
+		scaler:    masterScaler,
+		upgrader:  masterUpgrader,
+		failover:  masterFailover,
+		suspender: spder,
+	}
 }
 
 func (m *masterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
+	// skip sync if dm master is suspended
+	component := v1alpha1.DMMasterMemberType
+	suspended, err := m.suspender.SuspendDMComponent(dc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if suspended {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, dc.GetNamespace(), dc.GetName())
+		return nil
+	}
+
 	// Sync dm-master Service
 	if err := m.syncMasterServiceForDMCluster(dc); err != nil {
 		return err

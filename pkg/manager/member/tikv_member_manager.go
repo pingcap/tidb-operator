@@ -104,7 +104,7 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return fmt.Errorf("suspend %s failed: %v", component, err)
 	}
 	if suspended {
-		klog.V(4).Infof("component %s for cluster %s/%s is suspended, skip syncing", component, ns, tcName)
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, ns, tcName)
 		return nil
 	}
 

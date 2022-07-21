@@ -83,7 +83,7 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return fmt.Errorf("suspend %s failed: %v", component, err)
 	}
 	if suspended {
-		klog.V(4).Infof("component %s for cluster %s/%s is suspended, skip syncing", component, tc.GetNamespace(), tc.GetName())
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, tc.GetNamespace(), tc.GetName())
 		return nil
 	}
 

@@ -140,7 +140,7 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 	}
 
 	if !stsNotExist {
-		klog.Info("suspend statefulset %s/%s for component %s", ns, stsName, ctx.ComponentID())
+		klog.Infof("suspend statefulset %s/%s for component %s", ns, stsName, ctx.ComponentID())
 		err = s.deps.KubeClientset.AppsV1().StatefulSets(ns).Delete(context.TODO(), stsName, metav1.DeleteOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to delete sts %s/%s: %s", ns, stsName, err)

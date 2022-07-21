@@ -52,11 +52,12 @@ type workerMemberManager struct {
 }
 
 // NewWorkerMemberManager returns a *ticdcMemberManager
-func NewWorkerMemberManager(deps *controller.Dependencies, scaler Scaler, failover DMFailover) manager.DMManager {
+func NewWorkerMemberManager(deps *controller.Dependencies, scaler Scaler, failover DMFailover, spder suspender.Suspender) manager.DMManager {
 	return &workerMemberManager{
-		deps:     deps,
-		scaler:   scaler,
-		failover: failover,
+		deps:      deps,
+		scaler:    scaler,
+		failover:  failover,
+		suspender: spder,
 	}
 }
 
@@ -71,6 +72,18 @@ func (m *workerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 		klog.Infof("DMCluster %s/%s is paused, skip syncing dm-worker deployment", ns, dcName)
 		return nil
 	}
+
+	// skip sync if dm worker is suspended
+	component := v1alpha1.DMWorkerMemberType
+	suspended, err := m.suspender.SuspendDMComponent(dc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if suspended {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, dc.GetNamespace(), dc.GetName())
+		return nil
+	}
+
 	if !dc.MasterIsAvailable() {
 		return controller.RequeueErrorf("DMCluster: %s/%s, waiting for dm-master cluster running", ns, dcName)
 	}
