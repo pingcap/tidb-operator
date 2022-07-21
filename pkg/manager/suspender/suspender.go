@@ -93,9 +93,8 @@ func (s *suspender) suspendComponent(ctx *suspendComponentCtx) (bool, error) {
 	}
 
 	suspended := isComponentSuspended(ctx)
-	needed := needsSuspendComponent(ctx) && canSuspendComponent(ctx)
 
-	if !needed {
+	if !needsSuspendComponent(ctx) {
 		if suspended {
 			err := s.end(ctx)
 			return true, err
@@ -106,6 +105,11 @@ func (s *suspender) suspendComponent(ctx *suspendComponentCtx) (bool, error) {
 	}
 
 	if !suspended {
+		if can, reason := canSuspendComponent(ctx); !can {
+			klog.Warningf("component %s can not be suspended because %s", ctx.ComponentID(), reason)
+			return true, nil
+		}
+
 		err := s.begion(ctx)
 		return true, err
 	}
@@ -176,17 +180,18 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 func (s *suspender) begion(ctx *suspendComponentCtx) error {
 	status := ctx.status
 
-	ctx.status.SetPhase(v1alpha1.SuspendedPhase)
-
-	klog.Infof("begin to suspend component %s and transfer phase from %s to %s", ctx.ComponentID(), status.GetPhase(), v1alpha1.SuspendedPhase)
+	phase := v1alpha1.SuspendedPhase
+	ctx.status.SetPhase(phase)
+	klog.Infof("begin to suspend component %s and transfer phase from %s to %s", ctx.ComponentID(), status.GetPhase(), phase)
 	return nil
 }
 
 func (s *suspender) end(ctx *suspendComponentCtx) error {
 	status := ctx.status
 
-	ctx.status.SetPhase(v1alpha1.SuspendedPhase)
-	klog.Infof("end to suspend component %s and transfer phase from %s to %s", ctx.ComponentID(), status.GetPhase(), v1alpha1.NormalPhase)
+	phase := v1alpha1.NormalPhase
+	ctx.status.SetPhase(phase)
+	klog.Infof("end to suspend component %s and transfer phase from %s to %s", ctx.ComponentID(), status.GetPhase(), phase)
 	return nil
 }
 
@@ -215,12 +220,12 @@ func needsSuspendComponent(ctx *suspendComponentCtx) bool {
 	return true
 }
 
-func canSuspendComponent(ctx *suspendComponentCtx) bool {
+func canSuspendComponent(ctx *suspendComponentCtx) (bool, string) {
 	status := ctx.status
 
 	phase := status.GetPhase()
 	if phase != v1alpha1.NormalPhase && phase != v1alpha1.SuspendedPhase {
-		return false
+		return false, fmt.Sprintf("phase is %s not normal or suspended", phase)
 	}
 
 	// wait for other components to be suspended
@@ -239,10 +244,10 @@ func canSuspendComponent(ctx *suspendComponentCtx) bool {
 		// FIXME: maybe move to api package
 		cctx := buildContext(ctx.cluster, typ)
 		if needsSuspendComponent(cctx) && !isComponentSuspended(cctx) {
-			return false
+			return false, fmt.Sprintf("wait another component %s to be suspended", typ)
 		}
 
 	}
 
-	return true
+	return true, ""
 }
