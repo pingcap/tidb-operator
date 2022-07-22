@@ -479,7 +479,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 		// mount a shared volume and tail the RocksDB log to STDOUT using a sidecar.
 		containers = append(containers, corev1.Container{
-			Name:            v1alpha1.RocksDBLogTailerMemberType.String(),
+			Name:            v1alpha1.ContainerRocksDBLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
@@ -528,7 +528,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 		// mount a shared volume and tail the Raft log to STDOUT using a sidecar.
 		containers = append(containers, corev1.Container{
-			Name:            v1alpha1.RaftLogTailerMemberType.String(),
+			Name:            v1alpha1.ContainerRaftLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
