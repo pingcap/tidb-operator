@@ -17,14 +17,18 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
-type fakeSuspender struct {
+type FakeSuspender struct {
 	SuspendComponentFunc func(v1alpha1.Cluster, v1alpha1.MemberType) (bool, error)
 }
 
-func NewFakeSuspender() *fakeSuspender {
-	return &fakeSuspender{}
+func NewFakeSuspender() *FakeSuspender {
+	return &FakeSuspender{}
 }
 
-func (s *fakeSuspender) SuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) (bool, error) {
+func (s *FakeSuspender) SuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) (bool, error) {
+	if s.SuspendComponentFunc == nil {
+		return false, nil
+	}
+
 	return s.SuspendComponentFunc(cluster, comp)
 }

@@ -38,7 +38,7 @@ var (
 	suspendOrderForDM = []v1alpha1.MemberType{}
 
 	_ Suspender = &suspender{}
-	_ Suspender = &fakeSuspender{}
+	_ Suspender = &FakeSuspender{}
 )
 
 type Suspender interface {
@@ -178,7 +178,7 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 func (s *suspender) begion(ctx *suspendComponentCtx) error {
 	status := ctx.status
 	phase := v1alpha1.SuspendPhase
-	
+
 	klog.Infof("begin to suspend component %s and transfer phase from %s to %s", ctx.ComponentID(), status.GetPhase(), phase)
 	ctx.status.SetPhase(phase)
 	return nil
@@ -214,8 +214,8 @@ func needsSuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) b
 // canSuspendComponent checks whether the component can start to be suspended.
 func canSuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) (bool, string) {
 	// only support to suspend Normal or Suspend cluster
-	if cluster.ComponentIsNormal(comp) && cluster.ComponentIsSuspending(comp) {
-		return false, fmt.Sprintf("cluster phase not normal or suspended")
+	if !cluster.ComponentIsNormal(comp) && !cluster.ComponentIsSuspending(comp) {
+		return false, "component phase is not Normal or Suspend"
 	}
 
 	// wait for other components to be suspended

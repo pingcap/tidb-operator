@@ -21,11 +21,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -36,6 +31,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 )
 
 func TestMasterMemberManagerSyncCreate(t *testing.T) {
@@ -46,6 +48,7 @@ func TestMasterMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateStatefulSet       bool
 		errWhenCreateMasterService     bool
 		errWhenCreateMasterPeerService bool
+		suspendComponent               func() (bool, error)
 		errExpectFn                    func(*GomegaWithT, error)
 		masterSvcCreated               bool
 		masterPeerSvcCreated           bool
@@ -72,6 +75,11 @@ func TestMasterMemberManagerSyncCreate(t *testing.T) {
 		}
 		if test.errWhenCreateMasterPeerService {
 			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 1)
+		}
+		if test.suspendComponent != nil {
+			mmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+				return test.suspendComponent()
+			}
 		}
 
 		err := mmm.SyncDM(dc)
@@ -162,6 +170,19 @@ func TestMasterMemberManagerSyncCreate(t *testing.T) {
 				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
 			},
 			masterSvcCreated:     true,
+			masterPeerSvcCreated: false,
+			setCreated:           false,
+		},
+		{
+			name:                           "skip create when suspend dm-master",
+			suspendComponent:               func() (bool, error) { return true, nil },
+			errWhenCreateStatefulSet:       true,
+			errWhenCreateMasterService:     true,
+			errWhenCreateMasterPeerService: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(BeNil())
+			},
+			masterSvcCreated:     false,
 			masterPeerSvcCreated: false,
 			setCreated:           false,
 		},
@@ -754,6 +775,7 @@ func newFakeMasterMemberManager() (*masterMemberManager, *controller.FakeStatefu
 		NewFakeMasterScaler(),
 		NewFakeMasterUpgrader(),
 		NewFakeMasterFailover(),
+		suspender.NewFakeSuspender(),
 	}
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
