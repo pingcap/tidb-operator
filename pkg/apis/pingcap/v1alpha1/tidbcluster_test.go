@@ -269,7 +269,7 @@ func TestComponentAccessor(t *testing.T) {
 			Spec: *test.cluster,
 		}
 
-		accessor := buildTidbClusterComponentAccessor(ComponentTiDB, tc, test.component)
+		accessor := buildTidbClusterComponentAccessor(TiDBMemberType, tc, test.component)
 		test.expectFn(g, accessor)
 	}
 	affinity := &corev1.Affinity{

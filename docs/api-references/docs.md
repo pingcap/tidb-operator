@@ -4327,10 +4327,6 @@ FlashSecurity
 </tr>
 </tbody>
 </table>
-<h3 id="component">Component</h3>
-<p>
-<p>Component defines component identity of all components</p>
-</p>
 <h3 id="componentaccessor">ComponentAccessor</h3>
 <p>
 <p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
@@ -4796,6 +4792,9 @@ string
 </p>
 <p>
 <p>ConfigUpdateStrategy represents the strategy to update configuration</p>
+</p>
+<h3 id="containername">ContainerName</h3>
+<p>
 </p>
 <h3 id="coprocessorcache">CoprocessorCache</h3>
 <p>
@@ -6058,6 +6057,18 @@ Only named struct is allowed by controller-gen</p>
 <tr>
 <td>
 <code>podCreateTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>beginTime</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
 Kubernetes meta/v1.Time

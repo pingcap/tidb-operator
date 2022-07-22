@@ -47,37 +47,51 @@ const (
 	PumpStateOffline string = "offline"
 )
 
+type ContainerName string
+
+func (c ContainerName) String() string {
+	return string(c)
+}
+
+const (
+	ContainerSlowLogTailer    ContainerName = "slowlog"
+	ContainerRocksDBLogTailer ContainerName = "rocksdblog"
+	ContainerRaftLogTailer    ContainerName = "raftlog"
+)
+
 // MemberType represents member type
 type MemberType string
 
 const (
-	// PDMemberType is pd container type
+	// DiscoveryMemberType is discovery member type
+	DiscoveryMemberType MemberType = "discovery"
+	// PDMemberType is pd member type
 	PDMemberType MemberType = "pd"
-	// TiDBMemberType is tidb container type
+	// TiDBMemberType is tidb member type
 	TiDBMemberType MemberType = "tidb"
-	// TiKVMemberType is tikv container type
+	// TiKVMemberType is tikv member type
 	TiKVMemberType MemberType = "tikv"
-	// TiFlashMemberType is tiflash container type
+	// TiFlashMemberType is tiflash member type
 	TiFlashMemberType MemberType = "tiflash"
-	// TiCDCMemberType is ticdc container type
+	// TiCDCMemberType is ticdc member type
 	TiCDCMemberType MemberType = "ticdc"
-	// PumpMemberType is pump container type
+	// PumpMemberType is pump member type
 	PumpMemberType MemberType = "pump"
-	// DMMasterMemberType is dm-master container type
+
+	// DMDiscoveryMemberType is discovery member type
+	DMDiscoveryMemberType MemberType = "dm-discovery"
+	// DMMasterMemberType is dm-master member type
 	DMMasterMemberType MemberType = "dm-master"
-	// DMWorkerMemberType is dm-worker container type
+	// DMWorkerMemberType is dm-worker member type
 	DMWorkerMemberType MemberType = "dm-worker"
-	// SlowLogTailerMemberType is tidb slow log tailer container type
-	SlowLogTailerMemberType MemberType = "slowlog"
-	// RocksDBLogTailerMemberType is tikv rocksdb log tailer container type
-	RocksDBLogTailerMemberType MemberType = "rocksdblog"
-	// RaftLogTailerMemberType is tikv raft log tailer container type
-	RaftLogTailerMemberType MemberType = "raftlog"
-	// TidbMonitorMemberType is tidbmonitor type
+
+	// TidbMonitorMemberType is tidbmonitor member type
 	TidbMonitorMemberType MemberType = "tidbmonitor"
-	// NGMonitoringMemberType is ng monitoring type
+
+	// NGMonitoringMemberType is ng monitoring member type
 	NGMonitoringMemberType MemberType = "ng-monitoring"
-	// UnknownMemberType is unknown container type
+
+	// UnknownMemberType is unknown member type
 	UnknownMemberType MemberType = "unknown"
 )
 
@@ -1247,6 +1261,7 @@ const (
 
 type EvictLeaderStatus struct {
 	PodCreateTime metav1.Time `json:"podCreateTime,omitempty"`
+	BeginTime     metav1.Time `json:"beginTime,omitempty"`
 	Value         string      `json:"value,omitempty"`
 }
 
