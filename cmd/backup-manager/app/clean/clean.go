@@ -18,13 +18,24 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"strings"
+	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+)
+
+var (
+	defaultBackoff = wait.Backoff{
+		Duration: 100 * time.Millisecond,
+		Factor:   2.0,
+		Jitter:   0,
+		Steps:    8,
+		Cap:      time.Second,
+	}
 )
 
 // Options contains the input arguments to the backup command
@@ -39,19 +50,37 @@ func (bo *Options) String() string {
 
 // cleanBRRemoteBackupData clean the backup data from remote
 func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1.Backup) error {
-	s, err := util.NewStorageBackend(backup.Spec.StorageProvider)
+	opt := backup.GetCleanOption()
+
+	backend, err := util.NewStorageBackend(backup.Spec.StorageProvider)
 	if err != nil {
 		return err
 	}
-	defer s.Close()
+	defer backend.Close()
 
-	opt := backup.GetCleanOption()
+	round := 0
+	return util.RetryOnError(ctx, opt.RetryCount, 0, util.RetriableOnAnyError, func() error {
+		round++
+		err := bo.cleanBRRemoteBackupDataOnce(ctx, backend, opt, round)
+		if err != nil {
+			klog.Errorf("For backup %s clean %d, failed to clean backup: %s", bo, round, err)
+		}
+		return err
+	})
+}
 
-	klog.Infof("cleanning cluster %s backup data with opt: %+v", bo, opt)
+func (bo *Options) cleanBRRemoteBackupDataOnce(ctx context.Context, backend *util.StorageBackend, opt v1alpha1.CleanOption, round int) error {
+	klog.Infof("For backup %s clean %d, start to clean backup with opt: %+v", bo, round, opt)
 
-	iter := s.ListPage(nil)
+	iter := backend.ListPage(nil)
+	backoff := defaultBackoff
+	index := 0
+	count, deletedCount, failedCount := 0, 0, 0
 	for {
-		// list one page of object
+		needBackoff := false
+		index++
+		logPrefix := fmt.Sprintf("For backup %s clean %d-%d", bo, round, index)
+
 		objs, err := iter.Next(ctx, int(opt.PageSize))
 		if err == io.EOF {
 			break
@@ -60,26 +89,52 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 			return err
 		}
 
-		klog.Infof("For backup %s, try to delete %d objects", bo, len(objs))
+		klog.Infof("%s, try to delete %d objects", logPrefix, len(objs))
+		result := backend.BatchDeleteObjects(ctx, objs, opt.BatchDeleteOption)
 
-		// batch delete objects
-		result := s.BatchDeleteObjects(ctx, objs, opt.BatchDeleteOption)
+		count += len(objs)
+		deletedCount += len(result.Deleted)
+		failedCount += len(result.Errors)
 
 		if len(result.Deleted) != 0 {
-			klog.Infof("For backup %s, delete %d objects successfully", bo, len(result.Deleted))
-			klog.V(4).Infof("For backup %s, all objects deleted: %s", bo, strings.Join(result.Deleted, ","))
+			klog.Infof("%s, delete %d objects successfully", logPrefix, len(result.Deleted))
+			for _, obj := range result.Deleted {
+				klog.V(4).Infof("%s, delete object %s successfully", logPrefix, obj)
+			}
 		}
 		if len(result.Errors) != 0 {
-			klog.Errorf("For backup %s, delete %d objects failed", bo, len(result.Errors))
+			klog.Errorf("%s, delete %d objects failed", logPrefix, len(result.Errors))
 			for _, oerr := range result.Errors {
-				klog.V(4).Infof("For backup %s, delete object %s failed: %s", bo, oerr.Key, oerr.Err)
+				klog.V(4).Infof("%s, delete object %s failed: %s", logPrefix, oerr.Key, oerr.Err)
 			}
-			return fmt.Errorf("some objects failed to delete")
+			needBackoff = true
 		}
-		if len(result.Deleted) < len(objs) {
-			klog.Errorf("For backup %s, deleted objects are less than expected, deleted: %d, expected: %d", bo, len(result.Deleted), len(objs))
-			return fmt.Errorf("some objects remain to delete")
+		if len(result.Deleted)+len(result.Errors) < len(objs) {
+			klog.Errorf("%s, sum of deleted and failed objects %d is less than expected", logPrefix, len(result.Deleted)+len(result.Errors))
+			needBackoff = true
 		}
+
+		if opt.BackoffEnabled {
+			if needBackoff {
+				time.Sleep(backoff.Step())
+			} else {
+				backoff = defaultBackoff // reset backoff
+			}
+		}
+	}
+
+	klog.Infof("For backup %s clean %d, clean backup finished, total:%d deleted:%d failed:%d", bo, round, count, deletedCount, failedCount)
+
+	if deletedCount < count {
+		return fmt.Errorf("some objects failed to be deleted")
+	}
+
+	objs, err := backend.ListPage(nil).Next(ctx, int(opt.PageSize))
+	if err != nil && err != io.EOF {
+		return err
+	}
+	if len(objs) != 0 {
+		return fmt.Errorf("some objects are missing to be deleted")
 	}
 
 	return nil
