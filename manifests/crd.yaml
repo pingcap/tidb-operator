@@ -380,7 +380,7 @@ spec:
                         format: int64
                         type: integer
                       retryCount:
-                        default: 3
+                        default: 5
                         type: integer
                       routineConcurrency:
                         format: int32
@@ -1783,7 +1783,7 @@ spec:
                     format: int64
                     type: integer
                   retryCount:
-                    default: 3
+                    default: 5
                     type: integer
                   routineConcurrency:
                     format: int32
