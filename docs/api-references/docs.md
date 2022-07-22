@@ -6074,6 +6074,18 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
+<code>beginTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>value</code></br>
 <em>
 string

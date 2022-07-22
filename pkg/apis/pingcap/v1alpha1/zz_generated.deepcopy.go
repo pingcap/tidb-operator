@@ -1537,6 +1537,7 @@ func (in *EmptyStruct) DeepCopy() *EmptyStruct {
 func (in *EvictLeaderStatus) DeepCopyInto(out *EvictLeaderStatus) {
 	*out = *in
 	in.PodCreateTime.DeepCopyInto(&out.PodCreateTime)
+	in.BeginTime.DeepCopyInto(&out.BeginTime)
 	return
 }
 
