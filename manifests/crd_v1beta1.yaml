@@ -333,6 +333,8 @@ spec:
                   type: string
                 br:
                   properties:
+                    checkRequirements:
+                      type: boolean
                     checksum:
                       type: boolean
                     cluster:
@@ -1731,6 +1733,8 @@ spec:
               type: string
             br:
               properties:
+                checkRequirements:
+                  type: boolean
                 checksum:
                   type: boolean
                 cluster:
@@ -10991,6 +10995,8 @@ spec:
               type: string
             br:
               properties:
+                checkRequirements:
+                  type: boolean
                 checksum:
                   type: boolean
                 cluster:
@@ -30393,6 +30399,9 @@ spec:
                 evictLeader:
                   additionalProperties:
                     properties:
+                      beginTime:
+                        format: date-time
+                        type: string
                       podCreateTime:
                         format: date-time
                         type: string

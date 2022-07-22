@@ -114,6 +114,11 @@ func (in *BRConfig) DeepCopyInto(out *BRConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.CheckRequirements != nil {
+		in, out := &in.CheckRequirements, &out.CheckRequirements
+		*out = new(bool)
+		**out = **in
+	}
 	if in.SendCredToTikv != nil {
 		in, out := &in.SendCredToTikv, &out.SendCredToTikv
 		*out = new(bool)
@@ -1532,6 +1537,7 @@ func (in *EmptyStruct) DeepCopy() *EmptyStruct {
 func (in *EvictLeaderStatus) DeepCopyInto(out *EvictLeaderStatus) {
 	*out = *in
 	in.PodCreateTime.DeepCopyInto(&out.PodCreateTime)
+	in.BeginTime.DeepCopyInto(&out.BeginTime)
 	return
 }
 
