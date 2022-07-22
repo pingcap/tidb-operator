@@ -1324,6 +1324,20 @@ func schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref common.ReferenceCallback) 
 							Format:      "int64",
 						},
 					},
+					"retryCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RetryCount represents the number of retries in pod when the cleanup fails.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"backoffEnabled": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BackoffEnabled represents whether to enable the backoff when a deletion API fails. It is useful when the deletion API is rate limited.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"disableBatchConcurrency": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DisableBatchConcurrency disables the batch deletions with S3 API and the deletion will be done by goroutines.",
