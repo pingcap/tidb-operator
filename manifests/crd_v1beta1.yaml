@@ -320,6 +320,39 @@ spec:
                         - topologyKey
                         type: object
                       type: array
+<<<<<<< HEAD
+=======
+                    rateLimit:
+                      type: integer
+                    sendCredToTikv:
+                      type: boolean
+                    statusAddr:
+                      type: string
+                    table:
+                      type: string
+                    timeAgo:
+                      type: string
+                  required:
+                  - cluster
+                  type: object
+                cleanOption:
+                  properties:
+                    backoffEnabled:
+                      type: boolean
+                    batchConcurrency:
+                      format: int32
+                      type: integer
+                    disableBatchConcurrency:
+                      type: boolean
+                    pageSize:
+                      format: int64
+                      type: integer
+                    retryCount:
+                      type: integer
+                    routineConcurrency:
+                      format: int32
+                      type: integer
+>>>>>>> 739e61375... Fix the issue that backup files may leak after cleanup (#4617)
                   type: object
               type: object
             azblob:
@@ -1737,7 +1770,181 @@ spec:
                   type: object
                 backupType:
                   type: string
+<<<<<<< HEAD
                 br:
+=======
+                clusterNamespace:
+                  type: string
+                concurrency:
+                  format: int32
+                  type: integer
+                db:
+                  type: string
+                logLevel:
+                  type: string
+                onLine:
+                  type: boolean
+                options:
+                  items:
+                    type: string
+                  type: array
+                rateLimit:
+                  type: integer
+                sendCredToTikv:
+                  type: boolean
+                statusAddr:
+                  type: string
+                table:
+                  type: string
+                timeAgo:
+                  type: string
+              required:
+              - cluster
+              type: object
+            cleanOption:
+              properties:
+                backoffEnabled:
+                  type: boolean
+                batchConcurrency:
+                  format: int32
+                  type: integer
+                disableBatchConcurrency:
+                  type: boolean
+                pageSize:
+                  format: int64
+                  type: integer
+                retryCount:
+                  type: integer
+                routineConcurrency:
+                  format: int32
+                  type: integer
+              type: object
+            cleanPolicy:
+              type: string
+            dumpling:
+              properties:
+                options:
+                  items:
+                    type: string
+                  type: array
+                tableFilter:
+                  items:
+                    type: string
+                  type: array
+              type: object
+            env:
+              items:
+                properties:
+                  name:
+                    type: string
+                  value:
+                    type: string
+                  valueFrom:
+                    properties:
+                      configMapKeyRef:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                      fieldRef:
+                        properties:
+                          apiVersion:
+                            type: string
+                          fieldPath:
+                            type: string
+                        required:
+                        - fieldPath
+                        type: object
+                      resourceFieldRef:
+                        properties:
+                          containerName:
+                            type: string
+                          divisor:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          resource:
+                            type: string
+                        required:
+                        - resource
+                        type: object
+                      secretKeyRef:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                    type: object
+                required:
+                - name
+                type: object
+              type: array
+            from:
+              properties:
+                host:
+                  type: string
+                port:
+                  format: int32
+                  type: integer
+                secretName:
+                  type: string
+                tlsClientSecretName:
+                  type: string
+                user:
+                  type: string
+              required:
+              - host
+              - secretName
+              type: object
+            gcs:
+              properties:
+                bucket:
+                  type: string
+                bucketAcl:
+                  type: string
+                location:
+                  type: string
+                objectAcl:
+                  type: string
+                path:
+                  type: string
+                prefix:
+                  type: string
+                projectId:
+                  type: string
+                secretName:
+                  type: string
+                storageClass:
+                  type: string
+              required:
+              - projectId
+              type: object
+            imagePullSecrets:
+              items:
+                properties:
+                  name:
+                    type: string
+                type: object
+              type: array
+            local:
+              properties:
+                prefix:
+                  type: string
+                volume:
+>>>>>>> 739e61375... Fix the issue that backup files may leak after cleanup (#4617)
                   properties:
                     checksum:
                       type: boolean
