@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -581,14 +582,14 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			return fmt.Errorf("%s: cluster is not tidb cluster", logPrefix)
 		}
 
-		// remove leader eviction ann from resized pods and ensure the store is UP.
-		// leader eviction ann of the lastest pod is removed in `endResize`.
+		// end leader eviction and wait store to be Up for resized pods
 		for _, podVolume := range ctx.actualPodVolumes {
 			pod := podVolume.pod
 			if pod.Name == resizePod.Name {
 				break
 			}
 
+			// remove eviction annotation and wait to end leader eviction
 			updated, err := updateResizeAnnForTiKVPod(p.deps.KubeClientset, false, pod)
 			if err != nil {
 				return err
@@ -596,6 +597,11 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			if updated {
 				klog.Infof("%s: remove leader eviction annotation from pod %s/%s", logPrefix, pod.Namespace, pod.Name)
 			}
+			if _, exist := tc.Status.TiKV.EvictLeader[pod.Name]; exist {
+				return controller.RequeueErrorf("%s: wait to end leader eviction for %s", logPrefix, pod.Name)
+			}
+
+			// wait store to be Up
 			for _, store := range tc.Status.TiKV.Stores {
 				if store.PodName == pod.Name && store.State != v1alpha1.TiKVStateUp {
 					return fmt.Errorf("%s: store %s of pod %s is not ready", logPrefix, store.ID, store.PodName)
@@ -603,7 +609,13 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			}
 		}
 
-		// add leader eviction ann to the pod and wait the leader count to be 0
+		// skip evicting leader if only one tikv is exist
+		if len(tc.Status.TiKV.Stores) < 2 && len(tc.Status.TiKV.PeerStores) == 0 {
+			klog.Infof("%s: skip evicting leader because only one tikv", logPrefix)
+			return nil
+		}
+
+		// begin leader eviction
 		updated, err := updateResizeAnnForTiKVPod(p.deps.KubeClientset, true, resizePod)
 		if err != nil {
 			return err
@@ -611,14 +623,24 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 		if updated {
 			klog.Infof("%s: add leader eviction annotation to pod", logPrefix)
 		}
+
+		// wait the leader count to be 0 or eviction timeout
 		for _, store := range tc.Status.TiKV.Stores {
 			if store.PodName == resizePod.Name {
 				if store.LeaderCount == 0 {
 					klog.V(4).Infof("%s: leader count of store %s become 0", logPrefix, store.ID)
 					return nil
-				} else {
-					return controller.RequeueErrorf("%s: wait for leader count of store %s to be 0", logPrefix, store.ID)
 				}
+
+				if status, exist := tc.Status.TiKV.EvictLeader[resizePod.Name]; exist && !status.BeginTime.IsZero() {
+					timeout := tc.TiKVEvictLeaderTimeout()
+					if time.Since(status.BeginTime.Time) > timeout {
+						klog.Infof("%s: leader eviction begins at %q but timeout (threshold: %v)", logPrefix, status.BeginTime.Time.Format(time.RFC3339), timeout)
+						return nil
+					}
+				}
+
+				return controller.RequeueErrorf("%s: wait for leader count of store %s to be 0", logPrefix, store.ID)
 			}
 		}
 
