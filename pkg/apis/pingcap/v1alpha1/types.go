@@ -105,8 +105,8 @@ const (
 	UpgradePhase MemberPhase = "Upgrade"
 	// ScalePhase represents the scaling state of TiDB cluster.
 	ScalePhase MemberPhase = "Scale"
-	// RestartPhase represents the suspended state of TiDB cluster.
-	SuspendedPhase MemberPhase = "Suspended"
+	// SuspendPhase represents the suspend state of TiDB cluster.
+	SuspendPhase MemberPhase = "Suspend"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration

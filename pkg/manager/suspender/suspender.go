@@ -36,11 +36,16 @@ var (
 		v1alpha1.PDMemberType,
 	}
 	suspendOrderForDM = []v1alpha1.MemberType{}
+
+	_ Suspender = &suspender{}
+	_ Suspender = &fakeSuspender{}
 )
 
 type Suspender interface {
-	SuspendComponent(*v1alpha1.TidbCluster, v1alpha1.MemberType) (bool, error)
-	SuspendDMComponent(*v1alpha1.DMCluster, v1alpha1.MemberType) (bool, error)
+	// SuspendComponent suspends the component if needed.
+	//
+	// Returns true if the component is needed to be suspended, and the reconciliation should be skipped.
+	SuspendComponent(v1alpha1.Cluster, v1alpha1.MemberType) (bool, error)
 }
 
 func NewSuspender(deps *controller.Dependencies) Suspender {
@@ -57,16 +62,6 @@ type suspendComponentCtx struct {
 	status v1alpha1.ComponentStatus
 }
 
-func buildContext(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) *suspendComponentCtx {
-	ctx := &suspendComponentCtx{
-		cluster:   cluster,
-		component: comp,
-		spec:      cluster.ComponentSpec(comp),
-		status:    cluster.ComponentStatus(comp),
-	}
-	return ctx
-}
-
 func (c *suspendComponentCtx) ComponentID() string {
 	return fmt.Sprintf("%s/%s:%s", c.cluster.GetNamespace(), c.cluster.GetName(), c.component)
 }
@@ -75,27 +70,21 @@ type suspender struct {
 	deps *controller.Dependencies
 }
 
-func (s *suspender) SuspendComponent(tc *v1alpha1.TidbCluster, comp v1alpha1.MemberType) (bool, error) {
-	ctx := buildContext(tc, comp)
-	return s.suspendComponent(ctx)
-}
-
-func (s *suspender) SuspendDMComponent(dc *v1alpha1.DMCluster, comp v1alpha1.MemberType) (bool, error) {
-	ctx := buildContext(dc, comp)
-	return s.suspendComponent(ctx)
-}
-
-func (s *suspender) suspendComponent(ctx *suspendComponentCtx) (bool, error) {
-	spec := ctx.spec
-	status := ctx.status
-	if spec == nil || status == nil {
+func (s *suspender) SuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) (bool, error) {
+	ctx := &suspendComponentCtx{
+		cluster:   cluster,
+		component: comp,
+		spec:      cluster.ComponentSpec(comp),
+		status:    cluster.ComponentStatus(comp),
+	}
+	if ctx.spec == nil || ctx.status == nil {
 		return false, fmt.Errorf("spec or status for component %s is not found", ctx.ComponentID())
 	}
 
-	suspended := isComponentSuspended(ctx)
+	suspending := cluster.ComponentIsSuspending(comp)
 
-	if !needsSuspendComponent(ctx) {
-		if suspended {
+	if !needsSuspendComponent(ctx.cluster, ctx.component) {
+		if suspending {
 			err := s.end(ctx)
 			return true, err
 		}
@@ -104,9 +93,9 @@ func (s *suspender) suspendComponent(ctx *suspendComponentCtx) (bool, error) {
 		return false, nil
 	}
 
-	if !suspended {
-		if can, reason := canSuspendComponent(ctx); !can {
-			klog.Warningf("component %s can not be suspended because %s", ctx.ComponentID(), reason)
+	if !suspending {
+		if can, reason := canSuspendComponent(ctx.cluster, ctx.component); !can {
+			klog.Warningf("component %s can not be suspended now because: %s", ctx.ComponentID(), reason)
 			return true, nil
 		}
 
@@ -114,7 +103,7 @@ func (s *suspender) suspendComponent(ctx *suspendComponentCtx) (bool, error) {
 		return true, err
 	}
 
-	err := s.suspendResources(ctx, *spec.SuspendAction())
+	err := s.suspendResources(ctx, *ctx.spec.SuspendAction())
 	return true, err
 }
 
@@ -144,7 +133,19 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 		return fmt.Errorf("failed to get sts %s/%s: %s", ns, stsName, err)
 	}
 
-	if stsNotExist {
+	if !stsNotExist {
+		// delete sts with foreground option.
+		// NOTE: For tidb cluster and dm cluster, operator delete sts for all components one by one,
+		// so if any pod or sts deletion fails, the process will be stuck.
+		klog.Infof("suspend statefulset %s/%s for component %s", ns, stsName, ctx.ComponentID())
+
+		foreground := metav1.DeletePropagationForeground
+		err = s.deps.KubeClientset.AppsV1().StatefulSets(ns).Delete(context.TODO(), stsName,
+			metav1.DeleteOptions{PropagationPolicy: &foreground})
+		if err != nil {
+			return fmt.Errorf("failed to delete sts %s/%s: %s", ns, stsName, err)
+		}
+	} else {
 		// clear the status after the sts is deleted actually, so that we can
 		// use the `status.statefulset` is nil to determine whether sts suspension is done.
 		ctx.status.SetSynced(false)
@@ -169,15 +170,6 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 		case v1alpha1.DMWorkerMemberType:
 			ctx.status.(*v1alpha1.WorkerStatus).Members = nil
 		}
-	} else {
-		klog.Infof("suspend statefulset %s/%s for component %s", ns, stsName, ctx.ComponentID())
-
-		foreground := metav1.DeletePropagationForeground
-		err = s.deps.KubeClientset.AppsV1().StatefulSets(ns).Delete(context.TODO(), stsName,
-			metav1.DeleteOptions{PropagationPolicy: &foreground})
-		if err != nil {
-			return fmt.Errorf("failed to delete sts %s/%s: %s", ns, stsName, err)
-		}
 	}
 
 	return nil
@@ -185,47 +177,25 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 
 func (s *suspender) begion(ctx *suspendComponentCtx) error {
 	status := ctx.status
-
-	phase := v1alpha1.SuspendedPhase
-	ctx.status.SetPhase(phase)
+	phase := v1alpha1.SuspendPhase
+	
 	klog.Infof("begin to suspend component %s and transfer phase from %s to %s", ctx.ComponentID(), status.GetPhase(), phase)
+	ctx.status.SetPhase(phase)
 	return nil
 }
 
 func (s *suspender) end(ctx *suspendComponentCtx) error {
 	status := ctx.status
-
 	phase := v1alpha1.NormalPhase
-	ctx.status.SetPhase(phase)
+
 	klog.Infof("end to suspend component %s and transfer phase from %s to %s", ctx.ComponentID(), status.GetPhase(), phase)
+	ctx.status.SetPhase(phase)
 	return nil
 }
 
-func isComponentSuspended(ctx *suspendComponentCtx) bool {
-	spec := ctx.spec
-	status := ctx.status
-
-	if spec == nil || status == nil {
-		return false
-	}
-	if status.GetPhase() != v1alpha1.SuspendedPhase {
-		return false
-	}
-
-	action := spec.SuspendAction()
-	if action != nil && action.SuspendStatefuleSet {
-
-	}
-	if status.GetStatefulSet() != nil {
-		// the statefulset is set to nil by suspender when the sts is deleted.
-		return false
-	}
-	return true
-}
-
-func needsSuspendComponent(ctx *suspendComponentCtx) bool {
-	spec := ctx.spec
-
+// needsSuspendComponent returns whether the component needs to be suspended.
+func needsSuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) bool {
+	spec := cluster.ComponentSpec(comp)
 	if spec == nil {
 		return false
 	}
@@ -233,37 +203,35 @@ func needsSuspendComponent(ctx *suspendComponentCtx) bool {
 	if action == nil {
 		return false
 	}
-	if !action.SuspendStatefuleSet {
-		return false
+
+	if action.SuspendStatefuleSet {
+		return true
 	}
 
-	return true
+	return false
 }
 
-func canSuspendComponent(ctx *suspendComponentCtx) (bool, string) {
-	status := ctx.status
-
-	phase := status.GetPhase()
-	if phase != v1alpha1.NormalPhase && phase != v1alpha1.SuspendedPhase {
-		return false, fmt.Sprintf("phase is %s not normal or suspended", phase)
+// canSuspendComponent checks whether the component can start to be suspended.
+func canSuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) (bool, string) {
+	// only support to suspend Normal or Suspend cluster
+	if cluster.ComponentIsNormal(comp) && cluster.ComponentIsSuspending(comp) {
+		return false, fmt.Sprintf("cluster phase not normal or suspended")
 	}
 
 	// wait for other components to be suspended
-	suspendOrder := []v1alpha1.MemberType{}
-	switch ctx.cluster.(type) {
+	var suspendOrder []v1alpha1.MemberType
+	switch cluster.(type) {
 	case *v1alpha1.TidbCluster:
 		suspendOrder = suspendOrderForTC
 	case *v1alpha1.DMCluster:
 		suspendOrder = suspendOrderForDM
 	}
 	for _, typ := range suspendOrder {
-		if typ == ctx.component {
+		if typ == comp {
 			break
 		}
 
-		// FIXME: maybe move to api package
-		cctx := buildContext(ctx.cluster, typ)
-		if needsSuspendComponent(cctx) && !isComponentSuspended(cctx) {
+		if needsSuspendComponent(cluster, typ) && !cluster.ComponentIsSuspended(typ) {
 			return false, fmt.Sprintf("wait another component %s to be suspended", typ)
 		}
 

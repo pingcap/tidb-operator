@@ -69,7 +69,6 @@ type ComponentStatus interface {
 	SetStatefulSet(sts *appsv1.StatefulSetStatus)
 }
 
-// AllComponentStatus return all component status of tidb cluster
 func (tc *TidbCluster) AllComponentStatus() []ComponentStatus {
 	components := []ComponentStatus{}
 	if tc.Spec.PD != nil {
@@ -93,7 +92,6 @@ func (tc *TidbCluster) AllComponentStatus() []ComponentStatus {
 	return components
 }
 
-// ComponentStatus return a component status of tidb cluster, return nil if not exist
 func (tc *TidbCluster) ComponentStatus(typ MemberType) ComponentStatus {
 	components := tc.AllComponentStatus()
 	for _, component := range components {
@@ -104,7 +102,6 @@ func (tc *TidbCluster) ComponentStatus(typ MemberType) ComponentStatus {
 	return nil
 }
 
-// AllComponentStatus return all component status of dm cluster
 func (dc *DMCluster) AllComponentStatus() []ComponentStatus {
 	components := []ComponentStatus{}
 	components = append(components, &dc.Status.Master)
@@ -114,7 +111,6 @@ func (dc *DMCluster) AllComponentStatus() []ComponentStatus {
 	return components
 }
 
-// ComponentStatus return a component status of dm cluster, return nil if not exist
 func (dc *DMCluster) ComponentStatus(typ MemberType) ComponentStatus {
 	components := dc.AllComponentStatus()
 	for _, component := range components {
