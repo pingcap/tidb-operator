@@ -41,7 +41,7 @@ func TestSuspendComponent(t *testing.T) {
 				tc := cluster.(*v1alpha1.TidbCluster)
 				tc.Spec.TiKV = &v1alpha1.TiKVSpec{}
 				tc.Status.TiKV = v1alpha1.TiKVStatus{}
-				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefuleSet: false}
+				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: false}
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			component: v1alpha1.TiKVMemberType,
@@ -57,7 +57,7 @@ func TestSuspendComponent(t *testing.T) {
 				tc := cluster.(*v1alpha1.TidbCluster)
 				tc.Spec.TiKV = &v1alpha1.TiKVSpec{}
 				tc.Status.TiKV = v1alpha1.TiKVStatus{}
-				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefuleSet: true}
+				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase // can not suspend
 			},
 			component: v1alpha1.TiKVMemberType,
@@ -73,7 +73,7 @@ func TestSuspendComponent(t *testing.T) {
 				tc := cluster.(*v1alpha1.TidbCluster)
 				tc.Spec.TiKV = &v1alpha1.TiKVSpec{}
 				tc.Status.TiKV = v1alpha1.TiKVStatus{}
-				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefuleSet: true}
+				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			component: v1alpha1.TiKVMemberType,
@@ -92,7 +92,7 @@ func TestSuspendComponent(t *testing.T) {
 				tc := cluster.(*v1alpha1.TidbCluster)
 				tc.Spec.TiKV = &v1alpha1.TiKVSpec{}
 				tc.Status.TiKV = v1alpha1.TiKVStatus{}
-				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefuleSet: false}
+				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: false}
 				tc.Status.TiKV.Phase = v1alpha1.SuspendPhase
 			},
 			component: v1alpha1.TiKVMemberType,
@@ -111,7 +111,7 @@ func TestSuspendComponent(t *testing.T) {
 				tc := cluster.(*v1alpha1.TidbCluster)
 				tc.Spec.TiKV = &v1alpha1.TiKVSpec{}
 				tc.Status.TiKV = v1alpha1.TiKVStatus{}
-				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefuleSet: true}
+				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
 				tc.Status.TiKV.Phase = v1alpha1.SuspendPhase
 				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{}
@@ -139,7 +139,7 @@ func TestSuspendComponent(t *testing.T) {
 				tc := cluster.(*v1alpha1.TidbCluster)
 				tc.Spec.TiKV = &v1alpha1.TiKVSpec{}
 				tc.Status.TiKV = v1alpha1.TiKVStatus{}
-				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefuleSet: true}
+				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
 				tc.Status.TiKV.Phase = v1alpha1.SuspendPhase
 				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{}
@@ -312,7 +312,7 @@ func TestNeedsSuspendComponent(t *testing.T) {
 		},
 		"not suspend any resource": {
 			setup: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.SuspendAction.SuspendStatefuleSet = false
+				tc.Spec.SuspendAction.SuspendStatefulSet = false
 			},
 			component: v1alpha1.TiKVMemberType,
 			expect: func(need bool) {
@@ -327,7 +327,7 @@ func TestNeedsSuspendComponent(t *testing.T) {
 		tc := &v1alpha1.TidbCluster{}
 		tc.Name = "test-cluster"
 		tc.Namespace = "test-namespace"
-		tc.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefuleSet: true}
+		tc.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
 		tc.Spec.PD = &v1alpha1.PDSpec{}
 		tc.Spec.TiKV = &v1alpha1.TiKVSpec{}
 		tc.Spec.TiDB = &v1alpha1.TiDBSpec{}
@@ -424,7 +424,7 @@ func TestCanSuspendComponent(t *testing.T) {
 				tc.Status.TiCDC.Phase = v1alpha1.SuspendPhase
 				tc.Status.TiCDC.StatefulSet = nil
 
-				tc.Spec.TiFlash.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefuleSet: false} // not need
+				tc.Spec.TiFlash.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: false} // not need
 			},
 			component: v1alpha1.TiKVMemberType,
 			expect: func(can bool, reason string) {
@@ -440,7 +440,7 @@ func TestCanSuspendComponent(t *testing.T) {
 		tc := &v1alpha1.TidbCluster{}
 		tc.Name = "test-cluster"
 		tc.Namespace = "test-namespace"
-		tc.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefuleSet: true}
+		tc.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
 		tc.Spec.PD = &v1alpha1.PDSpec{}
 		tc.Spec.TiKV = &v1alpha1.TiKVSpec{}
 		tc.Spec.TiDB = &v1alpha1.TiDBSpec{}

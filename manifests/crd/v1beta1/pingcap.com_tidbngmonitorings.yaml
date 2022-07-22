@@ -4504,7 +4504,7 @@ spec:
                   type: array
                 suspendAction:
                   properties:
-                    suspendStatefulset:
+                    suspendStatefulSet:
                       type: boolean
                   type: object
                 terminationGracePeriodSeconds:
@@ -4621,7 +4621,7 @@ spec:
               type: string
             suspendAction:
               properties:
-                suspendStatefulset:
+                suspendStatefulSet:
                   type: boolean
               type: object
             terminationGracePeriodSeconds:

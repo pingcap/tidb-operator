@@ -110,7 +110,7 @@ func (s *suspender) SuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.Mem
 func (s *suspender) suspendResources(ctx *suspendComponentCtx, action v1alpha1.SuspendAction) error {
 	errs := []error{}
 
-	if action.SuspendStatefuleSet {
+	if action.SuspendStatefulSet {
 		err := s.suspendSts(ctx)
 		if err != nil {
 			errs = append(errs, err)
@@ -204,7 +204,7 @@ func needsSuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) b
 		return false
 	}
 
-	if action.SuspendStatefuleSet {
+	if action.SuspendStatefulSet {
 		return true
 	}
 

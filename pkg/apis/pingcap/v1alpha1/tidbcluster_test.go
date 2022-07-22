@@ -787,7 +787,7 @@ func TestComponentFunc(t *testing.T) {
 			"suspended": {
 				setup: func(tc *TidbCluster) {
 					setPhaseForAllComponent(tc, SuspendPhase)
-					tc.Spec.SuspendAction = &SuspendAction{SuspendStatefuleSet: true}
+					tc.Spec.SuspendAction = &SuspendAction{SuspendStatefulSet: true}
 					tc.Status.PD.StatefulSet = nil
 					tc.Status.TiDB.StatefulSet = nil
 					tc.Status.TiFlash.StatefulSet = nil
@@ -800,14 +800,14 @@ func TestComponentFunc(t *testing.T) {
 			"phase is not Suspend": {
 				setup: func(tc *TidbCluster) {
 					setPhaseForAllComponent(tc, NormalPhase)
-					tc.Spec.SuspendAction = &SuspendAction{SuspendStatefuleSet: true}
+					tc.Spec.SuspendAction = &SuspendAction{SuspendStatefulSet: true}
 				},
 				expect: false,
 			},
 			"suspend sts but sts is not deleted": {
 				setup: func(tc *TidbCluster) {
 					setPhaseForAllComponent(tc, SuspendPhase)
-					tc.Spec.SuspendAction = &SuspendAction{SuspendStatefuleSet: true}
+					tc.Spec.SuspendAction = &SuspendAction{SuspendStatefulSet: true}
 					tc.Status.PD.StatefulSet = &appsv1.StatefulSetStatus{}
 					tc.Status.TiDB.StatefulSet = &appsv1.StatefulSetStatus{}
 					tc.Status.TiFlash.StatefulSet = &appsv1.StatefulSetStatus{}

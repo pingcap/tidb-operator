@@ -1158,7 +1158,7 @@ type Service struct {
 //
 // +k8s:openapi-gen=true
 type SuspendAction struct {
-	SuspendStatefuleSet bool `json:"suspendStatefulset,omitempty"`
+	SuspendStatefulSet bool `json:"suspendStatefulSet,omitempty"`
 }
 
 // PDStatus is PD status

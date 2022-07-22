@@ -8916,7 +8916,7 @@ int
 <td>
 <code>buffer-flush-interval</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -9012,7 +9012,7 @@ int
 <td>
 <code>sampling-refresh-interval</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -12118,7 +12118,7 @@ int
 <td>
 <code>batchSendDeadline</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -12140,7 +12140,7 @@ int
 <td>
 <code>minBackoff</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -12151,7 +12151,7 @@ time.Duration
 <td>
 <code>maxBackoff</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -13918,7 +13918,7 @@ StorageVolumeName
 <tbody>
 <tr>
 <td>
-<code>suspendStatefulset</code></br>
+<code>suspendStatefulSet</code></br>
 <em>
 bool
 </em>
@@ -17027,7 +17027,7 @@ Optional: Defaults to 200</p>
 <td>
 <code>max-batch-wait-time</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>

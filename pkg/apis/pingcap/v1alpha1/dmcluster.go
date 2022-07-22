@@ -280,7 +280,7 @@ func (dc *DMCluster) ComponentIsSuspended(typ MemberType) bool {
 	}
 
 	action := spec.SuspendAction()
-	if action != nil && action.SuspendStatefuleSet {
+	if action != nil && action.SuspendStatefulSet {
 		if status.GetStatefulSet() != nil {
 			// the statefulset is set to nil by suspender when the sts is deleted.
 			return false
