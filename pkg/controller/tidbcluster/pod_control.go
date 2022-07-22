@@ -229,9 +229,15 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	if ok {
 		evictStatus := &v1alpha1.EvictLeaderStatus{
 			PodCreateTime: pod.CreationTimestamp,
+			BeginTime:     metav1.Now(),
 			Value:         value,
 		}
 		nowStatus := tc.Status.TiKV.EvictLeader[pod.Name]
+		if nowStatus != nil && !nowStatus.BeginTime.IsZero() {
+			evictStatus.BeginTime = nowStatus.BeginTime
+		}
+
+		// update status of eviction
 		if nowStatus == nil || *nowStatus != *evictStatus {
 			if tc.Status.TiKV.EvictLeader == nil {
 				tc.Status.TiKV.EvictLeader = make(map[string]*v1alpha1.EvictLeaderStatus)
@@ -249,6 +255,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 			c.setPodStat(pod, stat)
 		}
 
+		// begin to evict leader
 		pdClient := c.getPDClient(tc)
 		storeID, err := member.TiKVStoreIDFromStatus(tc, pod.Name)
 		if err != nil {
@@ -259,6 +266,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to evict leader for store %d (Pod %s/%s)", storeID, pod.Namespace, pod.Name)
 		}
 
+		// delete pod after eviction finished if needed
 		if value == v1alpha1.EvictLeaderValueDeletePod {
 			tlsEnabled := tc.IsTLSClusterEnabled()
 			kvClient := c.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, tlsEnabled)
