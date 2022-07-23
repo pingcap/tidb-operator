@@ -369,6 +369,8 @@ spec:
                   type: object
                 cleanOption:
                   properties:
+                    backoffEnabled:
+                      type: boolean
                     batchConcurrency:
                       format: int32
                       type: integer
@@ -376,6 +378,8 @@ spec:
                       type: boolean
                     pageSize:
                       format: int64
+                      type: integer
+                    retryCount:
                       type: integer
                     routineConcurrency:
                       format: int32
@@ -1769,6 +1773,8 @@ spec:
               type: object
             cleanOption:
               properties:
+                backoffEnabled:
+                  type: boolean
                 batchConcurrency:
                   format: int32
                   type: integer
@@ -1776,6 +1782,8 @@ spec:
                   type: boolean
                 pageSize:
                   format: int64
+                  type: integer
+                retryCount:
                   type: integer
                 routineConcurrency:
                   format: int32

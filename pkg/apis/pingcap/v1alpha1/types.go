@@ -1667,6 +1667,12 @@ type CleanOption struct {
 	// PageSize represents the number of objects to clean at a time.
 	// default is 10000
 	PageSize uint64 `json:"pageSize,omitempty"`
+	// RetryCount represents the number of retries in pod when the cleanup fails.
+	// +kubebuilder:default=5
+	RetryCount int `json:"retryCount,omitempty"`
+	// BackoffEnabled represents whether to enable the backoff when a deletion API fails.
+	// It is useful when the deletion API is rate limited.
+	BackoffEnabled bool `json:"backoffEnabled,omitempty"`
 
 	BatchDeleteOption `json:",inline"`
 }
