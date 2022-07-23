@@ -255,6 +255,11 @@ func TiKVCapacity(limits corev1.ResourceList) string {
 	return fmt.Sprintf("%dMB", i/humanize.MiByte)
 }
 
+// MemberName return a component member name
+func MemberName(clusterName string, member v1alpha1.MemberType) string {
+	return fmt.Sprintf("%s-%s", clusterName, member)
+}
+
 // PDMemberName returns pd member name
 func PDMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pd", clusterName)
