@@ -35,7 +35,10 @@ var (
 		v1alpha1.PumpMemberType,
 		v1alpha1.PDMemberType,
 	}
-	suspendOrderForDM = []v1alpha1.MemberType{}
+	suspendOrderForDM = []v1alpha1.MemberType{
+		v1alpha1.DMWorkerMemberType,
+		v1alpha1.DMMasterMemberType,
+	}
 
 	_ Suspender = &suspender{}
 	_ Suspender = &FakeSuspender{}
@@ -124,8 +127,7 @@ func (s *suspender) suspendResources(ctx *suspendComponentCtx, action v1alpha1.S
 func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 	ns := ctx.cluster.GetNamespace()
 	name := ctx.cluster.GetName()
-	// FIXME: use common function to get the sts name
-	stsName := fmt.Sprintf("%s-%s", name, ctx.component)
+	stsName := controller.MemberName(name, ctx.component)
 
 	_, err := s.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
 	stsNotExist := errors.IsNotFound(err)
@@ -135,6 +137,7 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 
 	if !stsNotExist {
 		// delete sts with foreground option.
+		//
 		// NOTE: For tidb cluster and dm cluster, operator delete sts for all components one by one,
 		// so if any pod or sts deletion fails, the process will be stuck.
 		klog.Infof("suspend statefulset %s/%s for component %s", ns, stsName, ctx.ComponentID())
@@ -178,8 +181,8 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 func (s *suspender) begion(ctx *suspendComponentCtx) error {
 	status := ctx.status
 	phase := v1alpha1.SuspendPhase
-
-	klog.Infof("begin to suspend component %s and transfer phase from %s to %s", ctx.ComponentID(), status.GetPhase(), phase)
+	klog.Infof("begin to suspend component %s and transfer phase from %s to %s",
+		ctx.ComponentID(), status.GetPhase(), phase)
 	ctx.status.SetPhase(phase)
 	return nil
 }
@@ -187,13 +190,13 @@ func (s *suspender) begion(ctx *suspendComponentCtx) error {
 func (s *suspender) end(ctx *suspendComponentCtx) error {
 	status := ctx.status
 	phase := v1alpha1.NormalPhase
-
-	klog.Infof("end to suspend component %s and transfer phase from %s to %s", ctx.ComponentID(), status.GetPhase(), phase)
+	klog.Infof("end to suspend component %s and transfer phase from %s to %s",
+		ctx.ComponentID(), status.GetPhase(), phase)
 	ctx.status.SetPhase(phase)
 	return nil
 }
 
-// needsSuspendComponent returns whether the component needs to be suspended.
+// needsSuspendComponent returns whether suspender needs to to suspend the component
 func needsSuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) bool {
 	spec := cluster.ComponentSpec(comp)
 	if spec == nil {
@@ -211,7 +214,7 @@ func needsSuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) b
 	return false
 }
 
-// canSuspendComponent checks whether the component can start to be suspended.
+// canSuspendComponent checks whether suspender can start to suspend the component
 func canSuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) (bool, string) {
 	// only support to suspend Normal or Suspend cluster
 	if !cluster.ComponentIsNormal(comp) && !cluster.ComponentIsSuspending(comp) {
