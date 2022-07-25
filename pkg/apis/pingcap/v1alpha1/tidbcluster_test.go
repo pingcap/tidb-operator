@@ -15,6 +15,7 @@ package v1alpha1
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
@@ -566,6 +567,21 @@ func TestPDVersion(t *testing.T) {
 	for i := range tests {
 		testFn(&tests[i], t)
 	}
+}
+
+func TestTiCDCGracefulShutdownTimeout(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbCluster()
+	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(defaultTiCDCGracefulShutdownTimeout))
+
+	str1m := "1m"
+	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: &str1m}
+	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(time.Minute))
+
+	str1m = "wrong"
+	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: &str1m}
+	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(defaultTiCDCGracefulShutdownTimeout))
 }
 
 func newTidbCluster() *TidbCluster {
