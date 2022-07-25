@@ -333,6 +333,8 @@ spec:
                   type: string
                 br:
                   properties:
+                    checkRequirements:
+                      type: boolean
                     checksum:
                       type: boolean
                     cluster:
@@ -367,6 +369,8 @@ spec:
                   type: object
                 cleanOption:
                   properties:
+                    backoffEnabled:
+                      type: boolean
                     batchConcurrency:
                       format: int32
                       type: integer
@@ -374,6 +378,8 @@ spec:
                       type: boolean
                     pageSize:
                       format: int64
+                      type: integer
+                    retryCount:
                       type: integer
                     routineConcurrency:
                       format: int32
@@ -1731,6 +1737,8 @@ spec:
               type: string
             br:
               properties:
+                checkRequirements:
+                  type: boolean
                 checksum:
                   type: boolean
                 cluster:
@@ -1765,6 +1773,8 @@ spec:
               type: object
             cleanOption:
               properties:
+                backoffEnabled:
+                  type: boolean
                 batchConcurrency:
                   format: int32
                   type: integer
@@ -1772,6 +1782,8 @@ spec:
                   type: boolean
                 pageSize:
                   format: int64
+                  type: integer
+                retryCount:
                   type: integer
                 routineConcurrency:
                   format: int32
@@ -10991,6 +11003,8 @@ spec:
               type: string
             br:
               properties:
+                checkRequirements:
+                  type: boolean
                 checksum:
                   type: boolean
                 cluster:
@@ -24465,6 +24479,14 @@ spec:
                   type: string
                 readinessProbe:
                   properties:
+                    initialDelaySeconds:
+                      format: int32
+                      minimum: 0
+                      type: integer
+                    periodSeconds:
+                      format: int32
+                      minimum: 1
+                      type: integer
                     type:
                       enum:
                       - tcp
@@ -30385,6 +30407,9 @@ spec:
                 evictLeader:
                   additionalProperties:
                     properties:
+                      beginTime:
+                        format: date-time
+                        type: string
                       podCreateTime:
                         format: date-time
                         type: string

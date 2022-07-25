@@ -3050,6 +3050,17 @@ bool
 </tr>
 <tr>
 <td>
+<code>checkRequirements</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>CheckRequirements specifies whether to check requirements</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>sendCredToTikv</code></br>
 <em>
 bool
@@ -4134,6 +4145,29 @@ default is 10000</p>
 </tr>
 <tr>
 <td>
+<code>retryCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>RetryCount represents the number of retries in pod when the cleanup fails.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffEnabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>BackoffEnabled represents whether to enable the backoff when a deletion API fails.
+It is useful when the deletion API is rate limited.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>BatchDeleteOption</code></br>
 <em>
 <a href="#batchdeleteoption">
@@ -4316,10 +4350,6 @@ FlashSecurity
 </tr>
 </tbody>
 </table>
-<h3 id="component">Component</h3>
-<p>
-<p>Component defines component identity of all components</p>
-</p>
 <h3 id="componentaccessor">ComponentAccessor</h3>
 <p>
 <p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
@@ -4785,6 +4815,9 @@ string
 </p>
 <p>
 <p>ConfigUpdateStrategy represents the strategy to update configuration</p>
+</p>
+<h3 id="containername">ContainerName</h3>
+<p>
 </p>
 <h3 id="coprocessorcache">CoprocessorCache</h3>
 <p>
@@ -6047,6 +6080,18 @@ Only named struct is allowed by controller-gen</p>
 <tr>
 <td>
 <code>podCreateTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>beginTime</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
 Kubernetes meta/v1.Time
@@ -15313,6 +15358,32 @@ string
 <p>&ldquo;command&rdquo; will probe the status api of tidb.
 This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
 So do not use this before v4.0.9.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initialDelaySeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Number of seconds after the container has started before liveness probes are initiated.
+Default to 10 seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>periodSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>How often (in seconds) to perform the probe.
+Default to Kubernetes default (10 seconds). Minimum value is 1.</p>
 </td>
 </tr>
 </tbody>

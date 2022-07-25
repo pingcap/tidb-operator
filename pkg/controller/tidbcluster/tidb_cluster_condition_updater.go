@@ -71,6 +71,9 @@ func (u *tidbClusterConditionUpdater) updateReadyCondition(tc *v1alpha1.TidbClus
 	case tc.Spec.TiFlash != nil && !tc.TiFlashAllStoresReady():
 		reason = utiltidbcluster.TiFlashStoreNotUp
 		message = "TiFlash store(s) are not up"
+	case tc.Spec.TiCDC != nil && !tc.TiCDCAllCapturesReady():
+		reason = utiltidbcluster.TiCDCCaptureNotReady
+		message = "TiCDC capture(s) are not up"
 	default:
 		status = v1.ConditionTrue
 		reason = utiltidbcluster.Ready

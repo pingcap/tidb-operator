@@ -118,7 +118,7 @@ func TestDMComponentAccessor(t *testing.T) {
 			Spec: *test.cluster,
 		}
 
-		accessor := buildDMClusterComponentAccessor(ComponentDMMaster, dc, test.component)
+		accessor := buildDMClusterComponentAccessor(DMMasterMemberType, dc, test.component)
 		test.expectFn(g, accessor)
 	}
 	affinity := &corev1.Affinity{

@@ -810,7 +810,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			slowLogFileEnvVal = path.Join(slowQueryLogVolumeMount.MountPath, slowQueryLogVolumeName)
 		}
 		containers = append(containers, corev1.Container{
-			Name:            v1alpha1.SlowLogTailerMemberType.String(),
+			Name:            v1alpha1.ContainerSlowLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
@@ -890,6 +890,14 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 	if tc.Spec.TiDB.Lifecycle != nil {
 		c.Lifecycle = tc.Spec.TiDB.Lifecycle
+	}
+	if tc.Spec.TiDB.ReadinessProbe != nil {
+		if tc.Spec.TiDB.ReadinessProbe.InitialDelaySeconds != nil {
+			c.ReadinessProbe.InitialDelaySeconds = *tc.Spec.TiDB.ReadinessProbe.InitialDelaySeconds
+		}
+		if tc.Spec.TiDB.ReadinessProbe.PeriodSeconds != nil {
+			c.ReadinessProbe.PeriodSeconds = *tc.Spec.TiDB.ReadinessProbe.PeriodSeconds
+		}
 	}
 
 	containers = append(containers, c)

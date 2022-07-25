@@ -47,37 +47,51 @@ const (
 	PumpStateOffline string = "offline"
 )
 
+type ContainerName string
+
+func (c ContainerName) String() string {
+	return string(c)
+}
+
+const (
+	ContainerSlowLogTailer    ContainerName = "slowlog"
+	ContainerRocksDBLogTailer ContainerName = "rocksdblog"
+	ContainerRaftLogTailer    ContainerName = "raftlog"
+)
+
 // MemberType represents member type
 type MemberType string
 
 const (
-	// PDMemberType is pd container type
+	// DiscoveryMemberType is discovery member type
+	DiscoveryMemberType MemberType = "discovery"
+	// PDMemberType is pd member type
 	PDMemberType MemberType = "pd"
-	// TiDBMemberType is tidb container type
+	// TiDBMemberType is tidb member type
 	TiDBMemberType MemberType = "tidb"
-	// TiKVMemberType is tikv container type
+	// TiKVMemberType is tikv member type
 	TiKVMemberType MemberType = "tikv"
-	// TiFlashMemberType is tiflash container type
+	// TiFlashMemberType is tiflash member type
 	TiFlashMemberType MemberType = "tiflash"
-	// TiCDCMemberType is ticdc container type
+	// TiCDCMemberType is ticdc member type
 	TiCDCMemberType MemberType = "ticdc"
-	// PumpMemberType is pump container type
+	// PumpMemberType is pump member type
 	PumpMemberType MemberType = "pump"
-	// DMMasterMemberType is dm-master container type
+
+	// DMDiscoveryMemberType is discovery member type
+	DMDiscoveryMemberType MemberType = "dm-discovery"
+	// DMMasterMemberType is dm-master member type
 	DMMasterMemberType MemberType = "dm-master"
-	// DMWorkerMemberType is dm-worker container type
+	// DMWorkerMemberType is dm-worker member type
 	DMWorkerMemberType MemberType = "dm-worker"
-	// SlowLogTailerMemberType is tidb slow log tailer container type
-	SlowLogTailerMemberType MemberType = "slowlog"
-	// RocksDBLogTailerMemberType is tikv rocksdb log tailer container type
-	RocksDBLogTailerMemberType MemberType = "rocksdblog"
-	// RaftLogTailerMemberType is tikv raft log tailer container type
-	RaftLogTailerMemberType MemberType = "raftlog"
-	// TidbMonitorMemberType is tidbmonitor type
+
+	// TidbMonitorMemberType is tidbmonitor member type
 	TidbMonitorMemberType MemberType = "tidbmonitor"
-	// NGMonitoringMemberType is ng monitoring type
+
+	// NGMonitoringMemberType is ng monitoring member type
 	NGMonitoringMemberType MemberType = "ng-monitoring"
-	// UnknownMemberType is unknown container type
+
+	// UnknownMemberType is unknown member type
 	UnknownMemberType MemberType = "unknown"
 )
 
@@ -825,6 +839,16 @@ type TiDBProbe struct {
 	// +kubebuilder:validation:Enum=tcp;command
 	// +optional
 	Type *string `json:"type,omitempty"` // tcp or command
+	// Number of seconds after the container has started before liveness probes are initiated.
+	// Default to 10 seconds.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	InitialDelaySeconds *int32 `json:"initialDelaySeconds,omitempty"`
+	// How often (in seconds) to perform the probe.
+	// Default to Kubernetes default (10 seconds). Minimum value is 1.
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	PeriodSeconds *int32 `json:"periodSeconds,omitempty"`
 }
 
 // PumpSpec contains details of Pump members
@@ -1237,6 +1261,7 @@ const (
 
 type EvictLeaderStatus struct {
 	PodCreateTime metav1.Time `json:"podCreateTime,omitempty"`
+	BeginTime     metav1.Time `json:"beginTime,omitempty"`
 	Value         string      `json:"value,omitempty"`
 }
 
@@ -1625,6 +1650,12 @@ type CleanOption struct {
 	// PageSize represents the number of objects to clean at a time.
 	// default is 10000
 	PageSize uint64 `json:"pageSize,omitempty"`
+	// RetryCount represents the number of retries in pod when the cleanup fails.
+	// +kubebuilder:default=5
+	RetryCount int `json:"retryCount,omitempty"`
+	// BackoffEnabled represents whether to enable the backoff when a deletion API fails.
+	// It is useful when the deletion API is rate limited.
+	BackoffEnabled bool `json:"backoffEnabled,omitempty"`
 
 	BatchDeleteOption `json:",inline"`
 }
@@ -1737,6 +1768,8 @@ type BRConfig struct {
 	TimeAgo string `json:"timeAgo,omitempty"`
 	// Checksum specifies whether to run checksum after backup
 	Checksum *bool `json:"checksum,omitempty"`
+	// CheckRequirements specifies whether to check requirements
+	CheckRequirements *bool `json:"checkRequirements,omitempty"`
 	// SendCredToTikv specifies whether to send credentials to TiKV
 	SendCredToTikv *bool `json:"sendCredToTikv,omitempty"`
 	// OnLine specifies whether online during restore
