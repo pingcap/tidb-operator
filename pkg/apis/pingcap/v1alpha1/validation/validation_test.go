@@ -337,6 +337,44 @@ func TestValidateDMAnnotations(t *testing.T) {
 	}
 }
 
+func TestValidatePumpSpec(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tests := []struct {
+		name                 string
+		replicas             int32
+		expectedErrors       int
+		resourceRequirements corev1.ResourceRequirements
+	}{
+		{
+			name:           "has storage request",
+			replicas:       1,
+			expectedErrors: 0,
+			resourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("10G"),
+				},
+			},
+		},
+		{
+			name:           "no storage request",
+			replicas:       1,
+			expectedErrors: 1,
+			resourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := newTidbClusterWithPump()
+			tc.Spec.Pump.ResourceRequirements = tt.resourceRequirements
+			err := validatePumpSpec(tc.Spec.Pump, field.NewPath("spec", "pump"))
+			r := len(err)
+			g.Expect(r).Should(Equal(tt.expectedErrors))
+		})
+	}
+}
+
 func TestValidateRequestsStorage(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tests := []struct {
@@ -518,6 +556,14 @@ func newTidbMonitor() *v1alpha1.TidbMonitor {
 		},
 	}
 	return monitor
+}
+
+func newTidbClusterWithPump() *v1alpha1.TidbCluster {
+	tc := newTidbCluster()
+	tc.Spec.Pump = &v1alpha1.PumpSpec{
+		Replicas: 1,
+	}
+	return tc
 }
 
 func newDMCluster() *v1alpha1.DMCluster {
