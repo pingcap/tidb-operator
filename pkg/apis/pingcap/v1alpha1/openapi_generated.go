@@ -7578,6 +7578,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"gracefulShutdownTimeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GracefulShutdownTimeout is the timeout of gracefully shutdown a TiCDC pod. Encoded in the format of Go Duration. Defaults to 10m",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},

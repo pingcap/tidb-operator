@@ -9114,6 +9114,8 @@ spec:
                           type: object
                       type: object
                     type: array
+                  gracefulShutdownTimeout:
+                    type: string
                   hostNetwork:
                     type: boolean
                   image:
