@@ -34,14 +34,15 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
-		name         string
-		changeFn     func(*v1alpha1.TidbCluster)
-		invalidPod   bool
-		changePods   func(pods []*corev1.Pod)
-		missPod      bool
-		errorExpect  bool
-		changeOldSet func(set *apps.StatefulSet)
-		expectFn     func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
+		name           string
+		changeFn       func(*v1alpha1.TidbCluster)
+		invalidPod     bool
+		changePods     func(pods []*corev1.Pod)
+		missPod        bool
+		errorExpect    bool
+		changeOldSet   func(set *apps.StatefulSet)
+		changeUpgrader func(u *ticdcUpgrader)
+		expectFn       func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -60,6 +61,9 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 		}
 		if test.changePods != nil {
 			test.changePods(pods)
+		}
+		if test.changeUpgrader != nil {
+			test.changeUpgrader(upgrader.(*ticdcUpgrader))
 		}
 		for _, pod := range pods {
 			podInformer.Informer().GetIndexer().Add(pod)
@@ -87,6 +91,22 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(0)))
+			},
+		},
+		{
+			name:        "graceful upgrade retry",
+			errorExpect: true,
+			changeUpgrader: func(u *ticdcUpgrader) {
+				u.deps.CDCControl = &cdcCtlMock{
+					// resignOwner returns false to let graceful shutdown retry.
+					resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+						return false, nil
+					},
+				}
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
 		{
