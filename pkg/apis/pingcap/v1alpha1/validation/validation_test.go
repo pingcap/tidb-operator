@@ -702,3 +702,50 @@ func TestValidatePDAddresses(t *testing.T) {
 		}
 	}
 }
+
+func TestValidatePDSpec(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tests := []struct {
+		name                     string
+		LoadBalancerSourceRanges []string
+		resourceRequirements     corev1.ResourceRequirements
+		expectedErrors           int
+	}{
+		{
+			name: "has valid LoadBalancerSourceRanges",
+			LoadBalancerSourceRanges: []string{
+				"10.0.0.0/8",
+			},
+			resourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("10G"),
+				},
+			},
+			expectedErrors: 0,
+		},
+		{
+			name: "has invalid LoadBalancerSourceRanges",
+			LoadBalancerSourceRanges: []string{
+				"invalidIP",
+			},
+			resourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("10G"),
+				},
+			},
+			expectedErrors: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := newTidbCluster()
+			tc.Spec.PD.ResourceRequirements = tt.resourceRequirements
+			tc.Spec.PD.Service = &v1alpha1.ServiceSpec{
+				LoadBalancerSourceRanges: tt.LoadBalancerSourceRanges,
+			}
+			err := validatePDSpec(tc.Spec.PD, field.NewPath("pd"))
+			r := len(err)
+			g.Expect(r).Should(Equal(tt.expectedErrors))
+		})
+	}
+}
