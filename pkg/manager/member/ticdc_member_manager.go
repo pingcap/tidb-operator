@@ -130,6 +130,9 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
 	// skip sync if ticdc is suspended
 	component := v1alpha1.TiCDCMemberType
 	suspended, err := m.suspender.SuspendComponent(tc, component)
@@ -137,8 +140,17 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return fmt.Errorf("suspend %s failed: %v", component, err)
 	}
 	if suspended {
-		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, tc.GetNamespace(), tc.GetName())
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, ns, tcName)
 		return nil
+	}
+
+	// NB: All TiCDC operations, e.g. creation, scale, upgrade will be blocked.
+	//     if PD or TiKV is not available.
+	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCDC is waiting for PD cluster running", ns, tcName)
+	}
+	if tc.Spec.TiKV != nil && !tc.TiKVIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCDC is waiting for TiKV cluster running", ns, tcName)
 	}
 
 	// Sync CDC Headless Service
@@ -183,10 +195,6 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	}
 
 	if stsNotExist {
-		if !tc.PDIsAvailable() {
-			klog.Infof("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
-			return nil
-		}
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSts)
 		if err != nil {
 			return err
@@ -358,7 +366,11 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
 
-	cmdArgs := []string{"/cdc server", "--addr=0.0.0.0:8301", fmt.Sprintf("--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:8301", controller.FormatClusterDomain(tc.Spec.ClusterDomain))}
+	// NB: TiCDC control relies the format.
+	// TODO move advertise addr format to package controller.
+	advertiseAddr := fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:8301",
+		controller.FormatClusterDomain(tc.Spec.ClusterDomain))
+	cmdArgs := []string{"/cdc server", "--addr=0.0.0.0:8301", fmt.Sprintf("--advertise-addr=%s", advertiseAddr)}
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--gc-ttl=%d", tc.TiCDCGCTTL()))
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-file=%s", tc.TiCDCLogFile()))
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-level=%s", tc.TiCDCLogLevel()))
