@@ -331,8 +331,6 @@ spec:
                     secretName:
                       type: string
                   type: object
-                backupTs:
-                  type: string
                 backupType:
                   type: string
                 br:
@@ -390,6 +388,8 @@ spec:
                       type: integer
                   type: object
                 cleanPolicy:
+                  type: string
+                commitTs:
                   type: string
                 dumpling:
                   properties:
@@ -1323,8 +1323,6 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
-                startTs:
-                  type: string
                 storageClassName:
                   type: string
                 storageSize:
@@ -1436,12 +1434,8 @@ spec:
     name: BackupSize
     type: string
   - JSONPath: .status.commitTs
-    description: The commit ts of tidb cluster dump
+    description: The commit ts of the backup
     name: CommitTS
-    type: string
-  - JSONPath: .status.startTs
-    description: The start ts of log backup
-    name: StartTS
     type: string
   - JSONPath: .status.truncateUntil
     description: The log backup truncate until ts
@@ -1759,8 +1753,6 @@ spec:
                 secretName:
                   type: string
               type: object
-            backupTs:
-              type: string
             backupType:
               type: string
             br:
@@ -1818,6 +1810,8 @@ spec:
                   type: integer
               type: object
             cleanPolicy:
+              type: string
+            commitTs:
               type: string
             dumpling:
               properties:
@@ -2751,8 +2745,6 @@ spec:
               type: object
             serviceAccount:
               type: string
-            startTs:
-              type: string
             storageClassName:
               type: string
             storageSize:
@@ -2819,8 +2811,6 @@ spec:
               nullable: true
               type: array
             phase:
-              type: string
-            startTs:
               type: string
             timeCompleted:
               format: date-time

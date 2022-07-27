@@ -331,8 +331,6 @@ spec:
                       secretName:
                         type: string
                     type: object
-                  backupTs:
-                    type: string
                   backupType:
                     type: string
                   br:
@@ -391,6 +389,8 @@ spec:
                         type: integer
                     type: object
                   cleanPolicy:
+                    type: string
+                  commitTs:
                     type: string
                   dumpling:
                     properties:
@@ -1324,8 +1324,6 @@ spec:
                     type: object
                   serviceAccount:
                     type: string
-                  startTs:
-                    type: string
                   storageClassName:
                     type: string
                   storageSize:
@@ -1444,13 +1442,9 @@ spec:
       jsonPath: .status.backupSizeReadable
       name: BackupSize
       type: string
-    - description: The commit ts of tidb cluster dump
+    - description: The commit ts of the backup
       jsonPath: .status.commitTs
       name: CommitTS
-      type: string
-    - description: The start ts of log backup
-      jsonPath: .status.startTs
-      name: StartTS
       type: string
     - description: The log backup truncate until ts
       jsonPath: .status.truncateUntil
@@ -1758,8 +1752,6 @@ spec:
                   secretName:
                     type: string
                 type: object
-              backupTs:
-                type: string
               backupType:
                 type: string
               br:
@@ -1818,6 +1810,8 @@ spec:
                     type: integer
                 type: object
               cleanPolicy:
+                type: string
+              commitTs:
                 type: string
               dumpling:
                 properties:
@@ -2751,8 +2745,6 @@ spec:
                 type: object
               serviceAccount:
                 type: string
-              startTs:
-                type: string
               storageClassName:
                 type: string
               storageSize:
@@ -2819,8 +2811,6 @@ spec:
                 nullable: true
                 type: array
               phase:
-                type: string
-              startTs:
                 type: string
               timeCompleted:
                 format: date-time

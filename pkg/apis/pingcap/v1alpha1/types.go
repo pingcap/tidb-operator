@@ -1441,8 +1441,7 @@ type TLSCluster struct {
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
-// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of tidb cluster dump"
-// +kubebuilder:printcolumn:name="StartTS",type=string,JSONPath=`.status.startTs`,description="The start ts of log backup"
+// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
 // +kubebuilder:printcolumn:name="TruncateUntil",type=string,JSONPath=`.status.truncateUntil`,description="The log backup truncate until ts"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
@@ -1715,16 +1714,11 @@ type BackupSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
-	// BackupTs is the backup ts which is the snapshot ts for full backup.
+	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// Default is current timestamp.
 	// +optional
-	BackupTs string `json:"backupTs,omitempty"`
-	// StartTs is the log backup start ts.
-	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
-	// Default is current timestamp.
-	// +optional
-	StartTs string `json:"startTs,omitempty"`
+	CommitTs string `json:"commitTs,omitempty"`
 	// TruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// +optional
@@ -1864,10 +1858,8 @@ type BackupStatus struct {
 	BackupSizeReadable string `json:"backupSizeReadable,omitempty"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize,omitempty"`
-	// CommitTs is the snapshot time point of tidb cluster.
+	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	CommitTs string `json:"commitTs,omitempty"`
-	// StartTs is the log backup start ts.
-	StartTs string `json:"startTs,omitempty"`
 	// TruncateUntil is log backup truncate until timestamp.
 	TruncateUntil string `json:"truncateUntil,omitempty"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
@@ -1987,8 +1979,8 @@ type RestoreType string
 const (
 	// RestoreTypeFull represents the restore from a full backup.
 	RestoreTypeFull RestoreType = "full"
-	// BackupTypeRaw represents the PiTR restore.
-	BackupTypePitr RestoreType = "pitr"
+	// RestoreTypePitr represents the PiTR restore.
+	RestoreTypePitr RestoreType = "pitr"
 )
 
 // RestoreConditionType represents a valid condition of a Restore.
@@ -2048,7 +2040,7 @@ type RestoreSpec struct {
 	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
-	// RestoreType is the restore type.
+	// RestoreType is the restore type. Default value is RestoreTypeFull.
 	RestoreType RestoreType `json:"restoreType,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.

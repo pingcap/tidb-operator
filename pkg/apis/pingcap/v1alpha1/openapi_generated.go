@@ -1018,16 +1018,9 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
 						},
 					},
-					"backupTs": {
+					"commitTs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "BackupTs is the backup ts which is the snapshot ts for full backup. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'. Default is current timestamp.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"startTs": {
-						SchemaProps: spec.SchemaProps{
-							Description: "StartTs is the log backup start ts. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'. Default is current timestamp.",
+							Description: "CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'. Default is current timestamp.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -6542,7 +6535,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"restoreType": {
 						SchemaProps: spec.SchemaProps{
-							Description: "RestoreType is the restore type.",
+							Description: "RestoreType is the restore type. Default value is RestoreTypeFull.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

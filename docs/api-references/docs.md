@@ -218,28 +218,14 @@ BRConfig
 </tr>
 <tr>
 <td>
-<code>backupTs</code></br>
+<code>commitTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>BackupTs is the backup ts which is the snapshot ts for full backup.
-Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
-Default is current timestamp.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>startTs</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>StartTs is the log backup start ts.
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
 Default is current timestamp.</p>
 </td>
@@ -1174,7 +1160,7 @@ RestoreType
 </em>
 </td>
 <td>
-<p>RestoreType is the restore type.</p>
+<p>RestoreType is the restore type. Default value is RestoreTypeFull.</p>
 </td>
 </tr>
 <tr>
@@ -3567,28 +3553,14 @@ BRConfig
 </tr>
 <tr>
 <td>
-<code>backupTs</code></br>
+<code>commitTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>BackupTs is the backup ts which is the snapshot ts for full backup.
-Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
-Default is current timestamp.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>startTs</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>StartTs is the log backup start ts.
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
 Default is current timestamp.</p>
 </td>
@@ -3847,18 +3819,7 @@ string
 </em>
 </td>
 <td>
-<p>CommitTs is the snapshot time point of tidb cluster.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>startTs</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>StartTs is the log backup start ts.</p>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.</p>
 </td>
 </tr>
 <tr>
@@ -12793,7 +12754,7 @@ RestoreType
 </em>
 </td>
 <td>
-<p>RestoreType is the restore type.</p>
+<p>RestoreType is the restore type. Default value is RestoreTypeFull.</p>
 </td>
 </tr>
 <tr>
