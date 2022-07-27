@@ -18,6 +18,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -118,7 +119,10 @@ func (a *componentAccessorImpl) PodManagementPolicy() apps.PodManagementPolicyTy
 	// unified podManagementPolicy check to avoid check everywhere
 	if policy == apps.OrderedReadyPodManagement {
 		return apps.OrderedReadyPodManagement
+	} else if policy == apps.ParallelPodManagement {
+		return apps.ParallelPodManagement
 	}
+	klog.Warningf("PodManagementPolicy \"%s\" is invalid. Fall back to use \"Parallel\" instead\n", policy)
 	return apps.ParallelPodManagement
 }
 
