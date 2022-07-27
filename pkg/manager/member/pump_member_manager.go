@@ -76,11 +76,11 @@ func (m *pumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	// skip sync if pump is suspended
 	component := v1alpha1.PumpMemberType
-	suspended, err := m.suspender.SuspendComponent(tc, component)
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
 	if err != nil {
 		return fmt.Errorf("suspend %s failed: %v", component, err)
 	}
-	if suspended {
+	if needSuspend {
 		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, tc.GetNamespace(), tc.GetName())
 		return nil
 	}

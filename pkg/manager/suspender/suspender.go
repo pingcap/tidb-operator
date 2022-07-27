@@ -73,6 +73,9 @@ type suspender struct {
 	deps *controller.Dependencies
 }
 
+// SuspendComponent suspends the component if needed.
+//
+// Returns true if the component is needed to be suspended, and the reconciliation should be skipped.
 func (s *suspender) SuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) (bool, error) {
 	ctx := &suspendComponentCtx{
 		cluster:   cluster,
@@ -102,15 +105,19 @@ func (s *suspender) SuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.Mem
 			return true, nil
 		}
 
-		err := s.begion(ctx)
+		err := s.begin(ctx)
 		return true, err
 	}
 
-	err := s.suspendResources(ctx, *ctx.spec.SuspendAction())
+	err := s.suspendResources(ctx, ctx.spec.SuspendAction())
 	return true, err
 }
 
-func (s *suspender) suspendResources(ctx *suspendComponentCtx, action v1alpha1.SuspendAction) error {
+func (s *suspender) suspendResources(ctx *suspendComponentCtx, action *v1alpha1.SuspendAction) error {
+	if action == nil {
+		return nil
+	}
+
 	errs := []error{}
 
 	if action.SuspendStatefulSet {
@@ -178,7 +185,7 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 	return nil
 }
 
-func (s *suspender) begion(ctx *suspendComponentCtx) error {
+func (s *suspender) begin(ctx *suspendComponentCtx) error {
 	status := ctx.status
 	phase := v1alpha1.SuspendPhase
 	klog.Infof("begin to suspend component %s and transfer phase from %s to %s",

@@ -69,11 +69,11 @@ func NewMasterMemberManager(deps *controller.Dependencies, masterScaler Scaler, 
 func (m *masterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	// skip sync if dm master is suspended
 	component := v1alpha1.DMMasterMemberType
-	suspended, err := m.suspender.SuspendComponent(dc, component)
+	needSuspend, err := m.suspender.SuspendComponent(dc, component)
 	if err != nil {
 		return fmt.Errorf("suspend %s failed: %v", component, err)
 	}
-	if suspended {
+	if needSuspend {
 		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, dc.GetNamespace(), dc.GetName())
 		return nil
 	}

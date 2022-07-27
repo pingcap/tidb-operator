@@ -135,11 +135,11 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	// skip sync if ticdc is suspended
 	component := v1alpha1.TiCDCMemberType
-	suspended, err := m.suspender.SuspendComponent(tc, component)
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
 	if err != nil {
 		return fmt.Errorf("suspend %s failed: %v", component, err)
 	}
-	if suspended {
+	if needSuspend {
 		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, ns, tcName)
 		return nil
 	}

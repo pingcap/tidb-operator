@@ -75,11 +75,11 @@ func (m *workerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 
 	// skip sync if dm worker is suspended
 	component := v1alpha1.DMWorkerMemberType
-	suspended, err := m.suspender.SuspendComponent(dc, component)
+	needSuspend, err := m.suspender.SuspendComponent(dc, component)
 	if err != nil {
 		return fmt.Errorf("suspend %s failed: %v", component, err)
 	}
-	if suspended {
+	if needSuspend {
 		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, dc.GetNamespace(), dc.GetName())
 		return nil
 	}
