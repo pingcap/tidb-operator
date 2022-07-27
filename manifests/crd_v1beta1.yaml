@@ -322,6 +322,8 @@ spec:
                       type: string
                     container:
                       type: string
+                    logBackupPath:
+                      type: string
                     path:
                       type: string
                     prefix:
@@ -329,6 +331,8 @@ spec:
                     secretName:
                       type: string
                   type: object
+                backupTs:
+                  type: string
                 backupType:
                   type: string
                 br:
@@ -482,6 +486,8 @@ spec:
                     bucketAcl:
                       type: string
                     location:
+                      type: string
+                    logBackupPath:
                       type: string
                     objectAcl:
                       type: string
@@ -1292,6 +1298,8 @@ spec:
                       type: string
                     endpoint:
                       type: string
+                    logBackupPath:
+                      type: string
                     options:
                       items:
                         type: string
@@ -1314,6 +1322,8 @@ spec:
                   - provider
                   type: object
                 serviceAccount:
+                  type: string
+                startTs:
                   type: string
                 storageClassName:
                   type: string
@@ -1342,6 +1352,8 @@ spec:
                     type: object
                   type: array
                 toolImage:
+                  type: string
+                truncateUntil:
                   type: string
                 useKMS:
                   type: boolean
@@ -1407,6 +1419,10 @@ metadata:
   name: backups.pingcap.com
 spec:
   additionalPrinterColumns:
+  - JSONPath: .spec.backupType
+    description: The type of the backup
+    name: Type
+    type: string
   - JSONPath: .status.phase
     description: The current status of the backup
     name: Status
@@ -1422,6 +1438,14 @@ spec:
   - JSONPath: .status.commitTs
     description: The commit ts of tidb cluster dump
     name: CommitTS
+    type: string
+  - JSONPath: .status.startTs
+    description: The start ts of log backup
+    name: StartTS
+    type: string
+  - JSONPath: .status.truncateUntil
+    description: The log backup truncate until ts
+    name: TruncateUntil
     type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
@@ -1726,6 +1750,8 @@ spec:
                   type: string
                 container:
                   type: string
+                logBackupPath:
+                  type: string
                 path:
                   type: string
                 prefix:
@@ -1733,6 +1759,8 @@ spec:
                 secretName:
                   type: string
               type: object
+            backupTs:
+              type: string
             backupType:
               type: string
             br:
@@ -1886,6 +1914,8 @@ spec:
                 bucketAcl:
                   type: string
                 location:
+                  type: string
+                logBackupPath:
                   type: string
                 objectAcl:
                   type: string
@@ -2696,6 +2726,8 @@ spec:
                   type: string
                 endpoint:
                   type: string
+                logBackupPath:
+                  type: string
                 options:
                   items:
                     type: string
@@ -2718,6 +2750,8 @@ spec:
               - provider
               type: object
             serviceAccount:
+              type: string
+            startTs:
               type: string
             storageClassName:
               type: string
@@ -2746,6 +2780,8 @@ spec:
                 type: object
               type: array
             toolImage:
+              type: string
+            truncateUntil:
               type: string
             useKMS:
               type: boolean
@@ -2784,6 +2820,8 @@ spec:
               type: array
             phase:
               type: string
+            startTs:
+              type: string
             timeCompleted:
               format: date-time
               nullable: true
@@ -2791,6 +2829,8 @@ spec:
             timeStarted:
               format: date-time
               nullable: true
+              type: string
+            truncateUntil:
               type: string
           type: object
       required:
@@ -10992,6 +11032,8 @@ spec:
                   type: string
                 container:
                   type: string
+                logBackupPath:
+                  type: string
                 path:
                   type: string
                 prefix:
@@ -11104,6 +11146,8 @@ spec:
                 bucketAcl:
                   type: string
                 location:
+                  type: string
+                logBackupPath:
                   type: string
                 objectAcl:
                   type: string
@@ -11906,6 +11950,8 @@ spec:
                     x-kubernetes-int-or-string: true
                   type: object
               type: object
+            restoreType:
+              type: string
             s3:
               properties:
                 acl:
@@ -11913,6 +11959,8 @@ spec:
                 bucket:
                   type: string
                 endpoint:
+                  type: string
+                logBackupPath:
                   type: string
                 options:
                   items:

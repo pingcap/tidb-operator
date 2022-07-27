@@ -322,6 +322,8 @@ spec:
                         type: string
                       container:
                         type: string
+                      logBackupPath:
+                        type: string
                       path:
                         type: string
                       prefix:
@@ -329,6 +331,8 @@ spec:
                       secretName:
                         type: string
                     type: object
+                  backupTs:
+                    type: string
                   backupType:
                     type: string
                   br:
@@ -483,6 +487,8 @@ spec:
                       bucketAcl:
                         type: string
                       location:
+                        type: string
+                      logBackupPath:
                         type: string
                       objectAcl:
                         type: string
@@ -1293,6 +1299,8 @@ spec:
                         type: string
                       endpoint:
                         type: string
+                      logBackupPath:
+                        type: string
                       options:
                         items:
                           type: string
@@ -1315,6 +1323,8 @@ spec:
                     - provider
                     type: object
                   serviceAccount:
+                    type: string
+                  startTs:
                     type: string
                   storageClassName:
                     type: string
@@ -1343,6 +1353,8 @@ spec:
                       type: object
                     type: array
                   toolImage:
+                    type: string
+                  truncateUntil:
                     type: string
                   useKMS:
                     type: boolean

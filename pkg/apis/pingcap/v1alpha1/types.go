@@ -1437,10 +1437,13 @@ type TLSCluster struct {
 //
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="bk"
+// +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.backupType`,description="The type of the backup"
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of tidb cluster dump"
+// +kubebuilder:printcolumn:name="StartTS",type=string,JSONPath=`.status.startTs`,description="The start ts of log backup"
+// +kubebuilder:printcolumn:name="TruncateUntil",type=string,JSONPath=`.status.truncateUntil`,description="The log backup truncate until ts"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -1520,6 +1523,9 @@ type S3StorageProvider struct {
 	// Path is the full path where the backup is saved.
 	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
 	Path string `json:"path,omitempty"`
+	// LogBackupPath is the full path where the log backup is saved.
+	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+	LogBackupPath string `json:"logBackupPath,omitempty"`
 	// Bucket in which to store the backup data.
 	Bucket string `json:"bucket,omitempty"`
 	// Endpoint of S3 compatible storage service
@@ -1549,6 +1555,9 @@ type GcsStorageProvider struct {
 	// Path is the full path where the backup is saved.
 	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
 	Path string `json:"path,omitempty"`
+	// LogBackupPath is the full path where the log backup is saved.
+	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+	LogBackupPath string `json:"logBackupPath,omitempty"`
 	// Bucket in which to store the backup data.
 	Bucket string `json:"bucket,omitempty"`
 	// StorageClass represents the storage class
@@ -1570,6 +1579,9 @@ type AzblobStorageProvider struct {
 	// Path is the full path where the backup is saved.
 	// The format of the path must be: "<container-name>/<path-to-backup-file>"
 	Path string `json:"path,omitempty"`
+	// LogBackupPath is the full path where the log backup is saved.
+	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+	LogBackupPath string `json:"logBackupPath,omitempty"`
 	// Container in which to store the backup data.
 	Container string `json:"container,omitempty"`
 	// Access tier of the uploaded objects.
@@ -1596,6 +1608,8 @@ const (
 	BackupTypeTable BackupType = "table"
 	// BackupTypeTiFlashReplica represents restoring the tiflash replica removed by a failed restore of the older version BR
 	BackupTypeTiFlashReplica BackupType = "tiflash-replica"
+	// BackupTypeLog represents the backup is a log backup.
+	BackupTypeLog BackupType = "log"
 )
 
 // TiDBAccessConfig defines the configuration for access tidb cluster
@@ -1701,6 +1715,20 @@ type BackupSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
+	// BackupTs is the backup ts which is the snapshot ts for full backup.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// Default is current timestamp.
+	// +optional
+	BackupTs string `json:"backupTs,omitempty"`
+	// StartTs is the log backup start ts.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// Default is current timestamp.
+	// +optional
+	StartTs string `json:"startTs,omitempty"`
+	// TruncateUntil is log backup truncate until timestamp.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// +optional
+	TruncateUntil string `json:"truncateUntil,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1799,6 +1827,14 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// LogBackupPrepareTruncate means the log backup prepare truncation
+	LogBackupTruncatePrepare BackupConditionType = "TruncatePrepare"
+	// LogBackupTruncating means the log backup is trancating
+	LogBackupTruncating BackupConditionType = "Truncating"
+	// LogBackupTruncateComplete means the log backup complete truncation
+	LogBackupTruncateComplete BackupConditionType = "TruncateComplete"
+	// LogBackupTruncateFailed means failed to truncate the log backup
+	LogBackupTruncateFailed BackupConditionType = "TruncateFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -1830,6 +1866,10 @@ type BackupStatus struct {
 	BackupSize int64 `json:"backupSize,omitempty"`
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs,omitempty"`
+	// StartTs is the log backup start ts.
+	StartTs string `json:"startTs,omitempty"`
+	// TruncateUntil is log backup truncate until timestamp.
+	TruncateUntil string `json:"truncateUntil,omitempty"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
 	Phase BackupConditionType `json:"phase,omitempty"`
 	// +nullable
@@ -1940,6 +1980,17 @@ type RestoreList struct {
 	Items []Restore `json:"items"`
 }
 
+// RestoreType represents the restore type.
+// +k8s:openapi-gen=true
+type RestoreType string
+
+const (
+	// RestoreTypeFull represents the restore from a full backup.
+	RestoreTypeFull RestoreType = "full"
+	// BackupTypeRaw represents the PiTR restore.
+	BackupTypePitr RestoreType = "pitr"
+)
+
 // RestoreConditionType represents a valid condition of a Restore.
 type RestoreConditionType string
 
@@ -1997,6 +2048,8 @@ type RestoreSpec struct {
 	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
+	// RestoreType is the restore type.
+	RestoreType RestoreType `json:"restoreType,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.

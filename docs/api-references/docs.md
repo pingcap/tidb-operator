@@ -218,6 +218,47 @@ BRConfig
 </tr>
 <tr>
 <td>
+<code>backupTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BackupTs is the backup ts which is the snapshot ts for full backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartTs is the log backup start ts.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>truncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TruncateUntil is log backup truncate until timestamp.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -1121,6 +1162,19 @@ BackupType
 </td>
 <td>
 <p>Type is the backup type for tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restoreType</code></br>
+<em>
+<a href="#restoretype">
+RestoreType
+</a>
+</em>
+</td>
+<td>
+<p>RestoreType is the restore type.</p>
 </td>
 </tr>
 <tr>
@@ -2876,6 +2930,18 @@ The format of the path must be: &ldquo;<container-name>/<path-to-backup-file>&rd
 </tr>
 <tr>
 <td>
+<code>logBackupPath</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogBackupPath is the full path where the log backup is saved.
+The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>container</code></br>
 <em>
 string
@@ -3501,6 +3567,47 @@ BRConfig
 </tr>
 <tr>
 <td>
+<code>backupTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BackupTs is the backup ts which is the snapshot ts for full backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartTs is the log backup start ts.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>truncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TruncateUntil is log backup truncate until timestamp.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -3741,6 +3848,28 @@ string
 </td>
 <td>
 <p>CommitTs is the snapshot time point of tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StartTs is the log backup start ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>truncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TruncateUntil is log backup truncate until timestamp.</p>
 </td>
 </tr>
 <tr>
@@ -6857,6 +6986,18 @@ The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo
 </tr>
 <tr>
 <td>
+<code>logBackupPath</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogBackupPath is the full path where the log backup is saved.
+The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>bucket</code></br>
 <em>
 string
@@ -8892,7 +9033,7 @@ int
 <td>
 <code>buffer-flush-interval</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -8988,7 +9129,7 @@ int
 <td>
 <code>sampling-refresh-interval</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -12094,7 +12235,7 @@ int
 <td>
 <code>batchSendDeadline</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -12116,7 +12257,7 @@ int
 <td>
 <code>minBackoff</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -12127,7 +12268,7 @@ time.Duration
 <td>
 <code>maxBackoff</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>
@@ -12644,6 +12785,19 @@ BackupType
 </tr>
 <tr>
 <td>
+<code>restoreType</code></br>
+<em>
+<a href="#restoretype">
+RestoreType
+</a>
+</em>
+</td>
+<td>
+<p>RestoreType is the restore type.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tikvGCLifeTime</code></br>
 <em>
 string
@@ -12904,6 +13058,14 @@ RestoreConditionType
 </tr>
 </tbody>
 </table>
+<h3 id="restoretype">RestoreType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>RestoreType represents the restore type.</p>
+</p>
 <h3 id="s3storageprovider">S3StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
@@ -12953,6 +13115,18 @@ string
 </td>
 <td>
 <p>Path is the full path where the backup is saved.
+The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackupPath</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogBackupPath is the full path where the log backup is saved.
 The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
 </td>
 </tr>
@@ -16973,7 +17147,7 @@ Optional: Defaults to 200</p>
 <td>
 <code>max-batch-wait-time</code></br>
 <em>
-time.Duration
+invalid type
 </em>
 </td>
 <td>

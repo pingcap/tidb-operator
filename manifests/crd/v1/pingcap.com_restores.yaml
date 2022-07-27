@@ -320,6 +320,8 @@ spec:
                     type: string
                   container:
                     type: string
+                  logBackupPath:
+                    type: string
                   path:
                     type: string
                   prefix:
@@ -432,6 +434,8 @@ spec:
                   bucketAcl:
                     type: string
                   location:
+                    type: string
+                  logBackupPath:
                     type: string
                   objectAcl:
                     type: string
@@ -1234,6 +1238,8 @@ spec:
                       x-kubernetes-int-or-string: true
                     type: object
                 type: object
+              restoreType:
+                type: string
               s3:
                 properties:
                   acl:
@@ -1241,6 +1247,8 @@ spec:
                   bucket:
                     type: string
                   endpoint:
+                    type: string
+                  logBackupPath:
                     type: string
                   options:
                     items:
