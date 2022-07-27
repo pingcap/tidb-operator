@@ -1165,6 +1165,17 @@ RestoreType
 </tr>
 <tr>
 <td>
+<code>restoreTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>RestoreTs is the pitr restore ts.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tikvGCLifeTime</code></br>
 <em>
 string
@@ -12755,6 +12766,17 @@ RestoreType
 </td>
 <td>
 <p>RestoreType is the restore type. Default value is RestoreTypeFull.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restoreTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>RestoreTs is the pitr restore ts.</p>
 </td>
 </tr>
 <tr>

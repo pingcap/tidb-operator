@@ -11946,6 +11946,8 @@ spec:
                       x-kubernetes-int-or-string: true
                     type: object
                 type: object
+              restoreTs:
+                type: string
               restoreType:
                 type: string
               s3:

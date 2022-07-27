@@ -6540,6 +6540,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"restoreTs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RestoreTs is the pitr restore ts.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"tikvGCLifeTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TikvGCLifeTime is to specify the safe gc life time for restore. The time limit during which data is retained for each GC, in the format of Go Duration. When a GC happens, the current time minus this value is the safe point.",

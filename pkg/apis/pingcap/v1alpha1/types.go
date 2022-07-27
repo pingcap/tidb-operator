@@ -2042,6 +2042,8 @@ type RestoreSpec struct {
 	Type BackupType `json:"backupType,omitempty"`
 	// RestoreType is the restore type. Default value is RestoreTypeFull.
 	RestoreType RestoreType `json:"restoreType,omitempty"`
+	// RestoreTs is the pitr restore ts.
+	RestoreTs string `json:"restoreTs,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
