@@ -115,7 +115,6 @@ func (c *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) 
 	if apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
-
 	if _, err := c.tcControl.UpdateTidbCluster(tc.DeepCopy(), &tc.Status, oldStatus); err != nil {
 		errs = append(errs, err)
 	}

@@ -356,6 +356,7 @@ func (tc *TidbCluster) ComponentIsNormal(typ MemberType) bool {
 	return status.GetPhase() == NormalPhase
 }
 
+// ComponentIsSuspending return true if the component's phase is `Suspend`
 func (tc *TidbCluster) ComponentIsSuspending(typ MemberType) bool {
 	status := tc.ComponentStatus(typ)
 	if status == nil {
@@ -364,6 +365,7 @@ func (tc *TidbCluster) ComponentIsSuspending(typ MemberType) bool {
 	return status.GetPhase() == SuspendPhase
 }
 
+// ComponentIsSuspended return true if the component's phase is `Suspend` and all resources is suspended
 func (tc *TidbCluster) ComponentIsSuspended(typ MemberType) bool {
 	spec := tc.ComponentSpec(typ)
 	status := tc.ComponentStatus(typ)

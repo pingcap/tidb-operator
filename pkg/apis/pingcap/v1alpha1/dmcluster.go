@@ -260,6 +260,7 @@ func (dc *DMCluster) ComponentIsNormal(typ MemberType) bool {
 	return status.GetPhase() == NormalPhase
 }
 
+// ComponentIsSuspending return true if the component's phase is `Suspend`
 func (dc *DMCluster) ComponentIsSuspending(typ MemberType) bool {
 	status := dc.ComponentStatus(typ)
 	if status == nil {
@@ -268,6 +269,7 @@ func (dc *DMCluster) ComponentIsSuspending(typ MemberType) bool {
 	return status.GetPhase() == SuspendPhase
 }
 
+// ComponentIsSuspended return true if the component's phase is `Suspend` and all resources is suspended
 func (dc *DMCluster) ComponentIsSuspended(typ MemberType) bool {
 	spec := dc.ComponentSpec(typ)
 	status := dc.ComponentStatus(typ)
