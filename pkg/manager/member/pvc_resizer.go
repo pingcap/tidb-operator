@@ -396,7 +396,7 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 	ns := ctx.cluster.GetNamespace()
 	name := ctx.cluster.GetName()
 
-	stsName := controller.MemberName(name, ctx.status.GetMemberType())
+	stsName := controller.MemberName(name, ctx.status.MemberType())
 	sts, err := p.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
 	if err != nil {
 		return fmt.Errorf("failed to get sts %s: %s", stsName, err)
