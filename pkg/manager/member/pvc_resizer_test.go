@@ -163,7 +163,7 @@ func TestResizeVolumes(t *testing.T) {
 			},
 			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
 				g.Expect(err).Should(Succeed())
-				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.GetMemberType())).Should(BeFalse())
+				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.MemberType())).Should(BeFalse())
 			},
 		},
 		"begin resizing": {
@@ -208,7 +208,7 @@ func TestResizeVolumes(t *testing.T) {
 			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
 				g.Expect(err).Should(HaveOccurred())
 				g.Expect(err.Error()).Should(ContainSubstring("set condition before resizing volumes"))
-				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.GetMemberType())).Should(BeTrue())
+				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.MemberType())).Should(BeTrue())
 			},
 		},
 		"need to resize some volumes": {
@@ -259,7 +259,7 @@ func TestResizeVolumes(t *testing.T) {
 			},
 			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
 				g.Expect(err).Should(Succeed())
-				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.GetMemberType())).Should(BeTrue())
+				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.MemberType())).Should(BeTrue())
 
 				// pvc should be as expected
 				cli := resizer.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ctx.cluster.GetNamespace())
@@ -275,7 +275,7 @@ func TestResizeVolumes(t *testing.T) {
 
 				// should not recreate sts
 				_, err = resizer.deps.KubeClientset.AppsV1().StatefulSets(ctx.cluster.GetNamespace()).Get(context.Background(),
-					controller.MemberName(ctx.cluster.GetName(), ctx.status.GetMemberType()), metav1.GetOptions{})
+					controller.MemberName(ctx.cluster.GetName(), ctx.status.MemberType()), metav1.GetOptions{})
 				g.Expect(err).Should(Succeed())
 			},
 		},
@@ -327,7 +327,7 @@ func TestResizeVolumes(t *testing.T) {
 			},
 			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
 				g.Expect(err).Should(Succeed())
-				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.GetMemberType())).Should(BeTrue())
+				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.MemberType())).Should(BeTrue())
 
 				// pvc should be as expected
 				cli := resizer.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ctx.cluster.GetNamespace())
@@ -343,7 +343,7 @@ func TestResizeVolumes(t *testing.T) {
 
 				// should not recreate sts
 				_, err = resizer.deps.KubeClientset.AppsV1().StatefulSets(ctx.cluster.GetNamespace()).Get(context.Background(),
-					controller.MemberName(ctx.cluster.GetName(), ctx.status.GetMemberType()), metav1.GetOptions{})
+					controller.MemberName(ctx.cluster.GetName(), ctx.status.MemberType()), metav1.GetOptions{})
 				g.Expect(err).Should(Succeed())
 			},
 		},
@@ -397,7 +397,7 @@ func TestResizeVolumes(t *testing.T) {
 				g.Expect(err).Should(Succeed())
 
 				// condition is set
-				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.GetMemberType())).Should(BeTrue())
+				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.MemberType())).Should(BeTrue())
 
 				// pvc should be as expected
 				cli := resizer.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ctx.cluster.GetNamespace())
@@ -413,7 +413,7 @@ func TestResizeVolumes(t *testing.T) {
 
 				// should recreate sts
 				_, err = resizer.deps.KubeClientset.AppsV1().StatefulSets(ctx.cluster.GetNamespace()).Get(context.Background(),
-					controller.MemberName(ctx.cluster.GetName(), ctx.status.GetMemberType()), metav1.GetOptions{})
+					controller.MemberName(ctx.cluster.GetName(), ctx.status.MemberType()), metav1.GetOptions{})
 				g.Expect(errors.IsNotFound(err)).Should(BeTrue())
 			},
 		},
