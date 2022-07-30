@@ -21,12 +21,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -37,6 +31,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
+
+	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
 
 func TestPDMemberManagerSyncCreate(t *testing.T) {
@@ -47,6 +49,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateStatefulSet   bool
 		errWhenCreatePDService     bool
 		errWhenCreatePDPeerService bool
+		suspendComponent           func() (bool, error)
 		errExpectFn                func(*GomegaWithT, error)
 		pdSvcCreated               bool
 		pdPeerSvcCreated           bool
@@ -78,6 +81,11 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		}
 		if test.errWhenCreatePDPeerService {
 			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 1)
+		}
+		if test.suspendComponent != nil {
+			pmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+				return test.suspendComponent()
+			}
 		}
 
 		err := pmm.Sync(tc)
@@ -180,6 +188,20 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 				g.Expect(strings.Contains(err.Error(), "API server failed")).To(BeTrue())
 			},
 			pdSvcCreated:     true,
+			pdPeerSvcCreated: false,
+			setCreated:       false,
+		},
+		{
+			name:                       "skip create when suspend",
+			suspendComponent:           func() (bool, error) { return true, nil },
+			prepare:                    nil,
+			errWhenCreateStatefulSet:   true,
+			errWhenCreatePDService:     true,
+			errWhenCreatePDPeerService: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(Succeed())
+			},
+			pdSvcCreated:     false,
 			pdPeerSvcCreated: false,
 			setCreated:       false,
 		},
@@ -828,10 +850,11 @@ func newFakePDMemberManager() (*pdMemberManager, cache.Indexer, cache.Indexer) {
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	pdManager := &pdMemberManager{
-		deps:     fakeDeps,
-		scaler:   NewFakePDScaler(),
-		upgrader: NewFakePDUpgrader(),
-		failover: NewFakePDFailover(),
+		deps:      fakeDeps,
+		scaler:    NewFakePDScaler(),
+		upgrader:  NewFakePDUpgrader(),
+		failover:  NewFakePDFailover(),
+		suspender: suspender.NewFakeSuspender(),
 	}
 	return pdManager, podIndexer, pvcIndexer
 }
