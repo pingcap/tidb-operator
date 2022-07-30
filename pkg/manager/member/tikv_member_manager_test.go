@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -47,6 +48,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateStatefulSet     bool
 		errWhenCreateTiKVPeerService bool
 		errWhenGetStores             bool
+		suspendComponent             func() (bool, error)
 		err                          bool
 		tls                          bool
 		tikvPeerSvcCreated           bool
@@ -105,6 +107,11 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		}
 		if test.errWhenCreateTiKVPeerService {
 			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.suspendComponent != nil {
+			tkmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+				return test.suspendComponent()
+			}
 		}
 
 		err := tkmm.Sync(tc)
@@ -187,6 +194,18 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:     false,
 			errWhenCreateTiKVPeerService: true,
 			err:                          true,
+			tikvPeerSvcCreated:           false,
+			setCreated:                   false,
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+		},
+		{
+			name:                         "skip create when suspend",
+			suspendComponent:             func() (bool, error) { return true, nil },
+			prepare:                      nil,
+			errWhenCreateStatefulSet:     true,
+			errWhenCreateTiKVPeerService: true,
+			err:                          false,
 			tikvPeerSvcCreated:           false,
 			setCreated:                   false,
 			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
@@ -1578,6 +1597,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 		scaler:                   NewFakeTiKVScaler(),
 		upgrader:                 NewFakeTiKVUpgrader(),
 		statefulSetIsUpgradingFn: tikvStatefulSetIsUpgrading,
+		suspender:                suspender.NewFakeSuspender(),
 	}
 	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
 	svcControl := fakeDeps.ServiceControl.(*controller.FakeServiceControl)

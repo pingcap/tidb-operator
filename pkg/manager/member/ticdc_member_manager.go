@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -48,6 +49,7 @@ type ticdcMemberManager struct {
 	deps                     *controller.Dependencies
 	scaler                   Scaler
 	ticdcUpgrader            Upgrader
+	suspender                suspender.Suspender
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
@@ -85,11 +87,12 @@ func getTiCDCConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 // NewTiCDCMemberManager returns a *ticdcMemberManager
-func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader) manager.Manager {
+func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader, spder suspender.Suspender) manager.Manager {
 	m := &ticdcMemberManager{
 		deps:          deps,
 		scaler:        scaler,
 		ticdcUpgrader: ticdcUpgrader,
+		suspender:     spder,
 	}
 	m.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	return m
@@ -127,6 +130,32 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+<<<<<<< HEAD
+=======
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	// skip sync if ticdc is suspended
+	component := v1alpha1.TiCDCMemberType
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, ns, tcName)
+		return nil
+	}
+
+	// NB: All TiCDC operations, e.g. creation, scale, upgrade will be blocked.
+	//     if PD or TiKV is not available.
+	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCDC is waiting for PD cluster running", ns, tcName)
+	}
+	if tc.Spec.TiKV != nil && !tc.TiKVIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCDC is waiting for TiKV cluster running", ns, tcName)
+	}
+
+>>>>>>> f371a6906... Support to suspend components (#4640)
 	// Sync CDC Headless Service
 	if err := m.syncCDCHeadlessService(tc); err != nil {
 		return err
