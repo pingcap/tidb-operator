@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,10 +37,11 @@ import (
 func TestTiCDCMemberManagerSyncCreate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name    string
-		errSync bool
-		err     bool
-		tls     bool
+		name             string
+		errSync          bool
+		err              bool
+		tls              bool
+		suspendComponent func() (bool, error)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -56,6 +58,11 @@ func TestTiCDCMemberManagerSyncCreate(t *testing.T) {
 
 		if test.errSync {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.suspendComponent != nil {
+			tmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+				return test.suspendComponent()
+			}
 		}
 
 		err := tmm.Sync(tc)
@@ -84,6 +91,12 @@ func TestTiCDCMemberManagerSyncCreate(t *testing.T) {
 			name:    "error when sync",
 			errSync: true,
 			err:     true,
+		},
+		{
+			name:             "skip create when suspend",
+			suspendComponent: func() (bool, error) { return true, nil },
+			errSync:          true,
+			err:              false,
 		},
 	}
 
@@ -580,8 +593,9 @@ func TestGetNewTiCDCStatefulSet(t *testing.T) {
 func newFakeTiCDCMemberManager() (*ticdcMemberManager, *controller.FakeStatefulSetControl, *controller.FakeTiDBControl, *fakeIndexers) {
 	fakeDeps := controller.NewFakeDependencies()
 	tmm := &ticdcMemberManager{
-		deps:   fakeDeps,
-		scaler: NewTiCDCScaler(fakeDeps),
+		deps:      fakeDeps,
+		scaler:    NewTiCDCScaler(fakeDeps),
+		suspender: suspender.NewFakeSuspender(),
 	}
 	tmm.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	indexers := &fakeIndexers{
