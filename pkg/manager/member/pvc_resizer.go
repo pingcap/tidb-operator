@@ -434,7 +434,7 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 			klog.Warningf("volume %s in sts for cluster %s dose not exist in desired volumes", volName, ctx.ComponentID())
 			continue
 		}
-		if desiredSize.Cmp(size) != 0 {
+		if desiredSize.Cmp(size) > 0 {
 			stsResized = false
 			break
 =======
