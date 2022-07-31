@@ -130,8 +130,6 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-<<<<<<< HEAD
-=======
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -146,16 +144,6 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	// NB: All TiCDC operations, e.g. creation, scale, upgrade will be blocked.
-	//     if PD or TiKV is not available.
-	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCDC is waiting for PD cluster running", ns, tcName)
-	}
-	if tc.Spec.TiKV != nil && !tc.TiKVIsAvailable() {
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCDC is waiting for TiKV cluster running", ns, tcName)
-	}
-
->>>>>>> f371a6906... Support to suspend components (#4640)
 	// Sync CDC Headless Service
 	if err := m.syncCDCHeadlessService(tc); err != nil {
 		return err

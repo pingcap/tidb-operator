@@ -421,23 +421,6 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 	}
 
 	// check sts is desired
-<<<<<<< HEAD
-	for _, volTemplate := range sts.Spec.VolumeClaimTemplates {
-		volName := v1alpha1.StorageVolumeName(volTemplate.Name)
-		size, exist := volTemplate.Spec.Resources.Requests[corev1.ResourceStorage]
-		if !exist {
-			klog.Warningf("volume %s in sts for cluster %s dose not set storage request", volName, ctx.ComponentID())
-			continue
-		}
-		desiredSize, exist := ctx.desiredVolumeQuantity[volName]
-		if !exist {
-			klog.Warningf("volume %s in sts for cluster %s dose not exist in desired volumes", volName, ctx.ComponentID())
-			continue
-		}
-		if desiredSize.Cmp(size) > 0 {
-			stsResized = false
-			break
-=======
 	stsName := controller.MemberName(name, ctx.status.MemberType())
 	sts, err := p.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
 	if err != nil {
@@ -459,7 +442,6 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 				stsResized = false
 				break
 			}
->>>>>>> f371a6906... Support to suspend components (#4640)
 		}
 	}
 
