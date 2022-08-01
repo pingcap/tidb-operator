@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -52,16 +53,18 @@ type tiflashMemberManager struct {
 	failover                 Failover
 	scaler                   Scaler
 	upgrader                 Upgrader
+	suspender                suspender.Suspender
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiFlashMemberManager returns a *tiflashMemberManager
-func NewTiFlashMemberManager(deps *controller.Dependencies, tiflashFailover Failover, tiflashScaler Scaler, tiflashUpgrader Upgrader) manager.Manager {
+func NewTiFlashMemberManager(deps *controller.Dependencies, tiflashFailover Failover, tiflashScaler Scaler, tiflashUpgrader Upgrader, spder suspender.Suspender) manager.Manager {
 	m := tiflashMemberManager{
-		deps:     deps,
-		failover: tiflashFailover,
-		scaler:   tiflashScaler,
-		upgrader: tiflashUpgrader,
+		deps:      deps,
+		failover:  tiflashFailover,
+		scaler:    tiflashScaler,
+		upgrader:  tiflashUpgrader,
+		suspender: spder,
 	}
 	m.statefulSetIsUpgradingFn = tiflashStatefulSetIsUpgrading
 	return &m
@@ -73,7 +76,18 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	err := m.enablePlacementRules(tc)
+	// skip sync if tiflash is suspended
+	component := v1alpha1.TiFlashMemberType
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
+	err = m.enablePlacementRules(tc)
 	if err != nil {
 		klog.Errorf("Enable placement rules failed, error: %v", err)
 		// No need to return err here, just continue to sync tiflash

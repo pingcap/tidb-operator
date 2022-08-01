@@ -348,20 +348,44 @@ func (tc *TidbCluster) TiFlashScaling() bool {
 	return tc.Status.TiFlash.Phase == ScalePhase
 }
 
-func (tc *TidbCluster) ComponentIsUpgrading(typ MemberType) bool {
-	return tc.ComponentPhaseIs(typ, UpgradePhase)
-}
-
-func (tc *TidbCluster) ComponentIsScaling(typ MemberType) bool {
-	return tc.ComponentPhaseIs(typ, ScalePhase)
-}
-
-func (tc *TidbCluster) ComponentPhaseIs(typ MemberType, phase MemberPhase) bool {
+func (tc *TidbCluster) ComponentIsNormal(typ MemberType) bool {
 	status := tc.ComponentStatus(typ)
 	if status == nil {
 		return false
 	}
-	return status.GetPhase() == phase
+	return status.GetPhase() == NormalPhase
+}
+
+// ComponentIsSuspending return true if the component's phase is `Suspend`
+func (tc *TidbCluster) ComponentIsSuspending(typ MemberType) bool {
+	status := tc.ComponentStatus(typ)
+	if status == nil {
+		return false
+	}
+	return status.GetPhase() == SuspendPhase
+}
+
+// ComponentIsSuspended return true if the component's phase is `Suspend` and all resources is suspended
+func (tc *TidbCluster) ComponentIsSuspended(typ MemberType) bool {
+	spec := tc.ComponentSpec(typ)
+	status := tc.ComponentStatus(typ)
+	if spec == nil || status == nil {
+		return false
+	}
+
+	if !tc.ComponentIsSuspending(typ) {
+		return false
+	}
+
+	action := spec.SuspendAction()
+	if action != nil && action.SuspendStatefulSet {
+		if status.GetStatefulSet() != nil {
+			// the statefulset is set to nil by suspender when the sts is deleted.
+			return false
+		}
+	}
+
+	return true
 }
 
 func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
@@ -689,6 +713,10 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 		return false
 	}
 
+	if tc.Status.PD.Phase == SuspendPhase {
+		return false
+	}
+
 	return true
 }
 
@@ -722,12 +750,20 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 		return false
 	}
 
+	if tc.Status.TiKV.Phase == SuspendPhase {
+		return false
+	}
+
 	return true
 }
 
 func (tc *TidbCluster) PumpIsAvailable() bool {
 	lowerLimit := 1
 	if len(tc.Status.Pump.Members) < lowerLimit {
+		return false
+	}
+
+	if tc.Status.Pump.Phase == SuspendPhase {
 		return false
 	}
 

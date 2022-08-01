@@ -2605,6 +2605,11 @@ spec:
                   type: string
                 statefulSetUpdateStrategy:
                   type: string
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -4990,6 +4995,11 @@ spec:
                   type: string
                 storageSize:
                   type: string
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -5104,6 +5114,11 @@ spec:
               type: string
             statefulSetUpdateStrategy:
               type: string
+            suspendAction:
+              properties:
+                suspendStatefulSet:
+                  type: boolean
+              type: object
             timezone:
               type: string
             tlsClientSecretNames:
@@ -7432,6 +7447,11 @@ spec:
                   type: string
                 storageSize:
                   type: string
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
