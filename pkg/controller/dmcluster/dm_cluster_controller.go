@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -44,12 +45,14 @@ type Controller struct {
 
 // NewController creates a dmcluster controller.
 func NewController(deps *controller.Dependencies) *Controller {
+	suspender := suspender.NewSuspender(deps)
+
 	c := &Controller{
 		deps: deps,
 		control: NewDefaultDMClusterControl(
 			deps.DMClusterControl,
-			mm.NewMasterMemberManager(deps, mm.NewMasterScaler(deps), mm.NewMasterUpgrader(deps), mm.NewMasterFailover(deps)),
-			mm.NewWorkerMemberManager(deps, mm.NewWorkerScaler(deps), mm.NewWorkerFailover(deps)),
+			mm.NewMasterMemberManager(deps, mm.NewMasterScaler(deps), mm.NewMasterUpgrader(deps), mm.NewMasterFailover(deps), suspender),
+			mm.NewWorkerMemberManager(deps, mm.NewWorkerScaler(deps), mm.NewWorkerFailover(deps), suspender),
 			meta.NewReclaimPolicyManager(deps),
 			mm.NewOrphanPodsCleaner(deps),
 			mm.NewRealPVCCleaner(deps),

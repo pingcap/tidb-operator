@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 
 	"github.com/google/go-cmp/cmp"
@@ -55,12 +56,13 @@ func TestWorkerMemberManagerSyncCreate(t *testing.T) {
 	}
 
 	type testcase struct {
-		name           string
-		prepare        func(cluster *v1alpha1.DMCluster)
-		errOnCreateSet bool
-		errOnCreateCm  bool
-		errOnCreateSvc bool
-		expectFn       func(*GomegaWithT, *result)
+		name             string
+		prepare          func(cluster *v1alpha1.DMCluster)
+		errOnCreateSet   bool
+		errOnCreateCm    bool
+		errOnCreateSvc   bool
+		suspendComponent func() (bool, error)
+		expectFn         func(*GomegaWithT, *result)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -82,6 +84,11 @@ func TestWorkerMemberManagerSyncCreate(t *testing.T) {
 		}
 		if test.errOnCreateCm {
 			ctls.generic.SetCreateOrUpdateError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.suspendComponent != nil {
+			wmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+				return test.suspendComponent()
+			}
 		}
 
 		syncErr := wmm.SyncDM(dc)
@@ -168,6 +175,19 @@ func TestWorkerMemberManagerSyncCreate(t *testing.T) {
 				g.Expect(r.getSet).NotTo(Succeed())
 				g.Expect(r.getCm).NotTo(Succeed())
 				g.Expect(r.getSvc).To(Succeed())
+			},
+		},
+		{
+			name:             "skip create when suspend dm-work",
+			suspendComponent: func() (bool, error) { return true, nil },
+			errOnCreateSet:   true,
+			errOnCreateCm:    true,
+			errOnCreateSvc:   true,
+			expectFn: func(g *GomegaWithT, r *result) {
+				g.Expect(r.sync).To(Succeed())
+				g.Expect(r.getSet).NotTo(Succeed())
+				g.Expect(r.getCm).NotTo(Succeed())
+				g.Expect(r.getCm).NotTo(Succeed())
 			},
 		},
 	}
@@ -704,9 +724,10 @@ func newFakeWorkerMemberManager() (*workerMemberManager, *workerFakeControls, *w
 	fakeDeps.CLIConfig.AutoFailover = true
 	masterControl := fakeDeps.DMMasterControl.(*dmapi.FakeMasterControl)
 	pmm := &workerMemberManager{
-		deps:     fakeDeps,
-		scaler:   NewFakeWorkerScaler(),
-		failover: NewFakeWorkerFailover(),
+		deps:      fakeDeps,
+		scaler:    NewFakeWorkerScaler(),
+		failover:  NewFakeWorkerFailover(),
+		suspender: suspender.NewFakeSuspender(),
 	}
 	controls := &workerFakeControls{
 		svc:     fakeDeps.ServiceControl.(*controller.FakeServiceControl),
