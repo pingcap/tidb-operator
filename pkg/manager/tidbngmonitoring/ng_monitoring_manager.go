@@ -247,7 +247,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 	name := tngm.GetName()
 
 	if cm == nil {
-		return nil, fmt.Errorf("config map is nil for tidb ng monitoring %s/%s", ns, name)
+		return nil, fmt.Errorf("tidb ng monitoring [%s/%s] config map is nil", ns, name)
 	}
 
 	spec := tngm.BaseNGMonitoringSpec()
@@ -258,14 +258,11 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 	dataVolumeName := v1alpha1.NGMonitoringMemberType.String()
 	configVolumeName := "config"
 
-	// base containers, base pod spec and base statefulset
-
-	// base containers
 	baseContainers := []corev1.Container{}
 	nmContainerName := v1alpha1.NGMonitoringMemberType.String()
 	startScript, err := GenerateNGMonitoringStartScript(tngm, tc)
 	if err != nil {
-		return nil, fmt.Errorf("cannot render start-script for ng monitoring, tidb ng monitoring %s/%s, error: %v", ns, name, err)
+		return nil, fmt.Errorf("tidb ng monitoring [%s/%s] cannot render start-script, error: %v", ns, name, err)
 	}
 	nmVolumeMounts := []corev1.VolumeMount{
 		{Name: configVolumeName, ReadOnly: true, MountPath: ngmPodConfigVolumeMountDir}, // config
@@ -278,21 +275,12 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 		Command:         []string{"/bin/sh", "-c", startScript},
 		Ports: []corev1.ContainerPort{
 			{
-
-				Name:          "ng-monitoring",
+				Name:          v1alpha1.NGMonitoringMemberType.String(),
 				ContainerPort: ngmServicePort,
 			},
 		},
 		VolumeMounts: nmVolumeMounts,
 		Resources:    controller.ContainerResource(tngm.Spec.NGMonitoring.ResourceRequirements),
-		// LivenessProbe: &corev1.Probe{
-		// 	Handler: corev1.Handler{
-		// 		HTTPGet: &corev1.HTTPGetAction{
-		// 			Path: "/health",
-		// 			Port: intstr.FromInt(ngmServicePort),
-		// 		},
-		// 	},
-		// },
 		Env: []corev1.EnvVar{
 			{
 				Name:  "HEADLESS_SERVICE_NAME",
@@ -343,7 +331,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 	// base statefulset
 	storageRequest, err := controller.ParseStorageRequest(tngm.Spec.NGMonitoring.Requests)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse storage request for ng monitoring, tidb ng monitoring %s/%s, error: %v", ns, name, err)
+		return nil, fmt.Errorf("tidb ng monitoring [%s/%s] cannot parse storage request, error: %v", ns, name, err)
 	}
 	baseSts := &apps.StatefulSet{
 		ObjectMeta: meta,
@@ -376,9 +364,6 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 
 	builder := mngerutils.NewStatefulSetBuilder(baseSts)
 
-	// features
-
-	// downward
 	builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddEnvs(spec.Env()...)
 	builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddEnvFroms(spec.EnvFrom()...)
 	builder.PodTemplateSpecBuilder().AddLabels(spec.Labels())

@@ -746,7 +746,7 @@ func (m *MonitorManager) syncAssetSecret(monitor *v1alpha1.TidbMonitor, store *S
 }
 
 func (m *MonitorManager) syncDashboardMetricStorage(tc *v1alpha1.TidbCluster, tm *v1alpha1.TidbMonitor) error {
-	if tc.Spec.PD == nil {
+	if tc.Spec.PD == nil || tc.ComponentIsSuspending(v1alpha1.PDMemberType) {
 		return nil
 	}
 	pdEtcdClient, err := m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())

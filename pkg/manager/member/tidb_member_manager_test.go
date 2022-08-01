@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -49,6 +50,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 		name                     string
 		prepare                  func(cluster *v1alpha1.TidbCluster)
 		errWhenCreateStatefulSet bool
+		suspendComponent         func() (bool, error)
 		err                      bool
 		setCreated               bool
 		tls                      bool
@@ -77,6 +79,11 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.suspendComponent != nil {
+			tmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+				return test.suspendComponent()
+			}
 		}
 
 		err := tmm.Sync(tc)
@@ -127,6 +134,14 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			prepare:                  nil,
 			errWhenCreateStatefulSet: true,
 			err:                      true,
+			setCreated:               false,
+		},
+		{
+			name:                     "skip create when suspend",
+			suspendComponent:         func() (bool, error) { return true, nil },
+			prepare:                  nil,
+			errWhenCreateStatefulSet: true,
+			err:                      false,
 			setCreated:               false,
 		},
 	}
@@ -815,6 +830,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		tidbUpgrader:                 NewFakeTiDBUpgrader(),
 		tidbFailover:                 NewFakeTiDBFailover(),
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
+		suspender:                    suspender.NewFakeSuspender(),
 	}
 	indexers := &fakeIndexers{
 		pod:    fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer(),

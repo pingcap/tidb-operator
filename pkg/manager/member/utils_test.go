@@ -739,8 +739,8 @@ func TestMemberPodName(t *testing.T) {
 			controllerName: "test",
 			controllerKind: v1alpha1.TiDBClusterKind,
 			ordinal:        2,
-			memberType:     v1alpha1.SlowLogTailerMemberType,
-			expected:       "test-slowlog-2",
+			memberType:     v1alpha1.PDMemberType,
+			expected:       "test-pd-2",
 		},
 		{
 			name:           "unknown controller kind",

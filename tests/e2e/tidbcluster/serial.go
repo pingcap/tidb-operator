@@ -62,7 +62,7 @@ import (
 )
 
 const (
-	OperatorLatestVersion    string = "v1.3.1"
+	OperatorLatestVersion    string = "v1.3.6"
 	OperatorPrevMajorVersion string = "v1.2.7"
 )
 

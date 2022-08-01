@@ -981,6 +981,20 @@ This field is is only honored by clusters that enables the EvenPodsSpread featur
 All topologySpreadConstraints are ANDed.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>suspendAction</code></br>
+<em>
+<a href="#suspendaction">
+SuspendAction
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SuspendAction defines the suspend actions for all component.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -1887,6 +1901,20 @@ Kubernetes core/v1.PodSecurityContext
 domains. Scheduler will schedule pods in a way which abides by the constraints.
 This field is is only honored by clusters that enables the EvenPodsSpread feature.
 All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>suspendAction</code></br>
+<em>
+<a href="#suspendaction">
+SuspendAction
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
 </table>
@@ -4145,6 +4173,29 @@ default is 10000</p>
 </tr>
 <tr>
 <td>
+<code>retryCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>RetryCount represents the number of retries in pod when the cleanup fails.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffEnabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>BackoffEnabled represents whether to enable the backoff when a deletion API fails.
+It is useful when the deletion API is rate limited.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>BatchDeleteOption</code></br>
 <em>
 <a href="#batchdeleteoption">
@@ -4167,6 +4218,9 @@ BatchDeleteOption
 </p>
 <p>
 <p>CleanPolicyType represents the clean policy of backup data in remote storage</p>
+</p>
+<h3 id="cluster">Cluster</h3>
+<p>
 </p>
 <h3 id="clusterref">ClusterRef</h3>
 <p>
@@ -4327,10 +4381,6 @@ FlashSecurity
 </tr>
 </tbody>
 </table>
-<h3 id="component">Component</h3>
-<p>
-<p>Component defines component identity of all components</p>
-</p>
 <h3 id="componentaccessor">ComponentAccessor</h3>
 <p>
 <p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
@@ -4748,6 +4798,20 @@ This field is is only honored by clusters that enables the EvenPodsSpread featur
 All topologySpreadConstraints are ANDed.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>suspendAction</code></br>
+<em>
+<a href="#suspendaction">
+SuspendAction
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SuspendAction defines the suspend actions for all component.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="componentstatus">ComponentStatus</h3>
@@ -4802,6 +4866,9 @@ string
 </p>
 <p>
 <p>ConfigUpdateStrategy represents the strategy to update configuration</p>
+</p>
+<h3 id="containername">ContainerName</h3>
+<p>
 </p>
 <h3 id="coprocessorcache">CoprocessorCache</h3>
 <p>
@@ -5554,6 +5621,20 @@ This field is is only honored by clusters that enables the EvenPodsSpread featur
 All topologySpreadConstraints are ANDed.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>suspendAction</code></br>
+<em>
+<a href="#suspendaction">
+SuspendAction
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SuspendAction defines the suspend actions for all component.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="dmclusterstatus">DMClusterStatus</h3>
@@ -6064,6 +6145,18 @@ Only named struct is allowed by controller-gen</p>
 <tr>
 <td>
 <code>podCreateTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>beginTime</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
 Kubernetes meta/v1.Time
@@ -13842,6 +13935,36 @@ StorageVolumeName
 </td>
 <td>
 <p>Name is the volume name which is same as <code>volumes.name</code> in Pod spec.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="suspendaction">SuspendAction</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#componentspec">ComponentSpec</a>, 
+<a href="#dmclusterspec">DMClusterSpec</a>, 
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>SuspendAction defines the suspend actions for a component.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>suspendStatefulSet</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -22040,6 +22163,20 @@ Kubernetes core/v1.PodSecurityContext
 domains. Scheduler will schedule pods in a way which abides by the constraints.
 This field is is only honored by clusters that enables the EvenPodsSpread feature.
 All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>suspendAction</code></br>
+<em>
+<a href="#suspendaction">
+SuspendAction
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
 </tbody>

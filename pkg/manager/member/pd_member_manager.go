@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -54,25 +55,38 @@ const (
 )
 
 type pdMemberManager struct {
-	deps     *controller.Dependencies
-	scaler   Scaler
-	upgrader Upgrader
-	failover Failover
+	deps      *controller.Dependencies
+	scaler    Scaler
+	upgrader  Upgrader
+	failover  Failover
+	suspender suspender.Suspender
 }
 
 // NewPDMemberManager returns a *pdMemberManager
-func NewPDMemberManager(dependencies *controller.Dependencies, pdScaler Scaler, pdUpgrader Upgrader, pdFailover Failover) manager.Manager {
+func NewPDMemberManager(dependencies *controller.Dependencies, pdScaler Scaler, pdUpgrader Upgrader, pdFailover Failover, spder suspender.Suspender) manager.Manager {
 	return &pdMemberManager{
-		deps:     dependencies,
-		scaler:   pdScaler,
-		upgrader: pdUpgrader,
-		failover: pdFailover,
+		deps:      dependencies,
+		scaler:    pdScaler,
+		upgrader:  pdUpgrader,
+		failover:  pdFailover,
+		suspender: spder,
 	}
 }
 
 func (m *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	// If pd is not specified return
 	if tc.Spec.PD == nil {
+		return nil
+	}
+
+	// skip sync if pd is suspended
+	component := v1alpha1.PDMemberType
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, tc.GetNamespace(), tc.GetName())
 		return nil
 	}
 

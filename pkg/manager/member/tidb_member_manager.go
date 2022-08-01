@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -62,20 +63,23 @@ const (
 )
 
 type tidbMemberManager struct {
-	deps                         *controller.Dependencies
-	scaler                       Scaler
-	tidbUpgrader                 Upgrader
-	tidbFailover                 Failover
+	deps         *controller.Dependencies
+	scaler       Scaler
+	tidbUpgrader Upgrader
+	tidbFailover Failover
+	suspender    suspender.Suspender
+
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
-func NewTiDBMemberManager(deps *controller.Dependencies, scaler Scaler, tidbUpgrader Upgrader, tidbFailover Failover) manager.Manager {
+func NewTiDBMemberManager(deps *controller.Dependencies, scaler Scaler, tidbUpgrader Upgrader, tidbFailover Failover, spder suspender.Suspender) manager.Manager {
 	return &tidbMemberManager{
 		deps:                         deps,
 		scaler:                       scaler,
 		tidbUpgrader:                 tidbUpgrader,
 		tidbFailover:                 tidbFailover,
+		suspender:                    spder,
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 	}
 }
@@ -88,6 +92,17 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+
+	// skip sync if tidb is suspended
+	component := v1alpha1.TiDBMemberType
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, ns, tcName)
+		return nil
+	}
 
 	if tc.Spec.TiKV != nil && !tc.TiKVIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
@@ -810,7 +825,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			slowLogFileEnvVal = path.Join(slowQueryLogVolumeMount.MountPath, slowQueryLogVolumeName)
 		}
 		containers = append(containers, corev1.Container{
-			Name:            v1alpha1.SlowLogTailerMemberType.String(),
+			Name:            v1alpha1.ContainerSlowLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
