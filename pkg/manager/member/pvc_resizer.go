@@ -135,6 +135,7 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
+
 		ctx, err := p.buildContextForTC(tc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by resize for %s failed: %w", ctx.ComponentID(), err))
@@ -158,6 +159,7 @@ func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
+
 		ctx, err := p.buildContextForDM(dc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by resize for %s failed: %w", ctx.ComponentID(), err))
@@ -396,12 +398,6 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 	ns := ctx.cluster.GetNamespace()
 	name := ctx.cluster.GetName()
 
-	stsName := controller.MemberName(name, ctx.status.MemberType())
-	sts, err := p.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
-	if err != nil {
-		return fmt.Errorf("failed to get sts %s: %s", stsName, err)
-	}
-
 	var (
 		resizingPod       *corev1.Pod
 		classifiedVolumes map[volumePhase][]*volume
@@ -425,21 +421,27 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 	}
 
 	// check sts is desired
-	for _, volTemplate := range sts.Spec.VolumeClaimTemplates {
-		volName := v1alpha1.StorageVolumeName(volTemplate.Name)
-		size, exist := volTemplate.Spec.Resources.Requests[corev1.ResourceStorage]
-		if !exist {
-			klog.Warningf("volume %s in sts for cluster %s dose not set storage request", volName, ctx.ComponentID())
-			continue
-		}
-		desiredSize, exist := ctx.desiredVolumeQuantity[volName]
-		if !exist {
-			klog.Warningf("volume %s in sts for cluster %s dose not exist in desired volumes", volName, ctx.ComponentID())
-			continue
-		}
-		if desiredSize.Cmp(size) != 0 {
-			stsResized = false
-			break
+	stsName := controller.MemberName(name, ctx.status.MemberType())
+	sts, err := p.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
+	if err != nil {
+		klog.Warningf("skip to resize sts %s for component %s because %s", stsName, ctx.ComponentID(), err)
+	} else {
+		for _, volTemplate := range sts.Spec.VolumeClaimTemplates {
+			volName := v1alpha1.StorageVolumeName(volTemplate.Name)
+			size, exist := volTemplate.Spec.Resources.Requests[corev1.ResourceStorage]
+			if !exist {
+				klog.Warningf("volume %s in sts for cluster %s dose not set storage request", volName, ctx.ComponentID())
+				continue
+			}
+			desiredSize, exist := ctx.desiredVolumeQuantity[volName]
+			if !exist {
+				klog.Warningf("volume %s in sts for cluster %s dose not exist in desired volumes", volName, ctx.ComponentID())
+				continue
+			}
+			if desiredSize.Cmp(size) > 0 {
+				stsResized = false
+				break
+			}
 		}
 	}
 

@@ -105,6 +105,8 @@ const (
 	UpgradePhase MemberPhase = "Upgrade"
 	// ScalePhase represents the scaling state of TiDB cluster.
 	ScalePhase MemberPhase = "Scale"
+	// SuspendPhase represents the suspend state of TiDB cluster.
+	SuspendPhase MemberPhase = "Suspend"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration
@@ -337,6 +339,10 @@ type TidbClusterSpec struct {
 	// +listType=map
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// SuspendAction defines the suspend actions for all component.
+	// +optional
+	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -1057,6 +1063,10 @@ type ComponentSpec struct {
 	// +listType=map
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// SuspendAction defines the suspend actions for all component.
+	// +optional
+	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
 }
 
 // ServiceSpec specifies the service object in k8s
@@ -1142,6 +1152,13 @@ type TiDBServiceSpec struct {
 type Service struct {
 	Name string `json:"name,omitempty"`
 	Type string `json:"type,omitempty"`
+}
+
+// SuspendAction defines the suspend actions for a component.
+//
+// +k8s:openapi-gen=true
+type SuspendAction struct {
+	SuspendStatefulSet bool `json:"suspendStatefulSet,omitempty"`
 }
 
 // PDStatus is PD status
@@ -2301,6 +2318,10 @@ type DMClusterSpec struct {
 	// +listType=map
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// SuspendAction defines the suspend actions for all component.
+	// +optional
+	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
 }
 
 // DMClusterStatus represents the current status of a dm cluster.

@@ -5445,6 +5445,11 @@ spec:
                     type: string
                   statefulSetUpdateStrategy:
                     type: string
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -7834,6 +7839,11 @@ spec:
                     type: string
                   storageSize:
                     type: string
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -7949,6 +7959,11 @@ spec:
                 type: string
               statefulSetUpdateStrategy:
                 type: string
+              suspendAction:
+                properties:
+                  suspendStatefulSet:
+                    type: boolean
+                type: object
               timezone:
                 type: string
               tlsClientSecretNames:
@@ -10280,6 +10295,11 @@ spec:
                     type: string
                   storageSize:
                     type: string
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -14961,6 +14981,11 @@ spec:
                     type: string
                   statefulSetUpdateStrategy:
                     type: string
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -17386,6 +17411,11 @@ spec:
                       - storageSize
                       type: object
                     type: array
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -19773,6 +19803,11 @@ spec:
                     type: string
                   storageClassName:
                     type: string
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -19827,6 +19862,11 @@ spec:
                 type: array
               statefulSetUpdateStrategy:
                 type: string
+              suspendAction:
+                properties:
+                  suspendStatefulSet:
+                    type: boolean
+                type: object
               ticdc:
                 properties:
                   additionalContainers:
@@ -22120,6 +22160,11 @@ spec:
                       - storageSize
                       type: object
                     type: array
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -24675,6 +24720,11 @@ spec:
                       - storageSize
                       type: object
                     type: array
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -27077,6 +27127,11 @@ spec:
                           type: string
                       type: object
                     type: array
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -29459,6 +29514,11 @@ spec:
                     items:
                       type: string
                     type: array
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -37591,6 +37651,11 @@ spec:
                       - storageSize
                       type: object
                     type: array
+                  suspendAction:
+                    properties:
+                      suspendStatefulSet:
+                        type: boolean
+                    type: object
                   terminationGracePeriodSeconds:
                     format: int64
                     type: integer
@@ -37704,6 +37769,11 @@ spec:
                 type: string
               statefulSetUpdateStrategy:
                 type: string
+              suspendAction:
+                properties:
+                  suspendStatefulSet:
+                    type: boolean
+                type: object
               terminationGracePeriodSeconds:
                 format: int64
                 type: integer
