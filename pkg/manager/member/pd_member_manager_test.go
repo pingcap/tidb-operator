@@ -205,6 +205,23 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			pdPeerSvcCreated: false,
 			setCreated:       false,
 		},
+		{
+			name: "patch pod container",
+			prepare: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Spec.PD.AdditionalContainers = []v1.Container{
+					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.Handler{
+						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
+					}}},
+				}
+			},
+			errWhenCreateStatefulSet:   false,
+			errWhenCreatePDService:     false,
+			errWhenCreatePDPeerService: false,
+			errExpectFn:                errExpectRequeue,
+			pdSvcCreated:               true,
+			pdPeerSvcCreated:           true,
+			setCreated:                 true,
+		},
 	}
 
 	for i := range tests {
@@ -443,6 +460,70 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.Synced).To(BeFalse())
 				g.Expect(tc.Status.PD.Members).To(BeNil())
+			},
+		},
+		{
+			name: "patch pd container lifecycle configuration when sync cluster  ",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD.Replicas = 5
+				tc.Spec.PD.AdditionalContainers = []v1.Container{
+					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.Handler{
+						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
+					}}},
+				}
+			},
+			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
+			}},
+			errWhenUpdateStatefulSet:   false,
+			errWhenUpdatePDService:     false,
+			errWhenUpdatePDPeerService: false,
+			errWhenGetPDHealth:         false,
+			err:                        false,
+			expectPDServiceFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectPDPeerServiceFn: nil,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(set.Spec.Template.Spec.Containers[0].Lifecycle).To(Equal(
+					&corev1.Lifecycle{PreStop: &corev1.Handler{
+						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
+					}}))
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+			},
+		},
+		{
+			name: "patch pd add additional container ",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD.Replicas = 5
+				tc.Spec.PD.AdditionalContainers = []v1.Container{
+					{Name: "additional", Image: "test"},
+				}
+			},
+			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
+				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
+			}},
+			errWhenUpdateStatefulSet:   false,
+			errWhenUpdatePDService:     false,
+			errWhenUpdatePDPeerService: false,
+			errWhenGetPDHealth:         false,
+			err:                        false,
+			expectPDServiceFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectPDPeerServiceFn: nil,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(set.Spec.Template.Spec.Containers)).To(Equal(2))
+				g.Expect(set.Spec.Template.Spec.Containers[1]).To(Equal(v1.Container{Name: "additional", Image: "test"}))
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 			},
 		},
 	}

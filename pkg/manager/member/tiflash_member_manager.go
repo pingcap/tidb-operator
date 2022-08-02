@@ -572,7 +572,12 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		return nil, err
 	}
 	podSpec.Containers = append([]corev1.Container{tiflashContainer}, containers...)
-	podSpec.Containers = append(podSpec.Containers, baseTiFlashSpec.AdditionalContainers()...)
+
+	podSpec.Containers, err = MergePatchContainers(podSpec.Containers, baseTiFlashSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for TiFlash of [%s/%s], err: %v", ns, tcName, err)
+	}
+
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
