@@ -918,7 +918,13 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	containers = append(containers, c)
 
 	podSpec := baseTiDBSpec.BuildPodSpec()
-	podSpec.Containers = append(containers, baseTiDBSpec.AdditionalContainers()...)
+
+	var err error
+	podSpec.Containers, err = MergePatchContainers(containers, baseTiDBSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for TiDB of [%s/%s], error: %v", ns, tcName, err)
+	}
+
 	podSpec.Volumes = append(vols, baseTiDBSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, baseTiDBSpec.InitContainers()...)
