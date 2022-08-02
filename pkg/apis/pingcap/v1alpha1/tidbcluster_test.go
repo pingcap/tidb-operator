@@ -682,7 +682,7 @@ func TestTiCDCGracefulShutdownTimeout(t *testing.T) {
 	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: nil}
 	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(defaultTiCDCGracefulShutdownTimeout))
 
-	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: &metav1.Duration{time.Minute}}
+	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: &metav1.Duration{Duration: time.Minute}}
 	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(time.Minute))
 }
 
