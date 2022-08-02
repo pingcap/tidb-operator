@@ -538,13 +538,6 @@ func schema_pkg_apis_pingcap_v1alpha1_AzblobStorageProvider(ref common.Reference
 							Format:      "",
 						},
 					},
-					"logBackupPath": {
-						SchemaProps: spec.SchemaProps{
-							Description: "LogBackupPath is the full path where the log backup is saved. The format of the path must be: \"<bucket-name>/<path-to-backup-file>\"",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"container": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Container in which to store the backup data.",
@@ -968,6 +961,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					"backupType": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Type is the backup type for tidb cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"backupMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Mode is the backup mode, such as snapshot backup or log backup.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2934,13 +2934,6 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 					"path": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Path is the full path where the backup is saved. The format of the path must be: \"<bucket-name>/<path-to-backup-file>\"",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"logBackupPath": {
-						SchemaProps: spec.SchemaProps{
-							Description: "LogBackupPath is the full path where the log backup is saved. The format of the path must be: \"<bucket-name>/<path-to-backup-file>\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -6570,9 +6563,9 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
-					"restoreType": {
+					"restoreMode": {
 						SchemaProps: spec.SchemaProps{
-							Description: "RestoreType is the restore type. Default value is RestoreTypeFull.",
+							Description: "RestoreMode is the restore mode. such as snapshot or pitr.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -6609,6 +6602,12 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					"local": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider"),
+						},
+					},
+					"logBackupProvider": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LogBackupProvider configures where and how log backup should be stored.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider"),
 						},
 					},
 					"storageClassName": {
@@ -6715,7 +6714,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 
@@ -6743,13 +6742,6 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 					"path": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Path is the full path where the backup is saved. The format of the path must be: \"<bucket-name>/<path-to-backup-file>\"",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"logBackupPath": {
-						SchemaProps: spec.SchemaProps{
-							Description: "LogBackupPath is the full path where the log backup is saved. The format of the path must be: \"<bucket-name>/<path-to-backup-file>\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},

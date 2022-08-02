@@ -322,8 +322,6 @@ spec:
                         type: string
                       container:
                         type: string
-                      logBackupPath:
-                        type: string
                       path:
                         type: string
                       prefix:
@@ -331,6 +329,8 @@ spec:
                       secretName:
                         type: string
                     type: object
+                  backupMode:
+                    type: string
                   backupType:
                     type: string
                   br:
@@ -487,8 +487,6 @@ spec:
                       bucketAcl:
                         type: string
                       location:
-                        type: string
-                      logBackupPath:
                         type: string
                       objectAcl:
                         type: string
@@ -1298,8 +1296,6 @@ spec:
                       bucket:
                         type: string
                       endpoint:
-                        type: string
-                      logBackupPath:
                         type: string
                       options:
                         items:

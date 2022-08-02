@@ -1539,9 +1539,6 @@ type S3StorageProvider struct {
 	// Path is the full path where the backup is saved.
 	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
 	Path string `json:"path,omitempty"`
-	// LogBackupPath is the full path where the log backup is saved.
-	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
-	LogBackupPath string `json:"logBackupPath,omitempty"`
 	// Bucket in which to store the backup data.
 	Bucket string `json:"bucket,omitempty"`
 	// Endpoint of S3 compatible storage service
@@ -1571,9 +1568,6 @@ type GcsStorageProvider struct {
 	// Path is the full path where the backup is saved.
 	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
 	Path string `json:"path,omitempty"`
-	// LogBackupPath is the full path where the log backup is saved.
-	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
-	LogBackupPath string `json:"logBackupPath,omitempty"`
 	// Bucket in which to store the backup data.
 	Bucket string `json:"bucket,omitempty"`
 	// StorageClass represents the storage class
@@ -1595,9 +1589,6 @@ type AzblobStorageProvider struct {
 	// Path is the full path where the backup is saved.
 	// The format of the path must be: "<container-name>/<path-to-backup-file>"
 	Path string `json:"path,omitempty"`
-	// LogBackupPath is the full path where the log backup is saved.
-	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
-	LogBackupPath string `json:"logBackupPath,omitempty"`
 	// Container in which to store the backup data.
 	Container string `json:"container,omitempty"`
 	// Access tier of the uploaded objects.
@@ -1624,8 +1615,17 @@ const (
 	BackupTypeTable BackupType = "table"
 	// BackupTypeTiFlashReplica represents restoring the tiflash replica removed by a failed restore of the older version BR
 	BackupTypeTiFlashReplica BackupType = "tiflash-replica"
-	// BackupTypeLog represents the backup is a log backup.
-	BackupTypeLog BackupType = "log"
+)
+
+// BackupType represents the backup mode, such as snapshot backup or log backup.
+// +k8s:openapi-gen=true
+type BackupMode string
+
+const (
+	// BackupModeSnapshot represents the snapshot backup of tidb cluster.
+	BackupModeSnapshot BackupMode = "snapshot"
+	// BackupModeLog represents the raw backup of tidb cluster.
+	BackupModeLog BackupMode = "log"
 )
 
 // TiDBAccessConfig defines the configuration for access tidb cluster
@@ -1717,6 +1717,8 @@ type BackupSpec struct {
 	From *TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
+	// Mode is the backup mode, such as snapshot backup or log backup.
+	Mode BackupMode `json:"backupMode,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for backup.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
@@ -1989,15 +1991,15 @@ type RestoreList struct {
 	Items []Restore `json:"items"`
 }
 
-// RestoreType represents the restore type.
+// RestoreMode represents the restore mode, such as snapshot or pitr.
 // +k8s:openapi-gen=true
-type RestoreType string
+type RestoreMode string
 
 const (
-	// RestoreTypeFull represents the restore from a full backup.
-	RestoreTypeFull RestoreType = "full"
-	// RestoreTypePitr represents the PiTR restore.
-	RestoreTypePitr RestoreType = "pitr"
+	// RestoreModeSnapshot represents restore from a snapshot backup.
+	RestoreModeSnapshot RestoreMode = "full"
+	// RestoreModePitr represents PiTR restore which is from a snapshot backup and log backup.
+	RestoreModePitr RestoreMode = "pitr"
 )
 
 // RestoreConditionType represents a valid condition of a Restore.
@@ -2057,8 +2059,8 @@ type RestoreSpec struct {
 	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
-	// RestoreType is the restore type. Default value is RestoreTypeFull.
-	RestoreType RestoreType `json:"restoreType,omitempty"`
+	// RestoreMode is the restore mode. such as snapshot or pitr.
+	RestoreMode RestoreMode `json:"restoreMode,omitempty"`
 	// RestoreTs is the pitr restore ts.
 	RestoreTs string `json:"restoreTs,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
@@ -2067,6 +2069,8 @@ type RestoreSpec struct {
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
+	// LogBackupProvider configures where and how log backup should be stored.
+	LogBackupProvider StorageProvider `json:"logBackupProvider,omitempty"`
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional

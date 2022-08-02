@@ -152,6 +152,19 @@ BackupType
 </tr>
 <tr>
 <td>
+<code>backupMode</code></br>
+<em>
+<a href="#backupmode">
+BackupMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tikvGCLifeTime</code></br>
 <em>
 string
@@ -1166,15 +1179,15 @@ BackupType
 </tr>
 <tr>
 <td>
-<code>restoreType</code></br>
+<code>restoreMode</code></br>
 <em>
-<a href="#restoretype">
-RestoreType
+<a href="#restoremode">
+RestoreMode
 </a>
 </em>
 </td>
 <td>
-<p>RestoreType is the restore type. Default value is RestoreTypeFull.</p>
+<p>RestoreMode is the restore mode. such as snapshot or pitr.</p>
 </td>
 </tr>
 <tr>
@@ -1215,6 +1228,19 @@ StorageProvider
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
 <p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackupProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupProvider configures where and how log backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -2955,18 +2981,6 @@ The format of the path must be: &ldquo;<container-name>/<path-to-backup-file>&rd
 </tr>
 <tr>
 <td>
-<code>logBackupPath</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>LogBackupPath is the full path where the log backup is saved.
-The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>container</code></br>
 <em>
 string
@@ -3268,6 +3282,14 @@ string
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
 </p>
+<h3 id="backupmode">BackupMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>BackupType represents the backup mode, such as snapshot backup or log backup.</p>
+</p>
 <h3 id="backupschedulespec">BackupScheduleSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -3522,6 +3544,19 @@ BackupType
 </td>
 <td>
 <p>Type is the backup type for tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupMode</code></br>
+<em>
+<a href="#backupmode">
+BackupMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
 </td>
 </tr>
 <tr>
@@ -7012,18 +7047,6 @@ string
 </td>
 <td>
 <p>Path is the full path where the backup is saved.
-The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>logBackupPath</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>LogBackupPath is the full path where the log backup is saved.
 The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
 </td>
 </tr>
@@ -12730,6 +12753,14 @@ string
 <p>
 <p>RestoreConditionType represents a valid condition of a Restore.</p>
 </p>
+<h3 id="restoremode">RestoreMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>RestoreMode represents the restore mode, such as snapshot or pitr.</p>
+</p>
 <h3 id="restorespec">RestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -12816,15 +12847,15 @@ BackupType
 </tr>
 <tr>
 <td>
-<code>restoreType</code></br>
+<code>restoreMode</code></br>
 <em>
-<a href="#restoretype">
-RestoreType
+<a href="#restoremode">
+RestoreMode
 </a>
 </em>
 </td>
 <td>
-<p>RestoreType is the restore type. Default value is RestoreTypeFull.</p>
+<p>RestoreMode is the restore mode. such as snapshot or pitr.</p>
 </td>
 </tr>
 <tr>
@@ -12865,6 +12896,19 @@ StorageProvider
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
 <p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackupProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupProvider configures where and how log backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -13100,14 +13144,6 @@ RestoreConditionType
 </tr>
 </tbody>
 </table>
-<h3 id="restoretype">RestoreType</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#restorespec">RestoreSpec</a>)
-</p>
-<p>
-<p>RestoreType represents the restore type.</p>
-</p>
 <h3 id="s3storageprovider">S3StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
@@ -13157,18 +13193,6 @@ string
 </td>
 <td>
 <p>Path is the full path where the backup is saved.
-The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>logBackupPath</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>LogBackupPath is the full path where the log backup is saved.
 The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
 </td>
 </tr>
