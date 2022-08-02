@@ -300,6 +300,9 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 	if config.Checksum != nil {
 		args = append(args, fmt.Sprintf("--checksum=%t", *config.Checksum))
 	}
+	if config.CheckRequirements != nil {
+		args = append(args, fmt.Sprintf("--check-requirements=%t", *config.CheckRequirements))
+	}
 	args = append(args, config.Options...)
 	return args, nil
 }

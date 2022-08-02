@@ -245,6 +245,50 @@ func (dc *DMCluster) MasterIsAvailable() bool {
 		return false
 	}
 
+	if dc.Status.Master.Phase == SuspendPhase {
+		return false
+	}
+
+	return true
+}
+
+func (dc *DMCluster) ComponentIsNormal(typ MemberType) bool {
+	status := dc.ComponentStatus(typ)
+	if status == nil {
+		return false
+	}
+	return status.GetPhase() == NormalPhase
+}
+
+// ComponentIsSuspending return true if the component's phase is `Suspend`
+func (dc *DMCluster) ComponentIsSuspending(typ MemberType) bool {
+	status := dc.ComponentStatus(typ)
+	if status == nil {
+		return false
+	}
+	return status.GetPhase() == SuspendPhase
+}
+
+// ComponentIsSuspended return true if the component's phase is `Suspend` and all resources is suspended
+func (dc *DMCluster) ComponentIsSuspended(typ MemberType) bool {
+	spec := dc.ComponentSpec(typ)
+	status := dc.ComponentStatus(typ)
+	if spec == nil || status == nil {
+		return false
+	}
+
+	if !dc.ComponentIsSuspending(typ) {
+		return false
+	}
+
+	action := spec.SuspendAction()
+	if action != nil && action.SuspendStatefulSet {
+		if status.GetStatefulSet() != nil {
+			// the statefulset is set to nil by suspender when the sts is deleted.
+			return false
+		}
+	}
+
 	return true
 }
 

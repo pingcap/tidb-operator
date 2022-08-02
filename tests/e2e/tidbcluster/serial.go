@@ -62,7 +62,7 @@ import (
 )
 
 const (
-	OperatorLatestVersion    string = "v1.3.1"
+	OperatorLatestVersion    string = "v1.3.6"
 	OperatorPrevMajorVersion string = "v1.2.7"
 )
 
@@ -166,13 +166,10 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
-			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-			framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 
 			ginkgo.By("Set tikv partition annotation to 1")
-			err = setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
+			err := setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
 			framework.ExpectNoError(err, "set tikv Partition annotation failed")
 
 			ginkgo.By(fmt.Sprintf("Upgrade TidbCluster version to %q", utilimage.TiDBLatest))
@@ -632,9 +629,10 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 	ginkgo.Describe("Upgrade TiDB Operator", func() {
 		var (
-			operatorVersion string
-			oa              *tests.OperatorActions
-			ocfg            *tests.OperatorConfig
+			operatorVersion   string
+			oa                *tests.OperatorActions
+			ocfg              *tests.OperatorConfig
+			setOperatorConfig func(oa *tests.OperatorConfig)
 		)
 
 		ginkgo.JustBeforeEach(func() {
@@ -646,6 +644,10 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				Image:       fmt.Sprintf("pingcap/tidb-operator:%s", operatorVersion),
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, fw, f)
+			if setOperatorConfig != nil {
+				setOperatorConfig(ocfg)
+			}
+
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.CreateReleasedCRDOrDie(operatorVersion)
@@ -692,6 +694,32 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				ginkgo.By("Wait for pods are not changed in 5 minutes")
 				err := utilpod.WaitForPodsAreChanged(c, pods, time.Minute*5)
 				framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
+			})
+
+			ginkgo.Context("Admission Webhook", func() {
+				ginkgo.BeforeEach(func() {
+					setOperatorConfig = func(oa *tests.OperatorConfig) {
+						oa.TestMode = true
+						oa.WebhookEnabled = true
+						oa.StsWebhookEnabled = true
+					}
+				})
+
+				ginkgo.It("should be able to be deployed", func() {
+					ginkgo.By("Wait old webhook pods to become ready")
+					err := oa.WaitAdmissionWebhookReady(ocfg, time.Minute*3, time.Second*10)
+					framework.ExpectNoError(err, "failed to wait old webhook pods to become ready")
+
+					ginkgo.By("Upgrade TiDB Operator and CRDs to current version")
+					ocfg.Tag = cfg.OperatorTag
+					ocfg.Image = cfg.OperatorImage
+					oa.ReplaceCRDOrDie(ocfg)
+					oa.UpgradeOperatorOrDie(ocfg)
+
+					ginkgo.By("Wait webhook pods to become ready")
+					err = oa.WaitAdmissionWebhookReady(ocfg, time.Minute*3, time.Second*10)
+					framework.ExpectNoError(err, "failed to wait webhook pods to become ready")
+				})
 			})
 		})
 

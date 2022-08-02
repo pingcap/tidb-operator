@@ -148,6 +148,9 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 	if len(spec.StorageVolumes) > 0 {
 		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
 	}
+	if spec.Service != nil {
+		allErrs = append(allErrs, validateService(spec.Service, fldPath)...)
+	}
 	return allErrs
 }
 
@@ -275,6 +278,11 @@ func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorL
 func validatePumpSpec(spec *v1alpha1.PumpSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	// fix pump spec
+	if _, ok := spec.ResourceRequirements.Requests["storage"]; !ok {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.ResourceRequirements.Requests"),
+			spec.ResourceRequirements.Requests, "spec.ResourceRequirements.Requests[storage]: Required value."))
+	}
 	return allErrs
 }
 

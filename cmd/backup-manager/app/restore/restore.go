@@ -257,6 +257,9 @@ func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
 	if config.Checksum != nil {
 		args = append(args, fmt.Sprintf("--checksum=%t", *config.Checksum))
 	}
+	if config.CheckRequirements != nil {
+		args = append(args, fmt.Sprintf("--check-requirements=%t", *config.CheckRequirements))
+	}
 	if config.RateLimit != nil {
 		args = append(args, fmt.Sprintf("--ratelimit=%d", *config.RateLimit))
 	}

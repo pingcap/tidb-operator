@@ -313,3 +313,78 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 	}
 	return nil, nil
 }
+
+// CheckThanosQueryData check the Thanos Query working status by querying `up` api and `targets` api.
+func CheckThanosQueryData(name, namespace string, fw portforward.PortForward, expectNumber int) error {
+	var thanosAddr string
+	if fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", name), 9090)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+		thanosAddr = fmt.Sprintf("%s:%d", localHost, localPort)
+	} else {
+		thanosAddr = fmt.Sprintf("%s.%s:9090", "thanos-query", namespace)
+	}
+
+	return wait.PollImmediate(5*time.Second, 10*time.Minute, func() (done bool, err error) {
+
+		storesUrl := fmt.Sprintf("http://%s/api/v1/stores", thanosAddr)
+		storesResponse, err := http.Get(storesUrl)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		defer storesResponse.Body.Close()
+		storesBody, err := ioutil.ReadAll(storesResponse.Body)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		storeData := struct {
+			Status string `json:"status"`
+			Data   struct {
+				Receive []map[string]interface{} `json:"receive"`
+			} `json:"data"`
+		}{}
+		if err := json.Unmarshal(storesBody, &storeData); err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		if storeData.Status != "success" || len(storeData.Data.Receive) != 1 {
+			log.Logf("ERROR: thanos[%s/%s]'s stores error %s, store:%v , status: %s", namespace, name, thanosAddr, storeData.Data.Receive, storeData.Status)
+			return false, nil
+		}
+		metrcis := fmt.Sprintf("http://%s/api/v1/query?query=up", thanosAddr)
+		instanceUpResponse, err := http.Get(metrcis)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		defer instanceUpResponse.Body.Close()
+		instanceUpResponseBody, err := ioutil.ReadAll(instanceUpResponse.Body)
+		if err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		instanceUpData := struct {
+			Status string `json:"status"`
+			Data   struct {
+				Result []map[string]interface{} `json:"result"`
+			} `json:"data"`
+		}{}
+		if err := json.Unmarshal(instanceUpResponseBody, &instanceUpData); err != nil {
+			log.Logf("ERROR: %v", err)
+			return false, nil
+		}
+		if instanceUpData.Status != "success" || len(instanceUpData.Data.Result) != expectNumber {
+			log.Logf("ERROR: thanos[%s/%s]'s targets error %s, metrics data:%v , status: %s", namespace, name, thanosAddr, instanceUpData.Data.Result, instanceUpData.Status)
+			return false, nil
+		}
+		for _, target := range instanceUpData.Data.Result {
+			log.Logf("thanos[%s/%s]'s target[%s]", namespace, name, target)
+		}
+		return true, nil
+	})
+}

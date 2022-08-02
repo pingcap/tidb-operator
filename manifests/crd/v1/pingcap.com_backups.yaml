@@ -344,6 +344,8 @@ spec:
                 type: string
               br:
                 properties:
+                  checkRequirements:
+                    type: boolean
                   checksum:
                     type: boolean
                   cluster:
@@ -378,6 +380,8 @@ spec:
                 type: object
               cleanOption:
                 properties:
+                  backoffEnabled:
+                    type: boolean
                   batchConcurrency:
                     format: int32
                     type: integer
@@ -385,6 +389,9 @@ spec:
                     type: boolean
                   pageSize:
                     format: int64
+                    type: integer
+                  retryCount:
+                    default: 5
                     type: integer
                   routineConcurrency:
                     format: int32

@@ -14,11 +14,13 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	appconstant "github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
@@ -491,6 +493,75 @@ func TestConstructRcloneArgs(t *testing.T) {
 		})
 	}
 
+}
+
+func TestRetryOnError(t *testing.T) {
+	cases := map[string]struct {
+		setupFunc func() func() error
+		retriable func(error) bool
+		attempts  int
+		sleep     time.Duration
+		expect    func(*WithT, error)
+	}{
+		"succeeded": {
+			setupFunc: func() func() error {
+				return func() error {
+					return nil
+				}
+			},
+			attempts: 5,
+			sleep:    0,
+			expect: func(g *WithT, err error) {
+				g.Expect(err).Should(Succeed())
+			},
+		},
+		"failed": {
+			setupFunc: func() func() error {
+				i := 0
+				return func() error {
+					i++
+					return fmt.Errorf("index %d failed", i)
+				}
+			},
+			attempts: 5,
+			sleep:    0,
+			expect: func(g *WithT, err error) {
+				g.Expect(err).Should(MatchError("index 5 failed"))
+			},
+		},
+		"stop retry when meet specific error": {
+			setupFunc: func() func() error {
+				i := 0
+				return func() error {
+					i++
+					if i == 3 {
+						return fmt.Errorf("stop retry")
+					}
+					return fmt.Errorf("index %d failed", i)
+				}
+			},
+			retriable: func(err error) bool {
+				return err != nil && err.Error() != "stop retry"
+			},
+			attempts: 5,
+			sleep:    0,
+			expect: func(g *WithT, err error) {
+				g.Expect(err).Should(MatchError("stop retry"))
+			},
+		},
+	}
+
+	for name, tt := range cases {
+		t.Run(name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			retriable := RetriableOnAnyError
+			if tt.retriable != nil {
+				retriable = tt.retriable
+			}
+			err := RetryOnError(context.TODO(), tt.attempts, tt.sleep, retriable, tt.setupFunc())
+			tt.expect(g, err)
+		})
+	}
 }
 
 func newBackup() *v1alpha1.Backup {

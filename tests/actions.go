@@ -667,7 +667,7 @@ func (oa *OperatorActions) IsMembersReady(obj metav1.Object, component v1alpha1.
 	}
 	for _, container := range containers {
 		if container.Image != ctx.expectedImage {
-			return fmt.Errorf("a container image is not expected, expected: %s, actual: %s", ctx.expectedImage, container.Image)
+			return fmt.Errorf("a container[%s] image is not expected, expected: %s, actual: %s", container.Name, ctx.expectedImage, container.Image)
 		}
 	}
 

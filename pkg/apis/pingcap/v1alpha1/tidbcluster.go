@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
@@ -347,6 +348,46 @@ func (tc *TidbCluster) TiFlashScaling() bool {
 	return tc.Status.TiFlash.Phase == ScalePhase
 }
 
+func (tc *TidbCluster) ComponentIsNormal(typ MemberType) bool {
+	status := tc.ComponentStatus(typ)
+	if status == nil {
+		return false
+	}
+	return status.GetPhase() == NormalPhase
+}
+
+// ComponentIsSuspending return true if the component's phase is `Suspend`
+func (tc *TidbCluster) ComponentIsSuspending(typ MemberType) bool {
+	status := tc.ComponentStatus(typ)
+	if status == nil {
+		return false
+	}
+	return status.GetPhase() == SuspendPhase
+}
+
+// ComponentIsSuspended return true if the component's phase is `Suspend` and all resources is suspended
+func (tc *TidbCluster) ComponentIsSuspended(typ MemberType) bool {
+	spec := tc.ComponentSpec(typ)
+	status := tc.ComponentStatus(typ)
+	if spec == nil || status == nil {
+		return false
+	}
+
+	if !tc.ComponentIsSuspending(typ) {
+		return false
+	}
+
+	action := spec.SuspendAction()
+	if action != nil && action.SuspendStatefulSet {
+		if status.GetStatefulSet() != nil {
+			// the statefulset is set to nil by suspender when the sts is deleted.
+			return false
+		}
+	}
+
+	return true
+}
+
 func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
 	deleteSlots = sets.NewInt32()
 	annotations := tc.GetAnnotations()
@@ -552,14 +593,6 @@ func (tc *TidbCluster) TiFlashStsDesiredReplicas() int32 {
 	return tc.Spec.TiFlash.Replicas + int32(len(tc.Status.TiFlash.FailureStores))
 }
 
-func (tc *TidbCluster) TiCDCDeployDesiredReplicas() int32 {
-	if tc.Spec.TiCDC == nil {
-		return 0
-	}
-
-	return tc.Spec.TiCDC.Replicas
-}
-
 func (tc *TidbCluster) TiFlashStsActualReplicas() int32 {
 	stsStatus := tc.Status.TiFlash.StatefulSet
 	if stsStatus == nil {
@@ -577,6 +610,35 @@ func (tc *TidbCluster) TiFlashStsDesiredOrdinals(excludeFailover bool) sets.Int3
 		replicas = tc.TiFlashStsDesiredReplicas()
 	}
 	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiFlashLabelVal))
+}
+
+// TiCDCAllCapturesReady return whether all captures of TiCDC are ready.
+//
+// If TiCDC isn't specified, return false.
+func (tc *TidbCluster) TiCDCAllCapturesReady() bool {
+	if tc.Spec.TiCDC == nil {
+		return false
+	}
+
+	if int(tc.TiCDCDeployDesiredReplicas()) != len(tc.Status.TiCDC.Captures) {
+		return false
+	}
+
+	for _, c := range tc.Status.TiCDC.Captures {
+		if !c.Ready {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (tc *TidbCluster) TiCDCDeployDesiredReplicas() int32 {
+	if tc.Spec.TiCDC == nil {
+		return 0
+	}
+
+	return tc.Spec.TiCDC.Replicas
 }
 
 // TiDBAllPodsStarted return whether all pods of TiDB are started.
@@ -672,6 +734,10 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 		return false
 	}
 
+	if tc.Status.PD.Phase == SuspendPhase {
+		return false
+	}
+
 	return true
 }
 
@@ -705,6 +771,10 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 		return false
 	}
 
+	if tc.Status.TiKV.Phase == SuspendPhase {
+		return false
+	}
+
 	return true
 }
 
@@ -729,6 +799,10 @@ func (tc *TidbCluster) AllTiKVsAreAvailable() bool {
 func (tc *TidbCluster) PumpIsAvailable() bool {
 	lowerLimit := 1
 	if len(tc.Status.Pump.Members) < lowerLimit {
+		return false
+	}
+
+	if tc.Status.Pump.Phase == SuspendPhase {
 		return false
 	}
 
@@ -985,4 +1059,14 @@ func (tc *TidbCluster) WithoutLocalTiDB() bool {
 
 func (tc *TidbCluster) AcrossK8s() bool {
 	return tc.Spec.AcrossK8s
+}
+
+// IsComponentVolumeResizing returns true if any volume of component is resizing.
+func (tc *TidbCluster) IsComponentVolumeResizing(compType MemberType) bool {
+	comp := tc.ComponentStatus(compType)
+	if comp == nil {
+		return false
+	}
+	conds := comp.GetConditions()
+	return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
 }
