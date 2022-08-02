@@ -10,8 +10,13 @@ metadata:
 spec:
   additionalPrinterColumns:
   - JSONPath: .spec.backupType
-    description: The type of the backup
+    description: the type of backup, such as full, db, table. Only used when Mode
+      = snapshot.
     name: Type
+    type: string
+  - JSONPath: .spec.backupMode
+    description: the mode of backup, such as snapshot, log.
+    name: Mode
     type: string
   - JSONPath: .status.phase
     description: The current status of the backup

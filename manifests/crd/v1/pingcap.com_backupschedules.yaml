@@ -330,6 +330,7 @@ spec:
                         type: string
                     type: object
                   backupMode:
+                    default: snapshot
                     type: string
                   backupType:
                     type: string

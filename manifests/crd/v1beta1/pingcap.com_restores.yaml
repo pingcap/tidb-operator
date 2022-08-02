@@ -1151,7 +1151,7 @@ spec:
               - volume
               - volumeMount
               type: object
-            logBackupProvider:
+            logBackupStorageProvider:
               properties:
                 azblob:
                   properties:
@@ -2000,7 +2000,7 @@ spec:
               type: object
             restoreMode:
               type: string
-            restoreTs:
+            restoredTs:
               type: string
             s3:
               properties:

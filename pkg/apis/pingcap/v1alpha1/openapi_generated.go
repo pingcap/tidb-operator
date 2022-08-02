@@ -960,7 +960,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"backupType": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the backup type for tidb cluster.",
+							Description: "Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -6558,21 +6558,21 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"backupType": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the backup type for tidb cluster.",
+							Description: "Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"restoreMode": {
 						SchemaProps: spec.SchemaProps{
-							Description: "RestoreMode is the restore mode. such as snapshot or pitr.",
+							Description: "Mode is the restore mode. such as snapshot or pitr.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"restoreTs": {
+					"restoredTs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "RestoreTs is the pitr restore ts.",
+							Description: "RestoredTs is the pitr restored ts.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -6604,9 +6604,9 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider"),
 						},
 					},
-					"logBackupProvider": {
+					"logBackupStorageProvider": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LogBackupProvider configures where and how log backup should be stored.",
+							Description: "LogBackupStorageProvider configures where and how log backup should be stored.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider"),
 						},
 					},

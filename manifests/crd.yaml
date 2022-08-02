@@ -330,6 +330,7 @@ spec:
                         type: string
                     type: object
                   backupMode:
+                    default: snapshot
                     type: string
                   backupType:
                     type: string
@@ -1422,9 +1423,14 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: The type of the backup
+    - description: the type of backup, such as full, db, table. Only used when Mode
+        = snapshot.
       jsonPath: .spec.backupType
       name: Type
+      type: string
+    - description: the mode of backup, such as snapshot, log.
+      jsonPath: .spec.backupMode
+      name: Mode
       type: string
     - description: The current status of the backup
       jsonPath: .status.phase
@@ -1747,6 +1753,7 @@ spec:
                     type: string
                 type: object
               backupMode:
+                default: snapshot
                 type: string
               backupType:
                 type: string
@@ -11871,7 +11878,7 @@ spec:
                 - volume
                 - volumeMount
                 type: object
-              logBackupProvider:
+              logBackupStorageProvider:
                 properties:
                   azblob:
                     properties:
@@ -12719,8 +12726,9 @@ spec:
                     type: object
                 type: object
               restoreMode:
+                default: snapshot
                 type: string
-              restoreTs:
+              restoredTs:
                 type: string
               s3:
                 properties:

@@ -1460,7 +1460,8 @@ type TLSCluster struct {
 //
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="bk"
-// +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.backupType`,description="The type of the backup"
+// +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.backupType`,description="the type of backup, such as full, db, table. Only used when Mode = snapshot."
+// +kubebuilder:printcolumn:name="Mode",type=string,JSONPath=`.spec.backupMode`,description="the mode of backup, such as snapshot, log."
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
@@ -1721,9 +1722,10 @@ type BackupSpec struct {
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// From is the tidb cluster that needs to backup.
 	From *TiDBAccessConfig `json:"from,omitempty"`
-	// Type is the backup type for tidb cluster.
+	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
 	Type BackupType `json:"backupType,omitempty"`
 	// Mode is the backup mode, such as snapshot backup or log backup.
+	// +kubebuilder:default=snapshot
 	Mode BackupMode `json:"backupMode,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for backup.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
@@ -2003,9 +2005,9 @@ type RestoreMode string
 
 const (
 	// RestoreModeSnapshot represents restore from a snapshot backup.
-	RestoreModeSnapshot RestoreMode = "full"
-	// RestoreModePitr represents PiTR restore which is from a snapshot backup and log backup.
-	RestoreModePitr RestoreMode = "pitr"
+	RestoreModeSnapshot RestoreMode = "snapshot"
+	// RestoreModePiTR represents PiTR restore which is from a snapshot backup and log backup.
+	RestoreModePiTR RestoreMode = "pitr"
 )
 
 // RestoreConditionType represents a valid condition of a Restore.
@@ -2063,20 +2065,21 @@ type RestoreSpec struct {
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// To is the tidb cluster that needs to restore.
 	To *TiDBAccessConfig `json:"to,omitempty"`
-	// Type is the backup type for tidb cluster.
+	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
 	Type BackupType `json:"backupType,omitempty"`
-	// RestoreMode is the restore mode. such as snapshot or pitr.
-	RestoreMode RestoreMode `json:"restoreMode,omitempty"`
-	// RestoreTs is the pitr restore ts.
-	RestoreTs string `json:"restoreTs,omitempty"`
+	// Mode is the restore mode. such as snapshot or pitr.
+	// +kubebuilder:default=snapshot
+	Mode RestoreMode `json:"restoreMode,omitempty"`
+	// RestoredTs is the pitr restored ts.
+	RestoredTs string `json:"restoredTs,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
-	// LogBackupProvider configures where and how log backup should be stored.
-	LogBackupProvider StorageProvider `json:"logBackupProvider,omitempty"`
+	// LogBackupStorageProvider configures where and how log backup should be stored.
+	LogBackupStorageProvider StorageProvider `json:"logBackupStorageProvider,omitempty"`
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional

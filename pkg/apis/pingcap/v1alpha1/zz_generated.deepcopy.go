@@ -4639,7 +4639,7 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 		**out = **in
 	}
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
-	in.LogBackupProvider.DeepCopyInto(&out.LogBackupProvider)
+	in.LogBackupStorageProvider.DeepCopyInto(&out.LogBackupStorageProvider)
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)

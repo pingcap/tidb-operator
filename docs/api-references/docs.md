@@ -147,7 +147,7 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
 </td>
 </tr>
 <tr>
@@ -1174,7 +1174,7 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
 </td>
 </tr>
 <tr>
@@ -1187,18 +1187,18 @@ RestoreMode
 </em>
 </td>
 <td>
-<p>RestoreMode is the restore mode. such as snapshot or pitr.</p>
+<p>Mode is the restore mode. such as snapshot or pitr.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>restoreTs</code></br>
+<code>restoredTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>RestoreTs is the pitr restore ts.</p>
+<p>RestoredTs is the pitr restored ts.</p>
 </td>
 </tr>
 <tr>
@@ -1232,7 +1232,7 @@ StorageProvider
 </tr>
 <tr>
 <td>
-<code>logBackupProvider</code></br>
+<code>logBackupStorageProvider</code></br>
 <em>
 <a href="#storageprovider">
 StorageProvider
@@ -1240,7 +1240,7 @@ StorageProvider
 </em>
 </td>
 <td>
-<p>LogBackupProvider configures where and how log backup should be stored.</p>
+<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -3543,7 +3543,7 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
 </td>
 </tr>
 <tr>
@@ -12848,7 +12848,7 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
 </td>
 </tr>
 <tr>
@@ -12861,18 +12861,18 @@ RestoreMode
 </em>
 </td>
 <td>
-<p>RestoreMode is the restore mode. such as snapshot or pitr.</p>
+<p>Mode is the restore mode. such as snapshot or pitr.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>restoreTs</code></br>
+<code>restoredTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>RestoreTs is the pitr restore ts.</p>
+<p>RestoredTs is the pitr restored ts.</p>
 </td>
 </tr>
 <tr>
@@ -12906,7 +12906,7 @@ StorageProvider
 </tr>
 <tr>
 <td>
-<code>logBackupProvider</code></br>
+<code>logBackupStorageProvider</code></br>
 <em>
 <a href="#storageprovider">
 StorageProvider
@@ -12914,7 +12914,7 @@ StorageProvider
 </em>
 </td>
 <td>
-<p>LogBackupProvider configures where and how log backup should be stored.</p>
+<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
 </td>
 </tr>
 <tr>
