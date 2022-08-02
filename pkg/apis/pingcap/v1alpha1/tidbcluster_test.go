@@ -679,13 +679,11 @@ func TestTiCDCGracefulShutdownTimeout(t *testing.T) {
 	tc := newTidbCluster()
 	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(defaultTiCDCGracefulShutdownTimeout))
 
-	str1m := "1m"
-	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: &str1m}
-	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(time.Minute))
-
-	str1m = "wrong"
-	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: &str1m}
+	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: nil}
 	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(defaultTiCDCGracefulShutdownTimeout))
+
+	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: &metav1.Duration{time.Minute}}
+	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(time.Minute))
 }
 
 func TestComponentFunc(t *testing.T) {

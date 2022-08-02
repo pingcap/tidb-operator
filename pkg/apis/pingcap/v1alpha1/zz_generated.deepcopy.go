@@ -5283,7 +5283,7 @@ func (in *TiCDCSpec) DeepCopyInto(out *TiCDCSpec) {
 	}
 	if in.GracefulShutdownTimeout != nil {
 		in, out := &in.GracefulShutdownTimeout, &out.GracefulShutdownTimeout
-		*out = new(string)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	return

@@ -234,10 +234,7 @@ func (tc *TidbCluster) TiCDCImage() string {
 // a TiCDC pod.
 func (tc *TidbCluster) TiCDCGracefulShutdownTimeout() time.Duration {
 	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.GracefulShutdownTimeout != nil {
-		d, err := time.ParseDuration(*tc.Spec.TiCDC.GracefulShutdownTimeout)
-		if err == nil {
-			return d
-		}
+		return tc.Spec.TiCDC.GracefulShutdownTimeout.Duration
 	}
 	return defaultTiCDCGracefulShutdownTimeout
 }

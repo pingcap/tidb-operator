@@ -14519,7 +14519,9 @@ Defaults to Kubernetes default storage class.</p>
 <td>
 <code>gracefulShutdownTimeout</code></br>
 <em>
-string
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
 </em>
 </td>
 <td>

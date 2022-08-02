@@ -685,7 +685,7 @@ type TiCDCSpec struct {
 	// Encoded in the format of Go Duration.
 	// Defaults to 10m
 	// +optional
-	GracefulShutdownTimeout *string `json:"gracefulShutdownTimeout,omitempty"`
+	GracefulShutdownTimeout *metav1.Duration `json:"gracefulShutdownTimeout,omitempty"`
 }
 
 // TiCDCConfig is the configuration of tidbcdc
