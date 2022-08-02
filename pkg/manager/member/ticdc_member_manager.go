@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -48,6 +49,7 @@ type ticdcMemberManager struct {
 	deps                     *controller.Dependencies
 	scaler                   Scaler
 	ticdcUpgrader            Upgrader
+	suspender                suspender.Suspender
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
@@ -85,11 +87,12 @@ func getTiCDCConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 // NewTiCDCMemberManager returns a *ticdcMemberManager
-func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader) manager.Manager {
+func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader, spder suspender.Suspender) manager.Manager {
 	m := &ticdcMemberManager{
 		deps:          deps,
 		scaler:        scaler,
 		ticdcUpgrader: ticdcUpgrader,
+		suspender:     spder,
 	}
 	m.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	return m
@@ -129,6 +132,17 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+
+	// skip sync if ticdc is suspended
+	component := v1alpha1.TiCDCMemberType
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, ns, tcName)
+		return nil
+	}
 
 	// NB: All TiCDC operations, e.g. creation, scale, upgrade will be blocked.
 	//     if PD or TiKV is not available.
@@ -501,7 +515,13 @@ done
 	}
 
 	podSpec := baseTiCDCSpec.BuildPodSpec()
-	podSpec.Containers = []corev1.Container{ticdcContainer}
+
+	var err error
+	podSpec.Containers, err = MergePatchContainers([]corev1.Container{ticdcContainer}, baseTiCDCSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for TiCDC of [%s/%s], error: %v", ns, tcName, err)
+	}
+
 	podSpec.Volumes = append(vols, baseTiCDCSpec.AdditionalVolumes()...)
 	podSpec.ServiceAccountName = tc.Spec.TiCDC.ServiceAccount
 	podSpec.InitContainers = append(podSpec.InitContainers, baseTiCDCSpec.InitContainers()...)

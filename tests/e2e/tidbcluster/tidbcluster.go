@@ -1971,7 +1971,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update components version to %q", componentVersion)
-			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 20*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check components version")
