@@ -628,7 +628,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, baseTiKVSpec.InitContainers()...)
-	podSpec.Containers = append(containers, baseTiKVSpec.AdditionalContainers()...)
+
+	podSpec.Containers, err = MergePatchContainers(containers, baseTiKVSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for TiKV of [%s/%s], error: %v", ns, tcName, err)
+	}
+
 	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount

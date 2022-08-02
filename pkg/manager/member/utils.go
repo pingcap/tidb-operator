@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
@@ -478,4 +479,60 @@ func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, er
 		}
 	}
 	return 0, ErrNotFoundStoreID
+}
+
+// MergePatchContainers adds patches to base using a strategic merge patch and
+// iterating by container name, failing on the first error
+func MergePatchContainers(base, patches []corev1.Container) ([]corev1.Container, error) {
+	var out []corev1.Container
+
+	containersByName := make(map[string]corev1.Container)
+	for _, c := range patches {
+		containersByName[c.Name] = c
+	}
+
+	// Patch the containers that exist in base.
+	for _, container := range base {
+		patchContainer, ok := containersByName[container.Name]
+		if !ok {
+			// This container didn't need to be patched.
+			out = append(out, container)
+			continue
+		}
+
+		containerBytes, err := json.Marshal(container)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal JSON for container %s, error: %v", container.Name, err)
+		}
+
+		patchBytes, err := json.Marshal(patchContainer)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal JSON for patch container %s, error: %v", container.Name, err)
+		}
+
+		// Calculate the patch result.
+		jsonResult, err := strategicpatch.StrategicMergePatch(containerBytes, patchBytes, corev1.Container{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate merge patch for container %s, error: %v", container.Name, err)
+		}
+
+		var patchResult corev1.Container
+		if err := json.Unmarshal(jsonResult, &patchResult); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal merged container %s, error: %v", container.Name, err)
+		}
+
+		// Add the patch result and remove the corresponding key from the to do list.
+		out = append(out, patchResult)
+		delete(containersByName, container.Name)
+	}
+
+	// Append containers that are left in containersByName.
+	// Iterate over patches to preserve the order.
+	for _, c := range patches {
+		if container, found := containersByName[c.Name]; found {
+			out = append(out, container)
+		}
+	}
+
+	return out, nil
 }
