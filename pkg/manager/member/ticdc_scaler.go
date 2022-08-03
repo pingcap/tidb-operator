@@ -162,9 +162,6 @@ func gracefulShutdownTiCDC(
 	return nil
 }
 
-// TODO: support configurable graceful shutdown timeout.
-var ticdcGracefulShutdownTimeout time.Duration = 10 * time.Second
-
 func checkTiCDCGracefulShutdownTimeout(
 	tc *v1alpha1.TidbCluster,
 	podCtl controller.PodControlInterface,
@@ -186,7 +183,7 @@ func checkTiCDCGracefulShutdownTimeout(
 			return true, nil
 		}
 
-		gracefulShutdownTimeout := ticdcGracefulShutdownTimeout
+		gracefulShutdownTimeout := tc.TiCDCGracefulShutdownTimeout()
 		if time.Now().After(beginTime.Add(gracefulShutdownTimeout)) {
 			klog.Infof("ticdc.%s: graceful shutdown timeout (threshold: %v) for Pod %s in cluster %s/%s",
 				action, gracefulShutdownTimeout, podName, ns, tc.GetName())
