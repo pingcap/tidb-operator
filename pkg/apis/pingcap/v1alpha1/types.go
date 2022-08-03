@@ -308,6 +308,7 @@ type TidbClusterSpec struct {
 	StatefulSetUpdateStrategy apps.StatefulSetUpdateStrategyType `json:"statefulSetUpdateStrategy,omitempty"`
 
 	// PodManagementPolicy of TiDB cluster StatefulSets
+	// +kubebuilder:validation:Enum=OrderedReady;Parallel
 	// +optional
 	PodManagementPolicy apps.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
 

@@ -5100,6 +5100,9 @@ spec:
                   type: string
                 type: array
               podManagementPolicy:
+                enum:
+                - OrderedReady
+                - Parallel
                 type: string
               podSecurityContext:
                 properties:
