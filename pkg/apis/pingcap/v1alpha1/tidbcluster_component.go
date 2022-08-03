@@ -118,8 +118,6 @@ func (a *componentAccessorImpl) PodManagementPolicy() apps.PodManagementPolicyTy
 	// unified podManagementPolicy check to avoid check everywhere
 	if policy == apps.OrderedReadyPodManagement {
 		return apps.OrderedReadyPodManagement
-	} else if policy == apps.ParallelPodManagement {
-		return apps.ParallelPodManagement
 	}
 	return apps.ParallelPodManagement
 }
