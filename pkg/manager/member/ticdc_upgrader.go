@@ -87,9 +87,9 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
-	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
-		i := podOrdinals[_i]
-		podName := ticdcPodName(tcName, i)
+	for i := len(podOrdinals) - 1; i >= 0; i-- {
+		ordinal := podOrdinals[i]
+		podName := ticdcPodName(tcName, ordinal)
 		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("ticdcUpgrader.Upgrade: failed to get pod %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
@@ -108,7 +108,14 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 			}
 			continue
 		}
-		mngerutils.SetUpgradePartition(newSet, i)
+
+		err = gracefulShutdownTiCDC(tc, u.deps.CDCControl, u.deps.PodControl, pod, ordinal, "Upgrade")
+		if err != nil {
+			return err
+		}
+		klog.Infof("ticdcUpgrade.Upgrade: %s has graceful shutdown in cluster %s/%s", podName, tc.GetNamespace(), tc.GetName())
+
+		mngerutils.SetUpgradePartition(newSet, ordinal)
 		return nil
 	}
 
