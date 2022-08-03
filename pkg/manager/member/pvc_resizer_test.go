@@ -16,14 +16,18 @@ package member
 import (
 	"context"
 	"testing"
+	"time"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -65,11 +69,11 @@ func TestResizeVolumes(t *testing.T) {
 	scName := "sc"
 
 	testcases := map[string]struct {
-		setup  func(ctx *componentVolumeContext)
+		setup  func(ctx *componentVolumeContext, sts *appsv1.StatefulSet)
 		expect func(g *GomegaWithT, resizer *pvcResizer, ctx *componentVolumeContext, err error)
 	}{
-		"all volumes are resized": {
-			setup: func(ctx *componentVolumeContext) {
+		"sts and volumes are resized": {
+			setup: func(ctx *componentVolumeContext, sts *appsv1.StatefulSet) {
 				tc := ctx.cluster.(*v1alpha1.TidbCluster)
 				ctx.status = &tc.Status.PD
 
@@ -103,13 +107,16 @@ func TestResizeVolumes(t *testing.T) {
 						},
 					},
 				}
+				sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+					*newMockPVC("volume-1", scName, "2Gi", "2Gi"),
+				}
 			},
 			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
 				g.Expect(err).Should(Succeed())
 			},
 		},
 		"end resizing": {
-			setup: func(ctx *componentVolumeContext) {
+			setup: func(ctx *componentVolumeContext, sts *appsv1.StatefulSet) {
 				tc := ctx.cluster.(*v1alpha1.TidbCluster)
 				ctx.status = &tc.Status.PD
 
@@ -150,6 +157,9 @@ func TestResizeVolumes(t *testing.T) {
 						},
 					},
 				}
+				sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+					*newMockPVC("volume-1", scName, "2Gi", "2Gi"),
+				}
 			},
 			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
 				g.Expect(err).Should(Succeed())
@@ -157,7 +167,7 @@ func TestResizeVolumes(t *testing.T) {
 			},
 		},
 		"begin resizing": {
-			setup: func(ctx *componentVolumeContext) {
+			setup: func(ctx *componentVolumeContext, sts *appsv1.StatefulSet) {
 				tc := ctx.cluster.(*v1alpha1.TidbCluster)
 				ctx.status = &tc.Status.PD
 
@@ -191,6 +201,9 @@ func TestResizeVolumes(t *testing.T) {
 						},
 					},
 				}
+				sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+					*newMockPVC("volume-1", scName, "1Gi", "1Gi"),
+				}
 			},
 			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
 				g.Expect(err).Should(HaveOccurred())
@@ -199,7 +212,7 @@ func TestResizeVolumes(t *testing.T) {
 			},
 		},
 		"need to resize some volumes": {
-			setup: func(ctx *componentVolumeContext) {
+			setup: func(ctx *componentVolumeContext, sts *appsv1.StatefulSet) {
 				tc := ctx.cluster.(*v1alpha1.TidbCluster)
 				ctx.status = &tc.Status.PD
 
@@ -240,28 +253,34 @@ func TestResizeVolumes(t *testing.T) {
 						},
 					},
 				}
+				sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+					*newMockPVC("volume-1", scName, "1Gi", "1Gi"),
+				}
 			},
 			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
 				g.Expect(err).Should(Succeed())
 				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.MemberType())).Should(BeTrue())
 
+				// pvc should be as expected
 				cli := resizer.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ctx.cluster.GetNamespace())
-
 				pvc, err := cli.Get(context.TODO(), "volume-1-pvc-1", metav1.GetOptions{})
 				g.Expect(err).To(Succeed())
 				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"))).To(BeEmpty(), "-want, +got")
-
 				pvc, err = cli.Get(context.TODO(), "volume-1-pvc-2", metav1.GetOptions{})
 				g.Expect(err).To(Succeed())
 				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi"))).To(BeEmpty(), "-want, +got")
-
 				pvc, err = cli.Get(context.TODO(), "volume-1-pvc-3", metav1.GetOptions{})
 				g.Expect(err).To(Succeed())
 				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-3", scName, "1Gi", "1Gi"))).To(BeEmpty(), "-want, +got")
+
+				// should not recreate sts
+				_, err = resizer.deps.KubeClientset.AppsV1().StatefulSets(ctx.cluster.GetNamespace()).Get(context.Background(),
+					controller.MemberName(ctx.cluster.GetName(), ctx.status.MemberType()), metav1.GetOptions{})
+				g.Expect(err).Should(Succeed())
 			},
 		},
 		"some volumes are resizing": {
-			setup: func(ctx *componentVolumeContext) {
+			setup: func(ctx *componentVolumeContext, sts *appsv1.StatefulSet) {
 				tc := ctx.cluster.(*v1alpha1.TidbCluster)
 				ctx.status = &tc.Status.PD
 
@@ -302,24 +321,100 @@ func TestResizeVolumes(t *testing.T) {
 						},
 					},
 				}
+				sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+					*newMockPVC("volume-1", scName, "1Gi", "1Gi"),
+				}
 			},
 			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
 				g.Expect(err).Should(Succeed())
 				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.MemberType())).Should(BeTrue())
 
+				// pvc should be as expected
 				cli := resizer.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ctx.cluster.GetNamespace())
-
 				pvc, err := cli.Get(context.TODO(), "volume-1-pvc-1", metav1.GetOptions{})
 				g.Expect(err).To(Succeed())
 				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"))).To(BeEmpty(), "-want, +got")
-
 				pvc, err = cli.Get(context.TODO(), "volume-1-pvc-2", metav1.GetOptions{})
 				g.Expect(err).To(Succeed())
 				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-2", scName, "2Gi", "1Gi"))).To(BeEmpty(), "-want, +got")
-
 				pvc, err = cli.Get(context.TODO(), "volume-1-pvc-3", metav1.GetOptions{})
 				g.Expect(err).To(Succeed())
 				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-3", scName, "1Gi", "1Gi"))).To(BeEmpty(), "-want, +got")
+
+				// should not recreate sts
+				_, err = resizer.deps.KubeClientset.AppsV1().StatefulSets(ctx.cluster.GetNamespace()).Get(context.Background(),
+					controller.MemberName(ctx.cluster.GetName(), ctx.status.MemberType()), metav1.GetOptions{})
+				g.Expect(err).Should(Succeed())
+			},
+		},
+		"need to recreate sts": {
+			setup: func(ctx *componentVolumeContext, sts *appsv1.StatefulSet) {
+				tc := ctx.cluster.(*v1alpha1.TidbCluster)
+				ctx.status = &tc.Status.PD
+
+				tc.Status.PD.Conditions = []metav1.Condition{
+					{
+						Type:    v1alpha1.ComponentVolumeResizing,
+						Status:  metav1.ConditionTrue,
+						Reason:  "BeginResizing",
+						Message: "Set resizing condition to begin resizing",
+					},
+				}
+				ctx.desiredVolumeQuantity = map[v1alpha1.StorageVolumeName]resource.Quantity{
+					"volume-1": resource.MustParse("2Gi"),
+				}
+				ctx.actualPodVolumes = []*podVolumeContext{
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-0"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi")},
+						},
+					},
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-2"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi")},
+						},
+					},
+					{
+						pod: &corev1.Pod{
+							ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-cluster-pd-3"},
+						},
+						volumes: []*volume{
+							{name: "volume-1", pvc: newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi")},
+						},
+					},
+				}
+				sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+					*newMockPVC("volume-1", scName, "1Gi", "1Gi"),
+				}
+			},
+			expect: func(g *WithT, resizer *pvcResizer, ctx *componentVolumeContext, err error) {
+				g.Expect(err).Should(Succeed())
+
+				// condition is set
+				g.Expect(ctx.cluster.(*v1alpha1.TidbCluster).IsComponentVolumeResizing(ctx.status.MemberType())).Should(BeTrue())
+
+				// pvc should be as expected
+				cli := resizer.deps.KubeClientset.CoreV1().PersistentVolumeClaims(ctx.cluster.GetNamespace())
+				pvc, err := cli.Get(context.TODO(), "volume-1-pvc-1", metav1.GetOptions{})
+				g.Expect(err).To(Succeed())
+				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-1", scName, "2Gi", "2Gi"))).To(BeEmpty(), "-want, +got")
+				pvc, err = cli.Get(context.TODO(), "volume-1-pvc-2", metav1.GetOptions{})
+				g.Expect(err).To(Succeed())
+				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-2", scName, "2Gi", "2Gi"))).To(BeEmpty(), "-want, +got")
+				pvc, err = cli.Get(context.TODO(), "volume-1-pvc-3", metav1.GetOptions{})
+				g.Expect(err).To(Succeed())
+				g.Expect(cmp.Diff(pvc, newMockPVC("volume-1-pvc-3", scName, "2Gi", "2Gi"))).To(BeEmpty(), "-want, +got")
+
+				// should recreate sts
+				_, err = resizer.deps.KubeClientset.AppsV1().StatefulSets(ctx.cluster.GetNamespace()).Get(context.Background(),
+					controller.MemberName(ctx.cluster.GetName(), ctx.status.MemberType()), metav1.GetOptions{})
+				g.Expect(errors.IsNotFound(err)).Should(BeTrue())
 			},
 		},
 	}
@@ -343,10 +438,14 @@ func TestResizeVolumes(t *testing.T) {
 					},
 				},
 			}
+			sts := &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{Namespace: v1.NamespaceDefault, Name: "test-cluster-pd"},
+				Spec:       appsv1.StatefulSetSpec{},
+			}
 			vctx := &componentVolumeContext{
 				cluster: tc,
 			}
-			tt.setup(vctx)
+			tt.setup(vctx, sts)
 
 			for _, podVol := range vctx.actualPodVolumes {
 				if podVol.pod != nil {
@@ -359,6 +458,7 @@ func TestResizeVolumes(t *testing.T) {
 				}
 			}
 			fakeDeps.KubeClientset.StorageV1().StorageClasses().Create(context.TODO(), newStorageClass(scName, true), metav1.CreateOptions{})
+			fakeDeps.KubeClientset.AppsV1().StatefulSets(sts.Namespace).Create(context.TODO(), sts, metav1.CreateOptions{})
 			informerFactory.Start(ctx.Done())
 			informerFactory.WaitForCacheSync(ctx.Done())
 
@@ -1127,7 +1227,75 @@ func TestResizeHook(t *testing.T) {
 					g.Expect(err.Error()).To(ContainSubstring("store 1 of pod test-cluster-tikv-1 is not ready"))
 				},
 			},
-			"sync leader eviction annotation": {
+			"wait to end leader eviction": {
+				setup: func(ctx *componentVolumeContext) *corev1.Pod {
+					tc := ctx.cluster.(*v1alpha1.TidbCluster)
+					ctx.status = &tc.Status.TiKV
+
+					tc.Status.TiKV = v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"0": {
+								ID:      "0",
+								PodName: "test-cluster-tikv-0",
+								State:   v1alpha1.TiKVStateUp,
+							},
+							"1": {
+								ID:      "1",
+								PodName: "test-cluster-tikv-1",
+								State:   v1alpha1.TiKVStateUp,
+							},
+							"2": {
+								ID:      "2",
+								PodName: "test-cluster-tikv-2",
+								State:   v1alpha1.TiKVStateUp,
+							},
+						},
+						EvictLeader: map[string]*v1alpha1.EvictLeaderStatus{
+							"test-cluster-tikv-0": {},
+						},
+					}
+					ctx.actualPodVolumes = []*podVolumeContext{
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-0",
+								},
+							},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-1",
+								}},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-2",
+								},
+							},
+						},
+					}
+
+					return ctx.actualPodVolumes[1].pod
+				},
+				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
+					g.Expect(err).To(HaveOccurred())
+					g.Expect(err.Error()).To(ContainSubstring("wait to end leader eviction for"))
+
+					cli := p.deps.KubeClientset.CoreV1().Pods(ctx.cluster.GetNamespace())
+					pod, err := cli.Get(context.TODO(), "test-cluster-tikv-0", metav1.GetOptions{})
+					g.Expect(err).To(Succeed())
+					g.Expect(pod.Annotations).NotTo(HaveKey(v1alpha1.EvictLeaderAnnKeyForResize))
+					pod, err = cli.Get(context.TODO(), "test-cluster-tikv-1", metav1.GetOptions{})
+					g.Expect(err).To(Succeed())
+					g.Expect(pod.Annotations).NotTo(HaveKey(v1alpha1.EvictLeaderAnnKeyForResize))
+					pod, err = cli.Get(context.TODO(), "test-cluster-tikv-2", metav1.GetOptions{})
+					g.Expect(err).To(Succeed())
+					g.Expect(pod.Annotations).NotTo(HaveKey(v1alpha1.EvictLeaderAnnKeyForResize))
+				},
+			},
+			"remove leader eviction annotations for resized pod and add for resizing pod": {
 				setup: func(ctx *componentVolumeContext) *corev1.Pod {
 					tc := ctx.cluster.(*v1alpha1.TidbCluster)
 					ctx.status = &tc.Status.TiKV
@@ -1249,6 +1417,68 @@ func TestResizeHook(t *testing.T) {
 				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
 					g.Expect(err).To(HaveOccurred())
 					g.Expect(err.Error()).To(ContainSubstring("wait for leader count of store 1 to be 0"))
+				},
+			},
+			"leader eviction timeout": {
+				setup: func(ctx *componentVolumeContext) *corev1.Pod {
+					tc := ctx.cluster.(*v1alpha1.TidbCluster)
+					ctx.status = &tc.Status.TiKV
+
+					tc.Status.TiKV = v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"0": {
+								ID:          "0",
+								PodName:     "test-cluster-tikv-0",
+								State:       v1alpha1.TiKVStateUp,
+								LeaderCount: 10,
+							},
+							"1": {
+								ID:          "1",
+								PodName:     "test-cluster-tikv-1",
+								State:       v1alpha1.TiKVStateUp,
+								LeaderCount: 10,
+							},
+							"2": {
+								ID:          "2",
+								PodName:     "test-cluster-tikv-2",
+								State:       v1alpha1.TiKVStateUp,
+								LeaderCount: 10,
+							},
+						},
+						EvictLeader: map[string]*v1alpha1.EvictLeaderStatus{
+							"test-cluster-tikv-1": {
+								BeginTime: metav1.NewTime(time.Now().Add(-2 * tc.TiKVEvictLeaderTimeout())),
+							},
+						},
+					}
+					ctx.actualPodVolumes = []*podVolumeContext{
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-0",
+								},
+							},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-1",
+									Annotations: map[string]string{v1alpha1.EvictLeaderAnnKeyForResize: "none"},
+								}},
+						},
+						{
+							pod: &corev1.Pod{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: "test-ns", Name: "test-cluster-tikv-2",
+								},
+							},
+						},
+					}
+
+					return ctx.actualPodVolumes[1].pod
+				},
+				expect: func(g *GomegaWithT, p *pvcResizer, ctx *componentVolumeContext, err error) {
+					g.Expect(err).To(Succeed())
 				},
 			},
 		}

@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,6 +46,7 @@ func TestTiFlashMemberManagerSyncCreate(t *testing.T) {
 		prepare                     func(cluster *v1alpha1.TidbCluster)
 		errWhenCreateStatefulSet    bool
 		errWhenCreateTiFlashService bool
+		suspendComponent            func() (bool, error)
 		err                         bool
 		tls                         bool
 		tiflashSvcCreated           bool
@@ -79,6 +81,11 @@ func TestTiFlashMemberManagerSyncCreate(t *testing.T) {
 		}
 		if test.errWhenCreateTiFlashService {
 			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.suspendComponent != nil {
+			tfmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+				return test.suspendComponent()
+			}
 		}
 
 		err := tfmm.Sync(tc)
@@ -153,6 +160,16 @@ func TestTiFlashMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:    false,
 			errWhenCreateTiFlashService: true,
 			err:                         true,
+			tiflashSvcCreated:           false,
+			setCreated:                  false,
+		},
+		{
+			name:                        "skip create when suspend",
+			suspendComponent:            func() (bool, error) { return true, nil },
+			prepare:                     nil,
+			errWhenCreateStatefulSet:    false,
+			errWhenCreateTiFlashService: false,
+			err:                         false,
 			tiflashSvcCreated:           false,
 			setCreated:                  false,
 		},
@@ -1341,6 +1358,7 @@ func newFakeTiFlashMemberManager(tc *v1alpha1.TidbCluster) (
 		scaler:                   NewFakeTiFlashScaler(),
 		upgrader:                 NewFakeTiFlashUpgrader(),
 		statefulSetIsUpgradingFn: tiflashStatefulSetIsUpgrading,
+		suspender:                suspender.NewFakeSuspender(),
 	}
 	pdClient := controller.NewFakePDClient(fakeDeps.PDControl.(*pdapi.FakePDControl), tc)
 	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)

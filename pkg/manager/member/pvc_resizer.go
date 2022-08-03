@@ -18,12 +18,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -133,6 +135,7 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
+
 		ctx, err := p.buildContextForTC(tc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by resize for %s failed: %w", ctx.ComponentID(), err))
@@ -156,6 +159,7 @@ func (p *pvcResizer) SyncDM(dc *v1alpha1.DMCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
+
 		ctx, err := p.buildContextForDM(dc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by resize for %s failed: %w", ctx.ComponentID(), err))
@@ -391,29 +395,60 @@ func (p *pvcResizer) updateVolumeStatus(ctx *componentVolumeContext) {
 
 // resizeVolumes resize PVCs by comparing `desiredVolumeQuantity` and `actualVolumeQuantity` in context.
 func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
+	ns := ctx.cluster.GetNamespace()
+	name := ctx.cluster.GetName()
+
 	var (
 		resizingPod       *corev1.Pod
 		classifiedVolumes map[volumePhase][]*volume
+		volResized        = true
+		stsResized        = true
 	)
 
 	// choose one pod whose volume need to be resized
 	for _, podVolumes := range ctx.actualPodVolumes {
 		curClassifiedVolumes, err := p.classifyVolumes(ctx, podVolumes.volumes)
 		if err != nil {
-			return fmt.Errorf("classify volumes for %s failed: %w", ctx.ComponentID(), err)
+			return fmt.Errorf("classify volumes failed: %w", err)
 		}
 
 		if len(curClassifiedVolumes[resizing]) != 0 || len(curClassifiedVolumes[needResize]) != 0 {
+			volResized = false
 			resizingPod = podVolumes.pod
 			classifiedVolumes = curClassifiedVolumes
 			break
 		}
 	}
 
-	allResized := resizingPod == nil
+	// check sts is desired
+	stsName := controller.MemberName(name, ctx.status.MemberType())
+	sts, err := p.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
+	if err != nil {
+		klog.Warningf("skip to resize sts %s for component %s because %s", stsName, ctx.ComponentID(), err)
+	} else {
+		for _, volTemplate := range sts.Spec.VolumeClaimTemplates {
+			volName := v1alpha1.StorageVolumeName(volTemplate.Name)
+			size, exist := volTemplate.Spec.Resources.Requests[corev1.ResourceStorage]
+			if !exist {
+				klog.Warningf("volume %s in sts for cluster %s dose not set storage request", volName, ctx.ComponentID())
+				continue
+			}
+			desiredSize, exist := ctx.desiredVolumeQuantity[volName]
+			if !exist {
+				klog.Warningf("volume %s in sts for cluster %s dose not exist in desired volumes", volName, ctx.ComponentID())
+				continue
+			}
+			if desiredSize.Cmp(size) > 0 {
+				stsResized = false
+				break
+			}
+		}
+	}
+
+	allExpected := volResized && stsResized
 	condResizing := meta.IsStatusConditionTrue(ctx.status.GetConditions(), v1alpha1.ComponentVolumeResizing)
 
-	if allResized {
+	if allExpected {
 		if condResizing {
 			return p.endResize(ctx)
 		}
@@ -425,15 +460,23 @@ func (p *pvcResizer) resizeVolumes(ctx *componentVolumeContext) error {
 		return p.beginResize(ctx)
 	}
 
-	// some volumes are resizing
-	for _, volume := range classifiedVolumes[resizing] {
-		klog.Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
+	// resize volumes
+	if !volResized {
+		for _, volume := range classifiedVolumes[resizing] {
+			klog.Infof("PVC %s/%s for %s is resizing", volume.pvc.Namespace, volume.pvc.Name, ctx.ComponentID())
+		}
+
+		if len(classifiedVolumes[needResize]) != 0 {
+			klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
+			return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
+		}
+
+		return nil
 	}
 
-	// some volumes need to be resized
-	if len(classifiedVolumes[needResize]) != 0 {
-		klog.V(4).Infof("start to resize volumes of Pod %s/%s for %s", resizingPod.Namespace, resizingPod.Name, ctx.ComponentID())
-		return p.resizeVolumesForPod(ctx, resizingPod, classifiedVolumes[needResize])
+	// recreate sts
+	if !stsResized {
+		return p.recreateSts(ctx, sts)
 	}
 
 	return nil
@@ -501,7 +544,7 @@ func (p *pvcResizer) classifyVolumes(ctx *componentVolumeContext, volumes []*vol
 			}
 			if !volumeExpansionSupported {
 				klog.Warningf("Skip to resize PVC %q of %q: storage class %q does not support volume expansion",
-					*pvc.Spec.StorageClassName, pvcID, cid)
+					pvcID, cid, *pvc.Spec.StorageClassName)
 				continue
 			}
 		} else {
@@ -579,14 +622,14 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			return fmt.Errorf("%s: cluster is not tidb cluster", logPrefix)
 		}
 
-		// remove leader eviction ann from resized pods and ensure the store is UP.
-		// leader eviction ann of the lastest pod is removed in `endResize`.
+		// end leader eviction and wait store to be Up for resized pods
 		for _, podVolume := range ctx.actualPodVolumes {
 			pod := podVolume.pod
 			if pod.Name == resizePod.Name {
 				break
 			}
 
+			// remove eviction annotation and wait to end leader eviction
 			updated, err := updateResizeAnnForTiKVPod(p.deps.KubeClientset, false, pod)
 			if err != nil {
 				return err
@@ -594,6 +637,11 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			if updated {
 				klog.Infof("%s: remove leader eviction annotation from pod %s/%s", logPrefix, pod.Namespace, pod.Name)
 			}
+			if _, exist := tc.Status.TiKV.EvictLeader[pod.Name]; exist {
+				return controller.RequeueErrorf("%s: wait to end leader eviction for %s", logPrefix, pod.Name)
+			}
+
+			// wait store to be Up
 			for _, store := range tc.Status.TiKV.Stores {
 				if store.PodName == pod.Name && store.State != v1alpha1.TiKVStateUp {
 					return fmt.Errorf("%s: store %s of pod %s is not ready", logPrefix, store.ID, store.PodName)
@@ -601,7 +649,13 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 			}
 		}
 
-		// add leader eviction ann to the pod and wait the leader count to be 0
+		// skip evicting leader if only one tikv is exist
+		if len(tc.Status.TiKV.Stores) < 2 && len(tc.Status.TiKV.PeerStores) == 0 {
+			klog.Infof("%s: skip evicting leader because only one tikv", logPrefix)
+			return nil
+		}
+
+		// begin leader eviction
 		updated, err := updateResizeAnnForTiKVPod(p.deps.KubeClientset, true, resizePod)
 		if err != nil {
 			return err
@@ -609,20 +663,43 @@ func (p *pvcResizer) beforeResizeForPod(ctx *componentVolumeContext, resizePod *
 		if updated {
 			klog.Infof("%s: add leader eviction annotation to pod", logPrefix)
 		}
+
+		// wait the leader count to be 0 or eviction timeout
 		for _, store := range tc.Status.TiKV.Stores {
 			if store.PodName == resizePod.Name {
 				if store.LeaderCount == 0 {
 					klog.V(4).Infof("%s: leader count of store %s become 0", logPrefix, store.ID)
 					return nil
-				} else {
-					return controller.RequeueErrorf("%s: wait for leader count of store %s to be 0", logPrefix, store.ID)
 				}
+
+				if status, exist := tc.Status.TiKV.EvictLeader[resizePod.Name]; exist && !status.BeginTime.IsZero() {
+					timeout := tc.TiKVEvictLeaderTimeout()
+					if time.Since(status.BeginTime.Time) > timeout {
+						klog.Infof("%s: leader eviction begins at %q but timeout (threshold: %v)", logPrefix, status.BeginTime.Time.Format(time.RFC3339), timeout)
+						return nil
+					}
+				}
+
+				return controller.RequeueErrorf("%s: wait for leader count of store %s to be 0", logPrefix, store.ID)
 			}
 		}
 
 		return fmt.Errorf("%s: can't find store in tc", logPrefix)
 	}
 
+	return nil
+}
+
+func (p *pvcResizer) recreateSts(ctx *componentVolumeContext, sts *appsv1.StatefulSet) error {
+	orphan := metav1.DeletePropagationOrphan
+	err := p.deps.KubeClientset.AppsV1().StatefulSets(sts.Namespace).Delete(context.TODO(), sts.Name, metav1.DeleteOptions{PropagationPolicy: &orphan})
+	if err != nil {
+		return fmt.Errorf("delete sts %s/%s for cluster %s failed: %s", sts.Namespace, sts.Name, ctx.ComponentID(), err)
+	}
+
+	klog.Infof("recreate statefulset %s/%s for cluster %s resize", sts.Namespace, sts.Name, ctx.ComponentID())
+
+	// component manager will create the sts in next reconciliation
 	return nil
 }
 

@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
@@ -1235,7 +1236,11 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 	}
 	additionalContainers := monitor.Spec.AdditionalContainers
 	if len(additionalContainers) > 0 {
-		statefulSet.Spec.Template.Spec.Containers = append(statefulSet.Spec.Template.Spec.Containers, additionalContainers...)
+		var err error
+		statefulSet.Spec.Template.Spec.Containers, err = member.MergePatchContainers(statefulSet.Spec.Template.Spec.Containers, additionalContainers)
+		if err != nil {
+			return nil, fmt.Errorf("failed to merge containers spec for TiDBMonitor of [%s/%s], error: %v", monitor.Namespace, monitor.Name, err)
+		}
 	}
 	if monitor.Spec.Grafana != nil {
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor)

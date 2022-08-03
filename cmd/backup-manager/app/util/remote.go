@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -32,9 +33,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"
+	"gocloud.dev/blob/driver"
 	"gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
 	"gocloud.dev/blob/s3blob"
+	"gocloud.dev/gcerrors"
 	"gocloud.dev/gcp"
 	"k8s.io/client-go/util/workqueue"
 
@@ -672,4 +675,86 @@ func (i *PageIterator) Next(ctx context.Context, pageSize int) ([]*blob.ListObje
 	}
 
 	return objs, nil
+}
+
+// MockDriver implement driver.Bucket
+type MockDriver struct {
+	driver.Bucket
+
+	errCode gcerrors.ErrorCode
+
+	delete    func(key string) error
+	listPaged func(opts *driver.ListOptions) (*driver.ListPage, error)
+
+	Type v1alpha1.BackupStorageType
+}
+
+func (d *MockDriver) As(i interface{}) bool {
+	switch d.Type {
+	case v1alpha1.BackupStorageTypeS3:
+		_, ok := i.(**s3.S3)
+		if !ok {
+			return false
+		}
+		return true
+	case v1alpha1.BackupStorageTypeGcs:
+		_, ok := i.(**storage.Client)
+		if !ok {
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+func (d *MockDriver) ErrorCode(err error) gcerrors.ErrorCode {
+	return d.errCode
+}
+
+func (d *MockDriver) Delete(_ context.Context, key string) error {
+	return d.delete(key)
+}
+
+func (d *MockDriver) SetDelete(fn func(key string) error) {
+	d.delete = fn
+}
+
+func (d *MockDriver) SetListPaged(objs []*driver.ListObject, rerr error) {
+	d.listPaged = func(opts *driver.ListOptions) (*driver.ListPage, error) {
+		if rerr != nil {
+			return nil, rerr
+		}
+
+		var start int
+		var err error
+		if len(opts.PageToken) != 0 {
+			start, err = strconv.Atoi(string(opts.PageToken))
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		pageSize := 1000
+		if opts.PageSize != 0 {
+			pageSize = opts.PageSize
+		}
+		end := start + pageSize
+		if end > len(objs) {
+			end = len(objs)
+		}
+
+		p := &driver.ListPage{
+			Objects:       objs[start:end],
+			NextPageToken: []byte(strconv.Itoa(end)),
+		}
+		if len(p.Objects) == 0 {
+			p.NextPageToken = nil // it will return io.EOF
+		}
+
+		return p, nil
+	}
+}
+
+func (d *MockDriver) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driver.ListPage, error) {
+	return d.listPaged(opts)
 }
