@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -44,17 +45,19 @@ const (
 )
 
 type workerMemberManager struct {
-	deps     *controller.Dependencies
-	scaler   Scaler
-	failover DMFailover
+	deps      *controller.Dependencies
+	scaler    Scaler
+	failover  DMFailover
+	suspender suspender.Suspender
 }
 
 // NewWorkerMemberManager returns a *ticdcMemberManager
-func NewWorkerMemberManager(deps *controller.Dependencies, scaler Scaler, failover DMFailover) manager.DMManager {
+func NewWorkerMemberManager(deps *controller.Dependencies, scaler Scaler, failover DMFailover, spder suspender.Suspender) manager.DMManager {
 	return &workerMemberManager{
-		deps:     deps,
-		scaler:   scaler,
-		failover: failover,
+		deps:      deps,
+		scaler:    scaler,
+		failover:  failover,
+		suspender: spder,
 	}
 }
 
@@ -69,6 +72,18 @@ func (m *workerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 		klog.Infof("DMCluster %s/%s is paused, skip syncing dm-worker deployment", ns, dcName)
 		return nil
 	}
+
+	// skip sync if dm worker is suspended
+	component := v1alpha1.DMWorkerMemberType
+	needSuspend, err := m.suspender.SuspendComponent(dc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, dc.GetNamespace(), dc.GetName())
+		return nil
+	}
+
 	if !dc.MasterIsAvailable() {
 		return controller.RequeueErrorf("DMCluster: %s/%s, waiting for dm-master cluster running", ns, dcName)
 	}
@@ -486,7 +501,12 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	workerContainer.Env = util.AppendEnv(env, baseWorkerSpec.Env())
 	workerContainer.EnvFrom = baseWorkerSpec.EnvFrom()
 	podSpec.Volumes = append(vols, baseWorkerSpec.AdditionalVolumes()...)
-	podSpec.Containers = append([]corev1.Container{workerContainer}, baseWorkerSpec.AdditionalContainers()...)
+
+	podSpec.Containers, err = MergePatchContainers([]corev1.Container{workerContainer}, baseWorkerSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for DC [%s/%s], error: %v", dc.Namespace, dc.Name, err)
+	}
+
 	var initContainers []corev1.Container // no default initContainers now
 	podSpec.InitContainers = append(initContainers, baseWorkerSpec.InitContainers()...)
 

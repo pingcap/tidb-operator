@@ -18,11 +18,13 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestComponentStatus(t *testing.T) {
+
 	tc := &TidbCluster{
 		Spec: TidbClusterSpec{
 			PD:      &PDSpec{},
@@ -42,10 +44,10 @@ func TestComponentStatus(t *testing.T) {
 
 	t.Run("MemberType", func(t *testing.T) {
 		g := NewGomegaWithT(t)
-		components := ComponentStatusFromTC(tc.DeepCopy())
-		components = append(components, ComponentStatusFromDC(dc.DeepCopy())...)
+
+		components := allComponentStatus(tc.DeepCopy(), dc.DeepCopy())
 		for _, status := range components {
-			switch status.GetMemberType() {
+			switch status.MemberType() {
 			case PDMemberType:
 				_, ok := status.(*PDStatus)
 				g.Expect(ok).To(BeTrue())
@@ -76,9 +78,7 @@ func TestComponentStatus(t *testing.T) {
 
 	t.Run("Conditions", func(t *testing.T) {
 		g := NewGomegaWithT(t)
-
-		components := ComponentStatusFromTC(tc.DeepCopy())
-		components = append(components, ComponentStatusFromDC(dc.DeepCopy())...)
+		components := allComponentStatus(tc.DeepCopy(), dc.DeepCopy())
 		for _, status := range components {
 			conds := status.GetConditions()
 			g.Expect(conds).To(BeNil())
@@ -115,4 +115,59 @@ func TestComponentStatus(t *testing.T) {
 		}
 	})
 
+	t.Run("Synced", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		components := allComponentStatus(tc.DeepCopy(), dc.DeepCopy())
+		for _, status := range components {
+			switch status.MemberType() {
+			case TiDBMemberType, PumpMemberType:
+				g.Expect(status.GetSynced()).To(BeTrue())
+			default:
+				g.Expect(status.GetSynced()).To(BeFalse())
+			}
+
+			status.SetSynced(true)
+			g.Expect(status.GetSynced()).To(BeTrue())
+		}
+	})
+
+	t.Run("MemberPhase", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		components := allComponentStatus(tc.DeepCopy(), dc.DeepCopy())
+		for _, status := range components {
+			g.Expect(status.GetPhase()).To(BeEmpty())
+
+			phases := []MemberPhase{NormalPhase, UpgradePhase, ScalePhase, SuspendPhase}
+			for _, phase := range phases {
+				status.SetPhase(phase)
+				g.Expect(status.GetPhase()).To(Equal(phase))
+			}
+		}
+	})
+
+	t.Run("StatefulSetStatus", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		components := allComponentStatus(tc.DeepCopy(), dc.DeepCopy())
+		for _, status := range components {
+			g.Expect(status.GetStatefulSet()).To(BeNil())
+
+			sts := &appsv1.StatefulSetStatus{
+				ObservedGeneration: 1,
+			}
+			status.SetStatefulSet(sts)
+			g.Expect(status.GetStatefulSet()).To(Equal(sts))
+			status.SetStatefulSet(nil)
+			g.Expect(status.GetStatefulSet()).To(BeNil())
+		}
+	})
+
+}
+
+func allComponentStatus(tc *TidbCluster, dc *DMCluster) []ComponentStatus {
+	components := tc.AllComponentStatus()
+	components = append(components, dc.AllComponentStatus()...)
+	return components
 }

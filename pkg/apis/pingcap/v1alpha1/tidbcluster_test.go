@@ -15,9 +15,11 @@ package v1alpha1
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -190,6 +192,21 @@ func TestPDIsAvailable(t *testing.T) {
 				g.Expect(b).To(BeFalse())
 			},
 		},
+		{
+			name: "phase is Suspend",
+			update: func(tc *TidbCluster) {
+				tc.Status.PD.Members = map[string]PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+					"pd-1": {Name: "pd-1", Health: true},
+					"pd-2": {Name: "pd-2", Health: true},
+				}
+				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+				tc.Status.PD.Phase = SuspendPhase
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
+			},
+		},
 	}
 
 	for i := range tests {
@@ -291,6 +308,94 @@ func TestTiKVIsAvailable(t *testing.T) {
 				g.Expect(b).To(BeFalse())
 			},
 		},
+		{
+			name: "phase is Suspend",
+			update: func(tc *TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+				}
+				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+				tc.Status.TiKV.Phase = SuspendPhase
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
+func TestPumpIsAvailable(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name     string
+		update   func(*TidbCluster)
+		expectFn func(*GomegaWithT, bool)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbCluster()
+		test.update(tc)
+		test.expectFn(g, tc.PumpIsAvailable())
+	}
+	tests := []testcase{
+		{
+			name: "pump is available",
+			update: func(tc *TidbCluster) {
+				tc.Status.Pump.Members = []*PumpNodeStatus{
+					{
+						Host:  "pump-0",
+						State: PumpStateOnline,
+					},
+				}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeTrue())
+			},
+		},
+		{
+			name: "pump members is 0",
+			update: func(tc *TidbCluster) {
+				tc.Status.Pump.Members = []*PumpNodeStatus{}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
+			},
+		},
+		{
+			name: "pump members is 1, but available count is 0",
+			update: func(tc *TidbCluster) {
+				tc.Status.Pump.Members = []*PumpNodeStatus{
+					{
+						Host:  "pump-0",
+						State: PumpStateOffline,
+					},
+				}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
+			},
+		},
+		{
+			name: "phase is Suspend",
+			update: func(tc *TidbCluster) {
+				tc.Status.Pump.Members = []*PumpNodeStatus{
+					{
+						Host:  "pump-0",
+						State: PumpStateOnline,
+					},
+				}
+				tc.Status.Pump.Phase = SuspendPhase
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
+			},
+		},
 	}
 
 	for i := range tests {
@@ -318,7 +423,7 @@ func TestComponentAccessor(t *testing.T) {
 			Spec: *test.cluster,
 		}
 
-		accessor := buildTidbClusterComponentAccessor(ComponentTiDB, tc, test.component)
+		accessor := buildTidbClusterComponentAccessor(TiDBMemberType, tc, test.component)
 		test.expectFn(g, accessor)
 	}
 	affinity := &corev1.Affinity{
@@ -617,6 +722,186 @@ func TestPDVersion(t *testing.T) {
 	}
 }
 
+func TestTiCDCGracefulShutdownTimeout(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbCluster()
+	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(defaultTiCDCGracefulShutdownTimeout))
+
+	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: nil}
+	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(defaultTiCDCGracefulShutdownTimeout))
+
+	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: &metav1.Duration{Duration: time.Minute}}
+	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(time.Minute))
+}
+
+func TestComponentFunc(t *testing.T) {
+	t.Run("ComponentIsNormal", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		cases := map[string]struct {
+			setup  func(tc *TidbCluster)
+			expect bool
+		}{
+			"NormalPhase": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, NormalPhase)
+				},
+				expect: true,
+			},
+			"UpgradePhase": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, UpgradePhase)
+				},
+				expect: false,
+			},
+			"ScalePhase": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, ScalePhase)
+				},
+				expect: false,
+			},
+			"SuspendPhase": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, SuspendPhase)
+				},
+				expect: false,
+			},
+		}
+
+		for name, c := range cases {
+			t.Logf("test case: %s\n", name)
+
+			tc := newTidbCluster()
+			c.setup(tc)
+
+			for _, component := range tc.AllComponentSpec() {
+				expect := c.expect
+				switch component.MemberType() {
+				case DiscoveryMemberType:
+					expect = false
+				}
+
+				is := tc.ComponentIsNormal(component.MemberType())
+				g.Expect(is).To(Equal(expect), "component: %s", component.MemberType())
+			}
+		}
+	})
+
+	t.Run("ComponentIsSuspending", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		cases := map[string]struct {
+			setup  func(tc *TidbCluster)
+			expect bool
+		}{
+			"SuspendPhase": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, SuspendPhase)
+				},
+				expect: true,
+			},
+			"NormalPhase": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, NormalPhase)
+				},
+				expect: false,
+			},
+			"UpgradePhase": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, UpgradePhase)
+				},
+				expect: false,
+			},
+			"ScalePhase": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, ScalePhase)
+				},
+				expect: false,
+			},
+		}
+
+		for name, c := range cases {
+			t.Logf("test case: %s\n", name)
+
+			tc := newTidbCluster()
+			c.setup(tc)
+
+			for _, component := range tc.AllComponentSpec() {
+				expect := c.expect
+				switch component.MemberType() {
+				case DiscoveryMemberType:
+					expect = false
+				}
+
+				is := tc.ComponentIsSuspending(component.MemberType())
+				g.Expect(is).To(Equal(expect), "component: %s", component.MemberType())
+			}
+		}
+	})
+
+	t.Run("ComponentIsSuspended", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		cases := map[string]struct {
+			setup  func(tc *TidbCluster)
+			expect bool
+		}{
+			"suspended": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, SuspendPhase)
+					tc.Spec.SuspendAction = &SuspendAction{SuspendStatefulSet: true}
+					tc.Status.PD.StatefulSet = nil
+					tc.Status.TiDB.StatefulSet = nil
+					tc.Status.TiFlash.StatefulSet = nil
+					tc.Status.TiKV.StatefulSet = nil
+					tc.Status.Pump.StatefulSet = nil
+					tc.Status.TiCDC.StatefulSet = nil
+				},
+				expect: true,
+			},
+			"phase is not Suspend": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, NormalPhase)
+					tc.Spec.SuspendAction = &SuspendAction{SuspendStatefulSet: true}
+				},
+				expect: false,
+			},
+			"suspend sts but sts is not deleted": {
+				setup: func(tc *TidbCluster) {
+					setPhaseForAllComponent(tc, SuspendPhase)
+					tc.Spec.SuspendAction = &SuspendAction{SuspendStatefulSet: true}
+					tc.Status.PD.StatefulSet = &appsv1.StatefulSetStatus{}
+					tc.Status.TiDB.StatefulSet = &appsv1.StatefulSetStatus{}
+					tc.Status.TiFlash.StatefulSet = &appsv1.StatefulSetStatus{}
+					tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{}
+					tc.Status.Pump.StatefulSet = &appsv1.StatefulSetStatus{}
+					tc.Status.TiCDC.StatefulSet = &appsv1.StatefulSetStatus{}
+				},
+				expect: false,
+			},
+		}
+		for name, c := range cases {
+			t.Logf("test case: %s\n", name)
+
+			tc := newTidbCluster()
+			c.setup(tc)
+
+			components := tc.AllComponentSpec()
+			for _, component := range components {
+				expect := c.expect
+				switch component.MemberType() {
+				case DiscoveryMemberType:
+					expect = false
+				}
+
+				is := tc.ComponentIsSuspended(component.MemberType())
+				g.Expect(is).To(Equal(expect), "component: %s", component.MemberType())
+			}
+		}
+	})
+}
+
 func newTidbCluster() *TidbCluster {
 	return &TidbCluster{
 		TypeMeta: metav1.TypeMeta{
@@ -648,6 +933,18 @@ func newTidbCluster() *TidbCluster {
 			TiDB: &TiDBSpec{
 				Replicas: 1,
 			},
+			Pump:    &PumpSpec{},
+			TiFlash: &TiFlashSpec{},
+			TiCDC:   &TiCDCSpec{},
 		},
 	}
+}
+
+func setPhaseForAllComponent(tc *TidbCluster, phase MemberPhase) {
+	tc.Status.PD.Phase = phase
+	tc.Status.TiKV.Phase = phase
+	tc.Status.TiDB.Phase = phase
+	tc.Status.Pump.Phase = phase
+	tc.Status.TiFlash.Phase = phase
+	tc.Status.TiCDC.Phase = phase
 }

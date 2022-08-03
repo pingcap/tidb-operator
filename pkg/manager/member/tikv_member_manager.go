@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -60,16 +61,18 @@ type tikvMemberManager struct {
 	failover                 Failover
 	scaler                   Scaler
 	upgrader                 TiKVUpgrader
+	suspender                suspender.Suspender
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiKVMemberManager returns a *tikvMemberManager
-func NewTiKVMemberManager(deps *controller.Dependencies, failover Failover, scaler Scaler, upgrader TiKVUpgrader) manager.Manager {
+func NewTiKVMemberManager(deps *controller.Dependencies, failover Failover, scaler Scaler, upgrader TiKVUpgrader, spder suspender.Suspender) manager.Manager {
 	m := &tikvMemberManager{
-		deps:     deps,
-		failover: failover,
-		scaler:   scaler,
-		upgrader: upgrader,
+		deps:      deps,
+		failover:  failover,
+		scaler:    scaler,
+		upgrader:  upgrader,
+		suspender: spder,
 	}
 	m.statefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
 	return m
@@ -93,6 +96,17 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+
+	// skip sync if tikv is suspended
+	component := v1alpha1.TiKVMemberType
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, ns, tcName)
+		return nil
+	}
 
 	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
@@ -479,7 +493,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 		// mount a shared volume and tail the RocksDB log to STDOUT using a sidecar.
 		containers = append(containers, corev1.Container{
-			Name:            v1alpha1.RocksDBLogTailerMemberType.String(),
+			Name:            v1alpha1.ContainerRocksDBLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
@@ -528,7 +542,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 		// mount a shared volume and tail the Raft log to STDOUT using a sidecar.
 		containers = append(containers, corev1.Container{
-			Name:            v1alpha1.RaftLogTailerMemberType.String(),
+			Name:            v1alpha1.ContainerRaftLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
@@ -614,7 +628,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, baseTiKVSpec.InitContainers()...)
-	podSpec.Containers = append(containers, baseTiKVSpec.AdditionalContainers()...)
+
+	podSpec.Containers, err = MergePatchContainers(containers, baseTiKVSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for TiKV of [%s/%s], error: %v", ns, tcName, err)
+	}
+
 	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount

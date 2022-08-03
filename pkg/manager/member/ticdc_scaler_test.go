@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 
@@ -320,4 +321,196 @@ func newFakeTiCDCScaler(resyncDuration ...time.Duration) (*ticdcScaler, cache.In
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pvcControl := fakeDeps.PVCControl.(*controller.FakePVCControl)
 	return &ticdcScaler{generalScaler{deps: fakeDeps}}, pvcIndexer, podIndexer, pvcControl
+}
+
+type cdcCtlMock struct {
+	controller.TiCDCControlInterface
+	drainCapture func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error)
+	resignOwner  func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
+}
+
+func (c *cdcCtlMock) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
+	return c.drainCapture(tc, ordinal)
+}
+func (c *cdcCtlMock) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
+	return c.resignOwner(tc, ordinal)
+}
+
+type podCtlMock struct {
+	controller.PodControlInterface
+	updatePod func(runtime.Object, *corev1.Pod) (*corev1.Pod, error)
+}
+
+func (p *podCtlMock) UpdatePod(o runtime.Object, pod *corev1.Pod) (*corev1.Pod, error) {
+	return p.updatePod(o, pod)
+}
+
+func TestTiCDCGracefulShutdown(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbClusterForPD()
+	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{}
+	ticdcGracefulShutdownTimeout := tc.TiCDCGracefulShutdownTimeout()
+	newPod := func() *corev1.Pod {
+		return &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              ticdcPodName(tc.GetName(), 1),
+				Namespace:         corev1.NamespaceDefault,
+				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+			},
+		}
+	}
+
+	cases := []struct {
+		caseName    string
+		cdcCtl      controller.TiCDCControlInterface
+		podCtl      controller.PodControlInterface
+		pod         func() *corev1.Pod
+		expectedErr func(error, string)
+	}{
+		{
+			caseName: "shutdown ok",
+			cdcCtl: &cdcCtlMock{
+				drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+					return 0, false, nil
+				},
+				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				},
+			},
+			podCtl: &podCtlMock{
+				updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+					return p, nil
+				},
+			},
+			pod: newPod,
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(BeNil(), name)
+			},
+		},
+		{
+			caseName: "shutdown timeout",
+			cdcCtl:   &cdcCtlMock{},
+			podCtl:   &podCtlMock{},
+			pod: func() *corev1.Pod {
+				pod := newPod()
+				if pod.Annotations == nil {
+					pod.Annotations = map[string]string{}
+				}
+				now := time.Now().Add(-2 * ticdcGracefulShutdownTimeout).Format(time.RFC3339)
+				pod.Annotations[label.AnnTiCDCGracefulShutdownBeginTime] = now
+				return pod
+			},
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(BeNil(), name)
+			},
+		},
+		{
+			caseName: "shutdown malformed label value",
+			cdcCtl:   &cdcCtlMock{},
+			podCtl:   &podCtlMock{},
+			pod: func() *corev1.Pod {
+				pod := newPod()
+				if pod.Annotations == nil {
+					pod.Annotations = map[string]string{}
+				}
+				pod.Annotations[label.AnnTiCDCGracefulShutdownBeginTime] = "malformed"
+				return pod
+			},
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(BeNil(), name)
+			},
+		},
+		{
+			caseName: "shutdown with label set",
+			cdcCtl: &cdcCtlMock{
+				drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+					return 0, false, nil
+				},
+				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				},
+			},
+			podCtl: &podCtlMock{},
+			pod: func() *corev1.Pod {
+				pod := newPod()
+				if pod.Annotations == nil {
+					pod.Annotations = map[string]string{}
+				}
+				now := time.Now().Format(time.RFC3339)
+				pod.Annotations[label.AnnTiCDCGracefulShutdownBeginTime] = now
+				return pod
+			},
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(BeNil(), name)
+			},
+		},
+		{
+			caseName: "shutdown retry resign owner",
+			cdcCtl: &cdcCtlMock{
+				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return false, nil
+				},
+			},
+			podCtl: &podCtlMock{
+				updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+					return p, nil
+				},
+			},
+			pod: newPod,
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(Not(BeNil()), name)
+				g.Expect(controller.IsRequeueError(err)).Should(BeTrue(), name)
+			},
+		},
+		{
+			caseName: "shutdown retry drain capture #1",
+			cdcCtl: &cdcCtlMock{
+				drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+					return 1, false, nil
+				},
+				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				},
+			},
+			podCtl: &podCtlMock{
+				updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+					return p, nil
+				},
+			},
+			pod: newPod,
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(Not(BeNil()), name)
+				g.Expect(controller.IsRequeueError(err)).Should(BeTrue(), name)
+			},
+		},
+		{
+			caseName: "shutdown retry drain capture #2",
+			cdcCtl: &cdcCtlMock{
+				drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+					return 0, true, nil
+				},
+				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				},
+			},
+			podCtl: &podCtlMock{
+				updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+					return p, nil
+				},
+			},
+			pod: newPod,
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(Not(BeNil()), name)
+				g.Expect(controller.IsRequeueError(err)).Should(BeTrue(), name)
+			},
+		},
+	}
+
+	for _, c := range cases {
+		pod := c.pod()
+		err := gracefulShutdownTiCDC(tc, c.cdcCtl, c.podCtl, pod, 1, "test")
+		c.expectedErr(err, c.caseName)
+	}
 }

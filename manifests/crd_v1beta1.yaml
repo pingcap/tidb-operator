@@ -265,16 +265,19 @@ spec:
                                   matchLabels:
                                     additionalProperties:
                                       type: string
-                                    type: object
-                                type: object
-                              namespaces:
-                                items:
-                                  type: string
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                  - key
+                                  - operator
+                                  type: object
                                 type: array
-                              topologyKey:
-                                type: string
-                            required:
-                            - topologyKey
+                              matchLabels:
+                                additionalProperties:
+                                  type: string
+                                type: object
                             type: object
                           weight:
                             format: int32
@@ -375,6 +378,8 @@ spec:
               type: object
             cleanOption:
               properties:
+                backoffEnabled:
+                  type: boolean
                 batchConcurrency:
                   format: int32
                   type: integer
@@ -382,6 +387,8 @@ spec:
                   type: boolean
                 pageSize:
                   format: int64
+                  type: integer
+                retryCount:
                   type: integer
                 routineConcurrency:
                   format: int32
@@ -1605,28 +1612,27 @@ spec:
                         requiredDuringSchedulingIgnoredDuringExecution:
                           items:
                             properties:
-                              labelSelector:
+                              configMap:
                                 properties:
-                                  matchExpressions:
+                                  items:
                                     items:
                                       properties:
                                         key:
                                           type: string
-                                        operator:
+                                        mode:
+                                          format: int32
+                                          type: integer
+                                        path:
                                           type: string
-                                        values:
-                                          items:
-                                            type: string
-                                          type: array
                                       required:
                                       - key
-                                      - operator
+                                      - path
                                       type: object
                                     type: array
-                                  matchLabels:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
+                                  name:
+                                    type: string
+                                  optional:
+                                    type: boolean
                                 type: object
                               namespaces:
                                 items:
@@ -1688,6 +1694,172 @@ spec:
                           type: array
                         requiredDuringSchedulingIgnoredDuringExecution:
                           items:
+                            properties:
+                              labelSelector:
+                                properties:
+                                  items:
+                                    items:
+                                      properties:
+                                        key:
+                                          type: string
+                                        mode:
+                                          format: int32
+                                          type: integer
+                                        path:
+                                          type: string
+                                      required:
+                                      - key
+                                      - path
+                                      type: object
+                                    type: array
+                                  name:
+                                    type: string
+                                  optional:
+                                    type: boolean
+                                type: object
+                              serviceAccountToken:
+                                properties:
+                                  audience:
+                                    type: string
+                                  expirationSeconds:
+                                    format: int64
+                                    type: integer
+                                  path:
+                                    type: string
+                                required:
+                                - path
+                                type: object
+                            type: object
+                          type: array
+                      type: object
+                  type: object
+                azblob:
+                  properties:
+                    accessTier:
+                      type: string
+                    container:
+                      type: string
+                    path:
+                      type: string
+                    prefix:
+                      type: string
+                    secretName:
+                      type: string
+                  type: object
+                backupType:
+                  type: string
+                br:
+                  properties:
+                    checkRequirements:
+                      type: boolean
+                    checksum:
+                      type: boolean
+                    cluster:
+                      type: string
+                    clusterNamespace:
+                      type: string
+                    concurrency:
+                      format: int32
+                      type: integer
+                    db:
+                      type: string
+                    logLevel:
+                      type: string
+                    onLine:
+                      type: boolean
+                    options:
+                      items:
+                        type: string
+                      type: array
+                    rateLimit:
+                      type: integer
+                    sendCredToTikv:
+                      type: boolean
+                    statusAddr:
+                      type: string
+                    table:
+                      type: string
+                    timeAgo:
+                      type: string
+                  required:
+                  - cluster
+                  type: object
+                cleanOption:
+                  properties:
+                    backoffEnabled:
+                      type: boolean
+                    batchConcurrency:
+                      format: int32
+                      type: integer
+                    disableBatchConcurrency:
+                      type: boolean
+                    pageSize:
+                      format: int64
+                      type: integer
+                    retryCount:
+                      type: integer
+                    routineConcurrency:
+                      format: int32
+                      type: integer
+                  type: object
+                cleanPolicy:
+                  type: string
+                dumpling:
+                  properties:
+                    options:
+                      items:
+                        type: string
+                      type: array
+                    tableFilter:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                env:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                      valueFrom:
+                        properties:
+                          configMapKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                              optional:
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                          fieldRef:
+                            properties:
+                              apiVersion:
+                                type: string
+                              fieldPath:
+                                type: string
+                            required:
+                            - fieldPath
+                            type: object
+                          resourceFieldRef:
+                            properties:
+                              containerName:
+                                type: string
+                              divisor:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              resource:
+                                type: string
+                            required:
+                            - resource
+                            type: object
+                          secretKeyRef:
                             properties:
                               labelSelector:
                                 properties:
@@ -1812,41 +1984,6 @@ spec:
                       valueFrom:
                         properties:
                           configMapKeyRef:
-                            properties:
-                              key:
-                                type: string
-                              name:
-                                type: string
-                              optional:
-                                type: boolean
-                            required:
-                            - key
-                            type: object
-                          fieldRef:
-                            properties:
-                              apiVersion:
-                                type: string
-                              fieldPath:
-                                type: string
-                            required:
-                            - fieldPath
-                            type: object
-                          resourceFieldRef:
-                            properties:
-                              containerName:
-                                type: string
-                              divisor:
-                                anyOf:
-                                - type: integer
-                                - type: string
-                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                x-kubernetes-int-or-string: true
-                              resource:
-                                type: string
-                            required:
-                            - resource
-                            type: object
-                          secretKeyRef:
                             properties:
                               key:
                                 type: string
@@ -5407,6 +5544,11 @@ spec:
                   type: string
                 statefulSetUpdateStrategy:
                   type: string
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -7792,6 +7934,11 @@ spec:
                   type: string
                 storageSize:
                   type: string
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -7906,6 +8053,11 @@ spec:
               type: string
             statefulSetUpdateStrategy:
               type: string
+            suspendAction:
+              properties:
+                suspendStatefulSet:
+                  type: boolean
+              type: object
             timezone:
               type: string
             tlsClientSecretNames:
@@ -10234,6 +10386,11 @@ spec:
                   type: string
                 storageSize:
                   type: string
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -14909,6 +15066,11 @@ spec:
                   type: string
                 statefulSetUpdateStrategy:
                   type: string
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -17330,6 +17492,11 @@ spec:
                     - storageSize
                     type: object
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -19717,6 +19884,11 @@ spec:
                   type: string
                 storageClassName:
                   type: string
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -19770,6 +19942,11 @@ spec:
               type: array
             statefulSetUpdateStrategy:
               type: string
+            suspendAction:
+              properties:
+                suspendStatefulSet:
+                  type: boolean
+              type: object
             ticdc:
               properties:
                 additionalContainers:
@@ -21384,6 +21561,8 @@ spec:
                         type: object
                     type: object
                   type: array
+                gracefulShutdownTimeout:
+                  type: string
                 hostNetwork:
                   type: boolean
                 image:
@@ -22060,6 +22239,11 @@ spec:
                     - storageSize
                     type: object
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -24611,6 +24795,11 @@ spec:
                     - storageSize
                     type: object
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -27010,6 +27199,11 @@ spec:
                         type: string
                     type: object
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -29389,6 +29583,11 @@ spec:
                   items:
                     type: string
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -30402,6 +30601,9 @@ spec:
                 evictLeader:
                   additionalProperties:
                     properties:
+                      beginTime:
+                        format: date-time
+                        type: string
                       podCreateTime:
                         format: date-time
                         type: string
@@ -37518,6 +37720,11 @@ spec:
                     - storageSize
                     type: object
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -37630,6 +37837,11 @@ spec:
               type: string
             statefulSetUpdateStrategy:
               type: string
+            suspendAction:
+              properties:
+                suspendStatefulSet:
+                  type: boolean
+              type: object
             terminationGracePeriodSeconds:
               format: int64
               type: integer
