@@ -14702,6 +14702,22 @@ string
 Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>gracefulShutdownTimeout</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>GracefulShutdownTimeout is the timeout of gracefully shutdown a TiCDC pod.
+Encoded in the format of Go Duration.
+Defaults to 10m</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="ticdcstatus">TiCDCStatus</h3>
