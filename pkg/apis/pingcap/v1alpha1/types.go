@@ -1631,7 +1631,7 @@ type BackupMode string
 const (
 	// BackupModeSnapshot represents the snapshot backup of tidb cluster.
 	BackupModeSnapshot BackupMode = "snapshot"
-	// BackupModeLog represents the raw backup of tidb cluster.
+	// BackupModeLog represents the log backup of tidb cluster.
 	BackupModeLog BackupMode = "log"
 )
 
