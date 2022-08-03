@@ -680,6 +680,12 @@ type TiCDCSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// GracefulShutdownTimeout is the timeout of gracefully shutdown a TiCDC pod.
+	// Encoded in the format of Go Duration.
+	// Defaults to 10m
+	// +optional
+	GracefulShutdownTimeout *metav1.Duration `json:"gracefulShutdownTimeout,omitempty"`
 }
 
 // TiCDCConfig is the configuration of tidbcdc

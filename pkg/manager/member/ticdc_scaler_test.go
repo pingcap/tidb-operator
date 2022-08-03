@@ -350,6 +350,7 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 
 	tc := newTidbClusterForPD()
 	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{}
+	ticdcGracefulShutdownTimeout := tc.TiCDCGracefulShutdownTimeout()
 	newPod := func() *corev1.Pod {
 		return &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
