@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -820,6 +821,7 @@ type fakeIndexers struct {
 	set    cache.Indexer
 	job    cache.Indexer
 	ti     cache.Indexer
+	node   cache.Indexer
 }
 
 func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSetControl, *controller.FakeTiDBControl, *fakeIndexers) {
@@ -839,6 +841,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		eps:    fakeDeps.KubeInformerFactory.Core().V1().Endpoints().Informer().GetIndexer(),
 		secret: fakeDeps.KubeInformerFactory.Core().V1().Secrets().Informer().GetIndexer(),
 		set:    fakeDeps.KubeInformerFactory.Apps().V1().StatefulSets().Informer().GetIndexer(),
+		node:   fakeDeps.KubeInformerFactory.Core().V1().Nodes().Informer().GetIndexer(),
 	}
 	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
 	tidbControl := fakeDeps.TiDBControl.(*controller.FakeTiDBControl)
@@ -2565,4 +2568,240 @@ func TestBuildRandomPasswordSecret(t *testing.T) {
 	_, password := tmm.BuildRandomPasswordSecret(tc)
 	g.Expect(!strings.Contains(password, "\\")).Should(BeTrue())
 
+}
+
+func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type Member struct {
+		name       string
+		node       string
+		nodeLabels map[string]string
+		labeled    bool
+		unHealth   bool
+	}
+
+	type testcase struct {
+		name           string
+		members        []Member
+		missingPods    map[string]struct{}
+		missingNodes   map[string]struct{}
+		labels         []string
+		errExpectFn    func(*GomegaWithT, error)
+		setCount       int
+		labelSetFailed bool
+		getConfigErr   error
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPD()
+		pmm, _, tidbCtl, indexers := newFakeTiDBMemberManager()
+		pdControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
+		pdClient := controller.NewFakePDClient(pdControl, tc)
+		tc.Status.TiDB.Members = make(map[string]v1alpha1.TiDBMember)
+		nodes := make(map[string]struct{})
+		for i, m := range test.members {
+			name := m.name
+			if len(name) == 0 {
+				name = fmt.Sprintf("test-tidb-%d", i)
+			}
+			tc.Status.TiDB.Members[name] = v1alpha1.TiDBMember{
+				Name:     name,
+				Health:   !m.unHealth,
+				NodeName: m.node,
+			}
+			if _, ok := test.missingPods[name]; !ok {
+				pod := &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name,
+						Namespace: metav1.NamespaceDefault,
+					},
+					Spec: corev1.PodSpec{
+						NodeName: m.node,
+					},
+				}
+				if m.labeled {
+					pod.Annotations = map[string]string{"labeled": "true"}
+				}
+				indexers.pod.Add(pod)
+			}
+
+			if _, ok := nodes[m.node]; !ok {
+				if _, ok := test.missingNodes[m.node]; !ok {
+					if len(m.nodeLabels) == 0 {
+						m.nodeLabels = map[string]string{
+							"region":             "region",
+							topologyZoneLabel:    "zone",
+							"rack":               "rack",
+							corev1.LabelHostname: "host",
+						}
+					}
+					node := &corev1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   m.node,
+							Labels: m.nodeLabels,
+						},
+					}
+					indexers.node.Add(node)
+				}
+			}
+		}
+		if test.getConfigErr != nil {
+			pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
+				return nil, test.getConfigErr
+			})
+		} else {
+			pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
+				labels := test.labels
+				if len(labels) == 0 {
+					labels = []string{"topology.kubernetes.io/zone", corev1.LabelHostname}
+				}
+				return &pdapi.PDConfigFromAPI{
+					Replication: &pdapi.PDReplicationConfig{
+						LocationLabels: labels,
+					},
+				}, nil
+			})
+		}
+
+		if test.labelSetFailed {
+			tidbCtl.SetLabelsErr(fmt.Errorf("mock label set failed"))
+		}
+
+		setCount, err := pmm.setServerLabels(tc)
+		if test.errExpectFn != nil {
+			test.errExpectFn(g, err)
+		} else {
+			g.Expect(err).To(BeNil())
+			g.Expect(setCount).To(Equal(test.setCount))
+		}
+	}
+	tests := []testcase{
+		{
+			name:         "get pd config return error",
+			getConfigErr: fmt.Errorf("failed to get pd config"),
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "failed to get pd config")).To(BeTrue())
+			},
+		},
+		{
+			name:   "zone labels not found",
+			labels: []string{"unknown"},
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "zone labels not found in pd location-labels")).To(BeTrue())
+			},
+		},
+		{
+			name: "all members not health",
+			members: []Member{
+				{
+					node:     "node-1",
+					unHealth: true,
+				},
+				{
+					node:     "node-2",
+					unHealth: true,
+				},
+			},
+			setCount: 0,
+		},
+		{
+			name: "illegal pod ordinal",
+			members: []Member{
+				{
+					name: "arbitrary-name",
+					node: "node-1",
+				},
+			},
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "parse ordinal from pod name 'arbitrary-name' failed")).To(BeTrue())
+			},
+		},
+		{
+			name: "don't have pod",
+			members: []Member{
+				{
+					name: "test-tidb-0",
+					node: "node-1",
+				},
+			},
+			missingPods: map[string]struct{}{
+				"test-tidb-0": {},
+			},
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "not found")).To(BeTrue())
+			},
+		},
+		{
+			name: "don't have node",
+			members: []Member{
+				{
+					name: "test-tidb-0",
+					node: "node-1",
+				},
+			},
+			missingNodes: map[string]struct{}{
+				"node-1": {},
+			},
+			setCount: 0,
+		},
+		{
+			name: "node label don't match",
+			members: []Member{
+				{
+					name: "test-tidb-0",
+					node: "node-1",
+					nodeLabels: map[string]string{
+						"test": "123",
+					},
+				},
+			},
+			setCount: 0,
+		},
+		{
+			name: "set server labels failed",
+			members: []Member{
+				{
+					node: "node-1",
+				},
+				{
+					node: "node-2",
+				},
+			},
+			setCount: 2,
+		},
+		{
+			name: "skip unhealthy pods",
+			members: []Member{
+				{
+					node: "node-1",
+				},
+				{
+					node:     "node-2",
+					unHealth: true,
+				},
+			},
+			setCount: 1,
+		},
+		{
+			name: "skip already labeled pods",
+			members: []Member{
+				{
+					node: "node-1",
+					labeled: true,
+				},
+				{
+					node: "node-1",
+				},
+			},
+			setCount: 1,
+		},
+	}
+
+	for i := range tests {
+		t.Logf(tests[i].name)
+		testFn(&tests[i], t)
+	}
 }

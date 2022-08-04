@@ -18,7 +18,10 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"fmt"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/util/retry"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -60,6 +63,10 @@ const (
 	// When user use self-signed certificates, the root CA must be provided. We
 	// following the same convention used in Kubernetes service token.
 	tlsSecretRootCAKey = corev1.ServiceAccountRootCAKey
+	// kubenetes topology zone label
+	topologyZoneLabel = "topology.kubernetes.io/zone"
+	// tidb DC label Name
+	tidbDCLabel = "zone"
 )
 
 type tidbMemberManager struct {
@@ -240,6 +247,10 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
+	}
+
+	if _, err := m.setServerLabels(tc); err != nil {
+		return err
 	}
 
 	// Scaling takes precedence over upgrading because:
@@ -1042,6 +1053,113 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		tc.Status.TiDB.Image = c.Image
 	}
 	return nil
+}
+
+func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, error) {
+	if m.deps.NodeLister == nil {
+		klog.V(4).Infof("Node lister is unavailable, skip setting store labels for TiKV of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
+		return 0, nil
+	}
+
+	ns := tc.GetNamespace()
+	// for unit test
+	setCount := 0
+
+	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		return setCount, err
+	}
+
+	var zoneLabel string
+	for _, l := range config.Replication.LocationLabels {
+		if l == topologyZoneLabel {
+			zoneLabel = l
+		} else if l == tidbDCLabel {
+			zoneLabel = l
+		}
+	}
+	if zoneLabel == "" {
+		return 0, fmt.Errorf("zone labels not found in pd location-labels %v", config.Replication.LocationLabels)
+	}
+
+	for name, db := range tc.Status.TiDB.Members {
+		if !db.Health {
+			continue
+		}
+		ordinal, err := parserOrdinal(name)
+		if err != nil {
+			return setCount, err
+		}
+
+		pod, err := m.deps.PodLister.Pods(ns).Get(name)
+		if err != nil {
+			return setCount, fmt.Errorf("setServerLabels: failed to get pods %s for cluster %s/%s, error: %s", name, ns, tc.GetName(), err)
+		}
+		// already labeled
+		if labeled, ok := pod.Annotations["labeled"]; ok && labeled == "true" {
+			continue
+		}
+
+		nodeName := pod.Spec.NodeName
+		labels, err := getNodeLabels(m.deps.NodeLister, nodeName, config.Replication.LocationLabels)
+		if err != nil || len(labels) == 0 {
+			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, name)
+			continue
+		}
+		// add the special `zone` label because tidb depends on this label for follower read.
+		labels[tidbDCLabel] = labels[zoneLabel]
+
+		if err := m.deps.TiDBControl.SetServerLabels(tc, ordinal, labels); err != nil {
+			klog.Warningf("cluster %s/%s set server labels for pod %s failed, error: %v", ns, tc.GetName(), name, err)
+			continue
+		}
+		if pod.Annotations == nil {
+			pod.Annotations = make(map[string]string, 1)
+		}
+		pod.Annotations["labeled"] = "true"
+		setCount++
+		if err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			_, err := m.deps.KubeClientset.CoreV1().Pods(ns).Update(context.TODO(), pod, metav1.UpdateOptions{})
+			if err == nil {
+				return nil
+			}
+
+			klog.Warningf("failed to update pod: %s/%s, error: %v", ns, name, err)
+			if updated, err := m.deps.PodLister.Pods(ns).Get(name); err == nil {
+				// already annotated, skip retry
+				if updated.Annotations["labeled"] == "true" {
+					return nil
+				}
+				pod = updated.DeepCopy()
+				pod.Annotations["labeled"] = "true"
+			} else {
+				utilruntime.HandleError(fmt.Errorf("error getting updated pod %s/%s from lister: %v", ns, name, err))
+			}
+			return err
+		}); err != nil {
+			klog.Warningf("Add label annotation for pod %s/%s failed, ignore error: %v", ns, name, err)
+		}
+	}
+
+	return setCount, nil
+}
+
+var (
+	podOrdinalPattern = regexp.MustCompile(`^.*-(\d+)$`)
+)
+
+// parserOrdinal extracts the ordinal from pod name
+func parserOrdinal(podName string) (int32, error) {
+	matches := podOrdinalPattern.FindStringSubmatch(podName)
+	if len(matches) != 2 {
+		return 0, fmt.Errorf("parse ordinal from pod name '%s' failed", podName)
+	}
+	ord, err := strconv.ParseInt(matches[1], 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("parse ordinal from pod name '%s' failed, error: %v", podName, err)
+	}
+	return int32(ord), nil
 }
 
 func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
