@@ -327,6 +327,7 @@ type cdcCtlMock struct {
 	controller.TiCDCControlInterface
 	drainCapture func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error)
 	resignOwner  func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
+	isHealthy    func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
 }
 
 func (c *cdcCtlMock) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
@@ -334,6 +335,9 @@ func (c *cdcCtlMock) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (int,
 }
 func (c *cdcCtlMock) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	return c.resignOwner(tc, ordinal)
+}
+func (c *cdcCtlMock) IsHealthy(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
+	return c.isHealthy(tc, ordinal)
 }
 
 type podCtlMock struct {
@@ -345,7 +349,7 @@ func (p *podCtlMock) UpdatePod(o runtime.Object, pod *corev1.Pod) (*corev1.Pod, 
 	return p.updatePod(o, pod)
 }
 
-func TestTiCDCGracefulShutdown(t *testing.T) {
+func TestTiCDCGracefulDrainTiCDC(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	tc := newTidbClusterForPD()
@@ -510,7 +514,116 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 
 	for _, c := range cases {
 		pod := c.pod()
-		err := gracefulShutdownTiCDC(tc, c.cdcCtl, c.podCtl, pod, 1, "test")
+		err := gracefulDrainTiCDC(tc, c.cdcCtl, c.podCtl, pod, 1, "test")
+		c.expectedErr(err, c.caseName)
+	}
+}
+
+func TestTiCDCGracefulResignOwner(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbClusterForPD()
+	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{}
+	ticdcGracefulShutdownTimeout := tc.TiCDCGracefulShutdownTimeout()
+	newPod := func() *corev1.Pod {
+		return &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              ticdcPodName(tc.GetName(), 1),
+				Namespace:         corev1.NamespaceDefault,
+				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+			},
+		}
+	}
+
+	cases := []struct {
+		caseName    string
+		cdcCtl      controller.TiCDCControlInterface
+		podCtl      controller.PodControlInterface
+		pod         func() *corev1.Pod
+		expectedErr func(error, string)
+	}{
+		{
+			caseName: "resign ok",
+			cdcCtl: &cdcCtlMock{
+				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				},
+				isHealthy: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				},
+			},
+			podCtl: &podCtlMock{
+				updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+					return p, nil
+				},
+			},
+			pod: newPod,
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(BeNil(), name)
+			},
+		},
+		{
+			caseName: "resign timeout",
+			cdcCtl:   &cdcCtlMock{},
+			podCtl:   &podCtlMock{},
+			pod: func() *corev1.Pod {
+				pod := newPod()
+				if pod.Annotations == nil {
+					pod.Annotations = map[string]string{}
+				}
+				now := time.Now().Add(-2 * ticdcGracefulShutdownTimeout).Format(time.RFC3339)
+				pod.Annotations[label.AnnTiCDCGracefulShutdownBeginTime] = now
+				return pod
+			},
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(BeNil(), name)
+			},
+		},
+		{
+			caseName: "retry resign owner",
+			cdcCtl: &cdcCtlMock{
+				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return false, nil
+				},
+			},
+			podCtl: &podCtlMock{
+				updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+					return p, nil
+				},
+			},
+			pod: newPod,
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(Not(BeNil()), name)
+				g.Expect(controller.IsRequeueError(err)).Should(BeTrue(), name)
+			},
+		},
+		{
+			caseName: "retry healthy",
+			cdcCtl: &cdcCtlMock{
+				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				},
+				isHealthy: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return false, nil
+				},
+			},
+			podCtl: &podCtlMock{
+				updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+					return p, nil
+				},
+			},
+			pod: newPod,
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(Not(BeNil()), name)
+				g.Expect(controller.IsRequeueError(err)).Should(BeTrue(), name)
+			},
+		},
+	}
+
+	for _, c := range cases {
+		pod := c.pod()
+		err := gracefulResignOwnerTiCDC(tc, c.cdcCtl, c.podCtl, pod, "ownerPod", 1, "test")
 		c.expectedErr(err, c.caseName)
 	}
 }

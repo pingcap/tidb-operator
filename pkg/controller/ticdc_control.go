@@ -62,6 +62,9 @@ type TiCDCControlInterface interface {
 	// otherwise caller should retry resign owner.
 	// If there is only one capture, it always return true.
 	ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
+	// IsHealthy gets the healthy status of TiCDC cluster.
+	// Returns true if the TiCDC cluster is heathy.
+	IsHealthy(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
 }
 
 // defaultTiCDCControl is default implementation of TiCDCControlInterface.
@@ -218,6 +221,48 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 	return false, nil
 }
 
+func (c *defaultTiCDCControl) IsHealthy(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
+	httpClient, err := c.getHTTPClient(tc)
+	if err != nil {
+		klog.Warningf("ticdc control: get http client failed, error: %v", err)
+		return false, err
+	}
+
+	captures, retry, err := getCaptures(httpClient, c.getBaseURL(tc, ordinal))
+	if err != nil {
+		klog.Warningf("ticdc control: get capture failed, error: %v", err)
+		return false, err
+	}
+	if retry {
+		// Let caller retry.
+		return false, nil
+	}
+
+	_, owner := getOrdinalAndOwnerCaptureInfo(tc, ordinal, captures)
+	if owner == nil {
+		// Unhealthy, owner is not found.
+		return false, nil
+	}
+
+	healthURL := fmt.Sprintf("%s://%s/api/v1/health", tc.Scheme(), owner.AdvertiseAddr)
+	res, err := httpClient.Get(healthURL)
+	if err != nil {
+		return false, fmt.Errorf("ticdc get health failed, request error: %v", err)
+	}
+	httputil.DeferClose(res.Body)
+	if res.StatusCode == http.StatusNotFound {
+		// It is likely the TiCDC does not support the API, ignore.
+		klog.Infof("ticdc control: %s does not support health API, skip", owner.AdvertiseAddr)
+		return true, nil
+	}
+	if res.StatusCode == http.StatusInternalServerError {
+		// Let caller retry get health.
+		klog.Infof("ticdc control: %s report unhealthy, retry", owner.AdvertiseAddr)
+		return false, nil
+	}
+	return true, nil
+}
+
 func (c *defaultTiCDCControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32) string {
 	if c.testURL != "" {
 		return c.testURL
@@ -310,5 +355,9 @@ func (c *FakeTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32)
 }
 
 func (c *FakeTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+	return true, nil
+}
+
+func (c *FakeTiCDCControl) IsHealthy(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	return true, nil
 }

@@ -94,7 +94,7 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 			},
 		},
 		{
-			name:        "graceful upgrade retry",
+			name:        "graceful upgrade retry resign owner",
 			errorExpect: true,
 			changeUpgrader: func(u *ticdcUpgrader) {
 				u.deps.CDCControl = &cdcCtlMock{
@@ -107,6 +107,96 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
+			},
+		},
+		{
+			name:        "graceful upgrade retry drain",
+			errorExpect: true,
+			changeUpgrader: func(u *ticdcUpgrader) {
+				u.deps.CDCControl = &cdcCtlMock{
+					// resignOwner always success.
+					resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+						return true, nil
+					},
+					// drainCapture returns none zero table count to let graceful shutdown retry.
+					drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+						return 1, false, nil
+					},
+				}
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
+			},
+		},
+		{
+			name:        "graceful upgrade retry is healthy",
+			errorExpect: true,
+			changePods: func(pods []*corev1.Pod) {
+				for i := range pods {
+					// Set all pods to the old revision.
+					pods[i].Labels[apps.ControllerRevisionHashLabelKey] = "1"
+				}
+			},
+			changeOldSet: func(set *apps.StatefulSet) {
+				// Upgrade from the ordinal 2.
+				set.Spec.UpdateStrategy = apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType,
+					RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
+						Partition: pointer.Int32Ptr(2),
+					},
+				}
+				set.Status = apps.StatefulSetStatus{
+					CurrentRevision: "1",
+					UpdateRevision:  "2",
+					ReadyReplicas:   2,
+					Replicas:        2,
+					CurrentReplicas: 2,
+					UpdatedReplicas: 0,
+				}
+			},
+			changeUpgrader: func(u *ticdcUpgrader) {
+				u.deps.CDCControl = &cdcCtlMock{
+					// resignOwner always success.
+					resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+						return true, nil
+					},
+					// drainCapture always success.
+					drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+						return 0, false, nil
+					},
+					// isHealthy returns false to let graceful shutdown retry.
+					isHealthy: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+						return false, nil
+					},
+				}
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
+			},
+		},
+		{
+			name:        "last graceful upgrade does not wait healthy",
+			errorExpect: false,
+			changeUpgrader: func(u *ticdcUpgrader) {
+				u.deps.CDCControl = &cdcCtlMock{
+					// resignOwner always success.
+					resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+						return true, nil
+					},
+					// drainCapture always success.
+					drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+						return 0, false, nil
+					},
+					// isHealthy returns false to let graceful shutdown retry.
+					isHealthy: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+						return false, nil
+					},
+				}
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiCDC.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(0)))
 			},
 		},
 		{
