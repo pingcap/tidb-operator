@@ -22,6 +22,6 @@ spec:
     clusters:
     - name: basic
     initializer:
-      baseImage: pingcap/dm-monitor-initializer
+      baseImage: pingcap/tidb-monitor-initializer
       version: v6.1.0
   imagePullPolicy: IfNotPresent

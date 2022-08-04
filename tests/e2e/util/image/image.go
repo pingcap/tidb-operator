@@ -45,15 +45,13 @@ const (
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
 	TiDBMonitorReloaderVersion    = "v1.0.1"
 	TiDBMonitorInitializerImage   = "pingcap/tidb-monitor-initializer"
-	TiDBMonitorInitializerVersion = "v4.0.10"
+	TiDBMonitorInitializerVersion = TiDBLatest
 	GrafanaImage                  = "grafana/grafana"
 	GrafanaVersion                = "6.1.6"
 	ThanosImage                   = "thanosio/thanos"
 	ThanosVersion                 = "v0.17.2"
 	DMV2Prev                      = TiDBLatestPrev
 	DMV2                          = TiDBLatest
-	DMMonitorInitializerImage     = "pingcap/dm-monitor-initializer"
-	DMMonitorInitializerVersion   = DMV2
 	TiDBNGMonitoringLatest        = TiDBLatest
 	HelperImage                   = "alpine:3.16.0"
 )

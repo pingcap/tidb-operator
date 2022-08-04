@@ -271,8 +271,8 @@ func UpdateTidbMonitorForDM(tm *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster) {
 		},
 		Initializer: v1alpha1.InitializerSpec{
 			MonitorContainer: v1alpha1.MonitorContainer{
-				BaseImage:            utilimage.DMMonitorInitializerImage,
-				Version:              utilimage.DMMonitorInitializerVersion,
+				BaseImage:            utilimage.TiDBMonitorInitializerImage,
+				Version:              utilimage.TiDBMonitorInitializerVersion,
 				ImagePullPolicy:      &imagePullPolicy,
 				ResourceRequirements: corev1.ResourceRequirements{},
 			},
