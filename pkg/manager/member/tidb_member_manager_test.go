@@ -2698,8 +2698,8 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 			},
 		},
 		{
-			name:   "zone labels not found",
-			labels: []string{"unknown"},
+			name:     "zone labels not found",
+			labels:   []string{"unknown"},
 			setCount: 0,
 		},
 		{
