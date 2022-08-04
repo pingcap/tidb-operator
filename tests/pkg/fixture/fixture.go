@@ -262,6 +262,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 
 func UpdateTidbMonitorForDM(tm *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster) {
 	imagePullPolicy := *tm.Spec.Initializer.ImagePullPolicy
+	tm.Spec.ClusterScoped = true
 	tm.Spec.DM = &v1alpha1.DMMonitorSpec{
 		Clusters: []v1alpha1.ClusterRef{
 			{

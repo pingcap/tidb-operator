@@ -151,7 +151,6 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			dc.Spec.Master.Replicas = 1
 			// test open openapi feature
 			dc.Spec.Master.Config = v1alpha1.NewMasterConfig()
-			dc.Spec.Master.Config.Set("experimental.openapi", true)
 			dc.Spec.Worker.Replicas = 1 // current versions of DM can always bind the first source to this only DM-worker instance.
 			dc.Spec.PodSecurityContext = &corev1.PodSecurityContext{
 				RunAsUser:  &userID,
@@ -191,9 +190,6 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			_, err = framework.RunHostCmd(ns, podName,
 				fmt.Sprintf("/dmctl --master-addr=127.0.0.1:8261 start-relay -s %s %s", sourceID, workerName))
 			framework.ExpectNoError(err, "failed to enable relay log for DmCluster %q", dcName)
-
-			ginkgo.By("try get dm openapi spec")
-			framework.ExpectNoError(tests.GetDMOpenAPISpec(fw, dc.Namespace, controller.DMMasterMemberName(dcName), tests.DMSingleTask, ""), "failed to try get dm openapi spec")
 
 			ginkgo.By("Generate full stage data in upstream")
 			framework.ExpectNoError(tests.GenDMFullData(fw, dc.Namespace), "failed to generate full stage data in upstream")
