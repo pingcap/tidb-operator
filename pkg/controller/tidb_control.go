@@ -147,7 +147,7 @@ func (c *defaultTiDBControl) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal i
 		return err
 	}
 
-	buffer := bytes.NewBuffer([]byte{})
+	buffer := bytes.NewBuffer(nil)
 	if err := json.NewEncoder(buffer).Encode(labels); err != nil {
 		return fmt.Errorf("encode labels to json failed, error: %v", err)
 	}

@@ -16,6 +16,7 @@ package controller
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -322,7 +323,6 @@ func TestGetHTTPClient(t *testing.T) {
 	}
 }
 
-
 func TestSetLabels(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -349,7 +349,9 @@ func TestSetLabels(t *testing.T) {
 			g.Expect(request.URL.Path).To(Equal("/labels"), "check url")
 			buffer := bytes.NewBuffer([]byte{})
 			g.Expect(json.NewEncoder(buffer).Encode(c.labels)).NotTo(HaveOccurred())
-			g.Expect(request.Body).To(Equal(buffer))
+			body, err := ioutil.ReadAll(request.Body)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(body).To(Equal(buffer.Bytes()))
 
 			w.Header().Set("Content-Type", ContentTypeJSON)
 			if c.failed {

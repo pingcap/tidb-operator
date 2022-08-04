@@ -2789,7 +2789,7 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 			name: "skip already labeled pods",
 			members: []Member{
 				{
-					node: "node-1",
+					node:    "node-1",
 					labeled: true,
 				},
 				{
