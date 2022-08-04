@@ -1080,7 +1080,8 @@ func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, erro
 		}
 	}
 	if zoneLabel == "" {
-		return 0, fmt.Errorf("zone labels not found in pd location-labels %v", config.Replication.LocationLabels)
+		klog.Infof("zone labels not found in pd location-labels %v, skip set labels", config.Replication.LocationLabels)
+		return 0, nil
 	}
 
 	for name, db := range tc.Status.TiDB.Members {

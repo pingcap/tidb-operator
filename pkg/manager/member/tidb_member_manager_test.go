@@ -176,6 +176,13 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		tcName := tc.GetName()
 
 		tmm, fakeSetControl, _, _ := newFakeTiDBMemberManager()
+		pdControl := tmm.deps.PDControl.(*pdapi.FakePDControl)
+		pdClient := controller.NewFakePDClient(pdControl, tc)
+		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
+			return &pdapi.PDConfigFromAPI{
+				Replication: &pdapi.PDReplicationConfig{},
+			}, nil
+		})
 
 		if test.statusChange == nil {
 			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
@@ -2169,6 +2176,13 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 		tcName := tc.GetName()
 
 		tmm, fakeSetControl, _, indexer := newFakeTiDBMemberManager()
+		pdControl := tmm.deps.PDControl.(*pdapi.FakePDControl)
+		pdClient := controller.NewFakePDClient(pdControl, tc)
+		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
+			return &pdapi.PDConfigFromAPI{
+				Replication: &pdapi.PDReplicationConfig{},
+			}, nil
+		})
 
 		err := tmm.Sync(tc)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -2686,10 +2700,7 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 		{
 			name:   "zone labels not found",
 			labels: []string{"unknown"},
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "zone labels not found in pd location-labels")).To(BeTrue())
-			},
+			setCount: 0,
 		},
 		{
 			name: "all members not health",
