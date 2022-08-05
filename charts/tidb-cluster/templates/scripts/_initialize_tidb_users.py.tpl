@@ -3,7 +3,7 @@ host = '{{ template "cluster.name" . }}-tidb'
 permit_host = {{ .Values.tidb.permitHost | default "%" | quote }}
 port = 4000
 conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
-{{- if .Values.tidb.passwordSecretName }}
+{{- if (include "tidb-cluster.tidb.passwordSecretName" .) }}
 password_dir = '/etc/tidb/password'
 for file in os.listdir(password_dir):
     if file.startswith('.'):
