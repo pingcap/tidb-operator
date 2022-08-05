@@ -166,3 +166,40 @@ config-file: |-
 {{- define "importer-configmap.data-digest" -}}
 {{ include "importer-configmap.data" . | sha256sum | trunc 8 }}
 {{- end -}}
+
+{{/*
+Get a new random password
+*/}}
+{{- define "tidb-cluster.randomPassword" -}}
+{{- randAlpha 1 -}}{{- randAlphaNum 9 -}}
+{{- end -}}
+
+{{/*
+Get password secret name
+*/}}
+{{- define "tidb-cluster.tidb.passwordSecretName" }}
+{{- if .Values.tidb.passwordSecretName }}
+{{- .Values.tidb.passwordSecretName }}
+{{- else -}}
+{{- if .Values.tidb.auth.create -}}
+{{ printf "%s-tidb" (include "tidb-cluster.fullname" .) }}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Get password or generate random
+*/}}
+{{- define "tidb-cluster.tidb.password" }}
+{{- if .Values.tidb.auth.password }}
+{{- .Values.tidb.auth.password }}
+{{- else -}}
+{{- $secrets := (lookup "v1" "Secret" .Release.Namespace (include "tidb-cluster.tidb.passwordSecretName" .)).data -}}
+{{- $key := (printf "%s-password" .Values.tidb.auth.username) -}}
+{{- if hasKey $secrets $key }}
+{{- index $secrets $key | b64dec -}}
+{{- else -}}
+{{- include "tidb-cluster.randomPassword" . -}}
+{{- end -}}
+{{- end -}}
+{{- end }}

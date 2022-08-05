@@ -1,4 +1,4 @@
-{{- if or .Values.tidb.passwordSecretName .Values.tidb.permitHost .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
+{{- if or (include "tidb-cluster.tidb.passwordSecretName" .) .Values.tidb.permitHost .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -56,9 +56,9 @@ spec:
         - -c
         - |
 {{ tuple "scripts/_initialize_tidb_users.py.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
-        {{- if or .Values.tidb.passwordSecretName .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
+        {{- if or (include "tidb-cluster.tidb.passwordSecretName" .) .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
         volumeMounts:
-          {{- if .Values.tidb.passwordSecretName }}
+          {{- if (include "tidb-cluster.tidb.passwordSecretName" .) }}
           - name: password
             mountPath: /etc/tidb/password
             readOnly: true
@@ -80,12 +80,12 @@ spec:
       {{- end }}
         resources:
 {{ toYaml .Values.tidb.initializer.resources | indent 10 }}
-      {{- if or .Values.tidb.passwordSecretName .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
+      {{- if or (include "tidb-cluster.tidb.passwordSecretName" .) .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
       volumes:
-        {{- if .Values.tidb.passwordSecretName }}
+        {{- if (include "tidb-cluster.tidb.passwordSecretName" .) }}
         - name: password
           secret:
-            secretName: {{ .Values.tidb.passwordSecretName }}
+            secretName: {{ template "tidb-cluster.tidb.passwordSecretName" . }}
         {{- end }}
         {{- if .Values.tidb.initSqlConfigMapName }}
         - name: init-sql

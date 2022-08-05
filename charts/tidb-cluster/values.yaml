@@ -345,6 +345,10 @@ tidb:
   # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
   # passwordSecretName: tidb-secret
+  auth:
+    create: false
+    username: root
+    password: ""
   # permitHost is the host which will only be allowed to connect to the TiDB.
   # If unset, defaults to '%' which means allow any host to connect to the TiDB.
   # permitHost: 127.0.0.1

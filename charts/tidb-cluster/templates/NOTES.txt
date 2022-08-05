@@ -3,17 +3,17 @@ Cluster Startup
      watch kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
 2. List services in the tidb-cluster
      kubectl get services --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
-{{- if .Values.tidb.passwordSecretName }}
+{{- if (include "tidb-cluster.tidb.passwordSecretName" .) }}
 3. Wait until tidb-initializer pod becomes completed
      watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=tidb-initializer
 4. Get the TiDB password
-     kubectl get secret -n {{ .Release.Namespace }} {{ .Values.tidb.passwordSecretName }} -ojsonpath='{.data.root}' | base64 --decode
+     kubectl get secret -n {{ .Release.Namespace }} {{ template "tidb-cluster.tidb.passwordSecretName" . }} -ojsonpath='{.data.root}' | base64 --decode
 {{- end }}
 
 Cluster access
 * Access tidb-cluster using the MySQL client
     kubectl port-forward -n {{ .Release.Namespace }} svc/{{ template "cluster.name" . }}-tidb 4000:4000 &
-{{- if .Values.tidb.passwordSecretName }}
+{{- if (include "tidb-cluster.tidb.passwordSecretName" .) }}
     mysql -h 127.0.0.1 -P 4000 -u root -D test -p
 {{- else }}
     mysql -h 127.0.0.1 -P 4000 -u root -D test
