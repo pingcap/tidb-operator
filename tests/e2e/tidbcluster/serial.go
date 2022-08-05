@@ -708,16 +708,12 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 				ginkgo.By("Deploy original TiDB cluster")
 				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
-<<<<<<< HEAD
-				selector := MustGetLabelSelectorForComponents(tcName, label.DiscoveryLabelVal, label.PumpLabelVal) // ingore discovery and pump
-=======
 				selector := MustGetLabelSelectorForComponents(tcName,
 					label.DiscoveryLabelVal,
 					label.PumpLabelVal,
 					label.TiCDCLabelVal,   // ingore ticdc because of PR #4494
 					label.TiFlashLabelVal, // ingore tiflash because of PR #4358
 				)
->>>>>>> 00002ede5... update images of tidb and operator in e2e (#4548)
 				pods := utilpod.MustListPods(selector.String(), ns, c)
 
 				ginkgo.By("Upgrade TiDB Operator and CRDs to current version")
