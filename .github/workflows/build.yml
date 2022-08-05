@@ -29,7 +29,7 @@ jobs:
 
       - name: Build
         run: |
-          set -ex
+          set -e
           cd charts/
           VERSION=$(date +"%y.%m.%d")
           for item in $(ls); do
