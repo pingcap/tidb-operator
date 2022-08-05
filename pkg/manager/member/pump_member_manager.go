@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -56,13 +57,15 @@ type pumpMemberManager struct {
 	scaler Scaler
 	// only use for test
 	binlogClient binlogClient
+	suspender    suspender.Suspender
 }
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
-func NewPumpMemberManager(deps *controller.Dependencies, scaler Scaler) manager.Manager {
+func NewPumpMemberManager(deps *controller.Dependencies, scaler Scaler, spder suspender.Suspender) manager.Manager {
 	return &pumpMemberManager{
-		deps:   deps,
-		scaler: scaler,
+		deps:      deps,
+		scaler:    scaler,
+		suspender: spder,
 	}
 }
 
@@ -70,6 +73,18 @@ func (m *pumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.Pump == nil {
 		return nil
 	}
+
+	// skip sync if pump is suspended
+	component := v1alpha1.PumpMemberType
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	if err := m.syncHeadlessService(tc); err != nil {
 		return err
 	}
@@ -461,8 +476,13 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	if serviceAccountName == "" {
 		serviceAccountName = tc.Spec.ServiceAccount
 	}
+
 	podSpec := spec.BuildPodSpec()
-	podSpec.Containers = containers
+	podSpec.Containers, err = MergePatchContainers(containers, tc.Spec.Pump.AdditionalContainers)
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for Pump of [%s/%s], error: %v", objMeta.Namespace, objMeta.Name, err)
+	}
+
 	podSpec.Volumes = volumes
 	podSpec.ServiceAccountName = serviceAccountName
 	// TODO: change to set field in BuildPodSpec

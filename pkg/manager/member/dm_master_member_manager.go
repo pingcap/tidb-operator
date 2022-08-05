@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -47,22 +48,36 @@ const (
 )
 
 type masterMemberManager struct {
-	deps     *controller.Dependencies
-	scaler   Scaler
-	upgrader DMUpgrader
-	failover DMFailover
+	deps      *controller.Dependencies
+	scaler    Scaler
+	upgrader  DMUpgrader
+	failover  DMFailover
+	suspender suspender.Suspender
 }
 
 // NewMasterMemberManager returns a *masterMemberManager
-func NewMasterMemberManager(deps *controller.Dependencies, masterScaler Scaler, masterUpgrader DMUpgrader, masterFailover DMFailover) manager.DMManager {
+func NewMasterMemberManager(deps *controller.Dependencies, masterScaler Scaler, masterUpgrader DMUpgrader, masterFailover DMFailover, spder suspender.Suspender) manager.DMManager {
 	return &masterMemberManager{
-		deps:     deps,
-		scaler:   masterScaler,
-		upgrader: masterUpgrader,
-		failover: masterFailover}
+		deps:      deps,
+		scaler:    masterScaler,
+		upgrader:  masterUpgrader,
+		failover:  masterFailover,
+		suspender: spder,
+	}
 }
 
 func (m *masterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
+	// skip sync if dm master is suspended
+	component := v1alpha1.DMMasterMemberType
+	needSuspend, err := m.suspender.SuspendComponent(dc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, dc.GetNamespace(), dc.GetName())
+		return nil
+	}
+
 	// Sync dm-master Service
 	if err := m.syncMasterServiceForDMCluster(dc); err != nil {
 		return err
@@ -675,7 +690,12 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	masterContainer.Env = util.AppendEnv(env, baseMasterSpec.Env())
 	masterContainer.EnvFrom = baseMasterSpec.EnvFrom()
 	podSpec.Volumes = append(vols, baseMasterSpec.AdditionalVolumes()...)
-	podSpec.Containers = append([]corev1.Container{masterContainer}, baseMasterSpec.AdditionalContainers()...)
+
+	podSpec.Containers, err = MergePatchContainers([]corev1.Container{masterContainer}, baseMasterSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for DC [%s/%s], error: %v", dc.Namespace, dc.Name, err)
+	}
+
 	var initContainers []corev1.Container // no default initContainers now
 	podSpec.InitContainers = append(initContainers, baseMasterSpec.InitContainers()...)
 

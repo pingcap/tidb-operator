@@ -1971,7 +1971,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update components version to %q", componentVersion)
-			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 20*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check components version")
@@ -2159,36 +2159,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		// upgrdae testing for specific versions
 		utilginkgo.ContextWhenFocus("Specific Version", func() {
-			configureV4x0x9 := func(tc *v1alpha1.TidbCluster) {
-				pdCfg := v1alpha1.NewPDConfig()
-				tikvCfg := v1alpha1.NewTiKVConfig()
-				tidbCfg := v1alpha1.NewTiDBConfig()
-				tiflashCfg := v1alpha1.NewTiFlashConfig()
-				pdCfg.Set("log.level", "info")
-				pdCfg.SetTable("replication",
-					"max-replicas", 3,
-					"location-labels", []string{"failure-domain.beta.kubernetes.io/region", "failure-domain.beta.kubernetes.io/zone", "kubernetes.io/hostname"})
-				pdCfg.SetTable("dashboard",
-					"internal-proxy", true,
-					"enable-telemetry", false)
-				tidbCfg.Set("new_collations_enabled_on_first_bootstrap", true)
-				tidbCfg.Set("enable-telemetry", false)
-				tidbCfg.Set("log.level", "info")
-				tidbCfg.SetTable("performance",
-					"max-procs", 0,
-					"tcp-keep-alive", true)
-				tikvCfg.Set("log.level", "info")
-				tikvCfg.Set("readpool.storage.use-unified-pool", true)
-				tikvCfg.Set("readpool.coprocessor.use-unified-pool", true)
-				tiflashCfg.Common.Set("mark_cache_size", 2147483648)
-				tiflashCfg.Common.Set("minmax_index_cache_size", 2147483648)
-				tiflashCfg.Common.Set("max_memory_usage", 10737418240)
-				tiflashCfg.Common.Set("max_memory_usage_for_all_queries", 32212254720)
-				tc.Spec.PD.Config = pdCfg
-				tc.Spec.TiKV.Config = tikvCfg
-				tc.Spec.TiDB.Config = tidbCfg
-				tc.Spec.TiFlash.Config = tiflashCfg
-			}
 			configureV5x0x0 := func(tc *v1alpha1.TidbCluster) {
 				pdCfg := v1alpha1.NewPDConfig()
 				tikvCfg := v1alpha1.NewTiKVConfig()
@@ -2292,12 +2262,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 
 			cases := []upgradeCase{
-				{
-					oldVersion:              utilimage.TiDBV4x0x9,
-					newVersion:              utilimage.TiDBLatest,
-					configureOldTiDBCluster: configureV4x0x9,
-					configureNewTiDBCluster: configureV5x1x0,
-				},
 				{
 					oldVersion:              utilimage.TiDBV5x0x0,
 					newVersion:              utilimage.TiDBLatest,

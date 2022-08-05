@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 
 	"github.com/google/go-cmp/cmp"
@@ -53,12 +54,13 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 	}
 
 	type testcase struct {
-		name           string
-		prepare        func(cluster *v1alpha1.TidbCluster)
-		errOnCreateSet bool
-		errOnCreateCm  bool
-		errOnCreateSvc bool
-		expectFn       func(*GomegaWithT, *result)
+		name             string
+		prepare          func(cluster *v1alpha1.TidbCluster)
+		errOnCreateSet   bool
+		errOnCreateCm    bool
+		errOnCreateSvc   bool
+		suspendComponent func() (bool, error)
+		expectFn         func(*GomegaWithT, *result)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -80,6 +82,11 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 		}
 		if test.errOnCreateCm {
 			ctls.generic.SetCreateOrUpdateError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.suspendComponent != nil {
+			pmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+				return test.suspendComponent()
+			}
 		}
 
 		syncErr := pmm.Sync(tc)
@@ -158,6 +165,20 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 				g.Expect(r.getSet).NotTo(Succeed())
 				g.Expect(r.getCm).NotTo(Succeed())
 				g.Expect(r.getSvc).To(Succeed())
+			},
+		},
+		{
+			name:             "skip create when suspend",
+			suspendComponent: func() (bool, error) { return true, nil },
+			prepare:          nil,
+			errOnCreateSet:   true,
+			errOnCreateCm:    true,
+			errOnCreateSvc:   true,
+			expectFn: func(g *GomegaWithT, r *result) {
+				g.Expect(r.sync).To(Succeed())
+				g.Expect(r.getSet).NotTo(Succeed())
+				g.Expect(r.getCm).NotTo(Succeed())
+				g.Expect(r.getSvc).NotTo(Succeed())
 			},
 		},
 	}
@@ -438,6 +459,7 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 		deps:         fakeDeps,
 		scaler:       NewFakePumpScaler(),
 		binlogClient: &fakeBinlogClient{},
+		suspender:    suspender.NewFakeSuspender(),
 	}
 	controls := &pumpFakeControls{
 		svc:     fakeDeps.ServiceControl.(*controller.FakeServiceControl),
