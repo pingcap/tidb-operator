@@ -79,7 +79,9 @@ spec:
       name: data
     spec:
       accessModes: [ "ReadWriteOnce" ]
+    {{- if .Values.binlog.drainer.storageClassName }}
       storageClassName: {{ .Values.binlog.drainer.storageClassName }}
+    {{- end }}
       resources:
         requests:
           storage: {{ .Values.binlog.drainer.storage }}
