@@ -24,7 +24,6 @@ import (
 	"github.com/onsi/ginkgo"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
-	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -145,31 +144,14 @@ var _ = ginkgo.Describe("DMCluster", func() {
 		ginkgo.It("basic feature for DM", func() {
 			ginkgo.By("Deploy a basic dc")
 			dcName = "basic-dm"
-			userID := int64(1000)
-			groupID := int64(2000)
 			dc := fixture.GetDMCluster(ns, dcName, utilimage.DMV2)
 			dc.Spec.Master.Replicas = 1
 			// test open openapi feature
 			dc.Spec.Master.Config = v1alpha1.NewMasterConfig()
 			dc.Spec.Worker.Replicas = 1 // current versions of DM can always bind the first source to this only DM-worker instance.
-			dc.Spec.PodSecurityContext = &corev1.PodSecurityContext{
-				RunAsUser:  &userID,
-				RunAsGroup: &groupID,
-				FSGroup:    &groupID,
-			}
 			_, err := cli.PingcapV1alpha1().DMClusters(dc.Namespace).Create(context.TODO(), dc, metav1.CreateOptions{})
 			framework.ExpectNoError(err, "failed to create DmCluster: %q", dcName)
 			framework.ExpectNoError(oa.WaitForDmClusterReady(dc, 30*time.Minute, 30*time.Second), "failed to wait for DmCluster %q ready", dcName)
-
-			ginkgo.By("Check security context for DmCluster")
-			podList, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-			framework.ExpectNoError(err, "failed to list pods for DmCluster %q", dcName)
-			for _, pod := range podList.Items {
-				framework.ExpectNotEqual(pod.Spec.SecurityContext, nil, "security context should not be nil")
-				framework.ExpectEqual(pod.Spec.SecurityContext.RunAsUser, &userID, "runAsUser should be %d", userID)
-				framework.ExpectEqual(pod.Spec.SecurityContext.RunAsGroup, &groupID, "runAsGroup should be %d", groupID)
-				framework.ExpectEqual(pod.Spec.SecurityContext.FSGroup, &groupID, "fsGroup should be %d", groupID)
-			}
 
 			ginkgo.By("Deploy TidbMonitor for DM")
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tests.DMTiDBNamespace).Get(context.TODO(), tests.DMTiDBName, metav1.GetOptions{})
@@ -474,7 +456,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
     ssl-key: /var/lib/source-tls/%[1]s/tls.key
 `, tidbClientSecretName))
 			taskCfg = strings.ReplaceAll(taskCfg, "dm-tidb-tidb.dm-tidb", fmt.Sprintf("%s-tidb", dcName))
-			taskCfg = fmt.Sprintf(taskCfg, ns, ns)
+			taskCfg = fmt.Sprintf(taskCfg, tests.DMTaskName(ns), tests.DMTaskName(ns))
 			filename = "/tmp/dm-with-tls-task.yaml"
 			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(taskCfg), 0o644), "failed to write task config file")
 			_, err = framework.RunKubectl(ns, "cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))
