@@ -2590,7 +2590,6 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 		name       string
 		node       string
 		nodeLabels map[string]string
-		labeled    bool
 		unHealth   bool
 	}
 
@@ -2631,9 +2630,6 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 					Spec: corev1.PodSpec{
 						NodeName: m.node,
 					},
-				}
-				if m.labeled {
-					pod.Annotations = map[string]string{"labeled": "true"}
 				}
 				indexers.pod.Add(pod)
 			}
@@ -2792,19 +2788,6 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 				{
 					node:     "node-2",
 					unHealth: true,
-				},
-			},
-			setCount: 1,
-		},
-		{
-			name: "skip already labeled pods",
-			members: []Member{
-				{
-					node:    "node-1",
-					labeled: true,
-				},
-				{
-					node: "node-1",
 				},
 			},
 			setCount: 1,

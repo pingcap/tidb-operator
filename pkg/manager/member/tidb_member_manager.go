@@ -39,10 +39,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
@@ -1097,10 +1095,6 @@ func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, erro
 		if err != nil {
 			return setCount, fmt.Errorf("setServerLabels: failed to get pods %s for cluster %s/%s, error: %s", name, ns, tc.GetName(), err)
 		}
-		// already labeled
-		if labeled, ok := pod.Annotations["labeled"]; ok && labeled == "true" {
-			continue
-		}
 
 		nodeName := pod.Spec.NodeName
 		labels, err := getNodeLabels(m.deps.NodeLister, nodeName, config.Replication.LocationLabels)
@@ -1115,32 +1109,8 @@ func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, erro
 			klog.Warningf("cluster %s/%s set server labels for pod %s failed, error: %v", ns, tc.GetName(), name, err)
 			continue
 		}
-		if pod.Annotations == nil {
-			pod.Annotations = make(map[string]string, 1)
-		}
-		pod.Annotations["labeled"] = "true"
-		setCount++
-		if err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-			_, err := m.deps.KubeClientset.CoreV1().Pods(ns).Update(context.TODO(), pod, metav1.UpdateOptions{})
-			if err == nil {
-				return nil
-			}
 
-			klog.Warningf("failed to update pod: %s/%s, error: %v", ns, name, err)
-			if updated, err := m.deps.PodLister.Pods(ns).Get(name); err == nil {
-				// already annotated, skip retry
-				if updated.Annotations["labeled"] == "true" {
-					return nil
-				}
-				pod = updated.DeepCopy()
-				pod.Annotations["labeled"] = "true"
-			} else {
-				utilruntime.HandleError(fmt.Errorf("error getting updated pod %s/%s from lister: %v", ns, name, err))
-			}
-			return err
-		}); err != nil {
-			klog.Warningf("Add label annotation for pod %s/%s failed, ignore error: %v", ns, name, err)
-		}
+		setCount++
 	}
 
 	return setCount, nil
