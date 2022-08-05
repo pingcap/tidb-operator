@@ -284,8 +284,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 	utilginkgo.ContextWhenFocus("Specific Version", func() {
 		cases := []*testcase{
-			newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR),
-			newTestCase(utilimage.TiDBV4x0x9, utilimage.TiDBLatest, typeBR),
 			newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBLatest, typeBR),
 			newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBLatest, typeBR),
 		}

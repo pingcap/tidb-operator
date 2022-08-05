@@ -307,7 +307,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 					},
 					Initializer: v1alpha1.InitializerSpec{
 						MonitorContainer: v1alpha1.MonitorContainer{
-							BaseImage: "pingcap/dm-monitor-initializer",
+							BaseImage: "pingcap/tidb-monitor-initializer",
 							Version:   "v2.0.0",
 						},
 					},

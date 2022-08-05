@@ -27,17 +27,15 @@ import (
 )
 
 var (
-	TiDBPreviousVersions []string = []string{"v4.0.16", "v5.0.6", "v5.1.4", "v5.2.3", "v5.3.0"}
+	TiDBPreviousVersions []string = []string{"v5.0.6", "v5.1.4", "v5.2.4", "v5.3.2", "v5.4.2"}
 )
 
 const (
 	// TiDB Version
-	TiDBV3             = "v3.0.20"
-	TiDBLatestPrev     = "v5.3.0"
-	TiDBLatest         = "v5.4.0"
+	TiDBLatestPrev     = "v6.0.0"
+	TiDBLatest         = "v6.1.0"
 	TiDBNightlyVersion = "nightly"
 	// specific version
-	TiDBV4x0x9 = "v4.0.9"
 	TiDBV5x0x0 = "v5.0.0"
 	TiDBV5x0x2 = "v5.0.2"
 	TiDBV5x3   = "v5.3.0"
@@ -47,16 +45,14 @@ const (
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
 	TiDBMonitorReloaderVersion    = "v1.0.1"
 	TiDBMonitorInitializerImage   = "pingcap/tidb-monitor-initializer"
-	TiDBMonitorInitializerVersion = "v4.0.10"
+	TiDBMonitorInitializerVersion = TiDBLatest
 	GrafanaImage                  = "grafana/grafana"
 	GrafanaVersion                = "6.1.6"
 	ThanosImage                   = "thanosio/thanos"
 	ThanosVersion                 = "v0.17.2"
-	DMV2Prev                      = "v2.0.7"
+	DMV2Prev                      = TiDBLatestPrev
 	DMV2                          = TiDBLatest
-	DMMonitorInitializerImage     = "pingcap/dm-monitor-initializer"
-	DMMonitorInitializerVersion   = DMV2
-	TiDBNGMonitoringLatest        = "v5.4.0"
+	TiDBNGMonitoringLatest        = TiDBLatest
 	HelperImage                   = "alpine:3.16.0"
 )
 

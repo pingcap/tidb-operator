@@ -11,7 +11,7 @@ spec:
     version: 7.5.11
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v5.4.1
+    version: v6.1.0
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
@@ -19,6 +19,6 @@ spec:
     clusters:
     - name: basic
     initializer:
-      baseImage: pingcap/dm-monitor-initializer
-      version: v5.4.1
+      baseImage: pingcap/tidb-monitor-initializer
+      version: v6.1.0
   imagePullPolicy: IfNotPresent

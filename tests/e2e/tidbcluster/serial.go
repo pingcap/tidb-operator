@@ -688,6 +688,171 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				err := utilpod.WaitForPodsAreChanged(c, pods, time.Minute*5)
 				framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
 			})
+<<<<<<< HEAD
+=======
+
+			ginkgo.Context("Admission Webhook", func() {
+				ginkgo.BeforeEach(func() {
+					setOperatorConfig = func(oa *tests.OperatorConfig) {
+						oa.TestMode = true
+						oa.WebhookEnabled = true
+						oa.StsWebhookEnabled = true
+					}
+				})
+
+				ginkgo.It("should be able to be deployed", func() {
+					ginkgo.By("Wait old webhook pods to become ready")
+					err := oa.WaitAdmissionWebhookReady(ocfg, time.Minute*3, time.Second*10)
+					framework.ExpectNoError(err, "failed to wait old webhook pods to become ready")
+
+					ginkgo.By("Upgrade TiDB Operator and CRDs to current version")
+					ocfg.Tag = cfg.OperatorTag
+					ocfg.Image = cfg.OperatorImage
+					oa.ReplaceCRDOrDie(ocfg)
+					oa.UpgradeOperatorOrDie(ocfg)
+
+					ginkgo.By("Wait webhook pods to become ready")
+					err = oa.WaitAdmissionWebhookReady(ocfg, time.Minute*3, time.Second*10)
+					framework.ExpectNoError(err, "failed to wait webhook pods to become ready")
+				})
+			})
+		})
+
+		ginkgo.Context("From prev major version", func() {
+
+			ginkgo.BeforeEach(func() {
+				operatorVersion = OperatorPrevMajorVersion
+			})
+
+			type testCase struct {
+				name string
+				tls  bool
+			}
+			cases := []testCase{
+				{
+					name: "should not trigger rolling-update and database work fine",
+					tls:  false,
+				},
+				{
+					name: "should not trigger rolling-update and database work fine with TLS-enabled",
+					tls:  true,
+				},
+			}
+
+			for i := range cases {
+				testcase := cases[i]
+				ginkgo.It(testcase.name, func() {
+					dbName := "test"
+					tables := []string{"test_0", "test_1", "test_2"}
+					recordCount := 30
+					batchCount := 100
+					expectCount := recordCount * batchCount
+					bw := blockwriter.New(blockwriter.WithTableNum(len(tables)),
+						blockwriter.WithRecordNum(recordCount),
+						blockwriter.WithBatchSize(batchCount),
+						blockwriter.WithGenTableName(func(nr int) string {
+							return tables[nr]
+						}))
+
+					tcName := fmt.Sprintf("upgrade-operator-from-%s", strings.ReplaceAll(operatorVersion, ".", "x"))
+					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)
+					tc = fixture.AddTiFlashForTidbCluster(tc)
+					tc = fixture.AddTiCDCForTidbCluster(tc)
+					tc = fixture.AddPumpForTidbCluster(tc)
+					tc.Spec.PD.Replicas = 1
+					tc.Spec.TiKV.Replicas = 1
+					tc.Spec.TiDB.Replicas = 1
+					tc.Spec.TiFlash.Replicas = 1
+
+					if testcase.tls {
+						tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+						tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+
+						ginkgo.By("Installing tidb CA certificate")
+						err := InstallTiDBIssuer(ns, tcName)
+						framework.ExpectNoError(err, "failed to install CA certificate")
+
+						ginkgo.By("Installing tidb server and client certificate")
+						err = InstallTiDBCertificates(ns, tcName)
+						framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+						ginkgo.By("Installing tidbInitializer client certificate")
+						err = installTiDBInitializerCertificates(ns, tcName)
+						framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+
+						ginkgo.By("Installing dashboard client certificate")
+						err = installPDDashboardCertificates(ns, tcName)
+						framework.ExpectNoError(err, "failed to install dashboard client certificate")
+
+						ginkgo.By("Installing tidb components certificates")
+						err = InstallTiDBComponentsCertificates(ns, tcName)
+						framework.ExpectNoError(err, "failed to install tidb components certificates")
+					}
+
+					ginkgo.By("Deploy original TiDB cluster with prev version")
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+					selector := MustGetLabelSelectorForComponents(tcName,
+						label.DiscoveryLabelVal, // ingore discovery
+						label.TiFlashLabelVal,   // TODO: ingore tiflash because of PR #4358, remove it after prev major version is greater than v1.2.x
+					)
+					pods := utilpod.MustListPods(selector.String(), ns, c)
+
+					dsn, fwcancel, err := utiltidb.PortForwardAndGetTiDBDSN(fw, ns, tcName, "root", "", dbName)
+					framework.ExpectNoError(err, "failed to get dsn")
+					defer fwcancel()
+					db := utildb.NewDatabaseOrDie(dsn)
+					defer db.Close()
+
+					ginkgo.By("Prepare data in database")
+					err = bw.Write(context.Background(), dsn)
+					framework.ExpectNoError(err, "failed to write data")
+
+					ginkgo.By("Create TiFlash replicas for table 0 and ensure it is ready")
+					MustCreateTiFlashReplicationForTable(db, dbName, tables[0], expectCount)
+
+					ginkgo.By("Upgrade TiDB Operator and CRDs to current version")
+					ocfg.Tag = cfg.OperatorTag
+					ocfg.Image = cfg.OperatorImage
+					oa.ReplaceCRDOrDie(ocfg)
+					oa.UpgradeOperatorOrDie(ocfg)
+
+					ginkgo.By("Wait for pods are not changed in 5 minutes")
+					err = utilpod.WaitForPodsAreChanged(c, pods, time.Minute*5)
+					framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
+
+					ginkgo.By("Ensure records in table 0 have not changed after upgrading TiDB Operator")
+					EnsureRecordsNotChangedForTables(db, "tiflash", dbName, tables[0:1], expectCount)
+					EnsureRecordsNotChangedForTables(db, "tikv", dbName, tables[0:1], expectCount)
+
+					ginkgo.By("Create TiFlash replicas for table 1 and ensure it is ready")
+					MustCreateTiFlashReplicationForTable(db, dbName, tables[1], expectCount)
+
+					ginkgo.By("Update TiDB cluster to latest version")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.Version = utilimage.TiDBLatest
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 7*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "waiting for cluster %q ready", tcName)
+
+					// reopen db after upgrade
+					dsn2, fwcancel2, err := utiltidb.PortForwardAndGetTiDBDSN(fw, ns, tcName, "root", "", dbName)
+					framework.ExpectNoError(err, "failed to get dsn")
+					defer fwcancel2()
+					db2 := utildb.NewDatabaseOrDie(dsn2)
+					defer db2.Close()
+
+					ginkgo.By("Ensure records in table 0 and table 1 have not changed after upgrading TiDB Operator")
+					EnsureRecordsNotChangedForTables(db2, "tiflash", dbName, tables[0:2], expectCount)
+					EnsureRecordsNotChangedForTables(db2, "tikv", dbName, tables[0:2], expectCount)
+
+					ginkgo.By("Create TiFlash replicas for table 2 and ensure it is ready")
+					MustCreateTiFlashReplicationForTable(db2, dbName, tables[2], expectCount)
+				})
+			}
+
+>>>>>>> 00002ede5... update images of tidb and operator in e2e (#4548)
 		})
 
 		ginkgo.Context("From v1.1.7", func() {
@@ -708,7 +873,16 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 				ginkgo.By("Deploy original TiDB cluster")
 				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
+<<<<<<< HEAD
 				selector := MustGetLabelSelectorForComponents(tcName, label.DiscoveryLabelVal, label.PumpLabelVal) // ingore discovery and pump
+=======
+				selector := MustGetLabelSelectorForComponents(tcName,
+					label.DiscoveryLabelVal,
+					label.PumpLabelVal,
+					label.TiCDCLabelVal,   // ingore ticdc because of PR #4494
+					label.TiFlashLabelVal, // ingore tiflash because of PR #4358
+				)
+>>>>>>> 00002ede5... update images of tidb and operator in e2e (#4548)
 				pods := utilpod.MustListPods(selector.String(), ns, c)
 
 				ginkgo.By("Upgrade TiDB Operator and CRDs to current version")
