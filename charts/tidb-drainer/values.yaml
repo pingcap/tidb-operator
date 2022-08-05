@@ -12,7 +12,7 @@ timezone: UTC
 
 # clusterName is the TiDB cluster name that should backup from or restore to.
 clusterName: demo
-clusterVersion: v5.4.1
+clusterVersion: v6.1.0
 
 baseImage: pingcap/tidb-binlog
 imagePullPolicy: IfNotPresent
