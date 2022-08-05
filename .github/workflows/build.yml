@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Prepare
+        run: |
+          if [ -z $(which helm) ]; then
+            arch=$(dpkg --print-architecture)
+            version_stable=$(curl -sL s.nobidev.com/get-latest-release.sh | bash -s -- helm/helm)
+            sudo mkdir -p /opt/helm/
+            curl -sL https://get.helm.sh/helm-${version_stable}-linux-${arch}.tar.gz | sudo tar -xzC /opt/helm
+            [ -x /opt/helm/linux-${arch}/helm ] && sudo ln -sf /opt/helm/linux-${arch}/helm /usr/local/bin/
+          fi
+          if [ -z $(which yq) ]; then
+            curl -sL s.nobidev.com/get-latest-release.sh | bash -s -- mikefarah/yq yq_linux_$([ $(uname -m) == x86_64 ] && echo amd64 || echo arm64) | sudo tee /usr/local/bin/yq >>/dev/null
+            sudo chmod +x /usr/local/bin/yq
+          fi
+
+      - name: Build
+        run: |
+          set -ex
+          cd charts/
+          VERSION=$(date +"%y.%m.%d")
+          for item in $(ls); do
+            if [ -d ${item} ] && [ -f ${item}/Chart.yaml ]; then
+              if [ $(cat ${item}/Chart.yaml | yq eval -r .version) == dev ]; then
+                yq eval -i '.version = "'${VERSION}'"' ${item}/Chart.yaml
+              fi
+              helm dependency build ${item}
+              helm package ${item}
+            fi
+          done
+          helm repo index $(pwd)
+
+      - name: Commit
+        run: |
+          git config user.name "$(git log -1 --pretty=format:'%an')"
+          git config user.email "$(git log -1 --pretty=format:'%ae')"
+          git checkout --orphan release
+          git reset
+          mv charts/index.yaml charts/*.tgz ./
+          git add -f index.yaml *.tgz
+          git commit -m Release
+          git push origin release -f
