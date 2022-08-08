@@ -2,10 +2,36 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 	def GITHASH
 	def ACCESS_KEY
 	def SECRET_KEY
-	def UCLOUD_OSS_URL = "http://pingcap-dev.hk.ufileos.com"
+	def FILE_SERVER_URL = "http://fileserver.pingcap.net"
+    def FILE_BASE_DIR = "pingcap/tidb-operator"
 
 	catchError {
-		node('delivery-dind-2010') {
+		def delivery_pod_label = "${JOB_NAME}-${BUILD_NUMBER}"
+		podTemplate(label: delivery_pod_label,
+				cloud: "kubernetes-ng",
+				namespace: "jenkins-tidb-operator",
+				idleMinutes: 0,
+				containers: [
+						containerTemplate(
+							name: 'delivery', alwaysPullImage: true,
+							image: "hub.pingcap.net/jenkins/jenkins-slave-centos7:delivery3", 
+							ttyEnabled: true,  privileged: true,
+							resourceRequestCpu: '2000m', resourceRequestMemory: '4Gi',
+							command: '/bin/sh -c', args: 'cat' 
+						),
+						containerTemplate(
+							name: 'dind', alwaysPullImage: false,
+							image: "docker:20.10.13-dind", ttyEnabled: true, privileged: true,
+							resourceRequestCpu: '2000m', resourceRequestMemory: '4Gi',
+							envVars: [containerEnvVar(key: 'DOCKER_TLS_CERTDIR', value: '')]    
+						)
+				],
+				volumes: [
+						emptyDirVolume(mountPath: '/var/lib/docker', memory: false),
+						secretVolume(secretName: 'operator-staging-kubeconfig', mountPath: '/home/jenkins/.kubeconfig'),
+				],
+		) {
+		node(delivery_pod_label) {
 			container("delivery") {
 				def WORKSPACE = pwd()
 				withCredentials([string(credentialsId: "${env.QN_ACCESS_KET_ID}", variable: 'QN_access_key'), string(credentialsId: "${env.QN_SECRET_KEY_ID}", variable: 'Qiniu_secret_key')]) {
@@ -18,9 +44,9 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 
 				dir("${WORKSPACE}/operator") {
 					stage('Download tidb-operator binary'){
-						GITHASH = sh(returnStdout: true, script: "curl ${UCLOUD_OSS_URL}/refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1").trim()
+						GITHASH = sh(returnStdout: true, script: "curl ${FILE_SERVER_URL}/download/${FILE_BASE_DIR}/refs/${BUILD_BRANCH}/sha1").trim()
 						sh """
-						curl ${UCLOUD_OSS_URL}/builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz | tar xz
+						curl ${FILE_SERVER_URL}/download/${FILE_BASE_DIR}/builds/${GITHASH}/tidb-operator.tar.gz | tar xz
 
 						wget https://github.com/docker/buildx/releases/download/v0.8.0/buildx-v0.8.0.linux-amd64 -O /usr/bin/buildx
                         chmod +x /usr/bin/buildx
@@ -91,6 +117,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 					}
 				}
 			}
+		}
 		}
 		currentBuild.result = "SUCCESS"
 	}

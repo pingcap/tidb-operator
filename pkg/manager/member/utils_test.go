@@ -19,13 +19,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/util"
-
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -740,8 +739,8 @@ func TestMemberPodName(t *testing.T) {
 			controllerName: "test",
 			controllerKind: v1alpha1.TiDBClusterKind,
 			ordinal:        2,
-			memberType:     v1alpha1.SlowLogTailerMemberType,
-			expected:       "test-slowlog-2",
+			memberType:     v1alpha1.PDMemberType,
+			expected:       "test-pd-2",
 		},
 		{
 			name:           "unknown controller kind",
@@ -837,5 +836,145 @@ func TestTiKVLessThanV50(t *testing.T) {
 			ok := TiKVLessThanV50(tt.image)
 			g.Expect(ok).To(Equal(tt.expect))
 		})
+	}
+}
+
+func TestPodLabelsAnnotations(t *testing.T) {
+	g := NewGomegaWithT(t)
+	build := func(name, image string, ports ...v1.ContainerPort) v1.Container {
+		return v1.Container{
+			Name:  name,
+			Image: image,
+			Ports: ports,
+		}
+	}
+
+	port1A := v1.ContainerPort{
+		Name:          "portA",
+		ContainerPort: 1,
+	}
+	port1B := v1.ContainerPort{
+		Name:          "portB",
+		ContainerPort: 1,
+	}
+	port2A := v1.ContainerPort{
+		Name:          "portA",
+		ContainerPort: 2,
+	}
+
+	testCases := []struct {
+		name    string
+		base    []v1.Container
+		patches []v1.Container
+		result  []v1.Container
+	}{
+		// sanity checks
+		{
+			name: "everything nil",
+		}, {
+			name:   "no patch",
+			base:   []v1.Container{build("c1", "image:A")},
+			result: []v1.Container{build("c1", "image:A")},
+		}, {
+			name:    "no Base",
+			patches: []v1.Container{build("c1", "image:A")},
+			result:  []v1.Container{build("c1", "image:A")},
+		}, {
+			name:    "no conflict",
+			base:    []v1.Container{build("c1", "image:A")},
+			patches: []v1.Container{build("c2", "image:A")},
+			result:  []v1.Container{build("c1", "image:A"), build("c2", "image:A")},
+		}, {
+			name:    "no conflict with port",
+			base:    []v1.Container{build("c1", "image:A", port1A)},
+			patches: []v1.Container{build("c2", "image:A", port1B)},
+			result:  []v1.Container{build("c1", "image:A", port1A), build("c2", "image:A", port1B)},
+		},
+		// string conflicts
+		{
+			name:    "one conflict",
+			base:    []v1.Container{build("c1", "image:A")},
+			patches: []v1.Container{build("c1", "image:B")},
+			result:  []v1.Container{build("c1", "image:B")},
+		}, {
+			name:    "one conflict with ports",
+			base:    []v1.Container{build("c1", "image:A", port1A)},
+			patches: []v1.Container{build("c1", "image:B", port1A)},
+			result:  []v1.Container{build("c1", "image:B", port1A)},
+		}, {
+			name:    "out of order conflict",
+			base:    []v1.Container{build("c1", "image:A"), build("c2", "image:A")},
+			patches: []v1.Container{build("c2", "image:B"), build("c1", "image:B")},
+			result:  []v1.Container{build("c1", "image:B"), build("c2", "image:B")},
+		},
+		// struct conflict
+		{
+			name:    "port name conflict",
+			base:    []v1.Container{build("c1", "image:A", port1A)},
+			patches: []v1.Container{build("c1", "image:A", port2A)},
+			result:  []v1.Container{build("c1", "image:A", port2A, port1A)},
+		},
+		{
+			name:    "port value conflict",
+			base:    []v1.Container{build("c1", "image:A", port1A)},
+			patches: []v1.Container{build("c1", "image:A", port1B)},
+			result:  []v1.Container{build("c1", "image:A", port1B)},
+		},
+		{
+			name:    "empty image, add port",
+			base:    []v1.Container{build("c1", "image:A")},
+			patches: []v1.Container{build("c1", "", port1A)},
+			result:  []v1.Container{build("c1", "image:A", port1A)},
+		},
+	}
+
+	for _, tc := range testCases {
+		result, err := MergePatchContainers(tc.base, tc.patches)
+		g.Expect(err).NotTo(HaveOccurred())
+		if diff := cmp.Diff(result, tc.result); diff != "" {
+			t.Fatalf("Test %s: patch result did not match. diff: %s.", tc.name, diff)
+		}
+	}
+}
+
+func TestMergePatchContainersOrderPreserved(t *testing.T) {
+	g := NewGomegaWithT(t)
+	build := func(name, image string) v1.Container {
+		return v1.Container{
+			Name:  name,
+			Image: image,
+		}
+	}
+
+	for i := 0; i < 10; i++ {
+		result, err := MergePatchContainers(
+			[]v1.Container{
+				build("c1", "image:base"),
+				build("c2", "image:base"),
+			},
+			[]v1.Container{
+				build("c1", "image:A"),
+				build("c3", "image:B"),
+				build("c4", "image:C"),
+				build("c5", "image:D"),
+				build("c6", "image:E"),
+			},
+		)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		diff := cmp.Diff(
+			result,
+			[]v1.Container{
+				build("c1", "image:A"),
+				build("c2", "image:base"),
+				build("c3", "image:B"),
+				build("c4", "image:C"),
+				build("c5", "image:D"),
+				build("c6", "image:E"),
+			},
+		)
+		if diff != "" {
+			t.Fatalf("patch result did not match. diff:\n%s", diff)
+		}
 	}
 }

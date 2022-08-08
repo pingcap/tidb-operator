@@ -234,6 +234,7 @@ func TestTiKVCapacity(t *testing.T) {
 func TestPDMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(PDMemberName("demo")).To(Equal("demo-pd"))
+	g.Expect(MemberName("demo", v1alpha1.PDMemberType)).To(Equal("demo-pd"))
 }
 
 func TestPDPeerMemberName(t *testing.T) {
@@ -244,6 +245,7 @@ func TestPDPeerMemberName(t *testing.T) {
 func TestTiKVMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(TiKVMemberName("demo")).To(Equal("demo-tikv"))
+	g.Expect(MemberName("demo", v1alpha1.TiKVMemberType)).To(Equal("demo-tikv"))
 }
 
 func TestTiKVPeerMemberName(t *testing.T) {
@@ -254,6 +256,7 @@ func TestTiKVPeerMemberName(t *testing.T) {
 func TestTiDBMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(TiDBMemberName("demo")).To(Equal("demo-tidb"))
+	g.Expect(MemberName("demo", v1alpha1.TiDBMemberType)).To(Equal("demo-tidb"))
 }
 
 func TestTiDBPeerMemberName(t *testing.T) {
@@ -269,6 +272,7 @@ func TestPumpMemberName(t *testing.T) {
 func TestPumpPeerMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(PumpPeerMemberName("demo")).To(Equal("demo-pump"))
+	g.Expect(MemberName("demo", v1alpha1.PumpMemberType)).To(Equal("demo-pump"))
 }
 
 func TestDiscoveryMemberName(t *testing.T) {
@@ -279,6 +283,7 @@ func TestDiscoveryMemberName(t *testing.T) {
 func TestDMMasterMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(DMMasterMemberName("demo")).To(Equal("demo-dm-master"))
+	g.Expect(MemberName("demo", v1alpha1.DMMasterMemberType)).To(Equal("demo-dm-master"))
 }
 
 func TestDMMasterPeerMemberName(t *testing.T) {
@@ -289,6 +294,7 @@ func TestDMMasterPeerMemberName(t *testing.T) {
 func TestDMWorkerMemberName(t *testing.T) {
 	g := NewGomegaWithT(t)
 	g.Expect(DMWorkerMemberName("demo")).To(Equal("demo-dm-worker"))
+	g.Expect(MemberName("demo", v1alpha1.DMWorkerMemberType)).To(Equal("demo-dm-worker"))
 }
 
 func TestDMWorkerPeerMemberName(t *testing.T) {

@@ -1635,6 +1635,27 @@ spec:
                 - name
                 type: object
               type: array
+            envFrom:
+              items:
+                properties:
+                  configMapRef:
+                    properties:
+                      name:
+                        type: string
+                      optional:
+                        type: boolean
+                    type: object
+                  prefix:
+                    type: string
+                  secretRef:
+                    properties:
+                      name:
+                        type: string
+                      optional:
+                        type: boolean
+                    type: object
+                type: object
+              type: array
             hostNetwork:
               type: boolean
             image:
@@ -3790,6 +3811,27 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
                 hostNetwork:
                   type: boolean
                 image:
@@ -4460,6 +4502,11 @@ spec:
                     - storageSize
                     type: object
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -4572,6 +4619,11 @@ spec:
               type: string
             statefulSetUpdateStrategy:
               type: string
+            suspendAction:
+              properties:
+                suspendStatefulSet:
+                  type: boolean
+              type: object
             terminationGracePeriodSeconds:
               format: int64
               type: integer

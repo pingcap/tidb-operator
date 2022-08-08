@@ -15,21 +15,29 @@ package util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 
 	"cloud.google.com/go/storage"
+	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"gocloud.dev/blob"
+	"gocloud.dev/blob/azureblob"
+	"gocloud.dev/blob/driver"
 	"gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
 	"gocloud.dev/blob/s3blob"
+	"gocloud.dev/gcerrors"
 	"gocloud.dev/gcp"
 	"k8s.io/client-go/util/workqueue"
 
@@ -64,6 +72,13 @@ type gcsConfig struct {
 	prefix       string
 }
 
+type azblobConfig struct {
+	container  string
+	accessTier string
+	secretName string
+	prefix     string
+}
+
 type localConfig struct {
 	mountPath string
 	prefix    string
@@ -73,12 +88,13 @@ type localConfig struct {
 type StorageBackend struct {
 	*blob.Bucket
 
-	s3    *s3Config
-	gcs   *gcsConfig
-	local *localConfig
+	s3     *s3Config
+	gcs    *gcsConfig
+	azblob *azblobConfig
+	local  *localConfig
 }
 
-// NewStorageBackend creates new storage backend, now supports S3/GCS/Local
+// NewStorageBackend creates new storage backend, now supports S3/GCS/Azblob/Local
 func NewStorageBackend(provider v1alpha1.StorageProvider) (*StorageBackend, error) {
 	var bucket *blob.Bucket
 	var err error
@@ -93,6 +109,9 @@ func NewStorageBackend(provider v1alpha1.StorageProvider) (*StorageBackend, erro
 	case v1alpha1.BackupStorageTypeGcs:
 		b.gcs = makeGcsConfig(provider.Gcs, true)
 		bucket, err = newGcsStorage(b.gcs)
+	case v1alpha1.BackupStorageTypeAzblob:
+		b.azblob = makeAzblobConfig(provider.Azblob)
+		bucket, err = newAzblobStorage(b.azblob)
 	case v1alpha1.BackupStorageTypeLocal:
 		b.local = makeLocalConfig(provider.Local)
 		bucket, err = newLocalStorage(b.local)
@@ -113,6 +132,8 @@ func (b *StorageBackend) StorageType() v1alpha1.BackupStorageType {
 		return v1alpha1.BackupStorageTypeS3
 	} else if b.gcs != nil {
 		return v1alpha1.BackupStorageTypeGcs
+	} else if b.azblob != nil {
+		return v1alpha1.BackupStorageTypeAzblob
 	} else if b.local != nil {
 		return v1alpha1.BackupStorageTypeLocal
 	}
@@ -145,12 +166,14 @@ func (b *StorageBackend) AsGCS() (*storage.Client, bool) {
 
 // GetBucket return bucket name
 //
-// If provider is S3/GCS, return bucket. Otherwise return empty string
+// If provider is S3/GCS/Azblob, return bucket. Otherwise return empty string
 func (b *StorageBackend) GetBucket() string {
 	if b.s3 != nil {
 		return b.s3.bucket
 	} else if b.gcs != nil {
 		return b.gcs.bucket
+	} else if b.azblob != nil {
+		return b.azblob.container
 	}
 
 	return ""
@@ -162,6 +185,8 @@ func (b *StorageBackend) GetPrefix() string {
 		return b.s3.prefix
 	} else if b.gcs != nil {
 		return b.gcs.prefix
+	} else if b.azblob != nil {
+		return b.azblob.prefix
 	} else if b.local != nil {
 		return b.local.prefix
 	}
@@ -302,6 +327,10 @@ func genStorageArgs(provider v1alpha1.StorageProvider) ([]string, error) {
 		qs := makeGcsConfig(provider.Gcs, false)
 		s := newGcsStorageOption(qs)
 		return s, nil
+	case v1alpha1.BackupStorageTypeAzblob:
+		conf := makeAzblobConfig(provider.Azblob)
+		strs := newAzblobStorageOption(conf)
+		return strs, nil
 	case v1alpha1.BackupStorageTypeLocal:
 		localConfig := makeLocalConfig(provider.Local)
 		cmdOpts, err := newLocalStorageOption(localConfig)
@@ -405,6 +434,120 @@ func newGcsStorage(conf *gcsConfig) (*blob.Bucket, error) {
 	return blob.PrefixedBucket(bucket, strings.Trim(conf.prefix, "/")+"/"), nil
 }
 
+// Azure Blob Storage using AAD credentials
+type azblobAADCred struct {
+	account      string
+	clientID     string
+	clientSecret string
+	tenantID     string
+}
+
+// Azure Blob Storage using shared key credentials
+type azblobSharedKeyCred struct {
+	account   string
+	sharedKey string
+}
+
+// newAzblobStorage initialize a new azblob storage
+func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
+	account := os.Getenv("AZURE_STORAGE_ACCOUNT")
+	if len(account) == 0 {
+		return nil, errors.New("No AZURE_STORAGE_ACCOUNT")
+	}
+
+	// Azure AAD Service Principal with access to the storage account.
+	clientID := os.Getenv("AZURE_CLIENT_ID")
+	clientSecret := os.Getenv("AZURE_CLIENT_SECRET")
+	tenantID := os.Getenv("AZURE_TENANT_ID")
+
+	// Azure shared key with access to the storage account
+	accountKey := os.Getenv("AZURE_STORAGE_KEY")
+
+	// check condition for using AAD credentials first
+	var usingAAD bool
+	if len(clientID) != 0 && len(clientSecret) != 0 && len(tenantID) != 0 {
+		usingAAD = true
+	} else if len(accountKey) != 0 {
+		usingAAD = false
+	} else {
+		return nil, errors.New("Missing necessary key(s) for credentials")
+	}
+
+	// initialize a new azblob storage using AAD or shared key credentials
+	var bucket *blob.Bucket
+	var err error
+	if usingAAD {
+		bucket, err = newAzblobStorageUsingAAD(conf, &azblobAADCred{
+			account:      account,
+			clientID:     clientID,
+			clientSecret: clientSecret,
+			tenantID:     tenantID,
+		})
+	} else {
+		bucket, err = newAzblobStorageUsingSharedKey(conf, &azblobSharedKeyCred{
+			account:   account,
+			sharedKey: accountKey,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	return blob.PrefixedBucket(bucket, strings.Trim(conf.prefix, "/")+"/"), nil
+}
+
+// newAzblobStorageUsingAAD initialize a new azblob storage using AAD credentials
+func newAzblobStorageUsingAAD(conf *azblobConfig, cred *azblobAADCred) (*blob.Bucket, error) {
+	// Azure Storage Account.
+	accountName := azureblob.AccountName(cred.account)
+
+	// Get an Oauth2 token for the account for use with Azure Storage.
+	ccc := auth.NewClientCredentialsConfig(cred.clientID, cred.clientSecret, cred.tenantID)
+
+	// Set the target resource to the Azure storage.
+	ccc.Resource = "https://storage.azure.com/"
+	token, err := ccc.ServicePrincipalToken()
+	if err != nil {
+		return nil, err
+	}
+
+	// Refresh OAuth2 token.
+	if err := token.RefreshWithContext(context.Background()); err != nil {
+		return nil, err
+	}
+
+	// Create the credential using the OAuth2 token.
+	credential := azblob.NewTokenCredential(token.OAuthToken(), nil)
+
+	// Create a Pipeline, using whatever PipelineOptions you need.
+	pipeline := azureblob.NewPipeline(credential, azblob.PipelineOptions{})
+
+	// Create a *blob.Bucket.
+	ctx := context.Background()
+	return azureblob.OpenBucket(ctx, pipeline, accountName, conf.container, new(azureblob.Options))
+}
+
+// newAzblobStorageUsingSharedKey initialize a new azblob storage using shared key credentials
+func newAzblobStorageUsingSharedKey(conf *azblobConfig, cred *azblobSharedKeyCred) (*blob.Bucket, error) {
+	ctx := context.Background()
+
+	// Azure Storage Account and Access Key.
+	accountName := azureblob.AccountName(cred.account)
+	accountKey := azureblob.AccountKey(cred.sharedKey)
+
+	// Create a credentials object.
+	credential, err := azureblob.NewCredential(accountName, accountKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a Pipeline, using whatever PipelineOptions you need.
+	pipeline := azureblob.NewPipeline(credential, azblob.PipelineOptions{})
+
+	// Create a *blob.Bucket.
+	// The credential Option is required if you're going to use blob.SignedURL.
+	return azureblob.OpenBucket(ctx, pipeline, accountName, conf.container, &azureblob.Options{Credential: credential})
+}
+
 // newGcsStorageOption constructs the arg for --storage option and the remote path for br
 func newGcsStorageOption(conf *gcsConfig) []string {
 	var gcsoptions []string
@@ -417,6 +560,17 @@ func newGcsStorageOption(conf *gcsConfig) []string {
 		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.predefined-acl=%s", conf.objectAcl))
 	}
 	return gcsoptions
+}
+
+// newAzblobStorageOption constructs the arg for --storage option and the remote path for br
+func newAzblobStorageOption(conf *azblobConfig) []string {
+	var azblobOptions []string
+	path := fmt.Sprintf("azure://%s/", path.Join(conf.container, conf.prefix))
+	azblobOptions = append(azblobOptions, fmt.Sprintf("--storage=%s", path))
+	if conf.accessTier != "" {
+		azblobOptions = append(azblobOptions, fmt.Sprintf("--azblob.access-tier=%s", conf.accessTier))
+	}
+	return azblobOptions
 }
 
 // makeS3Config constructs s3Config parameters
@@ -468,6 +622,21 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 	return &conf
 }
 
+// makeAzblobConfig constructs azblobConfig parameters
+func makeAzblobConfig(azblob *v1alpha1.AzblobStorageProvider) *azblobConfig {
+	conf := azblobConfig{}
+
+	path := strings.Trim(azblob.Container, "/") + "/" + strings.Trim(azblob.Prefix, "/")
+	fields := strings.SplitN(path, "/", 2)
+
+	conf.container = fields[0]
+	conf.accessTier = azblob.AccessTier
+	conf.secretName = azblob.SecretName
+	conf.prefix = fields[1]
+
+	return &conf
+}
+
 func makeLocalConfig(local *v1alpha1.LocalStorageProvider) *localConfig {
 	return &localConfig{
 		mountPath: local.VolumeMount.MountPath,
@@ -506,4 +675,86 @@ func (i *PageIterator) Next(ctx context.Context, pageSize int) ([]*blob.ListObje
 	}
 
 	return objs, nil
+}
+
+// MockDriver implement driver.Bucket
+type MockDriver struct {
+	driver.Bucket
+
+	errCode gcerrors.ErrorCode
+
+	delete    func(key string) error
+	listPaged func(opts *driver.ListOptions) (*driver.ListPage, error)
+
+	Type v1alpha1.BackupStorageType
+}
+
+func (d *MockDriver) As(i interface{}) bool {
+	switch d.Type {
+	case v1alpha1.BackupStorageTypeS3:
+		_, ok := i.(**s3.S3)
+		if !ok {
+			return false
+		}
+		return true
+	case v1alpha1.BackupStorageTypeGcs:
+		_, ok := i.(**storage.Client)
+		if !ok {
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+func (d *MockDriver) ErrorCode(err error) gcerrors.ErrorCode {
+	return d.errCode
+}
+
+func (d *MockDriver) Delete(_ context.Context, key string) error {
+	return d.delete(key)
+}
+
+func (d *MockDriver) SetDelete(fn func(key string) error) {
+	d.delete = fn
+}
+
+func (d *MockDriver) SetListPaged(objs []*driver.ListObject, rerr error) {
+	d.listPaged = func(opts *driver.ListOptions) (*driver.ListPage, error) {
+		if rerr != nil {
+			return nil, rerr
+		}
+
+		var start int
+		var err error
+		if len(opts.PageToken) != 0 {
+			start, err = strconv.Atoi(string(opts.PageToken))
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		pageSize := 1000
+		if opts.PageSize != 0 {
+			pageSize = opts.PageSize
+		}
+		end := start + pageSize
+		if end > len(objs) {
+			end = len(objs)
+		}
+
+		p := &driver.ListPage{
+			Objects:       objs[start:end],
+			NextPageToken: []byte(strconv.Itoa(end)),
+		}
+		if len(p.Objects) == 0 {
+			p.NextPageToken = nil // it will return io.EOF
+		}
+
+		return p, nil
+	}
+}
+
+func (d *MockDriver) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driver.ListPage, error) {
+	return d.listPaged(opts)
 }

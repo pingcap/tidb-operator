@@ -167,7 +167,7 @@ e2ePodResources = [
 ]
 
 def build(String name, String code, Map resources = e2ePodResources) {
-    podTemplate(yaml: buildPodYAML(resources: resources)) {
+    podTemplate(yaml: buildPodYAML(resources: resources), namespace: "jenkins-tidb-operator", cloud: "kubernetes-ng") {
         node(POD_LABEL) {
             container('main') {
                 def WORKSPACE = pwd()
@@ -252,6 +252,8 @@ try {
             ],
         ]
         podTemplate(
+            cloud: "kubernetes-ng",
+            namespace: "jenkins-tidb-operator",
             label: buildPodLabel,
             yaml: buildPodYAML(resources: resources, any: true),
             // We allow this pod to remain active for a while, later jobs can
@@ -351,24 +353,19 @@ try {
         if (GIT_REF ==~ /^(master|)$/ || GIT_REF ==~ /^(release-.*)$/
             || GIT_REF ==~ /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/) {
             // Upload assets if the git ref is the master branch or version tag
-            podTemplate(yaml: buildPodYAML(resources: [requests: [cpu: "1", memory: "2Gi"]])) {
+            podTemplate(yaml: buildPodYAML(resources: [requests: [cpu: "1", memory: "2Gi"]]),
+                        cloud: "kubernetes-ng", namespace: "jenkins-tidb-operator",
+            ) {
                 node(POD_LABEL) {
                     container("main") {
                         dir("${PROJECT_DIR}") {
                             unstash 'tidb-operator'
                             stage('upload tidb-operator binaries and charts'){
-                                withCredentials([
-                                    string(credentialsId: 'UCLOUD_PUBLIC_KEY', variable: 'UCLOUD_PUBLIC_KEY'),
-                                    string(credentialsId: 'UCLOUD_PRIVATE_KEY', variable: 'UCLOUD_PRIVATE_KEY'),
-                                ]) {
-                                    sh """
-                                    export UCLOUD_UFILE_PROXY_HOST=pingcap-dev.hk.ufileos.com
-                                    export UCLOUD_UFILE_BUCKET=pingcap-dev
-                                    export BUILD_BRANCH=${GIT_REF}
-                                    export GITHASH=${GITHASH}
-                                    ./ci/upload-binaries-charts.sh
-                                    """
-                                }
+                              sh """
+                              export BUILD_BRANCH=${GIT_REF}
+                              export GITHASH=${GITHASH}
+                              ./ci/upload-binaries-charts.sh
+                              """
                             }
                         }
                     }

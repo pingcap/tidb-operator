@@ -17,6 +17,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -46,37 +47,51 @@ const (
 	PumpStateOffline string = "offline"
 )
 
+type ContainerName string
+
+func (c ContainerName) String() string {
+	return string(c)
+}
+
+const (
+	ContainerSlowLogTailer    ContainerName = "slowlog"
+	ContainerRocksDBLogTailer ContainerName = "rocksdblog"
+	ContainerRaftLogTailer    ContainerName = "raftlog"
+)
+
 // MemberType represents member type
 type MemberType string
 
 const (
-	// PDMemberType is pd container type
+	// DiscoveryMemberType is discovery member type
+	DiscoveryMemberType MemberType = "discovery"
+	// PDMemberType is pd member type
 	PDMemberType MemberType = "pd"
-	// TiDBMemberType is tidb container type
+	// TiDBMemberType is tidb member type
 	TiDBMemberType MemberType = "tidb"
-	// TiKVMemberType is tikv container type
+	// TiKVMemberType is tikv member type
 	TiKVMemberType MemberType = "tikv"
-	// TiFlashMemberType is tiflash container type
+	// TiFlashMemberType is tiflash member type
 	TiFlashMemberType MemberType = "tiflash"
-	// TiCDCMemberType is ticdc container type
+	// TiCDCMemberType is ticdc member type
 	TiCDCMemberType MemberType = "ticdc"
-	// PumpMemberType is pump container type
+	// PumpMemberType is pump member type
 	PumpMemberType MemberType = "pump"
-	// DMMasterMemberType is dm-master container type
+
+	// DMDiscoveryMemberType is discovery member type
+	DMDiscoveryMemberType MemberType = "dm-discovery"
+	// DMMasterMemberType is dm-master member type
 	DMMasterMemberType MemberType = "dm-master"
-	// DMWorkerMemberType is dm-worker container type
+	// DMWorkerMemberType is dm-worker member type
 	DMWorkerMemberType MemberType = "dm-worker"
-	// SlowLogTailerMemberType is tidb slow log tailer container type
-	SlowLogTailerMemberType MemberType = "slowlog"
-	// RocksDBLogTailerMemberType is tikv rocksdb log tailer container type
-	RocksDBLogTailerMemberType MemberType = "rocksdblog"
-	// RaftLogTailerMemberType is tikv raft log tailer container type
-	RaftLogTailerMemberType MemberType = "raftlog"
-	// TidbMonitorMemberType is tidbmonitor type
+
+	// TidbMonitorMemberType is tidbmonitor member type
 	TidbMonitorMemberType MemberType = "tidbmonitor"
-	// NGMonitoringMemberType is ng monitoring type
+
+	// NGMonitoringMemberType is ng monitoring member type
 	NGMonitoringMemberType MemberType = "ng-monitoring"
-	// UnknownMemberType is unknown container type
+
+	// UnknownMemberType is unknown member type
 	UnknownMemberType MemberType = "unknown"
 )
 
@@ -90,6 +105,8 @@ const (
 	UpgradePhase MemberPhase = "Upgrade"
 	// ScalePhase represents the scaling state of TiDB cluster.
 	ScalePhase MemberPhase = "Scale"
+	// SuspendPhase represents the suspend state of TiDB cluster.
+	SuspendPhase MemberPhase = "Suspend"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration
@@ -336,6 +353,10 @@ type TidbClusterSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1";"v2"
 	StartScriptVersion StartScriptVersion `json:"startScriptVersion,omitempty"`
+
+	// SuspendAction defines the suspend actions for all component.
+	// +optional
+	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -387,6 +408,12 @@ const (
 	// - All TiKV stores are up.
 	// - All TiFlash stores are up.
 	TidbClusterReady TidbClusterConditionType = "Ready"
+)
+
+// The `Type` of the component condition
+const (
+	// ComponentVolumeResizing indicates that any volume of this component is resizing.
+	ComponentVolumeResizing string = "ComponentVolumeResizing"
 )
 
 // +k8s:openapi-gen=true
@@ -667,6 +694,12 @@ type TiCDCSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// GracefulShutdownTimeout is the timeout of gracefully shutdown a TiCDC pod.
+	// Encoded in the format of Go Duration.
+	// Defaults to 10m
+	// +optional
+	GracefulShutdownTimeout *metav1.Duration `json:"gracefulShutdownTimeout,omitempty"`
 }
 
 // TiCDCConfig is the configuration of tidbcdc
@@ -832,6 +865,16 @@ type TiDBProbe struct {
 	// +kubebuilder:validation:Enum=tcp;command
 	// +optional
 	Type *string `json:"type,omitempty"` // tcp or command
+	// Number of seconds after the container has started before liveness probes are initiated.
+	// Default to 10 seconds.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	InitialDelaySeconds *int32 `json:"initialDelaySeconds,omitempty"`
+	// How often (in seconds) to perform the probe.
+	// Default to Kubernetes default (10 seconds). Minimum value is 1.
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	PeriodSeconds *int32 `json:"periodSeconds,omitempty"`
 }
 
 // PumpSpec contains details of Pump members
@@ -985,11 +1028,21 @@ type ComponentSpec struct {
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
+	// Extend the use scenarios for env
+	// +optional
+	EnvFrom []corev1.EnvFromSource `json:"envFrom,omitempty"`
+
 	// Init containers of the components
 	// +optional
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
 	// Additional containers of the component.
+	// If the container names in this field match with the ones generated by
+	// TiDB Operator, the container configurations will be merged into the
+	// containers generated by TiDB Operator via strategic merge patch.
+	// If the container names in this field do not match with the ones
+	// generated by TiDB Operator, the container configurations will be
+	// appended to the Pod container spec directly.
 	// +optional
 	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
 
@@ -1036,6 +1089,10 @@ type ComponentSpec struct {
 	// +listType=map
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// SuspendAction defines the suspend actions for all component.
+	// +optional
+	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
 }
 
 // ServiceSpec specifies the service object in k8s
@@ -1123,6 +1180,13 @@ type Service struct {
 	Type string `json:"type,omitempty"`
 }
 
+// SuspendAction defines the suspend actions for a component.
+//
+// +k8s:openapi-gen=true
+type SuspendAction struct {
+	SuspendStatefulSet bool `json:"suspendStatefulSet,omitempty"`
+}
+
 // PDStatus is PD status
 type PDStatus struct {
 	// +optional
@@ -1137,6 +1201,12 @@ type PDStatus struct {
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
 	Image           string                     `json:"image,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // PDMember is PD member
@@ -1186,6 +1256,12 @@ type TiDBStatus struct {
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
 	Image                    string                       `json:"image,omitempty"`
 	PasswordInitialized      *bool                        `json:"passwordInitialized,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -1206,7 +1282,16 @@ type TiDBFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-const EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
+var (
+	EvictLeaderAnnKeys = []string{EvictLeaderAnnKey, EvictLeaderAnnKeyForResize}
+)
+
+const (
+	// EvictLeaderAnnKey is the annotation key to evict leader used by user.
+	EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
+	// EvictLeaderAnnKeyForResize is the annotation key to evict leader user by pvc resizer.
+	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
+)
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
 //
@@ -1219,6 +1304,7 @@ const (
 
 type EvictLeaderStatus struct {
 	PodCreateTime metav1.Time `json:"podCreateTime,omitempty"`
+	BeginTime     metav1.Time `json:"beginTime,omitempty"`
 	Value         string      `json:"value,omitempty"`
 }
 
@@ -1235,6 +1321,12 @@ type TiKVStatus struct {
 	FailoverUID     types.UID                     `json:"failoverUID,omitempty"`
 	Image           string                        `json:"image,omitempty"`
 	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status
@@ -1248,6 +1340,12 @@ type TiFlashStatus struct {
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 	FailoverUID     types.UID                   `json:"failoverUID,omitempty"`
 	Image           string                      `json:"image,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiCDCStatus is TiCDC status
@@ -1256,6 +1354,12 @@ type TiCDCStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Captures    map[string]TiCDCCapture `json:"captures,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiCDCCapture is TiCDC Capture status
@@ -1307,6 +1411,12 @@ type PumpStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Members     []*PumpNodeStatus       `json:"members,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
@@ -1408,6 +1518,8 @@ const (
 	BackupStorageTypeS3 BackupStorageType = "s3"
 	// BackupStorageTypeGcs represents the google cloud storage
 	BackupStorageTypeGcs BackupStorageType = "gcs"
+	// BackupStorageType represents the azure blob storage
+	BackupStorageTypeAzblob BackupStorageType = "azblob"
 	// BackupStorageTypeLocal represents local volume storage type
 	BackupStorageTypeLocal BackupStorageType = "local"
 	// BackupStorageTypeUnknown represents the unknown storage type
@@ -1428,9 +1540,10 @@ const (
 // StorageProvider defines the configuration for storing a backup in backend storage.
 // +k8s:openapi-gen=true
 type StorageProvider struct {
-	S3    *S3StorageProvider    `json:"s3,omitempty"`
-	Gcs   *GcsStorageProvider   `json:"gcs,omitempty"`
-	Local *LocalStorageProvider `json:"local,omitempty"`
+	S3     *S3StorageProvider     `json:"s3,omitempty"`
+	Gcs    *GcsStorageProvider    `json:"gcs,omitempty"`
+	Azblob *AzblobStorageProvider `json:"azblob,omitempty"`
+	Local  *LocalStorageProvider  `json:"local,omitempty"`
 }
 
 // LocalStorageProvider defines local storage options, which can be any k8s supported mounted volume
@@ -1465,7 +1578,7 @@ type S3StorageProvider struct {
 	Prefix string `json:"prefix,omitempty"`
 	// SSE Sever-Side Encryption.
 	SSE string `json:"sse,omitempty"`
-	// Options Rclone options for backup and restore with mydumper and lightning.
+	// Options Rclone options for backup and restore with dumpling and lightning.
 	Options []string `json:"options,omitempty"`
 }
 
@@ -1489,6 +1602,23 @@ type GcsStorageProvider struct {
 	BucketAcl string `json:"bucketAcl,omitempty"`
 	// SecretName is the name of secret which stores the
 	// gcs service account credentials JSON.
+	SecretName string `json:"secretName,omitempty"`
+	// Prefix of the data path.
+	Prefix string `json:"prefix,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// AzblobStorageProvider represents the azure blob storage for storing backups.
+type AzblobStorageProvider struct {
+	// Path is the full path where the backup is saved.
+	// The format of the path must be: "<container-name>/<path-to-backup-file>"
+	Path string `json:"path,omitempty"`
+	// Container in which to store the backup data.
+	Container string `json:"container,omitempty"`
+	// Access tier of the uploaded objects.
+	AccessTier string `json:"accessTier,omitempty"`
+	// SecretName is the name of secret which stores the
+	// azblob service account credentials.
 	SecretName string `json:"secretName,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
@@ -1563,6 +1693,12 @@ type CleanOption struct {
 	// PageSize represents the number of objects to clean at a time.
 	// default is 10000
 	PageSize uint64 `json:"pageSize,omitempty"`
+	// RetryCount represents the number of retries in pod when the cleanup fails.
+	// +kubebuilder:default=5
+	RetryCount int `json:"retryCount,omitempty"`
+	// BackoffEnabled represents whether to enable the backoff when a deletion API fails.
+	// It is useful when the deletion API is rate limited.
+	BackoffEnabled bool `json:"backoffEnabled,omitempty"`
 
 	BatchDeleteOption `json:",inline"`
 }
@@ -1675,6 +1811,8 @@ type BRConfig struct {
 	TimeAgo string `json:"timeAgo,omitempty"`
 	// Checksum specifies whether to run checksum after backup
 	Checksum *bool `json:"checksum,omitempty"`
+	// CheckRequirements specifies whether to check requirements
+	CheckRequirements *bool `json:"checkRequirements,omitempty"`
 	// SendCredToTikv specifies whether to send credentials to TiKV
 	SendCredToTikv *bool `json:"sendCredToTikv,omitempty"`
 	// OnLine specifies whether online during restore
@@ -2159,6 +2297,10 @@ type DMClusterSpec struct {
 	// +listType=map
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// SuspendAction defines the suspend actions for all component.
+	// +optional
+	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
 }
 
 // DMClusterStatus represents the current status of a dm cluster.
@@ -2339,6 +2481,12 @@ type MasterStatus struct {
 	FailureMembers  map[string]MasterFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember      `json:"unjoinedMembers,omitempty"`
 	Image           string                         `json:"image,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // MasterMember is dm-master member status
@@ -2373,6 +2521,12 @@ type WorkerStatus struct {
 	FailureMembers map[string]WorkerFailureMember `json:"failureMembers,omitempty"`
 	FailoverUID    types.UID                      `json:"failoverUID,omitempty"`
 	Image          string                         `json:"image,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // WorkerMember is dm-worker member status
@@ -2402,6 +2556,34 @@ type StorageVolume struct {
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	StorageSize      string  `json:"storageSize"`
 	MountPath        string  `json:"mountPath,omitempty"`
+}
+
+type ObservedStorageVolumeStatus struct {
+	// BoundCount is the count of bound volumes.
+	// +optional
+	BoundCount int `json:"boundCount"`
+	// CurrentCount is the count of volumes whose capacity is equal to `currentCapacity`.
+	// +optional
+	CurrentCount int `json:"currentCount"`
+	// ResizedCount is the count of volumes whose capacity is equal to `resizedCapacity`.
+	// +optional
+	ResizedCount int `json:"resizedCount"`
+	// CurrentCapacity is the current capacity of the volume.
+	// If any volume is resizing, it is the capacity before resizing.
+	// If all volumes are resized, it is the resized capacity and same as desired capacity.
+	CurrentCapacity resource.Quantity `json:"currentCapacity"`
+	// ResizedCapacity is the desired capacity of the volume.
+	ResizedCapacity resource.Quantity `json:"resizedCapacity"`
+}
+
+// StorageVolumeName is the volume name which is same as `volumes.name` in Pod spec.
+type StorageVolumeName string
+
+// StorageVolumeStatus is the actual status for a storage
+type StorageVolumeStatus struct {
+	ObservedStorageVolumeStatus `json:",inline"`
+	// Name is the volume name which is same as `volumes.name` in Pod spec.
+	Name StorageVolumeName `json:"name"`
 }
 
 // TopologySpreadConstraint specifies how to spread matching pods among the given topology.

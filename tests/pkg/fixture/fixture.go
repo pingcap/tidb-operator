@@ -96,6 +96,8 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 
 	tidbConfig := v1alpha1.NewTiDBConfig()
 	tidbConfig.Set("log.level", "info")
+	// workaround for https://docs.pingcap.com/tidb/stable/backup-and-restore-faq#why-does-br-report-new_collations_enabled_on_first_bootstrap-mismatch
+	tidbConfig.Set("new_collations_enabled_on_first_bootstrap", true)
 
 	return &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -107,8 +109,11 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			ImagePullPolicy:      corev1.PullIfNotPresent,
 			PVReclaimPolicy:      &deletePVP,
 			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyRollingUpdate,
-			SchedulerName:        "tidb-scheduler",
-			Timezone:             "Asia/Shanghai",
+			Helper: &v1alpha1.HelperSpec{
+				Image: pointer.StringPtr(utilimage.HelperImage),
+			},
+			SchedulerName: "tidb-scheduler",
+			Timezone:      "Asia/Shanghai",
 			Labels: map[string]string{
 				ClusterCustomKey: "value",
 			},
@@ -257,6 +262,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 
 func UpdateTidbMonitorForDM(tm *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster) {
 	imagePullPolicy := *tm.Spec.Initializer.ImagePullPolicy
+	tm.Spec.ClusterScoped = true
 	tm.Spec.DM = &v1alpha1.DMMonitorSpec{
 		Clusters: []v1alpha1.ClusterRef{
 			{
@@ -266,8 +272,8 @@ func UpdateTidbMonitorForDM(tm *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster) {
 		},
 		Initializer: v1alpha1.InitializerSpec{
 			MonitorContainer: v1alpha1.MonitorContainer{
-				BaseImage:            utilimage.DMMonitorInitializerImage,
-				Version:              utilimage.DMMonitorInitializerVersion,
+				BaseImage:            utilimage.TiDBMonitorInitializerImage,
+				Version:              utilimage.TiDBMonitorInitializerVersion,
 				ImagePullPolicy:      &imagePullPolicy,
 				ResourceRequirements: corev1.ResourceRequirements{},
 			},

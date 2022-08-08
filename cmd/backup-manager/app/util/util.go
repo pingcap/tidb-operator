@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/gogo/protobuf/proto"
@@ -101,6 +102,11 @@ func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
 		prefix = backup.Spec.StorageProvider.Gcs.Prefix
 		bucket = backup.Spec.StorageProvider.Gcs.Bucket
 		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeAzblob:
+		prefix = backup.Spec.StorageProvider.Azblob.Prefix
+		bucket = backup.Spec.StorageProvider.Azblob.Container
+		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeLocal:
 		prefix = backup.Spec.StorageProvider.Local.Prefix
@@ -425,4 +431,32 @@ func GetContextForTerminationSignals(op string) (context.Context, context.Cancel
 		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
 	}()
 	return ctx, cancel
+}
+
+func RetriableOnAnyError(err error) bool {
+	return err != nil
+}
+
+// RetryOnError allows the caller to retry fn in case the error returned by fn.
+// sleep define the interval between two retries.
+func RetryOnError(ctx context.Context, attempts int, sleep time.Duration,
+	retriable func(error) bool, fn func() error) error {
+	var err error
+	for i := 0; i < attempts; i++ {
+		err = fn()
+
+		if !retriable(err) {
+			return err
+		}
+
+		if sleep != 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(sleep):
+			}
+		}
+	}
+
+	return err
 }

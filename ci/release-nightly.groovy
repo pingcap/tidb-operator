@@ -66,6 +66,8 @@ try {
             ],
         ]
         podTemplate(
+            cloud: "kubernetes-ng",
+            namespace: "jenkins-tidb-operator",
             label: buildPodLabel,
             yaml: podYAML,
             // We allow this pod to remain active for a while, later jobs can
@@ -129,18 +131,11 @@ try {
                     }
 
                     stage('Upload binaries and charts'){
-                        withCredentials([
-                            string(credentialsId: 'UCLOUD_PUBLIC_KEY', variable: 'UCLOUD_PUBLIC_KEY'),
-                            string(credentialsId: 'UCLOUD_PRIVATE_KEY', variable: 'UCLOUD_PRIVATE_KEY'),
-                        ]) {
-                            sh """
-                            export UCLOUD_UFILE_PROXY_HOST=pingcap-dev.hk.ufileos.com
-                            export UCLOUD_UFILE_BUCKET=pingcap-dev
-                            export BUILD_BRANCH=${GIT_REF}
-                            export GITHASH=${GITHASH}
-                            ./ci/upload-binaries-charts.sh
-                            """
-                        }
+                        sh """
+                        export BUILD_BRANCH=${GIT_REF}
+                        export GITHASH=${GITHASH}
+                        ./ci/upload-binaries-charts.sh
+                        """
                     }
                 }
             }

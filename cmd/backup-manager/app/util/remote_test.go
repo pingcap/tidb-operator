@@ -23,7 +23,6 @@ import (
 	"sync"
 	"testing"
 
-	"cloud.google.com/go/storage"
 	gomonkey "github.com/agiledragon/gomonkey/v2"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -32,87 +31,9 @@ import (
 	"github.com/onsi/gomega"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/driver"
-	"gocloud.dev/gcerrors"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
-
-type mockDriver struct {
-	driver.Bucket
-
-	errCode gcerrors.ErrorCode
-
-	delete    func(key string) error
-	listPaged func(opts *driver.ListOptions) (*driver.ListPage, error)
-
-	typ v1alpha1.BackupStorageType
-}
-
-func (d *mockDriver) As(i interface{}) bool {
-	switch d.typ {
-	case v1alpha1.BackupStorageTypeS3:
-		_, ok := i.(**s3.S3)
-		if !ok {
-			return false
-		}
-		return true
-	case v1alpha1.BackupStorageTypeGcs:
-		_, ok := i.(**storage.Client)
-		if !ok {
-			return false
-		}
-		return true
-	}
-	return false
-}
-
-func (d *mockDriver) ErrorCode(err error) gcerrors.ErrorCode {
-	return d.errCode
-}
-
-func (d *mockDriver) Delete(_ context.Context, key string) error {
-	return d.delete(key)
-}
-
-func (d *mockDriver) SetListPaged(objs []*driver.ListObject, rerr error) {
-	d.listPaged = func(opts *driver.ListOptions) (*driver.ListPage, error) {
-		if rerr != nil {
-			return nil, rerr
-		}
-
-		var start int
-		var err error
-		if len(opts.PageToken) != 0 {
-			start, err = strconv.Atoi(string(opts.PageToken))
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		pageSize := 1000
-		if opts.PageSize != 0 {
-			pageSize = opts.PageSize
-		}
-		end := start + pageSize
-		if end > len(objs) {
-			end = len(objs)
-		}
-
-		p := &driver.ListPage{
-			Objects:       objs[start:end],
-			NextPageToken: []byte(strconv.Itoa(end)),
-		}
-		if len(p.Objects) == 0 {
-			p.NextPageToken = nil // it will return io.EOF
-		}
-
-		return p, nil
-	}
-}
-
-func (d *mockDriver) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driver.ListPage, error) {
-	return d.listPaged(opts)
-}
 
 type mockS3Client struct {
 	s3iface.S3API
@@ -157,7 +78,7 @@ func TestPageIterator(t *testing.T) {
 
 	// basic function
 	for _, tcase := range cases {
-		drv := &mockDriver{}
+		drv := &MockDriver{}
 		backend := &StorageBackend{}
 		backend.Bucket = blob.NewBucket(drv)
 
@@ -211,7 +132,7 @@ func TestPageIterator(t *testing.T) {
 		},
 	}
 	for _, tcase := range errcases {
-		drv := &mockDriver{}
+		drv := &MockDriver{}
 		backend := &StorageBackend{}
 		backend.Bucket = blob.NewBucket(drv)
 
@@ -270,6 +191,18 @@ func TestStorageBackendBasic(t *testing.T) {
 			expectedPrefix:    "gcs-prefix",
 		},
 		{
+			name: "basic azblob storage backend",
+			provider: v1alpha1.StorageProvider{
+				Azblob: &v1alpha1.AzblobStorageProvider{
+					Container: "azblob-bucket",
+					Prefix:    "azblob-prefix",
+				},
+			},
+			expectStorageType: v1alpha1.BackupStorageTypeAzblob,
+			expectedBucket:    "azblob-bucket",
+			expectedPrefix:    "azblob-prefix",
+		},
+		{
 			name: "basic local storage backend",
 			provider: v1alpha1.StorageProvider{
 				Local: &v1alpha1.LocalStorageProvider{
@@ -305,6 +238,18 @@ func TestStorageBackendBasic(t *testing.T) {
 			expectedBucket:    "gcs-bucket",
 			expectedPrefix:    "a/b/gcs-prefix/c/d",
 		},
+		{
+			name: "azblob storage backend and bucket contains prefix",
+			provider: v1alpha1.StorageProvider{
+				Azblob: &v1alpha1.AzblobStorageProvider{
+					Container: "azblob-bucket/a/b",
+					Prefix:    "azblob-prefix/c/d",
+				},
+			},
+			expectStorageType: v1alpha1.BackupStorageTypeAzblob,
+			expectedBucket:    "azblob-bucket",
+			expectedPrefix:    "a/b/azblob-prefix/c/d",
+		},
 	}
 	for _, tcases := range cases {
 		t.Log(tcases.name)
@@ -319,6 +264,10 @@ func TestStorageBackendBasic(t *testing.T) {
 			return nil, nil
 		})
 		defer gcsPatches.Reset()
+		azblobPatches := gomonkey.ApplyFunc(newAzblobStorage, func(conf *azblobConfig) (*blob.Bucket, error) {
+			return nil, nil
+		})
+		defer azblobPatches.Reset()
 		localPatches := gomonkey.ApplyFunc(newLocalStorage, func(conf *localConfig) (*blob.Bucket, error) {
 			return nil, nil
 		})
@@ -347,14 +296,17 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 		useBatchDeleteObjectsOfS3 bool
 	}
 
-	s3drv := &mockDriver{
-		typ: v1alpha1.BackupStorageTypeS3,
+	s3drv := &MockDriver{
+		Type: v1alpha1.BackupStorageTypeS3,
 	}
-	gcsdrv := &mockDriver{
-		typ: v1alpha1.BackupStorageTypeGcs,
+	gcsdrv := &MockDriver{
+		Type: v1alpha1.BackupStorageTypeGcs,
 	}
-	localdrv := &mockDriver{
-		typ: v1alpha1.BackupStorageTypeLocal,
+	azblobdrv := &MockDriver{
+		Type: v1alpha1.BackupStorageTypeAzblob,
+	}
+	localdrv := &MockDriver{
+		Type: v1alpha1.BackupStorageTypeLocal,
 	}
 
 	cases := []testcase{
@@ -371,6 +323,15 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 			name: "gcs with default option",
 			backend: &StorageBackend{
 				Bucket: blob.NewBucket(gcsdrv),
+			},
+			opt:                       v1alpha1.BatchDeleteOption{},
+			expectedConcurrency:       int(v1alpha1.DefaultBatchDeleteOption.RoutineConcurrency),
+			useBatchDeleteObjectsOfS3: false,
+		},
+		{
+			name: "azblob with default option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(azblobdrv),
 			},
 			opt:                       v1alpha1.BatchDeleteOption{},
 			expectedConcurrency:       int(v1alpha1.DefaultBatchDeleteOption.RoutineConcurrency),
@@ -400,6 +361,17 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 			name: "gcs with option",
 			backend: &StorageBackend{
 				Bucket: blob.NewBucket(gcsdrv),
+			},
+			opt: v1alpha1.BatchDeleteOption{
+				RoutineConcurrency: 10000,
+			},
+			expectedConcurrency:       10000,
+			useBatchDeleteObjectsOfS3: false,
+		},
+		{
+			name: "azblob with option",
+			backend: &StorageBackend{
+				Bucket: blob.NewBucket(azblobdrv),
 			},
 			opt: v1alpha1.BatchDeleteOption{
 				RoutineConcurrency: 10000,
@@ -601,7 +573,7 @@ func TestBatchDeleteObjectsConcurrently(t *testing.T) {
 	}
 
 	for _, tcase := range cases {
-		drv := &mockDriver{}
+		drv := &MockDriver{}
 		bucket := blob.NewBucket(drv)
 
 		orginObjs := objects(tcase.size)
@@ -611,7 +583,7 @@ func TestBatchDeleteObjectsConcurrently(t *testing.T) {
 		errMap := map[string]bool{}     // contain objects that are expected to be failed
 		setedErr := fmt.Errorf("test case err")
 
-		drv.delete = func(key string) error {
+		drv.SetDelete(func(key string) error {
 			mu.Lock()
 			defer mu.Unlock()
 			if len(key)%2 == 0 {
@@ -620,7 +592,7 @@ func TestBatchDeleteObjectsConcurrently(t *testing.T) {
 			}
 			deletedMap[key] = true
 			return nil
-		}
+		})
 
 		result := BatchDeleteObjectsConcurrently(context.Background(), bucket, orginObjs, tcase.concurrency)
 		g.Expect(result.Errors).To(gomega.HaveLen(len(errMap)))

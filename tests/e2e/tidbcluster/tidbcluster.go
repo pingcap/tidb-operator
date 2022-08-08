@@ -25,6 +25,7 @@ import (
 	"github.com/onsi/gomega"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -34,6 +35,7 @@ import (
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	k8sScheme "k8s.io/client-go/kubernetes/scheme"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -56,6 +58,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	remotewrite "github.com/pingcap/tidb-operator/tests/e2e/remotewrite"
 	utile2e "github.com/pingcap/tidb-operator/tests/e2e/util"
 	utilginkgo "github.com/pingcap/tidb-operator/tests/e2e/util/ginkgo"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
@@ -1968,7 +1971,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update components version to %q", componentVersion)
-			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 20*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check components version")
@@ -2156,36 +2159,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		// upgrdae testing for specific versions
 		utilginkgo.ContextWhenFocus("Specific Version", func() {
-			configureV4x0x9 := func(tc *v1alpha1.TidbCluster) {
-				pdCfg := v1alpha1.NewPDConfig()
-				tikvCfg := v1alpha1.NewTiKVConfig()
-				tidbCfg := v1alpha1.NewTiDBConfig()
-				tiflashCfg := v1alpha1.NewTiFlashConfig()
-				pdCfg.Set("log.level", "info")
-				pdCfg.SetTable("replication",
-					"max-replicas", 3,
-					"location-labels", []string{"failure-domain.beta.kubernetes.io/region", "failure-domain.beta.kubernetes.io/zone", "kubernetes.io/hostname"})
-				pdCfg.SetTable("dashboard",
-					"internal-proxy", true,
-					"enable-telemetry", false)
-				tidbCfg.Set("new_collations_enabled_on_first_bootstrap", true)
-				tidbCfg.Set("enable-telemetry", false)
-				tidbCfg.Set("log.level", "info")
-				tidbCfg.SetTable("performance",
-					"max-procs", 0,
-					"tcp-keep-alive", true)
-				tikvCfg.Set("log.level", "info")
-				tikvCfg.Set("readpool.storage.use-unified-pool", true)
-				tikvCfg.Set("readpool.coprocessor.use-unified-pool", true)
-				tiflashCfg.Common.Set("mark_cache_size", 2147483648)
-				tiflashCfg.Common.Set("minmax_index_cache_size", 2147483648)
-				tiflashCfg.Common.Set("max_memory_usage", 10737418240)
-				tiflashCfg.Common.Set("max_memory_usage_for_all_queries", 32212254720)
-				tc.Spec.PD.Config = pdCfg
-				tc.Spec.TiKV.Config = tikvCfg
-				tc.Spec.TiDB.Config = tidbCfg
-				tc.Spec.TiFlash.Config = tiflashCfg
-			}
 			configureV5x0x0 := func(tc *v1alpha1.TidbCluster) {
 				pdCfg := v1alpha1.NewPDConfig()
 				tikvCfg := v1alpha1.NewTiKVConfig()
@@ -2289,12 +2262,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 
 			cases := []upgradeCase{
-				{
-					oldVersion:              utilimage.TiDBV4x0x9,
-					newVersion:              utilimage.TiDBLatest,
-					configureOldTiDBCluster: configureV4x0x9,
-					configureNewTiDBCluster: configureV5x1x0,
-				},
 				{
 					oldVersion:              utilimage.TiDBV5x0x0,
 					newVersion:              utilimage.TiDBLatest,
@@ -2936,6 +2903,111 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(context.TODO(), tm.Name, metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
+	})
+
+	ginkgo.It("deploy tidb monitor remote write successfully", func() {
+		ginkgo.By("Deploy initial tc")
+		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBLatest)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
+		framework.ExpectNoError(err, "Expected create tidbcluster")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+
+		ginkgo.By("Deploy tidbmonitor")
+		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
+		tm.Spec.Prometheus.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
+			{
+				URL: fmt.Sprintf("http://thanos-receiver-0.thanos-receiver.%s.svc:19291/api/v1/receive", ns),
+				QueueConfig: &v1alpha1.QueueConfig{
+					MaxSamplesPerSend: 100,
+					MaxShards:         100,
+				},
+				MetadataConfig: &v1alpha1.MetadataConfig{
+					SendInterval: "10s",
+				},
+			},
+		}
+		pvpDelete := corev1.PersistentVolumeReclaimDelete
+		tm.Spec.PVReclaimPolicy = &pvpDelete
+		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(context.TODO(), tm, metav1.CreateOptions{})
+
+		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
+		err = tests.CheckTidbMonitor(tm, cli, c, fw)
+		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
+
+		decode := k8sScheme.Codecs.UniversalDeserializer().Decode
+		thanosReceiverConfigmapObj, _, _ := decode([]byte(fmt.Sprintf(remotewrite.ThanosReceiverConfigmapYaml, ns)), nil, nil)
+		thanosReceiverConfigmap := thanosReceiverConfigmapObj.(*corev1.ConfigMap) // This fails
+		_, err = c.CoreV1().ConfigMaps(ns).Create(context.TODO(), thanosReceiverConfigmap, metav1.CreateOptions{})
+		framework.ExpectNoError(err, "Expected thanos receiver configmap created success")
+
+		decode = k8sScheme.Codecs.UniversalDeserializer().Decode
+		thanosReceiverStsObj, _, _ := decode([]byte(remotewrite.ThanosReceiverYaml), nil, nil)
+		thanosReceiverSts := thanosReceiverStsObj.(*v1.StatefulSet) // This fails
+		_, err = c.AppsV1().StatefulSets(ns).Create(context.TODO(), thanosReceiverSts, metav1.CreateOptions{})
+		framework.ExpectNoError(err, "Expected thanos receiver created success")
+
+		err = wait.PollImmediate(15*time.Second, 3*time.Minute, func() (bool, error) {
+			receiverSts, err := c.AppsV1().StatefulSets(ns).Get(context.TODO(), thanosReceiverSts.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if receiverSts.Status.ReadyReplicas == 1 {
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectNoError(err, "Expected thanos receiver deployed ready success")
+
+		decode = k8sScheme.Codecs.UniversalDeserializer().Decode
+		thanosReceiverServiceObj, _, _ := decode([]byte(remotewrite.ThanosReceiverServiceYaml), nil, nil)
+		thanosReceiverService := thanosReceiverServiceObj.(*corev1.Service) // This fails
+		_, err = c.CoreV1().Services(ns).Create(context.TODO(), thanosReceiverService, metav1.CreateOptions{})
+		framework.ExpectNoError(err, "Expected thanos receiver service created success")
+
+		decode = k8sScheme.Codecs.UniversalDeserializer().Decode
+		thanosQueryDeploymentObj, _, _ := decode([]byte(remotewrite.ThanosQueryYaml), nil, nil)
+		thanosQueryDeployment := thanosQueryDeploymentObj.(*v1.Deployment) // This fails
+		_, err = c.AppsV1().Deployments(ns).Create(context.TODO(), thanosQueryDeployment, metav1.CreateOptions{})
+		framework.ExpectNoError(err, "Expected thanos query created success")
+		err = wait.PollImmediate(15*time.Second, 3*time.Minute, func() (bool, error) {
+			queryDeployment, err := c.AppsV1().Deployments(ns).Get(context.TODO(), thanosQueryDeployment.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if queryDeployment.Status.ReadyReplicas == 1 {
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectNoError(err, "Expected thanos query deployed ready success")
+
+		decode = k8sScheme.Codecs.UniversalDeserializer().Decode
+		thanosQueryServiceObj, _, _ := decode([]byte(remotewrite.ThanosQueryServiceYaml), nil, nil)
+		thanosQueryService := thanosQueryServiceObj.(*corev1.Service) // This fails
+		_, err = c.CoreV1().Services(ns).Create(context.TODO(), thanosQueryService, metav1.CreateOptions{})
+		framework.ExpectNoError(err, "Expected thanos query service created success")
+
+		// Check 3 targets, 1 TiDB + 1 PD + 1 TiKV
+		err = tests.CheckThanosQueryData("thanos-query", tm.Namespace, fw, 3)
+		framework.ExpectNoError(err, "Expected thanos query check success")
+
+		ginkgo.By("Delete tidbmonitor")
+		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(context.TODO(), tm.Name, metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "delete tidbmonitor failed")
+		ginkgo.By("Delete thanos query")
+		err = c.AppsV1().Deployments(ns).Delete(context.TODO(), thanosQueryService.Name, metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "delete thanos query failed")
+		err = c.CoreV1().Services(ns).Delete(context.TODO(), thanosQueryService.Name, metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "delete thanos query service failed")
+		ginkgo.By("Delete thanos receiver")
+		err = c.AppsV1().StatefulSets(ns).Delete(context.TODO(), thanosReceiverSts.Name, metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "delete thanos receiver failed")
+		err = c.CoreV1().Services(ns).Delete(context.TODO(), thanosReceiverService.Name, metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "delete thanos receiver service failed")
 	})
 
 	ginkgo.Describe("[Feature]: RandomPassword", func() {

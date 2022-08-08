@@ -24,9 +24,34 @@ const (
 	defaultHostNetwork = false
 )
 
+var (
+	_ Cluster = &TidbCluster{}
+	_ Cluster = &DMCluster{}
+)
+
+type Cluster interface {
+	metav1.Object
+
+	// AllComponentSpec return all component specs
+	AllComponentSpec() []ComponentAccessor
+	// AllComponentStatus return all component status
+	AllComponentStatus() []ComponentStatus
+	// ComponentSpec return a component spec, return nil if not exist
+	ComponentSpec(typ MemberType) ComponentAccessor
+	// ComponentStatus return a component status, return nil if not exist
+	ComponentStatus(typ MemberType) ComponentStatus
+	// ComponentIsSuspending return true if the component's phase is `Suspend`
+	ComponentIsSuspending(typ MemberType) bool
+	// ComponentIsSuspended return true if the component's phase is `Suspend` and all resources is suspended
+	ComponentIsSuspended(typ MemberType) bool
+	// ComponentIsNormal return true if the component's phase is `Normal`
+	ComponentIsNormal(typ MemberType) bool
+}
+
 // ComponentAccessor is the interface to access component details, which respects the cluster-level properties
 // and component-level overrides
 type ComponentAccessor interface {
+	MemberType() MemberType
 	ImagePullPolicy() corev1.PullPolicy
 	ImagePullSecrets() []corev1.LocalObjectReference
 	HostNetwork() bool
@@ -42,6 +67,7 @@ type ComponentAccessor interface {
 	ConfigUpdateStrategy() ConfigUpdateStrategy
 	BuildPodSpec() corev1.PodSpec
 	Env() []corev1.EnvVar
+	EnvFrom() []corev1.EnvFromSource
 	AdditionalContainers() []corev1.Container
 	InitContainers() []corev1.Container
 	AdditionalVolumes() []corev1.Volume
@@ -50,27 +76,81 @@ type ComponentAccessor interface {
 	StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType
 	PodManagementPolicy() apps.PodManagementPolicyType
 	TopologySpreadConstraints() []corev1.TopologySpreadConstraint
+	SuspendAction() *SuspendAction
 }
 
-// Component defines component identity of all components
-type Component int
+func (tc *TidbCluster) AllComponentSpec() []ComponentAccessor {
+	components := []ComponentAccessor{}
+	components = append(components, tc.BaseDiscoverySpec())
+	if tc.Spec.PD != nil {
+		components = append(components, tc.BasePDSpec())
+	}
+	if tc.Spec.TiDB != nil {
+		components = append(components, tc.BaseTiDBSpec())
+	}
+	if tc.Spec.TiKV != nil {
+		components = append(components, tc.BaseTiKVSpec())
+	}
+	if tc.Spec.TiFlash != nil {
+		components = append(components, tc.BaseTiFlashSpec())
+	}
+	if tc.Spec.TiCDC != nil {
+		components = append(components, tc.BaseTiCDCSpec())
+	}
+	if tc.Spec.Pump != nil {
+		components = append(components, tc.BasePumpSpec())
+	}
+	return components
+}
 
-const (
-	ComponentPD Component = iota
-	ComponentTiDB
-	ComponentTiKV
-	ComponentTiFlash
-	ComponentTiCDC
-	ComponentPump
-	ComponentDiscovery
-	ComponentDMDiscovery
-	ComponentDMMaster
-	ComponentDMWorker
-	ComponentNGMonitoring
-)
+func (tc *TidbCluster) ComponentSpec(typ MemberType) ComponentAccessor {
+	components := tc.AllComponentSpec()
+	for _, component := range components {
+		if component.MemberType() == typ {
+			return component
+		}
+	}
+	return nil
+}
+
+func (dc *DMCluster) AllComponentSpec() []ComponentAccessor {
+	components := []ComponentAccessor{}
+	components = append(components, dc.BaseDiscoverySpec())
+	components = append(components, dc.BaseMasterSpec())
+	if dc.Spec.Worker != nil {
+		components = append(components, dc.BaseWorkerSpec())
+	}
+	return components
+}
+
+func (dc *DMCluster) ComponentSpec(typ MemberType) ComponentAccessor {
+	components := dc.AllComponentSpec()
+	for _, component := range components {
+		if component.MemberType() == typ {
+			return component
+		}
+	}
+	return nil
+}
+
+func (ngm *TidbNGMonitoring) AllComponentSpec() []ComponentAccessor {
+	components := []ComponentAccessor{}
+	components = append(components, ngm.BaseNGMonitoringSpec())
+	return components
+}
+
+func (ngm *TidbNGMonitoring) ComponentSpec(typ MemberType) ComponentAccessor {
+	components := ngm.AllComponentSpec()
+	for _, component := range components {
+		if component.MemberType() == typ {
+			return component
+		}
+	}
+	return nil
+}
 
 type componentAccessorImpl struct {
-	component Component
+	component MemberType
 	name      string
 	kind      string
 
@@ -91,9 +171,14 @@ type componentAccessorImpl struct {
 	podManagementPolicy       apps.PodManagementPolicyType
 	podSecurityContext        *corev1.PodSecurityContext
 	topologySpreadConstraints []TopologySpreadConstraint
+	suspendAction             *SuspendAction
 
 	// ComponentSpec is the Component Spec
 	ComponentSpec *ComponentSpec
+}
+
+func (a *componentAccessorImpl) MemberType() MemberType {
+	return a.component
 }
 
 func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType {
@@ -288,6 +373,13 @@ func (a *componentAccessorImpl) Env() []corev1.EnvVar {
 	return a.ComponentSpec.Env
 }
 
+func (a *componentAccessorImpl) EnvFrom() []corev1.EnvFromSource {
+	if a.ComponentSpec == nil {
+		return nil
+	}
+	return a.ComponentSpec.EnvFrom
+}
+
 func (a *componentAccessorImpl) InitContainers() []corev1.Container {
 	if a.ComponentSpec == nil {
 		return nil
@@ -358,33 +450,43 @@ func (a *componentAccessorImpl) TopologySpreadConstraints() []corev1.TopologySpr
 	return ptscs
 }
 
-func getComponentLabelValue(c Component) string {
+func (a *componentAccessorImpl) SuspendAction() *SuspendAction {
+	action := a.suspendAction
+	if a.ComponentSpec != nil && a.ComponentSpec.SuspendAction != nil {
+		action = a.ComponentSpec.SuspendAction
+	}
+	return action
+}
+
+func getComponentLabelValue(c MemberType) string {
 	switch c {
-	case ComponentPD:
+	case PDMemberType:
 		return label.PDLabelVal
-	case ComponentTiDB:
+	case TiDBMemberType:
 		return label.TiDBLabelVal
-	case ComponentTiKV:
+	case TiKVMemberType:
 		return label.TiKVLabelVal
-	case ComponentTiFlash:
+	case TiFlashMemberType:
 		return label.TiFlashLabelVal
-	case ComponentTiCDC:
+	case TiCDCMemberType:
 		return label.TiCDCLabelVal
-	case ComponentPump:
+	case PumpMemberType:
 		return label.PumpLabelVal
-	case ComponentDiscovery:
+	case DiscoveryMemberType:
 		return label.DiscoveryLabelVal
-	case ComponentDMDiscovery:
+	case DMDiscoveryMemberType:
 		return label.DiscoveryLabelVal
-	case ComponentDMMaster:
+	case DMMasterMemberType:
 		return label.DMMasterLabelVal
-	case ComponentDMWorker:
+	case DMWorkerMemberType:
 		return label.DMWorkerLabelVal
+	case NGMonitoringMemberType:
+		return label.NGMonitorLabelVal
 	}
 	return ""
 }
 
-func buildTidbClusterComponentAccessor(c Component, tc *TidbCluster, componentSpec *ComponentSpec) ComponentAccessor {
+func buildTidbClusterComponentAccessor(c MemberType, tc *TidbCluster, componentSpec *ComponentSpec) ComponentAccessor {
 	spec := &tc.Spec
 	return &componentAccessorImpl{
 		name:                      tc.Name,
@@ -407,12 +509,13 @@ func buildTidbClusterComponentAccessor(c Component, tc *TidbCluster, componentSp
 		podManagementPolicy:       spec.PodManagementPolicy,
 		podSecurityContext:        spec.PodSecurityContext,
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
+		suspendAction:             spec.SuspendAction,
 
 		ComponentSpec: componentSpec,
 	}
 }
 
-func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *ComponentSpec) ComponentAccessor {
+func buildDMClusterComponentAccessor(c MemberType, dc *DMCluster, componentSpec *ComponentSpec) ComponentAccessor {
 	spec := &dc.Spec
 	return &componentAccessorImpl{
 		name:                      dc.Name,
@@ -435,14 +538,46 @@ func buildDMClusterComponentAccessor(c Component, dc *DMCluster, componentSpec *
 		podManagementPolicy:       spec.PodManagementPolicy,
 		podSecurityContext:        spec.PodSecurityContext,
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
+		suspendAction:             spec.SuspendAction,
 
 		ComponentSpec: componentSpec,
 	}
 }
 
+func buildTiDBNGMonitoringComponentAccessor(c MemberType, tngm *TidbNGMonitoring, componentSpec *ComponentSpec) ComponentAccessor {
+	commonSpec := tngm.Spec.ComponentSpec
+	impl := &componentAccessorImpl{
+		name:                      tngm.GetName(),
+		kind:                      TiDBNGMonitoringKind,
+		component:                 c,
+		imagePullSecrets:          commonSpec.ImagePullSecrets,
+		hostNetwork:               commonSpec.HostNetwork,
+		affinity:                  commonSpec.Affinity,
+		priorityClassName:         commonSpec.PriorityClassName,
+		clusterNodeSelector:       commonSpec.NodeSelector,
+		clusterLabels:             commonSpec.Labels,
+		clusterAnnotations:        commonSpec.Annotations,
+		tolerations:               commonSpec.Tolerations,
+		configUpdateStrategy:      ConfigUpdateStrategyRollingUpdate,
+		podSecurityContext:        commonSpec.PodSecurityContext,
+		topologySpreadConstraints: commonSpec.TopologySpreadConstraints,
+		dnsConfig:                 commonSpec.DNSConfig,
+		dnsPolicy:                 commonSpec.DNSPolicy,
+
+		ComponentSpec: componentSpec,
+	}
+	if commonSpec.ImagePullPolicy != nil {
+		impl.imagePullPolicy = *commonSpec.ImagePullPolicy
+	}
+	if commonSpec.SchedulerName != nil {
+		impl.schedulerName = *commonSpec.SchedulerName
+	}
+	return impl
+}
+
 // BaseDiscoverySpec returns the base spec of discovery component
 func (tc *TidbCluster) BaseDiscoverySpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(ComponentDiscovery, tc, tc.Spec.Discovery.ComponentSpec)
+	return buildTidbClusterComponentAccessor(DiscoveryMemberType, tc, tc.Spec.Discovery.ComponentSpec)
 }
 
 // BaseTiDBSpec returns the base spec of TiDB servers
@@ -452,7 +587,7 @@ func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
 		spec = &tc.Spec.TiDB.ComponentSpec
 	}
 
-	return buildTidbClusterComponentAccessor(ComponentTiDB, tc, spec)
+	return buildTidbClusterComponentAccessor(TiDBMemberType, tc, spec)
 }
 
 // BaseTiKVSpec returns the base spec of TiKV servers
@@ -462,7 +597,7 @@ func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
 		spec = &tc.Spec.TiKV.ComponentSpec
 	}
 
-	return buildTidbClusterComponentAccessor(ComponentTiKV, tc, spec)
+	return buildTidbClusterComponentAccessor(TiKVMemberType, tc, spec)
 }
 
 // BaseTiFlashSpec returns the base spec of TiFlash servers
@@ -472,7 +607,7 @@ func (tc *TidbCluster) BaseTiFlashSpec() ComponentAccessor {
 		spec = &tc.Spec.TiFlash.ComponentSpec
 	}
 
-	return buildTidbClusterComponentAccessor(ComponentTiFlash, tc, spec)
+	return buildTidbClusterComponentAccessor(TiFlashMemberType, tc, spec)
 }
 
 // BaseTiCDCSpec returns the base spec of TiCDC servers
@@ -482,7 +617,7 @@ func (tc *TidbCluster) BaseTiCDCSpec() ComponentAccessor {
 		spec = &tc.Spec.TiCDC.ComponentSpec
 	}
 
-	return buildTidbClusterComponentAccessor(ComponentTiCDC, tc, spec)
+	return buildTidbClusterComponentAccessor(TiCDCMemberType, tc, spec)
 }
 
 // BasePDSpec returns the base spec of PD servers
@@ -492,7 +627,7 @@ func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
 		spec = &tc.Spec.PD.ComponentSpec
 	}
 
-	return buildTidbClusterComponentAccessor(ComponentPD, tc, spec)
+	return buildTidbClusterComponentAccessor(PDMemberType, tc, spec)
 }
 
 // BasePumpSpec returns the base spec of Pump:
@@ -502,15 +637,15 @@ func (tc *TidbCluster) BasePumpSpec() ComponentAccessor {
 		spec = &tc.Spec.Pump.ComponentSpec
 	}
 
-	return buildTidbClusterComponentAccessor(ComponentPump, tc, spec)
+	return buildTidbClusterComponentAccessor(PumpMemberType, tc, spec)
 }
 
 func (dc *DMCluster) BaseDiscoverySpec() ComponentAccessor {
-	return buildDMClusterComponentAccessor(ComponentDMDiscovery, dc, dc.Spec.Discovery.ComponentSpec)
+	return buildDMClusterComponentAccessor(DMDiscoveryMemberType, dc, dc.Spec.Discovery.ComponentSpec)
 }
 
 func (dc *DMCluster) BaseMasterSpec() ComponentAccessor {
-	return buildDMClusterComponentAccessor(ComponentDMMaster, dc, &dc.Spec.Master.ComponentSpec)
+	return buildDMClusterComponentAccessor(DMMasterMemberType, dc, &dc.Spec.Master.ComponentSpec)
 }
 
 func (dc *DMCluster) BaseWorkerSpec() ComponentAccessor {
@@ -519,5 +654,9 @@ func (dc *DMCluster) BaseWorkerSpec() ComponentAccessor {
 		spec = &dc.Spec.Worker.ComponentSpec
 	}
 
-	return buildDMClusterComponentAccessor(ComponentDMWorker, dc, spec)
+	return buildDMClusterComponentAccessor(DMWorkerMemberType, dc, spec)
+}
+
+func (tngm *TidbNGMonitoring) BaseNGMonitoringSpec() ComponentAccessor {
+	return buildTiDBNGMonitoringComponentAccessor(NGMonitoringMemberType, tngm, &tngm.Spec.NGMonitoring.ComponentSpec)
 }

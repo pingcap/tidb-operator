@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -49,6 +50,7 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 		name                     string
 		prepare                  func(cluster *v1alpha1.TidbCluster)
 		errWhenCreateStatefulSet bool
+		suspendComponent         func() (bool, error)
 		err                      bool
 		setCreated               bool
 		tls                      bool
@@ -77,6 +79,11 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.suspendComponent != nil {
+			tmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
+				return test.suspendComponent()
+			}
 		}
 
 		err := tmm.Sync(tc)
@@ -127,6 +134,14 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			prepare:                  nil,
 			errWhenCreateStatefulSet: true,
 			err:                      true,
+			setCreated:               false,
+		},
+		{
+			name:                     "skip create when suspend",
+			suspendComponent:         func() (bool, error) { return true, nil },
+			prepare:                  nil,
+			errWhenCreateStatefulSet: true,
+			err:                      false,
 			setCreated:               false,
 		},
 	}
@@ -815,6 +830,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		tidbUpgrader:                 NewFakeTiDBUpgrader(),
 		tidbFailover:                 NewFakeTiDBFailover(),
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
+		suspender:                    suspender.NewFakeSuspender(),
 	}
 	indexers := &fakeIndexers{
 		pod:    fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer(),
@@ -1195,6 +1211,28 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.Containers[1].VolumeMounts[index]).To(Equal(corev1.VolumeMount{
 					Name: fmt.Sprintf("%s-%s", v1alpha1.TiDBMemberType, "slowlogfile"), MountPath: "/var/log/slowlogtest",
 				}))
+			},
+		},
+		{
+			name: "tidb spec initialDelaySeconds, periodSeconds",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{ReadinessProbe: &v1alpha1.TiDBProbe{
+						InitialDelaySeconds: pointer.Int32Ptr(5),
+						PeriodSeconds:       pointer.Int32Ptr(2),
+					}},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.Containers[1].ReadinessProbe.InitialDelaySeconds).To(Equal(int32(5)))
+				g.Expect(sts.Spec.Template.Spec.Containers[1].ReadinessProbe.PeriodSeconds).To(Equal(int32(2)))
 			},
 		},
 		// TODO add more tests

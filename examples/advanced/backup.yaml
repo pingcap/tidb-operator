@@ -1,0 +1,257 @@
+apiVersion: pingcap.com/v1alpha1
+kind: Backup
+metadata:
+  name: advanced-backup
+  namespace: default
+
+spec:
+  ## Describes the compute resource requirements and limits of Backup.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  ## List of environment variables to set in the container, like v1.Container.Env.
+  ## Note that the following builtin env vars will be overwritten by values set here.
+  ## - S3_PROVIDER
+  ## - S3_ENDPOINT
+  ## - AWS_REGION
+  ## - AWS_ACL
+  ## - AWS_STORAGE_CLASS
+  ## - AWS_DEFAULT_REGION
+  ## - AWS_ACCESS_KEY_ID
+  ## - AWS_SECRET_ACCESS_KEY
+  ## - GCS_PROJECT_ID
+  ## - GCS_OBJECT_ACL
+  ## - GCS_BUCKET_ACL
+  ## - GCS_LOCATION
+  ## - GCS_STORAGE_CLASS
+  ## - GCS_SERVICE_ACCOUNT_JSON_KEY
+  ## - BR_LOG_TO_TERM
+  # env: []
+
+  ## From is the TidbCluster to be backed up.
+  ## It takes high precedence than spec in BR. If `from` not set, cluster in BR will be backed up.
+  # from:
+    ## Host is the address of the TidbCluster to be backed up, which is the service name of the TidbCluster, such as `basic-tidb`.
+    # host: advanced-tidb-tidb
+    ## Port is the port of the TidbCluster to be backed up.
+    # port: 4000
+    ## User is the accessing user of the TidbCluster to be backed up.
+    # user: backup
+    ## SecretName is the secret that contains the password of the accessing user of the TidbCluster to be backed up.
+    # secretName: backup-secret
+    ## TLSClientSecretName is the name of secret which stores tidb server client certificate.
+    ## Defaults to nil.
+    # tlsClientSecretName: ""
+
+  ## BackupType is the backup type for TidbCluster.
+  ## `full` represents the full backup of TidbCluster.
+  ## `db` represents the backup of one DB of TidbCluster.
+  ## `table` represents the backup of one table of TidbCluster.
+  backupType: full
+
+  ## TikvGCLifeTime specifies the safe gc life time for Backup.
+  ## The time limit during which data is retained for each GC, in the format of Go Duration.
+  ## When a GC happens, the current time minus this value is the safe point.
+  ## Defaults to 72h.
+  tikvGCLifeTime: 72h
+
+  ## StorageProvider configures where and how backup data should be stored.
+  ## s3/gcs/local are supported.
+
+  ## Provider of s3 configuration.
+  s3:
+    ## Provider specifies storage provider that implements the S3 interface, check all supported providers in link below.
+    ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/backup-restore-cr#s3-storage-fields
+    provider: aws
+    ## Region specifies where the S3 compatible bucket is located.
+    region: us-west-1
+    ## Path specifies the full path where the backup is saved, valid when using dumpling or lightning.
+    ## The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+    # path: ""
+    ## Bucket specifies the name of the bucket which stores data.
+    bucket: "my-bucket"
+    ## Endpoint of S3 compatible storage service.
+    # endpoint: ""
+    ## StorageClass represents the storage class.
+    ## Amazon S3 supports the following storage class options: STANDARD/REDUCED_REDUNDANCY/STANDARD_IA/ONEZONE_IA/GLACIER/DEEP_ARCHIVE
+    # storageClass: "STANDARD"
+    ## Acl specifies access control permissions for this bucket.
+    ## Ref: https://docs.aws.amazon.com/AmazonS3/latest/userguide/acl-overview.html
+    # acl: ""
+    ## SecretName specifies the name of secret which stores S3 compliant storage access key and secret key.
+    secretName: s3-secret
+    ## Prefix of the data path. If prefix set,
+    ## the value is used to make up the remote storage path:`s3://${.spec.s3.bucket}/${.spec.s3.prefix}/backupName`
+    # prefix: ""
+    ## SSE specifies Sever-Side Encryption. Ref: https://docs.aws.amazon.com/AmazonS3/latest/userguide/serv-side-encryption.html
+    # sse: ""
+    ## Options specifies extra arguments for backup and restore with dumpling and lightning.
+    # options: []
+
+  ## Provider of gcs configuration.
+  # gcs:
+    ## ProjectId represents the project that organizes all your Google Cloud Platform resources.
+    ## Ref: https://cloud.google.com/resource-manager/docs/creating-managing-projects
+    # projectId: "advanced-tidb-backup-300000"
+    ## Location specifies where the gcs bucket is located.
+    ## Ref: https://cloud.google.com/storage/docs/locations#available-locations
+    # location: "US-CENTRAL1"
+    ## Path specifies the full path where the backup is saved, valid when using dumpling or lightning.
+    ## The format of the path must be: "gcs://<bucket-name>/<path-to-backup-file>"
+    # path: ""
+    ## Bucket specifies the name of the bucket which stores data.
+    # bucket: "my-bucket"
+    ## StorageClass represents the storage class.
+    ## gcs supports the following storage class options: MULTI_REGIONAL/REGIONAL/NEARLINE/COLDLINE/DURABLE_REDUCED_AVAILABILITY
+    ## Ref: https://cloud.google.com/storage/docs/storage-classes
+    ## Defaults to COLDLINE
+    # storageClass: COLDLINE
+    ## ObjectAcl represents the access control list for backup objects.
+    ## gcs support the following object ACL policy: authenticatedRead/bucketOwnerFullControl/bucketOwnerRead/private/projectPrivate/publicRead.
+    ## Defaults to private.
+    ## Ref: https://cloud.google.com/storage/docs/access-control/lists
+    # objectAcl: "private"
+    ## BucketAcl specifies the access control list for backup buckets,
+    ## gcs support the following bucket ACL policy: authenticatedRead/private/projectPrivate/publicRead/publicReadWrite.
+    ## Defaults to private.
+    ## Ref: https://cloud.google.com/storage/docs/access-control/lists
+    # bucketAcl: "private"
+    ## SecretName is the name of secret which stores the gcs service account credentials JSON.
+    # secretName: "gcs-secret"
+    ## Prefix specifies the data path.
+    ## If set, the value is used to make up the path of the remote storage: `gcs://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`.
+    # prefix: ""
+
+  # local:
+    ## Volume presents the persistent volume configuration.
+    ## specify volume types that are supported by Kubernetes, Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes
+    # volume:
+      # name: nfs
+      # nfs:
+        # server: 192.168.0.2
+        # path: /nfs
+    ## VolumeMount is the persistent volume mount configuration.
+    # volumeMount:
+      # name: nfs
+      # mountPath: /nfs
+    ## Prefix of the data path.
+    ## If set, the value is used to make up the storage path of the persistent volume: `local://${.spec.local.volumeMount.mountPath}/${.spec.local.prefix}/`.
+    # prefix: ""
+
+
+  ## The storageClassName of the persistent volume for Backup data storage.
+  ## Defaults to Kubernetes default storage class.
+  # storageClassName: ""
+
+  ## StorageSize is the PV size specified for the backup operation.
+  ## This value must be greater than the size of the TidbCluster to be backed up.
+  ## Defaults to 100Gi.
+  storageSize: "100Gi"
+
+
+  ## BR configuration.
+  ## Ref: https://docs.pingcap.com/tidb/stable/backup-and-restore-tool
+  br:
+    ## Cluster specifies name of TidbCluster to be backed up.
+    cluster: "advanced-tidb"
+    ## Namespace specifies namespace of TidbCluster to be backed up.
+    clusterNamespace: "default"
+    ## LogLevel is the log level. Defaults to `info`.
+    # logLevel: "info"
+    ## StatusAddr is the HTTP listening address for the status report service. Defaults to empty.
+    # statusAddr: ""
+    ## Concurrency is the size of thread pool on each node that execute the backup task.
+    ## Defaults to 4.
+    concurrency: 4
+    ## RateLimit is the rate limit of the backup task, MB/s per node.
+    ## If set to 4, the speed limit is 4 MB/s.The speed limit is not set by default.
+    # rateLimit: 0
+    ## TimeAgo presents back up the data before `timeAgo`, e.g. 1m, 1h. Defaults to empty.
+    # timeAgo: 1m
+    ## Checksum specifies whether to verify the files after the backup is completed.
+    ## Defaults to `true``.
+    # checksum: true
+    ## CheckRequirements specifies whether to check requirements before backup
+    # checkRequirements: true
+    ## SendCredToTikv specifies whether the BR process passes its AWS or GCP privileges to the TiKV process.
+    ## Defaults to `true``.
+    # sendCredToTikv: true
+    ## OnLine specifies whether online during restore. Defaults to false.
+    # onLine: false
+    ## Options specifies the extra arguments that BR supports. These options has highest priority.
+    # options: []
+
+  ## DumplingConfig is the configs for dumpling
+  ## Ref: https://docs.pingcap.com/tidb/stable/dumpling-overview
+  # dumpling:
+    ## Options means extra arguments that BR supports dumpling supports.
+    # options: []
+
+  ## Tolerations are applied to Backup pod, allowing (but do not require) pod to be scheduled onto nodes with matching taints.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  # tolerations:
+  #   - effect: NoSchedule
+  #     key: dedicated
+  #     operator: Equal
+  #     value: tidb
+
+  ## ToolImage specifies the tool image used in `Backup`, which supports BR and Dumpling images.
+  ## For examples `spec.toolImage: pingcap/br:v5.2.0` or `spec.toolImage: pingcap/dumpling:v5.2.0`
+  ## For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.
+  toolImage: pingcap/br:v5.2.0
+
+  ## ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+  ## If private registry is used, imagePullSecrets may be set.
+  ## You can also set this in service account.
+  ## Ref: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
+  # imagePullSecrets:
+  # - name: secretName
+
+  ## TableFilter specifies tables that match the table filter rules for BR or Dumpling.
+  ## Ref: https://docs.pingcap.com/tidb/stable/table-filter
+  ## Defaults to empty.
+  # tableFilter: []
+
+  ## Affinity for Backup pod scheduling
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  # affinity: {}
+
+  ## UseKMS to decrypt the secrets. Defaults to false.
+  useKMS: false
+
+  ## ServiceAccount Specify service account of Backup.
+  # serviceAccount: "advanced-tidb-backup"
+
+  ## CleanPolicy specifies whether to clean backup data when the Backup CR is deleted, if not set, the backup data will be retained.
+  ## `Retain` represents that the backup data will be retained when the Backup CR is deleted.
+  ## `OnFailure` represents that the backup data will be cleaned only for the failed backups when the Backup CR is deleted.
+  ## `Delete` represents that the backup data will be cleaned when the Backup CR is deleted.
+  cleanPolicy: Retain
+
+  ## CleanOption controls the behavior of clean.
+  ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/backup-restore-overview#clean-backup-data
+  # cleanOption:
+    ## PageSize specifies the number of files to be deleted in each batch at a time.
+    ## Defaults to 10000.
+    # pageSize: 10000
+    ## DisableBatchConcurrency specifies whether to disable the concurrent batch deletion method and uses the concurrent deletion method or not.
+    # disableBatchConcurrency: false
+    ## BatchConcurrency specifies the number of goroutines to start for the concurrent batch deletion method.
+    ## Defaults to 10.
+    # batchConcurrency: 10
+    ## RoutineConcurrency specifies the number of goroutines to start for the concurrent deletion method.
+    ## Defaults to 100.
+    # routineConcurrency: 100
+
+  ## PodSecurityContext holds pod-level security attributes and common container settings.
+  ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+  # podSecurityContext: {}
+
+  ## PriorityClassName of Backup pods. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/.
+  # priorityClassName: high-priority

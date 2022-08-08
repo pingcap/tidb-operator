@@ -215,6 +215,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		Image:           m.deps.CLIConfig.TiDBDiscoveryImage,
 		ImagePullPolicy: baseSpec.ImagePullPolicy(),
 		Env:             envs,
+		EnvFrom:         baseSpec.EnvFrom(),
 		VolumeMounts:    volMounts,
 		Ports: []corev1.ContainerPort{
 			{
@@ -229,7 +230,12 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 			},
 		},
 	})
-	podSpec.Containers = append(podSpec.Containers, baseSpec.AdditionalContainers()...)
+
+	var err error
+	podSpec.Containers, err = MergePatchContainers(podSpec.Containers, baseSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for Discovery of [%s/%s], error: %v", meta.Namespace, meta.Name, err)
+	}
 
 	podSpec.InitContainers = append(podSpec.InitContainers, baseSpec.InitContainers()...)
 

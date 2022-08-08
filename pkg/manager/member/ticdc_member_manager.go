@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -48,6 +49,7 @@ type ticdcMemberManager struct {
 	deps                     *controller.Dependencies
 	scaler                   Scaler
 	ticdcUpgrader            Upgrader
+	suspender                suspender.Suspender
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
@@ -85,11 +87,12 @@ func getTiCDCConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 // NewTiCDCMemberManager returns a *ticdcMemberManager
-func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader) manager.Manager {
+func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader, spder suspender.Suspender) manager.Manager {
 	m := &ticdcMemberManager{
 		deps:          deps,
 		scaler:        scaler,
 		ticdcUpgrader: ticdcUpgrader,
+		suspender:     spder,
 	}
 	m.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	return m
@@ -125,6 +128,29 @@ func (m *ticdcMemberManager) syncTiCDCConfigMap(tc *v1alpha1.TidbCluster, set *a
 func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.TiCDC == nil {
 		return nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	// skip sync if ticdc is suspended
+	component := v1alpha1.TiCDCMemberType
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, ns, tcName)
+		return nil
+	}
+
+	// NB: All TiCDC operations, e.g. creation, scale, upgrade will be blocked.
+	//     if PD or TiKV is not available.
+	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCDC is waiting for PD cluster running", ns, tcName)
+	}
+	if tc.Spec.TiKV != nil && !tc.TiKVIsAvailable() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiCDC is waiting for TiKV cluster running", ns, tcName)
 	}
 
 	// Sync CDC Headless Service
@@ -169,10 +195,6 @@ func (m *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	}
 
 	if stsNotExist {
-		if !tc.PDIsAvailable() {
-			klog.Infof("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
-			return nil
-		}
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSts)
 		if err != nil {
 			return err
@@ -434,6 +456,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiCDC.ResourceRequirements),
 		Env:          util.AppendEnv(envs, baseTiCDCSpec.Env()),
+		EnvFrom:      baseTiCDCSpec.EnvFrom(),
 	}
 	if cm != nil {
 		ticdcContainer.VolumeMounts = append(ticdcContainer.VolumeMounts, corev1.VolumeMount{
@@ -448,7 +471,12 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 	}
 
 	podSpec := baseTiCDCSpec.BuildPodSpec()
-	podSpec.Containers = []corev1.Container{ticdcContainer}
+
+	podSpec.Containers, err = MergePatchContainers([]corev1.Container{ticdcContainer}, baseTiCDCSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for TiCDC of [%s/%s], error: %v", ns, tcName, err)
+	}
+
 	podSpec.Volumes = append(vols, baseTiCDCSpec.AdditionalVolumes()...)
 	podSpec.ServiceAccountName = tc.Spec.TiCDC.ServiceAccount
 	podSpec.InitContainers = append(podSpec.InitContainers, baseTiCDCSpec.InitContainers()...)

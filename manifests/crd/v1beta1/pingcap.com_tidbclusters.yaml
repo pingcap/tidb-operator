@@ -1957,6 +1957,27 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
                 hostNetwork:
                   type: boolean
                 image:
@@ -2609,6 +2630,11 @@ spec:
                   type: string
                 statefulSetUpdateStrategy:
                   type: string
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -4294,6 +4320,27 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
                 hostNetwork:
                   type: boolean
                 image:
@@ -5009,6 +5056,11 @@ spec:
                     - storageSize
                     type: object
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -6710,6 +6762,27 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
                 hostNetwork:
                   type: boolean
                 image:
@@ -7372,6 +7445,11 @@ spec:
                   type: string
                 storageClassName:
                   type: string
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -7431,6 +7509,11 @@ spec:
               type: string
             statefulSetUpdateStrategy:
               type: string
+            suspendAction:
+              properties:
+                suspendStatefulSet:
+                  type: boolean
+              type: object
             ticdc:
               properties:
                 additionalContainers:
@@ -9024,6 +9107,29 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
+                gracefulShutdownTimeout:
+                  type: string
                 hostNetwork:
                   type: boolean
                 image:
@@ -9700,6 +9806,11 @@ spec:
                     - storageSize
                     type: object
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -11335,6 +11446,27 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
                 hostNetwork:
                   type: boolean
                 image:
@@ -12093,6 +12225,14 @@ spec:
                   type: string
                 readinessProbe:
                   properties:
+                    initialDelaySeconds:
+                      format: int32
+                      minimum: 0
+                      type: integer
+                    periodSeconds:
+                      format: int32
+                      minimum: 1
+                      type: integer
                     type:
                       enum:
                       - tcp
@@ -12222,6 +12362,11 @@ spec:
                     - storageSize
                     type: object
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -13865,6 +14010,27 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
                 failover:
                   properties:
                     recoverByUID:
@@ -14600,6 +14766,11 @@ spec:
                         type: string
                     type: object
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -16234,6 +16405,27 @@ spec:
                     - name
                     type: object
                   type: array
+                envFrom:
+                  items:
+                    properties:
+                      configMapRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                      prefix:
+                        type: string
+                      secretRef:
+                        properties:
+                          name:
+                            type: string
+                          optional:
+                            type: boolean
+                        type: object
+                    type: object
+                  type: array
                 evictLeaderTimeout:
                   type: string
                 failover:
@@ -16958,6 +17150,11 @@ spec:
                   items:
                     type: string
                   type: array
+                suspendAction:
+                  properties:
+                    suspendStatefulSet:
+                      type: boolean
+                  type: object
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -17073,6 +17270,43 @@ spec:
               type: array
             pd:
               properties:
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        enum:
+                        - "True"
+                        - "False"
+                        - Unknown
+                        type: string
+                      type:
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                    - lastTransitionTime
+                    - message
+                    - reason
+                    - status
+                    - type
+                    type: object
+                  nullable: true
+                  type: array
                 failureMembers:
                   additionalProperties:
                     properties:
@@ -17227,9 +17461,75 @@ spec:
                         type: object
                     type: object
                   type: object
+                volumes:
+                  additionalProperties:
+                    properties:
+                      boundCount:
+                        type: integer
+                      currentCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      currentCount:
+                        type: integer
+                      name:
+                        type: string
+                      resizedCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      resizedCount:
+                        type: integer
+                    required:
+                    - currentCapacity
+                    - name
+                    - resizedCapacity
+                    type: object
+                  type: object
               type: object
             pump:
               properties:
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        enum:
+                        - "True"
+                        - "False"
+                        - Unknown
+                        type: string
+                      type:
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                    - lastTransitionTime
+                    - message
+                    - reason
+                    - status
+                    - type
+                    type: object
+                  nullable: true
+                  type: array
                 members:
                   items:
                     properties:
@@ -17293,6 +17593,35 @@ spec:
                   required:
                   - replicas
                   type: object
+                volumes:
+                  additionalProperties:
+                    properties:
+                      boundCount:
+                        type: integer
+                      currentCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      currentCount:
+                        type: integer
+                      name:
+                        type: string
+                      resizedCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      resizedCount:
+                        type: integer
+                    required:
+                    - currentCapacity
+                    - name
+                    - resizedCapacity
+                    type: object
+                  type: object
               type: object
             ticdc:
               properties:
@@ -17311,6 +17640,43 @@ spec:
                         type: string
                     type: object
                   type: object
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        enum:
+                        - "True"
+                        - "False"
+                        - Unknown
+                        type: string
+                      type:
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                    - lastTransitionTime
+                    - message
+                    - reason
+                    - status
+                    - type
+                    type: object
+                  nullable: true
+                  type: array
                 phase:
                   type: string
                 statefulSet:
@@ -17361,9 +17727,75 @@ spec:
                   type: object
                 synced:
                   type: boolean
+                volumes:
+                  additionalProperties:
+                    properties:
+                      boundCount:
+                        type: integer
+                      currentCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      currentCount:
+                        type: integer
+                      name:
+                        type: string
+                      resizedCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      resizedCount:
+                        type: integer
+                    required:
+                    - currentCapacity
+                    - name
+                    - resizedCapacity
+                    type: object
+                  type: object
               type: object
             tidb:
               properties:
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        enum:
+                        - "True"
+                        - "False"
+                        - Unknown
+                        type: string
+                      type:
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                    - lastTransitionTime
+                    - message
+                    - reason
+                    - status
+                    - type
+                    type: object
+                  nullable: true
+                  type: array
                 failureMembers:
                   additionalProperties:
                     properties:
@@ -17448,9 +17880,75 @@ spec:
                   required:
                   - replicas
                   type: object
+                volumes:
+                  additionalProperties:
+                    properties:
+                      boundCount:
+                        type: integer
+                      currentCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      currentCount:
+                        type: integer
+                      name:
+                        type: string
+                      resizedCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      resizedCount:
+                        type: integer
+                    required:
+                    - currentCapacity
+                    - name
+                    - resizedCapacity
+                    type: object
+                  type: object
               type: object
             tiflash:
               properties:
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        enum:
+                        - "True"
+                        - "False"
+                        - Unknown
+                        type: string
+                      type:
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                    - lastTransitionTime
+                    - message
+                    - reason
+                    - status
+                    - type
+                    type: object
+                  nullable: true
+                  type: array
                 failoverUID:
                   type: string
                 failureStores:
@@ -17596,14 +18094,83 @@ spec:
                     - state
                     type: object
                   type: object
+                volumes:
+                  additionalProperties:
+                    properties:
+                      boundCount:
+                        type: integer
+                      currentCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      currentCount:
+                        type: integer
+                      name:
+                        type: string
+                      resizedCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      resizedCount:
+                        type: integer
+                    required:
+                    - currentCapacity
+                    - name
+                    - resizedCapacity
+                    type: object
+                  type: object
               type: object
             tikv:
               properties:
                 bootStrapped:
                   type: boolean
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        enum:
+                        - "True"
+                        - "False"
+                        - Unknown
+                        type: string
+                      type:
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                    - lastTransitionTime
+                    - message
+                    - reason
+                    - status
+                    - type
+                    type: object
+                  nullable: true
+                  type: array
                 evictLeader:
                   additionalProperties:
                     properties:
+                      beginTime:
+                        format: date-time
+                        type: string
                       podCreateTime:
                         format: date-time
                         type: string
@@ -17754,6 +18321,35 @@ spec:
                     - leaderCount
                     - podName
                     - state
+                    type: object
+                  type: object
+                volumes:
+                  additionalProperties:
+                    properties:
+                      boundCount:
+                        type: integer
+                      currentCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      currentCount:
+                        type: integer
+                      name:
+                        type: string
+                      resizedCapacity:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      resizedCount:
+                        type: integer
+                    required:
+                    - currentCapacity
+                    - name
+                    - resizedCapacity
                     type: object
                   type: object
               type: object

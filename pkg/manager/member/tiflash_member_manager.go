@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
+	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -53,16 +54,18 @@ type tiflashMemberManager struct {
 	failover                 Failover
 	scaler                   Scaler
 	upgrader                 Upgrader
+	suspender                suspender.Suspender
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiFlashMemberManager returns a *tiflashMemberManager
-func NewTiFlashMemberManager(deps *controller.Dependencies, tiflashFailover Failover, tiflashScaler Scaler, tiflashUpgrader Upgrader) manager.Manager {
+func NewTiFlashMemberManager(deps *controller.Dependencies, tiflashFailover Failover, tiflashScaler Scaler, tiflashUpgrader Upgrader, spder suspender.Suspender) manager.Manager {
 	m := tiflashMemberManager{
-		deps:     deps,
-		failover: tiflashFailover,
-		scaler:   tiflashScaler,
-		upgrader: tiflashUpgrader,
+		deps:      deps,
+		failover:  tiflashFailover,
+		scaler:    tiflashScaler,
+		upgrader:  tiflashUpgrader,
+		suspender: spder,
 	}
 	m.statefulSetIsUpgradingFn = tiflashStatefulSetIsUpgrading
 	return &m
@@ -74,7 +77,18 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	err := m.enablePlacementRules(tc)
+	// skip sync if tiflash is suspended
+	component := v1alpha1.TiFlashMemberType
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
+	err = m.enablePlacementRules(tc)
 	if err != nil {
 		klog.Errorf("Enable placement rules failed, error: %v", err)
 		// No need to return err here, just continue to sync tiflash
@@ -537,6 +551,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		})
 	}
 	tiflashContainer.Env = util.AppendEnv(env, baseTiFlashSpec.Env())
+	tiflashContainer.EnvFrom = baseTiFlashSpec.EnvFrom()
 	podSpec.Volumes = append(vols, baseTiFlashSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, baseTiFlashSpec.InitContainers()...)
@@ -545,7 +560,12 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		return nil, err
 	}
 	podSpec.Containers = append([]corev1.Container{tiflashContainer}, containers...)
-	podSpec.Containers = append(podSpec.Containers, baseTiFlashSpec.AdditionalContainers()...)
+
+	podSpec.Containers, err = MergePatchContainers(podSpec.Containers, baseTiFlashSpec.AdditionalContainers())
+	if err != nil {
+		return nil, fmt.Errorf("failed to merge containers spec for TiFlash of [%s/%s], err: %v", ns, tcName, err)
+	}
+
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
@@ -596,7 +616,7 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 			return nil, err
 		}
 		pvcs = append(pvcs, corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("data%d", k)},
+			ObjectMeta: metav1.ObjectMeta{Name: string(v1alpha1.GetStorageVolumeNameForTiFlash(k))},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,

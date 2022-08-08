@@ -219,7 +219,9 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
+	// works that should be done to make the ticdc cluster current state match the desired state:
 	//   - waiting for the pd cluster available(pd cluster is in quorum)
+	//   - waiting for the tikv cluster available(at least one peer works)
 	//   - create or update ticdc deployment
 	//   - sync ticdc cluster status from pd to TidbCluster object
 	if err := c.ticdcMemberManager.Sync(tc); err != nil {
@@ -246,7 +248,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	}
 
 	// resize PVC if necessary
-	if err := c.pvcResizer.Resize(tc); err != nil {
+	if err := c.pvcResizer.Sync(tc); err != nil {
 		return err
 	}
 
