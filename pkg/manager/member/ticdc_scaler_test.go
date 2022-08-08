@@ -325,11 +325,15 @@ func newFakeTiCDCScaler(resyncDuration ...time.Duration) (*ticdcScaler, cache.In
 
 type cdcCtlMock struct {
 	controller.TiCDCControlInterface
+	getStatus    func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error)
 	drainCapture func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error)
 	resignOwner  func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
 	isHealthy    func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
 }
 
+func (c *cdcCtlMock) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+	return c.getStatus(tc, ordinal)
+}
 func (c *cdcCtlMock) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
 	return c.drainCapture(tc, ordinal)
 }
@@ -625,5 +629,169 @@ func TestTiCDCGracefulResignOwner(t *testing.T) {
 		pod := c.pod()
 		err := gracefulResignOwnerTiCDC(tc, c.cdcCtl, c.podCtl, pod, "ownerPod", 1, "test")
 		c.expectedErr(err, c.caseName)
+	}
+}
+
+func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbClusterForPD()
+	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{}
+
+	cases := []struct {
+		caseName    string
+		cdcCtl      controller.TiCDCControlInterface
+		changeTc    func(*v1alpha1.TidbCluster)
+		expectedOk  bool
+		expectedErr bool
+	}{
+		{
+			caseName: "support graceful upgrade v6.3.0",
+			cdcCtl: &cdcCtlMock{
+				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.3.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v6.4.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  true,
+			expectedErr: false,
+		},
+		{
+			caseName: "support graceful upgrade v7.0.0",
+			cdcCtl: &cdcCtlMock{
+				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "7.0.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v7.4.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  true,
+			expectedErr: false,
+		},
+		{
+			caseName: "support graceful reload",
+			cdcCtl: &cdcCtlMock{
+				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.2.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v6.2.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  true,
+			expectedErr: false,
+		},
+		{
+			caseName: "get status failed",
+			cdcCtl: &cdcCtlMock{
+				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return nil, fmt.Errorf("test error")
+				},
+			},
+			expectedOk:  false,
+			expectedErr: true,
+		},
+		{
+			caseName: "malformed pod version, skip graceful upgrade",
+			cdcCtl: &cdcCtlMock{
+				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "malformed",
+					}, nil
+				},
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
+			caseName: "malformed tc version, skip graceful upgrade",
+			cdcCtl: &cdcCtlMock{
+				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.3.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.Version = "malformed"
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
+			caseName: "malformed ticdc spec version, skip graceful upgrade",
+			cdcCtl: &cdcCtlMock{
+				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.3.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "malformed"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
+			caseName: "pod version too low, skip graceful upgrade #1",
+			cdcCtl: &cdcCtlMock{
+				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.2.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v6.3.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
+			caseName: "pod version too low, skip graceful upgrade #2",
+			cdcCtl: &cdcCtlMock{
+				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.2.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v6.4.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+	}
+
+	for _, c := range cases {
+		name := c.caseName
+		tcClone := tc.DeepCopy()
+		if c.changeTc != nil {
+			c.changeTc(tcClone)
+		}
+		support, err := isTiCDCPodSupportGracefulUpgrade(tcClone, c.cdcCtl, 1, "test")
+		g.Expect(support).Should(Equal(c.expectedOk), name)
+		if c.expectedErr {
+			g.Expect(controller.IsRequeueError(err)).Should(BeTrue(), name)
+		} else {
+			g.Expect(err).Should(BeNil(), name)
+		}
 	}
 }
