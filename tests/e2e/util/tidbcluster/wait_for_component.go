@@ -143,9 +143,6 @@ func CheckComponentStatusNotChanged(c versioned.Interface, oldTC *v1alpha1.TidbC
 			if oldCapture.PodName != curCapture.PodName {
 				return fmt.Errorf("podName of ticdc %q is changed from %q to %q", cdcName, oldCapture.PodName, curCapture.PodName)
 			}
-			if !curCapture.Ready {
-				return fmt.Errorf("ticdc %q is not ready", cdcName)
-			}
 		}
 	}
 	// pump

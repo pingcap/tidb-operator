@@ -955,6 +955,16 @@ func (oa *OperatorActions) isTiCDCMembersReady(tc *v1alpha1.TidbCluster, sts *v1
 		return fmt.Errorf("sts in tc status is nil")
 	}
 
+	if len(tc.Status.TiCDC.Captures) != int(tc.Spec.TiCDC.Replicas) {
+		return fmt.Errorf("tc.status.TiCDC.Captures.count(%d) != %d", len(tc.Status.TiCDC.Captures), tc.Spec.TiCDC.Replicas)
+	}
+
+	for _, capture := range tc.Status.TiCDC.Captures {
+		if !capture.Ready {
+			return fmt.Errorf("capture %s is not ready", capture.PodName)
+		}
+	}
+
 	return nil
 }
 
