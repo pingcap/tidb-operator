@@ -44,6 +44,8 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	tcNS := tc.Namespace
 	peerServiceName := controller.TiCDCPeerMemberName(tcName)
 
+	// NB: TiCDC control relies the format.
+	// TODO move advertise addr format to package controller.
 	advertiseAddr := fmt.Sprintf("${TICDC_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
 		advertiseAddr = advertiseAddr + "." + tc.Spec.ClusterDomain

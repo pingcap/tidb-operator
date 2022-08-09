@@ -607,6 +607,7 @@ type memberCheckContext struct {
 	stsName        string
 	expectedImage  string
 	services       []string
+	status         v1alpha1.ComponentStatus
 	checkComponent func(obj metav1.Object, sts *v1.StatefulSet) error
 }
 
@@ -658,6 +659,11 @@ func (oa *OperatorActions) IsMembersReady(obj metav1.Object, component v1alpha1.
 	err = ctx.checkComponent(obj, sts)
 	if err != nil {
 		return fmt.Errorf("%s members are not ready: %s", component, err)
+	}
+	if ctx.status != nil {
+		if ctx.status.GetPhase() != v1alpha1.NormalPhase {
+			return fmt.Errorf("%s phase is not Normal", component)
+		}
 	}
 
 	// check containers
@@ -736,6 +742,7 @@ func (oa *OperatorActions) memberCheckContextForTC(tc *v1alpha1.TidbCluster, com
 		stsName:       stsName,
 		expectedImage: expectedImage,
 		services:      services,
+		status:        tc.ComponentStatus(component),
 		checkComponent: func(obj metav1.Object, sts *v1.StatefulSet) error {
 			tc := obj.(*v1alpha1.TidbCluster)
 			return checkComponent(tc, sts)
@@ -777,6 +784,7 @@ func (oa *OperatorActions) memberCheckContextForDC(dc *v1alpha1.DMCluster, compo
 		stsName:       stsName,
 		expectedImage: expectedImage,
 		services:      services,
+		status:        dc.ComponentStatus(component),
 		checkComponent: func(obj metav1.Object, sts *v1.StatefulSet) error {
 			dc := obj.(*v1alpha1.DMCluster)
 			return checkComponent(dc, sts)
@@ -812,6 +820,7 @@ func (oa *OperatorActions) memberCheckContextForTNGM(tngm *v1alpha1.TidbNGMonito
 		stsName:       stsName,
 		expectedImage: expectedImage,
 		services:      services,
+		status:        nil,
 		checkComponent: func(obj metav1.Object, sts *v1.StatefulSet) error {
 			tngm := obj.(*v1alpha1.TidbNGMonitoring)
 			return checkComponent(tngm, sts)

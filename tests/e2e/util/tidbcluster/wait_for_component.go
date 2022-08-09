@@ -136,11 +136,15 @@ func CheckComponentStatusNotChanged(c versioned.Interface, oldTC *v1alpha1.TidbC
 			if !exist {
 				return fmt.Errorf("ticdc %q is not found in cur tc", cdcName)
 			}
-			if oldCapture.ID != curCapture.ID {
-				return fmt.Errorf("id of ticdc %q is changed from %q to %q", cdcName, oldCapture.ID, curCapture.ID)
-			}
+			// Capture ID will be changed after ticdc restart.
+			// if oldCapture.ID != curCapture.ID {
+			// 	return fmt.Errorf("id of ticdc %q is changed from %q to %q", cdcName, oldCapture.ID, curCapture.ID)
+			// }
 			if oldCapture.PodName != curCapture.PodName {
 				return fmt.Errorf("podName of ticdc %q is changed from %q to %q", cdcName, oldCapture.PodName, curCapture.PodName)
+			}
+			if !curCapture.Ready {
+				return fmt.Errorf("ticdc %q is not ready", cdcName)
 			}
 		}
 	}
