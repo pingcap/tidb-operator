@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -24,8 +25,15 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+)
+
+const (
+	// TODO: change to use minReadySeconds in sts spec
+	// See https://kubernetes.io/blog/2021/08/27/minreadyseconds-statefulsets/
+	annoKeyTiFlashMinReadySeconds = "tidb.pingcap.com/tiflash-min-ready-seconds"
 )
 
 var (
@@ -85,6 +93,17 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return nil
 	}
 
+	minReadySeconds := 0
+	s, ok := tc.Annotations[annoKeyTiFlashMinReadySeconds]
+	if ok {
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", ns, tcName, annoKeyTiFlashMinReadySeconds, err)
+		} else {
+			minReadySeconds = i
+		}
+	}
+
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
@@ -105,7 +124,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		}
 
 		if revision == tc.Status.TiFlash.StatefulSet.UpdateRevision {
-			if !podutil.IsPodReady(pod) {
+			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s] is not ready", ns, tcName, podName)
 			}
 			if store.State != v1alpha1.TiKVStateUp {

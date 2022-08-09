@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
@@ -34,6 +35,10 @@ import (
 const (
 	// EvictLeaderBeginTime is the key of evict Leader begin time
 	EvictLeaderBeginTime = "evictLeaderBeginTime"
+
+	// TODO: change to use minReadySeconds in sts spec
+	// See https://kubernetes.io/blog/2021/08/27/minreadyseconds-statefulsets/
+	annoKeyTiKVMinReadySeconds = "tidb.pingcap.com/tikv-min-ready-seconds"
 )
 
 type TiKVUpgrader interface {
@@ -106,6 +111,17 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return nil
 	}
 
+	minReadySeconds := 0
+	s, ok := tc.Annotations[annoKeyTiKVMinReadySeconds]
+	if ok {
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", ns, tcName, annoKeyTiKVMinReadySeconds, err)
+		} else {
+			minReadySeconds = i
+		}
+	}
+
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
@@ -127,7 +143,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 
 		if revision == status.StatefulSet.UpdateRevision {
 
-			if !podutil.IsPodReady(pod) {
+			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
 			}
 			if store.State != v1alpha1.TiKVStateUp {
