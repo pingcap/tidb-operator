@@ -1091,15 +1091,9 @@ func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, erro
 			return setCount, err
 		}
 
-		pod, err := m.deps.PodLister.Pods(ns).Get(name)
-		if err != nil {
-			return setCount, fmt.Errorf("setServerLabels: failed to get pods %s for cluster %s/%s, error: %s", name, ns, tc.GetName(), err)
-		}
-
-		nodeName := pod.Spec.NodeName
-		labels, err := getNodeLabels(m.deps.NodeLister, nodeName, config.Replication.LocationLabels)
+		labels, err := getNodeLabels(m.deps.NodeLister, db.NodeName, config.Replication.LocationLabels)
 		if err != nil || len(labels) == 0 {
-			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, name)
+			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", db.NodeName, ns, name)
 			continue
 		}
 		// add the special `zone` label because tidb depends on this label for follower read.
