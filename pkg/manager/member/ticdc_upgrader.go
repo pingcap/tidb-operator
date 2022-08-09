@@ -109,7 +109,7 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 			continue
 		}
 
-		support, err := isTiCDCPodSupportGracefulUpgrade(tc, u.deps.CDCControl, ordinal, "Upgrade")
+		support, err := isTiCDCPodSupportGracefulUpgrade(tc, u.deps.CDCControl, u.deps.PodControl, pod, ordinal, "Upgrade")
 		if err != nil {
 			return err
 		}

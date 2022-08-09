@@ -786,7 +786,20 @@ func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
 		if c.changeTc != nil {
 			c.changeTc(tcClone)
 		}
-		support, err := isTiCDCPodSupportGracefulUpgrade(tcClone, c.cdcCtl, 1, "test")
+		podCtl := &podCtlMock{
+			updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+				return p, nil
+			},
+		}
+		pod := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              ticdcPodName(tc.GetName(), 1),
+				Namespace:         corev1.NamespaceDefault,
+				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+			},
+		}
+		support, err := isTiCDCPodSupportGracefulUpgrade(tcClone, c.cdcCtl, podCtl, pod, 1, "test")
 		g.Expect(support).Should(Equal(c.expectedOk), name)
 		if c.expectedErr {
 			g.Expect(controller.IsRequeueError(err)).Should(BeTrue(), name)

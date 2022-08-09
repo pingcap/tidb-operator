@@ -207,6 +207,55 @@ func gracefulDrainTiCDC(
 	return nil
 }
 
+// A TiCDC can graceful upgrade when we are performing reload or the TiCDC pod
+// version is greater or equal to v6.3.0.
+func isTiCDCPodSupportGracefulUpgrade(
+	tc *v1alpha1.TidbCluster,
+	cdcCtl controller.TiCDCControlInterface,
+	podCtl controller.PodControlInterface,
+	pod *corev1.Pod,
+	ordinal int32,
+	action string,
+) (bool, error) {
+	isTimeout, err := checkTiCDCGracefulShutdownTimeout(tc, podCtl, pod, action)
+	if err != nil {
+		return false, err
+	}
+	if isTimeout {
+		return false, nil
+	}
+	status, err := cdcCtl.GetStatus(tc, ordinal)
+	if err != nil {
+		return false, controller.RequeueErrorf(
+			"ticdc.%s: cluster %s/%s fail to get TiCDC status, error: %v",
+			action, tc.GetNamespace(), tc.GetName(), err)
+	}
+	podVersion, err := semver.NewVersion(status.Version)
+	if err != nil {
+		klog.Errorf("ticdc.%s: fail to parse TiCDC pod version \"%s\", error: %v, skip graceful shutdown",
+			action, status.Version, err)
+		return false, nil
+	}
+	currentVersionStr := tc.Spec.TiCDC.Version
+	if currentVersionStr == nil {
+		currentVersionStr = &tc.Spec.Version
+	}
+	currentVersion, err := semver.NewVersion(sanitizeTiCDCVersion(*currentVersionStr))
+	if err != nil {
+		klog.Errorf("ticdc.%s: fail to parse TiCDC spec version \"%s\", error: %v, skip graceful shutdown",
+			action, *currentVersionStr, err)
+		return false, nil
+	}
+
+	// Reload TiCDC if the current version matches pod version.
+	if currentVersion.Major() == podVersion.Major() && currentVersion.Minor() == podVersion.Minor() {
+		return true, nil
+	}
+	// We are performing cross version upgrade, TiCDC supports graceful upgrade since v6.3.0.
+	crossUpgradeVersion := semver.MustParse(ticdcCrossUpgradeVersion)
+	return podVersion.Compare(crossUpgradeVersion) >= 0, nil
+}
+
 func checkTiCDCGracefulShutdownTimeout(
 	tc *v1alpha1.TidbCluster,
 	podCtl controller.PodControlInterface,
@@ -266,44 +315,4 @@ func sanitizeTiCDCVersion(v string) string {
 	v = versionHash.ReplaceAllLiteralString(v, "")
 	v = strings.TrimSuffix(v, "-dirty")
 	return strings.TrimPrefix(v, "v")
-}
-
-// A TiCDC can graceful upgrade when we are performing reload or the TiCDC pod
-// version is greater or equal to v6.3.0.
-func isTiCDCPodSupportGracefulUpgrade(
-	tc *v1alpha1.TidbCluster,
-	cdcCtl controller.TiCDCControlInterface,
-	ordinal int32,
-	action string,
-) (bool, error) {
-	status, err := cdcCtl.GetStatus(tc, ordinal)
-	if err != nil {
-		return false, controller.RequeueErrorf(
-			"ticdc.%s: cluster %s/%s fail to get TiCDC status, error: %v",
-			action, tc.GetNamespace(), tc.GetName(), err)
-	}
-	podVersion, err := semver.NewVersion(status.Version)
-	if err != nil {
-		klog.Errorf("ticdc.%s: fail to parse TiCDC pod version \"%s\", error: %v, skip graceful shutdown",
-			action, status.Version, err)
-		return false, nil
-	}
-	currentVersionStr := tc.Spec.TiCDC.Version
-	if currentVersionStr == nil {
-		currentVersionStr = &tc.Spec.Version
-	}
-	currentVersion, err := semver.NewVersion(sanitizeTiCDCVersion(*currentVersionStr))
-	if err != nil {
-		klog.Errorf("ticdc.%s: fail to parse TiCDC spec version \"%s\", error: %v, skip graceful shutdown",
-			action, *currentVersionStr, err)
-		return false, nil
-	}
-
-	// Reload TiCDC if the current version matches pod version.
-	if currentVersion.Major() == podVersion.Major() && currentVersion.Minor() == podVersion.Minor() {
-		return true, nil
-	}
-	// We are performing cross version upgrade, TiCDC supports graceful upgrade since v6.3.0.
-	crossUpgradeVersion := semver.MustParse(ticdcCrossUpgradeVersion)
-	return podVersion.Compare(crossUpgradeVersion) >= 0, nil
 }
