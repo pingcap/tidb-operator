@@ -660,11 +660,6 @@ func (oa *OperatorActions) IsMembersReady(obj metav1.Object, component v1alpha1.
 	if err != nil {
 		return fmt.Errorf("%s members are not ready: %s", component, err)
 	}
-	if ctx.status != nil {
-		if ctx.status.GetPhase() != v1alpha1.NormalPhase {
-			return fmt.Errorf("%s phase is not Normal", component)
-		}
-	}
 
 	// check containers
 	containers, err := utilstatefulset.GetMemberContainersFromSts(oa.kubeCli, oa.tcStsGetter, ns, stsName, component)
