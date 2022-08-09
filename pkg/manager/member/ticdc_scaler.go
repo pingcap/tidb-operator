@@ -251,9 +251,16 @@ func isTiCDCPodSupportGracefulUpgrade(
 	if currentVersion.Major() == podVersion.Major() && currentVersion.Minor() == podVersion.Minor() {
 		return true, nil
 	}
-	// We are performing cross version upgrade, TiCDC supports graceful upgrade since v6.3.0.
+	// We are performing cross version upgrade.
 	crossUpgradeVersion := semver.MustParse(ticdcCrossUpgradeVersion)
-	return podVersion.Compare(crossUpgradeVersion) >= 0, nil
+	// TiCDC supports graceful upgrade since v6.3.0.
+	if podVersion.Compare(crossUpgradeVersion) < 0 {
+		return false, nil
+	}
+	// TiCDC does not support graceful upgrade that cross two major versions.
+	// E.g., Upgrading from 6.3.0 to 8.0.0 is not supported.
+	return (podVersion.Major() == currentVersion.Major() ||
+		podVersion.Major() == currentVersion.Major()-1), nil
 }
 
 func checkTiCDCGracefulShutdownTimeout(

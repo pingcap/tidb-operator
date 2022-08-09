@@ -678,6 +678,22 @@ func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
 			expectedErr: false,
 		},
 		{
+			caseName: "cross two major versions, skip graceful upgrade",
+			cdcCtl: &cdcCtlMock{
+				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.3.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v8.0.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
 			caseName: "support graceful reload",
 			cdcCtl: &cdcCtlMock{
 				getStatus: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
