@@ -36,7 +36,7 @@ func TestScriptFormat(t *testing.T) {
 		tidbStartScript,
 		tidbStartSubScript,
 		tiflashInitScript,
-		tiflashStartSubScript,
+		tiflashInitSubScript,
 		tiflashStartScript,
 		tiflashStartSubScript,
 		tikvStartScript,
