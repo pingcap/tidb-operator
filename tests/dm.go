@@ -464,6 +464,7 @@ func GenDMFullDataWithMySQLNamespace(fw portforward.PortForward, nsDM, nsMySQL s
 // GenDMFullDataWithMySQLNamespaceWithTLSEnabled generates full stage data for upstream MySQL in the specified namespace with DLS enabled.
 func GenDMFullDataWithMySQLNamespaceWithTLSEnabled(fw portforward.PortForward, nsDM, nsMySQL string, secret *corev1.Secret) error {
 	var eg errgroup.Group
+	taskName := DMTaskName(nsDM)
 	for i := int32(0); i < DMMySQLReplicas; i++ {
 		ordinal := i
 		eg.Go(func() error {
@@ -481,20 +482,20 @@ func GenDMFullDataWithMySQLNamespaceWithTLSEnabled(fw portforward.PortForward, n
 
 			// use ns as the database name.
 			// NOTE: we don't handle `already exists` or `duplicate entry` error now because we think ns is unique and the database instances are re-setup for each running.
-			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE `%s`", nsDM))
+			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE `%s`", taskName))
 			if err != nil {
-				return fmt.Errorf("failed to create database `%s`: %v", nsDM, err)
+				return fmt.Errorf("failed to create database `%s`: %v", taskName, err)
 			}
 			for j, tbl := range dmTableNames {
-				_, err = db.Exec(fmt.Sprintf("CREATE TABLE `%s`.`%s` %s", nsDM, tbl, dmTableSchema))
+				_, err = db.Exec(fmt.Sprintf("CREATE TABLE `%s`.`%s` %s", taskName, tbl, dmTableSchema))
 				if err != nil {
-					return fmt.Errorf("failed to create table `%s`.`%s`: %v", nsDM, tbl, err)
+					return fmt.Errorf("failed to create table `%s`.`%s`: %v", taskName, tbl, err)
 				}
 				for k := 1; k <= dmFullRowsInTable; k++ {
 					val := int(ordinal)*dmPKStepForReplica + j*dmPKStepForTable + k
-					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, nsDM, tbl, val, strconv.Itoa(val)))
+					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, taskName, tbl, val, strconv.Itoa(val)))
 					if err != nil {
-						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", nsDM, tbl, err)
+						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", taskName, tbl, err)
 					}
 				}
 			}
@@ -521,6 +522,7 @@ func GenDMIncrDataWithMySQLNamespace(fw portforward.PortForward, nsDM, nsMySQL s
 // NOTE: we can generate incremental data multiple times if needed later.
 func GenDMIncrDataWithMySQLNamespaceWithTLSEnabled(fw portforward.PortForward, nsDM, nsMySQL string, secret *corev1.Secret) error {
 	var eg errgroup.Group
+	taskName := DMTaskName(nsDM)
 	for i := int32(0); i < DMMySQLReplicas; i++ {
 		ordinal := i
 		eg.Go(func() error {
@@ -539,9 +541,9 @@ func GenDMIncrDataWithMySQLNamespaceWithTLSEnabled(fw portforward.PortForward, n
 			for j, tbl := range dmTableNames {
 				for k := 1; k <= dmIncrRowsInTable; k++ {
 					val := dmFullRowsInTable + int(ordinal)*dmPKStepForReplica + j*dmPKStepForTable + k
-					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, nsDM, tbl, val, strconv.Itoa(val)))
+					_, err = db.Exec(fmt.Sprintf(dmInsertStmtFormat, taskName, tbl, val, strconv.Itoa(val)))
 					if err != nil {
-						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", nsDM, tbl, err)
+						return fmt.Errorf("failed to insert data into table `%s`.`%s`: %v", taskName, tbl, err)
 					}
 				}
 			}
@@ -561,12 +563,13 @@ func StartDMTask(fw portforward.PortForward, ns, masterSvcName, taskConf, errSub
 		Task string `json:"task"`
 	}
 	type Resp struct {
-		Result bool   `json:"result"`
-		Msg    string `json:"msg"`
+		Result      bool   `json:"result"`
+		Msg         string `json:"msg"`
+		CheckResult string `json:"checkResult"`
 	}
 
 	var req = Req{
-		Task: fmt.Sprintf(taskConf, ns, ns),
+		Task: fmt.Sprintf(taskConf, DMTaskName(ns), DMTaskName(ns)),
 	}
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -600,7 +603,7 @@ func StartDMTask(fw portforward.PortForward, ns, masterSvcName, taskConf, errSub
 				log.Logf("start DM task match the error sub string %q: %s", errSubStr, resp.Msg)
 				return true, nil
 			}
-			log.Logf("failed to start DM task, %s: %v", resp.Msg, err)
+			log.Logf("failed to start DM task, msg: %s, err: %v, checkResult: %s", resp.Msg, err, resp.CheckResult)
 			return false, nil
 		}
 		return true, nil
@@ -640,6 +643,7 @@ func CheckDMData(fw portforward.PortForward, ns string, sourceCount int) error {
 // NOTE: for simplicity, we only check rows count now.
 func CheckDMDataWithTLSEnabled(fw portforward.PortForward, nsDM, nsMySQL, nsTiDB, tcName string, sourceCount int,
 	upSecret, downSecret *corev1.Secret) error {
+	taskName := DMTaskName(nsDM)
 	return wait.Poll(10*time.Second, 5*time.Minute, func() (bool, error) {
 		var eg errgroup.Group
 		for i := range dmTableNames {
@@ -666,7 +670,7 @@ func CheckDMDataWithTLSEnabled(fw portforward.PortForward, nsDM, nsMySQL, nsTiDB
 							return err
 						}
 
-						row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", nsDM, tbl))
+						row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", taskName, tbl))
 						var count uint64
 						if err = row.Scan(&count); err != nil {
 							return err
@@ -689,7 +693,7 @@ func CheckDMDataWithTLSEnabled(fw portforward.PortForward, nsDM, nsMySQL, nsTiDB
 						return err
 					}
 
-					row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", nsDM, tbl))
+					row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", taskName, tbl))
 					return row.Scan(&downCount)
 				})
 
@@ -868,4 +872,8 @@ func openDB(host string, port uint16, secret *corev1.Secret) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to connect to %s: %v", addr, err)
 	}
 	return db, nil
+}
+
+func DMTaskName(name string) string {
+	return strings.Replace(name, "-", "_", -1)
 }
