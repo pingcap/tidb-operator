@@ -62,11 +62,12 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 	// tiflashInitScript is the template of start script.
 	tiflashInitScript = `#!/bin/sh
 set -uo pipefail
-{{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
 ordinal=$(echo ${POD_NAME} | awk -F- '{print $NF}')
 sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml
 sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml
+
+{{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 `
 )
 

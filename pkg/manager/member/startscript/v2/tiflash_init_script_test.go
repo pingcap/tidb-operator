@@ -51,6 +51,10 @@ sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml
 			},
 			expectScript: `#!/bin/sh
 set -uo pipefail
+
+ordinal=$(echo ${POD_NAME} | awk -F- '{print $NF}')
+sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml
+sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml
 pd_url=http://start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url=start-script-test-discovery.start-script-test-ns:10261
@@ -61,10 +65,6 @@ done
 
 sed -i s/PD_ADDR/${result}/g /data0/config.toml
 sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
-
-ordinal=$(echo ${POD_NAME} | awk -F- '{print $NF}')
-sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml
-sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml
 `,
 		},
 		{
@@ -75,6 +75,10 @@ sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml
 			},
 			expectScript: `#!/bin/sh
 set -uo pipefail
+
+ordinal=$(echo ${POD_NAME} | awk -F- '{print $NF}')
+sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml
+sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml
 pd_url=https://start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url=start-script-test-discovery.start-script-test-ns:10261
@@ -85,10 +89,6 @@ done
 
 sed -i s/PD_ADDR/${result}/g /data0/config.toml
 sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
-
-ordinal=$(echo ${POD_NAME} | awk -F- '{print $NF}')
-sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml
-sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml
 `,
 		},
 	}
