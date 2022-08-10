@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -34,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -1054,16 +1054,17 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	return nil
 }
 
-var tidbSupportLabelsMinVersin = semver.MustParse("6.2.0")
+const tidbSupportLabelsMinVersin = "6.2.0"
 
 func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, error) {
 	if tc.Spec.TiDB.Version != nil && (*tc.Spec.TiDB.Version) != "" {
-		version, err := semver.NewVersion(*tc.Spec.TiDB.Version)
+		isOlder, err := cmpver.Compare(*tc.Spec.TiDB.Version, cmpver.Less, tidbSupportLabelsMinVersin)
 		if err != nil {
 			klog.Warningf("parse tidb verson '%s' failed, err: %v", *tc.Spec.TiDB.Version, err)
 			return 0, err
 		}
-		if version.Compare(tidbSupportLabelsMinVersin) < 0 {
+		// meet an old verion tidb, directly return because tidb doesn't support set labels
+		if isOlder {
 			return 0, nil
 		}
 	}
