@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -1053,7 +1054,19 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	return nil
 }
 
+var tidbSupportLabelsMinVersin = semver.MustParse("6.2.0")
+
 func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, error) {
+	if tc.Spec.TiDB.Version != nil && (*tc.Spec.TiDB.Version) != "" {
+		version, err := semver.NewVersion(*tc.Spec.TiDB.Version)
+		if err != nil {
+			klog.Warningf("parse tidb verson '%s' failed, err: %v", *tc.Spec.TiDB.Version, err)
+			return 0, err
+		}
+		if version.Compare(tidbSupportLabelsMinVersin) < 0 {
+			return 0, nil
+		}
+	}
 	if m.deps.NodeLister == nil {
 		klog.V(4).Infof("Node lister is unavailable, skip setting store labels for TiKV of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
 		return 0, nil
