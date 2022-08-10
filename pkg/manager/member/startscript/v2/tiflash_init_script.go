@@ -50,8 +50,8 @@ pd_url={{ .AcrossK8s.PDAddr }}
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url={{ .AcrossK8s.DiscoveryAddr }}
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
-	echo "waiting for the verification of PD endpoints ..."
-	sleep 2
+    echo "waiting for the verification of PD endpoints ..."
+    sleep 2
 done
 
 sed -i s/PD_ADDR/${result}/g /data0/config.toml
@@ -61,6 +61,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 
 	// tiflashInitScript is the template of start script.
 	tiflashInitScript = `#!/bin/sh
+
 set -uo pipefail
 
 ordinal=$(echo ${POD_NAME} | awk -F- '{print $NF}')
