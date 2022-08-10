@@ -2595,8 +2595,8 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 
 	type testcase struct {
 		name           string
+		tidbVersion    string
 		members        []Member
-		missingPods    map[string]struct{}
 		missingNodes   map[string]struct{}
 		labels         []string
 		errExpectFn    func(*GomegaWithT, error)
@@ -2606,6 +2606,10 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 	}
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
+		if test.tidbVersion == "" {
+			test.tidbVersion = tidbSupportLabelsMinVersin
+		}
+		tc.Spec.TiDB.Version = &test.tidbVersion
 		pmm, _, tidbCtl, indexers := newFakeTiDBMemberManager()
 		pdControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
 		pdClient := controller.NewFakePDClient(pdControl, tc)
@@ -2621,18 +2625,16 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 				Health:   !m.unHealth,
 				NodeName: m.node,
 			}
-			if _, ok := test.missingPods[name]; !ok {
-				pod := &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      name,
-						Namespace: metav1.NamespaceDefault,
-					},
-					Spec: corev1.PodSpec{
-						NodeName: m.node,
-					},
-				}
-				indexers.pod.Add(pod)
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: metav1.NamespaceDefault,
+				},
+				Spec: corev1.PodSpec{
+					NodeName: m.node,
+				},
 			}
+			indexers.pod.Add(pod)
 
 			if _, ok := nodes[m.node]; !ok {
 				if _, ok := test.missingNodes[m.node]; !ok {
@@ -2726,22 +2728,6 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 			},
 		},
 		{
-			name: "don't have pod",
-			members: []Member{
-				{
-					name: "test-tidb-0",
-					node: "node-1",
-				},
-			},
-			missingPods: map[string]struct{}{
-				"test-tidb-0": {},
-			},
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "not found")).To(BeTrue())
-			},
-		},
-		{
 			name: "don't have node",
 			members: []Member{
 				{
@@ -2778,6 +2764,19 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 				},
 			},
 			setCount: 2,
+		},
+		{
+			name:        "skip old version tidb",
+			tidbVersion: "v6.1.0",
+			members: []Member{
+				{
+					node: "node-1",
+				},
+				{
+					node: "node-2",
+				},
+			},
+			setCount: 0,
 		},
 		{
 			name: "skip unhealthy pods",
