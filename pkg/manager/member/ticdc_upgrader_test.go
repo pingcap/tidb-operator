@@ -48,7 +48,16 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		upgrader, podInformer := newTiCDCUpgrader()
+
+		// A version that is smaller than ticdcCrossUpgradeVersion, v6.3.0.
+		cdcVersionOld := "v6.2.0"
+		cdcControl := upgrader.(*ticdcUpgrader).deps.CDCControl.(*controller.FakeTiCDCControl)
+		cdcControl.GetStatusFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+			return &controller.CaptureStatus{Version: cdcVersionOld}, nil
+		}
+		cdcVersionNew := ticdcCrossUpgradeVersion
 		tc := newTidbClusterForTiCDCUpgrader()
+		tc.Spec.TiCDC.Version = &cdcVersionNew
 		if test.changeFn != nil {
 			test.changeFn(tc)
 		}
@@ -97,11 +106,14 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 			name:        "graceful upgrade retry resign owner",
 			errorExpect: true,
 			changeUpgrader: func(u *ticdcUpgrader) {
-				u.deps.CDCControl = &cdcCtlMock{
-					// resignOwner returns false to let graceful shutdown retry.
-					resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
-						return false, nil
-					},
+				cdcControl := u.deps.CDCControl.(*controller.FakeTiCDCControl)
+				cdcControl.GetStatusFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{Version: ticdcCrossUpgradeVersion}, nil
+				}
+
+				// resignOwner returns false to let graceful shutdown retry.
+				cdcControl.ResignOwnerFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return false, nil
 				}
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
@@ -113,15 +125,18 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 			name:        "graceful upgrade retry drain",
 			errorExpect: true,
 			changeUpgrader: func(u *ticdcUpgrader) {
-				u.deps.CDCControl = &cdcCtlMock{
-					// resignOwner always success.
-					resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
-						return true, nil
-					},
-					// drainCapture returns none zero table count to let graceful shutdown retry.
-					drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
-						return 1, false, nil
-					},
+				cdcControl := u.deps.CDCControl.(*controller.FakeTiCDCControl)
+				cdcControl.GetStatusFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{Version: ticdcCrossUpgradeVersion}, nil
+				}
+
+				// resignOwner always success.
+				cdcControl.ResignOwnerFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				}
+				// drainCapture returns none zero table count to let graceful shutdown retry.
+				cdcControl.DrainCaptureFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
+					return 1, false, nil
 				}
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
@@ -155,19 +170,22 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 				}
 			},
 			changeUpgrader: func(u *ticdcUpgrader) {
-				u.deps.CDCControl = &cdcCtlMock{
-					// resignOwner always success.
-					resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
-						return true, nil
-					},
-					// drainCapture always success.
-					drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
-						return 0, false, nil
-					},
-					// isHealthy returns false to let graceful shutdown retry.
-					isHealthy: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
-						return false, nil
-					},
+				cdcControl := u.deps.CDCControl.(*controller.FakeTiCDCControl)
+				cdcControl.GetStatusFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{Version: ticdcCrossUpgradeVersion}, nil
+				}
+
+				// resignOwner always success.
+				cdcControl.ResignOwnerFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				}
+				// drainCapture always success.
+				cdcControl.DrainCaptureFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
+					return 0, false, nil
+				}
+				// isHealthy returns false to let graceful shutdown retry.
+				cdcControl.IsHealthyFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
+					return false, nil
 				}
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
@@ -179,19 +197,22 @@ func TestTiCDCUpgrader_Upgrade(t *testing.T) {
 			name:        "last graceful upgrade does not wait healthy",
 			errorExpect: false,
 			changeUpgrader: func(u *ticdcUpgrader) {
-				u.deps.CDCControl = &cdcCtlMock{
-					// resignOwner always success.
-					resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
-						return true, nil
-					},
-					// drainCapture always success.
-					drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
-						return 0, false, nil
-					},
-					// isHealthy returns false to let graceful shutdown retry.
-					isHealthy: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
-						return false, nil
-					},
+				cdcControl := u.deps.CDCControl.(*controller.FakeTiCDCControl)
+				cdcControl.GetStatusFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{Version: ticdcCrossUpgradeVersion}, nil
+				}
+
+				// resignOwner always success.
+				cdcControl.ResignOwnerFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				}
+				// drainCapture always success.
+				cdcControl.DrainCaptureFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
+					return 0, false, nil
+				}
+				// isHealthy returns false to let graceful shutdown retry.
+				cdcControl.IsHealthyFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
+					return false, nil
 				}
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
@@ -472,7 +493,8 @@ func newTidbClusterForTiCDCUpgrader() *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "ticdc-test-image",
 				},
-				Replicas: 2,
+				BaseImage: "ticdc-test-image",
+				Replicas:  2,
 			},
 		},
 		Status: v1alpha1.TidbClusterStatus{

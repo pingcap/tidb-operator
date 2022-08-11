@@ -330,7 +330,10 @@ func getOrdinalAndOwnerCaptureInfo(
 
 // FakeTiCDCControl is a fake implementation of TiCDCControlInterface.
 type FakeTiCDCControl struct {
-	getStatus func(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error)
+	GetStatusFn    func(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error)
+	DrainCaptureFn func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error)
+	ResignOwnerFn  func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
+	IsHealthyFn    func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
 }
 
 // NewFakeTiCDCControl returns a FakeTiCDCControl instance
@@ -338,26 +341,30 @@ func NewFakeTiCDCControl() *FakeTiCDCControl {
 	return &FakeTiCDCControl{}
 }
 
-// SetHealth set health info for FakeTiCDCControl
-func (c *FakeTiCDCControl) MockGetStatus(mockfunc func(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error)) {
-	c.getStatus = mockfunc
-}
-
 func (c *FakeTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error) {
-	if c.getStatus == nil {
-		return nil, fmt.Errorf("undefined")
+	if c.GetStatusFn == nil {
+		return nil, fmt.Errorf("undefined GetStatus")
 	}
-	return c.getStatus(tc, ordinal)
+	return c.GetStatusFn(tc, ordinal)
 }
 
 func (c *FakeTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
-	return 0, false, nil
+	if c.DrainCaptureFn == nil {
+		return 0, false, fmt.Errorf("undefined DrainCapture")
+	}
+	return c.DrainCaptureFn(tc, ordinal)
 }
 
 func (c *FakeTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
-	return true, nil
+	if c.ResignOwnerFn == nil {
+		return true, fmt.Errorf("undefined ResignOwner")
+	}
+	return c.ResignOwnerFn(tc, ordinal)
 }
 
 func (c *FakeTiCDCControl) IsHealthy(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
-	return true, nil
+	if c.IsHealthyFn == nil {
+		return true, fmt.Errorf("undefined IsHealthy")
+	}
+	return c.IsHealthyFn(tc, ordinal)
 }
