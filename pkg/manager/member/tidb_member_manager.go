@@ -62,10 +62,14 @@ const (
 	// When user use self-signed certificates, the root CA must be provided. We
 	// following the same convention used in Kubernetes service token.
 	tlsSecretRootCAKey = corev1.ServiceAccountRootCAKey
-	// kubenetes topology zone label
-	topologyZoneLabel = "topology.kubernetes.io/zone"
+
 	// tidb DC label Name
 	tidbDCLabel = "zone"
+)
+
+var (
+	// node labels that can be used as tidb DC label Name
+	topologyZoneLabels = []string{"zone", "topology.kubernetes.io/zone", "failure-domain.beta.kubernetes.io/zone"}
 )
 
 type tidbMemberManager struct {
@@ -1083,13 +1087,16 @@ func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, erro
 	}
 
 	var zoneLabel string
-	for _, l := range config.Replication.LocationLabels {
-		if l == topologyZoneLabel {
-			zoneLabel = l
-		} else if l == tidbDCLabel {
-			zoneLabel = l
+outer:
+	for _, label := range topologyZoneLabels {
+		for _, l := range config.Replication.LocationLabels {
+			if l == label {
+				zoneLabel = l
+				break outer
+			}
 		}
 	}
+
 	if zoneLabel == "" {
 		klog.Infof("zone labels not found in pd location-labels %v, skip set labels", config.Replication.LocationLabels)
 		return 0, nil

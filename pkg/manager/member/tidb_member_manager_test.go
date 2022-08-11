@@ -2641,10 +2641,10 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 				if _, ok := test.missingNodes[m.node]; !ok {
 					if len(m.nodeLabels) == 0 {
 						m.nodeLabels = map[string]string{
-							"region":             "region",
-							topologyZoneLabel:    "zone",
-							"rack":               "rack",
-							corev1.LabelHostname: "host",
+							"region":                      "region",
+							"topology.kubernetes.io/zone": "zone",
+							"rack":                        "rack",
+							corev1.LabelHostname:          "host",
 						}
 					}
 					node := &corev1.Node{
