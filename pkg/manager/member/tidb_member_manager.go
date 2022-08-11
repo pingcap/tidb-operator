@@ -1057,16 +1057,15 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 const tidbSupportLabelsMinVersin = "6.2.0"
 
 func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, error) {
-	if tc.Spec.TiDB.Version != nil && (*tc.Spec.TiDB.Version) != "" {
-		isOlder, err := cmpver.Compare(*tc.Spec.TiDB.Version, cmpver.Less, tidbSupportLabelsMinVersin)
-		if err != nil {
-			klog.Warningf("parse tidb verson '%s' failed, err: %v", *tc.Spec.TiDB.Version, err)
-			return 0, err
-		}
-		// meet an old verion tidb, directly return because tidb doesn't support set labels
-		if isOlder {
-			return 0, nil
-		}
+	tidbVersion := tc.TiDBVersion()
+	isOlder, err := cmpver.Compare(tidbVersion, cmpver.Less, tidbSupportLabelsMinVersin)
+	if err != nil {
+		klog.Warningf("parse tidb verson '%s' failed, err: %v", tidbVersion, err)
+		return 0, err
+	}
+	// meet an old verion tidb, directly return because tidb doesn't support set labels
+	if isOlder {
+		return 0, nil
 	}
 	if m.deps.NodeLister == nil {
 		klog.V(4).Infof("Node lister is unavailable, skip setting store labels for TiKV of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)

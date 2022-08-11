@@ -2610,6 +2610,7 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 			test.tidbVersion = tidbSupportLabelsMinVersin
 		}
 		tc.Spec.TiDB.Version = &test.tidbVersion
+		tc.Spec.TiDB.BaseImage = "pingcap/tidb"
 		pmm, _, tidbCtl, indexers := newFakeTiDBMemberManager()
 		pdControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
 		pdClient := controller.NewFakePDClient(pdControl, tc)
