@@ -120,7 +120,7 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 
 		if revision == tc.Status.TiDB.StatefulSet.UpdateRevision {
 			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tidb pod: [%s] is not ready", ns, tcName, podName)
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tidb pod: [%s] is not available, last transition time is %v", ns, tcName, podName, podutil.GetPodReadyCondition(pod.Status).LastTransitionTime)
 			}
 			if member, exist := tc.Status.TiDB.Members[podName]; !exist || !member.Health {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pod: [%s] is not ready", ns, tcName, podName)

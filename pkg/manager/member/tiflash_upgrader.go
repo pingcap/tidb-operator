@@ -125,7 +125,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 
 		if revision == tc.Status.TiFlash.StatefulSet.UpdateRevision {
 			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s] is not ready", ns, tcName, podName)
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s] is not available, last transition time is %v", ns, tcName, podName, podutil.GetPodReadyCondition(pod.Status).LastTransitionTime)
 			}
 			if store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store state is not UP", ns, tcName, podName)
