@@ -636,7 +636,9 @@ func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	tc := newTidbClusterForPD()
-	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{}
+	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{
+		BaseImage: "pingcap/ticdc",
+	}
 
 	cases := []struct {
 		caseName    string

@@ -232,21 +232,17 @@ func isTiCDCPodSupportGracefulUpgrade(
 			action, tc.GetNamespace(), tc.GetName(), err)
 	}
 	podVersion := status.Version
-	currentVersion := tc.Spec.TiCDC.Version
-	if currentVersion == nil {
-		currentVersion = &tc.Spec.Version
-	}
-
-	ge, err := cmpver.Compare(podVersion, cmpver.GreaterOrEqual, *currentVersion)
+	currentVersion := tc.TiCDCVersion()
+	ge, err := cmpver.Compare(podVersion, cmpver.GreaterOrEqual, currentVersion)
 	if err != nil {
 		klog.Errorf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
-			action, podVersion, *currentVersion, err)
+			action, podVersion, currentVersion, err)
 		return false, nil
 	}
-	le, err := cmpver.Compare(podVersion, cmpver.LessOrEqual, *currentVersion)
+	le, err := cmpver.Compare(podVersion, cmpver.LessOrEqual, currentVersion)
 	if err != nil {
 		klog.Errorf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
-			action, podVersion, *currentVersion, err)
+			action, podVersion, currentVersion, err)
 		return false, nil
 	}
 	// Reload TiCDC if the current version matches pod version.
@@ -273,10 +269,10 @@ func isTiCDCPodSupportGracefulUpgrade(
 		return false, nil
 	}
 	podVersionPlus2 := podVer.IncMajor().IncMajor()
-	withInTwoMajorVersion, err := cmpver.Compare(*currentVersion, cmpver.Less, podVersionPlus2.String())
+	withInTwoMajorVersion, err := cmpver.Compare(currentVersion, cmpver.Less, podVersionPlus2.String())
 	if err != nil {
 		klog.Errorf("ticdc.%s: fail to compare version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
-			action, *currentVersion, ticdcCrossUpgradeVersion, err)
+			action, currentVersion, ticdcCrossUpgradeVersion, err)
 		return false, nil
 	}
 	return withInTwoMajorVersion, nil

@@ -230,6 +230,23 @@ func (tc *TidbCluster) TiCDCImage() string {
 	return image
 }
 
+// TiCDCVersion returns the image version used by TiCDC.
+//
+// If TiCDC isn't specified, return empty string.
+func (tc *TidbCluster) TiCDCVersion() string {
+	if tc.Spec.TiCDC == nil {
+		return ""
+	}
+
+	image := tc.TiCDCImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return "latest"
+}
+
 // TiCDCGracefulShutdownTimeout returns the timeout of gracefully shutdown
 // a TiCDC pod.
 func (tc *TidbCluster) TiCDCGracefulShutdownTimeout() time.Duration {
