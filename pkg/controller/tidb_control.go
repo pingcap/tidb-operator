@@ -14,6 +14,7 @@
 package controller
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -45,6 +46,8 @@ type TiDBControlInterface interface {
 	GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error)
 	// GetSettings return the TiDB instance settings
 	GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error)
+	// SetServerLabels update TiDB's labels config
+	SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error
 }
 
 // defaultTiDBControl is default implementation of TiDBControlInterface.
@@ -137,6 +140,23 @@ func (c *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32
 	return &info, nil
 }
 
+// SetServerLabels update TiDB's labels config
+func (c *defaultTiDBControl) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {
+	httpClient, err := c.getHTTPClient(tc)
+	if err != nil {
+		return err
+	}
+
+	buffer := bytes.NewBuffer(nil)
+	if err := json.NewEncoder(buffer).Encode(labels); err != nil {
+		return fmt.Errorf("encode labels to json failed, error: %v", err)
+	}
+
+	url := fmt.Sprintf("%s/labels", c.getBaseURL(tc, ordinal))
+	_, err = httputil.PostBodyOK(httpClient, url, buffer)
+	return err
+}
+
 func getBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 	res, err := httpClient.Get(apiURL)
 	if err != nil {
@@ -170,10 +190,11 @@ func (c *defaultTiDBControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32)
 
 // FakeTiDBControl is a fake implementation of TiDBControlInterface.
 type FakeTiDBControl struct {
-	healthInfo   map[string]bool
-	tiDBInfo     *DBInfo
-	getInfoError error
-	tidbConfig   *config.Config
+	healthInfo     map[string]bool
+	tiDBInfo       *DBInfo
+	getInfoError   error
+	tidbConfig     *config.Config
+	setLabelsError error
 }
 
 // NewFakeTiDBControl returns a FakeTiDBControl instance
@@ -184,6 +205,10 @@ func NewFakeTiDBControl(secretLister corelisterv1.SecretLister) *FakeTiDBControl
 // SetHealth set health info for FakeTiDBControl
 func (c *FakeTiDBControl) SetHealth(healthInfo map[string]bool) {
 	c.healthInfo = healthInfo
+}
+
+func (c *FakeTiDBControl) SetLabelsErr(err error) {
+	c.setLabelsError = err
 }
 
 func (c *FakeTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
@@ -203,4 +228,8 @@ func (c *FakeTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBI
 
 func (c *FakeTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
 	return c.tidbConfig, c.getInfoError
+}
+
+func (c *FakeTiDBControl) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {
+	return c.setLabelsError
 }
