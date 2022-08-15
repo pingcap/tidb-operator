@@ -41,6 +41,9 @@ const (
 	// defaultTiCDCGracefulShutdownTimeout is the timeout limit of graceful
 	// shutdown a TiCDC pod.
 	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
+
+	// the latest version
+	versionLatest = "latest"
 )
 
 var (
@@ -86,13 +89,7 @@ func (tc *TidbCluster) PDVersion() string {
 		return ""
 	}
 
-	image := tc.PDImage()
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
-	}
-
-	return "latest"
+	return getImageVersion(tc.PDImage())
 }
 
 // TiKVImage return the image used by TiKV.
@@ -128,13 +125,7 @@ func (tc *TidbCluster) TiKVVersion() string {
 		return ""
 	}
 
-	image := tc.TiKVImage()
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
-	}
-
-	return "latest"
+	return getImageVersion(tc.TiKVImage())
 }
 
 func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
@@ -188,13 +179,7 @@ func (tc *TidbCluster) TiFlashVersion() string {
 		return ""
 	}
 
-	image := tc.TiFlashImage()
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
-	}
-
-	return "latest"
+	return getImageVersion(tc.TiFlashImage())
 }
 
 func (tc *TidbCluster) TiFlashContainerPrivilege() *bool {
@@ -230,6 +215,23 @@ func (tc *TidbCluster) TiCDCImage() string {
 	return image
 }
 
+// TiCDCVersion returns the image version used by TiCDC.
+//
+// If TiCDC isn't specified, return empty string.
+func (tc *TidbCluster) TiCDCVersion() string {
+	if tc.Spec.TiCDC == nil {
+		return ""
+	}
+
+	image := tc.TiCDCImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return "latest"
+}
+
 // TiCDCGracefulShutdownTimeout returns the timeout of gracefully shutdown
 // a TiCDC pod.
 func (tc *TidbCluster) TiCDCGracefulShutdownTimeout() time.Duration {
@@ -262,6 +264,27 @@ func (tc *TidbCluster) TiDBImage() string {
 		}
 	}
 	return image
+}
+
+// TiDBVersion returns the image version used by TiDB.
+//
+// If TiDB isn't specified, return empty string.
+func (tc *TidbCluster) TiDBVersion() string {
+	if tc.Spec.TiDB == nil {
+		return ""
+	}
+
+	return getImageVersion(tc.TiDBImage())
+}
+
+// getImageVersion returns the verion of a image
+func getImageVersion(image string) string {
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return versionLatest
 }
 
 // PumpImage return the image used by Pump.
