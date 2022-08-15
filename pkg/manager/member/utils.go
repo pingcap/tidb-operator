@@ -402,12 +402,16 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 }
 
 // addDeferDeletingAnnoToPVC set the label
-func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface) error {
+func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface, scaleInTime ...string) error {
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
+	// scaleInTime indicates the time when call scale in, for test only since pvc defer deleting time may be different in same scale in call.
+	if len(scaleInTime) > 0 {
+		pvc.Annotations[label.AnnPVCScaleInTime] = scaleInTime[0]
+	}
 	if _, err := pvcControl.UpdatePVC(tc, pvc); err != nil {
 		klog.Errorf("failed to set PVC %s/%s annotation %q to %q", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
 		return err
