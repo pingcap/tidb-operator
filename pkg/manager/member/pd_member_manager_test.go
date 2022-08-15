@@ -981,6 +981,19 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiDB: &v1alpha1.TiDBSpec{},
+			TiFlash: &v1alpha1.TiFlashSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: "tiflash-test-image",
+				},
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
+					},
+				},
+				Replicas: 3,
+			},
 		},
 	}
 }

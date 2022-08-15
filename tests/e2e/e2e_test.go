@@ -38,6 +38,7 @@ import (
 	_ "github.com/pingcap/tidb-operator/tests/e2e/dmcluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbngmonitoring"
+	_ "github.com/pingcap/tidb-operator/tests/e2e/tikv"
 )
 
 // handleFlags sets up all flags and parses the command line.

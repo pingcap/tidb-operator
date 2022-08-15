@@ -100,6 +100,9 @@ const (
 	// AnnStsLastSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
 	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
+	// AnnPVCScaleInTime is pvc scaled in time key used in PVC for e2e test only
+	AnnPVCScaleInTime = "tidb.pingcap.com/scale-in-time"
+
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
 	// AnnSysctlInitVal is pod annotation value to indicate whether configuring sysctls with init container
