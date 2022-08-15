@@ -2078,8 +2078,8 @@ type RestoreSpec struct {
 	Mode RestoreMode `json:"restoreMode,omitempty"`
 	// PitrRestoredTs is the pitr restored ts.
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
-	// LogRestoredStartTs is the start timestamp which log restore from and it will be used in the feauter.
-	LogRestoredStartTs string `json:"logRestoredStartTs,omitempty"`
+	// LogRestoredStartTs is the start timestamp which log restore from and it will be used in the future.
+	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
