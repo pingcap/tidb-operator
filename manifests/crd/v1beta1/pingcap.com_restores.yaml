@@ -1915,7 +1915,7 @@ spec:
                   - provider
                   type: object
               type: object
-            logRestoredStartTs:
+            logRestoreStartTs:
               type: string
             pitrRestoredTs:
               type: string

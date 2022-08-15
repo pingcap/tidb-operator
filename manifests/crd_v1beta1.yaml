@@ -1438,9 +1438,9 @@ spec:
     description: The commit ts of the backup
     name: CommitTS
     type: string
-  - JSONPath: .status.truncateUntil
+  - JSONPath: .status.logTruncateUntil
     description: The log backup truncate until ts
-    name: TruncateUntil
+    name: LogTruncateUntil
     type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
@@ -12634,7 +12634,7 @@ spec:
                   - provider
                   type: object
               type: object
-            logRestoredStartTs:
+            logRestoreStartTs:
               type: string
             pitrRestoredTs:
               type: string

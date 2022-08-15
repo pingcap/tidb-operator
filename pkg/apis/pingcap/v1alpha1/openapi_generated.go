@@ -6576,9 +6576,9 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
-					"logRestoredStartTs": {
+					"logRestoreStartTs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LogRestoredStartTs is the start timestamp which log restore from and it will be used in the feauter.",
+							Description: "LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

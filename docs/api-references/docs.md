@@ -1203,13 +1203,13 @@ string
 </tr>
 <tr>
 <td>
-<code>logRestoredStartTs</code></br>
+<code>logRestoreStartTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>LogRestoredStartTs is the start timestamp which log restore from and it will be used in the feauter.</p>
+<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
 <tr>
@@ -12888,13 +12888,13 @@ string
 </tr>
 <tr>
 <td>
-<code>logRestoredStartTs</code></br>
+<code>logRestoreStartTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>LogRestoredStartTs is the start timestamp which log restore from and it will be used in the feauter.</p>
+<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
 <tr>
