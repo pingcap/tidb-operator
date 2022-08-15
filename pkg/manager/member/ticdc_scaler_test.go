@@ -189,6 +189,17 @@ func TestTiCDCScalerScaleIn(t *testing.T) {
 		}
 
 		scaler, pvcIndexer, podIndexer, pvcControl := newFakeTiCDCScaler(resyncDuration)
+		// Always pass TiCDC graceful shutdown.
+		cdcControl := scaler.deps.CDCControl.(*controller.FakeTiCDCControl)
+		cdcControl.GetStatusFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+			return &controller.CaptureStatus{Version: ticdcCrossUpgradeVersion}, nil
+		}
+		cdcControl.ResignOwnerFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
+			return true, nil
+		}
+		cdcControl.DrainCaptureFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
+			return 0, false, nil
+		}
 
 		if test.hasPVC {
 			pvc1 := newScaleInPVCForStatefulSet(oldSet, v1alpha1.TiCDCMemberType, tc.Name)
@@ -323,19 +334,6 @@ func newFakeTiCDCScaler(resyncDuration ...time.Duration) (*ticdcScaler, cache.In
 	return &ticdcScaler{generalScaler{deps: fakeDeps}}, pvcIndexer, podIndexer, pvcControl
 }
 
-type cdcCtlMock struct {
-	controller.TiCDCControlInterface
-	drainCapture func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error)
-	resignOwner  func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
-}
-
-func (c *cdcCtlMock) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int32) (int, bool, error) {
-	return c.drainCapture(tc, ordinal)
-}
-func (c *cdcCtlMock) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
-	return c.resignOwner(tc, ordinal)
-}
-
 type podCtlMock struct {
 	controller.PodControlInterface
 	updatePod func(runtime.Object, *corev1.Pod) (*corev1.Pod, error)
@@ -345,7 +343,7 @@ func (p *podCtlMock) UpdatePod(o runtime.Object, pod *corev1.Pod) (*corev1.Pod, 
 	return p.updatePod(o, pod)
 }
 
-func TestTiCDCGracefulShutdown(t *testing.T) {
+func TestTiCDCGracefulDrainTiCDC(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	tc := newTidbClusterForPD()
@@ -371,11 +369,14 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 	}{
 		{
 			caseName: "shutdown ok",
-			cdcCtl: &cdcCtlMock{
-				drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{Version: ticdcCrossUpgradeVersion}, nil
+				},
+				DrainCaptureFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
 					return 0, false, nil
 				},
-				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+				ResignOwnerFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
 					return true, nil
 				},
 			},
@@ -391,7 +392,7 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 		},
 		{
 			caseName: "shutdown timeout",
-			cdcCtl:   &cdcCtlMock{},
+			cdcCtl:   &controller.FakeTiCDCControl{},
 			podCtl:   &podCtlMock{},
 			pod: func() *corev1.Pod {
 				pod := newPod()
@@ -408,7 +409,7 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 		},
 		{
 			caseName: "shutdown malformed label value",
-			cdcCtl:   &cdcCtlMock{},
+			cdcCtl:   &controller.FakeTiCDCControl{},
 			podCtl:   &podCtlMock{},
 			pod: func() *corev1.Pod {
 				pod := newPod()
@@ -424,11 +425,14 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 		},
 		{
 			caseName: "shutdown with label set",
-			cdcCtl: &cdcCtlMock{
-				drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{Version: ticdcCrossUpgradeVersion}, nil
+				},
+				DrainCaptureFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
 					return 0, false, nil
 				},
-				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+				ResignOwnerFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
 					return true, nil
 				},
 			},
@@ -448,8 +452,8 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 		},
 		{
 			caseName: "shutdown retry resign owner",
-			cdcCtl: &cdcCtlMock{
-				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+			cdcCtl: &controller.FakeTiCDCControl{
+				ResignOwnerFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
 					return false, nil
 				},
 			},
@@ -466,11 +470,11 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 		},
 		{
 			caseName: "shutdown retry drain capture #1",
-			cdcCtl: &cdcCtlMock{
-				drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+			cdcCtl: &controller.FakeTiCDCControl{
+				DrainCaptureFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
 					return 1, false, nil
 				},
-				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+				ResignOwnerFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
 					return true, nil
 				},
 			},
@@ -487,11 +491,11 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 		},
 		{
 			caseName: "shutdown retry drain capture #2",
-			cdcCtl: &cdcCtlMock{
-				drainCapture: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
+			cdcCtl: &controller.FakeTiCDCControl{
+				DrainCaptureFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (tableCount int, retry bool, err error) {
 					return 0, true, nil
 				},
-				resignOwner: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+				ResignOwnerFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
 					return true, nil
 				},
 			},
@@ -510,7 +514,327 @@ func TestTiCDCGracefulShutdown(t *testing.T) {
 
 	for _, c := range cases {
 		pod := c.pod()
-		err := gracefulShutdownTiCDC(tc, c.cdcCtl, c.podCtl, pod, 1, "test")
+		err := gracefulDrainTiCDC(tc, c.cdcCtl, c.podCtl, pod, 1, "test")
 		c.expectedErr(err, c.caseName)
+	}
+}
+
+func TestTiCDCGracefulResignOwner(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbClusterForPD()
+	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{}
+	ticdcGracefulShutdownTimeout := tc.TiCDCGracefulShutdownTimeout()
+	newPod := func() *corev1.Pod {
+		return &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              ticdcPodName(tc.GetName(), 1),
+				Namespace:         corev1.NamespaceDefault,
+				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+			},
+		}
+	}
+
+	cases := []struct {
+		caseName    string
+		cdcCtl      controller.TiCDCControlInterface
+		podCtl      controller.PodControlInterface
+		pod         func() *corev1.Pod
+		expectedErr func(error, string)
+	}{
+		{
+			caseName: "resign ok",
+			cdcCtl: &controller.FakeTiCDCControl{
+				ResignOwnerFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				},
+				IsHealthyFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				},
+			},
+			podCtl: &podCtlMock{
+				updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+					return p, nil
+				},
+			},
+			pod: newPod,
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(BeNil(), name)
+			},
+		},
+		{
+			caseName: "resign timeout",
+			cdcCtl:   &controller.FakeTiCDCControl{},
+			podCtl:   &podCtlMock{},
+			pod: func() *corev1.Pod {
+				pod := newPod()
+				if pod.Annotations == nil {
+					pod.Annotations = map[string]string{}
+				}
+				now := time.Now().Add(-2 * ticdcGracefulShutdownTimeout).Format(time.RFC3339)
+				pod.Annotations[label.AnnTiCDCGracefulShutdownBeginTime] = now
+				return pod
+			},
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(BeNil(), name)
+			},
+		},
+		{
+			caseName: "retry resign owner",
+			cdcCtl: &controller.FakeTiCDCControl{
+				ResignOwnerFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return false, nil
+				},
+			},
+			podCtl: &podCtlMock{
+				updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+					return p, nil
+				},
+			},
+			pod: newPod,
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(Not(BeNil()), name)
+				g.Expect(controller.IsRequeueError(err)).Should(BeTrue(), name)
+			},
+		},
+		{
+			caseName: "retry healthy",
+			cdcCtl: &controller.FakeTiCDCControl{
+				ResignOwnerFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return true, nil
+				},
+				IsHealthyFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error) {
+					return false, nil
+				},
+			},
+			podCtl: &podCtlMock{
+				updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+					return p, nil
+				},
+			},
+			pod: newPod,
+			expectedErr: func(err error, name string) {
+				g.Expect(err).Should(Not(BeNil()), name)
+				g.Expect(controller.IsRequeueError(err)).Should(BeTrue(), name)
+			},
+		},
+	}
+
+	for _, c := range cases {
+		pod := c.pod()
+		err := gracefulResignOwnerTiCDC(tc, c.cdcCtl, c.podCtl, pod, "ownerPod", 1, "test")
+		c.expectedErr(err, c.caseName)
+	}
+}
+
+func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbClusterForPD()
+	tc.Spec.TiCDC = &v1alpha1.TiCDCSpec{
+		BaseImage: "pingcap/ticdc",
+	}
+
+	cases := []struct {
+		caseName    string
+		cdcCtl      controller.TiCDCControlInterface
+		changeTc    func(*v1alpha1.TidbCluster)
+		expectedOk  bool
+		expectedErr bool
+	}{
+		{
+			caseName: "support graceful upgrade v6.3.0",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.3.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v6.4.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  true,
+			expectedErr: false,
+		},
+		{
+			caseName: "support graceful upgrade v7.0.0",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "7.0.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v7.4.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  true,
+			expectedErr: false,
+		},
+		{
+			caseName: "cross two major versions, skip graceful upgrade",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.3.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v8.0.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
+			caseName: "support graceful reload",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.2.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v6.2.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  true,
+			expectedErr: false,
+		},
+		{
+			caseName: "v6.3.0 -> latest, skip graceful upgrade",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "7.0.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "latest"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
+			caseName: "get status failed",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return nil, fmt.Errorf("test error")
+				},
+			},
+			expectedOk:  false,
+			expectedErr: true,
+		},
+		{
+			caseName: "malformed pod version, skip graceful upgrade",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "malformed",
+					}, nil
+				},
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
+			caseName: "malformed tc version, skip graceful upgrade",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.3.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.Version = "malformed"
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
+			caseName: "malformed ticdc spec version, skip graceful upgrade",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.3.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "malformed"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
+			caseName: "pod version too low, skip graceful upgrade #1",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.2.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v6.3.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+		{
+			caseName: "pod version too low, skip graceful upgrade #2",
+			cdcCtl: &controller.FakeTiCDCControl{
+				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+					return &controller.CaptureStatus{
+						Version: "6.2.0",
+					}, nil
+				},
+			},
+			changeTc: func(tc *v1alpha1.TidbCluster) {
+				v := "v6.4.0"
+				tc.Spec.TiCDC.Version = &v
+			},
+			expectedOk:  false,
+			expectedErr: false,
+		},
+	}
+
+	for _, c := range cases {
+		name := c.caseName
+		tcClone := tc.DeepCopy()
+		if c.changeTc != nil {
+			c.changeTc(tcClone)
+		}
+		podCtl := &podCtlMock{
+			updatePod: func(_ runtime.Object, p *corev1.Pod) (*corev1.Pod, error) {
+				return p, nil
+			},
+		}
+		pod := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              ticdcPodName(tc.GetName(), 1),
+				Namespace:         corev1.NamespaceDefault,
+				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+			},
+		}
+		support, err := isTiCDCPodSupportGracefulUpgrade(tcClone, c.cdcCtl, podCtl, pod, 1, "test")
+		g.Expect(support).Should(Equal(c.expectedOk), name)
+		if c.expectedErr {
+			g.Expect(controller.IsRequeueError(err)).Should(BeTrue(), name)
+		} else {
+			g.Expect(err).Should(BeNil(), name)
+		}
 	}
 }

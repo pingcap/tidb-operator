@@ -109,11 +109,32 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 			continue
 		}
 
-		err = gracefulShutdownTiCDC(tc, u.deps.CDCControl, u.deps.PodControl, pod, ordinal, "Upgrade")
+		support, err := isTiCDCPodSupportGracefulUpgrade(tc, u.deps.CDCControl, u.deps.PodControl, pod, ordinal, "Upgrade")
 		if err != nil {
 			return err
 		}
-		klog.Infof("ticdcUpgrade.Upgrade: %s has graceful shutdown in cluster %s/%s", podName, tc.GetNamespace(), tc.GetName())
+		if support {
+			err = gracefulDrainTiCDC(tc, u.deps.CDCControl, u.deps.PodControl, pod, ordinal, "Upgrade")
+			if err != nil {
+				return err
+			}
+			klog.Infof("ticdcUpgrade.Upgrade: %s graceful drain TiCDC complete in cluster %s/%s", podName, tc.GetNamespace(), tc.GetName())
+			// To prevent TiCDC service disruption, we need to resign owner
+			// gracefully from the next pod that is going to be upgraded.
+			// If the current pod is the last one to upgrade, skip resign owner.
+			hasNext := i-1 >= 0
+			if hasNext {
+				nextOrd := podOrdinals[i-1]
+				nextPodName := ticdcPodName(tcName, nextOrd)
+				klog.Infof("ticdcUpgrade.Upgrade: try to graceful resign owner from the next ticdc pod %s in cluster %s/%s", nextPodName, tc.GetNamespace(), tc.GetName())
+				err = gracefulResignOwnerTiCDC(tc, u.deps.CDCControl, u.deps.PodControl, pod, nextPodName, nextOrd, "Upgrade")
+				if err != nil {
+					return err
+				}
+				klog.Infof("ticdcUpgrade.Upgrade: %s graceful resign owner complete in cluster %s/%s", nextPodName, tc.GetNamespace(), tc.GetName())
+			}
+			klog.Infof("ticdcUpgrade.Upgrade: %s graceful shutdown complete in cluster %s/%s", podName, tc.GetNamespace(), tc.GetName())
+		}
 
 		mngerutils.SetUpgradePartition(newSet, ordinal)
 		return nil

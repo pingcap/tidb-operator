@@ -62,6 +62,9 @@ func genTestCases() []testcase {
 	return []testcase{
 		// Greater
 		{"v5.3.1", Greater, "v5.1.2", true},
+		{"5.3.1", Greater, "5.1.2", true},
+		{"v5.3.1", Greater, "5.1.2", true},
+		{"v5.3.1-master-dirty", Greater, "5.1.2-alpha-308-gbd21a6ea5", true},
 		{"v5.1.2", Greater, "v5.3.1", false},
 		{"v5.3.1", Greater, "v5.3.1", false},
 		{"v5.3.1-dev12", Greater, "v5.1.2", true},
@@ -70,6 +73,9 @@ func genTestCases() []testcase {
 		{"nightly", Greater, "v5.3.1", true},
 		// GreaterOrEqual
 		{"v5.3.1", GreaterOrEqual, "v5.1.2", true},
+		{"5.3.1", GreaterOrEqual, "5.1.2", true},
+		{"5.3.1", GreaterOrEqual, "v5.1.2", true},
+		{"5.3.1-master-dirty", GreaterOrEqual, "v5.1.2-alpha-308-gbd21a6ea5", true},
 		{"v5.1.2", GreaterOrEqual, "v5.3.1", false},
 		{"v5.3.1", GreaterOrEqual, "v5.3.1", true},
 		{"v5.3.1-dev12", GreaterOrEqual, "v5.1.2", true},
@@ -79,6 +85,8 @@ func genTestCases() []testcase {
 		// Less
 		{"v5.3.1", Less, "v5.1.2", false},
 		{"v5.1.2", Less, "v5.3.1", true},
+		{"5.1.2", Less, "5.3.1", true},
+		{"5.1.2-alpha-308-gbd21a6ea5-dirty", Less, "v5.3.1", true},
 		{"v5.3.1", Less, "v5.3.1", false},
 		{"v5.3.1-dev12", Less, "v5.1.2", false},
 		{"v5.3.1-dev12", Less, "v5.3.1", false},
@@ -86,6 +94,8 @@ func genTestCases() []testcase {
 		{"nightly", Less, "v5.3.1", false},
 		// LessOrEqual
 		{"v5.3.1", LessOrEqual, "v5.1.2", false},
+		{"5.3.1", LessOrEqual, "5.1.2", false},
+		{"v5.3.1", LessOrEqual, "5.1.2-alpha-308-gbd21a6ea5-dirty", false},
 		{"v5.1.2", LessOrEqual, "v5.3.1", true},
 		{"v5.3.1", LessOrEqual, "v5.3.1", true},
 		{"v5.3.1-dev12", LessOrEqual, "v5.1.2", false},
