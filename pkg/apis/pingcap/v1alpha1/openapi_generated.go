@@ -1025,9 +1025,9 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
-					"truncateUntil": {
+					"logTruncateUntil": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TruncateUntil is log backup truncate until timestamp. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.",
+							Description: "LogTruncateUntil is log backup truncate until timestamp. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -6569,9 +6569,16 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
-					"restoredTs": {
+					"pitrRestoredTs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "RestoredTs is the pitr restored ts.",
+							Description: "PitrRestoredTs is the pitr restored ts.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"logRestoredStartTs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LogRestoredStartTs is the start timestamp which log restore from and it will be used in the feauter.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

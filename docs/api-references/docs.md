@@ -245,14 +245,14 @@ Default is current timestamp.</p>
 </tr>
 <tr>
 <td>
-<code>truncateUntil</code></br>
+<code>logTruncateUntil</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>TruncateUntil is log backup truncate until timestamp.
+<p>LogTruncateUntil is log backup truncate until timestamp.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
 </td>
 </tr>
@@ -1192,13 +1192,24 @@ RestoreMode
 </tr>
 <tr>
 <td>
-<code>restoredTs</code></br>
+<code>pitrRestoredTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>RestoredTs is the pitr restored ts.</p>
+<p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logRestoredStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogRestoredStartTs is the start timestamp which log restore from and it will be used in the feauter.</p>
 </td>
 </tr>
 <tr>
@@ -3641,14 +3652,14 @@ Default is current timestamp.</p>
 </tr>
 <tr>
 <td>
-<code>truncateUntil</code></br>
+<code>logTruncateUntil</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>TruncateUntil is log backup truncate until timestamp.
+<p>LogTruncateUntil is log backup truncate until timestamp.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
 </td>
 </tr>
@@ -3898,13 +3909,13 @@ string
 </tr>
 <tr>
 <td>
-<code>truncateUntil</code></br>
+<code>logTruncateUntil</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>TruncateUntil is log backup truncate until timestamp.</p>
+<p>LogTruncateUntil is log backup truncate until timestamp.</p>
 </td>
 </tr>
 <tr>
@@ -12866,13 +12877,24 @@ RestoreMode
 </tr>
 <tr>
 <td>
-<code>restoredTs</code></br>
+<code>pitrRestoredTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>RestoredTs is the pitr restored ts.</p>
+<p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logRestoredStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogRestoredStartTs is the start timestamp which log restore from and it will be used in the feauter.</p>
 </td>
 </tr>
 <tr>

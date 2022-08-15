@@ -1752,10 +1752,10 @@ type BackupSpec struct {
 	// Default is current timestamp.
 	// +optional
 	CommitTs string `json:"commitTs,omitempty"`
-	// TruncateUntil is log backup truncate until timestamp.
+	// LogTruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// +optional
-	TruncateUntil string `json:"truncateUntil,omitempty"`
+	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1855,13 +1855,13 @@ const (
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
 	// LogBackupPrepareTruncate means the log backup prepare truncation
-	LogBackupTruncatePrepare BackupConditionType = "TruncatePrepare"
+	LogBackupTruncatePrepare BackupConditionType = "LogTruncatePrepare"
 	// LogBackupTruncating means the log backup is trancating
-	LogBackupTruncating BackupConditionType = "Truncating"
+	LogBackupTruncating BackupConditionType = "LogTruncating"
 	// LogBackupTruncateComplete means the log backup complete truncation
-	LogBackupTruncateComplete BackupConditionType = "TruncateComplete"
+	LogBackupTruncateComplete BackupConditionType = "LogTruncateComplete"
 	// LogBackupTruncateFailed means failed to truncate the log backup
-	LogBackupTruncateFailed BackupConditionType = "TruncateFailed"
+	LogBackupTruncateFailed BackupConditionType = "LogTruncateFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -1893,8 +1893,8 @@ type BackupStatus struct {
 	BackupSize int64 `json:"backupSize,omitempty"`
 	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	CommitTs string `json:"commitTs,omitempty"`
-	// TruncateUntil is log backup truncate until timestamp.
-	TruncateUntil string `json:"truncateUntil,omitempty"`
+	// LogTruncateUntil is log backup truncate until timestamp.
+	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
 	Phase BackupConditionType `json:"phase,omitempty"`
 	// +nullable
@@ -2076,8 +2076,10 @@ type RestoreSpec struct {
 	// Mode is the restore mode. such as snapshot or pitr.
 	// +kubebuilder:default=snapshot
 	Mode RestoreMode `json:"restoreMode,omitempty"`
-	// RestoredTs is the pitr restored ts.
-	RestoredTs string `json:"restoredTs,omitempty"`
+	// PitrRestoredTs is the pitr restored ts.
+	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
+	// LogRestoredStartTs is the start timestamp which log restore from and it will be used in the feauter.
+	LogRestoredStartTs string `json:"logRestoredStartTs,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.

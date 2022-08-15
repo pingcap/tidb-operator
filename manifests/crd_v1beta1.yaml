@@ -1205,6 +1205,8 @@ spec:
                   - volume
                   - volumeMount
                   type: object
+                logTruncateUntil:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -1346,8 +1348,6 @@ spec:
                     type: object
                   type: array
                 toolImage:
-                  type: string
-                truncateUntil:
                   type: string
                 useKMS:
                   type: boolean
@@ -2628,6 +2628,8 @@ spec:
               - volume
               - volumeMount
               type: object
+            logTruncateUntil:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:
@@ -2770,8 +2772,6 @@ spec:
               type: array
             toolImage:
               type: string
-            truncateUntil:
-              type: string
             useKMS:
               type: boolean
           type: object
@@ -2807,6 +2807,8 @@ spec:
                 type: object
               nullable: true
               type: array
+            logTruncateUntil:
+              type: string
             phase:
               type: string
             timeCompleted:
@@ -2816,8 +2818,6 @@ spec:
             timeStarted:
               format: date-time
               nullable: true
-              type: string
-            truncateUntil:
               type: string
           type: object
       required:
@@ -12634,6 +12634,10 @@ spec:
                   - provider
                   type: object
               type: object
+            logRestoredStartTs:
+              type: string
+            pitrRestoredTs:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:
@@ -12718,8 +12722,6 @@ spec:
                   type: object
               type: object
             restoreMode:
-              type: string
-            restoredTs:
               type: string
             s3:
               properties:
