@@ -25,6 +25,7 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
@@ -125,7 +126,12 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 
 		if revision == tc.Status.TiFlash.StatefulSet.UpdateRevision {
 			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s] is not available, last transition time is %v", ns, tcName, podName, podutil.GetPodReadyCondition(pod.Status).LastTransitionTime)
+				readyCond := podutil.GetPodReadyCondition(pod.Status)
+				if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tiflash pod: [%s] is not ready", ns, tcName, podName)
+
+				}
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s] is not available, last transition time is %v", ns, tcName, podName, readyCond.LastTransitionTime)
 			}
 			if store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded TiFlash pod: [%s], store state is not UP", ns, tcName, podName)

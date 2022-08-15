@@ -144,7 +144,12 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		if revision == status.StatefulSet.UpdateRevision {
 
 			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not available, last transition time is %v", ns, tcName, podName, podutil.GetPodReadyCondition(pod.Status).LastTransitionTime)
+				readyCond := podutil.GetPodReadyCondition(pod.Status)
+				if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
+
+				}
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not available, last transition time is %v", ns, tcName, podName, readyCond.LastTransitionTime)
 			}
 			if store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
