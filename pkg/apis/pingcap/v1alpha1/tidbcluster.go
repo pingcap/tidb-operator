@@ -939,11 +939,39 @@ func (tikv *TiKVSpec) GetRecoverByUID() types.UID {
 	return tikv.Failover.RecoverByUID
 }
 
+func (tikv *TiKVSpec) GetScaleInParallelism() int {
+	if tikv.ScalePolicy.ScaleInParallelism == nil {
+		return 1
+	}
+	return int(*(tikv.ScalePolicy.ScaleInParallelism))
+}
+
+func (tikv *TiKVSpec) GetScaleOutParallelism() int {
+	if tikv.ScalePolicy.ScaleOutParallelism == nil {
+		return 1
+	}
+	return int(*(tikv.ScalePolicy.ScaleOutParallelism))
+}
+
 func (tiflash *TiFlashSpec) GetRecoverByUID() types.UID {
 	if tiflash.Failover == nil {
 		return ""
 	}
 	return tiflash.Failover.RecoverByUID
+}
+
+func (tiflash *TiFlashSpec) GetScaleInParallelism() int {
+	if tiflash.ScalePolicy.ScaleInParallelism == nil {
+		return 1
+	}
+	return int(*(tiflash.ScalePolicy.ScaleInParallelism))
+}
+
+func (tiflash *TiFlashSpec) GetScaleOutParallelism() int {
+	if tiflash.ScalePolicy.ScaleOutParallelism == nil {
+		return 1
+	}
+	return int(*(tiflash.ScalePolicy.ScaleOutParallelism))
 }
 
 func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {
