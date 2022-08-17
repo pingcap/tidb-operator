@@ -147,7 +147,20 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupMode</code></br>
+<em>
+<a href="#backupmode">
+BackupMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
 </td>
 </tr>
 <tr>
@@ -214,6 +227,33 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogTruncateUntil is log backup truncate until timestamp.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -1134,7 +1174,42 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restoreMode</code></br>
+<em>
+<a href="#restoremode">
+RestoreMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the restore mode. such as snapshot or pitr.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pitrRestoredTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logRestoreStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
 <tr>
@@ -1164,6 +1239,19 @@ StorageProvider
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
 <p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackupStorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -3220,6 +3308,14 @@ string
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
 </p>
+<h3 id="backupmode">BackupMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>BackupType represents the backup mode, such as snapshot backup or log backup.</p>
+</p>
 <h3 id="backupschedulespec">BackupScheduleSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -3473,7 +3569,20 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupMode</code></br>
+<em>
+<a href="#backupmode">
+BackupMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
 </td>
 </tr>
 <tr>
@@ -3540,6 +3649,33 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogTruncateUntil is log backup truncate until timestamp.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -3783,7 +3919,18 @@ string
 </em>
 </td>
 <td>
-<p>CommitTs is the snapshot time point of tidb cluster.</p>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogTruncateUntil is log backup truncate until timestamp.</p>
 </td>
 </tr>
 <tr>
@@ -12638,6 +12785,14 @@ string
 <p>
 <p>RestoreConditionType represents a valid condition of a Restore.</p>
 </p>
+<h3 id="restoremode">RestoreMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>RestoreMode represents the restore mode, such as snapshot or pitr.</p>
+</p>
 <h3 id="restorespec">RestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -12719,7 +12874,42 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restoreMode</code></br>
+<em>
+<a href="#restoremode">
+RestoreMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the restore mode. such as snapshot or pitr.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pitrRestoredTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logRestoreStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
 <tr>
@@ -12749,6 +12939,19 @@ StorageProvider
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
 <p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackupStorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
 </td>
 </tr>
 <tr>
