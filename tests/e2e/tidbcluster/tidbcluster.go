@@ -3071,6 +3071,132 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 	})
 
+	ginkgo.Describe("Start Script Version", func() {
+
+		type testcase struct {
+			nameSuffix string
+			tlsEnable  bool
+		}
+
+		cases := []testcase{
+			{
+				nameSuffix: "",
+				tlsEnable:  false,
+			},
+			{
+				nameSuffix: "and enable TLS",
+				tlsEnable:  true,
+			},
+		}
+
+		for _, testcase := range cases {
+			ginkgo.It("deploy cluster with start script v2 "+testcase.nameSuffix, func() {
+				tcName := "start-script-v2"
+				tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
+				tc = fixture.AddTiFlashForTidbCluster(tc)
+				tc = fixture.AddTiCDCForTidbCluster(tc)
+				tc = fixture.AddPumpForTidbCluster(tc)
+				tc.Spec.PD.Replicas = 3
+				tc.Spec.TiDB.Replicas = 1
+				tc.Spec.TiKV.Replicas = 3
+				tc.Spec.TiFlash.Replicas = 3
+				tc.Spec.Pump.Replicas = 1
+				tc.Spec.TiCDC.Replicas = 1
+				tc.Spec.StartScriptVersion = v1alpha1.StartScriptV2
+
+				if testcase.tlsEnable {
+					tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+					tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+
+					ginkgo.By("Installing tidb CA certificate")
+					err := InstallTiDBIssuer(ns, tcName)
+					framework.ExpectNoError(err, "failed to install CA certificate")
+
+					ginkgo.By("Installing tidb server and client certificate")
+					err = InstallTiDBCertificates(ns, tcName)
+					framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+					ginkgo.By("Installing tidbInitializer client certificate")
+					err = installTiDBInitializerCertificates(ns, tcName)
+					framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+
+					ginkgo.By("Installing dashboard client certificate")
+					err = installPDDashboardCertificates(ns, tcName)
+					framework.ExpectNoError(err, "failed to install dashboard client certificate")
+
+					ginkgo.By("Installing tidb components certificates")
+					err = InstallTiDBComponentsCertificates(ns, tcName)
+					framework.ExpectNoError(err, "failed to install tidb components certificates")
+				}
+
+				ginkgo.By("Deploy tidb cluster")
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			})
+
+			ginkgo.It("migrate start script from v1 to v2 "+testcase.nameSuffix, func() {
+				tcName := "migrate-start-script-v2"
+				tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
+				tc = fixture.AddTiFlashForTidbCluster(tc)
+				tc = fixture.AddTiCDCForTidbCluster(tc)
+				tc = fixture.AddPumpForTidbCluster(tc)
+				tc.Spec.PD.Replicas = 3
+				tc.Spec.TiDB.Replicas = 1
+				tc.Spec.TiKV.Replicas = 3
+				tc.Spec.TiFlash.Replicas = 3
+				tc.Spec.Pump.Replicas = 1
+				tc.Spec.TiCDC.Replicas = 1
+
+				if testcase.tlsEnable {
+					tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+					tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+
+					ginkgo.By("Installing tidb CA certificate")
+					err := InstallTiDBIssuer(ns, tcName)
+					framework.ExpectNoError(err, "failed to install CA certificate")
+
+					ginkgo.By("Installing tidb server and client certificate")
+					err = InstallTiDBCertificates(ns, tcName)
+					framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+					ginkgo.By("Installing tidbInitializer client certificate")
+					err = installTiDBInitializerCertificates(ns, tcName)
+					framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+
+					ginkgo.By("Installing dashboard client certificate")
+					err = installPDDashboardCertificates(ns, tcName)
+					framework.ExpectNoError(err, "failed to install dashboard client certificate")
+
+					ginkgo.By("Installing tidb components certificates")
+					err = InstallTiDBComponentsCertificates(ns, tcName)
+					framework.ExpectNoError(err, "failed to install tidb components certificates")
+				}
+
+				ginkgo.By("Deploy tidb cluster")
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+				oldTC, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "failed to get tc %s/%s", ns, tcName)
+
+				ginkgo.By("Update tc to use start script v2")
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.StartScriptVersion = v1alpha1.StartScriptV2
+					return nil
+				})
+				framework.ExpectNoError(err, "failed to start script version to v2")
+
+				ginkgo.By(fmt.Sprintf("Wait for phase is %q", v1alpha1.UpgradePhase))
+				utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
+
+				ginkgo.By("Wait for cluster is ready")
+				err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+
+				ginkgo.By("Check status of components not changed")
+				err = utiltc.CheckComponentStatusNotChanged(cli, oldTC)
+				framework.ExpectNoError(err, "failed to check component status of tc %s/%s not changed", ns, tcName)
+			})
+		}
+
+	})
 })
 
 // checkPumpStatus check there are onlineNum online pump instance running now.

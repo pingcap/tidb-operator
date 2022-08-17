@@ -120,6 +120,13 @@ const (
 	ConfigUpdateStrategyRollingUpdate ConfigUpdateStrategy = "RollingUpdate"
 )
 
+type StartScriptVersion string
+
+const (
+	StartScriptV1 StartScriptVersion = "v1"
+	StartScriptV2 StartScriptVersion = "v2"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -339,6 +346,13 @@ type TidbClusterSpec struct {
 	// +listType=map
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// StartScriptVersion is the version of start script
+	//
+	// default to "v1"
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1";"v2"
+	StartScriptVersion StartScriptVersion `json:"startScriptVersion,omitempty"`
 
 	// SuspendAction defines the suspend actions for all component.
 	// +optional

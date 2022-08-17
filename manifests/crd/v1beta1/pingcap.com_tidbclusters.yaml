@@ -7501,6 +7501,12 @@ spec:
                     type: string
                 type: object
               type: array
+            startScriptVersion:
+              enum:
+              - ""
+              - v1
+              - v2
+              type: string
             statefulSetUpdateStrategy:
               type: string
             suspendAction:

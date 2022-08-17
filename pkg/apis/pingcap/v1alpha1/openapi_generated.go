@@ -12440,6 +12440,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							},
 						},
 					},
+					"startScriptVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartScriptVersion is the version of start script\n\ndefault to \"v1\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"suspendAction": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SuspendAction defines the suspend actions for all component.",
