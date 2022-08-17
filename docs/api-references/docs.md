@@ -1993,6 +1993,21 @@ All topologySpreadConstraints are ANDed.</p>
 </tr>
 <tr>
 <td>
+<code>startScriptVersion</code></br>
+<em>
+<a href="#startscriptversion">
+StartScriptVersion
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartScriptVersion is the version of start script</p>
+<p>default to &ldquo;v1&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>suspendAction</code></br>
 <em>
 <a href="#suspendaction">
@@ -13798,6 +13813,13 @@ Optional: Defaults to omitted</p>
 </tr>
 </tbody>
 </table>
+<h3 id="startscriptversion">StartScriptVersion</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+</p>
 <h3 id="status">Status</h3>
 <p>
 (<em>Appears on:</em>
@@ -22452,6 +22474,21 @@ Kubernetes core/v1.PodSecurityContext
 domains. Scheduler will schedule pods in a way which abides by the constraints.
 This field is is only honored by clusters that enables the EvenPodsSpread feature.
 All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startScriptVersion</code></br>
+<em>
+<a href="#startscriptversion">
+StartScriptVersion
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartScriptVersion is the version of start script</p>
+<p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>
 <tr>
