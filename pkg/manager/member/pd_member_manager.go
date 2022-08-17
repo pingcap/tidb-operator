@@ -16,7 +16,6 @@ package member
 import (
 	"fmt"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -25,6 +24,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -43,9 +44,6 @@ import (
 )
 
 const (
-	// pdDataVolumeMountPath is the mount path for pd data volume
-	pdDataVolumeMountPath = "/var/lib/pd"
-
 	// pdClusterCertPath is where the cert for inter-cluster communication stored (if any)
 	pdClusterCertPath  = "/var/lib/pd-tls"
 	tidbClientCertPath = "/var/lib/tidb-client-tls"
@@ -583,7 +581,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		annMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
-		{Name: dataVolumeName, MountPath: pdDataVolumeMountPath},
+		{Name: dataVolumeName, MountPath: constants.PDDataVolumeMountPath},
 	}
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
@@ -865,19 +863,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	sm := &PDStartScriptModel{
-		CommonModel: CommonModel{
-			AcrossK8s:     tc.AcrossK8s(),
-			ClusterDomain: tc.Spec.ClusterDomain,
-		},
-		Scheme:  tc.Scheme(),
-		DataDir: filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
-	}
-	if tc.Spec.PD.StartUpScriptVersion == "v1" {
-		sm.CheckDomainScript = checkDNSV1
-	}
-
-	startScript, err := RenderPDStartScript(sm)
+	startScript, err := startscript.RenderPDStartScript(tc)
 	if err != nil {
 		return nil, err
 	}

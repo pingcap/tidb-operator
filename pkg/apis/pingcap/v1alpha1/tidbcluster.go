@@ -1071,6 +1071,21 @@ func (tc *TidbCluster) TiCDCLogFile() string {
 	return ""
 }
 
+func (tc *TidbCluster) PumpLogLevel() string {
+	if tc.Spec.Pump != nil && tc.Spec.Pump.Config != nil {
+		if v := tc.Spec.Pump.Config.Get("log-level"); v != nil {
+			level, err := v.AsString()
+			if err != nil {
+				klog.Warningf("'%s/%s' incorrect log-level type %v", tc.Namespace, tc.Name, v.Interface())
+			} else {
+				return level
+			}
+		}
+	}
+
+	return "info"
+}
+
 func (tc *TidbCluster) TiCDCLogLevel() string {
 	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil {
 		if v := tc.Spec.TiCDC.Config.Get("log-level"); v != nil {
@@ -1110,4 +1125,13 @@ func (tc *TidbCluster) IsComponentVolumeResizing(compType MemberType) bool {
 	}
 	conds := comp.GetConditions()
 	return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
+}
+
+func (tc *TidbCluster) StartScriptVersion() StartScriptVersion {
+	switch tc.Spec.StartScriptVersion {
+	case StartScriptV1, StartScriptV2:
+		return tc.Spec.StartScriptVersion
+	default:
+		return StartScriptV1
+	}
 }

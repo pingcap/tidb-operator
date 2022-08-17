@@ -11,27 +11,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package member
+package v1
 
 import (
-	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+
 	"github.com/google/go-cmp/cmp"
+	"github.com/onsi/gomega"
+	"mvdan.cc/sh/v3/syntax"
 )
 
 func TestRenderTiDBStartScript(t *testing.T) {
 	tests := []struct {
-		name          string
-		path          string
-		clusterDomain string
-		acrossK8s     bool
-		result        string
+		name     string
+		modifyTC func(tc *v1alpha1.TidbCluster)
+		result   string
 	}{
 		{
-			name:          "basic",
-			path:          "cluster01-pd:2379",
-			clusterDomain: "",
+			name:     "basic",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {},
 			result: `#!/bin/sh
 
 # This script is used to start tidb containers in kubernetes cluster
@@ -63,7 +64,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
 --advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc \
 --host=0.0.0.0 \
---path=cluster01-pd:2379 \
+--path=${CLUSTER_NAME}-pd:2379 \
 --config=/etc/tidb/tidb.toml
 "
 
@@ -84,10 +85,10 @@ exec /tidb-server ${ARGS}
 `,
 		},
 		{
-			name:          "non-empty cluster domain",
-			path:          "cluster01-pd:2379",
-			clusterDomain: "test.com",
-			acrossK8s:     false,
+			name: "non-empty cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "test.com"
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tidb containers in kubernetes cluster
@@ -119,7 +120,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
 --advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.test.com \
 --host=0.0.0.0 \
---path=cluster01-pd:2379 \
+--path=${CLUSTER_NAME}-pd:2379 \
 --config=/etc/tidb/tidb.toml
 "
 
@@ -140,10 +141,11 @@ exec /tidb-server ${ARGS}
 `,
 		},
 		{
-			name:          "across k8s with setting cluster domain",
-			path:          "cluster01-pd:2379",
-			clusterDomain: "test.com",
-			acrossK8s:     true,
+			name: "across k8s with setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "test.com"
+				tc.Spec.AcrossK8s = true
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tidb containers in kubernetes cluster
@@ -172,7 +174,7 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
-pd_url="cluster01-pd:2379"
+pd_url="${CLUSTER_NAME}-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
@@ -205,10 +207,11 @@ exec /tidb-server ${ARGS}
 `,
 		},
 		{
-			name:          "across k8s without setting cluster domain",
-			path:          "cluster01-pd:2379",
-			clusterDomain: "",
-			acrossK8s:     true,
+			name: "across k8s without setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = ""
+				tc.Spec.AcrossK8s = true
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tidb containers in kubernetes cluster
@@ -237,7 +240,7 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
-pd_url="cluster01-pd:2379"
+pd_url="${CLUSTER_NAME}-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
@@ -273,39 +276,39 @@ exec /tidb-server ${ARGS}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			model := TidbStartScriptModel{
-				CommonModel: CommonModel{
-					AcrossK8s:     tt.acrossK8s,
-					ClusterDomain: tt.clusterDomain,
+			g := gomega.NewGomegaWithT(t)
+
+			tc := &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
-				EnablePlugin: false,
-				Path:         "cluster01-pd:2379",
 			}
-			script, err := RenderTiDBStartScript(&model)
-			if err != nil {
-				t.Fatal(err)
+			tc.Name = "test-tidb"
+			if tt.modifyTC != nil {
+				tt.modifyTC(tc)
 			}
+
+			script, err := RenderTiDBStartScript(tc)
+			g.Expect(err).Should(gomega.Succeed())
 			if diff := cmp.Diff(tt.result, script); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
 			}
+			g.Expect(validateScript(script)).Should(gomega.Succeed())
 		})
 	}
 }
 
 func TestRenderTiKVStartScript(t *testing.T) {
 	tests := []struct {
-		name                string
-		enableAdvertiseAddr bool
-		advertiseAddr       string
-		dataSubDir          string
-		result              string
-		clusterDomain       string
-		acrossK8s           bool
+		name     string
+		modifyTC func(tc *v1alpha1.TidbCluster)
+
+		result string
 	}{
 		{
-			name:                "disable AdvertiseAddr",
-			enableAdvertiseAddr: false,
-			advertiseAddr:       "",
+			name: "basic",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
@@ -356,9 +359,11 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name:                "enable AdvertiseAddr",
-			enableAdvertiseAddr: true,
-			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc",
+			name: "enable AdvertiseAddr",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				enable := true
+				tc.Spec.EnableDynamicConfiguration = &enable
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
@@ -393,7 +398,7 @@ ARGS="--pd=http://${CLUSTER_NAME}-pd:2379 \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \
---advertise-status-addr=test-tikv-1.test-tikv-peer.namespace.svc:20180 \
+--advertise-status-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20180 \
 --data-dir=/var/lib/tikv \
 --capacity=${CAPACITY} \
 --config=/etc/tikv/tikv.toml
@@ -410,10 +415,12 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name:                "enable AdvertiseAddr and non-empty dataSubDir",
-			enableAdvertiseAddr: true,
-			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc",
-			dataSubDir:          "data",
+			name: "enable AdvertiseAddr and non-empty dataSubDir",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				enable := true
+				tc.Spec.EnableDynamicConfiguration = &enable
+				tc.Spec.TiKV.DataSubDir = "data"
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
@@ -448,7 +455,7 @@ ARGS="--pd=http://${CLUSTER_NAME}-pd:2379 \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \
---advertise-status-addr=test-tikv-1.test-tikv-peer.namespace.svc:20180 \
+--advertise-status-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20180 \
 --data-dir=/var/lib/tikv/data \
 --capacity=${CAPACITY} \
 --config=/etc/tikv/tikv.toml
@@ -465,11 +472,10 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name:                "set cluster domain",
-			enableAdvertiseAddr: false,
-			advertiseAddr:       "",
-			clusterDomain:       "cluster.local",
-			acrossK8s:           false,
+			name: "set cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
@@ -520,12 +526,11 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name:                "across k8s with setting cluster domain",
-			enableAdvertiseAddr: true,
-			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc.cluster.local",
-			dataSubDir:          "data",
-			clusterDomain:       "cluster.local",
-			acrossK8s:           true,
+			name: "across k8s with setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+				tc.Spec.AcrossK8s = true
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
@@ -570,8 +575,7 @@ ARGS="--pd=${result} \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \
---advertise-status-addr=test-tikv-1.test-tikv-peer.namespace.svc.cluster.local:20180 \
---data-dir=/var/lib/tikv/data \
+--data-dir=/var/lib/tikv \
 --capacity=${CAPACITY} \
 --config=/etc/tikv/tikv.toml
 "
@@ -587,12 +591,11 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name:                "across k8s without setting cluster domain",
-			enableAdvertiseAddr: true,
-			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc",
-			dataSubDir:          "data",
-			clusterDomain:       "",
-			acrossK8s:           true,
+			name: "across k8s without setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = ""
+				tc.Spec.AcrossK8s = true
+			},
 			result: `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
@@ -637,8 +640,7 @@ ARGS="--pd=${result} \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \
---advertise-status-addr=test-tikv-1.test-tikv-peer.namespace.svc:20180 \
---data-dir=/var/lib/tikv/data \
+--data-dir=/var/lib/tikv \
 --capacity=${CAPACITY} \
 --config=/etc/tikv/tikv.toml
 "
@@ -657,39 +659,39 @@ exec /tikv-server ${ARGS}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			model := TiKVStartScriptModel{
-				CommonModel: CommonModel{
-					AcrossK8s:     tt.acrossK8s,
-					ClusterDomain: tt.clusterDomain,
+			g := gomega.NewGomegaWithT(t)
+
+			tc := &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
-				PDAddress:                 "http://${CLUSTER_NAME}-pd:2379",
-				EnableAdvertiseStatusAddr: tt.enableAdvertiseAddr,
-				AdvertiseStatusAddr:       tt.advertiseAddr,
-				DataDir:                   filepath.Join(tikvDataVolumeMountPath, tt.dataSubDir),
 			}
-			script, err := RenderTiKVStartScript(&model)
-			if err != nil {
-				t.Fatal(err)
+			tc.Name = "test-tikv"
+			if tt.modifyTC != nil {
+				tt.modifyTC(tc)
 			}
+
+			script, err := RenderTiKVStartScript(tc)
+			g.Expect(err).Should(gomega.Succeed())
 			if diff := cmp.Diff(tt.result, script); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
 			}
+			g.Expect(validateScript(script)).Should(gomega.Succeed())
 		})
 	}
 }
 
 func TestRenderPDStartScript(t *testing.T) {
 	tests := []struct {
-		name          string
-		scheme        string
-		dataSubDir    string
-		clusterDomain string
-		acrossK8s     bool
-		result        string
+		name     string
+		modifyTC func(tc *v1alpha1.TidbCluster)
+		result   string
 	}{
 		{
-			name:   "https scheme",
-			scheme: "https",
+			name: "https scheme",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+			},
 			result: `#!/bin/sh
 
 # This script is used to start pd containers in kubernetes cluster
@@ -749,10 +751,10 @@ done
 
 ARGS="--data-dir=/var/lib/pd \
 --name=${POD_NAME} \
---peer-urls=://0.0.0.0:2380 \
---advertise-peer-urls=://${domain}:2380 \
---client-urls=://0.0.0.0:2379 \
---advertise-client-urls=://${domain}:2379 \
+--peer-urls=https://0.0.0.0:2380 \
+--advertise-peer-urls=https://${domain}:2380 \
+--client-urls=https://0.0.0.0:2379 \
+--advertise-client-urls=https://${domain}:2379 \
 --config=/etc/pd/pd.toml \
 "
 
@@ -781,9 +783,10 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
-			name:       "non-empty dataSubDir",
-			scheme:     "http",
-			dataSubDir: "data",
+			name: "non-empty dataSubDir",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD.DataSubDir = "data"
+			},
 			result: `#!/bin/sh
 
 # This script is used to start pd containers in kubernetes cluster
@@ -843,10 +846,10 @@ done
 
 ARGS="--data-dir=/var/lib/pd/data \
 --name=${POD_NAME} \
---peer-urls=://0.0.0.0:2380 \
---advertise-peer-urls=://${domain}:2380 \
---client-urls=://0.0.0.0:2379 \
---advertise-client-urls=://${domain}:2379 \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${domain}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${domain}:2379 \
 --config=/etc/pd/pd.toml \
 "
 
@@ -875,10 +878,10 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
-			name:          "non-empty clusterDomain",
-			scheme:        "http",
-			dataSubDir:    "data",
-			clusterDomain: "cluster.local",
+			name: "non-empty clusterDomain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+			},
 			result: `#!/bin/sh
 
 # This script is used to start pd containers in kubernetes cluster
@@ -936,25 +939,25 @@ echo "nslookup domain ${domain} failed" >&2
 fi
 done
 
-ARGS="--data-dir=/var/lib/pd/data \
+ARGS="--data-dir=/var/lib/pd \
 --name=${domain} \
---peer-urls=://0.0.0.0:2380 \
---advertise-peer-urls=://${domain}:2380 \
---client-urls=://0.0.0.0:2379 \
---advertise-client-urls=://${domain}:2379 \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${domain}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${domain}:2379 \
 --config=/etc/pd/pd.toml \
 "
 
-if [[ -f /var/lib/pd/data/join ]]
+if [[ -f /var/lib/pd/join ]]
 then
 # The content of the join file is:
 #   demo-pd-0=http://demo-pd-0.demo-pd-peer.demo.svc:2380,demo-pd-1=http://demo-pd-1.demo-pd-peer.demo.svc:2380
 # The --join args must be:
 #   --join=http://demo-pd-0.demo-pd-peer.demo.svc:2380,http://demo-pd-1.demo-pd-peer.demo.svc:2380
-join=` + "`" + `cat /var/lib/pd/data/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=` + "`" + `cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
 join=${join%,}
 ARGS="${ARGS} --join=${join}"
-elif [[ ! -d /var/lib/pd/data/member/wal ]]
+elif [[ ! -d /var/lib/pd/member/wal ]]
 then
 until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for discovery service to return start args ..."
@@ -970,11 +973,11 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
-			name:          "across k8s without setting cluster domain",
-			scheme:        "http",
-			dataSubDir:    "data",
-			acrossK8s:     true,
-			clusterDomain: "",
+			name: "across k8s without setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = ""
+				tc.Spec.AcrossK8s = true
+			},
 			result: `#!/bin/sh
 
 # This script is used to start pd containers in kubernetes cluster
@@ -1032,25 +1035,25 @@ echo "nslookup domain ${domain} failed" >&2
 fi
 done
 
-ARGS="--data-dir=/var/lib/pd/data \
+ARGS="--data-dir=/var/lib/pd \
 --name=${domain} \
---peer-urls=://0.0.0.0:2380 \
---advertise-peer-urls=://${domain}:2380 \
---client-urls=://0.0.0.0:2379 \
---advertise-client-urls=://${domain}:2379 \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${domain}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${domain}:2379 \
 --config=/etc/pd/pd.toml \
 "
 
-if [[ -f /var/lib/pd/data/join ]]
+if [[ -f /var/lib/pd/join ]]
 then
 # The content of the join file is:
 #   demo-pd-0=http://demo-pd-0.demo-pd-peer.demo.svc:2380,demo-pd-1=http://demo-pd-1.demo-pd-peer.demo.svc:2380
 # The --join args must be:
 #   --join=http://demo-pd-0.demo-pd-peer.demo.svc:2380,http://demo-pd-1.demo-pd-peer.demo.svc:2380
-join=` + "`" + `cat /var/lib/pd/data/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=` + "`" + `cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
 join=${join%,}
 ARGS="${ARGS} --join=${join}"
-elif [[ ! -d /var/lib/pd/data/member/wal ]]
+elif [[ ! -d /var/lib/pd/member/wal ]]
 then
 until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for discovery service to return start args ..."
@@ -1066,11 +1069,11 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
-			name:          "across k8s with setting cluster domain",
-			scheme:        "http",
-			dataSubDir:    "data",
-			acrossK8s:     true,
-			clusterDomain: "cluster.local",
+			name: "across k8s with setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+				tc.Spec.AcrossK8s = true
+			},
 			result: `#!/bin/sh
 
 # This script is used to start pd containers in kubernetes cluster
@@ -1128,25 +1131,25 @@ echo "nslookup domain ${domain} failed" >&2
 fi
 done
 
-ARGS="--data-dir=/var/lib/pd/data \
+ARGS="--data-dir=/var/lib/pd \
 --name=${domain} \
---peer-urls=://0.0.0.0:2380 \
---advertise-peer-urls=://${domain}:2380 \
---client-urls=://0.0.0.0:2379 \
---advertise-client-urls=://${domain}:2379 \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${domain}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${domain}:2379 \
 --config=/etc/pd/pd.toml \
 "
 
-if [[ -f /var/lib/pd/data/join ]]
+if [[ -f /var/lib/pd/join ]]
 then
 # The content of the join file is:
 #   demo-pd-0=http://demo-pd-0.demo-pd-peer.demo.svc:2380,demo-pd-1=http://demo-pd-1.demo-pd-peer.demo.svc:2380
 # The --join args must be:
 #   --join=http://demo-pd-0.demo-pd-peer.demo.svc:2380,http://demo-pd-1.demo-pd-peer.demo.svc:2380
-join=` + "`" + `cat /var/lib/pd/data/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=` + "`" + `cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
 join=${join%,}
 ARGS="${ARGS} --join=${join}"
-elif [[ ! -d /var/lib/pd/data/member/wal ]]
+elif [[ ! -d /var/lib/pd/member/wal ]]
 then
 until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for discovery service to return start args ..."
@@ -1165,17 +1168,20 @@ exec /pd-server ${ARGS}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			model := PDStartScriptModel{
-				CommonModel: CommonModel{
-					AcrossK8s:     tt.acrossK8s,
-					ClusterDomain: tt.clusterDomain,
+			g := gomega.NewGomegaWithT(t)
+
+			tc := &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{},
 				},
-				DataDir: filepath.Join(pdDataVolumeMountPath, tt.dataSubDir),
 			}
-			script, err := RenderPDStartScript(&model)
-			if err != nil {
-				t.Fatal(err)
+			tc.Name = "test-pd"
+			if tt.modifyTC != nil {
+				tt.modifyTC(tc)
 			}
+
+			script, err := RenderPDStartScript(tc)
+			g.Expect(err).Should(gomega.Succeed())
 			if diff := cmp.Diff(tt.result, script); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
 			}
@@ -1185,29 +1191,19 @@ exec /pd-server ${ARGS}
 
 func TestRenderPumpStartScript(t *testing.T) {
 	tests := []struct {
-		name          string
-		scheme        string
-		clusterName   string
-		pdAddr        string
-		LogLevel      string
-		Namespace     string
-		clusterDomain string
-		acrossK8s     bool
-		result        string
+		name string
+
+		modifyTC func(tc *v1alpha1.TidbCluster)
+		result   string
 	}{
 		{
-			name:          "basic",
-			scheme:        "http",
-			clusterName:   "demo",
-			pdAddr:        "http://demo-pd:2379",
-			LogLevel:      "INFO",
-			Namespace:     "demo-ns",
-			clusterDomain: "",
+			name:     "basic",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {},
 			result: `set -euo pipefail
 
 /pump \
 -pd-urls=http://demo-pd:2379 \
--L=INFO \
+-L=info \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump:8250 \
 -config=/etc/pump/pump.toml \
 -data-dir=/data \
@@ -1219,19 +1215,15 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "non-empty cluster domain",
-			scheme:        "http",
-			clusterName:   "demo",
-			pdAddr:        "http://demo-pd:2379",
-			LogLevel:      "INFO",
-			Namespace:     "demo-ns",
-			clusterDomain: "demo.com",
-			acrossK8s:     false,
+			name: "non-empty cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "demo.com"
+			},
 			result: `set -euo pipefail
 
 /pump \
 -pd-urls=http://demo-pd:2379 \
--L=INFO \
+-L=info \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc.demo.com:8250 \
 -config=/etc/pump/pump.toml \
 -data-dir=/data \
@@ -1243,14 +1235,11 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "across k8s with setting cluster domain",
-			scheme:        "http",
-			clusterName:   "demo",
-			pdAddr:        "http://demo-pd:2379",
-			LogLevel:      "INFO",
-			Namespace:     "demo-ns",
-			clusterDomain: "demo.com",
-			acrossK8s:     true,
+			name: "across k8s with setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "demo.com"
+				tc.Spec.AcrossK8s = true
+			},
 			result: `
 pd_url="http://demo-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
@@ -1266,7 +1255,7 @@ set -euo pipefail
 
 /pump \
 -pd-urls=$pd_url \
--L=INFO \
+-L=info \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc.demo.com:8250 \
 -config=/etc/pump/pump.toml \
 -data-dir=/data \
@@ -1278,14 +1267,11 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "across k8s without setting cluster domain",
-			scheme:        "http",
-			clusterName:   "demo",
-			pdAddr:        "http://demo-pd:2379",
-			LogLevel:      "INFO",
-			Namespace:     "demo-ns",
-			clusterDomain: "",
-			acrossK8s:     true,
+			name: "across k8s without setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = ""
+				tc.Spec.AcrossK8s = true
+			},
 			result: `
 pd_url="http://demo-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
@@ -1301,7 +1287,7 @@ set -euo pipefail
 
 /pump \
 -pd-urls=$pd_url \
--L=INFO \
+-L=info \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc:8250 \
 -config=/etc/pump/pump.toml \
 -data-dir=/data \
@@ -1313,18 +1299,16 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "specify pd addr",
-			scheme:        "http",
-			clusterName:   "demo",
-			pdAddr:        "http://target-pd:2379",
-			LogLevel:      "INFO",
-			Namespace:     "demo-ns",
-			clusterDomain: "",
+			name: "heterogeneous cluster without local pd",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD = nil
+				tc.Spec.Cluster = &v1alpha1.TidbClusterRef{Name: "target"}
+			},
 			result: `set -euo pipefail
 
 /pump \
 -pd-urls=http://target-pd:2379 \
--L=INFO \
+-L=info \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump:8250 \
 -config=/etc/pump/pump.toml \
 -data-dir=/data \
@@ -1336,16 +1320,15 @@ if [ $? == 0 ]; then
 fi`,
 		},
 		{
-			name:          "specify pd addr when heterogeneous across k8s",
-			scheme:        "http",
-			clusterName:   "demo",
-			pdAddr:        "http://target-pd:2379",
-			LogLevel:      "INFO",
-			Namespace:     "demo-ns",
-			clusterDomain: "demo.com",
-			acrossK8s:     true,
+			name: "heterogeneous cluster when across k8s",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD = nil
+				tc.Spec.Cluster = &v1alpha1.TidbClusterRef{Name: "target"}
+				tc.Spec.ClusterDomain = "demo.com"
+				tc.Spec.AcrossK8s = true
+			},
 			result: `
-pd_url="http://target-pd:2379"
+pd_url="http://demo-pd:2379"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="demo-discovery.demo-ns:10261"
 until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
@@ -1359,7 +1342,7 @@ set -euo pipefail
 
 /pump \
 -pd-urls=$pd_url \
--L=INFO \
+-L=info \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc.demo.com:8250 \
 -config=/etc/pump/pump.toml \
 -data-dir=/data \
@@ -1374,25 +1357,275 @@ fi`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			model := PumpStartScriptModel{
-				CommonModel: CommonModel{
-					AcrossK8s:     tt.acrossK8s,
-					ClusterDomain: tt.clusterDomain,
+			g := gomega.NewGomegaWithT(t)
+
+			tc := &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					Pump: &v1alpha1.PumpSpec{},
 				},
-				Scheme:      tt.scheme,
-				ClusterName: tt.clusterName,
-				PDAddr:      tt.pdAddr,
-				LogLevel:    tt.LogLevel,
-				Namespace:   tt.Namespace,
 			}
-			script, err := RenderPumpStartScript(&model)
-			if err != nil {
-				t.Fatal(err)
+			tc.Name = "demo"
+			tc.Namespace = "demo-ns"
+			if tt.modifyTC != nil {
+				tt.modifyTC(tc)
 			}
+
+			script, err := RenderPumpStartScript(tc)
+			g.Expect(err).Should(gomega.Succeed())
 			if diff := cmp.Diff(tt.result, script); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
 			}
 		})
+	}
+}
+
+func TestRenderTiCDCStartScript(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type testcase struct {
+		name string
+
+		modifyTC     func(tc *v1alpha1.TidbCluster)
+		expectScript string
+	}
+
+	cases := []testcase{
+		{
+			name:         "basic",
+			modifyTC:     func(tc *v1alpha1.TidbCluster) {},
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=http://start-script-test-pd:2379`,
+		},
+		{
+			name: "set cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+			},
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=http://start-script-test-pd:2379`,
+		},
+		{
+			name: "set gc ttl",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				cfg := v1alpha1.NewCDCConfig()
+				cfg.Set("gc-ttl", 3600)
+				tc.Spec.TiCDC.Config = cfg
+			},
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=3600 --log-file= --log-level=info --pd=http://start-script-test-pd:2379`,
+		},
+		{
+			name: "set log file and log level",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				cfg := v1alpha1.NewCDCConfig()
+				cfg.Set("log-file", "/tmp/ticdc.log")
+				cfg.Set("log-level", "debug")
+				tc.Spec.TiCDC.Config = cfg
+			},
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file=/tmp/ticdc.log --log-level=debug --pd=http://start-script-test-pd:2379`,
+		},
+		{
+			name: "across k8s with setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+				tc.Spec.AcrossK8s = true
+			},
+			expectScript: `set -uo pipefail
+pd_url="http://start-script-test-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="start-script-test-discovery.${NAMESPACE}:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep 2
+done
+
+exec /cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=${result}`,
+		},
+		{
+			name: "across k8s without setting cluster domain",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = ""
+				tc.Spec.AcrossK8s = true
+			},
+			expectScript: `set -uo pipefail
+pd_url="http://start-script-test-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="start-script-test-discovery.${NAMESPACE}:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep 2
+done
+
+exec /cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=${result}`,
+		},
+		{
+			name: "heterogeneous without local pd",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD = nil
+				tc.Spec.Cluster = &v1alpha1.TidbClusterRef{Name: "target-cluster"}
+			},
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=http://target-cluster-pd:2379`,
+		},
+		{
+			name: "enable tls",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+			},
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file= --log-level=info --ca=/var/lib/ticdc-tls/ca.crt --cert=/var/lib/ticdc-tls/tls.crt --key=/var/lib/ticdc-tls/tls.key --pd=https://start-script-test-pd:2379`,
+		},
+		{
+			name: "set config",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				cfg := v1alpha1.NewCDCConfig()
+				cfg.Set("log-backup", 4)
+				tc.Spec.TiCDC.Config = cfg
+			},
+			expectScript: `/cdc server --addr=0.0.0.0:8301 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8301 --gc-ttl=86400 --log-file= --log-level=info --pd=http://start-script-test-pd:2379 --config=/etc/ticdc/ticdc.toml`,
+		},
+	}
+
+	for _, c := range cases {
+		t.Logf("test case: %s", c.name)
+
+		tc := &v1alpha1.TidbCluster{
+			Spec: v1alpha1.TidbClusterSpec{
+				TiCDC: &v1alpha1.TiCDCSpec{},
+			},
+		}
+		tc.Name = "start-script-test"
+		tc.Namespace = "start-script-test-ns"
+		if c.modifyTC != nil {
+			c.modifyTC(tc)
+		}
+
+		script, err := RenderTiCDCStartScript(tc)
+		g.Expect(err).Should(gomega.Succeed())
+		if diff := cmp.Diff(c.expectScript, script); diff != "" {
+			t.Errorf("unexpected (-want, +got): %s", diff)
+		}
+		g.Expect(validateScript(script)).Should(gomega.Succeed())
+	}
+}
+
+func TestRenderTiFlashStartScript(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type testcase struct {
+		name string
+
+		modifyTC     func(tc *v1alpha1.TidbCluster)
+		expectScript string
+	}
+
+	cases := []testcase{
+		{
+			name:         "basic",
+			modifyTC:     func(tc *v1alpha1.TidbCluster) {},
+			expectScript: `/tiflash/tiflash server --config-file /data0/config.toml`,
+		},
+	}
+
+	for _, c := range cases {
+		t.Logf("test case: %s", c.name)
+
+		tc := &v1alpha1.TidbCluster{
+			Spec: v1alpha1.TidbClusterSpec{
+				TiFlash: &v1alpha1.TiFlashSpec{},
+			},
+		}
+		tc.Name = "start-script-test"
+		tc.Namespace = "start-script-test-ns"
+
+		if c.modifyTC != nil {
+			c.modifyTC(tc)
+		}
+
+		script, err := RenderTiFlashStartScript(tc)
+		g.Expect(err).Should(gomega.Succeed())
+		if diff := cmp.Diff(c.expectScript, script); diff != "" {
+			t.Errorf("unexpected (-want, +got): %s", diff)
+		}
+		g.Expect(validateScript(script)).Should(gomega.Succeed())
+	}
+}
+
+func TestRenderTiFlashInitScript(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type testcase struct {
+		name string
+
+		modifyTC     func(tc *v1alpha1.TidbCluster)
+		expectScript string
+	}
+
+	cases := []testcase{
+		{
+			name:         "basic",
+			modifyTC:     func(tc *v1alpha1.TidbCluster) {},
+			expectScript: "set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml",
+		},
+		{
+			name: "across k8s",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.AcrossK8s = true
+			},
+			expectScript: "set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml" + `
+pd_url="http://start-script-test-pd:2379"
+set +e
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="start-script-test-discovery.start-script-test-ns:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
+echo "waiting for the verification of PD endpoints ..."
+sleep 2
+done
+
+
+sed -i s/PD_ADDR/${result}/g /data0/config.toml
+sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
+`,
+		},
+		{
+			name: "across k8s with tls enabled",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+				tc.Spec.AcrossK8s = true
+			},
+			expectScript: "set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml" + `
+pd_url="https://start-script-test-pd:2379"
+set +e
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="start-script-test-discovery.start-script-test-ns:10261"
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
+echo "waiting for the verification of PD endpoints ..."
+sleep 2
+done
+
+
+sed -i s/PD_ADDR/${result}/g /data0/config.toml
+sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
+`,
+		},
+	}
+
+	for _, c := range cases {
+		t.Logf("test case: %s", c.name)
+
+		tc := &v1alpha1.TidbCluster{
+			Spec: v1alpha1.TidbClusterSpec{
+				TiFlash: &v1alpha1.TiFlashSpec{},
+			},
+		}
+		tc.Name = "start-script-test"
+		tc.Namespace = "start-script-test-ns"
+
+		if c.modifyTC != nil {
+			c.modifyTC(tc)
+		}
+
+		script, err := RenderTiFlashInitScript(tc)
+		g.Expect(err).Should(gomega.Succeed())
+		if diff := cmp.Diff(c.expectScript, script); diff != "" {
+			t.Errorf("unexpected (-want, +got): %s", diff)
+		}
+		g.Expect(validateScript(script)).Should(gomega.Succeed())
 	}
 }
 
@@ -1574,4 +1807,9 @@ conn.close()
 			}
 		})
 	}
+}
+
+func validateScript(script string) error {
+	_, err := syntax.NewParser().Parse(strings.NewReader(script), "")
+	return err
 }
