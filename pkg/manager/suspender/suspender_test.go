@@ -63,7 +63,7 @@ func TestSuspendComponent(t *testing.T) {
 			component: v1alpha1.TiKVMemberType,
 			sts:       nil,
 			expect: func(suspeded bool, err error) {
-				g.Expect(suspeded).To(BeTrue())
+				g.Expect(suspeded).To(BeFalse())
 				g.Expect(err).To(BeNil())
 			},
 			expectResource: func(cluster v1alpha1.Cluster, s *suspender) {},

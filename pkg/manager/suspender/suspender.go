@@ -102,7 +102,7 @@ func (s *suspender) SuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.Mem
 	if !suspending {
 		if can, reason := canSuspendComponent(ctx.cluster, ctx.component); !can {
 			klog.Warningf("component %s can not be suspended now because: %s", ctx.ComponentID(), reason)
-			return true, nil
+			return false, nil
 		}
 
 		err := s.begin(ctx)
