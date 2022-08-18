@@ -1488,10 +1488,13 @@ type TLSCluster struct {
 //
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="bk"
+// +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.backupType`,description="the type of backup, such as full, db, table. Only used when Mode = snapshot."
+// +kubebuilder:printcolumn:name="Mode",type=string,JSONPath=`.spec.backupMode`,description="the mode of backup, such as snapshot, log."
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
-// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of tidb cluster dump"
+// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
+// +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logTruncateUntil`,description="The log backup truncate until ts"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -1649,6 +1652,17 @@ const (
 	BackupTypeTiFlashReplica BackupType = "tiflash-replica"
 )
 
+// BackupType represents the backup mode, such as snapshot backup or log backup.
+// +k8s:openapi-gen=true
+type BackupMode string
+
+const (
+	// BackupModeSnapshot represents the snapshot backup of tidb cluster.
+	BackupModeSnapshot BackupMode = "snapshot"
+	// BackupModeLog represents the log backup of tidb cluster.
+	BackupModeLog BackupMode = "log"
+)
+
 // TiDBAccessConfig defines the configuration for access tidb cluster
 // +k8s:openapi-gen=true
 type TiDBAccessConfig struct {
@@ -1736,8 +1750,11 @@ type BackupSpec struct {
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// From is the tidb cluster that needs to backup.
 	From *TiDBAccessConfig `json:"from,omitempty"`
-	// Type is the backup type for tidb cluster.
+	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
 	Type BackupType `json:"backupType,omitempty"`
+	// Mode is the backup mode, such as snapshot backup or log backup.
+	// +kubebuilder:default=snapshot
+	Mode BackupMode `json:"backupMode,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for backup.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
@@ -1752,6 +1769,15 @@ type BackupSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
+	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// Default is current timestamp.
+	// +optional
+	CommitTs string `json:"commitTs,omitempty"`
+	// LogTruncateUntil is log backup truncate until timestamp.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// +optional
+	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1850,6 +1876,14 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// LogBackupPrepareTruncate means the log backup prepare truncation
+	LogBackupTruncatePrepare BackupConditionType = "LogTruncatePrepare"
+	// LogBackupTruncating means the log backup is trancating
+	LogBackupTruncating BackupConditionType = "LogTruncating"
+	// LogBackupTruncateComplete means the log backup complete truncation
+	LogBackupTruncateComplete BackupConditionType = "LogTruncateComplete"
+	// LogBackupTruncateFailed means failed to truncate the log backup
+	LogBackupTruncateFailed BackupConditionType = "LogTruncateFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -1879,8 +1913,10 @@ type BackupStatus struct {
 	BackupSizeReadable string `json:"backupSizeReadable,omitempty"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize,omitempty"`
-	// CommitTs is the snapshot time point of tidb cluster.
+	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	CommitTs string `json:"commitTs,omitempty"`
+	// LogTruncateUntil is log backup truncate until timestamp.
+	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
 	Phase BackupConditionType `json:"phase,omitempty"`
 	// +nullable
@@ -1991,6 +2027,17 @@ type RestoreList struct {
 	Items []Restore `json:"items"`
 }
 
+// RestoreMode represents the restore mode, such as snapshot or pitr.
+// +k8s:openapi-gen=true
+type RestoreMode string
+
+const (
+	// RestoreModeSnapshot represents restore from a snapshot backup.
+	RestoreModeSnapshot RestoreMode = "snapshot"
+	// RestoreModePiTR represents PiTR restore which is from a snapshot backup and log backup.
+	RestoreModePiTR RestoreMode = "pitr"
+)
+
 // RestoreConditionType represents a valid condition of a Restore.
 type RestoreConditionType string
 
@@ -2046,14 +2093,23 @@ type RestoreSpec struct {
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// To is the tidb cluster that needs to restore.
 	To *TiDBAccessConfig `json:"to,omitempty"`
-	// Type is the backup type for tidb cluster.
+	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
 	Type BackupType `json:"backupType,omitempty"`
+	// Mode is the restore mode. such as snapshot or pitr.
+	// +kubebuilder:default=snapshot
+	Mode RestoreMode `json:"restoreMode,omitempty"`
+	// PitrRestoredTs is the pitr restored ts.
+	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
+	// LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.
+	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
+	// LogBackupStorageProvider configures where and how log backup should be stored.
+	LogBackupStorageProvider StorageProvider `json:"logBackupStorageProvider,omitempty"`
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
