@@ -349,7 +349,7 @@ func (oa *OperatorActions) crdFiles(info *OperatorConfig) ([]string, error) {
 	files := []string{
 		crdFile,
 	}
-	if info.Enabled("advanced-statefulset") {
+	if info.Enabled(features.AdvancedStatefulSet) {
 		files = append(files, astsCRDFile)
 	}
 
@@ -607,6 +607,7 @@ type memberCheckContext struct {
 	stsName        string
 	expectedImage  string
 	services       []string
+	status         v1alpha1.ComponentStatus
 	checkComponent func(obj metav1.Object, sts *v1.StatefulSet) error
 }
 
@@ -736,6 +737,7 @@ func (oa *OperatorActions) memberCheckContextForTC(tc *v1alpha1.TidbCluster, com
 		stsName:       stsName,
 		expectedImage: expectedImage,
 		services:      services,
+		status:        tc.ComponentStatus(component),
 		checkComponent: func(obj metav1.Object, sts *v1.StatefulSet) error {
 			tc := obj.(*v1alpha1.TidbCluster)
 			return checkComponent(tc, sts)
@@ -777,6 +779,7 @@ func (oa *OperatorActions) memberCheckContextForDC(dc *v1alpha1.DMCluster, compo
 		stsName:       stsName,
 		expectedImage: expectedImage,
 		services:      services,
+		status:        dc.ComponentStatus(component),
 		checkComponent: func(obj metav1.Object, sts *v1.StatefulSet) error {
 			dc := obj.(*v1alpha1.DMCluster)
 			return checkComponent(dc, sts)
@@ -812,6 +815,7 @@ func (oa *OperatorActions) memberCheckContextForTNGM(tngm *v1alpha1.TidbNGMonito
 		stsName:       stsName,
 		expectedImage: expectedImage,
 		services:      services,
+		status:        nil,
 		checkComponent: func(obj metav1.Object, sts *v1.StatefulSet) error {
 			tngm := obj.(*v1alpha1.TidbNGMonitoring)
 			return checkComponent(tngm, sts)
@@ -944,6 +948,10 @@ func (oa *OperatorActions) isTiFlashMembersReady(tc *v1alpha1.TidbCluster, sts *
 func (oa *OperatorActions) isTiCDCMembersReady(tc *v1alpha1.TidbCluster, sts *v1.StatefulSet) error {
 	if tc.Status.TiCDC.StatefulSet == nil {
 		return fmt.Errorf("sts in tc status is nil")
+	}
+
+	if len(tc.Status.TiCDC.Captures) != int(tc.Spec.TiCDC.Replicas) {
+		return fmt.Errorf("tc.status.TiCDC.Captures.count(%d) != %d", len(tc.Status.TiCDC.Captures), tc.Spec.TiCDC.Replicas)
 	}
 
 	return nil

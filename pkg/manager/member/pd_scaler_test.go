@@ -577,3 +577,12 @@ func normalPDMember(tc *v1alpha1.TidbCluster) {
 		ordinalPodName(v1alpha1.PDMemberType, tcName, 4): {Health: true},
 	}
 }
+
+func newPVCWithDeleteAnnotaion(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string, ordinal int32) *corev1.PersistentVolumeClaim {
+	pvc := _newPVCForStatefulSet(set, memberType, name, ordinal)
+	if pvc.Annotations == nil {
+		pvc.Annotations = make(map[string]string)
+	}
+	pvc.Annotations[label.AnnPVCDeferDeleting] = time.Now().Format(time.RFC3339)
+	return pvc
+}

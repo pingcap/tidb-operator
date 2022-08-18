@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package member
+package v1
 
 import (
 	"bytes"
@@ -109,10 +109,6 @@ type TidbStartScriptModel struct {
 	PluginDirectory string
 	PluginList      string
 	Path            string
-}
-
-func RenderTiDBStartScript(model *TidbStartScriptModel) (string, error) {
-	return renderTemplateFunc(tidbStartScriptTpl, model)
 }
 
 // pdStartScriptTpl is the pd start script
@@ -235,10 +231,6 @@ type PDStartScriptModel struct {
 	CheckDomainScript string
 }
 
-func RenderPDStartScript(model *PDStartScriptModel) (string, error) {
-	return renderTemplateFunc(pdStartScriptTpl, model)
-}
-
 var tikvStartScriptTpl = template.Must(template.New("tikv-start-script").Parse(`#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
@@ -309,10 +301,6 @@ type TiKVStartScriptModel struct {
 	PDAddress                 string
 }
 
-func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
-	return renderTemplateFunc(tikvStartScriptTpl, model)
-}
-
 // pumpStartScriptTpl is the template string of pump start script
 // Note: changing this will cause a rolling-update of pump cluster
 var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .AcrossK8s }}
@@ -362,10 +350,6 @@ func (pssm *PumpStartScriptModel) FormatPumpZone() string {
 		return fmt.Sprintf(".%s.svc", pssm.Namespace)
 	}
 	return ""
-}
-
-func RenderPumpStartScript(model *PumpStartScriptModel) (string, error) {
-	return renderTemplateFunc(pumpStartScriptTpl, model)
 }
 
 // tidbInitStartScriptTpl is the template string of tidb initializer start script
