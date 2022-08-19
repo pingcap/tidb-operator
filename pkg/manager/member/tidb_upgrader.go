@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -22,8 +23,16 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+)
+
+const (
+	// TODO: change to use minReadySeconds in sts spec
+	// See https://kubernetes.io/blog/2021/08/27/minreadyseconds-statefulsets/
+	annoKeyTiDBMinReadySeconds = "tidb.pingcap.com/tidb-min-ready-seconds"
 )
 
 type tidbUpgrader struct {
@@ -85,6 +94,17 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		return nil
 	}
 
+	minReadySeconds := 0
+	s, ok := tc.Annotations[annoKeyTiDBMinReadySeconds]
+	if ok {
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", ns, tcName, annoKeyTiDBMinReadySeconds, err)
+		} else {
+			minReadySeconds = i
+		}
+	}
+
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
@@ -100,8 +120,13 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		}
 
 		if revision == tc.Status.TiDB.StatefulSet.UpdateRevision {
-			if !podutil.IsPodReady(pod) {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tidb pod: [%s] is not ready", ns, tcName, podName)
+			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
+				readyCond := podutil.GetPodReadyCondition(pod.Status)
+				if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tidb pod: [%s] is not ready", ns, tcName, podName)
+
+				}
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tidb pod: [%s] is not available, last transition time is %v", ns, tcName, podName, readyCond.LastTransitionTime)
 			}
 			if member, exist := tc.Status.TiDB.Members[podName]; !exist || !member.Health {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tidb upgraded pod: [%s] is not ready", ns, tcName, podName)

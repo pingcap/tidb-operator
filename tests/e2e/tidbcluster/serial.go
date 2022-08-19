@@ -682,7 +682,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 				ginkgo.By("Deploy original TiDB cluster")
 				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
-				selector := MustGetLabelSelectorForComponents(tcName, label.DiscoveryLabelVal) // ingore discovery
+				selector := MustGetLabelSelectorForComponents(tcName, label.DiscoveryLabelVal) // ignore discovery
 				pods := utilpod.MustListPods(selector.String(), ns, c)
 
 				ginkgo.By("Upgrade TiDB Operator and CRDs to current version")
@@ -760,7 +760,11 @@ var _ = ginkgo.Describe("[Serial]", func() {
 						}))
 
 					tcName := fmt.Sprintf("upgrade-operator-from-%s", strings.ReplaceAll(operatorVersion, ".", "x"))
-					tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatestPrev)
+					// Use the fixed version v5.3.2 but not `util.TiDBLatestPrev`, because v5.4.1 TiFlash
+					// will rolling update if version is large than v5.4.x due to PR #4358.
+					// TODO: remove it after prev major version is greater than v1.2.x
+					version := "v5.3.2"
+					tc := fixture.GetTidbCluster(ns, tcName, version)
 					tc = fixture.AddTiFlashForTidbCluster(tc)
 					tc = fixture.AddTiCDCForTidbCluster(tc)
 					tc = fixture.AddPumpForTidbCluster(tc)
@@ -797,8 +801,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					ginkgo.By("Deploy original TiDB cluster with prev version")
 					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
 					selector := MustGetLabelSelectorForComponents(tcName,
-						label.DiscoveryLabelVal, // ingore discovery
-						label.TiFlashLabelVal,   // TODO: ingore tiflash because of PR #4358, remove it after prev major version is greater than v1.2.x
+						label.DiscoveryLabelVal, // ignore discovery
 					)
 					pods := utilpod.MustListPods(selector.String(), ns, c)
 
@@ -838,7 +841,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 						return nil
 					})
 					framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
-					err = oa.WaitForTidbClusterReady(tc, 7*time.Minute, 5*time.Second)
+					err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 5*time.Second)
 					framework.ExpectNoError(err, "waiting for cluster %q ready", tcName)
 
 					// reopen db after upgrade
@@ -880,8 +883,8 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				selector := MustGetLabelSelectorForComponents(tcName,
 					label.DiscoveryLabelVal,
 					label.PumpLabelVal,
-					label.TiCDCLabelVal,   // ingore ticdc because of PR #4494
-					label.TiFlashLabelVal, // ingore tiflash because of PR #4358
+					label.TiCDCLabelVal,   // ignore ticdc because of PR #4494
+					label.TiFlashLabelVal, // ignore tiflash because of PR #4358
 				)
 				pods := utilpod.MustListPods(selector.String(), ns, c)
 
