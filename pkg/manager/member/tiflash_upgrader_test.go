@@ -520,6 +520,42 @@ func TestTiFlashUpgraderUpgrade(t *testing.T) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
 			},
 		},
+
+		{
+			name: "tiflash version latest and tiflash is running",
+			changeFn: func(tc *v1alpha1.TidbCluster, tiflashControl *tiflashapi.FakeTiFlashControl) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
+				tc.Status.TiFlash.Synced = true
+				version := "latest"
+				tc.Spec.TiFlash.BaseImage = "base-image"
+				tc.Spec.TiFlash.Version = &version
+
+				if tc.Annotations == nil {
+					tc.Annotations = map[string]string{}
+				}
+				tc.Annotations[annoKeyTiFlashMinReadySeconds] = "300"
+
+				fakeClient := NewFakeTiKVClient(tiflashControl, tc, "upgrader-tiflash-2")
+				fakeClient.AddReaction(tiflashapi.GetStoreStatusActionType, func(action *tiflashapi.Action) (interface{}, error) {
+					return tiflashapi.Running, nil
+				})
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) { // tigger upgrade
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
+			},
+			changePods: func(pods []*corev1.Pod, tc *v1alpha1.TidbCluster, old, new *apps.StatefulSet) {
+				pods[2].Status.Conditions[0].LastTransitionTime = metav1.Now()
+			},
+			updatePodErr: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
+			},
+		},
 	}
 
 	for _, test := range tests {
