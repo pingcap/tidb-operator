@@ -227,6 +227,27 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
+		{
+			name: "upgraded pod is ready but not available",
+			changePods: func(pods []*corev1.Pod) {
+				pods[1].Status.Conditions[0].LastTransitionTime = metav1.Now()
+			},
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				if tc.Annotations == nil {
+					tc.Annotations = map[string]string{}
+				}
+				// 5min is enough for unit test
+				tc.Annotations[annoKeyTiDBMinReadySeconds] = "300"
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+			},
+			getLastAppliedConfigErr: false,
+			errorExpect:             true,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
+			},
+		},
 	}
 
 	for _, test := range tests {
