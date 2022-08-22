@@ -58,7 +58,10 @@ func TestSuspendComponent(t *testing.T) {
 				tc.Spec.TiKV = &v1alpha1.TiKVSpec{}
 				tc.Status.TiKV = v1alpha1.TiKVStatus{}
 				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
-				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase // can not suspend
+				// can not suspend
+				tc.Spec.TiDB = &v1alpha1.TiDBSpec{}
+				tc.Spec.TiDB.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
+				tc.Status.TiDB.Phase = v1alpha1.NormalPhase
 			},
 			component: v1alpha1.TiKVMemberType,
 			sts:       nil,
@@ -384,16 +387,6 @@ func TestCanSuspendComponent(t *testing.T) {
 			expect: func(can bool, reason string) {
 				g.Expect(can).To(BeTrue())
 				g.Expect(reason).To(BeEmpty())
-			},
-		},
-		"component's phase is not Normal and Suspend": {
-			setup: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-			},
-			component: v1alpha1.TiKVMemberType,
-			expect: func(can bool, reason string) {
-				g.Expect(can).To(BeFalse())
-				g.Expect(reason).To(Equal("component phase is not Normal or Suspend"))
 			},
 		},
 		"wait for other components to be suspended": {
