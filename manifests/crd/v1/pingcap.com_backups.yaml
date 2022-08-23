@@ -48,6 +48,10 @@ spec:
       jsonPath: .status.logTruncateUntil
       name: LogTruncateUntil
       type: string
+    - description: Whether The log backup is stopped
+      jsonPath: .status.LogStopped
+      name: LogStopped
+      type: string
     - description: The time at which the backup was started
       jsonPath: .status.timeStarted
       name: Started

@@ -342,6 +342,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}, updateStatus)
 }
 
+// performLogBackup execute log backup commands according to backup cr.
 func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	var (
 		err          error
@@ -373,29 +374,13 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 		return errorutils.NewAggregate(errs)
 	}
 
-	// err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-	// 	Type:   v1alpha1.BackupComplete,
-	// 	Status: corev1.ConditionTrue,
-	// }, resultStatus)
-	// if err != nil {
-	// 	klog.Infof("update comple error %s", err.Error())
-	// 	return err
-	// }
-
-	// err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-	// 	Type:   v1alpha1.BackupHandling,
-	// 	Status: corev1.ConditionFalse,
-	// }, nil)
-	// if err != nil {
-	// 	klog.Infof("update handling error %s", err.Error())
-	// 	return err
-	// }
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupComplete,
 		Status: corev1.ConditionTrue,
 	}, resultStatus)
 }
 
+// startLogBackup starts log backup.
 func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
 	started := time.Now()
 	backupFullPath, err := util.GetStoragePath(backup)
@@ -444,6 +429,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	return updateStatus, "", nil
 }
 
+// stopLogBackup stops log backup.
 func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
 	started := time.Now()
 
@@ -474,6 +460,7 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 	return updateStatus, "", nil
 }
 
+// truncateLogBackup truncates log backup.
 func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
 	started := time.Now()
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{

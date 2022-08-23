@@ -135,7 +135,7 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 	return args, nil
 }
 
-// logBackupStartExec generates br args and runs br binary to do the real backup work
+// startlogBackupExec generates br args about log backup start and runs br binary to do the real backup work.
 func (bo *Options) startlogBackupExec(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
 		"log",
@@ -152,7 +152,7 @@ func (bo *Options) startlogBackupExec(ctx context.Context, backup *v1alpha1.Back
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
-// logBackupStartExec generates br args and runs br binary to do the real backup work
+// stoplogBackupExec generates br args about log backup stop and runs br binary to do the real backup work.
 func (bo *Options) stoplogBackupExec(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
 		"log",
@@ -166,7 +166,7 @@ func (bo *Options) stoplogBackupExec(ctx context.Context, backup *v1alpha1.Backu
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
-// logBackupStartExec generates br args and runs br binary to do the real backup work
+// truncatelogBackupExec generates br args about log backup truncate and runs br binary to do the real backup work.
 func (bo *Options) truncatelogBackupExec(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
 		"log",
@@ -180,7 +180,7 @@ func (bo *Options) truncatelogBackupExec(ctx context.Context, backup *v1alpha1.B
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
-// backupData generates br args and runs br binary to do the real backup work
+// logBackupCommandTemplate is the template to generate br args.
 func (bo *Options) logBackupCommandTemplate(backup *v1alpha1.Backup, specificArgs []string) ([]string, error) {
 	if len(specificArgs) == 0 {
 		return nil, fmt.Errorf("log backup command is invalid, Args: %v", specificArgs)

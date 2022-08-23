@@ -1444,6 +1444,10 @@ spec:
     description: The log backup truncate until ts
     name: LogTruncateUntil
     type: string
+  - JSONPath: .status.LogStopped
+    description: Whether The log backup is stopped
+    name: LogStopped
+    type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
     name: Started

@@ -1495,6 +1495,7 @@ type TLSCluster struct {
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
 // +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logTruncateUntil`,description="The log backup truncate until ts"
+// +kubebuilder:printcolumn:name="LogStopped",type=string,JSONPath=`.status.LogStopped`,description="Whether The log backup is stopped"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -1862,8 +1863,6 @@ type BRConfig struct {
 type BackupConditionType string
 
 const (
-	// BackupHandling means the backup is handling to create job
-	BackupHandling BackupConditionType = "Handling"
 	// BackupScheduled means the backup related job has been created
 	BackupScheduled BackupConditionType = "Scheduled"
 	// BackupRunning means the backup is currently being executed.

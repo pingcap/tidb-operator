@@ -462,7 +462,7 @@ func RetryOnError(ctx context.Context, attempts int, sleep time.Duration,
 	return err
 }
 
-// GetBRMetaData get backup metadata from cloud storage
+// GetBRTruncatedUntil get log backup safepoint after truncate log backup.
 func GetBRTruncatedUntil(ctx context.Context, provider v1alpha1.StorageProvider) (uint64, error) {
 	s, err := NewStorageBackend(provider)
 	if err != nil {

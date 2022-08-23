@@ -85,8 +85,6 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 	backupName := backup.GetName()
 	// try best effort to guarantee backup is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		klog.Infof("Backup: updating [%s/%s], condition %s, is on it %s", ns, backupName, condition.Type, condition.Status)
-		// updateBackupStatus(&backup.Status, newStatus)
 		isStatusUpdate := updateBackupStatus(&backup.Status, newStatus)
 		isConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, condition)
 		if isStatusUpdate || isConditionUpdate {
@@ -103,51 +101,11 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 				utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
 			}
 			return updateErr
-		} else {
-			klog.Infof("Backup: no need to update [%s/%s], condition %s, is on it %s", ns, backupName, condition.Type, condition.Status)
 		}
 		return nil
 	})
 	return err
 }
-
-// // updateBackupStatus updates existing Backup status
-// // from the fields in BackupUpdateStatus.
-// func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) {
-// 	if newStatus == nil {
-// 		return
-// 	}
-// 	if newStatus.BackupPath != nil {
-// 		status.BackupPath = *newStatus.BackupPath
-// 	}
-// 	if newStatus.TimeStarted != nil {
-// 		status.TimeStarted = *newStatus.TimeStarted
-// 	}
-// 	if newStatus.TimeCompleted != nil {
-// 		status.TimeCompleted = *newStatus.TimeCompleted
-// 	}
-// 	if newStatus.BackupSizeReadable != nil {
-// 		status.BackupSizeReadable = *newStatus.BackupSizeReadable
-// 	}
-// 	if newStatus.BackupSize != nil {
-// 		status.BackupSize = *newStatus.BackupSize
-// 	}
-// 	if newStatus.CommitTs != nil {
-// 		status.CommitTs = *newStatus.CommitTs
-// 	}
-// 	if newStatus.Stopped != nil {
-// 		status.Stopped = *newStatus.Stopped
-// 	}
-// 	if newStatus.CurrentTs != nil {
-// 		status.CurrentTs = *newStatus.CurrentTs
-// 	}
-// 	if newStatus.TruncateUntil != nil {
-// 		status.TruncateUntil = *newStatus.TruncateUntil
-// 	}
-// 	if newStatus.SafeTruncatedUntil != nil {
-// 		status.SafeTruncatedUntil = *newStatus.SafeTruncatedUntil
-// 	}
-// }
 
 // updateBackupStatus updates existing Backup status
 // from the fields in BackupUpdateStatus.
