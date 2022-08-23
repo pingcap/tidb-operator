@@ -134,3 +134,124 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 	args = append(args, config.Options...)
 	return args, nil
 }
+
+// logBackupStartExec generates br args and runs br binary to do the real backup work
+func (bo *Options) startlogBackupExec(ctx context.Context, backup *v1alpha1.Backup) error {
+	specificArgs := []string{
+		"log",
+		"start",
+		fmt.Sprintf("--task-name=%s", backup.Name),
+	}
+	if backup.Spec.CommitTs != "" {
+		specificArgs = append(specificArgs, fmt.Sprintf("--start-ts=%s", backup.Spec.CommitTs))
+	}
+	fullArgs, err := bo.logBackupCommandTemplate(backup, specificArgs)
+	if err != nil {
+		return err
+	}
+	return bo.brCommandRun(ctx, fullArgs)
+}
+
+// logBackupStartExec generates br args and runs br binary to do the real backup work
+func (bo *Options) stoplogBackupExec(ctx context.Context, backup *v1alpha1.Backup) error {
+	specificArgs := []string{
+		"log",
+		"stop",
+		fmt.Sprintf("--task-name=%s", backup.Name),
+	}
+	fullArgs, err := bo.logBackupCommandTemplate(backup, specificArgs)
+	if err != nil {
+		return err
+	}
+	return bo.brCommandRun(ctx, fullArgs)
+}
+
+// logBackupStartExec generates br args and runs br binary to do the real backup work
+func (bo *Options) truncatelogBackupExec(ctx context.Context, backup *v1alpha1.Backup) error {
+	specificArgs := []string{
+		"log",
+		"truncate",
+		fmt.Sprintf("--until=%s", backup.Spec.TruncateUntil),
+	}
+	fullArgs, err := bo.logBackupCommandTemplate(backup, specificArgs)
+	if err != nil {
+		return err
+	}
+	return bo.brCommandRun(ctx, fullArgs)
+}
+
+// backupData generates br args and runs br binary to do the real backup work
+func (bo *Options) logBackupCommandTemplate(backup *v1alpha1.Backup, specificArgs []string) ([]string, error) {
+	if len(specificArgs) == 0 {
+		return nil, fmt.Errorf("log backup command is invalid, Args: %v", specificArgs)
+	}
+
+	clusterNamespace := backup.Spec.BR.ClusterNamespace
+	if backup.Spec.BR.ClusterNamespace == "" {
+		clusterNamespace = backup.Namespace
+	}
+	args := make([]string, 0)
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.BR.Cluster, clusterNamespace))
+	if bo.TLSCluster {
+		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey)))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
+	}
+	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
+	dataArgs, err := constructOptions(backup)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, dataArgs...)
+
+	fullArgs := append(specificArgs, args...)
+	return fullArgs, nil
+}
+
+// brCommandRun run br binary to do backup work
+func (bo *Options) brCommandRun(ctx context.Context, fullArgs []string) error {
+	if len(fullArgs) == 0 {
+		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
+	}
+	klog.Infof("Running br command with args: %v", fullArgs)
+	bin := path.Join(util.BRBinPath, "br")
+	cmd := exec.CommandContext(ctx, bin, fullArgs...)
+
+	stdOut, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
+	}
+	stdErr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
+	}
+	err = cmd.Start()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
+	}
+	var errMsg string
+	reader := bufio.NewReader(stdOut)
+	for {
+		line, err := reader.ReadString('\n')
+		if strings.Contains(line, "[ERROR]") {
+			errMsg += line
+		}
+
+		klog.Info(strings.Replace(line, "\n", "", -1))
+		if err != nil || io.EOF == err {
+			break
+		}
+	}
+	tmpErr, _ := ioutil.ReadAll(stdErr)
+	if len(tmpErr) > 0 {
+		klog.Info(string(tmpErr))
+		errMsg += string(tmpErr)
+	}
+	err = cmd.Wait()
+	if err != nil {
+		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+	}
+
+	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
+	return nil
+}

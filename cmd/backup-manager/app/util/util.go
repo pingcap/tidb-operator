@@ -21,6 +21,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -459,4 +460,29 @@ func RetryOnError(ctx context.Context, attempts int, sleep time.Duration,
 	}
 
 	return err
+}
+
+// GetBRMetaData get backup metadata from cloud storage
+func GetBRTruncatedUntil(ctx context.Context, provider v1alpha1.StorageProvider) (uint64, error) {
+	s, err := NewStorageBackend(provider)
+	if err != nil {
+		return 0, err
+	}
+	defer s.Close()
+	exist, err := s.Exists(ctx, constants.TruncateSafePointFileName)
+	if err != nil {
+		return 0, err
+	}
+	if !exist {
+		return 0, fmt.Errorf("%s not exist", constants.TruncateSafePointFileName)
+	}
+	data, err := s.ReadAll(ctx, constants.TruncateSafePointFileName)
+	if err != nil {
+		return 0, err
+	}
+	value, err := strconv.ParseUint(string(data), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse the truncate safepoint in file %s", constants.TruncateSafePointFileName)
+	}
+	return value, nil
 }

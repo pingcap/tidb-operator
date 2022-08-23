@@ -258,6 +258,18 @@ Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2
 </tr>
 <tr>
 <td>
+<code>stop</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Stop indicates that will stop the log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -3654,6 +3666,18 @@ Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2
 </tr>
 <tr>
 <td>
+<code>stop</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Stop indicates that will stop the log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -3893,7 +3917,7 @@ string
 </em>
 </td>
 <td>
-<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.</p>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or current ts for log backup.</p>
 </td>
 </tr>
 <tr>
@@ -3905,6 +3929,39 @@ string
 </td>
 <td>
 <p>TruncateUntil is log backup truncate until timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>safeTruncatedUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SafeTruncatedUntil is log backup safe truncate until timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CurrentTs is the ts of log backup process.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>stopped</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Stopped indicates whether the log backup has stopped.</p>
 </td>
 </tr>
 <tr>
@@ -9093,7 +9150,7 @@ int
 <td>
 <code>buffer-flush-interval</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
@@ -9189,7 +9246,7 @@ int
 <td>
 <code>sampling-refresh-interval</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
@@ -12295,7 +12352,7 @@ int
 <td>
 <code>batchSendDeadline</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
@@ -12317,7 +12374,7 @@ int
 <td>
 <code>minBackoff</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
@@ -12328,7 +12385,7 @@ invalid type
 <td>
 <code>maxBackoff</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>
@@ -17265,7 +17322,7 @@ Optional: Defaults to 200</p>
 <td>
 <code>max-batch-wait-time</code></br>
 <em>
-invalid type
+time.Duration
 </em>
 </td>
 <td>

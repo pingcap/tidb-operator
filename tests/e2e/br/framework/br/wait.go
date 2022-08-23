@@ -58,6 +58,17 @@ func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.
 			switch cond.Type {
 			case v1alpha1.BackupComplete:
 				if cond.Status == corev1.ConditionTrue {
+					if b.Spec.Mode == v1alpha1.BackupModeLog {
+						// stop complete when set stopped
+						if b.Status.Stopped {
+							return true, nil
+						} else {
+							if !b.Spec.Stop && b.Spec.TruncateUntil == b.Status.TruncateUntil {
+								// truncate complete when spec util == status util
+								return true, nil
+							}
+						}
+					}
 					return true, nil
 				}
 			case v1alpha1.BackupFailed, v1alpha1.BackupInvalid:

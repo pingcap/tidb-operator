@@ -1319,6 +1319,8 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
+                stop:
+                  type: boolean
                 storageClassName:
                   type: string
                 storageSize:

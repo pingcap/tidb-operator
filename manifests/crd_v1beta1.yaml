@@ -1319,6 +1319,8 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
+                stop:
+                  type: boolean
                 storageClassName:
                   type: string
                 storageSize:
@@ -2742,6 +2744,8 @@ spec:
               type: object
             serviceAccount:
               type: string
+            stop:
+              type: boolean
             storageClassName:
               type: string
             storageSize:
@@ -2807,8 +2811,14 @@ spec:
                 type: object
               nullable: true
               type: array
+            currentTs:
+              type: string
             phase:
               type: string
+            safeTruncatedUntil:
+              type: string
+            stopped:
+              type: boolean
             timeCompleted:
               format: date-time
               nullable: true

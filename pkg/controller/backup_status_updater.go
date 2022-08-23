@@ -47,6 +47,14 @@ type BackupUpdateStatus struct {
 	BackupSize *int64
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
+	// Stopped indicates whether the log backup has stopped.
+	Stopped *bool
+	// CurrentTs is the ts of log backup process.
+	CurrentTs *string
+	// TruncateUntil is log backup truncate until timestamp.
+	TruncateUntil *string
+	// SafeTruncatedUntil is log backup safe truncate until timestamp.
+	SafeTruncatedUntil *string
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -78,9 +86,11 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 	var isUpdate bool
 	// try best effort to guarantee backup is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		updateBackupStatus(&backup.Status, newStatus)
+		klog.Infof("Backup: updating [%s/%s], condition %s, is on it %s", ns, backupName, condition.Type, condition.Status)
+		// updateBackupStatus(&backup.Status, newStatus)
+		isStatusUpdate := updateBackupStatus1(&backup.Status, newStatus)
 		isUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
-		if isUpdate {
+		if isStatusUpdate || isUpdate {
 			_, updateErr := u.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 			if updateErr == nil {
 				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
@@ -94,6 +104,8 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 				utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
 			}
 			return updateErr
+		} else {
+			klog.Infof("Backup: no need to update [%s/%s], condition %s, is on it %s", ns, backupName, condition.Type, condition.Status)
 		}
 		return nil
 	})
@@ -124,6 +136,68 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	if newStatus.CommitTs != nil {
 		status.CommitTs = *newStatus.CommitTs
 	}
+	if newStatus.Stopped != nil {
+		status.Stopped = *newStatus.Stopped
+	}
+	if newStatus.CurrentTs != nil {
+		status.CurrentTs = *newStatus.CurrentTs
+	}
+	if newStatus.TruncateUntil != nil {
+		status.TruncateUntil = *newStatus.TruncateUntil
+	}
+	if newStatus.SafeTruncatedUntil != nil {
+		status.SafeTruncatedUntil = *newStatus.SafeTruncatedUntil
+	}
+}
+
+// updateBackupStatus updates existing Backup status
+// from the fields in BackupUpdateStatus.
+func updateBackupStatus1(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
+	isUpdate := false
+	if newStatus == nil {
+		return isUpdate
+	}
+	if newStatus.BackupPath != nil && status.BackupPath != *newStatus.BackupPath {
+		status.BackupPath = *newStatus.BackupPath
+		isUpdate = true
+	}
+	if newStatus.TimeStarted != nil && status.TimeStarted != *newStatus.TimeStarted {
+		status.TimeStarted = *newStatus.TimeStarted
+		isUpdate = true
+	}
+	if newStatus.TimeCompleted != nil && status.TimeCompleted != *newStatus.TimeCompleted {
+		status.TimeCompleted = *newStatus.TimeCompleted
+		isUpdate = true
+	}
+	if newStatus.BackupSizeReadable != nil && status.BackupSizeReadable != *newStatus.BackupSizeReadable {
+		status.BackupSizeReadable = *newStatus.BackupSizeReadable
+		isUpdate = true
+	}
+	if newStatus.BackupSize != nil && status.BackupSize != *newStatus.BackupSize {
+		status.BackupSize = *newStatus.BackupSize
+		isUpdate = true
+	}
+	if newStatus.CommitTs != nil && status.CommitTs != *newStatus.CommitTs {
+		status.CommitTs = *newStatus.CommitTs
+		isUpdate = true
+	}
+	if newStatus.Stopped != nil && status.Stopped != *newStatus.Stopped {
+		status.Stopped = *newStatus.Stopped
+		isUpdate = true
+	}
+	if newStatus.CurrentTs != nil && status.CurrentTs != *newStatus.CurrentTs {
+		status.CurrentTs = *newStatus.CurrentTs
+		isUpdate = true
+	}
+	if newStatus.TruncateUntil != nil && status.TruncateUntil != *newStatus.TruncateUntil {
+		status.TruncateUntil = *newStatus.TruncateUntil
+		isUpdate = true
+	}
+	if newStatus.SafeTruncatedUntil != nil && status.SafeTruncatedUntil != *newStatus.SafeTruncatedUntil {
+		status.SafeTruncatedUntil = *newStatus.SafeTruncatedUntil
+		isUpdate = true
+	}
+	return isUpdate
 }
 
 var _ BackupConditionUpdaterInterface = &realBackupConditionUpdater{}

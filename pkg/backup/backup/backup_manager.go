@@ -16,6 +16,7 @@ package backup
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 
@@ -110,9 +112,31 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return controller.IgnoreErrorf("invalid backup spec %s/%s cause %s", ns, name, err.Error())
 	}
 
-	_, err = bm.deps.JobLister.Jobs(ns).Get(backupJobName)
+	var oldJob *batchv1.Job
+	oldJob, err = bm.deps.JobLister.Jobs(ns).Get(backupJobName)
 	if err == nil {
-		// already have a backup job running，return directly
+		// log backup should delete job, if the job is complete or failed
+		if oldJob != nil && backup.Spec.Mode == v1alpha1.BackupModeLog {
+			klog.Infof("oldJob of log backup %s/%s job %s exist", ns, name, backupJobName)
+			if oldJob.DeletionTimestamp != nil {
+				return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s job %s is being deleted", ns, name, backupJobName))
+			}
+			finished := false
+			for _, c := range oldJob.Status.Conditions {
+				klog.Infof("oldJob condition type %s, is on it %s", c.Type, c.Status)
+				if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
+					finished = true
+					break
+				}
+			}
+			if finished {
+				klog.Infof("log backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
+				err = bm.deps.JobControl.DeleteJob(backup, oldJob)
+				if err != nil {
+					return fmt.Errorf("log backup %s/%s delete job %s failed, err: %v", ns, name, backupJobName, err)
+				}
+			}
+		}
 		return nil
 	}
 
@@ -147,6 +171,18 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		}
 
 	} else {
+		// if log backup truncate can be skipped, can return complete
+		if canSkipLogTruncate(backup) {
+			updateStatus := &controller.BackupUpdateStatus{
+				TimeStarted:   &metav1.Time{Time: time.Now()},
+				TimeCompleted: &metav1.Time{Time: time.Now()},
+				TruncateUntil: &backup.Spec.TruncateUntil,
+			}
+			return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:   v1alpha1.BackupComplete,
+				Status: corev1.ConditionTrue,
+			}, updateStatus)
+		}
 		// not found backup job, so we need to create it
 		job, reason, err = bm.makeBackupJob(backup)
 		if err != nil {
@@ -574,6 +610,23 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 		return "CreatePVCFailed", errMsg
 	}
 	return "", nil
+}
+
+// canSkipLogTruncate makes sure log truncate can be skipped.
+// Spec.TruncateUntil <= Status.CommitTs, Status.SafeTruncatedUntil
+func canSkipLogTruncate(backup *v1alpha1.Backup) bool {
+	if backup.Spec.Mode != v1alpha1.BackupModeLog || backup.Spec.Stop || backup.Status.Stopped ||
+		backup.Status.CommitTs == "" || backup.Spec.TruncateUntil == "" {
+		return false
+	}
+	var (
+		newTsUint, oldTsUnit, startTsUnit uint64
+	)
+	newTsUint, _ = util.ParseTSString(backup.Spec.TruncateUntil)
+	oldTsUnit, _ = util.ParseTSString(backup.Status.SafeTruncatedUntil)
+	startTsUnit, _ = util.ParseTSString(backup.Status.CommitTs)
+
+	return newTsUint <= startTsUnit && newTsUint <= oldTsUnit
 }
 
 var _ backup.BackupManager = &backupManager{}

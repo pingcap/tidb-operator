@@ -96,6 +96,10 @@ func (bm *Manager) ProcessBackup() error {
 		return fmt.Errorf("no br config in %s", bm)
 	}
 
+	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+		return bm.performLogBackup(ctx, backup.DeepCopy())
+	}
+
 	if backup.Spec.From == nil {
 		// skip the DB initialization if spec.from is not specified
 		return bm.performBackup(ctx, backup.DeepCopy(), nil)
@@ -336,4 +340,182 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		Type:   v1alpha1.BackupComplete,
 		Status: corev1.ConditionTrue,
 	}, updateStatus)
+}
+
+func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+	var (
+		err          error
+		reason       string
+		resultStatus *controller.BackupUpdateStatus
+	)
+
+	// start/stop/truncate log backup
+	if backup.Spec.Stop {
+		resultStatus, reason, err = bm.stopLogBackup(ctx, backup)
+	} else if backup.Spec.TruncateUntil != "" {
+		resultStatus, reason, err = bm.truncateLogBackup(ctx, backup)
+	} else {
+		resultStatus, reason, err = bm.startLogBackup(ctx, backup)
+	}
+
+	// handle error
+	if err != nil {
+		errs := make([]error, 0)
+		errs = append(errs, err)
+		// update failed status
+		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  reason,
+			Message: err.Error(),
+		}, nil)
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
+	}
+
+	// err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	// 	Type:   v1alpha1.BackupComplete,
+	// 	Status: corev1.ConditionTrue,
+	// }, resultStatus)
+	// if err != nil {
+	// 	klog.Infof("update comple error %s", err.Error())
+	// 	return err
+	// }
+
+	// err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	// 	Type:   v1alpha1.BackupHandling,
+	// 	Status: corev1.ConditionFalse,
+	// }, nil)
+	// if err != nil {
+	// 	klog.Infof("update handling error %s", err.Error())
+	// 	return err
+	// }
+	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupComplete,
+		Status: corev1.ConditionTrue,
+	}, resultStatus)
+}
+
+func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
+	started := time.Now()
+	backupFullPath, err := util.GetStoragePath(backup)
+	if err != nil {
+		klog.Errorf("Get backup full path of cluster %s failed, err: %s", bm, err)
+		return nil, "GetBackupRemotePathFailed", err
+	}
+	klog.Infof("Get backup full path %s of cluster %s failed", backupFullPath, bm)
+
+	updatePathStatus := &controller.BackupUpdateStatus{
+		BackupPath: &backupFullPath,
+	}
+	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupPrepare,
+		Status: corev1.ConditionTrue,
+	}, updatePathStatus); err != nil {
+		return nil, "UpdateStatusFailed", err
+	}
+
+	// run br binary to do the real job
+	backupErr := bm.startlogBackupExec(ctx, backup)
+
+	if backupErr != nil {
+		klog.Errorf("Start log backup of cluster %s failed, err: %s", bm, backupErr)
+		return nil, "StartLogBackuFailed", backupErr
+	}
+	klog.Infof("Start log backup of cluster %s to %s success", bm, backupFullPath)
+
+	// get Meta info
+	backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
+	if err != nil {
+		klog.Errorf("Get log backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
+		return nil, "GetLogBackupMetadataFailed", err
+	}
+	klog.Infof("Get log backup metadata for backup files in %s of cluster %s success", backupFullPath, bm)
+	commitTs := backupMeta.StartVersion
+	klog.Infof("Get cluster %s commitTs %d success", bm, commitTs)
+	finish := time.Now()
+
+	ts := strconv.FormatUint(commitTs, 10)
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeStarted:   &metav1.Time{Time: started},
+		TimeCompleted: &metav1.Time{Time: finish},
+		CommitTs:      &ts,
+	}
+	return updateStatus, "", nil
+}
+
+func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
+	started := time.Now()
+
+	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupPrepare,
+		Status: corev1.ConditionTrue,
+	}, nil); err != nil {
+		return nil, "UpdateStatusFailed", err
+	}
+
+	// run br binary to do the real job
+	backupErr := bm.stoplogBackupExec(ctx, backup)
+
+	if backupErr != nil {
+		klog.Errorf("Stop log backup of cluster %s failed, err: %s", bm, backupErr)
+		return nil, "StopLogBackupFailed", backupErr
+	}
+	klog.Infof("Stop log backup of cluster %s success", bm)
+
+	finish := time.Now()
+	stopped := true
+
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeStarted:   &metav1.Time{Time: started},
+		TimeCompleted: &metav1.Time{Time: finish},
+		Stopped:       &stopped,
+	}
+	return updateStatus, "", nil
+}
+
+func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
+	started := time.Now()
+	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupPrepare,
+		Status: corev1.ConditionTrue,
+	}, nil); err != nil {
+		return nil, "UpdateStatusFailed", err
+	}
+
+	// run br binary to do the real job
+	backupErr := bm.truncatelogBackupExec(ctx, backup)
+
+	if backupErr != nil {
+		klog.Errorf("Truncate log backup of cluster %s failed, err: %s", bm, backupErr)
+		return nil, "TruncateLogBackuFailed", backupErr
+	}
+	klog.Infof("Truncate log backup of cluster %s success", bm)
+
+	// get Meta info
+	backupFullPath := backup.Status.BackupPath
+	if backupFullPath == "" {
+		backupFullPath, err := util.GetStoragePath(backup)
+		if err != nil {
+			klog.Errorf("Get backup full path of cluster %s failed, err: %s", bm, err)
+			return nil, "GetBackupRemotePathFailed", err
+		}
+		klog.Infof("Get backup full path %s of cluster %s failed", backupFullPath, bm)
+	}
+	truncatedUntil, err := util.GetBRTruncatedUntil(ctx, backup.Spec.StorageProvider)
+	if err != nil {
+		klog.Errorf("Get log backup truncated until for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
+		return nil, "GetLogBackupTruncatedUntilFailed", err
+	}
+	klog.Infof("Get log backup truncated until for backup files in %s of cluster %s success", backupFullPath, bm)
+	finish := time.Now()
+
+	ts := strconv.FormatUint(truncatedUntil, 10)
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeStarted:        &metav1.Time{Time: started},
+		TimeCompleted:      &metav1.Time{Time: finish},
+		SafeTruncatedUntil: &ts,
+		TruncateUntil:      &backup.Spec.TruncateUntil,
+	}
+	return updateStatus, "", nil
 }

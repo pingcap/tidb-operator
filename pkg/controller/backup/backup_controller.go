@@ -15,6 +15,7 @@ package backup
 
 import (
 	"fmt"
+	"runtime/debug"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -22,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -99,7 +101,9 @@ func (c *Controller) processNextWorkItem() bool {
 		return false
 	}
 	defer c.queue.Done(key)
+	klog.Infof("Backup: begin key %s, stack %s", key.(string), debug.Stack())
 	if err := c.sync(key.(string)); err != nil {
+		klog.Infof("Backup: error %v", err)
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
 			c.queue.AddRateLimited(key)
@@ -110,6 +114,7 @@ func (c *Controller) processNextWorkItem() bool {
 			c.queue.AddRateLimited(key)
 		}
 	} else {
+		klog.Infof("Backup: Forget")
 		c.queue.Forget(key)
 	}
 	return true
@@ -146,6 +151,10 @@ func (c *Controller) updateBackup(cur interface{}) {
 	newBackup := cur.(*v1alpha1.Backup)
 	ns := newBackup.GetNamespace()
 	name := newBackup.GetName()
+	klog.Infof("Backup: updateBackup ,stack %s", debug.Stack())
+	for _, condition := range newBackup.Status.Conditions {
+		klog.Infof("Backup condition: %s, is on this %s", condition.Type, condition.Status)
+	}
 
 	if newBackup.DeletionTimestamp != nil {
 		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
@@ -159,17 +168,46 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
+	// if v1alpha1.IsBackupHandling(newBackup) {
+	// 	klog.V(4).Infof("backup %s/%s is Handling, skipping.", ns, name)
+	// 	return
+	// }
+
+	klog.V(4).Infof("newBackup spec %s", newBackup.Spec.String())
+	klog.V(4).Infof("newBackup Spec TruncateUntil %s", newBackup.Spec.TruncateUntil)
+	klog.V(4).Infof("newBackup status TruncateUntil %s", newBackup.Status.TruncateUntil)
+	klog.V(4).Infof("newBackup status SafeTruncatedUntil %s", newBackup.Status.SafeTruncatedUntil)
+
+	klog.V(4).Infof("IsBackupComplete %v", v1alpha1.IsBackupComplete(newBackup))
+	// klog.V(4).Infof("canLogTruncateContinue %v", !canLogTruncateContinue(newBackup))
 	if v1alpha1.IsBackupComplete(newBackup) {
 		klog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
 		return
 	}
+
+	// if !canLogTruncateContinue(newBackup) {
+	// 	klog.V(4).Infof("log backup %s/%s is truncated, skipping.", ns, name)
+	// 	return
+	// }
+	// if v1alpha1.IsLogBackupStartComplete(newBackup) &&
+	// 	(newBackup.Spec.TruncateUntil == "" || !newBackup.Spec.Stop) {
+	// 	klog.V(4).Infof("backup %s/%s is Started, skipping.", ns, name)
+	// 	return
+	// }
+
+	// if v1alpha1.IsLogBackupTruncateComplete(newBackup) &&
+	// 	(!canLogTruncateContinue(newBackup.Spec.TruncateUntil, newBackup.Status.TruncateUntil, newBackup.Status.CommitTs) || !newBackup.Spec.Stop) {
+	// 	klog.V(4).Infof("backup %s/%s is truncated, skipping.", ns, name)
+	// 	return
+	// }
 
 	if v1alpha1.IsBackupFailed(newBackup) {
 		klog.V(4).Infof("backup %s/%s is Failed, skipping.", ns, name)
 		return
 	}
 
-	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) {
+	// if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) {
+	if needCheckBackupJobs(newBackup) {
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
 		selector, err := label.NewBackup().Instance(newBackup.GetInstanceName()).BackupJob().Backup(name).Selector()
 		if err != nil {
@@ -247,4 +285,33 @@ func (c *Controller) enqueueBackup(obj interface{}) {
 		return
 	}
 	c.queue.Add(key)
+}
+
+func canLogTruncateContinue(backup *v1alpha1.Backup) bool {
+	if backup.Spec.Mode != v1alpha1.BackupModeLog || backup.Status.Stopped {
+		return false
+	}
+	if backup.Status.CommitTs == "" {
+		return true
+	}
+	var (
+		err                               error
+		newTsUint, oldTsUnit, startTsUnit uint64
+	)
+	newTsUint, err = util.ParseTSString(backup.Spec.TruncateUntil)
+	if err != nil {
+		return true
+	}
+	oldTsUnit, _ = util.ParseTSString(backup.Status.SafeTruncatedUntil)
+	startTsUnit, _ = util.ParseTSString(backup.Status.CommitTs)
+
+	if newTsUint > startTsUnit && newTsUint > oldTsUnit {
+		return true
+	} else {
+		return false
+	}
+}
+
+func needCheckBackupJobs(backup *v1alpha1.Backup) bool {
+	return backup.Status.Phase == v1alpha1.BackupScheduled || backup.Status.Phase == v1alpha1.BackupRunning || backup.Status.Phase == v1alpha1.BackupPrepare
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
@@ -30,6 +31,8 @@ var (
 	// the first version which allows skipping setting tikv_gc_life_time
 	// https://github.com/pingcap/br/pull/553
 	tikvLessThanV408, _ = semver.NewConstraint("<v4.0.8-0")
+	// the first version which supports log backup
+	tikvLessThanV610, _ = semver.NewConstraint("<v6.1.0-0")
 )
 
 // CheckAllKeysExistInSecret check if all keys are included in the specific secret
@@ -507,6 +510,24 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 				return err
 			}
 		}
+
+		// validate log backup
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+			if !canOpenLogBackup(tikvImage) {
+				return fmt.Errorf("tikv %s doesn't support log backup in spec of %s/%s, the first version is v6.1.0", tikvImage, ns, name)
+			}
+			var err error
+			_, err = util.ParseTSString(backup.Spec.CommitTs)
+			if err != nil {
+				return err
+			}
+			_, err = util.ParseTSString(backup.Spec.TruncateUntil)
+			if err != nil {
+				return err
+			}
+
+		}
+
 	}
 	return nil
 }
@@ -634,6 +655,20 @@ func canSkipSetGCLifeTime(image string) bool {
 		return true
 	}
 	if tikvLessThanV408.Check(v) {
+		return false
+	}
+	return true
+}
+
+// canOpenLogBackup returns if tikv supports log backup
+func canOpenLogBackup(image string) bool {
+	_, version := ParseImage(image)
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		return true
+	}
+	if tikvLessThanV610.Check(v) {
 		return false
 	}
 	return true

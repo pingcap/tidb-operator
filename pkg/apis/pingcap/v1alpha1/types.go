@@ -1756,6 +1756,9 @@ type BackupSpec struct {
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// +optional
 	TruncateUntil string `json:"truncateUntil,omitempty"`
+	// Stop indicates that will stop the log backup.
+	// +optional
+	Stop bool `json:"stop,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1837,6 +1840,8 @@ type BRConfig struct {
 type BackupConditionType string
 
 const (
+	// BackupHandling means the backup is handling to create job
+	BackupHandling BackupConditionType = "Handling"
 	// BackupScheduled means the backup related job has been created
 	BackupScheduled BackupConditionType = "Scheduled"
 	// BackupRunning means the backup is currently being executed.
@@ -1858,6 +1863,8 @@ const (
 	LogBackupTruncatePrepare BackupConditionType = "TruncatePrepare"
 	// LogBackupTruncating means the log backup is trancating
 	LogBackupTruncating BackupConditionType = "Truncating"
+	// LogBackupStartComplete means the log backup start complete
+	LogBackupStartComplete BackupConditionType = "logStartComplete"
 	// LogBackupTruncateComplete means the log backup complete truncation
 	LogBackupTruncateComplete BackupConditionType = "TruncateComplete"
 	// LogBackupTruncateFailed means failed to truncate the log backup
@@ -1891,10 +1898,16 @@ type BackupStatus struct {
 	BackupSizeReadable string `json:"backupSizeReadable,omitempty"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize,omitempty"`
-	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+	// CommitTs is the commit ts of the backup, snapshot ts for full backup or current ts for log backup.
 	CommitTs string `json:"commitTs,omitempty"`
 	// TruncateUntil is log backup truncate until timestamp.
 	TruncateUntil string `json:"truncateUntil,omitempty"`
+	// SafeTruncatedUntil is log backup safe truncate until timestamp.
+	SafeTruncatedUntil string `json:"safeTruncatedUntil,omitempty"`
+	// CurrentTs is the ts of log backup process.
+	CurrentTs string `json:"currentTs,omitempty"`
+	// Stopped indicates whether the log backup has stopped.
+	Stopped bool `json:"stopped,omitempty"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
 	Phase BackupConditionType `json:"phase,omitempty"`
 	// +nullable

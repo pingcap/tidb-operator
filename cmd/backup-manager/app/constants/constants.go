@@ -68,4 +68,6 @@ const (
 
 	// DefaultTableFilter is the default table filter 'db.table' matching
 	DefaultTableFilter = "!/^(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA)$/.*"
+
+	TruncateSafePointFileName = "v1_stream_trancate_safepoint.txt"
 )
