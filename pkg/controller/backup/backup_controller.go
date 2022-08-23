@@ -171,16 +171,6 @@ func (c *Controller) updateBackup(cur interface{}) {
 	// 	klog.V(4).Infof("backup %s/%s is Handling, skipping.", ns, name)
 	// 	return
 	// }
-	klog.V(4).Infof("newBackup Spec TruncateUntil %s", newBackup.Spec.LogTruncateUntil)
-	klog.V(4).Infof("newBackup status TruncateUntil %s", newBackup.Status.LogTruncateUntil)
-	klog.V(4).Infof("newBackup status SafeTruncatedUntil %s", newBackup.Status.LogSafeTruncatedUntil)
-
-	klog.V(4).Infof("IsBackupComplete %v", v1alpha1.IsBackupComplete(newBackup))
-	// klog.V(4).Infof("canLogTruncateContinue %v", !canLogTruncateContinue(newBackup))
-	if v1alpha1.IsBackupComplete(newBackup) {
-		klog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
-		return
-	}
 
 	// if !canLogTruncateContinue(newBackup) {
 	// 	klog.V(4).Infof("log backup %s/%s is truncated, skipping.", ns, name)
@@ -200,6 +190,17 @@ func (c *Controller) updateBackup(cur interface{}) {
 
 	if v1alpha1.IsBackupFailed(newBackup) {
 		klog.V(4).Infof("backup %s/%s is Failed, skipping.", ns, name)
+		return
+	}
+
+	klog.V(4).Infof("newBackup Spec TruncateUntil %s", newBackup.Spec.LogTruncateUntil)
+	klog.V(4).Infof("newBackup status TruncateUntil %s", newBackup.Status.LogTruncateUntil)
+	klog.V(4).Infof("newBackup status SafeTruncatedUntil %s", newBackup.Status.LogSafeTruncatedUntil)
+
+	klog.V(4).Infof("IsBackupComplete %v", v1alpha1.IsBackupComplete(newBackup))
+	// klog.V(4).Infof("canLogTruncateContinue %v", !canLogTruncateContinue(newBackup))
+	if v1alpha1.IsBackupComplete(newBackup) {
+		klog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
 		return
 	}
 

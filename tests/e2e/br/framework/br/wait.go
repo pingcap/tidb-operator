@@ -54,6 +54,16 @@ func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.
 		if err != nil {
 			return false, err
 		}
+
+		// if v1alpha1.IsBackupFailed(b) || v1alpha1.IsBackupInvalid(b) {
+
+		// 	return false, fmt.Errorf("backup is failed, reason: %s, message: %s", b.Status.Phase.Reason, b.Status.Phase.Message)
+		// }
+
+		// if v1alpha1.IsBackupComplete(b) {
+		// 	return true, nil
+		// }
+
 		for _, cond := range b.Status.Conditions {
 			switch cond.Type {
 			case v1alpha1.BackupComplete:
@@ -69,7 +79,6 @@ func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.
 							}
 						}
 					}
-					return true, nil
 				}
 			case v1alpha1.BackupFailed, v1alpha1.BackupInvalid:
 				if cond.Status == corev1.ConditionTrue {
