@@ -171,7 +171,7 @@ func (bo *Options) truncatelogBackupExec(ctx context.Context, backup *v1alpha1.B
 	specificArgs := []string{
 		"log",
 		"truncate",
-		fmt.Sprintf("--until=%s", backup.Spec.TruncateUntil),
+		fmt.Sprintf("--until=%s", backup.Spec.LogTruncateUntil),
 	}
 	fullArgs, err := bo.logBackupCommandTemplate(backup, specificArgs)
 	if err != nil {

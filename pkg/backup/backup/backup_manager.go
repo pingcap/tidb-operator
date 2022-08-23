@@ -174,9 +174,9 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		// if log backup truncate can be skipped, can return complete
 		if canSkipLogTruncate(backup) {
 			updateStatus := &controller.BackupUpdateStatus{
-				TimeStarted:   &metav1.Time{Time: time.Now()},
-				TimeCompleted: &metav1.Time{Time: time.Now()},
-				TruncateUntil: &backup.Spec.TruncateUntil,
+				TimeStarted:      &metav1.Time{Time: time.Now()},
+				TimeCompleted:    &metav1.Time{Time: time.Now()},
+				LogTruncateUntil: &backup.Spec.LogTruncateUntil,
 			}
 			return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Type:   v1alpha1.BackupComplete,
@@ -615,15 +615,15 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 // canSkipLogTruncate makes sure log truncate can be skipped.
 // Spec.TruncateUntil <= Status.CommitTs, Status.SafeTruncatedUntil
 func canSkipLogTruncate(backup *v1alpha1.Backup) bool {
-	if backup.Spec.Mode != v1alpha1.BackupModeLog || backup.Spec.Stop || backup.Status.Stopped ||
-		backup.Status.CommitTs == "" || backup.Spec.TruncateUntil == "" {
+	if backup.Spec.Mode != v1alpha1.BackupModeLog || backup.Spec.LogStop || backup.Status.LogStopped ||
+		backup.Status.CommitTs == "" || backup.Spec.LogTruncateUntil == "" {
 		return false
 	}
 	var (
 		newTsUint, oldTsUnit, startTsUnit uint64
 	)
-	newTsUint, _ = util.ParseTSString(backup.Spec.TruncateUntil)
-	oldTsUnit, _ = util.ParseTSString(backup.Status.SafeTruncatedUntil)
+	newTsUint, _ = util.ParseTSString(backup.Spec.LogTruncateUntil)
+	oldTsUnit, _ = util.ParseTSString(backup.Status.LogSafeTruncatedUntil)
 	startTsUnit, _ = util.ParseTSString(backup.Status.CommitTs)
 
 	return newTsUint <= startTsUnit && newTsUint <= oldTsUnit

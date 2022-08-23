@@ -21,13 +21,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
+	"github.com/Masterminds/semver"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -226,7 +228,7 @@ func findContainerByName(sts *apps.StatefulSet, containerName string) *corev1.Co
 	return nil
 }
 
-func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
+func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	config := tikvSpec.Config.DeepCopy()
 	if tc.IsTLSClusterEnabled() {
 		config.Set("security.ca-path", path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
@@ -237,10 +239,12 @@ func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbC
 	if err != nil {
 		return nil, err
 	}
-	startScript, err := RenderTiKVStartScript(scriptModel)
+
+	startScript, err := startscript.RenderTiKVStartScript(tc)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}
+
 	cm := &corev1.ConfigMap{
 		Data: map[string]string{
 			"config-file":    transformTiKVConfigMap(string(confText), tc),
@@ -402,12 +406,16 @@ func CreateOrUpdateService(serviceLister corelisters.ServiceLister, serviceContr
 }
 
 // addDeferDeletingAnnoToPVC set the label
-func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface) error {
+func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentVolumeClaim, pvcControl controller.PVCControlInterface, scaleInTime ...string) error {
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}
 	now := time.Now().Format(time.RFC3339)
 	pvc.Annotations[label.AnnPVCDeferDeleting] = now
+	// scaleInTime indicates the time when call scale in, for test only since pvc defer deleting time may be different in same scale in call.
+	if len(scaleInTime) > 0 {
+		pvc.Annotations[label.AnnPVCScaleInTime] = scaleInTime[0]
+	}
 	if _, err := pvcControl.UpdatePVC(tc, pvc); err != nil {
 		klog.Errorf("failed to set PVC %s/%s annotation %q to %q", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
 		return err

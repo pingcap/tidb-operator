@@ -137,12 +137,12 @@ func IsBackupComplete(backup *Backup) bool {
 	isComplete := condition != nil && condition.Status == corev1.ConditionTrue
 	if isComplete && backup.Spec.Mode == BackupModeLog {
 		// stop complete when set stopped
-		if backup.Status.Stopped {
+		if backup.Status.LogStopped {
 			return true
 		} else {
-			if !backup.Spec.Stop {
-				// truncate complete when Spec.TruncateUntil equals Status.TruncateUntil
-				return backup.Spec.TruncateUntil == backup.Status.TruncateUntil
+			if !backup.Spec.LogStop {
+				// truncate complete when Spec.LogTruncateUntil equals Status.LogTruncateUntil
+				return backup.Spec.LogTruncateUntil == backup.Status.LogTruncateUntil
 			} else {
 				return false
 			}
@@ -214,8 +214,8 @@ func NeedNotClean(backup *Backup) bool {
 // 	return condition != nil && condition.Status == corev1.ConditionTrue
 // }
 
-// IsBackupClean returns true if a Backup has been successfully cleaned up
-func IsBackupHandling(backup *Backup) bool {
-	_, condition := GetBackupCondition(&backup.Status, BackupHandling)
-	return condition != nil && condition.Status == corev1.ConditionTrue
-}
+// // IsBackupClean returns true if a Backup has been successfully cleaned up
+// func IsBackupHandling(backup *Backup) bool {
+// 	_, condition := GetBackupCondition(&backup.Status, BackupHandling)
+// 	return condition != nil && condition.Status == corev1.ConditionTrue
+// }

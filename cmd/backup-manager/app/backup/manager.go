@@ -350,9 +350,9 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 	)
 
 	// start/stop/truncate log backup
-	if backup.Spec.Stop {
+	if backup.Spec.LogStop {
 		resultStatus, reason, err = bm.stopLogBackup(ctx, backup)
-	} else if backup.Spec.TruncateUntil != "" {
+	} else if backup.Spec.LogTruncateUntil != "" {
 		resultStatus, reason, err = bm.truncateLogBackup(ctx, backup)
 	} else {
 		resultStatus, reason, err = bm.startLogBackup(ctx, backup)
@@ -469,7 +469,7 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 	updateStatus := &controller.BackupUpdateStatus{
 		TimeStarted:   &metav1.Time{Time: started},
 		TimeCompleted: &metav1.Time{Time: finish},
-		Stopped:       &stopped,
+		LogStopped:    &stopped,
 	}
 	return updateStatus, "", nil
 }
@@ -512,10 +512,10 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 
 	ts := strconv.FormatUint(truncatedUntil, 10)
 	updateStatus := &controller.BackupUpdateStatus{
-		TimeStarted:        &metav1.Time{Time: started},
-		TimeCompleted:      &metav1.Time{Time: finish},
-		SafeTruncatedUntil: &ts,
-		TruncateUntil:      &backup.Spec.TruncateUntil,
+		TimeStarted:           &metav1.Time{Time: started},
+		TimeCompleted:         &metav1.Time{Time: finish},
+		LogSafeTruncatedUntil: &ts,
+		LogTruncateUntil:      &backup.Spec.LogTruncateUntil,
 	}
 	return updateStatus, "", nil
 }

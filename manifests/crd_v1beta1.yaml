@@ -1205,6 +1205,10 @@ spec:
                   - volume
                   - volumeMount
                   type: object
+                logStop:
+                  type: boolean
+                logTruncateUntil:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -1319,8 +1323,6 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
-                stop:
-                  type: boolean
                 storageClassName:
                   type: string
                 storageSize:
@@ -1348,8 +1350,6 @@ spec:
                     type: object
                   type: array
                 toolImage:
-                  type: string
-                truncateUntil:
                   type: string
                 useKMS:
                   type: boolean
@@ -1440,9 +1440,9 @@ spec:
     description: The commit ts of the backup
     name: CommitTS
     type: string
-  - JSONPath: .status.truncateUntil
+  - JSONPath: .status.logTruncateUntil
     description: The log backup truncate until ts
-    name: TruncateUntil
+    name: LogTruncateUntil
     type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
@@ -2630,6 +2630,10 @@ spec:
               - volume
               - volumeMount
               type: object
+            logStop:
+              type: boolean
+            logTruncateUntil:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:
@@ -2744,8 +2748,6 @@ spec:
               type: object
             serviceAccount:
               type: string
-            stop:
-              type: boolean
             storageClassName:
               type: string
             storageSize:
@@ -2773,8 +2775,6 @@ spec:
                 type: object
               type: array
             toolImage:
-              type: string
-            truncateUntil:
               type: string
             useKMS:
               type: boolean
@@ -2811,14 +2811,16 @@ spec:
                 type: object
               nullable: true
               type: array
-            currentTs:
+            logCheckpointTs:
+              type: string
+            logSafeTruncatedUntil:
+              type: string
+            logStopped:
+              type: boolean
+            logTruncateUntil:
               type: string
             phase:
               type: string
-            safeTruncatedUntil:
-              type: string
-            stopped:
-              type: boolean
             timeCompleted:
               format: date-time
               nullable: true
@@ -2826,8 +2828,6 @@ spec:
             timeStarted:
               format: date-time
               nullable: true
-              type: string
-            truncateUntil:
               type: string
           type: object
       required:
@@ -12644,6 +12644,10 @@ spec:
                   - provider
                   type: object
               type: object
+            logRestoreStartTs:
+              type: string
+            pitrRestoredTs:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:
@@ -12728,8 +12732,6 @@ spec:
                   type: object
               type: object
             restoreMode:
-              type: string
-            restoredTs:
               type: string
             s3:
               properties:
@@ -20613,6 +20615,12 @@ spec:
                     type: string
                 type: object
               type: array
+            startScriptVersion:
+              enum:
+              - ""
+              - v1
+              - v2
+              type: string
             statefulSetUpdateStrategy:
               type: string
             suspendAction:
@@ -27840,6 +27848,15 @@ spec:
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   type: object
+                scalePolicy:
+                  properties:
+                    scaleInParallelism:
+                      format: int32
+                      type: integer
+                    scaleOutParallelism:
+                      format: int32
+                      type: integer
+                  type: object
                 schedulerName:
                   type: string
                 serviceAccount:
@@ -30224,6 +30241,15 @@ spec:
                   type: object
                 rocksDBLogVolumeName:
                   type: string
+                scalePolicy:
+                  properties:
+                    scaleInParallelism:
+                      format: int32
+                      type: integer
+                    scaleOutParallelism:
+                      format: int32
+                      type: integer
+                  type: object
                 schedulerName:
                   type: string
                 separateRaftLog:

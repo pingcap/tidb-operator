@@ -521,7 +521,7 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 			if err != nil {
 				return err
 			}
-			_, err = util.ParseTSString(backup.Spec.TruncateUntil)
+			_, err = util.ParseTSString(backup.Spec.LogTruncateUntil)
 			if err != nil {
 				return err
 			}

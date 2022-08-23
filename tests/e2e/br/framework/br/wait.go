@@ -60,10 +60,10 @@ func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.
 				if cond.Status == corev1.ConditionTrue {
 					if b.Spec.Mode == v1alpha1.BackupModeLog {
 						// stop complete when set stopped
-						if b.Status.Stopped {
+						if b.Status.LogStopped {
 							return true, nil
 						} else {
-							if !b.Spec.Stop && b.Spec.TruncateUntil == b.Status.TruncateUntil {
+							if !b.Spec.LogStop && b.Spec.LogTruncateUntil == b.Status.LogTruncateUntil {
 								// truncate complete when spec util == status util
 								return true, nil
 							}

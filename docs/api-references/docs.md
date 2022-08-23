@@ -245,27 +245,27 @@ Default is current timestamp.</p>
 </tr>
 <tr>
 <td>
-<code>truncateUntil</code></br>
+<code>logTruncateUntil</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>TruncateUntil is log backup truncate until timestamp.
+<p>LogTruncateUntil is log backup truncate until timestamp.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>stop</code></br>
+<code>logStop</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Stop indicates that will stop the log backup.</p>
+<p>LogStop indicates that will stop the log backup.</p>
 </td>
 </tr>
 <tr>
@@ -1204,13 +1204,24 @@ RestoreMode
 </tr>
 <tr>
 <td>
-<code>restoredTs</code></br>
+<code>pitrRestoredTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>RestoredTs is the pitr restored ts.</p>
+<p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logRestoreStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
 <tr>
@@ -1990,6 +2001,21 @@ Kubernetes core/v1.PodSecurityContext
 domains. Scheduler will schedule pods in a way which abides by the constraints.
 This field is is only honored by clusters that enables the EvenPodsSpread feature.
 All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startScriptVersion</code></br>
+<em>
+<a href="#startscriptversion">
+StartScriptVersion
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartScriptVersion is the version of start script</p>
+<p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>
 <tr>
@@ -3653,27 +3679,27 @@ Default is current timestamp.</p>
 </tr>
 <tr>
 <td>
-<code>truncateUntil</code></br>
+<code>logTruncateUntil</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>TruncateUntil is log backup truncate until timestamp.
+<p>LogTruncateUntil is log backup truncate until timestamp.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>stop</code></br>
+<code>logStop</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Stop indicates that will stop the log backup.</p>
+<p>LogStop indicates that will stop the log backup.</p>
 </td>
 </tr>
 <tr>
@@ -3917,51 +3943,51 @@ string
 </em>
 </td>
 <td>
-<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or current ts for log backup.</p>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>truncateUntil</code></br>
+<code>logTruncateUntil</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>TruncateUntil is log backup truncate until timestamp.</p>
+<p>LogTruncateUntil is log backup truncate until timestamp which will be the same as Spec.LogTruncateUntil when truncate is complete.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>safeTruncatedUntil</code></br>
+<code>logSafeTruncatedUntil</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>SafeTruncatedUntil is log backup safe truncate until timestamp.</p>
+<p>LogSafeTruncatedUntil is log backup safe truncate until timestamp which can be safely used as PiTR resotre.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>currentTs</code></br>
+<code>logCheckpointTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>CurrentTs is the ts of log backup process.</p>
+<p>LogCheckpointTs is the ts of log backup process.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>stopped</code></br>
+<code>logStopped</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
-<p>Stopped indicates whether the log backup has stopped.</p>
+<p>LogStopped indicates whether the log backup has stopped.</p>
 </td>
 </tr>
 <tr>
@@ -12923,13 +12949,24 @@ RestoreMode
 </tr>
 <tr>
 <td>
-<code>restoredTs</code></br>
+<code>pitrRestoredTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>RestoredTs is the pitr restored ts.</p>
+<p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logRestoreStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
 <tr>
@@ -13437,6 +13474,48 @@ bool
 </tr>
 </tbody>
 </table>
+<h3 id="scalepolicy">ScalePolicy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>, 
+<a href="#tikvspec">TiKVSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>scaleInParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleInParallelism configures max scale in replicas for TiKV stores.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scaleOutParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleOutParallelism configures max scale out replicas for TiKV stores.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="secretorconfigmap">SecretOrConfigMap</h3>
 <p>
 (<em>Appears on:</em>
@@ -13791,6 +13870,13 @@ Optional: Defaults to omitted</p>
 </tr>
 </tbody>
 </table>
+<h3 id="startscriptversion">StartScriptVersion</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+</p>
 <h3 id="status">Status</h3>
 <p>
 (<em>Appears on:</em>
@@ -16695,6 +16781,20 @@ Failover
 <td>
 <em>(Optional)</em>
 <p>Failover is the configurations of failover</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scalePolicy</code></br>
+<em>
+<a href="#scalepolicy">
+ScalePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScalePolicy is the scale configuration for TiFlash</p>
 </td>
 </tr>
 </tbody>
@@ -20772,6 +20872,20 @@ bool
 If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>scalePolicy</code></br>
+<em>
+<a href="#scalepolicy">
+ScalePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScalePolicy is the scale configuration for TiKV</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>
@@ -22417,6 +22531,21 @@ Kubernetes core/v1.PodSecurityContext
 domains. Scheduler will schedule pods in a way which abides by the constraints.
 This field is is only honored by clusters that enables the EvenPodsSpread feature.
 All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startScriptVersion</code></br>
+<em>
+<a href="#startscriptversion">
+StartScriptVersion
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartScriptVersion is the version of start script</p>
+<p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>
 <tr>

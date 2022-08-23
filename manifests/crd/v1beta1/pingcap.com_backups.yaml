@@ -34,9 +34,9 @@ spec:
     description: The commit ts of the backup
     name: CommitTS
     type: string
-  - JSONPath: .status.truncateUntil
+  - JSONPath: .status.logTruncateUntil
     description: The log backup truncate until ts
-    name: TruncateUntil
+    name: LogTruncateUntil
     type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
@@ -1224,6 +1224,10 @@ spec:
               - volume
               - volumeMount
               type: object
+            logStop:
+              type: boolean
+            logTruncateUntil:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:
@@ -1338,8 +1342,6 @@ spec:
               type: object
             serviceAccount:
               type: string
-            stop:
-              type: boolean
             storageClassName:
               type: string
             storageSize:
@@ -1367,8 +1369,6 @@ spec:
                 type: object
               type: array
             toolImage:
-              type: string
-            truncateUntil:
               type: string
             useKMS:
               type: boolean
@@ -1405,14 +1405,16 @@ spec:
                 type: object
               nullable: true
               type: array
-            currentTs:
+            logCheckpointTs:
+              type: string
+            logSafeTruncatedUntil:
+              type: string
+            logStopped:
+              type: boolean
+            logTruncateUntil:
               type: string
             phase:
               type: string
-            safeTruncatedUntil:
-              type: string
-            stopped:
-              type: boolean
             timeCompleted:
               format: date-time
               nullable: true
@@ -1420,8 +1422,6 @@ spec:
             timeStarted:
               format: date-time
               nullable: true
-              type: string
-            truncateUntil:
               type: string
           type: object
       required:

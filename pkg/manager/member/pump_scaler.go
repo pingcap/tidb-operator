@@ -96,21 +96,17 @@ func pumpAdvertiseAddr(pod *v1.Pod) string {
 			}
 
 			// example:
-			// ...
-			// /pump \
-			// -pd-urls=http://basic-pd:2379 \
-			// -L=info \
-			// -advertise-addr=`echo ${HOSTNAME}`.basic-pump:8250 \
-			// -config=/etc/pump/pump.toml \
-			// -data-dir=/data \
-			// -log-file=
-			// ...
+			// v1:
+			//   -advertise-addr=`echo ${HOSTNAME}`.basic-pump:8250 \
+			// v2:
+			//   -advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250 \
 			for _, str := range strings.Split(cmd, "\n") {
 				if !strings.Contains(str, "-advertise-addr") {
 					continue
 				}
 
 				str = strings.Replace(str, "`echo ${HOSTNAME}`", pod.Name, -1)
+				str = strings.Replace(str, "${PUMP_POD_NAME}", pod.Name, -1)
 				str = strings.Replace(str, "-advertise-addr=", "", -1)
 				str = strings.TrimRight(str, "\\")
 				str = strings.TrimSpace(str)

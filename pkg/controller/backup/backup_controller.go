@@ -23,7 +23,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -172,11 +171,9 @@ func (c *Controller) updateBackup(cur interface{}) {
 	// 	klog.V(4).Infof("backup %s/%s is Handling, skipping.", ns, name)
 	// 	return
 	// }
-
-	klog.V(4).Infof("newBackup spec %s", newBackup.Spec.String())
-	klog.V(4).Infof("newBackup Spec TruncateUntil %s", newBackup.Spec.TruncateUntil)
-	klog.V(4).Infof("newBackup status TruncateUntil %s", newBackup.Status.TruncateUntil)
-	klog.V(4).Infof("newBackup status SafeTruncatedUntil %s", newBackup.Status.SafeTruncatedUntil)
+	klog.V(4).Infof("newBackup Spec TruncateUntil %s", newBackup.Spec.LogTruncateUntil)
+	klog.V(4).Infof("newBackup status TruncateUntil %s", newBackup.Status.LogTruncateUntil)
+	klog.V(4).Infof("newBackup status SafeTruncatedUntil %s", newBackup.Status.LogSafeTruncatedUntil)
 
 	klog.V(4).Infof("IsBackupComplete %v", v1alpha1.IsBackupComplete(newBackup))
 	// klog.V(4).Infof("canLogTruncateContinue %v", !canLogTruncateContinue(newBackup))
@@ -287,30 +284,30 @@ func (c *Controller) enqueueBackup(obj interface{}) {
 	c.queue.Add(key)
 }
 
-func canLogTruncateContinue(backup *v1alpha1.Backup) bool {
-	if backup.Spec.Mode != v1alpha1.BackupModeLog || backup.Status.Stopped {
-		return false
-	}
-	if backup.Status.CommitTs == "" {
-		return true
-	}
-	var (
-		err                               error
-		newTsUint, oldTsUnit, startTsUnit uint64
-	)
-	newTsUint, err = util.ParseTSString(backup.Spec.TruncateUntil)
-	if err != nil {
-		return true
-	}
-	oldTsUnit, _ = util.ParseTSString(backup.Status.SafeTruncatedUntil)
-	startTsUnit, _ = util.ParseTSString(backup.Status.CommitTs)
+// func canLogTruncateContinue(backup *v1alpha1.Backup) bool {
+// 	if backup.Spec.Mode != v1alpha1.BackupModeLog || backup.Status.Stopped {
+// 		return false
+// 	}
+// 	if backup.Status.CommitTs == "" {
+// 		return true
+// 	}
+// 	var (
+// 		err                               error
+// 		newTsUint, oldTsUnit, startTsUnit uint64
+// 	)
+// 	newTsUint, err = util.ParseTSString(backup.Spec.TruncateUntil)
+// 	if err != nil {
+// 		return true
+// 	}
+// 	oldTsUnit, _ = util.ParseTSString(backup.Status.SafeTruncatedUntil)
+// 	startTsUnit, _ = util.ParseTSString(backup.Status.CommitTs)
 
-	if newTsUint > startTsUnit && newTsUint > oldTsUnit {
-		return true
-	} else {
-		return false
-	}
-}
+// 	if newTsUint > startTsUnit && newTsUint > oldTsUnit {
+// 		return true
+// 	} else {
+// 		return false
+// 	}
+// }
 
 func needCheckBackupJobs(backup *v1alpha1.Backup) bool {
 	return backup.Status.Phase == v1alpha1.BackupScheduled || backup.Status.Phase == v1alpha1.BackupRunning || backup.Status.Phase == v1alpha1.BackupPrepare

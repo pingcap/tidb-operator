@@ -120,6 +120,13 @@ const (
 	ConfigUpdateStrategyRollingUpdate ConfigUpdateStrategy = "RollingUpdate"
 )
 
+type StartScriptVersion string
+
+const (
+	StartScriptV1 StartScriptVersion = "v1"
+	StartScriptV2 StartScriptVersion = "v2"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -339,6 +346,13 @@ type TidbClusterSpec struct {
 	// +listType=map
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// StartScriptVersion is the version of start script
+	//
+	// default to "v1"
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1";"v2"
+	StartScriptVersion StartScriptVersion `json:"startScriptVersion,omitempty"`
 
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
@@ -585,6 +599,10 @@ type TiKVSpec struct {
 	// EnableNamedStatusPort enables status port(20180) in the Pod spec.
 	// If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.
 	EnableNamedStatusPort bool `json:"enableNamedStatusPort,omitempty"`
+
+	// ScalePolicy is the scale configuration for TiKV
+	// +optional
+	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -641,6 +659,10 @@ type TiFlashSpec struct {
 	// Failover is the configurations of failover
 	// +optional
 	Failover *Failover `json:"failover,omitempty"`
+
+	// ScalePolicy is the scale configuration for TiFlash
+	// +optional
+	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
 }
 
 // TiCDCSpec contains details of TiCDC members
@@ -1472,7 +1494,7 @@ type TLSCluster struct {
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
-// +kubebuilder:printcolumn:name="TruncateUntil",type=string,JSONPath=`.status.truncateUntil`,description="The log backup truncate until ts"
+// +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logTruncateUntil`,description="The log backup truncate until ts"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -1752,13 +1774,13 @@ type BackupSpec struct {
 	// Default is current timestamp.
 	// +optional
 	CommitTs string `json:"commitTs,omitempty"`
-	// TruncateUntil is log backup truncate until timestamp.
+	// LogTruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// +optional
-	TruncateUntil string `json:"truncateUntil,omitempty"`
-	// Stop indicates that will stop the log backup.
+	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
+	// LogStop indicates that will stop the log backup.
 	// +optional
-	Stop bool `json:"stop,omitempty"`
+	LogStop bool `json:"logStop,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1859,16 +1881,6 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
-	// LogBackupPrepareTruncate means the log backup prepare truncation
-	LogBackupTruncatePrepare BackupConditionType = "TruncatePrepare"
-	// LogBackupTruncating means the log backup is trancating
-	LogBackupTruncating BackupConditionType = "Truncating"
-	// LogBackupStartComplete means the log backup start complete
-	LogBackupStartComplete BackupConditionType = "logStartComplete"
-	// LogBackupTruncateComplete means the log backup complete truncation
-	LogBackupTruncateComplete BackupConditionType = "TruncateComplete"
-	// LogBackupTruncateFailed means failed to truncate the log backup
-	LogBackupTruncateFailed BackupConditionType = "TruncateFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -1898,16 +1910,16 @@ type BackupStatus struct {
 	BackupSizeReadable string `json:"backupSizeReadable,omitempty"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize,omitempty"`
-	// CommitTs is the commit ts of the backup, snapshot ts for full backup or current ts for log backup.
+	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	CommitTs string `json:"commitTs,omitempty"`
-	// TruncateUntil is log backup truncate until timestamp.
-	TruncateUntil string `json:"truncateUntil,omitempty"`
-	// SafeTruncatedUntil is log backup safe truncate until timestamp.
-	SafeTruncatedUntil string `json:"safeTruncatedUntil,omitempty"`
-	// CurrentTs is the ts of log backup process.
-	CurrentTs string `json:"currentTs,omitempty"`
-	// Stopped indicates whether the log backup has stopped.
-	Stopped bool `json:"stopped,omitempty"`
+	// LogTruncateUntil is log backup truncate until timestamp which will be the same as Spec.LogTruncateUntil when truncate is complete.
+	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
+	// LogSafeTruncatedUntil is log backup safe truncate until timestamp which can be safely used as PiTR resotre.
+	LogSafeTruncatedUntil string `json:"logSafeTruncatedUntil,omitempty"`
+	// LogCheckpointTs is the ts of log backup process.
+	LogCheckpointTs string `json:"logCheckpointTs,omitempty"`
+	// LogStopped indicates whether the log backup has stopped.
+	LogStopped bool `json:"logStopped,omitempty"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
 	Phase BackupConditionType `json:"phase,omitempty"`
 	// +nullable
@@ -2089,8 +2101,10 @@ type RestoreSpec struct {
 	// Mode is the restore mode. such as snapshot or pitr.
 	// +kubebuilder:default=snapshot
 	Mode RestoreMode `json:"restoreMode,omitempty"`
-	// RestoredTs is the pitr restored ts.
-	RestoredTs string `json:"restoredTs,omitempty"`
+	// PitrRestoredTs is the pitr restored ts.
+	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
+	// LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.
+	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
@@ -2661,4 +2675,16 @@ type Failover struct {
 	// it takes effect only when set `spec.recoverFailover=false`
 	// +optional
 	RecoverByUID types.UID `json:"recoverByUID,omitempty"`
+}
+
+type ScalePolicy struct {
+	// ScaleInParallelism configures max scale in replicas for TiKV stores.
+	// +kubebuilder:default=1
+	// +optional
+	ScaleInParallelism *int32 `json:"scaleInParallelism,omitempty"`
+
+	// ScaleOutParallelism configures max scale out replicas for TiKV stores.
+	// +kubebuilder:default=1
+	// +optional
+	ScaleOutParallelism *int32 `json:"scaleOutParallelism,omitempty"`
 }

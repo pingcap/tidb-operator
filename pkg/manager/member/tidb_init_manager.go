@@ -21,7 +21,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -419,7 +421,7 @@ func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, s
 		passwdSet = true
 	}
 
-	initStartScript, err := RenderTiDBInitInitStartScript(&TiDBInitInitStartScriptModel{
+	initStartScript, err := startscriptv1.RenderTiDBInitInitStartScript(&startscriptv1.TiDBInitInitStartScriptModel{
 		ClusterName:     ti.Spec.Clusters.Name,
 		TiDBServicePort: tidbSvcPort,
 	})
@@ -427,7 +429,7 @@ func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, s
 		return nil, err
 	}
 
-	initModel := &TiDBInitStartScriptModel{
+	initModel := &startscriptv1.TiDBInitStartScriptModel{
 		ClusterName:     ti.Spec.Clusters.Name,
 		PermitHost:      permitHost,
 		InitSQL:         initSQL,
@@ -441,7 +443,7 @@ func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool, s
 		initModel.CertPath = path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)
 		initModel.KeyPath = path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)
 	}
-	startScript, err := RenderTiDBInitStartScript(initModel)
+	startScript, err := startscriptv1.RenderTiDBInitStartScript(initModel)
 	if err != nil {
 		return nil, err
 	}

@@ -1207,6 +1207,10 @@ spec:
                     - volume
                     - volumeMount
                     type: object
+                  logStop:
+                    type: boolean
+                  logTruncateUntil:
+                    type: string
                   podSecurityContext:
                     properties:
                       fsGroup:
@@ -1321,8 +1325,6 @@ spec:
                     type: object
                   serviceAccount:
                     type: string
-                  stop:
-                    type: boolean
                   storageClassName:
                     type: string
                   storageSize:
@@ -1350,8 +1352,6 @@ spec:
                       type: object
                     type: array
                   toolImage:
-                    type: string
-                  truncateUntil:
                     type: string
                   useKMS:
                     type: boolean

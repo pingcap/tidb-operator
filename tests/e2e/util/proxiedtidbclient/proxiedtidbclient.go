@@ -93,6 +93,10 @@ func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32)
 	return &info, nil
 }
 
+func (p *proxiedTiDBClient) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {
+	panic("implement when necessary")
+}
+
 func NewProxiedTiDBClient(fw portforward.PortForward, caCert []byte) controller.TiDBControlInterface {
 	return &proxiedTiDBClient{fw: fw, httpClient: &http.Client{Timeout: 5 * time.Second}, caCert: caCert}
 }

@@ -16,6 +16,10 @@ package member
 import (
 	"testing"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
+	startscriptv2 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v2"
+
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,28 +31,36 @@ func TestPumpAdvertiseAddr(t *testing.T) {
 	type Case struct {
 		name string
 
-		model  *PumpStartScriptModel
+		tc     *v1alpha1.TidbCluster
 		result string
 	}
 
 	tests := []Case{
 		{
 			name: "parse addr from basic startup script",
-			model: &PumpStartScriptModel{
-				ClusterName: "cname",
-				Namespace:   "ns",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cname",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					Pump: &v1alpha1.PumpSpec{},
+				},
 			},
 			result: "pod.cname-pump:8250",
 		},
 		{
 			name: "parse addr from heterogeneous startup script",
-			model: &PumpStartScriptModel{
-				CommonModel: CommonModel{
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cname",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
 					AcrossK8s:     true,
 					ClusterDomain: "cluster.local",
+					Pump:          &v1alpha1.PumpSpec{},
 				},
-				ClusterName: "cname",
-				Namespace:   "ns",
 			},
 			result: "pod.cname-pump.ns.svc.cluster.local:8250",
 		},
@@ -57,25 +69,33 @@ func TestPumpAdvertiseAddr(t *testing.T) {
 	for _, test := range tests {
 		t.Logf("test case: %s", test.name)
 
-		data, err := RenderPumpStartScript(test.model)
-		g.Expect(err).Should(BeNil())
-
-		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pod",
-				Namespace: "ns",
-			},
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Name:    "pump",
-						Command: []string{data},
-					},
-				},
-			},
+		startScriptFns := []func(*v1alpha1.TidbCluster) (string, error){
+			startscriptv1.RenderPumpStartScript,
+			startscriptv2.RenderPumpStartScript,
 		}
 
-		addr := pumpAdvertiseAddr(pod)
-		g.Expect(addr).Should(Equal(test.result))
+		for _, renderFn := range startScriptFns {
+			data, err := renderFn(test.tc)
+			g.Expect(err).Should(BeNil())
+
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:    "pump",
+							Command: []string{data},
+						},
+					},
+				},
+			}
+
+			addr := pumpAdvertiseAddr(pod)
+			g.Expect(addr).Should(Equal(test.result))
+		}
+
 	}
 }

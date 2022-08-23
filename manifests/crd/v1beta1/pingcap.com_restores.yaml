@@ -1915,6 +1915,10 @@ spec:
                   - provider
                   type: object
               type: object
+            logRestoreStartTs:
+              type: string
+            pitrRestoredTs:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:
@@ -1999,8 +2003,6 @@ spec:
                   type: object
               type: object
             restoreMode:
-              type: string
-            restoredTs:
               type: string
             s3:
               properties:

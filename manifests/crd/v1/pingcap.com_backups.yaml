@@ -45,8 +45,8 @@ spec:
       name: CommitTS
       type: string
     - description: The log backup truncate until ts
-      jsonPath: .status.truncateUntil
-      name: TruncateUntil
+      jsonPath: .status.logTruncateUntil
+      name: LogTruncateUntil
       type: string
     - description: The time at which the backup was started
       jsonPath: .status.timeStarted
@@ -1226,6 +1226,10 @@ spec:
                 - volume
                 - volumeMount
                 type: object
+              logStop:
+                type: boolean
+              logTruncateUntil:
+                type: string
               podSecurityContext:
                 properties:
                   fsGroup:
@@ -1340,8 +1344,6 @@ spec:
                 type: object
               serviceAccount:
                 type: string
-              stop:
-                type: boolean
               storageClassName:
                 type: string
               storageSize:
@@ -1369,8 +1371,6 @@ spec:
                   type: object
                 type: array
               toolImage:
-                type: string
-              truncateUntil:
                 type: string
               useKMS:
                 type: boolean
@@ -1407,14 +1407,16 @@ spec:
                   type: object
                 nullable: true
                 type: array
-              currentTs:
+              logCheckpointTs:
+                type: string
+              logSafeTruncatedUntil:
+                type: string
+              logStopped:
+                type: boolean
+              logTruncateUntil:
                 type: string
               phase:
                 type: string
-              safeTruncatedUntil:
-                type: string
-              stopped:
-                type: boolean
               timeCompleted:
                 format: date-time
                 nullable: true
@@ -1422,8 +1424,6 @@ spec:
               timeStarted:
                 format: date-time
                 nullable: true
-                type: string
-              truncateUntil:
                 type: string
             type: object
         required:
