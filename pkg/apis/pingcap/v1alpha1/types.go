@@ -1892,6 +1892,48 @@ type BackupCondition struct {
 	Message            string      `json:"message,omitempty"`
 }
 
+// BackupConditionType represents a valid condition of a Backup.
+type LogSubCommandType string
+
+const (
+	// BackupScheduled means the backup related job has been created
+	LogStartCommand LogSubCommandType = "LogStart"
+	// BackupRunning means the backup is currently being executed.
+	LogTruncateCommand LogSubCommandType = "LogTruncate"
+	// BackupComplete means the backup has successfully executed and the
+	// resulting artifact has been stored in backend storage.
+	LogStopCommand LogSubCommandType = "LogStop"
+)
+
+// BackupStatus represents the current status of a backup.
+type LogSubCommandCondition struct {
+	Command LogSubCommandType `json:"command,omitempty"`
+	// TimeStarted is the time at which the command was started.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
+	// TimeCompleted is the time at which the command was completed.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+	// LogTruncateUntil is log backup truncate until timestamp which will be the same as Spec.LogTruncateUntil when truncate is complete.
+	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
+	// LogSafeTruncatedUntil is log backup safe truncate until timestamp which can be safely used as PiTR resotre.
+	LogSafeTruncatedUntil string `json:"logSafeTruncatedUntil,omitempty"`
+	// Phase is a user readable state inferred from the underlying Backup conditions
+	Phase BackupConditionType `json:"phase,omitempty"`
+	// +nullable
+	Conditions []BackupCondition `json:"conditions,omitempty"`
+}
+
+type LogSubCommandRecord struct {
+	// BackupPath is the location of the backup.
+	CurrentIndex int `json:"currentIndex"`
+	// LogSubCommandConditions record log sub command conditions.
+	// +nullable
+	LogSubCommandConditions []LogSubCommandCondition `json:"LogSubCommandRecord,omitempty"`
+}
+
 // BackupStatus represents the current status of a backup.
 type BackupStatus struct {
 	// BackupPath is the location of the backup.
@@ -1923,6 +1965,10 @@ type BackupStatus struct {
 	Phase BackupConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []BackupCondition `json:"conditions,omitempty"`
+	// LogSubCommand is the current log backup subcommand.
+	LogSubCommand LogSubCommandType `json:"logSubCommand,omitempty"`
+	// LogSubCommandRecord record the detail conditions of log backup subcommands.
+	LogSubCommandRecord LogSubCommandRecord `json:"logSubCommandRecord,omitempty"`
 }
 
 // +genclient
