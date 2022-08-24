@@ -74,7 +74,7 @@ func (c *Controller) processNextWorkItem() bool {
 	defer c.queue.Done(key)
 	if err := c.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			klog.Infof("TidbClusterAutoScaler: %v, still need sync: %v, requeuing", key.(string), err)
+			klog.Errorf("TidbClusterAutoScaler: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("TidbClusterAutoScaler: %v, sync failed, err: %v", key.(string), err))
 		}

@@ -93,7 +93,7 @@ func (c *Controller) processNextWorkItem() bool {
 	defer c.queue.Done(key)
 	if err := c.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			klog.Infof("BackupSchedule: %v, still need sync: %v, requeuing", key.(string), err)
+			klog.Errorf("BackupSchedule: %v, still need sync: %v, requeuing", key.(string), err)
 			c.queue.AddRateLimited(key)
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			klog.V(4).Infof("BackupSchedule: %v, ignore err: %v, waiting for the next sync", key.(string), err)

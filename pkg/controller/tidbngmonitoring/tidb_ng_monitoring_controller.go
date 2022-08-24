@@ -101,7 +101,7 @@ func (c *Controller) processNextWorkItem() bool {
 	err := c.sync(key)
 	if err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			klog.Infof("TidbNGMonitoring %v still need sync: %v, requeuing", key, err)
+			klog.Errorf("TidbNGMonitoring %v still need sync: %v, requeuing", key, err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("TidbNGMonitoring %v sync failed, err: %v", key, err))
 		}
