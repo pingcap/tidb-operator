@@ -124,7 +124,7 @@ func (c *Controller) processNextWorkItem() bool {
 	defer c.queue.Done(key)
 	if err := c.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			klog.Infof("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
+			klog.Errorf("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("TidbCluster: %v, sync failed %v, requeuing", key.(string), err))
 		}
