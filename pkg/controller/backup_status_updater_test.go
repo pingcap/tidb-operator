@@ -315,6 +315,25 @@ func newBackupConditionForTest(conditionType v1alpha1.BackupConditionType, statu
 	}
 }
 
+// func newLogSubCommandStatusForTest(command v1alpha1.LogSubCommandType, timeStarted metav1.Time, timeCompleted metav1.Time) v1alpha1.LogSubCommandStatus {
+// 	// Command LogSubCommandType `json:"command,omitempty"`
+// 	// // TimeStarted is the time at which the command was started.
+// 	// // TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+// 	// // +nullable
+// 	// TimeStarted metav1.Time `json:"timeStarted,omitempty"`
+// 	// // TimeCompleted is the time at which the command was completed.
+// 	// // TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+// 	// // +nullable
+// 	// TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+// 	// // LogTruncateUntil is log backup truncate until timestamp which will be the same as Spec.LogTruncateUntil when truncate is complete.
+// 	// LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
+// 	// // Phase is the command current phase.
+// 	// Phase BackupConditionType `json:"phase,omitempty"`
+// 	// // +nullable
+// 	// Conditions []BackupCondition `json:"conditions,omitempty"`
+
+// }
+
 func newUpdateBackupStatus() *BackupUpdateStatus {
 	ts := "421762809912885269"
 	start, _ := time.Parse(time.RFC3339, "2020-12-25T21:46:59Z")

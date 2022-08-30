@@ -3950,13 +3950,13 @@ string
 </tr>
 <tr>
 <td>
-<code>logTruncateUntil</code></br>
+<code>logSuccessTruncateUntil</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>LogTruncateUntil is log backup truncate until timestamp which will be the same as Spec.LogTruncateUntil when truncate is complete.</p>
+<p>LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.</p>
 </td>
 </tr>
 <tr>
@@ -3980,9 +3980,7 @@ BackupConditionType
 </em>
 </td>
 <td>
-<p>// LogStopped indicates whether the log backup has stopped.
-LogStopped bool <code>json:&quot;logStopped,omitempty&quot;</code>
-Phase is a user readable state inferred from the underlying Backup conditions</p>
+<p>Phase is a user readable state inferred from the underlying Backup conditions</p>
 </td>
 </tr>
 <tr>
@@ -3999,7 +3997,7 @@ Phase is a user readable state inferred from the underlying Backup conditions</p
 </tr>
 <tr>
 <td>
-<code>logSubCommandCondition</code></br>
+<code>logSubCommandStatuses</code></br>
 <em>
 <a href="#logsubcommandstatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandStatus
@@ -4007,7 +4005,7 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType
 </em>
 </td>
 <td>
-<p>LogSubCommandConditions is the detail conditions of log backup subcommands, it is used to debug.</p>
+<p>LogSubCommandStatuses is the detail status of log backup subcommands, record each command separately, but only record the last command.</p>
 </td>
 </tr>
 </tbody>
@@ -7886,7 +7884,7 @@ uint32
 <a href="#backupstatus">BackupStatus</a>)
 </p>
 <p>
-<p>LogSubCommandCondition is the log backup subcommand&rsquo;s comdition.</p>
+<p>LogSubCommandStatus is the log backup subcommand&rsquo;s status.</p>
 </p>
 <table>
 <thead>
@@ -7906,6 +7904,7 @@ LogSubCommandType
 </em>
 </td>
 <td>
+<p>Command is the log backup subcommand.</p>
 </td>
 </tr>
 <tr>
@@ -7938,13 +7937,13 @@ TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/
 </tr>
 <tr>
 <td>
-<code>logTruncateUntil</code></br>
+<code>logTruncatingUntil</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>LogTruncateUntil is log backup truncate until timestamp which will be the same as Spec.LogTruncateUntil when truncate is complete.</p>
+<p>LogTruncatingUntil is log backup truncate until timestamp which is used to mark the truncate command.</p>
 </td>
 </tr>
 <tr>

@@ -410,7 +410,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
 			})
 			framework.ExpectNoError(err)
-			framework.ExpectEqual(backup.Status.LogTruncateUntil, backup.Spec.LogTruncateUntil)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
 
 			ginkgo.By("Truncate log backup again")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
@@ -419,7 +419,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
 			})
 			framework.ExpectNoError(err)
-			framework.ExpectEqual(backup.Status.LogTruncateUntil, backup.Spec.LogTruncateUntil)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
 
 			ginkgo.By("Stop log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
@@ -438,7 +438,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.LogStop = false
 			})
 			framework.ExpectNoError(err)
-			framework.ExpectEqual(backup.Status.LogTruncateUntil, backup.Spec.LogTruncateUntil)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)

@@ -45,7 +45,7 @@ spec:
       name: CommitTS
       type: string
     - description: The log backup truncate until ts
-      jsonPath: .status.logTruncateUntil
+      jsonPath: .status.logSuccessTruncateUntil
       name: LogTruncateUntil
       type: string
     - description: The time at which the backup was started
@@ -1409,7 +1409,7 @@ spec:
                 type: array
               logCheckpointTs:
                 type: string
-              logSubCommandCondition:
+              logSubCommandStatuses:
                 additionalProperties:
                   properties:
                     command:
@@ -1435,7 +1435,7 @@ spec:
                         type: object
                       nullable: true
                       type: array
-                    logTruncateUntil:
+                    logTruncatingUntil:
                       type: string
                     phase:
                       type: string
@@ -1449,7 +1449,7 @@ spec:
                       type: string
                   type: object
                 type: object
-              logTruncateUntil:
+              logSuccessTruncateUntil:
                 type: string
               phase:
                 type: string

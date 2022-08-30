@@ -493,29 +493,27 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	klog.Infof("Truncate log backup of cluster %s success", bm)
 
 	// get Meta info
-	backupFullPath := backup.Status.BackupPath
-	if backupFullPath == "" {
-		backupFullPath, err := util.GetStoragePath(backup)
-		if err != nil {
-			klog.Errorf("Get backup full path of cluster %s failed, err: %s", bm, err)
-			return nil, "GetBackupRemotePathFailed", err
-		}
-		klog.Infof("Get backup full path %s of cluster %s failed", backupFullPath, bm)
-	}
-	truncatedUntil, err := util.GetBRTruncatedUntil(ctx, backup.Spec.StorageProvider)
-	if err != nil {
-		klog.Errorf("Get log backup truncated until for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
-		return nil, "GetLogBackupTruncatedUntilFailed", err
-	}
-	klog.Infof("Get log backup truncated until for backup files in %s of cluster %s success", backupFullPath, bm)
+	// backupFullPath := backup.Status.BackupPath
+	// if backupFullPath == "" {
+	// 	backupFullPath, err := util.GetStoragePath(backup)
+	// 	if err != nil {
+	// 		klog.Errorf("Get backup full path of cluster %s failed, err: %s", bm, err)
+	// 		return nil, "GetBackupRemotePathFailed", err
+	// 	}
+	// 	klog.Infof("Get backup full path %s of cluster %s failed", backupFullPath, bm)
+	// }
+	// truncatedUntil, err := util.GetBRTruncatedUntil(ctx, backup.Spec.StorageProvider)
+	// if err != nil {
+	// 	klog.Errorf("Get log backup truncated until for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
+	// 	return nil, "GetLogBackupTruncatedUntilFailed", err
+	// }
+	// klog.Infof("Get log backup truncated until for backup files in %s of cluster %s success", backupFullPath, bm)
 	finish := time.Now()
 
-	ts := strconv.FormatUint(truncatedUntil, 10)
 	updateStatus := &controller.BackupUpdateStatus{
-		TimeStarted:           &metav1.Time{Time: started},
-		TimeCompleted:         &metav1.Time{Time: finish},
-		LogSafeTruncatedUntil: &ts,
-		LogTruncateUntil:      &backup.Spec.LogTruncateUntil,
+		TimeStarted:             &metav1.Time{Time: started},
+		TimeCompleted:           &metav1.Time{Time: finish},
+		LogSuccessTruncateUntil: &bm.TruncateUntil,
 	}
 	return updateStatus, "", nil
 }

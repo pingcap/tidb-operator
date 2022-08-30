@@ -115,9 +115,9 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		command := v1alpha1.ParseLogBackupSubcommand(backup)
 
 		if command == v1alpha1.LogTruncateCommand {
-			klog.V(4).Infof("log backup newTsUint == %s, oldTsUnit == %s", backup.Spec.LogTruncateUntil, backup.Status.LogTruncateUntil)
+			klog.V(4).Infof("log backup newTsUint == %s, oldTsUnit == %s", backup.Spec.LogTruncateUntil, backup.Status.LogSuccessTruncateUntil)
 			if subStatus, ok := backup.Status.LogSubCommandStatuses[command]; ok {
-				klog.V(4).Infof("log backup sub newTsUint == %s, phase == %s", subStatus.LogTruncateUntil, subStatus.Phase)
+				klog.V(4).Infof("log backup sub newTsUint == %s, phase == %s", subStatus.LogTruncatingUntil, subStatus.Phase)
 			}
 		}
 
@@ -210,18 +210,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		}
 
 	} else {
-		// if log backup truncate can be skipped, can return complete
-		// if canSkipLogTruncate(backup) {
-		// 	updateStatus := &controller.BackupUpdateStatus{
-		// 		TimeStarted:      &metav1.Time{Time: time.Now()},
-		// 		TimeCompleted:    &metav1.Time{Time: time.Now()},
-		// 		LogTruncateUntil: &backup.Spec.LogTruncateUntil,
-		// 	}
-		// 	return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		// 		Type:   v1alpha1.BackupComplete,
-		// 		Status: corev1.ConditionTrue,
-		// 	}, updateStatus)
-		// }
 		// not found backup job, so we need to create it
 		job, reason, err = bm.makeBackupJob(backup)
 		if err != nil {
@@ -447,7 +435,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
-		fmt.Sprintf("--mode=%s", v1alpha1.BackupModeLog),
+		fmt.Sprintf("--mode=%s", backup.Spec.Mode),
 	}
 	tikvImage := tc.TiKVImage()
 	_, tikvVersion := backuputil.ParseImage(tikvImage)
@@ -456,12 +444,17 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	}
 
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		args = append(args, fmt.Sprintf("--subcommand=%s", v1alpha1.ParseLogBackupSubcommand(backup)))
-		if backup.Spec.CommitTs != "" {
-			args = append(args, fmt.Sprintf("--commit-ts=%s", backup.Spec.CommitTs))
-		}
-		if backup.Spec.LogTruncateUntil != "" {
-			args = append(args, fmt.Sprintf("--truncate-until=%s", backup.Spec.LogTruncateUntil))
+		subcommand := v1alpha1.ParseLogBackupSubcommand(backup)
+		args = append(args, fmt.Sprintf("--subcommand=%s", subcommand))
+		switch subcommand {
+		case v1alpha1.LogStartCommand:
+			if backup.Spec.CommitTs != "" {
+				args = append(args, fmt.Sprintf("--commit-ts=%s", backup.Spec.CommitTs))
+			}
+		case v1alpha1.LogTruncateCommand:
+			if backup.Spec.LogTruncateUntil != "" {
+				args = append(args, fmt.Sprintf("--truncate-until=%s", backup.Spec.LogTruncateUntil))
+			}
 		}
 	}
 
@@ -661,23 +654,6 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 	}
 	return "", nil
 }
-
-// // canSkipLogTruncate makes sure log truncate can be skipped.
-// // Spec.TruncateUntil <= Status.CommitTs, Status.SafeTruncatedUntil
-// func canSkipLogTruncate(backup *v1alpha1.Backup) bool {
-// 	if backup.Spec.Mode != v1alpha1.BackupModeLog || backup.Spec.LogStop || backup.Status.LogStopped ||
-// 		backup.Status.CommitTs == "" || backup.Spec.LogTruncateUntil == "" {
-// 		return false
-// 	}
-// 	var (
-// 		newTsUint, oldTsUnit, startTsUnit uint64
-// 	)
-// 	newTsUint, _ = util.ParseTSString(backup.Spec.LogTruncateUntil)
-// 	oldTsUnit, _ = util.ParseTSString(backup.Status.LogSafeTruncatedUntil)
-// 	startTsUnit, _ = util.ParseTSString(backup.Status.CommitTs)
-
-// 	return newTsUint <= startTsUnit && newTsUint <= oldTsUnit
-// }
 
 var _ backup.BackupManager = &backupManager{}
 

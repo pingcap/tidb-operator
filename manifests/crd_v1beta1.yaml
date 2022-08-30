@@ -1440,7 +1440,7 @@ spec:
     description: The commit ts of the backup
     name: CommitTS
     type: string
-  - JSONPath: .status.logTruncateUntil
+  - JSONPath: .status.logSuccessTruncateUntil
     description: The log backup truncate until ts
     name: LogTruncateUntil
     type: string
@@ -2813,7 +2813,7 @@ spec:
               type: array
             logCheckpointTs:
               type: string
-            logSubCommandCondition:
+            logSubCommandStatuses:
               additionalProperties:
                 properties:
                   command:
@@ -2839,7 +2839,7 @@ spec:
                       type: object
                     nullable: true
                     type: array
-                  logTruncateUntil:
+                  logTruncatingUntil:
                     type: string
                   phase:
                     type: string
@@ -2853,7 +2853,7 @@ spec:
                     type: string
                 type: object
               type: object
-            logTruncateUntil:
+            logSuccessTruncateUntil:
               type: string
             phase:
               type: string

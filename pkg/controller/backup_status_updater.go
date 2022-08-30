@@ -48,14 +48,10 @@ type BackupUpdateStatus struct {
 	BackupSize *int64
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
-	// // LogStopped indicates whether the log backup has stopped.
-	// LogStopped *bool
 	// LogCheckpointTs is the ts of log backup process.
 	LogCheckpointTs *string
-	// LogTruncateUntil is log backup truncate until timestamp.
-	LogTruncateUntil *string
-	// LogSafeTruncatedUntil is log backup safe truncate until timestamp.
-	LogSafeTruncatedUntil *string
+	// LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.
+	LogSuccessTruncateUntil *string
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -144,16 +140,12 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		status.CommitTs = *newStatus.CommitTs
 		isUpdate = true
 	}
-	// if newStatus.LogStopped != nil && status.LogStopped != *newStatus.LogStopped {
-	// 	status.LogStopped = *newStatus.LogStopped
-	// 	isUpdate = true
-	// }
 	if newStatus.LogCheckpointTs != nil && status.LogCheckpointTs != *newStatus.LogCheckpointTs {
 		status.LogCheckpointTs = *newStatus.LogCheckpointTs
 		isUpdate = true
 	}
-	if newStatus.LogTruncateUntil != nil && status.LogTruncateUntil != *newStatus.LogTruncateUntil {
-		status.LogTruncateUntil = *newStatus.LogTruncateUntil
+	if newStatus.LogSuccessTruncateUntil != nil && status.LogSuccessTruncateUntil != *newStatus.LogSuccessTruncateUntil {
+		status.LogSuccessTruncateUntil = *newStatus.LogSuccessTruncateUntil
 		isUpdate = true
 	}
 	return isUpdate
@@ -188,7 +180,7 @@ func updateLogBackupSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha
 
 	// truncate command should update subcommand's truncateUtil to simplify reconcile
 	if command == v1alpha1.LogTruncateCommand && condition.Type == v1alpha1.BackupScheduled {
-		status.LogTruncateUntil = backup.Spec.LogTruncateUntil
+		status.LogTruncatingUntil = backup.Spec.LogTruncateUntil
 	}
 
 	// update subcommand status
@@ -254,10 +246,6 @@ func updateLogSubCommandStatusOnly(status *v1alpha1.LogSubCommandStatus, newStat
 	}
 	if newStatus.TimeCompleted != nil && status.TimeCompleted != *newStatus.TimeCompleted {
 		status.TimeCompleted = *newStatus.TimeCompleted
-		isUpdate = true
-	}
-	if newStatus.LogTruncateUntil != nil && status.LogTruncateUntil != *newStatus.LogTruncateUntil {
-		status.LogTruncateUntil = *newStatus.LogTruncateUntil
 		isUpdate = true
 	}
 	return isUpdate

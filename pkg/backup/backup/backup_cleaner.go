@@ -255,5 +255,6 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 		}
 	}
 
+	// no job or all job finished
 	return true, nil
 }
