@@ -50,6 +50,15 @@ func (bk *Backup) GetBackupJobName() string {
 	return fmt.Sprintf("backup-%s", bk.GetName())
 }
 
+// GetAllLogBackupJobName return the all log backup job name
+func (bk *Backup) GetAllLogBackupJobName() []string {
+	return []string{
+		fmt.Sprintf("backup-%s-%s", bk.GetName(), LogStartCommand),
+		fmt.Sprintf("backup-%s-%s", bk.GetName(), LogStopCommand),
+		fmt.Sprintf("backup-%s-%s", bk.GetName(), LogTruncateCommand),
+	}
+}
+
 // GetTidbEndpointHash return the hash string base on tidb cluster's host and port
 func (bk *Backup) GetTidbEndpointHash() string {
 	return HashContents([]byte(bk.Spec.From.GetTidbEndpoint()))

@@ -215,39 +215,45 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	backupJobName := backup.GetBackupJobName()
-
-	backupJob, err := bc.deps.JobLister.Jobs(ns).Get(backupJobName)
+	// log backup may have multiple jobs
+	selector, err := label.NewBackup().Instance(backup.GetInstanceName()).Backup(name).Selector()
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return true, nil
-		}
+		klog.Errorf("Fail to generate selector for backup %s/%s, %v", ns, name, err)
 		return false, err
 	}
 
-	// job is being deleted
-	if backupJob.DeletionTimestamp != nil {
-		return false, nil
-	}
-
-	// check whether job finish
-	finished := false
-	for _, c := range backupJob.Status.Conditions {
-		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
-			finished = true
-			break
-		}
-	}
-	if finished {
-		return true, nil
-	}
-
-	// delete job if job is running
-	klog.Infof("delete backup %s/%s job %s", ns, name, backupJobName)
-	err = bc.deps.JobControl.DeleteJob(backup, backupJob)
+	backupJobs, err := bc.deps.JobLister.Jobs(ns).List(selector)
 	if err != nil {
+		klog.Errorf("Fail to list job for backup %s/%s with selector %s, %v", ns, name, selector, err)
 		return false, err
 	}
 
-	return false, nil
+	for _, backupJob := range backupJobs {
+		backupJobName := backupJob.Name
+		// job is being deleted
+		if backupJob.DeletionTimestamp != nil {
+			klog.Infof("backup %s/%s job %s is being deleted, cleaner will wait", ns, name, backupJobName)
+			return false, nil
+		}
+
+		// check whether job finish
+		finished := false
+		for _, c := range backupJob.Status.Conditions {
+			if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
+				finished = true
+				break
+			}
+		}
+		if !finished {
+			klog.Infof("backup %s/%s job %s is running, cleaner will delete it and wait it done", ns, name, backupJobName)
+			// delete job if job is running
+			err = bc.deps.JobControl.DeleteJob(backup, backupJob)
+			if err != nil {
+				return false, err
+			}
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
