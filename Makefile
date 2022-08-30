@@ -1,3 +1,4 @@
+
 LDFLAGS = $(shell ./hack/version.sh)
 
 GOVER_MAJOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\1/")
@@ -46,7 +47,7 @@ else
 	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-backup-manager
 endif
 
-build: controller-manager scheduler discovery admission-webhook backup-manager
+build: controller-manager scheduler discovery admission-webhook backup-manager collector
 
 controller-manager:
 ifeq ($(E2E),y)
@@ -81,6 +82,13 @@ ifeq ($(E2E),y)
 	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-backup-manager/bin/tidb-backup-manager ./cmd/backup-manager
 else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-backup-manager/bin/$(GOARCH)/tidb-backup-manager cmd/backup-manager/main.go
+endif
+
+collector:
+ifeq ($(E2E),y)
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/tidb-operator/bin/collector ./cmd/collector
+else
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/$(GOARCH)/collector cmd/collector/main.go
 endif
 
 ifeq ($(NO_BUILD),y)
