@@ -1,5 +1,9 @@
 package dump
 
+import (
+	"io"
+)
+
 // BaseDumper is a base dumper that implements the Dumper interface.
 // It's used to host common objects required by all dumpers.
 type BaseDumper struct {
@@ -8,7 +12,7 @@ type BaseDumper struct {
 
 var _ Dumper = (*BaseDumper)(nil)
 
-func (b *BaseDumper) Write(string, []byte) error {
+func (b *BaseDumper) Open(string) (io.Writer, error) {
 	panic("not implemented")
 }
 

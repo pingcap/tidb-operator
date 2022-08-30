@@ -7,13 +7,15 @@ import (
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/cmd/collector/pkg/collect"
 	"github.com/pingcap/tidb-operator/cmd/collector/pkg/config"
 	"github.com/pingcap/tidb-operator/cmd/collector/pkg/dump"
-	"github.com/pingcap/tidb-operator/cmd/collector/pkg/encode"
 )
 
 func main() {
@@ -49,19 +51,13 @@ func main() {
 
 	// TODO: make encoder and dumper configurable
 	var (
-		encoderType encode.Encoding = encode.YAML
-		dumperType  dump.Dumping    = dump.Zip
-		encoder     encode.Encoder
-		dumper      dump.Dumper
-		collectors  []collect.Collector
+		// encoderType encode.Encoding = encode.YAML
+		encoding                = "yaml"
+		dumperType dump.Dumping = dump.Zip
+		dumper     dump.Dumper
+		collectors []collect.Collector
+		printer    printers.ResourcePrinter
 	)
-
-	switch encoderType {
-	case encode.YAML:
-		encoder = encode.NewYAMLEncoder()
-	default:
-		panic(fmt.Errorf("unknown encoder type: %v", encoderType))
-	}
 
 	switch dumperType {
 	case dump.Zip:
@@ -71,16 +67,29 @@ func main() {
 		}
 	}
 
+	switch encoding {
+	case "yaml":
+		printer = &printers.TypeSetterPrinter{
+			Delegate: &printers.YAMLPrinter{},
+			Typer:    collect.GetScheme(),
+		}
+	}
+	// Set types for the objects
+	printer, err = printers.NewTypeSetter(collect.GetScheme()).WrapToPrinter(printer, nil)
+	if err != nil {
+		panic(err)
+	}
+
 	collectors = config.ConfigCollectors(cli, collectorCfg)
 
-	err = dumpFiles(collect.MergedCollectors(collectors...), encoder, dumper)
+	err = dumpFiles(collect.MergedCollectors(collectors...), dumper, printer, encoding)
 	if err != nil {
 		panic(err)
 	}
 }
 
 // dumpFiles dumps the encoded contents to dumper.
-func dumpFiles(c collect.Collector, encoder encode.Encoder, dumper dump.Dumper) error {
+func dumpFiles(c collect.Collector, dumper dump.Dumper, printer printers.ResourcePrinter, encoding string) error {
 	defer dumper.Close()()
 
 	objCh, err := c.Objects()
@@ -89,13 +98,34 @@ func dumpFiles(c collect.Collector, encoder encode.Encoder, dumper dump.Dumper) 
 	}
 
 	for obj := range objCh {
-		kind, ns, name := obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName()
-		path := fmt.Sprintf("%s.%s", filepath.Join("/", kind, ns, name), encoder.Extension())
-		contents, err := encoder.Encode(obj)
+		// TODO: remove hack after https://github.com/kubernetes/kubernetes/issues/3030 is resolved
+		gvks, _, err := collect.GetScheme().ObjectKinds(obj)
 		if err != nil {
 			return err
 		}
-		dumper.Write(path, contents)
+		gvk := schema.GroupVersionKind{}
+		for _, g := range gvks {
+			if g.Empty() {
+				continue
+			}
+			gvk = g
+		}
+		kind, ns, name := gvk.Kind, obj.GetNamespace(), obj.GetName()
+		path := fmt.Sprintf("%s.%s", filepath.Join(kind, ns, name), encoding)
+		writer, err := dumper.Open(path)
+		if err != nil {
+			return err
+		}
+
+		// omit managed fields
+		if a, err := meta.Accessor(obj); err == nil {
+			a.SetManagedFields(nil)
+		}
+
+		err = printer.PrintObj(obj, writer)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

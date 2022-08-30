@@ -2,6 +2,7 @@ package dump
 
 import (
 	"archive/zip"
+	"io"
 	"os"
 )
 
@@ -14,14 +15,12 @@ type ZipDumper struct {
 
 var _ Dumper = (*ZipDumper)(nil)
 
-func (z *ZipDumper) Write(path string, content []byte) error {
+func (z *ZipDumper) Open(path string) (io.Writer, error) {
 	iowriter, err := z.writer.Create(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	_, err = iowriter.Write(content)
-	return err
+	return iowriter, nil
 }
 
 // NewZipDumper takes returns a dumper that writes files to input path.
