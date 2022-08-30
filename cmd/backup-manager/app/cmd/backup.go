@@ -19,6 +19,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
@@ -36,6 +37,24 @@ func NewBackupCommand() *cobra.Command {
 		Short: "Backup specific tidb cluster.",
 		Run: func(cmd *cobra.Command, args []string) {
 			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
+			// if bo.Mode == string(v1alpha1.BackupModeLog) {
+			// 	var err error
+			// 	bo.SubCommand, err = cmd.Flags().GetString("subcommand")
+			// 	if err != nil {
+			// 		klog.Errorf("read backup %s subcommand error %s", bo.String(), err)
+			// 		return
+			// 	}
+			// 	// bo.CommitTS, err = cmd.Flags().GetString("commit-ts")
+			// 	// if err != nil {
+			// 	// 	klog.Errorf("read backup %s commit-ts error %s", bo.String(), err)
+			// 	// 	return
+			// 	// }
+			// 	// bo.TruncateUntil, err = cmd.Flags().GetString("truncate-until")
+			// 	// if err != nil {
+			// 	// 	klog.Errorf("read backup %s truncate-until error %s", bo.String(), err)
+			// 	// 	return
+			// 	// }
+			// }
 			cmdutil.CheckErr(runBackup(bo, kubecfg))
 		},
 	}
@@ -46,6 +65,10 @@ func NewBackupCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&bo.TLSClient, "client-tls", false, "Whether client tls is enabled")
 	cmd.Flags().BoolVar(&bo.TLSCluster, "cluster-tls", false, "Whether cluster tls is enabled")
 	cmd.Flags().BoolVar(&bo.SkipClientCA, "skipClientCA", false, "Whether to skip tidb server's certificates validation")
+	cmd.Flags().StringVar(&bo.Mode, "mode", string(v1alpha1.BackupModeSnapshot), "backup mode, which is log or snapshot(default)")
+	cmd.Flags().StringVar(&bo.SubCommand, "subcommand", string(v1alpha1.LogStartCommand), "the log backup subcommand")
+	cmd.Flags().StringVar(&bo.CommitTS, "commit-ts", "0", "the log backup start ts")
+	cmd.Flags().StringVar(&bo.TruncateUntil, "truncate-until", "0", "the log backup truncate until")
 	return cmd
 }
 

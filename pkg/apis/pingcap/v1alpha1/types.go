@@ -1495,7 +1495,6 @@ type TLSCluster struct {
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
 // +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logTruncateUntil`,description="The log backup truncate until ts"
-// +kubebuilder:printcolumn:name="LogStopped",type=string,JSONPath=`.status.LogStopped`,description="Whether The log backup is stopped"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -1892,21 +1891,20 @@ type BackupCondition struct {
 	Message            string      `json:"message,omitempty"`
 }
 
-// BackupConditionType represents a valid condition of a Backup.
+// LogSubCommandType is the log backup subcommand type.
 type LogSubCommandType string
 
 const (
-	// BackupScheduled means the backup related job has been created
-	LogStartCommand LogSubCommandType = "LogStart"
-	// BackupRunning means the backup is currently being executed.
-	LogTruncateCommand LogSubCommandType = "LogTruncate"
-	// BackupComplete means the backup has successfully executed and the
-	// resulting artifact has been stored in backend storage.
-	LogStopCommand LogSubCommandType = "LogStop"
+	// LogStartCommand is the start command of log backup.
+	LogStartCommand LogSubCommandType = "log-start"
+	// LogTruncateCommand is the truncate command of log backup.
+	LogTruncateCommand LogSubCommandType = "log-truncate"
+	// LogStopCommand is the stop command of log backup.
+	LogStopCommand LogSubCommandType = "log-stop"
 )
 
-// BackupStatus represents the current status of a backup.
-type LogSubCommandCondition struct {
+// LogSubCommandCondition is the log backup subcommand's comdition.
+type LogSubCommandStatus struct {
 	Command LogSubCommandType `json:"command,omitempty"`
 	// TimeStarted is the time at which the command was started.
 	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
@@ -1918,20 +1916,10 @@ type LogSubCommandCondition struct {
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// LogTruncateUntil is log backup truncate until timestamp which will be the same as Spec.LogTruncateUntil when truncate is complete.
 	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
-	// LogSafeTruncatedUntil is log backup safe truncate until timestamp which can be safely used as PiTR resotre.
-	LogSafeTruncatedUntil string `json:"logSafeTruncatedUntil,omitempty"`
-	// Phase is a user readable state inferred from the underlying Backup conditions
+	// Phase is the command current phase.
 	Phase BackupConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []BackupCondition `json:"conditions,omitempty"`
-}
-
-type LogSubCommandRecord struct {
-	// BackupPath is the location of the backup.
-	CurrentIndex int `json:"currentIndex"`
-	// LogSubCommandConditions record log sub command conditions.
-	// +nullable
-	LogSubCommandConditions []LogSubCommandCondition `json:"LogSubCommandRecord,omitempty"`
 }
 
 // BackupStatus represents the current status of a backup.
@@ -1955,20 +1943,16 @@ type BackupStatus struct {
 	CommitTs string `json:"commitTs,omitempty"`
 	// LogTruncateUntil is log backup truncate until timestamp which will be the same as Spec.LogTruncateUntil when truncate is complete.
 	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
-	// LogSafeTruncatedUntil is log backup safe truncate until timestamp which can be safely used as PiTR resotre.
-	LogSafeTruncatedUntil string `json:"logSafeTruncatedUntil,omitempty"`
 	// LogCheckpointTs is the ts of log backup process.
 	LogCheckpointTs string `json:"logCheckpointTs,omitempty"`
-	// LogStopped indicates whether the log backup has stopped.
-	LogStopped bool `json:"logStopped,omitempty"`
+	// // LogStopped indicates whether the log backup has stopped.
+	// LogStopped bool `json:"logStopped,omitempty"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
 	Phase BackupConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []BackupCondition `json:"conditions,omitempty"`
-	// LogSubCommand is the current log backup subcommand.
-	LogSubCommand LogSubCommandType `json:"logSubCommand,omitempty"`
-	// LogSubCommandRecord record the detail conditions of log backup subcommands.
-	LogSubCommandRecord LogSubCommandRecord `json:"logSubCommandRecord,omitempty"`
+	// LogSubCommandConditions is the detail conditions of log backup subcommands, it is used to debug.
+	LogSubCommandStatuses map[LogSubCommandType]LogSubCommandStatus `json:"logSubCommandCondition,omitempty"`
 }
 
 // +genclient

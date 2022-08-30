@@ -3240,7 +3240,8 @@ bool
 <h3 id="backupcondition">BackupCondition</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupstatus">BackupStatus</a>)
+<a href="#backupstatus">BackupStatus</a>, 
+<a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>
 <p>BackupCondition describes the observed state of a Backup at a certain point.</p>
@@ -3315,7 +3316,8 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#backupcondition">BackupCondition</a>, 
-<a href="#backupstatus">BackupStatus</a>)
+<a href="#backupstatus">BackupStatus</a>, 
+<a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
@@ -3959,17 +3961,6 @@ string
 </tr>
 <tr>
 <td>
-<code>logSafeTruncatedUntil</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>LogSafeTruncatedUntil is log backup safe truncate until timestamp which can be safely used as PiTR resotre.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>logCheckpointTs</code></br>
 <em>
 string
@@ -3977,17 +3968,6 @@ string
 </td>
 <td>
 <p>LogCheckpointTs is the ts of log backup process.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>logStopped</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>LogStopped indicates whether the log backup has stopped.</p>
 </td>
 </tr>
 <tr>
@@ -4000,7 +3980,9 @@ BackupConditionType
 </em>
 </td>
 <td>
-<p>Phase is a user readable state inferred from the underlying Backup conditions</p>
+<p>// LogStopped indicates whether the log backup has stopped.
+LogStopped bool <code>json:&quot;logStopped,omitempty&quot;</code>
+Phase is a user readable state inferred from the underlying Backup conditions</p>
 </td>
 </tr>
 <tr>
@@ -4013,6 +3995,19 @@ BackupConditionType
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>logSubCommandCondition</code></br>
+<em>
+<a href="#logsubcommandstatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandStatus
+</a>
+</em>
+</td>
+<td>
+<p>LogSubCommandConditions is the detail conditions of log backup subcommands, it is used to debug.</p>
 </td>
 </tr>
 </tbody>
@@ -7885,6 +7880,108 @@ uint32
 </tr>
 </tbody>
 </table>
+<h3 id="logsubcommandstatus">LogSubCommandStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupstatus">BackupStatus</a>)
+</p>
+<p>
+<p>LogSubCommandCondition is the log backup subcommand&rsquo;s comdition.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>command</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeStarted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeStarted is the time at which the command was started.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeCompleted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeCompleted is the time at which the command was completed.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogTruncateUntil is log backup truncate until timestamp which will be the same as Spec.LogTruncateUntil when truncate is complete.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#backupconditiontype">
+BackupConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Phase is the command current phase.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="#backupcondition">
+[]BackupCondition
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="logsubcommandtype">LogSubCommandType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#logsubcommandstatus">LogSubCommandStatus</a>)
+</p>
+<p>
+<p>LogSubCommandType is the log backup subcommand type.</p>
+</p>
 <h3 id="logtailerspec">LogTailerSpec</h3>
 <p>
 (<em>Appears on:</em>

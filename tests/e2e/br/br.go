@@ -411,7 +411,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogTruncateUntil, backup.Spec.LogTruncateUntil)
-			framework.ExpectNotEqual(backup.Status.LogSafeTruncatedUntil, "")
 
 			ginkgo.By("Truncate log backup again")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
@@ -421,7 +420,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogTruncateUntil, backup.Spec.LogTruncateUntil)
-			framework.ExpectNotEqual(backup.Status.LogSafeTruncatedUntil, "")
 
 			ginkgo.By("Stop log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
@@ -430,7 +428,16 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.LogStop = true
 			})
 			framework.ExpectNoError(err)
-			framework.ExpectEqual(backup.Status.LogStopped, true)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupComplete)
+
+			ginkgo.By("Truncate log backup after stop")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.LogTruncateUntil, backup.Spec.LogTruncateUntil)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)

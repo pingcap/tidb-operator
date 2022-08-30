@@ -16,6 +16,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"k8s.io/klog/v2"
 
@@ -47,8 +48,8 @@ type BackupUpdateStatus struct {
 	BackupSize *int64
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
-	// LogStopped indicates whether the log backup has stopped.
-	LogStopped *bool
+	// // LogStopped indicates whether the log backup has stopped.
+	// LogStopped *bool
 	// LogCheckpointTs is the ts of log backup process.
 	LogCheckpointTs *string
 	// LogTruncateUntil is log backup truncate until timestamp.
@@ -85,9 +86,14 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 	backupName := backup.GetName()
 	// try best effort to guarantee backup is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		isStatusUpdate := updateBackupStatus(&backup.Status, newStatus)
-		isConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, condition)
-		if isStatusUpdate || isConditionUpdate {
+		var isStatusUpdate, isConditionUpdate, isLogSubcommandStatusUpdate bool
+		if backup.Spec.Mode == v1alpha1.BackupModeLog && backup.DeletionTimestamp == nil {
+			isLogSubcommandStatusUpdate = updateLogBackupSubcommandStatus(backup, condition, newStatus)
+		} else {
+			isStatusUpdate = updateBackupStatus(&backup.Status, newStatus)
+			isConditionUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
+		}
+		if isStatusUpdate || isConditionUpdate || isLogSubcommandStatusUpdate {
 			_, updateErr := u.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 			if updateErr == nil {
 				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
@@ -138,10 +144,10 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		status.CommitTs = *newStatus.CommitTs
 		isUpdate = true
 	}
-	if newStatus.LogStopped != nil && status.LogStopped != *newStatus.LogStopped {
-		status.LogStopped = *newStatus.LogStopped
-		isUpdate = true
-	}
+	// if newStatus.LogStopped != nil && status.LogStopped != *newStatus.LogStopped {
+	// 	status.LogStopped = *newStatus.LogStopped
+	// 	isUpdate = true
+	// }
 	if newStatus.LogCheckpointTs != nil && status.LogCheckpointTs != *newStatus.LogCheckpointTs {
 		status.LogCheckpointTs = *newStatus.LogCheckpointTs
 		isUpdate = true
@@ -150,10 +156,160 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		status.LogTruncateUntil = *newStatus.LogTruncateUntil
 		isUpdate = true
 	}
-	if newStatus.LogSafeTruncatedUntil != nil && status.LogSafeTruncatedUntil != *newStatus.LogSafeTruncatedUntil {
-		status.LogSafeTruncatedUntil = *newStatus.LogSafeTruncatedUntil
+	return isUpdate
+}
+
+// updateLogBackupSubcommandStatus upserts log backup subcommand.
+// start command will update log backup status together.
+// truncate/stop command complete will update log backup status together.
+func updateLogBackupSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
+	isUpdate := false
+	if condition == nil {
+		// skip update subcommand status, shoudl just update backup status
+		return isUpdate
+	}
+	command := v1alpha1.ParseLogBackupSubcommand(backup)
+	if command == "" {
+		return false
+	}
+	if backup.Status.LogSubCommandStatuses == nil {
+		backup.Status.LogSubCommandStatuses = make(map[v1alpha1.LogSubCommandType]v1alpha1.LogSubCommandStatus)
+	}
+	// update subcommand status
+	status, ok := backup.Status.LogSubCommandStatuses[command]
+	if !ok {
+		// no subcommand status, should create
+		status = v1alpha1.LogSubCommandStatus{
+			Command:     command,
+			TimeStarted: metav1.Time{Time: time.Now()},
+			Conditions:  make([]v1alpha1.BackupCondition, 0),
+		}
+	}
+
+	// truncate command should update subcommand's truncateUtil to simplify reconcile
+	if command == v1alpha1.LogTruncateCommand && condition.Type == v1alpha1.BackupScheduled {
+		status.LogTruncateUntil = backup.Spec.LogTruncateUntil
+	}
+
+	// update subcommand status
+	subcommandStatusUpdate := updateLogSubCommandStatusOnly(&status, newStatus)
+	subcomandConditionUpdate := updateLogSubCommandConditionOnly(&status, condition)
+
+	if subcommandStatusUpdate || subcomandConditionUpdate {
+		backup.Status.LogSubCommandStatuses[command] = status
+	}
+
+	klog.Infof("subcommand phase: %s", backup.Status.LogSubCommandStatuses[command].Phase)
+	for _, c := range backup.Status.LogSubCommandStatuses[command].Conditions {
+		klog.Infof("subcommand conditions: %s, is on it %s", c.Type, c.Status)
+	}
+
+	// update whole log status
+	// start command: need to update log status and condition, expect complete which just need to update log status
+	// truncate/stop command: just complete need to update log status
+	switch command {
+	case v1alpha1.LogStartCommand:
+		if condition.Type == v1alpha1.BackupComplete {
+			// start command should not update TimeCompleted and condition
+			newStatus.TimeCompleted = nil
+			condition = nil
+		}
+	case v1alpha1.LogStopCommand:
+		if condition.Type == v1alpha1.BackupComplete {
+			// stop command should not update TimeStarted, but need update condition
+			newStatus.TimeStarted = nil
+		} else {
+			newStatus = nil
+			condition = nil
+		}
+	case v1alpha1.LogTruncateCommand:
+		if condition.Type == v1alpha1.BackupComplete {
+			// truncate command shoudld not update TimeStarted, TimeCompleted
+			newStatus.TimeCompleted = nil
+			newStatus.TimeStarted = nil
+		} else {
+			newStatus = nil
+		}
+		condition = nil
+	default:
+		// should not hanpen
+		return isUpdate || subcommandStatusUpdate || subcomandConditionUpdate
+	}
+
+	// update whole log status
+	wholeStatusUpdate := updateBackupStatus(&backup.Status, newStatus)
+	wholeConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, condition)
+
+	return isUpdate || subcommandStatusUpdate || subcomandConditionUpdate || wholeStatusUpdate || wholeConditionUpdate
+}
+
+func updateLogSubCommandStatusOnly(status *v1alpha1.LogSubCommandStatus, newStatus *BackupUpdateStatus) bool {
+	isUpdate := false
+	if newStatus == nil {
+		return isUpdate
+	}
+	if newStatus.TimeStarted != nil && status.TimeStarted != *newStatus.TimeStarted {
+		status.TimeStarted = *newStatus.TimeStarted
 		isUpdate = true
 	}
+	if newStatus.TimeCompleted != nil && status.TimeCompleted != *newStatus.TimeCompleted {
+		status.TimeCompleted = *newStatus.TimeCompleted
+		isUpdate = true
+	}
+	if newStatus.LogTruncateUntil != nil && status.LogTruncateUntil != *newStatus.LogTruncateUntil {
+		status.LogTruncateUntil = *newStatus.LogTruncateUntil
+		isUpdate = true
+	}
+	return isUpdate
+}
+
+func updateLogSubCommandConditionOnly(status *v1alpha1.LogSubCommandStatus, condition *v1alpha1.BackupCondition) bool {
+	isUpdate := false
+	if condition == nil {
+		return isUpdate
+	}
+
+	if status.Phase != condition.Type {
+		status.Phase = condition.Type
+		isUpdate = true
+	}
+
+	var oldCondition *v1alpha1.BackupCondition
+	// find old Backup condition.
+	for _, c := range status.Conditions {
+		if c.Type == condition.Type {
+			oldCondition = &c
+			break
+		}
+	}
+	if oldCondition == nil {
+		//add new Backup condition.
+		oldCondition = &v1alpha1.BackupCondition{Type: condition.Type}
+		status.Conditions = append(status.Conditions, *oldCondition)
+		oldCondition = &status.Conditions[len(status.Conditions)-1]
+		isUpdate = true
+	}
+
+	klog.Infof("status equal: %v, old %s, new %s", oldCondition.Status != condition.Status, oldCondition.Status, condition.Status)
+	if oldCondition.Status != condition.Status {
+		oldCondition.Status = condition.Status
+		isUpdate = true
+	}
+	klog.Infof("after status update: %s", oldCondition.Status)
+	klog.Infof("after status update: %s", status.Conditions[0].Status)
+
+	if oldCondition.Reason != condition.Reason {
+		oldCondition.Reason = condition.Reason
+		isUpdate = true
+	}
+	if oldCondition.Message != condition.Message {
+		oldCondition.Message = condition.Message
+		isUpdate = true
+	}
+	if isUpdate {
+		oldCondition.LastTransitionTime = metav1.Now()
+	}
+	// Return true if one of the fields have changed.
 	return isUpdate
 }
 

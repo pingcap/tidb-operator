@@ -162,22 +162,23 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsBackupInvalid(newBackup) {
+	if v1alpha1.IsBackupInvalid(newBackup) || v1alpha1.IsLogBackupSubCommandInvalid(newBackup) {
 		klog.V(4).Infof("backup %s/%s is invalid, skipping.", ns, name)
 		return
 	}
 
-	if v1alpha1.IsBackupFailed(newBackup) {
-		klog.V(4).Infof("backup %s/%s is Failed, skipping.", ns, name)
-		return
-	}
-
-	if v1alpha1.IsBackupComplete(newBackup) {
+	if (newBackup.Spec.Mode != v1alpha1.BackupModeLog && v1alpha1.IsBackupComplete(newBackup)) || v1alpha1.IsLogBackupSubCommandComplete(newBackup) {
 		klog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
 		return
 	}
 
-	if needCheckBackupJobs(newBackup) {
+	if newBackup.Spec.Mode != v1alpha1.BackupModeLog && v1alpha1.IsBackupFailed(newBackup) {
+		// || (v1alpha1.IsLogBackupSubCommandFailed(newBackup) && !v1alpha1.CanLogBackSumcommandFailedRetry(newBackup)
+		klog.V(4).Infof("backup %s/%s is Failed, skipping.", ns, name)
+		return
+	}
+
+	if newBackup.Spec.Mode != v1alpha1.BackupModeLog && (v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup)) {
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
 		selector, err := label.NewBackup().Instance(newBackup.GetInstanceName()).BackupJob().Backup(name).Selector()
 		if err != nil {
@@ -204,6 +205,11 @@ func (c *Controller) updateBackup(cur interface{}) {
 				break
 			}
 		}
+		return
+	}
+
+	if v1alpha1.IsLogBackupSubCommandRunning(newBackup) {
+		klog.V(4).Infof("log backup %s/%s subcommand is Running, skipping.", ns, name)
 		return
 	}
 
@@ -257,7 +263,7 @@ func (c *Controller) enqueueBackup(obj interface{}) {
 	c.queue.Add(key)
 }
 
-// needCheckBackupJobs return whether need to check job status.
-func needCheckBackupJobs(backup *v1alpha1.Backup) bool {
-	return backup.Status.Phase == v1alpha1.BackupScheduled || backup.Status.Phase == v1alpha1.BackupRunning || backup.Status.Phase == v1alpha1.BackupPrepare
-}
+// // needCheckBackupJobs return whether need to check job status.
+// func needCheckBackupJobs(backup *v1alpha1.Backup) bool {
+// 	return backup.Status.Phase == v1alpha1.BackupScheduled || backup.Status.Phase == v1alpha1.BackupRunning || backup.Status.Phase == v1alpha1.BackupPrepare
+// }

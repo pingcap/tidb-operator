@@ -1444,10 +1444,6 @@ spec:
     description: The log backup truncate until ts
     name: LogTruncateUntil
     type: string
-  - JSONPath: .status.LogStopped
-    description: Whether The log backup is stopped
-    name: LogStopped
-    type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
     name: Started
@@ -2817,10 +2813,46 @@ spec:
               type: array
             logCheckpointTs:
               type: string
-            logSafeTruncatedUntil:
-              type: string
-            logStopped:
-              type: boolean
+            logSubCommandCondition:
+              additionalProperties:
+                properties:
+                  command:
+                    type: string
+                  conditions:
+                    items:
+                      properties:
+                        lastTransitionTime:
+                          format: date-time
+                          nullable: true
+                          type: string
+                        message:
+                          type: string
+                        reason:
+                          type: string
+                        status:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - status
+                      - type
+                      type: object
+                    nullable: true
+                    type: array
+                  logTruncateUntil:
+                    type: string
+                  phase:
+                    type: string
+                  timeCompleted:
+                    format: date-time
+                    nullable: true
+                    type: string
+                  timeStarted:
+                    format: date-time
+                    nullable: true
+                    type: string
+                type: object
+              type: object
             logTruncateUntil:
               type: string
             phase:

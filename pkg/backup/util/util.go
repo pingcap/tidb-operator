@@ -521,6 +521,10 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 			if err != nil {
 				return err
 			}
+			if v1alpha1.ParseLogBackupSubcommand(backup) == v1alpha1.LogTruncateCommand && backup.Spec.LogTruncateUntil == "" {
+				return fmt.Errorf("log backup %s/%s truncate command missing 'logTruncateUntil'", ns, name)
+
+			}
 			_, err = util.ParseTSString(backup.Spec.LogTruncateUntil)
 			if err != nil {
 				return err

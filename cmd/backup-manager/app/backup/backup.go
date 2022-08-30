@@ -142,8 +142,8 @@ func (bo *Options) startlogBackupExec(ctx context.Context, backup *v1alpha1.Back
 		"start",
 		fmt.Sprintf("--task-name=%s", backup.Name),
 	}
-	if backup.Spec.CommitTs != "" {
-		specificArgs = append(specificArgs, fmt.Sprintf("--start-ts=%s", backup.Spec.CommitTs))
+	if bo.CommitTS != "" && bo.CommitTS != "0" {
+		specificArgs = append(specificArgs, fmt.Sprintf("--start-ts=%s", bo.CommitTS))
 	}
 	fullArgs, err := bo.logBackupCommandTemplate(backup, specificArgs)
 	if err != nil {
@@ -171,7 +171,7 @@ func (bo *Options) truncatelogBackupExec(ctx context.Context, backup *v1alpha1.B
 	specificArgs := []string{
 		"log",
 		"truncate",
-		fmt.Sprintf("--until=%s", backup.Spec.LogTruncateUntil),
+		fmt.Sprintf("--until=%s", bo.TruncateUntil),
 	}
 	fullArgs, err := bo.logBackupCommandTemplate(backup, specificArgs)
 	if err != nil {

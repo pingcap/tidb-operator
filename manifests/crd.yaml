@@ -1454,10 +1454,6 @@ spec:
       jsonPath: .status.logTruncateUntil
       name: LogTruncateUntil
       type: string
-    - description: Whether The log backup is stopped
-      jsonPath: .status.LogStopped
-      name: LogStopped
-      type: string
     - description: The time at which the backup was started
       jsonPath: .status.timeStarted
       name: Started
@@ -2819,10 +2815,46 @@ spec:
                 type: array
               logCheckpointTs:
                 type: string
-              logSafeTruncatedUntil:
-                type: string
-              logStopped:
-                type: boolean
+              logSubCommandCondition:
+                additionalProperties:
+                  properties:
+                    command:
+                      type: string
+                    conditions:
+                      items:
+                        properties:
+                          lastTransitionTime:
+                            format: date-time
+                            nullable: true
+                            type: string
+                          message:
+                            type: string
+                          reason:
+                            type: string
+                          status:
+                            type: string
+                          type:
+                            type: string
+                        required:
+                        - status
+                        - type
+                        type: object
+                      nullable: true
+                      type: array
+                    logTruncateUntil:
+                      type: string
+                    phase:
+                      type: string
+                    timeCompleted:
+                      format: date-time
+                      nullable: true
+                      type: string
+                    timeStarted:
+                      format: date-time
+                      nullable: true
+                      type: string
+                  type: object
+                type: object
               logTruncateUntil:
                 type: string
               phase:

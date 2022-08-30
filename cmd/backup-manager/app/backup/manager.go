@@ -96,7 +96,7 @@ func (bm *Manager) ProcessBackup() error {
 		return fmt.Errorf("no br config in %s", bm)
 	}
 
-	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+	if bm.Mode == string(v1alpha1.BackupModeLog) {
 		return bm.performLogBackup(ctx, backup.DeepCopy())
 	}
 
@@ -350,13 +350,23 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 		resultStatus *controller.BackupUpdateStatus
 	)
 
+	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupPrepare,
+		Status: corev1.ConditionTrue,
+	}, nil); err != nil {
+		return err
+	}
+
 	// start/stop/truncate log backup
-	if backup.Spec.LogStop {
-		resultStatus, reason, err = bm.stopLogBackup(ctx, backup)
-	} else if backup.Spec.LogTruncateUntil != "" {
-		resultStatus, reason, err = bm.truncateLogBackup(ctx, backup)
-	} else {
+	switch bm.SubCommand {
+	case string(v1alpha1.LogStartCommand):
 		resultStatus, reason, err = bm.startLogBackup(ctx, backup)
+	case string(v1alpha1.LogStopCommand):
+		resultStatus, reason, err = bm.stopLogBackup(ctx, backup)
+	case string(v1alpha1.LogTruncateCommand):
+		resultStatus, reason, err = bm.truncateLogBackup(ctx, backup)
+	default:
+		return fmt.Errorf("log backup %s unkown log subcommand %s", bm, bm.SubCommand)
 	}
 
 	// handle error
@@ -393,8 +403,10 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	updatePathStatus := &controller.BackupUpdateStatus{
 		BackupPath: &backupFullPath,
 	}
+
+	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupPrepare,
+		Type:   v1alpha1.BackupRunning,
 		Status: corev1.ConditionTrue,
 	}, updatePathStatus); err != nil {
 		return nil, "UpdateStatusFailed", err
@@ -433,8 +445,9 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
 	started := time.Now()
 
+	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupPrepare,
+		Type:   v1alpha1.BackupRunning,
 		Status: corev1.ConditionTrue,
 	}, nil); err != nil {
 		return nil, "UpdateStatusFailed", err
@@ -450,12 +463,10 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 	klog.Infof("Stop log backup of cluster %s success", bm)
 
 	finish := time.Now()
-	stopped := true
 
 	updateStatus := &controller.BackupUpdateStatus{
 		TimeStarted:   &metav1.Time{Time: started},
 		TimeCompleted: &metav1.Time{Time: finish},
-		LogStopped:    &stopped,
 	}
 	return updateStatus, "", nil
 }
@@ -463,8 +474,10 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 // truncateLogBackup truncates log backup.
 func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
 	started := time.Now()
+
+	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupPrepare,
+		Type:   v1alpha1.BackupRunning,
 		Status: corev1.ConditionTrue,
 	}, nil); err != nil {
 		return nil, "UpdateStatusFailed", err
