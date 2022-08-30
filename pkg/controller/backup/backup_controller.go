@@ -167,7 +167,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	if (newBackup.Spec.Mode != v1alpha1.BackupModeLog && v1alpha1.IsBackupComplete(newBackup)) || v1alpha1.IsLogBackupSubCommandComplete(newBackup) {
+	if (newBackup.Spec.Mode != v1alpha1.BackupModeLog && v1alpha1.IsBackupComplete(newBackup)) || (newBackup.Spec.Mode == v1alpha1.BackupModeLog && v1alpha1.IsLogBackupSubCommandComplete(newBackup)) {
 		klog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
 		return
 	}

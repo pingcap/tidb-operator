@@ -435,6 +435,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogStop = false
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogTruncateUntil, backup.Spec.LogTruncateUntil)
