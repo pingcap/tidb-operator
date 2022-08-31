@@ -32,6 +32,8 @@ type CollectorConfig struct {
 	Pod   *BaseConfig `yaml:"pod,omitempty"`
 	Svc   *BaseConfig `yaml:"service,omitempty"`
 	Event *BaseConfig `yaml:"event,omitempty"`
+	// appsv1 group
+	StatefulSet *BaseConfig `yaml:"statefulSet,omitempty"`
 	// ASTS group
 	ASTS *BaseConfig `yaml:"asts,omitempty"`
 	// tidb-operator group
@@ -79,6 +81,9 @@ func ConfigCollectors(cli client.Reader, config CollectorConfig) (res []collect.
 		res = append(res, c)
 	}
 	if c := configureCollector(cli, collect.NewTidbClusterCollector, config.TidbCluster, config.Namespace); c != nil {
+		res = append(res, c)
+	}
+	if c := configureCollector(cli, collect.NewSSCollector, config.StatefulSet, config.Namespace); c != nil {
 		res = append(res, c)
 	}
 	return

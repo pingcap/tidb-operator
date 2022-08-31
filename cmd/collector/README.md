@@ -14,6 +14,7 @@ The collector will collect following information:
 5. Persistent volume claim information.
 6. Service information
 7. TidbCluster information
+8. StatefulSet information
 
 There're global configuration and per-resource configuration.
 User can specify a namespace in global config, and override that in per-resource config.

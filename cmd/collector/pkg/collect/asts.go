@@ -9,13 +9,13 @@ import (
 	asapps "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
 )
 
-type StatefulSet struct {
+type AdvancedStatefulSet struct {
 	*BaseCollector
 }
 
-var _ Collector = (*StatefulSet)(nil)
+var _ Collector = (*AdvancedStatefulSet)(nil)
 
-func (p *StatefulSet) Objects() (<-chan client.Object, error) {
+func (p *AdvancedStatefulSet) Objects() (<-chan client.Object, error) {
 	list := &asapps.StatefulSetList{}
 	err := p.Reader.List(context.Background(), list, p.opts...)
 	if err != nil {
@@ -34,7 +34,7 @@ func (p *StatefulSet) Objects() (<-chan client.Object, error) {
 
 func NewASTSCollector(cli client.Reader) Collector {
 	addAsappsV1Scheme()
-	return &StatefulSet{
+	return &AdvancedStatefulSet{
 		BaseCollector: NewBaseCollector(cli),
 	}
 }
