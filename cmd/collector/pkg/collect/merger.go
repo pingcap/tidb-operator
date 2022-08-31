@@ -33,7 +33,7 @@ func (m *merger) Objects() (<-chan client.Object, error) {
 				panic(err)
 			}
 			for obj := range ch {
-				objCh <- obj
+				objCh <- obj // nolint: gosec
 			}
 			m.collectors = m.collectors[1:]
 		}

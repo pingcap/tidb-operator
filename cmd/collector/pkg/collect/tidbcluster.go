@@ -37,7 +37,7 @@ func (p *TidbCluster) Objects() (<-chan client.Object, error) {
 	ch := make(chan client.Object)
 	go func() {
 		for _, obj := range list.Items {
-			ch <- &obj
+			ch <- &obj // nolint: gosec
 		}
 		close(ch)
 	}()
