@@ -15,6 +15,7 @@ The collector will collect following information:
 6. Service information
 7. TidbCluster information
 8. StatefulSet information
+9. ConfigMap information
 
 There're global configuration and per-resource configuration.
 User can specify a namespace in global config, and override that in per-resource config.

@@ -27,11 +27,12 @@ type CollectorConfig struct {
 	Namespace string `yaml:"namespace"`
 	// Configurations for each individual resource.
 	// Corev1 group
-	PV    *BaseConfig `yaml:"pv,omitempty"`
-	PVC   *BaseConfig `yaml:"pvc,omitempty"`
-	Pod   *BaseConfig `yaml:"pod,omitempty"`
-	Svc   *BaseConfig `yaml:"service,omitempty"`
-	Event *BaseConfig `yaml:"event,omitempty"`
+	PV        *BaseConfig `yaml:"pv,omitempty"`
+	PVC       *BaseConfig `yaml:"pvc,omitempty"`
+	Pod       *BaseConfig `yaml:"pod,omitempty"`
+	Svc       *BaseConfig `yaml:"service,omitempty"`
+	Event     *BaseConfig `yaml:"event,omitempty"`
+	ConfigMap *BaseConfig `yaml:"configMap,omitempty"`
 	// appsv1 group
 	StatefulSet *BaseConfig `yaml:"statefulSet,omitempty"`
 	// ASTS group
@@ -84,6 +85,9 @@ func ConfigCollectors(cli client.Reader, config CollectorConfig) (res []collect.
 		res = append(res, c)
 	}
 	if c := configureCollector(cli, collect.NewSSCollector, config.StatefulSet, config.Namespace); c != nil {
+		res = append(res, c)
+	}
+	if c := configureCollector(cli, collect.NewConfigMapCollector, config.ConfigMap, config.Namespace); c != nil {
 		res = append(res, c)
 	}
 	return
