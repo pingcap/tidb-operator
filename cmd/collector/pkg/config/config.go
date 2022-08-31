@@ -34,6 +34,8 @@ type CollectorConfig struct {
 	Event *BaseConfig `yaml:"event,omitempty"`
 	// ASTS group
 	ASTS *BaseConfig `yaml:"asts,omitempty"`
+	// tidb-operator group
+	TidbCluster *BaseConfig `yaml:"tidbCluster,omitempty"`
 }
 
 // configureCollector configures a single collector based on its configs.
@@ -74,6 +76,9 @@ func ConfigCollectors(cli client.Reader, config CollectorConfig) (res []collect.
 		res = append(res, c)
 	}
 	if c := configureCollector(cli, collect.NewASTSCollector, config.ASTS, config.Namespace); c != nil {
+		res = append(res, c)
+	}
+	if c := configureCollector(cli, collect.NewTidbClusterCollector, config.TidbCluster, config.Namespace); c != nil {
 		res = append(res, c)
 	}
 	return

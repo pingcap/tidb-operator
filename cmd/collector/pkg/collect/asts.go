@@ -4,8 +4,6 @@ import (
 	"context"
 	"sync"
 
-	_ "k8s.io/api/core/v1"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	asapps "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
@@ -45,6 +43,6 @@ var asappsv1Scheme sync.Once
 
 func addAsappsV1Scheme() {
 	asappsv1Scheme.Do(func() {
-		corev1.AddToScheme(scheme)
+		asapps.AddToScheme(scheme)
 	})
 }
