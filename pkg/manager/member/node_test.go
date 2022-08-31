@@ -54,7 +54,7 @@ func TestGetNodeLabels(t *testing.T) {
 		}
 	}
 
-	tests := []testcase{
+	tests := []*testcase{
 		{
 			nodeLabels: map[string]string{
 				"region": "us-west-1",
@@ -155,6 +155,6 @@ func TestGetNodeLabels(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		testFn(&test, t)
+		testFn(test, t)
 	}
 }
