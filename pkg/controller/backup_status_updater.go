@@ -52,6 +52,8 @@ type BackupUpdateStatus struct {
 	LogCheckpointTs *string
 	// LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.
 	LogSuccessTruncateUntil *string
+	// LogTruncatingUntil is log backup truncate until timestamp which is used to mark the truncate command.
+	LogTruncatingUntil *string
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -83,8 +85,10 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 	// try best effort to guarantee backup is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
 		var isStatusUpdate, isConditionUpdate, isLogSubcommandStatusUpdate bool
+		// log backup status update should be handled specially before backup is delete.
+		// it needs update both subcommand status and whole backup status.
 		if backup.Spec.Mode == v1alpha1.BackupModeLog && backup.DeletionTimestamp == nil {
-			isLogSubcommandStatusUpdate = updateLogBackupSubcommandStatus(backup, condition, newStatus)
+			isLogSubcommandStatusUpdate = updateLogBackupStatus(backup, condition, newStatus)
 		} else {
 			isStatusUpdate = updateBackupStatus(&backup.Status, newStatus)
 			isConditionUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
@@ -151,88 +155,104 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	return isUpdate
 }
 
-// updateLogBackupSubcommandStatus upserts log backup subcommand.
-// start command will update log backup status together.
-// truncate/stop command complete will update log backup status together.
-func updateLogBackupSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
-	isUpdate := false
-	if condition == nil {
-		// skip update subcommand status, shoudl just update backup status
-		return isUpdate
-	}
-	command := v1alpha1.ParseLogBackupSubcommand(backup)
-	if command == "" {
+// updateLogBackupStatus update log backup status.
+// it will update both the log backup sub command status and the whole log backup status.
+func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
+	if condition == nil || condition.Command == "" {
 		return false
 	}
+
+	isSubCommandStatusUpdate := updateLogSubcommandStatus(backup, condition, newStatus)
+	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
+
+	return isSubCommandStatusUpdate || isWholeStatusUpdate
+}
+
+// updateLogSubcommandStatus update log backup subcommand status.
+func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
+	// init log subcommand status map
 	if backup.Status.LogSubCommandStatuses == nil {
 		backup.Status.LogSubCommandStatuses = make(map[v1alpha1.LogSubCommandType]v1alpha1.LogSubCommandStatus)
 	}
 	// update subcommand status
-	status, ok := backup.Status.LogSubCommandStatuses[command]
+	subStatus, ok := backup.Status.LogSubCommandStatuses[condition.Command]
 	if !ok {
-		// no subcommand status, should create
-		status = v1alpha1.LogSubCommandStatus{
-			Command:     command,
+		// init subcommand status
+		subStatus = v1alpha1.LogSubCommandStatus{
+			Command:     condition.Command,
 			TimeStarted: metav1.Time{Time: time.Now()},
 			Conditions:  make([]v1alpha1.BackupCondition, 0),
 		}
 	}
 
-	// truncate command should update subcommand's truncateUtil to simplify reconcile
-	if command == v1alpha1.LogTruncateCommand && condition.Type == v1alpha1.BackupScheduled {
-		status.LogTruncatingUntil = backup.Spec.LogTruncateUntil
-	}
-
-	// update subcommand status
-	subcommandStatusUpdate := updateLogSubCommandStatusOnly(&status, newStatus)
-	subcomandConditionUpdate := updateLogSubCommandConditionOnly(&status, condition)
-
+	// update the status info and the condition info
+	subcommandStatusUpdate := updateLogSubCommandStatusOnly(&subStatus, newStatus)
+	subcomandConditionUpdate := updateLogSubCommandConditionOnly(&subStatus, condition)
 	if subcommandStatusUpdate || subcomandConditionUpdate {
-		backup.Status.LogSubCommandStatuses[command] = status
+		backup.Status.LogSubCommandStatuses[condition.Command] = subStatus
+		return true
+	}
+	return false
+}
+
+// updateWholeLogBackupStatus updates the whole log backup status.
+func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
+	var (
+		copyCondition  v1alpha1.BackupCondition
+		copyStatus     BackupUpdateStatus
+		copyConditionP *v1alpha1.BackupCondition
+		copyStatusP    *BackupUpdateStatus
+	)
+	copyCondition = *condition
+	copyConditionP = &copyCondition
+	if newStatus != nil {
+		copyStatus = *newStatus
+		copyStatusP = &copyStatus
 	}
 
-	klog.Infof("subcommand phase: %s", backup.Status.LogSubCommandStatuses[command].Phase)
-	for _, c := range backup.Status.LogSubCommandStatuses[command].Conditions {
-		klog.Infof("subcommand conditions: %s, is on it %s", c.Type, c.Status)
-	}
-
-	// update whole log status
-	// start command: need to update log status and condition, expect complete which just need to update log status
-	// truncate/stop command: just complete need to update log status
-	switch command {
+	switch condition.Command {
 	case v1alpha1.LogStartCommand:
+		// start command should not update TimeCompleted and condition when start complete.
+		// start command other status and condition info can be synced to the whole log backup status.
 		if condition.Type == v1alpha1.BackupComplete {
-			// start command should not update TimeCompleted and condition
-			newStatus.TimeCompleted = nil
-			condition = nil
+			if copyStatusP != nil {
+				copyStatusP.TimeCompleted = nil
+			}
+			copyConditionP = nil
 		}
 	case v1alpha1.LogStopCommand:
+		// stop command should not update TimeStarted, but should update condition when stop complete.
+		// stop command other status should not be synced to whole log backup status.
 		if condition.Type == v1alpha1.BackupComplete {
-			// stop command should not update TimeStarted, but need update condition
-			newStatus.TimeStarted = nil
+			if copyStatusP != nil {
+				copyStatusP.TimeStarted = nil
+			}
 		} else {
-			newStatus = nil
-			condition = nil
+			copyStatusP = nil
+			copyConditionP = nil
 		}
 	case v1alpha1.LogTruncateCommand:
+		// truncate command shoudld not update TimeStarted, TimeCompleted when truncate complete.
+		// truncate command other status should not be synced to whole log backup status.
 		if condition.Type == v1alpha1.BackupComplete {
-			// truncate command shoudld not update TimeStarted, TimeCompleted
-			newStatus.TimeCompleted = nil
-			newStatus.TimeStarted = nil
+			if copyStatusP != nil {
+				copyStatusP.TimeCompleted = nil
+				copyStatusP.TimeStarted = nil
+			}
 		} else {
-			newStatus = nil
+			copyStatusP = nil
 		}
-		condition = nil
+		copyConditionP = nil
 	default:
 		// should not hanpen
-		return isUpdate || subcommandStatusUpdate || subcomandConditionUpdate
+		return false
 	}
 
-	// update whole log status
-	wholeStatusUpdate := updateBackupStatus(&backup.Status, newStatus)
-	wholeConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, condition)
+	// update whole log status and condition
+	wholeStatusUpdate := updateBackupStatus(&backup.Status, copyStatusP)
+	wholeConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, copyConditionP)
 
-	return isUpdate || subcommandStatusUpdate || subcomandConditionUpdate || wholeStatusUpdate || wholeConditionUpdate
+	return wholeStatusUpdate || wholeConditionUpdate
 }
 
 func updateLogSubCommandStatusOnly(status *v1alpha1.LogSubCommandStatus, newStatus *BackupUpdateStatus) bool {
@@ -246,6 +266,10 @@ func updateLogSubCommandStatusOnly(status *v1alpha1.LogSubCommandStatus, newStat
 	}
 	if newStatus.TimeCompleted != nil && status.TimeCompleted != *newStatus.TimeCompleted {
 		status.TimeCompleted = *newStatus.TimeCompleted
+		isUpdate = true
+	}
+	if newStatus.LogTruncatingUntil != nil && status.LogTruncatingUntil != *newStatus.LogTruncatingUntil {
+		status.LogTruncatingUntil = *newStatus.LogTruncatingUntil
 		isUpdate = true
 	}
 	return isUpdate

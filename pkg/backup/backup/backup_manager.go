@@ -16,9 +16,11 @@ package backup
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -73,6 +75,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
+	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 
 	var err error
 	if backup.Spec.BR == nil {
@@ -88,6 +91,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		if err != nil {
 			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Command: logBackupSubcommand,
 				Type:    v1alpha1.BackupRetryFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
@@ -102,6 +106,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	if err != nil {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: logBackupSubcommand,
 			Type:    v1alpha1.BackupInvalid,
 			Status:  corev1.ConditionTrue,
 			Reason:  "InvalidSpec",
@@ -111,70 +116,27 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return controller.IgnoreErrorf("invalid backup spec %s/%s cause %s", ns, name, err.Error())
 	}
 
-	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		command := v1alpha1.ParseLogBackupSubcommand(backup)
-
-		if command == v1alpha1.LogTruncateCommand {
-			klog.V(4).Infof("log backup newTsUint == %s, oldTsUnit == %s", backup.Spec.LogTruncateUntil, backup.Status.LogSuccessTruncateUntil)
-			if subStatus, ok := backup.Status.LogSubCommandStatuses[command]; ok {
-				klog.V(4).Infof("log backup sub newTsUint == %s, phase == %s", subStatus.LogTruncatingUntil, subStatus.Phase)
-			}
-		}
-
-		// log backup reconcile
-		if v1alpha1.IsLogBackupSubCommandComplete(backup) || v1alpha1.IsLogBackupSubCommandRunning(backup) {
-			klog.V(4).Infof("log backup %s/%s subcommand %s is complete or running, will skip sync.", ns, name, command)
+	// check whether log backup subcommand can skip
+	if canSkip, err := canLogBackupCommandSkipSync(bm, backup); err != nil {
+		return err
+	} else {
+		if canSkip {
+			klog.V(4).Infof("log backup %s/%s subcommand %s is already done, will skip sync.", ns, name, logBackupSubcommand)
 			return nil
 		}
-
-		//
-		if v1alpha1.IsLogBackupSubCommandFailed(backup) {
-			reason, message := v1alpha1.GetLogSumcommandConditionInfo(backup)
-			klog.V(4).Infof("log backup %s/%s subcommand %s is failed, will retry, reason %s, message %s.", ns, name, command, reason, message)
-			// update to retryfailed and will be enqueued again when reconcile
-			return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupRetryFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  reason,
-				Message: message,
-			}, nil)
-		}
-
-		// 前提条件检查，比如是否 start 了
-		if !v1alpha1.CanLogSubcommandRun(backup) {
-			klog.V(4).Infof("log backup %s/%s subcommand %s should wait start complete, will requeue.", ns, name, command)
-			return controller.RequeueErrorf(fmt.Sprintf("log backup %s/%s command %s should wait start complete", ns, name, command))
-		}
+	}
+	// check whether log backup subcommand can should wait and requeue
+	if shouldLogBackupCommandRequeue(backup) {
+		klog.V(4).Infof("log backup %s/%s subcommand %s should wait log backup start complete, will requeue.", ns, name, logBackupSubcommand)
+		return controller.RequeueErrorf(fmt.Sprintf("log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand))
 	}
 
 	var oldJob *batchv1.Job
 	oldJob, err = bm.deps.JobLister.Jobs(ns).Get(backupJobName)
-	if err == nil {
-		// log backup should delete job, if the job is complete or failed
-		if oldJob != nil && backup.Spec.Mode == v1alpha1.BackupModeLog {
-			klog.Infof("oldJob of log backup %s/%s job %s exist", ns, name, backupJobName)
-			if oldJob.DeletionTimestamp != nil {
-				return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s job %s is being deleted", ns, name, backupJobName))
-			}
-			finished := false
-			for _, c := range oldJob.Status.Conditions {
-				klog.Infof("oldJob condition type %s, is on it %s", c.Type, c.Status)
-				if c.Type == batchv1.JobFailed && c.Status == corev1.ConditionTrue {
-					klog.Infof("log backup %s/%s job %s has failed, break", ns, name, backupJobName)
-					return nil
-				}
-				if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
-					finished = true
-					break
-				}
-			}
-			if finished {
-				klog.Infof("log backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
-				err = bm.deps.JobControl.DeleteJob(backup, oldJob)
-				if err != nil {
-					return fmt.Errorf("log backup %s/%s delete job %s failed, err: %v", ns, name, backupJobName, err)
-				}
-			}
+	if oldJob != nil {
+		// log backup should delete job and wait done.
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+			return waitOldLogBackupJobDone(ns, name, backupJobName, bm, backup, oldJob)
 		}
 		return nil
 	}
@@ -214,6 +176,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		job, reason, err = bm.makeBackupJob(backup)
 		if err != nil {
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Command: logBackupSubcommand,
 				Type:    v1alpha1.BackupRetryFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
@@ -226,12 +189,24 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	if err := bm.deps.JobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: logBackupSubcommand,
 			Type:    v1alpha1.BackupRetryFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateBackupJobFailed",
 			Message: errMsg.Error(),
 		}, nil)
 		return errMsg
+	}
+
+	// log truncate need to update truncating ts
+	if logBackupSubcommand == v1alpha1.LogTruncateCommand {
+		updateStatus := &controller.BackupUpdateStatus{
+			LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
+		}
+		return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:   v1alpha1.BackupScheduled,
+			Status: corev1.ConditionTrue,
+		}, updateStatus)
 	}
 
 	return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -653,6 +628,89 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 		return "CreatePVCFailed", errMsg
 	}
 	return "", nil
+}
+
+// canLogBackupCommandSkipSync returns whether log backup subcommand can skip sync.
+func canLogBackupCommandSkipSync(bm *backupManager, backup *v1alpha1.Backup) (bool, error) {
+	if backup.Spec.Mode != v1alpha1.BackupModeLog {
+		return false, nil
+	}
+	command := v1alpha1.ParseLogBackupSubcommand(backup)
+	switch command {
+	case v1alpha1.LogStartCommand:
+		// CommitTs is Recorded, start command can be skipped.
+		return backup.Status.CommitTs != "", nil
+	case v1alpha1.LogTruncateCommand:
+		// spec truncate Until TS <= start commit TS or success truncate until means log backup has been truncated.
+		var specTS, successedTS, startCommitTS uint64
+
+		specTS, _ = config.ParseTSString(backup.Spec.LogTruncateUntil)
+		successedTS, _ = config.ParseTSString(backup.Status.LogSuccessTruncateUntil)
+		startCommitTS, _ = config.ParseTSString(backup.Status.CommitTs)
+
+		if specTS <= startCommitTS || specTS <= successedTS {
+
+			updateStatus := &controller.BackupUpdateStatus{
+				TimeStarted:        &metav1.Time{Time: time.Now()},
+				TimeCompleted:      &metav1.Time{Time: time.Now()},
+				LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
+			}
+			return true, bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Command: v1alpha1.LogTruncateCommand,
+				Type:    v1alpha1.BackupComplete,
+				Status:  corev1.ConditionTrue,
+			}, updateStatus)
+		}
+		return false, nil
+	case v1alpha1.LogStopCommand:
+		// backup phase is complete, stop command can be skipped.
+		return backup.Status.Phase == v1alpha1.BackupComplete, nil
+	default:
+		return false, nil
+	}
+}
+
+// shouldLogBackupCommandRequeue returns whether log backup subcommand should requeue.
+// truncate and stop should wait start complete, otherwise, we should requeue this key.
+func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
+	if backup.Spec.Mode != v1alpha1.BackupModeLog {
+		return false
+	}
+	command := v1alpha1.ParseLogBackupSubcommand(backup)
+
+	if command == v1alpha1.LogTruncateCommand || command == v1alpha1.LogStopCommand {
+		return backup.Status.CommitTs == ""
+	}
+	return false
+}
+
+// waitOldLogBackupJobDone wait old log backup job done
+func waitOldLogBackupJobDone(ns, name, backupJobName string, bm *backupManager, backup *v1alpha1.Backup, oldJob *batchv1.Job) error {
+	if backup.Spec.Mode != v1alpha1.BackupModeLog {
+		return nil
+	}
+
+	if oldJob.DeletionTimestamp != nil {
+		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s job %s is being deleted", ns, name, backupJobName))
+	}
+	finished := false
+	for _, c := range oldJob.Status.Conditions {
+		// if c.Type == batchv1.JobFailed && c.Status == corev1.ConditionTrue {
+		// 	klog.Infof("log backup %s/%s job %s has failed, break", ns, name, backupJobName)
+		// 	return nil
+		// }
+		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
+			finished = true
+			break
+		}
+	}
+	if finished {
+		klog.Infof("log backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
+		if err := bm.deps.JobControl.DeleteJob(backup, oldJob); err != nil {
+			return fmt.Errorf("log backup %s/%s delete job %s failed, err: %v", ns, name, backupJobName, err)
+		}
+	}
+	return nil
 }
 
 var _ backup.BackupManager = &backupManager{}

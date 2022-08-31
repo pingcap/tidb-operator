@@ -20,8 +20,8 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
@@ -517,7 +517,7 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 				return fmt.Errorf("tikv %s doesn't support log backup in spec of %s/%s, the first version is v6.1.0", tikvImage, ns, name)
 			}
 			var err error
-			_, err = util.ParseTSString(backup.Spec.CommitTs)
+			_, err = config.ParseTSString(backup.Spec.CommitTs)
 			if err != nil {
 				return err
 			}
@@ -525,7 +525,7 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 				return fmt.Errorf("log backup %s/%s truncate command missing 'logTruncateUntil'", ns, name)
 
 			}
-			_, err = util.ParseTSString(backup.Spec.LogTruncateUntil)
+			_, err = config.ParseTSString(backup.Spec.LogTruncateUntil)
 			if err != nil {
 				return err
 			}

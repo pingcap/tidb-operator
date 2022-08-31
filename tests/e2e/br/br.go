@@ -482,6 +482,7 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 	return nil
 }
 
+// createLogBackupEnableTidbCluster create tidb cluster and set "log-backup.enable = true" in tikv to enable log backup.
 func createLogBackupEnableTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool) error {
 	ns := f.Namespace.Name
 	// TODO: change to use tidbclusterutil like brutil
@@ -687,6 +688,7 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
+// continueLogBackupAndWaitForComplete update backup cr to continue run log backup subcommand
 func continueLogBackupAndWaitForComplete(f *e2eframework.Framework, backup *v1alpha1.Backup, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
 	ns := f.Namespace.Name
 	name := backup.Name

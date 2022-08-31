@@ -15,7 +15,6 @@ package backup
 
 import (
 	"fmt"
-	"runtime/debug"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -100,9 +99,7 @@ func (c *Controller) processNextWorkItem() bool {
 		return false
 	}
 	defer c.queue.Done(key)
-	klog.Infof("Backup: begin key %s, stack %s", key.(string), debug.Stack())
 	if err := c.sync(key.(string)); err != nil {
-		klog.Infof("Backup: error %v", err)
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
 			c.queue.AddRateLimited(key)
@@ -113,7 +110,6 @@ func (c *Controller) processNextWorkItem() bool {
 			c.queue.AddRateLimited(key)
 		}
 	} else {
-		klog.Infof("Backup: Forget")
 		c.queue.Forget(key)
 	}
 	return true
@@ -150,10 +146,6 @@ func (c *Controller) updateBackup(cur interface{}) {
 	newBackup := cur.(*v1alpha1.Backup)
 	ns := newBackup.GetNamespace()
 	name := newBackup.GetName()
-	klog.Infof("Backup: updateBackup ,stack %s", debug.Stack())
-	for _, condition := range newBackup.Status.Conditions {
-		klog.Infof("Backup condition: %s, is on this %s", condition.Type, condition.Status)
-	}
 
 	if newBackup.DeletionTimestamp != nil {
 		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
@@ -162,24 +154,27 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsBackupInvalid(newBackup) || v1alpha1.IsLogBackupSubCommandInvalid(newBackup) {
+	if v1alpha1.IsBackupInvalid(newBackup) {
 		klog.V(4).Infof("backup %s/%s is invalid, skipping.", ns, name)
 		return
 	}
 
-	if (newBackup.Spec.Mode != v1alpha1.BackupModeLog && v1alpha1.IsBackupComplete(newBackup)) || (newBackup.Spec.Mode == v1alpha1.BackupModeLog && v1alpha1.IsLogBackupSubCommandComplete(newBackup)) {
+	if v1alpha1.IsBackupComplete(newBackup) {
 		klog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
 		return
 	}
 
-	if newBackup.Spec.Mode != v1alpha1.BackupModeLog && v1alpha1.IsBackupFailed(newBackup) {
-		// || (v1alpha1.IsLogBackupSubCommandFailed(newBackup) && !v1alpha1.CanLogBackSumcommandFailedRetry(newBackup)
+	if v1alpha1.IsBackupFailed(newBackup) {
 		klog.V(4).Infof("backup %s/%s is Failed, skipping.", ns, name)
 		return
 	}
 
-	if newBackup.Spec.Mode != v1alpha1.BackupModeLog && (v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup)) {
+	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) {
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
+		// TODO: log backup check all subcommand job's pod status
+		if newBackup.Spec.Mode == v1alpha1.BackupModeLog {
+			return
+		}
 		selector, err := label.NewBackup().Instance(newBackup.GetInstanceName()).BackupJob().Backup(name).Selector()
 		if err != nil {
 			klog.Errorf("Fail to generate selector for backup %s/%s, %v", ns, name, err)
@@ -205,11 +200,6 @@ func (c *Controller) updateBackup(cur interface{}) {
 				break
 			}
 		}
-		return
-	}
-
-	if v1alpha1.IsLogBackupSubCommandRunning(newBackup) {
-		klog.V(4).Infof("log backup %s/%s subcommand is Running, skipping.", ns, name)
 		return
 	}
 
@@ -263,7 +253,46 @@ func (c *Controller) enqueueBackup(obj interface{}) {
 	c.queue.Add(key)
 }
 
-// // needCheckBackupJobs return whether need to check job status.
-// func needCheckBackupJobs(backup *v1alpha1.Backup) bool {
-// 	return backup.Status.Phase == v1alpha1.BackupScheduled || backup.Status.Phase == v1alpha1.BackupRunning || backup.Status.Phase == v1alpha1.BackupPrepare
+// // CanBackupEventSkipByInvalidStatus return whether bakcup event can skip by backup invalid status
+// func CanBackupEventSkipByInvalidStatus(backup *v1alpha1.Backup) bool {
+// 	// whole backup invalid or log backup subcommand invalid can skip
+// 	return v1alpha1.IsBackupInvalid(backup) || v1alpha1.IsLogBackupSubCommandInvalid(backup)
+// }
+
+// // CanBackupEventSkipByCompleteStatus return whether bakcup event can skip by backup complete status
+// func CanBackupEventSkipByCompleteStatus(backup *v1alpha1.Backup) bool {
+// 	// for log backup:
+// 	// 1. subcommand can run when whole backup is not complete, such as truncate/stop can run after start complete, but the whole backup will be running.
+// 	// 2. subcommand can run after whole backup is complete, such as truncate can run after log backup is stopped.
+// 	// so we will separately check whether the log subcommd complete.
+// 	// for other backup, we can skip after whole backup is complete.
+// 	isComplete := false
+// 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+// 		isComplete = v1alpha1.IsLogBackupSubCommandComplete(backup)
+// 	} else {
+// 		isComplete = v1alpha1.IsBackupComplete(backup)
+// 	}
+// 	return isComplete
+// }
+
+// // CanBackupEventSkipByFailedStatus return whether bakcup event can skip by backup failed status
+// func CanBackupEventSkipByFailedStatus(backup *v1alpha1.Backup) bool {
+// 	// whole backup failed or log backup subcommand failed can skip
+// 	return v1alpha1.IsBackupFailed(backup) || v1alpha1.IsLogBackupSubCommandFailed(backup)
+// }
+
+// // CanBackupEventSkipByRunningStatus return whether bakcup event can skip by backup running status
+// func CanBackupEventSkipByRunningStatus(backup *v1alpha1.Backup) bool {
+// 	// for log backup:
+// 	// 1. subcommand can run when whole backup is not running, such as truncate can run after whole backup is complete
+// 	// 2. subcommand can run after whole backup is running, such as truncate/stop can run when log backup is running.
+// 	// so we will separately check whether the log subcommd running.
+// 	// for other backup, we can skip after whole backup is running.
+// 	isRunning := false
+// 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+// 		isRunning = v1alpha1.IsLogBackupSubCommandRunning(backup)
+// 	} else {
+// 		isRunning = v1alpha1.IsBackupScheduled(backup) || v1alpha1.IsBackupRunning(backup) || v1alpha1.IsBackupPrepared(backup)
+// 	}
+// 	return isRunning
 // }

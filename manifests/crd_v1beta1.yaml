@@ -2793,6 +2793,8 @@ spec:
             conditions:
               items:
                 properties:
+                  command:
+                    type: string
                   lastTransitionTime:
                     format: date-time
                     nullable: true
@@ -2821,6 +2823,8 @@ spec:
                   conditions:
                     items:
                       properties:
+                        command:
+                          type: string
                         lastTransitionTime:
                           format: date-time
                           nullable: true

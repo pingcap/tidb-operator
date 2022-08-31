@@ -1883,8 +1883,9 @@ const (
 
 // BackupCondition describes the observed state of a Backup at a certain point.
 type BackupCondition struct {
-	Type   BackupConditionType    `json:"type"`
-	Status corev1.ConditionStatus `json:"status"`
+	Command LogSubCommandType      `json:"command,omitempty"`
+	Type    BackupConditionType    `json:"type"`
+	Status  corev1.ConditionStatus `json:"status"`
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	Reason             string      `json:"reason,omitempty"`

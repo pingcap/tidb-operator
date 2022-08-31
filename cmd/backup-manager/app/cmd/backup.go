@@ -37,24 +37,6 @@ func NewBackupCommand() *cobra.Command {
 		Short: "Backup specific tidb cluster.",
 		Run: func(cmd *cobra.Command, args []string) {
 			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
-			// if bo.Mode == string(v1alpha1.BackupModeLog) {
-			// 	var err error
-			// 	bo.SubCommand, err = cmd.Flags().GetString("subcommand")
-			// 	if err != nil {
-			// 		klog.Errorf("read backup %s subcommand error %s", bo.String(), err)
-			// 		return
-			// 	}
-			// 	// bo.CommitTS, err = cmd.Flags().GetString("commit-ts")
-			// 	// if err != nil {
-			// 	// 	klog.Errorf("read backup %s commit-ts error %s", bo.String(), err)
-			// 	// 	return
-			// 	// }
-			// 	// bo.TruncateUntil, err = cmd.Flags().GetString("truncate-until")
-			// 	// if err != nil {
-			// 	// 	klog.Errorf("read backup %s truncate-until error %s", bo.String(), err)
-			// 	// 	return
-			// 	// }
-			// }
 			cmdutil.CheckErr(runBackup(bo, kubecfg))
 		},
 	}

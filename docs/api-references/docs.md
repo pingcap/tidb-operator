@@ -3256,6 +3256,18 @@ bool
 <tbody>
 <tr>
 <td>
+<code>command</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>type</code></br>
 <em>
 <a href="#backupconditiontype">
@@ -7976,6 +7988,7 @@ BackupConditionType
 <h3 id="logsubcommandtype">LogSubCommandType</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#backupcondition">BackupCondition</a>, 
 <a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>

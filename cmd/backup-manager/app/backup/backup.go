@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -171,7 +172,11 @@ func (bo *Options) truncatelogBackupExec(ctx context.Context, backup *v1alpha1.B
 	specificArgs := []string{
 		"log",
 		"truncate",
-		fmt.Sprintf("--until=%s", bo.TruncateUntil),
+	}
+	if bo.TruncateUntil != "" && bo.TruncateUntil != "0" {
+		specificArgs = append(specificArgs, fmt.Sprintf("--until=%s", bo.TruncateUntil))
+	} else {
+		return fmt.Errorf("log backup truncate until %s is invalid", bo.TruncateUntil)
 	}
 	fullArgs, err := bo.logBackupCommandTemplate(backup, specificArgs)
 	if err != nil {
@@ -214,7 +219,7 @@ func (bo *Options) brCommandRun(ctx context.Context, fullArgs []string) error {
 		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
 	}
 	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := path.Join(util.BRBinPath, "br")
+	bin := filepath.Join(util.BRBinPath, "br")
 	cmd := exec.CommandContext(ctx, bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()
@@ -238,7 +243,7 @@ func (bo *Options) brCommandRun(ctx context.Context, fullArgs []string) error {
 		}
 
 		klog.Info(strings.Replace(line, "\n", "", -1))
-		if err != nil || io.EOF == err {
+		if err != nil {
 			break
 		}
 	}

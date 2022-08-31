@@ -56,10 +56,10 @@ func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.
 		}
 
 		if b.Spec.Mode == v1alpha1.BackupModeLog {
-			if v1alpha1.IsLogBackupSubCommandComplete(b) {
+			if v1alpha1.IsLogBackupSubCommandOntheCondition(b, v1alpha1.BackupComplete) {
 				return true, nil
 			}
-			if v1alpha1.IsLogBackupSubCommandFailed(b) || v1alpha1.IsLogBackupSubCommandInvalid(b) {
+			if v1alpha1.IsLogBackupSubCommandOntheCondition(b, v1alpha1.BackupFailed) || v1alpha1.IsLogBackupSubCommandOntheCondition(b, v1alpha1.BackupInvalid) {
 				reason, message := v1alpha1.GetLogSumcommandConditionInfo(b)
 				return false, fmt.Errorf("log backup is failed, reason: %s, message: %s", reason, message)
 			}
