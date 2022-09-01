@@ -367,7 +367,7 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 	case string(v1alpha1.LogTruncateCommand):
 		resultStatus, reason, err = bm.truncateLogBackup(ctx, backup)
 	default:
-		return fmt.Errorf("log backup %s unkown log subcommand %s", bm, bm.SubCommand)
+		return fmt.Errorf("log backup %s unknown log subcommand %s", bm, bm.SubCommand)
 	}
 
 	// handle error

@@ -288,13 +288,16 @@ func updateLogSubCommandConditionOnly(status *v1alpha1.LogSubCommandStatus, cond
 
 	var oldCondition *v1alpha1.BackupCondition
 	// find old Backup condition.
-	for _, c := range status.Conditions {
+	index := -1
+	for i, c := range status.Conditions {
 		if c.Type == condition.Type {
-			oldCondition = &c
+			index = i
 			break
 		}
 	}
-	if oldCondition == nil {
+	if index != -1 {
+		oldCondition = &status.Conditions[index]
+	} else {
 		//add new Backup condition.
 		oldCondition = &v1alpha1.BackupCondition{Type: condition.Type}
 		status.Conditions = append(status.Conditions, *oldCondition)
