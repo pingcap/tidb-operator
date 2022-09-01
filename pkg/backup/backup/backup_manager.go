@@ -649,7 +649,7 @@ func canLogBackupCommandSkipSync(bm *backupManager, backup *v1alpha1.Backup) (bo
 		startCommitTS, _ = config.ParseTSString(backup.Status.CommitTs)
 
 		if specTS <= startCommitTS || specTS <= successedTS {
-
+			// if skip truncate, we need update truncate to be complete, and truncating util is the spec's truncate until.
 			updateStatus := &controller.BackupUpdateStatus{
 				TimeStarted:        &metav1.Time{Time: time.Now()},
 				TimeCompleted:      &metav1.Time{Time: time.Now()},
@@ -695,10 +695,6 @@ func waitOldLogBackupJobDone(ns, name, backupJobName string, bm *backupManager, 
 	}
 	finished := false
 	for _, c := range oldJob.Status.Conditions {
-		// if c.Type == batchv1.JobFailed && c.Status == corev1.ConditionTrue {
-		// 	klog.Infof("log backup %s/%s job %s has failed, break", ns, name, backupJobName)
-		// 	return nil
-		// }
 		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
 			finished = true
 			break

@@ -113,7 +113,7 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 	return err
 }
 
-// updateBackupStatus updates existing Backup status
+// updateBackupStatus updates existing Backup status.
 // from the fields in BackupUpdateStatus.
 func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
 	isUpdate := false
@@ -161,10 +161,8 @@ func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCo
 	if condition == nil || condition.Command == "" {
 		return false
 	}
-
 	isSubCommandStatusUpdate := updateLogSubcommandStatus(backup, condition, newStatus)
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
-
 	return isSubCommandStatusUpdate || isWholeStatusUpdate
 }
 
@@ -255,6 +253,7 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 	return wholeStatusUpdate || wholeConditionUpdate
 }
 
+// updateLogSubCommandStatusOnly only updates log subcommand's status info.
 func updateLogSubCommandStatusOnly(status *v1alpha1.LogSubCommandStatus, newStatus *BackupUpdateStatus) bool {
 	isUpdate := false
 	if newStatus == nil {
@@ -275,6 +274,7 @@ func updateLogSubCommandStatusOnly(status *v1alpha1.LogSubCommandStatus, newStat
 	return isUpdate
 }
 
+// updateLogSubCommandConditionOnly only updates log subcommand's condition info.
 func updateLogSubCommandConditionOnly(status *v1alpha1.LogSubCommandStatus, condition *v1alpha1.BackupCondition) bool {
 	isUpdate := false
 	if condition == nil {

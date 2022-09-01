@@ -237,37 +237,6 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	return LogStartCommand
 }
 
-// // IsLogBackupSubCommandComplete return whether the log backup's subcommand is complete.
-// func IsLogBackupSubCommandComplete(backup *Backup) bool {
-// 	command := ParseLogBackupSubcommand(backup)
-// 	switch command {
-// 	case LogStartCommand:
-// 		// CommitTs is Recorded means start is complete
-// 		return backup.Status.CommitTs != ""
-// 	case LogTruncateCommand:
-// 		// spec truncate Until TS <= start commit TS or success truncate until means truncate is complete
-// 		// this is to filter some useless truncate command
-// 		var (
-// 			err                                error
-// 			specTS, successedTS, startCommitTS uint64
-// 		)
-// 		specTS, err = config.ParseTSString(backup.Spec.LogTruncateUntil)
-// 		// format err should be handled by sync
-// 		if err != nil {
-// 			return false
-// 		}
-// 		successedTS, _ = config.ParseTSString(backup.Status.LogSuccessTruncateUntil)
-// 		startCommitTS, _ = config.ParseTSString(backup.Status.CommitTs)
-
-// 		return specTS <= startCommitTS || specTS <= successedTS
-// 	case LogStopCommand:
-// 		// backup phase is complete means stop is complete
-// 		return backup.Status.Phase == BackupComplete
-// 	default:
-// 		return true
-// 	}
-// }
-
 // IsLogBackupSubCommandOntheCondition return whether the log subcommand on the condition.
 func IsLogBackupSubCommandOntheCondition(backup *Backup, conditionType BackupConditionType) bool {
 	command := ParseLogBackupSubcommand(backup)
@@ -287,87 +256,6 @@ func IsLogBackupSubCommandOntheCondition(backup *Backup, conditionType BackupCon
 	return false
 }
 
-// // IsLogBackupSubCommandComplete return whether the log backup's subcommand is complete.
-// func IsLogBackupSubCommandComplete(backup *Backup) bool {
-// 	command := ParseLogBackupSubcommand(backup)
-// 	switch command {
-// 	case LogStartCommand, LogStopCommand:
-// 		// start/stop command is BackupComplete means command is running
-// 		if subStatus, ok := backup.Status.LogSubCommandStatuses[command]; ok {
-// 			return subStatus.Phase == BackupComplete
-// 		}
-// 	case LogTruncateCommand:
-// 		// truncate Command's truncating until is the spec truncate until means the truncate is in progress.
-// 		if subStatus, ok := backup.Status.LogSubCommandStatuses[command]; ok {
-// 			return subStatus.LogTruncatingUntil == backup.Spec.LogTruncateUntil && subStatus.Phase == BackupComplete
-// 		}
-// 	default:
-// 		return false
-// 	}
-// 	return false
-// }
-
-// // IsLogBackupSubCommandRunning return whether the log backup's subcommand is running.
-// func IsLogBackupSubCommandRunning(backup *Backup) bool {
-// 	command := ParseLogBackupSubcommand(backup)
-// 	switch command {
-// 	case LogStartCommand, LogStopCommand:
-// 		// start/stop command is BackupScheduled,BackupPrepare,BackupRunning means command is running
-// 		if subStatus, ok := backup.Status.LogSubCommandStatuses[command]; ok {
-// 			return subStatus.Phase == BackupScheduled || subStatus.Phase == BackupPrepare || subStatus.Phase == BackupRunning
-// 		}
-// 	case LogTruncateCommand:
-// 		// truncate Command's truncating until is the spec truncate until means the truncate is in progress.
-// 		if subStatus, ok := backup.Status.LogSubCommandStatuses[command]; ok {
-// 			return subStatus.LogTruncatingUntil == backup.Spec.LogTruncateUntil &&
-// 				(subStatus.Phase == BackupScheduled || subStatus.Phase == BackupPrepare || subStatus.Phase == BackupRunning)
-// 		}
-// 	default:
-// 		return false
-// 	}
-// 	return false
-// }
-
-// // IsLogBackupSubCommandFailed return whether the log backup's subcommand is failed.
-// func IsLogBackupSubCommandFailed(backup *Backup) bool {
-// 	command := ParseLogBackupSubcommand(backup)
-// 	switch command {
-// 	case LogStartCommand, LogStopCommand:
-// 		// start/stop command is BackupFailed means command is failed.
-// 		if subStatus, ok := backup.Status.LogSubCommandStatuses[command]; ok {
-// 			return subStatus.Phase == BackupFailed
-// 		}
-// 	case LogTruncateCommand:
-// 		// truncate Command's truncating until is the spec truncate until means the truncate is in progress.
-// 		if subStatus, ok := backup.Status.LogSubCommandStatuses[LogTruncateCommand]; ok {
-// 			return subStatus.LogTruncatingUntil == backup.Spec.LogTruncateUntil && subStatus.Phase == BackupFailed
-// 		}
-// 	default:
-// 		return false
-// 	}
-// 	return false
-// }
-
-// // IsLogBackupSubCommandInvalid return whether the log backup's subcommand is invalid.
-// func IsLogBackupSubCommandInvalid(backup *Backup) bool {
-// 	command := ParseLogBackupSubcommand(backup)
-// 	switch command {
-// 	case LogStartCommand, LogStopCommand:
-// 		//  start/stop command is BackupInvalid means command is invalid.
-// 		if subStatus, ok := backup.Status.LogSubCommandStatuses[command]; ok {
-// 			return subStatus.Phase == BackupInvalid
-// 		}
-// 	case LogTruncateCommand:
-// 		// truncate Command's truncating until is the spec truncate until means the truncate is in progress.
-// 		if subStatus, ok := backup.Status.LogSubCommandStatuses[LogTruncateCommand]; ok {
-// 			return subStatus.LogTruncatingUntil == backup.Spec.LogTruncateUntil && subStatus.Phase == BackupInvalid
-// 		}
-// 	default:
-// 		return false
-// 	}
-// 	return false
-// }
-
 // GetLogSumcommandConditionInfo gets log subcommand current phase's reason and message
 func GetLogSumcommandConditionInfo(backup *Backup) (reason, message string) {
 	command := ParseLogBackupSubcommand(backup)
@@ -382,20 +270,3 @@ func GetLogSumcommandConditionInfo(backup *Backup) (reason, message string) {
 	}
 	return
 }
-
-// // CanLogSubcommandRun returns whether the log subcommand can run.
-// // It should be called after make sure the log subcommand is not complete,running,failed,invalid.
-// // truncate/stop should wait start commplete, but truncate and stop can run in parallel.
-// func CanLogSubcommandRun(backup *Backup) bool {
-// 	command := ParseLogBackupSubcommand(backup)
-// 	switch command {
-// 	case LogStartCommand:
-// 		// start can directly run
-// 		return true
-// 	case LogTruncateCommand, LogStopCommand:
-// 		// truncate and stop should wait start complete
-// 		return backup.Status.CommitTs != ""
-// 	default:
-// 		return false
-// 	}
-// }
