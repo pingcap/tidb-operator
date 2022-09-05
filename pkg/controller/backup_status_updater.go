@@ -146,7 +146,9 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		status.LogCheckpointTs = *newStatus.LogCheckpointTs
 		isUpdate = true
 	}
+	klog.Infof("update truncate util4 == %v", newStatus.LogSuccessTruncateUntil)
 	if newStatus.LogSuccessTruncateUntil != nil && status.LogSuccessTruncateUntil != *newStatus.LogSuccessTruncateUntil {
+		klog.Infof("update truncate util5 == %s", *newStatus.LogSuccessTruncateUntil)
 		status.LogSuccessTruncateUntil = *newStatus.LogSuccessTruncateUntil
 		isUpdate = true
 	}
@@ -246,7 +248,7 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 			if condition.Type == v1alpha1.BackupComplete {
 				if newStatus != nil {
 					needUpdateStatus = true
-					updateStatus := *newStatus
+					updateStatus = *newStatus
 					updateStatus.TimeStarted = nil
 				}
 				needUpdateCondition = true
@@ -258,7 +260,7 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 			if condition.Type == v1alpha1.BackupComplete {
 				if newStatus != nil {
 					needUpdateStatus = true
-					updateStatus := *newStatus
+					updateStatus = *newStatus
 					updateStatus.TimeCompleted = nil
 					updateStatus.TimeStarted = nil
 				}
