@@ -17,6 +17,7 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -269,4 +270,29 @@ func GetLogSumcommandConditionInfo(backup *Backup) (reason, message string) {
 		}
 	}
 	return
+}
+
+// IsLogBackupAlreadyStart return whether log backup has already started.
+func IsLogBackupAlreadyStart(backup *Backup) bool {
+	return backup.Spec.Mode == BackupModeLog && backup.Status.CommitTs != ""
+}
+
+// IsLogBackupAlreadyTruncate return whether log backup has already truncated.
+func IsLogBackupAlreadyTruncate(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeLog {
+		return false
+	}
+	// spec truncate Until TS <= start commit TS or success truncate until means log backup has been truncated.
+	var specTS, successedTS, startCommitTS uint64
+
+	specTS, _ = config.ParseTSString(backup.Spec.LogTruncateUntil)
+	successedTS, _ = config.ParseTSString(backup.Status.LogSuccessTruncateUntil)
+	startCommitTS, _ = config.ParseTSString(backup.Status.CommitTs)
+
+	return specTS <= startCommitTS || specTS <= successedTS
+}
+
+// IsLogBackupAlreadyStop return whether log backup has already stoped.
+func IsLogBackupAlreadyStop(backup *Backup) bool {
+	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupComplete
 }

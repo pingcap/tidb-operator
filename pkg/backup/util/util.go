@@ -513,7 +513,7 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 
 		// validate log backup
 		if backup.Spec.Mode == v1alpha1.BackupModeLog {
-			if !canOpenLogBackup(tikvImage) {
+			if !isLogBackSupport(tikvImage) {
 				return fmt.Errorf("tikv %s doesn't support log backup in spec of %s/%s, the first version is v6.1.0", tikvImage, ns, name)
 			}
 			var err error
@@ -529,7 +529,6 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 			if err != nil {
 				return err
 			}
-
 		}
 
 	}
@@ -664,9 +663,9 @@ func canSkipSetGCLifeTime(image string) bool {
 	return true
 }
 
-// canOpenLogBackup returns if tikv supports log backup
-func canOpenLogBackup(image string) bool {
-	_, version := ParseImage(image)
+// isLogBackSupport returns whether tikv supports log backup
+func isLogBackSupport(tikvImage string) bool {
+	_, version := ParseImage(tikvImage)
 	v, err := semver.NewVersion(version)
 	if err != nil {
 		klog.Errorf("Parse version %s failure, error: %v", version, err)
