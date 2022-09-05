@@ -169,13 +169,16 @@ func updateSnapshotBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 // updateLogBackupStatus update log backup status.
 // it will update both the log backup sub command status and the whole log backup status.
 func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
-	if condition == nil || condition.Command == "" {
-		return false
-	}
-	// clean log backup just need upate whole log backup status
+	// clean log backup just need upate whole log backup status, no need command in condition
 	if backup.DeletionTimestamp != nil {
 		return updateWholeLogBackupStatus(backup, condition, newStatus)
 	}
+
+	// log backup update should set command to condition
+	if condition == nil || condition.Command == "" {
+		return false
+	}
+
 	isSubCommandStatusUpdate := updateLogSubcommandStatus(backup, condition, newStatus)
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
 	return isSubCommandStatusUpdate || isWholeStatusUpdate
