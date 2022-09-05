@@ -518,7 +518,7 @@ func ValidateUpdateTidbCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("labels"), tc.Labels,
 			"The instance must not be mutate or set value other than the cluster name"))
 	}
-	allErrs = append(allErrs, validateUpdatePDConfig(old.Spec.PD.Config, tc.Spec.PD.Config, field.NewPath("spec.pd.config"))...)
+	allErrs = append(allErrs, validateUpdatePDConfig(old.Spec.PD, tc.Spec.PD, field.NewPath("spec.pd.config"))...)
 	allErrs = append(allErrs, disallowUsingLegacyAPIInNewCluster(old, tc)...)
 
 	return allErrs
@@ -589,8 +589,12 @@ func disallowUsingLegacyAPIInNewCluster(old, tc *v1alpha1.TidbCluster) field.Err
 	return allErrs
 }
 
-func validateUpdatePDConfig(old, conf *v1alpha1.PDConfigWraper, path *field.Path) field.ErrorList {
+func validateUpdatePDConfig(oldPdSpec, pdSpec *v1alpha1.PDSpec, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+	if oldPdSpec == nil || pdSpec == nil {
+		return allErrs
+	}
+	old, conf := oldPdSpec.Config, pdSpec.Config
 	// for newly created cluster, both old and new are non-nil, guaranteed by validation
 	if old == nil || conf == nil {
 		return allErrs
