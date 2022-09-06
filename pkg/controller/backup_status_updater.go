@@ -169,23 +169,24 @@ func updateSnapshotBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 // updateLogBackupStatus update log backup status.
 // it will update both the log backup sub command status and the whole log backup status.
 func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
-	// clean log backup just need upate whole log backup status, no need command in condition
-	if backup.DeletionTimestamp != nil {
-		return updateWholeLogBackupStatus(backup, condition, newStatus)
-	}
-
-	// log backup update should set command to condition
-	if condition == nil || condition.Command == "" {
-		return false
-	}
-
-	isSubCommandStatusUpdate := updateLogSubcommandStatus(backup, condition, newStatus)
+	// update whole backup status
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
+	// DeletionTimestamp is not nil when delete and clean backup, no subcommand status needs to be updated
+	if backup.DeletionTimestamp != nil {
+		return isWholeStatusUpdate
+	}
+	// update subcommand status
+	isSubCommandStatusUpdate := updateLogSubcommandStatus(backup, condition, newStatus)
 	return isSubCommandStatusUpdate || isWholeStatusUpdate
 }
 
 // updateLogSubcommandStatus update log backup subcommand status.
 func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
+	// subcommand type should be set in condition, if not, will not update status info according to these condion and status.
+	if condition == nil || condition.Command == "" {
+		return false
+	}
+
 	// init log subcommand status map
 	if backup.Status.LogSubCommandStatuses == nil {
 		backup.Status.LogSubCommandStatuses = make(map[v1alpha1.LogSubCommandType]v1alpha1.LogSubCommandStatus)
@@ -212,77 +213,92 @@ func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.Back
 }
 
 // updateWholeLogBackupStatus updates the whole log backup status.
-func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
-	var (
-		needUpdateCondition, needUpdateStatus bool
-		updateCondition                       v1alpha1.BackupCondition
-		updateStatus                          BackupUpdateStatus
-	)
-	// clean is no need modiy condition or status
-	if backup.DeletionTimestamp != nil {
-		needUpdateCondition = true
-		updateCondition = *condition
-		if newStatus != nil {
-			needUpdateStatus = true
-			updateStatus = *newStatus
+func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *BackupUpdateStatus) bool {
+	// call real update interface to update whole status
+	doUpdateStatusAndCondition := func(newCondition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
+		isStatusUpdate := updateBackupStatus(&backup.Status, newStatus)
+		isConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, condition)
+		return isStatusUpdate || isConditionUpdate
+	}
+
+	// restruct update status info according to subcommand's detail info
+	restructStatus := func() *BackupUpdateStatus {
+		if status == nil {
+			return nil
 		}
-	} else {
+		// copy status, avoid modifying the original value which may reuse in retry
+		newStatus := *status
 		switch condition.Command {
 		case v1alpha1.LogStartCommand:
-			// start command should not update TimeCompleted and condition when start complete.
-			// start command other status and condition info can be synced to the whole log backup status.
+			// start command, complete condition, should not update TimeCompleted
+			// other conditions, can be directly used
 			if condition.Type == v1alpha1.BackupComplete {
-				if newStatus != nil {
-					needUpdateStatus = true
-					updateStatus = *newStatus
-					updateStatus.TimeCompleted = nil
-				}
-			} else {
-				needUpdateCondition = true
-				updateCondition = *condition
-				if newStatus != nil {
-					needUpdateStatus = true
-					updateStatus = *newStatus
-				}
+				newStatus.TimeCompleted = nil
 			}
+			return &newStatus
 		case v1alpha1.LogStopCommand:
-			// stop command should not update TimeStarted, but should update condition when stop complete.
-			// stop command other status should not be synced to whole log backup status.
-			if condition.Type == v1alpha1.BackupComplete {
-				if newStatus != nil {
-					needUpdateStatus = true
-					updateStatus = *newStatus
-					updateStatus.TimeStarted = nil
-				}
-				needUpdateCondition = true
-				updateCondition = *condition
+			// stop command, commplete condition, should not update TimeStarted
+			// other conditions, no need to be used to update whole status
+			if condition.Type != v1alpha1.BackupComplete {
+				return nil
 			}
+			newStatus.TimeStarted = nil
+			return &newStatus
 		case v1alpha1.LogTruncateCommand:
-			// truncate command shoudld not update TimeStarted, TimeCompleted when truncate complete.
-			// truncate command other status should not be synced to whole log backup status.
-			if condition.Type == v1alpha1.BackupComplete {
-				if newStatus != nil {
-					needUpdateStatus = true
-					updateStatus = *newStatus
-					updateStatus.TimeCompleted = nil
-					updateStatus.TimeStarted = nil
-				}
+			// truncate command, complete condition, shoudld not update TimeStarted, TimeCompleted
+			// other conditions, no need to be used to update whole status
+			if condition.Type != v1alpha1.BackupComplete {
+				return nil
 			}
+			newStatus.TimeCompleted = nil
+			newStatus.TimeStarted = nil
+			return &newStatus
 		default:
 			// should not hanpen
-			return false
+			return nil
 		}
 	}
 
-	var wholeStatusUpdate, wholeConditionUpdate bool
-	// update whole log status and condition
-	if needUpdateStatus {
-		wholeStatusUpdate = updateBackupStatus(&backup.Status, &updateStatus)
+	// restruct update condition info according to subcommand's detail info
+	restructCondition := func() *v1alpha1.BackupCondition {
+		if condition == nil {
+			return nil
+		}
+		switch condition.Command {
+		case v1alpha1.LogStartCommand:
+			// start command, complete condition, should not update condition
+			// other conditions, can be directly used.
+			if condition.Type == v1alpha1.BackupComplete {
+				return nil
+			}
+			return condition
+		case v1alpha1.LogStopCommand:
+			// stop command, complete condition, should update condition
+			// other conditions, no need to be used to update whole condition
+			if condition.Type == v1alpha1.BackupComplete {
+				return condition
+			}
+			return nil
+		default:
+			// truncate command or other, all conditions, no need to be used to update whole condition.
+			return nil
+		}
 	}
-	if needUpdateCondition {
-		wholeConditionUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, &updateCondition)
+
+	// DeletionTimestamp is not nil when delete and clean backup, condition and status can be directly used to update whole status.
+	if backup.DeletionTimestamp != nil {
+		return doUpdateStatusAndCondition(condition, status)
 	}
-	return wholeStatusUpdate || wholeConditionUpdate
+
+	// subcommand type should be set in condition, if not, will not update status info according to these condion and status.
+	if condition == nil || condition.Command == "" {
+		return false
+	}
+
+	// restruct status and condition according to subcommand's detail info, and they wiil be used to update whole log backup status.
+	newStatus := restructStatus()
+	newCondition := restructCondition()
+	return doUpdateStatusAndCondition(newCondition, newStatus)
 }
 
 // updateLogSubCommandStatusOnly only updates log subcommand's status info.
