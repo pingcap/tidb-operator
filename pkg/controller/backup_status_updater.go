@@ -156,9 +156,6 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 
 // updateSnapshotBackupStatus update snapshot mode backup status.
 func updateSnapshotBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
-	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
-		return false
-	}
 	var isStatusUpdate, isConditionUpdate bool
 	isStatusUpdate = updateBackupStatus(&backup.Status, newStatus)
 	isConditionUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)

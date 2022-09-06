@@ -690,9 +690,6 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 
 // skipSnapshotBackupSync skip snapshot backup, returns true if can be skipped.
 func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, error) {
-	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
-		return false, nil
-	}
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
