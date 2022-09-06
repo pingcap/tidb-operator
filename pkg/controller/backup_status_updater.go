@@ -16,7 +16,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"k8s.io/klog/v2"
 
@@ -196,9 +195,8 @@ func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.Back
 	if !exist {
 		// init subcommand status
 		subStatus = v1alpha1.LogSubCommandStatus{
-			Command:     condition.Command,
-			TimeStarted: metav1.Time{Time: time.Now()},
-			Conditions:  make([]v1alpha1.BackupCondition, 0),
+			Command:    condition.Command,
+			Conditions: make([]v1alpha1.BackupCondition, 0),
 		}
 	}
 
@@ -217,7 +215,7 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 	// call real update interface to update whole status
 	doUpdateStatusAndCondition := func(newCondition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
 		isStatusUpdate := updateBackupStatus(&backup.Status, newStatus)
-		isConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, condition)
+		isConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, newCondition)
 		return isStatusUpdate || isConditionUpdate
 	}
 
@@ -264,6 +262,8 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 		if condition == nil {
 			return nil
 		}
+		newCondition := *condition
+		newCondition.Command = ""
 		switch condition.Command {
 		case v1alpha1.LogStartCommand:
 			// start command, complete condition, should not update condition
@@ -271,12 +271,12 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 			if condition.Type == v1alpha1.BackupComplete {
 				return nil
 			}
-			return condition
+			return &newCondition
 		case v1alpha1.LogStopCommand:
 			// stop command, complete condition, should update condition
 			// other conditions, no need to be used to update whole condition
 			if condition.Type == v1alpha1.BackupComplete {
-				return condition
+				return &newCondition
 			}
 			return nil
 		default:

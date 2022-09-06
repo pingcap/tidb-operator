@@ -767,7 +767,7 @@ func waitOldLogBackupJobDone(ns, name, backupJobName string, bm *backupManager, 
 	}
 
 	if oldJob.DeletionTimestamp != nil {
-		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s job %s is being deleted", ns, name, backupJobName))
+		return controller.RequeueErrorf(fmt.Sprintf("log backup %s/%s job %s is being deleted", ns, name, backupJobName))
 	}
 	finished := false
 	for _, c := range oldJob.Status.Conditions {
@@ -782,7 +782,8 @@ func waitOldLogBackupJobDone(ns, name, backupJobName string, bm *backupManager, 
 			return fmt.Errorf("log backup %s/%s delete job %s failed, err: %v", ns, name, backupJobName, err)
 		}
 	}
-	return nil
+	// job running no need to requeue, because delete job will call update and it will requeue
+	return controller.IgnoreErrorf("log backup %s/%s job %s is running, will be ignored", ns, name, backupJobName)
 }
 
 var _ backup.BackupManager = &backupManager{}
