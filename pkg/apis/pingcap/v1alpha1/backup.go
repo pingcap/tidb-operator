@@ -257,8 +257,8 @@ func IsLogBackupSubCommandOntheCondition(backup *Backup, conditionType BackupCon
 	return false
 }
 
-// GetLogSumcommandConditionInfo gets log subcommand current phase's reason and message
-func GetLogSumcommandConditionInfo(backup *Backup) (reason, message string) {
+// GetLogSubcommandConditionInfo gets log subcommand current phase's reason and message
+func GetLogSubcommandConditionInfo(backup *Backup) (reason, message string) {
 	command := ParseLogBackupSubcommand(backup)
 	if subStatus, ok := backup.Status.LogSubCommandStatuses[command]; ok {
 		for _, condition := range subStatus.Conditions {
@@ -284,8 +284,12 @@ func IsLogBackupAlreadyTruncate(backup *Backup) bool {
 	}
 	// spec truncate Until TS <= start commit TS or success truncate until means log backup has been truncated.
 	var specTS, successedTS, startCommitTS uint64
+	var err error
 
-	specTS, _ = config.ParseTSString(backup.Spec.LogTruncateUntil)
+	specTS, err = config.ParseTSString(backup.Spec.LogTruncateUntil)
+	if err != nil {
+		return false
+	}
 	successedTS, _ = config.ParseTSString(backup.Status.LogSuccessTruncateUntil)
 	startCommitTS, _ = config.ParseTSString(backup.Status.CommitTs)
 

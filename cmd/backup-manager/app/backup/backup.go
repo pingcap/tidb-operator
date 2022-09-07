@@ -98,7 +98,7 @@ func (bo *Options) doStartLogBackup(ctx context.Context, backup *v1alpha1.Backup
 }
 
 // doStoplogBackup generates br args about log backup stop and runs br binary to do the real backup work.
-func (bo *Options) doStoplogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
 		"log",
 		"stop",

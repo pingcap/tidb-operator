@@ -829,7 +829,7 @@ func deleteBackup(f *e2eframework.Framework, name string) error {
 		return err
 	}
 
-	if err := brutil.WaitForBackupDeleted(f.ExtClient, ns, name, time.Second*30); err != nil {
+	if err := brutil.WaitForBackupDeleted(f.ExtClient, ns, name, time.Second*60); err != nil {
 		return err
 	}
 	return nil

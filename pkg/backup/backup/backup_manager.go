@@ -88,11 +88,10 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	if skip, err = bm.skipBackupSync(backup); err != nil {
 		klog.Errorf("backup %s/%s skip error %v.", ns, name, err)
 		return err
-	} else {
-		if skip {
-			klog.Infof("backup %s/%s is already done and skip sync.", ns, name)
-			return nil
-		}
+	}
+	if skip {
+		klog.Infof("backup %s/%s is already done and skip sync.", ns, name)
+		return nil
 	}
 
 	// wait pre task done
