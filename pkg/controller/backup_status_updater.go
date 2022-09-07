@@ -145,9 +145,7 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		status.LogCheckpointTs = *newStatus.LogCheckpointTs
 		isUpdate = true
 	}
-	klog.Infof("update truncate util4 == %v", newStatus.LogSuccessTruncateUntil)
 	if newStatus.LogSuccessTruncateUntil != nil && status.LogSuccessTruncateUntil != *newStatus.LogSuccessTruncateUntil {
-		klog.Infof("update truncate util5 == %s", *newStatus.LogSuccessTruncateUntil)
 		status.LogSuccessTruncateUntil = *newStatus.LogSuccessTruncateUntil
 		isUpdate = true
 	}
