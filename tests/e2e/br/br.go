@@ -130,8 +130,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 	})
 
 	ginkgo.JustAfterEach(func() {
-		// err := f.Storage.Clean(context.Background(), f.Namespace.Name)
-		// framework.ExpectNoError(err)
+		err := f.Storage.Clean(context.Background(), f.Namespace.Name)
+		framework.ExpectNoError(err)
 	})
 
 	cases := []*testcase{
@@ -788,8 +788,6 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	cfg := f.Storage.Config(ns, backupFolder)
 	backup := brutil.GetBackup(ns, name, tcName, typ, cfg)
 
-	ginkgo.By(fmt.Sprintf("backup bucket is %s", backup.Spec.S3.Bucket))
-
 	if configure != nil {
 		configure(backup)
 	}
@@ -852,39 +850,6 @@ func cleanBackup(f *e2eframework.Framework) error {
 	}
 	return nil
 }
-
-// func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string, backupName string) error {
-// 	ns := f.Namespace.Name
-
-// 	// secret to visit tidb cluster
-// 	s := brutil.GetSecret(ns, name, "")
-// 	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
-// 		return err
-// 	}
-
-// 	backup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	cfg := backup.Spec.S3
-// 	// TODO: backup path is hard to understand
-// 	// BackupPath is only needed for dumper
-// 	if typ == "dumper" {
-// 		cfg.Path = backup.Status.BackupPath
-// 	}
-
-// 	restore := brutil.GetRestore(ns, name, tcName, typ, cfg)
-// 	if _, err := f.ExtClient.PingcapV1alpha1().Restores(ns).Create(context.TODO(), restore, metav1.CreateOptions{}); err != nil {
-// 		return err
-// 	}
-
-// 	if err := brutil.WaitForRestoreComplete(f.ExtClient, ns, name, restoreCompleteTimeout); err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
 
 func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string, backupName string, configure func(*v1alpha1.Restore)) error {
 	ns := f.Namespace.Name

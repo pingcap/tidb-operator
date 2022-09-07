@@ -149,7 +149,7 @@ func (f *Framework) AfterEach() {
 	framework.RemoveCleanupAction(f.cleanupHandle)
 	if !ginkgo.CurrentGinkgoTestDescription().Failed {
 		ginkgo.By("Try to clean up all backups")
-		// f.ForceCleanBackups(f.Namespace.Name)
+		f.ForceCleanBackups(f.Namespace.Name)
 	} else {
 		framework.Logf("Skip cleaning up backup")
 	}
