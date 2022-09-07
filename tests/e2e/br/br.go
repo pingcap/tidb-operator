@@ -522,7 +522,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
 			framework.ExpectNoError(err)
 
-			ginkgo.By("Create restore")
+			ginkgo.By("Create pitr restore")
 			restoreName := "pitr-restore"
 			err = createRestoreAndWaitForComplete(f, restoreName, backupClusterName, typ, logBackupName, func(restore *v1alpha1.Restore) {
 				restore.Spec.Mode = v1alpha1.RestoreModePiTR
@@ -535,28 +535,29 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(brutil.TiDBServicePort))
 			framework.ExpectNoError(err)
 
-			ginkgo.By("Validate restore result")
+			ginkgo.By("Validate pitr restore result")
 			backupDSN := getDefaultDSN(backupHost, dbName)
 			err = checkDataIsSame(masterDSN, backupDSN)
 			framework.ExpectNoError(err)
 
-			ginkgo.By("Delete log backup")
+			ginkgo.By("Delete pitr log backup")
 			err = deleteBackup(f, logBackupName)
 			framework.ExpectNoError(err)
 
-			ginkgo.By("Check if all backup files in storage is deleted")
+			ginkgo.By("Check if all pitr log backup files in storage is deleted")
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, logBackup.Spec.S3.Prefix) // now we only use s3
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 
-			ginkgo.By("Delete full backup")
+			ginkgo.By("Delete pitr full backup")
 			err = deleteBackup(f, fullBackupName)
 			framework.ExpectNoError(err)
 
-			ginkgo.By("Check if all backup files in storage is deleted")
+			ginkgo.By("Check if all pitr full backup files in storage is deleted")
 			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, fullBackup.Spec.S3.Prefix) // now we only use s3
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+
 		})
 	})
 })
