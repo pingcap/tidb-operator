@@ -1255,7 +1255,7 @@ StorageProvider
 </tr>
 <tr>
 <td>
-<code>logBackupStorageProvider</code></br>
+<code>pitrFullBackupStorageProvider</code></br>
 <em>
 <a href="#storageprovider">
 StorageProvider
@@ -1263,7 +1263,7 @@ StorageProvider
 </em>
 </td>
 <td>
-<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
+<p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -13109,7 +13109,7 @@ StorageProvider
 </tr>
 <tr>
 <td>
-<code>logBackupStorageProvider</code></br>
+<code>pitrFullBackupStorageProvider</code></br>
 <em>
 <a href="#storageprovider">
 StorageProvider
@@ -13117,7 +13117,7 @@ StorageProvider
 </em>
 </td>
 <td>
-<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
+<p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
 <tr>

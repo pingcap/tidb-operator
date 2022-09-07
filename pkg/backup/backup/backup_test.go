@@ -366,3 +366,36 @@ func TestClean(t *testing.T) {
 	}
 
 }
+
+// func TestGetLogCheckPointTS(t *testing.T) {
+// 	g := NewGomegaWithT(t)
+// 	ns := "default"
+// 	name := "basic-log-backup-s31"
+// 	logBackupSubcommand := "log-truncate"
+// 	fmt.Printf("log backup %s/%s subcommand %s schedule, test to get checkpointTS. \n", ns, name, logBackupSubcommand)
+// 	url := fmt.Sprintf("%s:2379", "127.0.0.1")
+// 	etcdCli, err := pdapi.NewPdEtcdClient(url, 30*time.Second, nil)
+// 	if err != nil {
+// 		fmt.Printf("log backup %s/%s checkpointTS error %v.\n", ns, name, err)
+// 		g.Expect(err).Should(BeNil())
+// 	}
+
+// 	streamKeyPrefix := "/tidb/br-stream"
+// 	taskCheckpointPath := "/checkpoint"
+// 	// checkpointTypeGlobal := "central_global"
+// 	checkpointTypeGlobal := ""
+// 	key := path.Join(streamKeyPrefix, taskCheckpointPath, name, checkpointTypeGlobal)
+// 	fmt.Printf("log backup %s/%s checkpointTS key %s.\n", ns, name, key)
+// 	kvs, err := etcdCli.Get(key, true)
+// 	if err != nil {
+// 		fmt.Printf("log backup %s/%s checkpointTS error %v.\n", ns, name, err)
+// 		g.Expect(err).Should(BeNil())
+// 	}
+// 	fmt.Printf("log backup %s/%s checkpointTS get kv size %d.\n", ns, name, len(kvs))
+// 	for _, kv := range kvs {
+// 		fmt.Printf("log backup %s/%s checkpointTS %d.\n", ns, name, binary.BigEndian.Uint64(kv.Value))
+// 	}
+
+// 	g.Expect(name).Should(BeNil())
+
+// }

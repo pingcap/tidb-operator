@@ -346,11 +346,17 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		"restore",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
+		fmt.Sprintf("--mode=%s", restore.Spec.Mode),
 	}
 	tikvImage := tc.TiKVImage()
 	_, tikvVersion := backuputil.ParseImage(tikvImage)
 	if tikvVersion != "" {
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
+	}
+
+	// set pitr restore parameters
+	if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
+		args = append(args, fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
 	}
 
 	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)

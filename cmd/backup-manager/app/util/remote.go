@@ -46,7 +46,8 @@ import (
 )
 
 const (
-	maxRetries = 3 // number of retries to make of operations
+	maxRetries         = 3 // number of retries to make of operations
+	defaultStorageFlag = "storage"
 )
 
 type s3Config struct {
@@ -343,8 +344,46 @@ func genStorageArgs(provider v1alpha1.StorageProvider) ([]string, error) {
 	}
 }
 
+// genStorageArgs returns the arg for --storage option and the remote/local path for br
+// TODO: add unit test
+func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]string, error) {
+	st := util.GetStorageType(provider)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		qs := makeS3Config(provider.S3, false)
+		s := newS3StorageOptionForFlag(qs, flag)
+		return s, nil
+	case v1alpha1.BackupStorageTypeGcs:
+		qs := makeGcsConfig(provider.Gcs, false)
+		s := newGcsStorageOptionForFlag(qs, flag)
+		return s, nil
+	case v1alpha1.BackupStorageTypeAzblob:
+		conf := makeAzblobConfig(provider.Azblob)
+		strs := newAzblobStorageOptionForFlag(conf, flag)
+		return strs, nil
+	case v1alpha1.BackupStorageTypeLocal:
+		localConfig := makeLocalConfig(provider.Local)
+		cmdOpts, err := newLocalStorageOptionForFlag(localConfig, flag)
+		if err != nil {
+			return nil, err
+		}
+		return cmdOpts, nil
+	default:
+		return nil, fmt.Errorf("storage %s not supported yet", st)
+	}
+}
+
 // newLocalStorageOption constructs `--storage local://$PATH` arg for br
 func newLocalStorageOption(conf *localConfig) ([]string, error) {
+	return []string{fmt.Sprintf("--storage=local://%s", path.Join(conf.mountPath, conf.prefix))}, nil
+}
+
+// newLocalStorageOption constructs `--storage local://$PATH` arg for br
+func newLocalStorageOptionForFlag(conf *localConfig, flag string) ([]string, error) {
+	if flag != "" && flag != defaultStorageFlag {
+		// now just set path to special flag
+		return []string{fmt.Sprintf("--%s=local://%s", flag, path.Join(conf.mountPath, conf.prefix))}, nil
+	}
 	return []string{fmt.Sprintf("--storage=local://%s", path.Join(conf.mountPath, conf.prefix))}, nil
 }
 
@@ -353,6 +392,38 @@ func newS3StorageOption(conf *s3Config) []string {
 	var s3options []string
 	path := fmt.Sprintf("s3://%s", path.Join(conf.bucket, conf.prefix))
 	s3options = append(s3options, fmt.Sprintf("--storage=%s", path))
+	if conf.region != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.region=%s", conf.region))
+	}
+	if conf.provider != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.provider=%s", conf.provider))
+	}
+	if conf.endpoint != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.endpoint=%s", conf.endpoint))
+	}
+	if conf.sse != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.sse=%s", conf.sse))
+	}
+	if conf.acl != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.acl=%s", conf.acl))
+	}
+	if conf.storageClass != "" {
+		s3options = append(s3options, fmt.Sprintf("--s3.storage-class=%s", conf.storageClass))
+	}
+	return s3options
+}
+
+// newS3StorageOption constructs the arg for --storage option and the remote path for br
+func newS3StorageOptionForFlag(conf *s3Config, flag string) []string {
+	var s3options []string
+	path := fmt.Sprintf("s3://%s", path.Join(conf.bucket, conf.prefix))
+	if flag != "" && flag != defaultStorageFlag {
+		// now just set path to special flag
+		s3options = append(s3options, fmt.Sprintf("--%s=%s", flag, path))
+		return s3options
+	}
+	s3options = append(s3options, fmt.Sprintf("--storage=%s", path))
+
 	if conf.region != "" {
 		s3options = append(s3options, fmt.Sprintf("--s3.region=%s", conf.region))
 	}
@@ -567,6 +638,43 @@ func newAzblobStorageOption(conf *azblobConfig) []string {
 	var azblobOptions []string
 	path := fmt.Sprintf("azure://%s/", path.Join(conf.container, conf.prefix))
 	azblobOptions = append(azblobOptions, fmt.Sprintf("--storage=%s", path))
+	if conf.accessTier != "" {
+		azblobOptions = append(azblobOptions, fmt.Sprintf("--azblob.access-tier=%s", conf.accessTier))
+	}
+	return azblobOptions
+}
+
+// newGcsStorageOption constructs the arg for --storage option and the remote path for br
+func newGcsStorageOptionForFlag(conf *gcsConfig, flag string) []string {
+	var gcsoptions []string
+	path := fmt.Sprintf("gcs://%s/", path.Join(conf.bucket, conf.prefix))
+	if flag != "" && flag != defaultStorageFlag {
+		// now just set path to special flag
+		gcsoptions = append(gcsoptions, fmt.Sprintf("--%s=%s", flag, path))
+		return gcsoptions
+	}
+	gcsoptions = append(gcsoptions, fmt.Sprintf("--storage=%s", path))
+
+	if conf.storageClass != "" {
+		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.storage-class=%s", conf.storageClass))
+	}
+	if conf.objectAcl != "" {
+		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.predefined-acl=%s", conf.objectAcl))
+	}
+	return gcsoptions
+}
+
+// newAzblobStorageOption constructs the arg for --storage option and the remote path for br
+func newAzblobStorageOptionForFlag(conf *azblobConfig, flag string) []string {
+	var azblobOptions []string
+	path := fmt.Sprintf("azure://%s/", path.Join(conf.container, conf.prefix))
+	if flag != "" && flag != defaultStorageFlag {
+		// now just set path to special flag
+		azblobOptions = append(azblobOptions, fmt.Sprintf("--%s=%s", flag, path))
+		return azblobOptions
+	}
+	azblobOptions = append(azblobOptions, fmt.Sprintf("--storage=%s", path))
+
 	if conf.accessTier != "" {
 		azblobOptions = append(azblobOptions, fmt.Sprintf("--azblob.access-tier=%s", conf.accessTier))
 	}
