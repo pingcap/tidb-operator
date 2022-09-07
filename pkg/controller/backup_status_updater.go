@@ -16,7 +16,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"k8s.io/klog/v2"
 
@@ -84,16 +83,14 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 	backupName := backup.GetName()
 	// try best effort to guarantee backup is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		var isStatusUpdate, isConditionUpdate, isLogSubcommandStatusUpdate bool
-		// log backup status update should be handled specially before backup is delete.
-		// it needs update both subcommand status and whole backup status.
-		if backup.Spec.Mode == v1alpha1.BackupModeLog && backup.DeletionTimestamp == nil {
-			isLogSubcommandStatusUpdate = updateLogBackupStatus(backup, condition, newStatus)
+		isUpdate := false
+		// log backup needs update both subcommand status and whole backup status.
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+			isUpdate = updateLogBackupStatus(backup, condition, newStatus)
 		} else {
-			isStatusUpdate = updateBackupStatus(&backup.Status, newStatus)
-			isConditionUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
+			isUpdate = updateSnapshotBackupStatus(backup, condition, newStatus)
 		}
-		if isStatusUpdate || isConditionUpdate || isLogSubcommandStatusUpdate {
+		if isUpdate {
 			_, updateErr := u.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 			if updateErr == nil {
 				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
@@ -148,38 +145,55 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		status.LogCheckpointTs = *newStatus.LogCheckpointTs
 		isUpdate = true
 	}
+	klog.Infof("update truncate util4 == %v", newStatus.LogSuccessTruncateUntil)
 	if newStatus.LogSuccessTruncateUntil != nil && status.LogSuccessTruncateUntil != *newStatus.LogSuccessTruncateUntil {
+		klog.Infof("update truncate util5 == %s", *newStatus.LogSuccessTruncateUntil)
 		status.LogSuccessTruncateUntil = *newStatus.LogSuccessTruncateUntil
 		isUpdate = true
 	}
 	return isUpdate
 }
 
+// updateSnapshotBackupStatus update snapshot mode backup status.
+func updateSnapshotBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
+	var isStatusUpdate, isConditionUpdate bool
+	isStatusUpdate = updateBackupStatus(&backup.Status, newStatus)
+	isConditionUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, condition)
+	return isStatusUpdate || isConditionUpdate
+}
+
 // updateLogBackupStatus update log backup status.
 // it will update both the log backup sub command status and the whole log backup status.
 func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
-	if condition == nil || condition.Command == "" {
-		return false
-	}
-	isSubCommandStatusUpdate := updateLogSubcommandStatus(backup, condition, newStatus)
+	// update whole backup status
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
+	// DeletionTimestamp is not nil when delete and clean backup, no subcommand status needs to be updated
+	if backup.DeletionTimestamp != nil {
+		return isWholeStatusUpdate
+	}
+	// update subcommand status
+	isSubCommandStatusUpdate := updateLogSubcommandStatus(backup, condition, newStatus)
 	return isSubCommandStatusUpdate || isWholeStatusUpdate
 }
 
 // updateLogSubcommandStatus update log backup subcommand status.
 func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
+	// subcommand type should be set in condition, if not, will not update status info according to these condion and status.
+	if condition == nil || condition.Command == "" {
+		return false
+	}
+
 	// init log subcommand status map
 	if backup.Status.LogSubCommandStatuses == nil {
 		backup.Status.LogSubCommandStatuses = make(map[v1alpha1.LogSubCommandType]v1alpha1.LogSubCommandStatus)
 	}
 	// update subcommand status
-	subStatus, ok := backup.Status.LogSubCommandStatuses[condition.Command]
-	if !ok {
+	subStatus, exist := backup.Status.LogSubCommandStatuses[condition.Command]
+	if !exist {
 		// init subcommand status
 		subStatus = v1alpha1.LogSubCommandStatus{
-			Command:     condition.Command,
-			TimeStarted: metav1.Time{Time: time.Now()},
-			Conditions:  make([]v1alpha1.BackupCondition, 0),
+			Command:    condition.Command,
+			Conditions: make([]v1alpha1.BackupCondition, 0),
 		}
 	}
 
@@ -194,63 +208,94 @@ func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.Back
 }
 
 // updateWholeLogBackupStatus updates the whole log backup status.
-func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
-	var (
-		copyCondition  v1alpha1.BackupCondition
-		copyStatus     BackupUpdateStatus
-		copyConditionP *v1alpha1.BackupCondition
-		copyStatusP    *BackupUpdateStatus
-	)
-	copyCondition = *condition
-	copyConditionP = &copyCondition
-	if newStatus != nil {
-		copyStatus = *newStatus
-		copyStatusP = &copyStatus
+func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *BackupUpdateStatus) bool {
+	// call real update interface to update whole status
+	doUpdateStatusAndCondition := func(newCondition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
+		isStatusUpdate := updateBackupStatus(&backup.Status, newStatus)
+		isConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, newCondition)
+		return isStatusUpdate || isConditionUpdate
 	}
 
-	switch condition.Command {
-	case v1alpha1.LogStartCommand:
-		// start command should not update TimeCompleted and condition when start complete.
-		// start command other status and condition info can be synced to the whole log backup status.
-		if condition.Type == v1alpha1.BackupComplete {
-			if copyStatusP != nil {
-				copyStatusP.TimeCompleted = nil
-			}
-			copyConditionP = nil
+	// restruct update status info according to subcommand's detail info
+	restructStatus := func() *BackupUpdateStatus {
+		if status == nil {
+			return nil
 		}
-	case v1alpha1.LogStopCommand:
-		// stop command should not update TimeStarted, but should update condition when stop complete.
-		// stop command other status should not be synced to whole log backup status.
-		if condition.Type == v1alpha1.BackupComplete {
-			if copyStatusP != nil {
-				copyStatusP.TimeStarted = nil
+		// copy status, avoid modifying the original value which may reuse in retry
+		newStatus := *status
+		switch condition.Command {
+		case v1alpha1.LogStartCommand:
+			// start command, complete condition, should not update TimeCompleted
+			// other conditions, can be directly used
+			if condition.Type == v1alpha1.BackupComplete {
+				newStatus.TimeCompleted = nil
 			}
-		} else {
-			copyStatusP = nil
-			copyConditionP = nil
-		}
-	case v1alpha1.LogTruncateCommand:
-		// truncate command shoudld not update TimeStarted, TimeCompleted when truncate complete.
-		// truncate command other status should not be synced to whole log backup status.
-		if condition.Type == v1alpha1.BackupComplete {
-			if copyStatusP != nil {
-				copyStatusP.TimeCompleted = nil
-				copyStatusP.TimeStarted = nil
+			return &newStatus
+		case v1alpha1.LogStopCommand:
+			// stop command, commplete condition, should not update TimeStarted
+			// other conditions, no need to be used to update whole status
+			if condition.Type != v1alpha1.BackupComplete {
+				return nil
 			}
-		} else {
-			copyStatusP = nil
+			newStatus.TimeStarted = nil
+			return &newStatus
+		case v1alpha1.LogTruncateCommand:
+			// truncate command, complete condition, shoudld not update TimeStarted, TimeCompleted
+			// other conditions, no need to be used to update whole status
+			if condition.Type != v1alpha1.BackupComplete {
+				return nil
+			}
+			newStatus.TimeCompleted = nil
+			newStatus.TimeStarted = nil
+			return &newStatus
+		default:
+			// should not hanpen
+			return nil
 		}
-		copyConditionP = nil
-	default:
-		// should not hanpen
+	}
+
+	// restruct update condition info according to subcommand's detail info
+	restructCondition := func() *v1alpha1.BackupCondition {
+		if condition == nil {
+			return nil
+		}
+		newCondition := *condition
+		newCondition.Command = ""
+		switch condition.Command {
+		case v1alpha1.LogStartCommand:
+			// start command, complete condition, should not update condition
+			// other conditions, can be directly used.
+			if condition.Type == v1alpha1.BackupComplete {
+				return nil
+			}
+			return &newCondition
+		case v1alpha1.LogStopCommand:
+			// stop command, complete condition, should update condition
+			// other conditions, no need to be used to update whole condition
+			if condition.Type == v1alpha1.BackupComplete {
+				return &newCondition
+			}
+			return nil
+		default:
+			// truncate command or other, all conditions, no need to be used to update whole condition.
+			return nil
+		}
+	}
+
+	// DeletionTimestamp is not nil when delete and clean backup, condition and status can be directly used to update whole status.
+	if backup.DeletionTimestamp != nil {
+		return doUpdateStatusAndCondition(condition, status)
+	}
+
+	// subcommand type should be set in condition, if not, will not update status info according to these condion and status.
+	if condition == nil || condition.Command == "" {
 		return false
 	}
 
-	// update whole log status and condition
-	wholeStatusUpdate := updateBackupStatus(&backup.Status, copyStatusP)
-	wholeConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, copyConditionP)
-
-	return wholeStatusUpdate || wholeConditionUpdate
+	// restruct status and condition according to subcommand's detail info, and they wiil be used to update whole log backup status.
+	newStatus := restructStatus()
+	newCondition := restructCondition()
+	return doUpdateStatusAndCondition(newCondition, newStatus)
 }
 
 // updateLogSubCommandStatusOnly only updates log subcommand's status info.
@@ -287,31 +332,30 @@ func updateLogSubCommandConditionOnly(status *v1alpha1.LogSubCommandStatus, cond
 	}
 
 	var oldCondition *v1alpha1.BackupCondition
-	// find old Backup condition.
-	index := -1
+	// find old Backup condition
 	for i, c := range status.Conditions {
 		if c.Type == condition.Type {
-			index = i
+			oldCondition = &status.Conditions[i]
 			break
 		}
 	}
-	if index != -1 {
-		oldCondition = &status.Conditions[index]
-	} else {
-		//add new Backup condition.
-		oldCondition = &v1alpha1.BackupCondition{Type: condition.Type}
+	// no old condition, make a new one
+	if oldCondition == nil {
+		oldCondition = &v1alpha1.BackupCondition{
+			Type:               condition.Type,
+			Status:             condition.Status,
+			Reason:             condition.Reason,
+			Message:            condition.Message,
+			LastTransitionTime: metav1.Now(),
+		}
 		status.Conditions = append(status.Conditions, *oldCondition)
-		oldCondition = &status.Conditions[len(status.Conditions)-1]
-		isUpdate = true
+		return true
 	}
 
-	klog.Infof("status equal: %v, old %s, new %s", oldCondition.Status != condition.Status, oldCondition.Status, condition.Status)
 	if oldCondition.Status != condition.Status {
 		oldCondition.Status = condition.Status
 		isUpdate = true
 	}
-	klog.Infof("after status update: %s", oldCondition.Status)
-	klog.Infof("after status update: %s", status.Conditions[0].Status)
 
 	if oldCondition.Reason != condition.Reason {
 		oldCondition.Reason = condition.Reason

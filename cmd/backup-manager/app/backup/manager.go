@@ -54,7 +54,7 @@ func NewManager(
 	}
 }
 
-func (bm *Manager) setOptions(backup *v1alpha1.Backup) {
+func (bm *Manager) setFromDBOptions(backup *v1alpha1.Backup) {
 	bm.Options.Host = backup.Spec.From.Host
 
 	if backup.Spec.From.Port != 0 {
@@ -105,11 +105,24 @@ func (bm *Manager) ProcessBackup() error {
 		return bm.performBackup(ctx, backup.DeepCopy(), nil)
 	}
 
-	bm.setOptions(backup)
+	// validate and create from db
+	var db *sql.DB
+	db, err = bm.validateAndCreateFromDB(ctx, backup.DeepCopy())
+	if err != nil {
+		return err
+	}
 
+	defer db.Close()
+	return bm.performBackup(ctx, backup.DeepCopy(), db)
+}
+
+// validateAndCreateFromDB validate and create from db.
+func (bm *Manager) validateAndCreateFromDB(ctx context.Context, backup *v1alpha1.Backup) (*sql.DB, error) {
+	bm.setFromDBOptions(backup)
 	var db *sql.DB
 	var dsn string
-	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
+	var errs []error
+	err := wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
 		dsn, err = bm.GetDSN(bm.TLSClient)
 		if err != nil {
 			klog.Errorf("can't get dsn of tidb cluster %s, err: %s", bm, err)
@@ -136,11 +149,10 @@ func (bm *Manager) ProcessBackup() error {
 			Message: err.Error(),
 		}, nil)
 		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
+		return nil, errorutils.NewAggregate(errs)
 	}
 
-	defer db.Close()
-	return bm.performBackup(ctx, backup.DeepCopy(), db)
+	return db, nil
 }
 
 func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, db *sql.DB) error {
@@ -417,7 +429,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.startlogBackupExec(ctx, backup)
+	backupErr := bm.doStartLogBackup(ctx, backup)
 
 	if backupErr != nil {
 		klog.Errorf("Start log backup of cluster %s failed, err: %s", bm, backupErr)
@@ -459,7 +471,7 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.stoplogBackupExec(ctx, backup)
+	backupErr := bm.doStoplogBackup(ctx, backup)
 
 	if backupErr != nil {
 		klog.Errorf("Stop log backup of cluster %s failed, err: %s", bm, backupErr)
@@ -490,7 +502,7 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.truncatelogBackupExec(ctx, backup)
+	backupErr := bm.doTruncatelogBackup(ctx, backup)
 
 	if backupErr != nil {
 		klog.Errorf("Truncate log backup of cluster %s failed, err: %s", bm, backupErr)
