@@ -564,6 +564,42 @@ func TestRetryOnError(t *testing.T) {
 	}
 }
 
+func TestParseRestoreProgress(t *testing.T) {
+	g := NewGomegaWithT(t)
+	cases := []struct {
+		testStr        string
+		expectStep     string
+		expectProgress string
+	}{
+		{
+			testStr:        "",
+			expectStep:     "",
+			expectProgress: "",
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Full Restore\"] [progress=10%] abcdefeg",
+			expectStep:     "Full Restore",
+			expectProgress: "10%",
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Point Restore\"] [progress=10%] abcdefeg",
+			expectStep:     "Point Restore",
+			expectProgress: "10%",
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Point Restore\"] abcdefeg",
+			expectStep:     "",
+			expectProgress: "",
+		},
+	}
+	for _, test := range cases {
+		step, progress := ParseRestoreProgress(test.testStr)
+		g.Expect(step).To(Equal(test.expectStep))
+		g.Expect(progress).To(Equal(test.expectProgress))
+
+	}
+}
+
 func newBackup() *v1alpha1.Backup {
 	return &v1alpha1.Backup{
 		TypeMeta: metav1.TypeMeta{

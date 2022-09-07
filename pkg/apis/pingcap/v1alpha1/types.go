@@ -2189,6 +2189,10 @@ type RestoreStatus struct {
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs,omitempty"`
+	// SnapshotRestoreProgress is the snapshot backup restore progress
+	SnapshotRestoreProgress string `json:"snapshotRestoreProgress,omitempty"`
+	// PointRestoreProgress is the PiTR point restore progress, PiTR have SnapshotRestoreProgress first and then PointRestoreProgress
+	PointRestoreProgress string `json:"pointRestoreProgress,omitempty"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
 	Phase RestoreConditionType `json:"phase,omitempty"`
 	// +nullable

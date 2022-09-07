@@ -25,16 +25,22 @@ import (
 
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
+)
+
+var (
+	fullRestoreStep  = "Full Restore"
+	pointRestoreStep = "Point Restore"
 )
 
 type Options struct {
 	backupUtil.GenericOptions
 }
 
-func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore) error {
+func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore, statusUpdater controller.RestoreConditionUpdaterInterface) error {
 	clusterNamespace := restore.Spec.BR.ClusterNamespace
 	if restore.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = restore.Namespace
@@ -101,6 +107,18 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore) e
 		line, err := reader.ReadString('\n')
 		if strings.Contains(line, "[ERROR]") {
 			errMsg += line
+		} else {
+			step, progress := backupUtil.ParseRestoreProgress(line)
+			switch step {
+			case fullRestoreStep:
+				err = statusUpdater.Update(restore, nil, &controller.RestoreUpdateStatus{
+					SnapshotRestoreProgress: &progress,
+				})
+			case pointRestoreStep:
+				err = statusUpdater.Update(restore, nil, &controller.RestoreUpdateStatus{
+					PointRestoreProgress: &progress,
+				})
+			}
 		}
 		klog.Info(strings.Replace(line, "\n", "", -1))
 		if err != nil || io.EOF == err {
