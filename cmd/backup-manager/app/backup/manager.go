@@ -471,7 +471,7 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.doStoplogBackup(ctx, backup)
+	backupErr := bm.doStopLogBackup(ctx, backup)
 
 	if backupErr != nil {
 		klog.Errorf("Stop log backup of cluster %s failed, err: %s", bm, backupErr)
