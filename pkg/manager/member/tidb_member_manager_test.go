@@ -587,7 +587,7 @@ func TestSyncRecoveryForTidbCluster(t *testing.T) {
 
 	tc.Spec.RecoveryMode = true
 	err = tmm.syncRecoveryForTidbCluster(tc)
-	g.Expect(err).To(BeNil())
+	g.Expect(err).NotTo(BeNil())
 
 	if len(tc.GetAnnotations()) == 0 {
 		tc.Annotations = make(map[string]string)

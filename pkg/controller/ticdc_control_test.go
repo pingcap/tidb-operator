@@ -16,7 +16,7 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -294,7 +294,7 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 					fmt.Fprint(w, string(payload))
 				},
 				"/api/v1/captures/drain": func(w http.ResponseWriter, req *http.Request) {
-					body, err := io.ReadAll(req.Body)
+					body, err := ioutil.ReadAll(req.Body)
 					g.Expect(err).Should(BeNil())
 					var reqPayload drainCaptureRequest
 					err = json.Unmarshal(body, &reqPayload)

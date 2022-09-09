@@ -294,7 +294,13 @@ func TestPrepareCSBK8SMeta(t *testing.T) {
 	helper := newHelper(t)
 	defer helper.Close()
 	b.deps = helper.Deps
-	_, _, err := b.PrepareCSBK8SMeta(csb, "test-ns")
+	tc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test-ns",
+		},
+	}
+	_, _, err := b.PrepareCSBK8SMeta(csb, tc)
 	assert.NoError(t, err)
 }
 
@@ -466,7 +472,7 @@ func TestPrepareBackupMetadata(t *testing.T) {
 				assert.NotNil(t, s)
 			}
 			s.Init(deps, nil)
-			_, err := s.PrepareBackupMetadata(tt.backup, tc, "test-ns")
+			_, err := s.PrepareBackupMetadata(tt.backup, tc)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -910,6 +916,10 @@ func TestPrepareRestoreMetadata(t *testing.T) {
 		},
 		Spec: v1alpha1.RestoreSpec{
 			Type: "ebs",
+			BR: &v1alpha1.BRConfig{
+				Cluster:          "test",
+				ClusterNamespace: "test",
+			},
 		},
 	}
 
@@ -933,7 +943,8 @@ func TestPrepareRestoreMetadata(t *testing.T) {
 
 func TestProcessCSBPVCsAndPVs(t *testing.T) {
 	sAWS := &AWSSnapshotter{}
-	sAWS.Init(nil, nil)
+	err := sAWS.Init(nil, nil)
+	require.NoError(t, err)
 
 	csb := &CloudSnapBackup{
 		TiKV: &TiKVBackup{
@@ -1081,7 +1092,8 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 			PVCs: []*corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-1",
+						Name:      "pvc-1",
+						Namespace: "default",
 						Labels: map[string]string{
 							"test/label": "retained",
 						},
@@ -1105,7 +1117,8 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-2",
+						Name:      "pvc-2",
+						Namespace: "default",
 						Labels: map[string]string{
 							"test/label": "retained",
 						},
@@ -1129,7 +1142,8 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-3",
+						Name:      "pvc-3",
+						Namespace: "default",
 						Labels: map[string]string{
 							"test/label": "retained",
 						},
@@ -1152,13 +1166,34 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					},
 				},
 			},
-			TiDBCluster:  &v1alpha1.TidbCluster{},
+			TiDBCluster: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+			},
 			Unstructured: nil,
 		},
 	}
 
+	restore := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "restore-1",
+			Namespace: "default",
+		},
+		Spec: v1alpha1.RestoreSpec{
+			Type: v1alpha1.BackupTypeEBS,
+			BR: &v1alpha1.BRConfig{
+				Cluster:          "test",
+				ClusterNamespace: "default",
+			},
+		},
+	}
+
 	m := NewRestoreStoresMixture(sAWS, false)
-	m.ProcessCSBPVCsAndPVs(csb)
+	reason, err := m.ProcessCSBPVCsAndPVs(restore, csb)
+	require.Empty(t, reason)
+	require.NoError(t, err)
 
 	// happy path for backup-volumeID mapping restore-volumeID
 	volIDMapWanted := map[string]string{
@@ -1246,7 +1281,8 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 	pvcsWanted := []*corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pvc-1",
+				Name:      "pvc-1",
+				Namespace: "default",
 				Labels: map[string]string{
 					"test/label": "retained",
 				},
@@ -1260,7 +1296,8 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pvc-2",
+				Name:      "pvc-2",
+				Namespace: "default",
 				Labels: map[string]string{
 					"test/label": "retained",
 				},
@@ -1274,7 +1311,8 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pvc-3",
+				Name:      "pvc-3",
+				Namespace: "default",
 				Labels: map[string]string{
 					"test/label": "retained",
 				},
