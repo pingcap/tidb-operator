@@ -147,7 +147,20 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupMode</code></br>
+<em>
+<a href="#backupmode">
+BackupMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
 </td>
 </tr>
 <tr>
@@ -214,6 +227,33 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogTruncateUntil is log backup truncate until timestamp.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -1134,7 +1174,42 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restoreMode</code></br>
+<em>
+<a href="#restoremode">
+RestoreMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the restore mode. such as snapshot or pitr.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pitrRestoredTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logRestoreStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
 <tr>
@@ -1164,6 +1239,19 @@ StorageProvider
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
 <p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackupStorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -1925,6 +2013,21 @@ Kubernetes core/v1.PodSecurityContext
 domains. Scheduler will schedule pods in a way which abides by the constraints.
 This field is is only honored by clusters that enables the EvenPodsSpread feature.
 All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startScriptVersion</code></br>
+<em>
+<a href="#startscriptversion">
+StartScriptVersion
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartScriptVersion is the version of start script</p>
+<p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>
 <tr>
@@ -3229,6 +3332,14 @@ string
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
 </p>
+<h3 id="backupmode">BackupMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>BackupType represents the backup mode, such as snapshot backup or log backup.</p>
+</p>
 <h3 id="backupschedulespec">BackupScheduleSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -3482,7 +3593,20 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupMode</code></br>
+<em>
+<a href="#backupmode">
+BackupMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
 </td>
 </tr>
 <tr>
@@ -3549,6 +3673,33 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogTruncateUntil is log backup truncate until timestamp.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -3792,7 +3943,18 @@ string
 </em>
 </td>
 <td>
-<p>CommitTs is the snapshot time point of tidb cluster.</p>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogTruncateUntil is log backup truncate until timestamp.</p>
 </td>
 </tr>
 <tr>
@@ -12658,6 +12820,14 @@ string
 <p>
 <p>RestoreConditionType represents a valid condition of a Restore.</p>
 </p>
+<h3 id="restoremode">RestoreMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>RestoreMode represents the restore mode, such as snapshot or pitr.</p>
+</p>
 <h3 id="restorespec">RestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -12739,7 +12909,42 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restoreMode</code></br>
+<em>
+<a href="#restoremode">
+RestoreMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the restore mode. such as snapshot or pitr.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pitrRestoredTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logRestoreStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
 <tr>
@@ -12769,6 +12974,19 @@ StorageProvider
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
 <p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackupStorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -13256,6 +13474,48 @@ bool
 </tr>
 </tbody>
 </table>
+<h3 id="scalepolicy">ScalePolicy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>, 
+<a href="#tikvspec">TiKVSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>scaleInParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleInParallelism configures max scale in replicas for TiKV stores.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scaleOutParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleOutParallelism configures max scale out replicas for TiKV stores.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="secretorconfigmap">SecretOrConfigMap</h3>
 <p>
 (<em>Appears on:</em>
@@ -13610,6 +13870,13 @@ Optional: Defaults to omitted</p>
 </tr>
 </tbody>
 </table>
+<h3 id="startscriptversion">StartScriptVersion</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+</p>
 <h3 id="status">Status</h3>
 <p>
 (<em>Appears on:</em>
@@ -14576,6 +14843,22 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for TiCDC data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>gracefulShutdownTimeout</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>GracefulShutdownTimeout is the timeout of gracefully shutdown a TiCDC pod.
+Encoded in the format of Go Duration.
+Defaults to 10m</p>
 </td>
 </tr>
 </tbody>
@@ -16498,6 +16781,20 @@ Failover
 <td>
 <em>(Optional)</em>
 <p>Failover is the configurations of failover</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scalePolicy</code></br>
+<em>
+<a href="#scalepolicy">
+ScalePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScalePolicy is the scale configuration for TiFlash</p>
 </td>
 </tr>
 </tbody>
@@ -20575,6 +20872,20 @@ bool
 If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>scalePolicy</code></br>
+<em>
+<a href="#scalepolicy">
+ScalePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScalePolicy is the scale configuration for TiKV</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>
@@ -22233,6 +22544,21 @@ Kubernetes core/v1.PodSecurityContext
 domains. Scheduler will schedule pods in a way which abides by the constraints.
 This field is is only honored by clusters that enables the EvenPodsSpread feature.
 All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startScriptVersion</code></br>
+<em>
+<a href="#startscriptversion">
+StartScriptVersion
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartScriptVersion is the version of start script</p>
+<p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>
 <tr>

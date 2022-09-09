@@ -23,6 +23,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
@@ -50,36 +52,85 @@ func (s *tiflashScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newS
 func (s *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
+		klog.Errorf("tiflashScaler.ScaleOut: failed to convert cluster %s/%s, scale out will do nothing", meta.GetNamespace(), meta.GetName())
 		return nil
 	}
 
-	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
-	resetReplicas(newSet, oldSet)
+	scaleOutParallelism := tc.Spec.TiFlash.GetScaleOutParallelism()
+	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleOutParallelism)
+	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %v (replicas: %d, scale out parallelism: %d, delete slots: %v)",
+		oldSet.Namespace, oldSet.Name, ordinals, replicas, scaleOutParallelism, deleteSlots.List())
 
-	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
+	var (
+		errs                         []error
+		finishedOrdinals             = sets.NewInt32()
+		updateReplicasAndDeleteSlots bool
+	)
+	for _, ordinal := range ordinals {
+		err := s.scaleOutOne(tc, ordinal)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			finishedOrdinals.Insert(ordinal)
+			updateReplicasAndDeleteSlots = true
+		}
+	}
+	if updateReplicasAndDeleteSlots {
+		setReplicasAndDeleteSlotsByFinished(scalingOutFlag, newSet, oldSet, ordinals, finishedOrdinals)
+	} else {
+		resetReplicas(newSet, oldSet)
+	}
+	return errorutils.NewAggregate(errs)
+}
+
+func (s *tiflashScaler) scaleOutOne(tc *v1alpha1.TidbCluster, ordinal int32) error {
 	_, err := s.deleteDeferDeletingPVC(tc, v1alpha1.TiFlashMemberType, ordinal)
 	if err != nil {
 		return err
 	}
-
-	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
 
 func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
+		klog.Errorf("tiflashScaler.ScaleIn: failed to convert cluster %s/%s, scale in will do nothing", meta.GetNamespace(), meta.GetName())
 		return nil
 	}
 
+	scaleInParallelism := tc.Spec.TiFlash.GetScaleInParallelism()
+	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleInParallelism)
+	klog.Infof("scaling in tiflash statefulset %s/%s, ordinal: %v (replicas: %d, delete slots: %v), scaleInParallelism: %v", oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List(), scaleInParallelism)
+
+	var (
+		errs                         []error
+		finishedOrdinals             = sets.NewInt32()
+		updateReplicasAndDeleteSlots bool
+	)
+	// since first call of scale-in would give a requeue error,
+	// try to do scale for all the stores here, so that we can batch requeue error,
+	// record finished status for replicas and delete slots update.
+	for _, ordinal := range ordinals {
+		err := s.scaleInOne(tc, ordinal)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			finishedOrdinals.Insert(ordinal)
+			updateReplicasAndDeleteSlots = true
+		}
+	}
+
+	if updateReplicasAndDeleteSlots {
+		setReplicasAndDeleteSlotsByFinished(scalingInFlag, newSet, oldSet, ordinals, finishedOrdinals)
+	} else {
+		resetReplicas(newSet, oldSet)
+	}
+	return errorutils.NewAggregate(errs)
+}
+
+func (s *tiflashScaler) scaleInOne(tc *v1alpha1.TidbCluster, ordinal int32) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	// we can only remove one member at a time when scaling in
-	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
-	resetReplicas(newSet, oldSet)
-
-	klog.Infof("scaling in tiflash statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	// We need delete store from cluster before decreasing the statefulset replicas
 	podName := ordinalPodName(v1alpha1.TiFlashMemberType, tcName, ordinal)
 	pod, err := s.deps.PodLister.Pods(ns).Get(podName)
 	if err != nil {
@@ -117,7 +168,6 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 			if err != nil {
 				return err
 			}
-			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 			return nil
 		}
 	}
@@ -138,7 +188,6 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 			// After this period of time, if there is still no information about this tiflash in TidbCluster status,
 			// then we can be sure that this tiflash has never been added to the tidb cluster.
 			// So we can scale in this tiflash pod safely.
-			resetReplicas(newSet, oldSet)
 			return fmt.Errorf("TiFlash %s/%s is not ready, wait for some resync periods to synced its status", ns, podName)
 		}
 		klog.Infof("Pod %s/%s not ready for more than %v and no store for it, scale in it",
@@ -147,7 +196,6 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 		if err != nil {
 			return err
 		}
-		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}
 	return fmt.Errorf("tiflash %s/%s no store found in cluster", ns, podName)

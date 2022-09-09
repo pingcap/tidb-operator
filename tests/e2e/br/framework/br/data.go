@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -161,9 +162,10 @@ func GetRestore(ns, name, tcName, typ string, s3Config *v1alpha1.S3StorageProvid
 				User:       "root",
 			},
 			BR: &v1alpha1.BRConfig{
-				Cluster:          tcName,
-				ClusterNamespace: ns,
-				SendCredToTikv:   &sendCredToTikv,
+				Cluster:           tcName,
+				ClusterNamespace:  ns,
+				SendCredToTikv:    &sendCredToTikv,
+				CheckRequirements: pointer.BoolPtr(false), // workaround for https://docs.pingcap.com/tidb/stable/backup-and-restore-faq#why-does-br-report-new_collations_enabled_on_first_bootstrap-mismatch
 			},
 		},
 	}

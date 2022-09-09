@@ -700,6 +700,43 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
 			},
 		},
+		{
+			name: "pod is ready but not available",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiKV.Synced = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
+				if tc.Annotations == nil {
+					tc.Annotations = map[string]string{}
+				}
+				tc.Annotations[annoKeyTiKVMinReadySeconds] = "300"
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				oldSet.Status.CurrentReplicas = 2
+				oldSet.Status.UpdatedReplicas = 1
+				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(2)
+			},
+			changePods: func(pods []*corev1.Pod) {
+				for _, pod := range pods {
+					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
+						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
+						pod.Status.Conditions[0].LastTransitionTime = metav1.Now()
+					}
+				}
+			},
+			beginEvictLeaderErr: false,
+			endEvictLeaderErr:   false,
+			updatePodErr:        false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
+			},
+		},
 	}
 
 	for _, test := range tests {

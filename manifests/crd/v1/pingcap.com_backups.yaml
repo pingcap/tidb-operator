@@ -19,6 +19,15 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - description: the type of backup, such as full, db, table. Only used when Mode
+        = snapshot.
+      jsonPath: .spec.backupType
+      name: Type
+      type: string
+    - description: the mode of backup, such as snapshot, log.
+      jsonPath: .spec.backupMode
+      name: Mode
+      type: string
     - description: The current status of the backup
       jsonPath: .status.phase
       name: Status
@@ -31,7 +40,7 @@ spec:
       jsonPath: .status.backupSizeReadable
       name: BackupSize
       type: string
-    - description: The commit ts of tidb cluster dump
+    - description: The commit ts of the backup
       jsonPath: .status.commitTs
       name: CommitTS
       type: string
@@ -39,6 +48,10 @@ spec:
       jsonPath: .status.progress
       name: Progress
       priority: 1
+      type: string
+    - description: The log backup truncate until ts
+      jsonPath: .status.logTruncateUntil
+      name: LogTruncateUntil
       type: string
     - description: The time at which the backup was started
       jsonPath: .status.timeStarted
@@ -340,6 +353,9 @@ spec:
                   secretName:
                     type: string
                 type: object
+              backupMode:
+                default: snapshot
+                type: string
               backupType:
                 type: string
               br:
@@ -398,6 +414,8 @@ spec:
                     type: integer
                 type: object
               cleanPolicy:
+                type: string
+              commitTs:
                 type: string
               dumpling:
                 properties:
@@ -1213,6 +1231,8 @@ spec:
                 - volume
                 - volumeMount
                 type: object
+              logTruncateUntil:
+                type: string
               podSecurityContext:
                 properties:
                   fsGroup:
@@ -1390,6 +1410,8 @@ spec:
                   type: object
                 nullable: true
                 type: array
+              logTruncateUntil:
+                type: string
               phase:
                 type: string
               progress:

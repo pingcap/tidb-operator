@@ -654,6 +654,92 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "%q failed to join into %q", tcName2, tcName1)
 		})
 	})
+
+	ginkgo.Describe("Start Script Version", func() {
+		type testcase struct {
+			nameSuffix string
+			tlsEnable  bool
+		}
+
+		cases := []testcase{
+			{
+				nameSuffix: "",
+				tlsEnable:  false,
+			},
+			{
+				nameSuffix: "and enable TLS",
+				tlsEnable:  true,
+			},
+		}
+
+		ginkgo.BeforeEach(func() {
+			ns1 := namespaces[0]
+			namespaces = append(namespaces, ns1+"-1")
+		})
+
+		version := utilimage.TiDBLatest
+		clusterDomain := defaultClusterDomain
+
+		for _, testcase := range cases {
+			ginkgo.It("deploy cluster with start script v2 "+testcase.nameSuffix, func() {
+				ns1 := namespaces[0]
+				ns2 := namespaces[1]
+
+				tc1 := GetTCForAcrossKubernetes(ns1, "start-script-v2-tc1", version, clusterDomain, nil)
+				tc2 := GetTCForAcrossKubernetes(ns2, "start-script-v2-tc2", version, clusterDomain, tc1)
+				tc1.Spec.StartScriptVersion = v1alpha1.StartScriptV2
+				tc2.Spec.StartScriptVersion = v1alpha1.StartScriptV2
+
+				if testcase.tlsEnable {
+					ginkgo.By("Prepare TLS resources for clusters")
+					MustPrepareXK8sTLSResources(genericCli, tc1, []*v1alpha1.TidbCluster{tc2})
+				}
+
+				ginkgo.By("Deploy all clusters and wait status to be ready")
+				MustCreateXK8sTCWithComponentsReady(genericCli, oa, []*v1alpha1.TidbCluster{tc1, tc2}, false)
+
+				ginkgo.By("Check deploy status of all clusters")
+				err := CheckStatusWhenAcrossK8sWithTimeout(cli, []*v1alpha1.TidbCluster{tc1, tc2}, 5*time.Second, 3*time.Minute)
+				framework.ExpectNoError(err, "failed to check status")
+			})
+
+			ginkgo.It("migrate start script from v1 to v2 "+testcase.nameSuffix, func() {
+				ns := namespaces[0]
+				tcName := "migrate-start-script-xk8s"
+
+				tc := GetTCForAcrossKubernetes(ns, tcName, version, clusterDomain, nil)
+
+				if testcase.tlsEnable {
+					ginkgo.By("Prepare TLS resources for clusters")
+					MustPrepareXK8sTLSResources(genericCli, tc, []*v1alpha1.TidbCluster{})
+				}
+
+				ginkgo.By("Deploy tidb cluster")
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+				oldTC, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
+				framework.ExpectNoError(err, "failed to get tc %s/%s", ns, tcName)
+
+				ginkgo.By("Update tc to use start script v2")
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.StartScriptVersion = v1alpha1.StartScriptV2
+					return nil
+				})
+				framework.ExpectNoError(err, "failed to start script version to v2")
+
+				ginkgo.By(fmt.Sprintf("Wait for phase is %q", v1alpha1.UpgradePhase))
+				utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
+
+				ginkgo.By("Wait for cluster is ready")
+				err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+
+				ginkgo.By("Check status of components not changed")
+				err = utiltc.CheckComponentStatusNotChanged(cli, oldTC)
+				framework.ExpectNoError(err, "failed to check component status of tc %s/%s not changed", ns, tcName)
+			})
+		}
+
+	})
 })
 
 func CheckPeerMembersAndClusterStatus(clusterCli ctrlCli.Client, tc *v1alpha1.TidbCluster, expectNonExistedTc *v1alpha1.TidbCluster) error {

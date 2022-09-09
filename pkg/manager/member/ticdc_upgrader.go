@@ -87,9 +87,9 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
-	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
-		i := podOrdinals[_i]
-		podName := ticdcPodName(tcName, i)
+	for i := len(podOrdinals) - 1; i >= 0; i-- {
+		ordinal := podOrdinals[i]
+		podName := ticdcPodName(tcName, ordinal)
 		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("ticdcUpgrader.Upgrade: failed to get pod %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
@@ -108,7 +108,35 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 			}
 			continue
 		}
-		mngerutils.SetUpgradePartition(newSet, i)
+
+		support, err := isTiCDCPodSupportGracefulUpgrade(tc, u.deps.CDCControl, u.deps.PodControl, pod, ordinal, "Upgrade")
+		if err != nil {
+			return err
+		}
+		if support {
+			err = gracefulDrainTiCDC(tc, u.deps.CDCControl, u.deps.PodControl, pod, ordinal, "Upgrade")
+			if err != nil {
+				return err
+			}
+			klog.Infof("ticdcUpgrade.Upgrade: %s graceful drain TiCDC complete in cluster %s/%s", podName, tc.GetNamespace(), tc.GetName())
+			// To prevent TiCDC service disruption, we need to resign owner
+			// gracefully from the next pod that is going to be upgraded.
+			// If the current pod is the last one to upgrade, skip resign owner.
+			hasNext := i-1 >= 0
+			if hasNext {
+				nextOrd := podOrdinals[i-1]
+				nextPodName := ticdcPodName(tcName, nextOrd)
+				klog.Infof("ticdcUpgrade.Upgrade: try to graceful resign owner from the next ticdc pod %s in cluster %s/%s", nextPodName, tc.GetNamespace(), tc.GetName())
+				err = gracefulResignOwnerTiCDC(tc, u.deps.CDCControl, u.deps.PodControl, pod, nextPodName, nextOrd, "Upgrade")
+				if err != nil {
+					return err
+				}
+				klog.Infof("ticdcUpgrade.Upgrade: %s graceful resign owner complete in cluster %s/%s", nextPodName, tc.GetNamespace(), tc.GetName())
+			}
+			klog.Infof("ticdcUpgrade.Upgrade: %s graceful shutdown complete in cluster %s/%s", podName, tc.GetNamespace(), tc.GetName())
+		}
+
+		mngerutils.SetUpgradePartition(newSet, ordinal)
 		return nil
 	}
 

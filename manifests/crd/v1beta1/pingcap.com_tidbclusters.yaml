@@ -7503,6 +7503,12 @@ spec:
                     type: string
                 type: object
               type: array
+            startScriptVersion:
+              enum:
+              - ""
+              - v1
+              - v2
+              type: string
             statefulSetUpdateStrategy:
               type: string
             suspendAction:
@@ -9124,6 +9130,8 @@ spec:
                         type: object
                     type: object
                   type: array
+                gracefulShutdownTimeout:
+                  type: string
                 hostNetwork:
                   type: boolean
                 image:
@@ -14728,6 +14736,15 @@ spec:
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   type: object
+                scalePolicy:
+                  properties:
+                    scaleInParallelism:
+                      format: int32
+                      type: integer
+                    scaleOutParallelism:
+                      format: int32
+                      type: integer
+                  type: object
                 schedulerName:
                   type: string
                 serviceAccount:
@@ -17112,6 +17129,15 @@ spec:
                   type: object
                 rocksDBLogVolumeName:
                   type: string
+                scalePolicy:
+                  properties:
+                    scaleInParallelism:
+                      format: int32
+                      type: integer
+                    scaleOutParallelism:
+                      format: int32
+                      type: integer
+                  type: object
                 schedulerName:
                   type: string
                 separateRaftLog:

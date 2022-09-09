@@ -102,7 +102,7 @@ func (s *suspender) SuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.Mem
 	if !suspending {
 		if can, reason := canSuspendComponent(ctx.cluster, ctx.component); !can {
 			klog.Warningf("component %s can not be suspended now because: %s", ctx.ComponentID(), reason)
-			return true, nil
+			return false, nil
 		}
 
 		err := s.begin(ctx)
@@ -223,11 +223,6 @@ func needsSuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) b
 
 // canSuspendComponent checks whether suspender can start to suspend the component
 func canSuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.MemberType) (bool, string) {
-	// only support to suspend Normal or Suspend cluster
-	if !cluster.ComponentIsNormal(comp) && !cluster.ComponentIsSuspending(comp) {
-		return false, "component phase is not Normal or Suspend"
-	}
-
 	// wait for other components to be suspended
 	var suspendOrder []v1alpha1.MemberType
 	switch cluster.(type) {

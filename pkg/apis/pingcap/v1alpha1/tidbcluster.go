@@ -38,6 +38,12 @@ const (
 	defaultEnablePVReclaim    = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
 	defaultEvictLeaderTimeout = 1500 * time.Minute
+	// defaultTiCDCGracefulShutdownTimeout is the timeout limit of graceful
+	// shutdown a TiCDC pod.
+	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
+
+	// the latest version
+	versionLatest = "latest"
 )
 
 var (
@@ -83,13 +89,7 @@ func (tc *TidbCluster) PDVersion() string {
 		return ""
 	}
 
-	image := tc.PDImage()
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
-	}
-
-	return "latest"
+	return getImageVersion(tc.PDImage())
 }
 
 // TiKVImage return the image used by TiKV.
@@ -125,13 +125,7 @@ func (tc *TidbCluster) TiKVVersion() string {
 		return ""
 	}
 
-	image := tc.TiKVImage()
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
-	}
-
-	return "latest"
+	return getImageVersion(tc.TiKVImage())
 }
 
 func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
@@ -185,13 +179,15 @@ func (tc *TidbCluster) TiFlashVersion() string {
 		return ""
 	}
 
-	image := tc.TiFlashImage()
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
-	}
+	return getImageVersion(tc.TiFlashImage())
+}
 
-	return "latest"
+func (tc *TidbCluster) TiFlashContainerPrivilege() *bool {
+	if tc.Spec.TiFlash == nil || tc.Spec.TiFlash.Privileged == nil {
+		pri := false
+		return &pri
+	}
+	return tc.Spec.TiFlash.Privileged
 }
 
 // TiCDCImage return the image used by TiCDC.
@@ -219,12 +215,30 @@ func (tc *TidbCluster) TiCDCImage() string {
 	return image
 }
 
-func (tc *TidbCluster) TiFlashContainerPrivilege() *bool {
-	if tc.Spec.TiFlash == nil || tc.Spec.TiFlash.Privileged == nil {
-		pri := false
-		return &pri
+// TiCDCVersion returns the image version used by TiCDC.
+//
+// If TiCDC isn't specified, return empty string.
+func (tc *TidbCluster) TiCDCVersion() string {
+	if tc.Spec.TiCDC == nil {
+		return ""
 	}
-	return tc.Spec.TiFlash.Privileged
+
+	image := tc.TiCDCImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return "latest"
+}
+
+// TiCDCGracefulShutdownTimeout returns the timeout of gracefully shutdown
+// a TiCDC pod.
+func (tc *TidbCluster) TiCDCGracefulShutdownTimeout() time.Duration {
+	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.GracefulShutdownTimeout != nil {
+		return tc.Spec.TiCDC.GracefulShutdownTimeout.Duration
+	}
+	return defaultTiCDCGracefulShutdownTimeout
 }
 
 // TiDBImage return the image used by TiDB.
@@ -250,6 +264,27 @@ func (tc *TidbCluster) TiDBImage() string {
 		}
 	}
 	return image
+}
+
+// TiDBVersion returns the image version used by TiDB.
+//
+// If TiDB isn't specified, return empty string.
+func (tc *TidbCluster) TiDBVersion() string {
+	if tc.Spec.TiDB == nil {
+		return ""
+	}
+
+	return getImageVersion(tc.TiDBImage())
+}
+
+// getImageVersion returns the verion of a image
+func getImageVersion(image string) string {
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return versionLatest
 }
 
 // PumpImage return the image used by Pump.
@@ -926,11 +961,39 @@ func (tikv *TiKVSpec) GetRecoverByUID() types.UID {
 	return tikv.Failover.RecoverByUID
 }
 
+func (tikv *TiKVSpec) GetScaleInParallelism() int {
+	if tikv.ScalePolicy.ScaleInParallelism == nil {
+		return 1
+	}
+	return int(*(tikv.ScalePolicy.ScaleInParallelism))
+}
+
+func (tikv *TiKVSpec) GetScaleOutParallelism() int {
+	if tikv.ScalePolicy.ScaleOutParallelism == nil {
+		return 1
+	}
+	return int(*(tikv.ScalePolicy.ScaleOutParallelism))
+}
+
 func (tiflash *TiFlashSpec) GetRecoverByUID() types.UID {
 	if tiflash.Failover == nil {
 		return ""
 	}
 	return tiflash.Failover.RecoverByUID
+}
+
+func (tiflash *TiFlashSpec) GetScaleInParallelism() int {
+	if tiflash.ScalePolicy.ScaleInParallelism == nil {
+		return 1
+	}
+	return int(*(tiflash.ScalePolicy.ScaleInParallelism))
+}
+
+func (tiflash *TiFlashSpec) GetScaleOutParallelism() int {
+	if tiflash.ScalePolicy.ScaleOutParallelism == nil {
+		return 1
+	}
+	return int(*(tiflash.ScalePolicy.ScaleOutParallelism))
 }
 
 func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {
@@ -1030,6 +1093,21 @@ func (tc *TidbCluster) TiCDCLogFile() string {
 	return ""
 }
 
+func (tc *TidbCluster) PumpLogLevel() string {
+	if tc.Spec.Pump != nil && tc.Spec.Pump.Config != nil {
+		if v := tc.Spec.Pump.Config.Get("log-level"); v != nil {
+			level, err := v.AsString()
+			if err != nil {
+				klog.Warningf("'%s/%s' incorrect log-level type %v", tc.Namespace, tc.Name, v.Interface())
+			} else {
+				return level
+			}
+		}
+	}
+
+	return "info"
+}
+
 func (tc *TidbCluster) TiCDCLogLevel() string {
 	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil {
 		if v := tc.Spec.TiCDC.Config.Get("log-level"); v != nil {
@@ -1069,4 +1147,13 @@ func (tc *TidbCluster) IsComponentVolumeResizing(compType MemberType) bool {
 	}
 	conds := comp.GetConditions()
 	return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
+}
+
+func (tc *TidbCluster) StartScriptVersion() StartScriptVersion {
+	switch tc.Spec.StartScriptVersion {
+	case StartScriptV1, StartScriptV2:
+		return tc.Spec.StartScriptVersion
+	default:
+		return StartScriptV1
+	}
 }

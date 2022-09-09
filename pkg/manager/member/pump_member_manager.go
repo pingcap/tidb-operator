@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/binlog"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -42,7 +43,6 @@ import (
 )
 
 const (
-	defaultPumpLogLevel = "info"
 	pumpCertVolumeMount = "pump-tls"
 	pumpCertPath        = "/var/lib/pump-tls"
 )
@@ -358,9 +358,9 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 	}
-	startScript, err := getPumpStartScript(tc)
+	startScript, err := startscript.RenderPumpStartScript(tc)
 	if err != nil {
-		return nil, fmt.Errorf("cannot render start-script for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}
 
 	var envs []corev1.EnvVar
@@ -393,11 +393,44 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			MountPath: "/etc/pump",
 		},
 	}
+	// Keep backward compatibility for pump created by helm
+	volumes := []corev1.Volume{
+		{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cm.Name,
+					},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "pump-config",
+							Path: "pump.toml",
+						},
+					},
+				},
+			},
+		},
+	}
 	if tc.IsTLSClusterEnabled() {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name: pumpCertVolumeMount, ReadOnly: true, MountPath: pumpCertPath,
 		})
+		volumes = append(volumes, corev1.Volume{
+			Name: pumpCertVolumeMount, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PumpLabelVal),
+				},
+			},
+		})
 	}
+	// For compatibility, add the volume mount for anno when startscript is not v1
+	if tc.StartScriptVersion() != v1alpha1.StartScriptV1 {
+		annMount, annVolume := annotationsMountVolume()
+		volumeMounts = append(volumeMounts, annMount)
+		volumes = append(volumes, annVolume)
+	}
+
 	containers := []corev1.Container{
 		{
 			Name:            "pump",
@@ -424,36 +457,6 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				},
 			},
 		},
-	}
-
-	// Keep backward compatibility for pump created by helm
-	volumes := []corev1.Volume{
-		{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: cm.Name,
-					},
-					Items: []corev1.KeyToPath{
-						{
-							Key:  "pump-config",
-							Path: "pump.toml",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	if tc.IsTLSClusterEnabled() {
-		volumes = append(volumes, corev1.Volume{
-			Name: pumpCertVolumeMount, VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.PumpLabelVal),
-				},
-			},
-		})
 	}
 
 	volumeClaims := []corev1.PersistentVolumeClaim{
@@ -532,54 +535,6 @@ func getPumpMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1
 		OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 	}
 	return objMeta, pumpLabel
-}
-
-func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	scheme := "http"
-	if tc.IsTLSClusterEnabled() {
-		scheme = "https"
-	}
-
-	pdDomain := controller.PDMemberName(tc.Name)
-	if tc.AcrossK8s() {
-		pdDomain = controller.PDMemberName(tc.Name) // get pd addr from discovery in startup script
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
-	}
-
-	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, pdDomain)
-
-	return RenderPumpStartScript(&PumpStartScriptModel{
-		CommonModel: CommonModel{
-			AcrossK8s:     tc.AcrossK8s(),
-			ClusterDomain: tc.Spec.ClusterDomain,
-		},
-		Scheme:      scheme,
-		ClusterName: tc.Name,
-		PDAddr:      pdAddr,
-		LogLevel:    getPumpLogLevel(tc),
-		Namespace:   tc.GetNamespace(),
-	})
-}
-
-func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
-	cfg := tc.Spec.Pump.Config
-	if cfg == nil {
-		return defaultPumpLogLevel
-	}
-
-	v := cfg.Get("log-level")
-	if v == nil {
-		return defaultPumpLogLevel
-	}
-
-	logLevel, err := v.AsString()
-	if err != nil {
-		klog.Warning("error log-level for pump: ", err)
-		return defaultPumpLogLevel
-	}
-
-	return logLevel
 }
 
 func (m *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {

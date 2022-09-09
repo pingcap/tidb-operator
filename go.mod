@@ -30,7 +30,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/google/go-cmp v0.5.5
+	github.com/google/go-cmp v0.5.6
 	github.com/google/gofuzz v1.1.0
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
@@ -72,7 +72,7 @@ require (
 	github.com/yisaer/crd-validation v0.0.3
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5
 	gocloud.dev v0.18.0
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gomodules.xyz/jsonpatch/v2 v2.1.0
 	google.golang.org/grpc v1.27.0
@@ -92,6 +92,7 @@ require (
 	k8s.io/kubectl v0.19.16
 	k8s.io/kubernetes v1.19.16
 	k8s.io/utils v0.0.0-20200912215256-4140de9c8800
+	mvdan.cc/sh/v3 v3.4.3
 	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
 	sigs.k8s.io/controller-runtime v0.7.2
 )

@@ -389,3 +389,156 @@ func TestTiCDCControllerDrainCapture(t *testing.T) {
 		svr.Close()
 	}
 }
+
+func TestTiCDCControllerIsHealthy(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	cdc := defaultTiCDCControl{}
+	tc := getTidbCluster()
+
+	cases := []struct {
+		caseName    string
+		handlers    map[string]func(http.ResponseWriter, *http.Request)
+		ordinal     int32
+		expectedOk  types.GomegaMatcher
+		expectedErr types.GomegaMatcher
+	}{
+		{
+			caseName: "1 captures, healthy",
+			handlers: map[string]func(http.ResponseWriter, *http.Request){
+				"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+					cp := []captureInfo{{
+						ID:            "1",
+						AdvertiseAddr: req.Host,
+						IsOwner:       true,
+					}}
+					payload, err := json.Marshal(cp)
+					g.Expect(err).Should(BeNil())
+					fmt.Fprint(w, string(payload))
+				},
+				"/api/v1/health": func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				},
+			},
+			ordinal:     1,
+			expectedOk:  BeTrue(),
+			expectedErr: BeNil(),
+		},
+		{
+			caseName: "2 captures, no owner, unhealthy",
+			handlers: map[string]func(http.ResponseWriter, *http.Request){
+				"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+					cp := []captureInfo{{
+						ID:            "1",
+						AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 1),
+					}, {
+						ID:            "2",
+						AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 2),
+					}}
+					payload, err := json.Marshal(cp)
+					g.Expect(err).Should(BeNil())
+					fmt.Fprint(w, string(payload))
+				},
+			},
+			ordinal:     1,
+			expectedOk:  BeFalse(),
+			expectedErr: BeNil(),
+		},
+		{
+			caseName: "2 captures, healthy",
+			handlers: map[string]func(http.ResponseWriter, *http.Request){
+				"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+					cp := []captureInfo{{
+						ID:            "1",
+						IsOwner:       true,
+						AdvertiseAddr: req.Host,
+					}, {
+						ID:            "2",
+						AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 2),
+					}}
+					payload, err := json.Marshal(cp)
+					g.Expect(err).Should(BeNil())
+					fmt.Fprint(w, string(payload))
+				},
+				"/api/v1/health": func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				},
+			},
+			ordinal:     1,
+			expectedOk:  BeTrue(),
+			expectedErr: BeNil(),
+		},
+		{
+			caseName: "2 captures, health 404",
+			handlers: map[string]func(http.ResponseWriter, *http.Request){
+				"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+					cp := []captureInfo{{
+						ID:            "1",
+						IsOwner:       true,
+						AdvertiseAddr: req.Host,
+					}, {
+						ID:            "2",
+						AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 2),
+					}}
+					payload, err := json.Marshal(cp)
+					g.Expect(err).Should(BeNil())
+					fmt.Fprint(w, string(payload))
+				},
+				"/api/v1/health": func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusNotFound)
+				},
+			},
+			ordinal:     1,
+			expectedOk:  BeTrue(),
+			expectedErr: BeNil(),
+		},
+		{
+			caseName: "2 captures, unhealthy, 500",
+			handlers: map[string]func(http.ResponseWriter, *http.Request){
+				"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+					cp := []captureInfo{{
+						ID:            "1",
+						IsOwner:       true,
+						AdvertiseAddr: req.Host,
+					}, {
+						ID:            "2",
+						AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tc, 2),
+					}}
+					payload, err := json.Marshal(cp)
+					g.Expect(err).Should(BeNil())
+					fmt.Fprint(w, string(payload))
+				},
+				"/api/v1/health": func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusInternalServerError)
+				},
+			},
+			ordinal:     1,
+			expectedOk:  BeFalse(),
+			expectedErr: BeNil(),
+		},
+		{
+			caseName: "2 captures, get captures 503",
+			handlers: map[string]func(http.ResponseWriter, *http.Request){
+				"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusServiceUnavailable)
+				},
+			},
+			ordinal:     1,
+			expectedOk:  BeFalse(),
+			expectedErr: BeNil(),
+		},
+	}
+
+	for _, c := range cases {
+		mux := http.NewServeMux()
+		svr := httptest.NewServer(mux)
+		for p, h := range c.handlers {
+			mux.HandleFunc(p, h)
+		}
+		cdc.testURL = svr.URL
+		ok, err := cdc.IsHealthy(tc, c.ordinal)
+		g.Expect(ok).Should(c.expectedOk, c.caseName)
+		g.Expect(err).Should(c.expectedErr, c.caseName)
+		svr.Close()
+	}
+}

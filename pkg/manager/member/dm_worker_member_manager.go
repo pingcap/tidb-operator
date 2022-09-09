@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -570,7 +571,7 @@ func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	startScript, err := RenderDMWorkerStartScript(&DMWorkerStartScriptModel{
+	startScript, err := startscriptv1.RenderDMWorkerStartScript(&startscriptv1.DMWorkerStartScriptModel{
 		DataDir:       filepath.Join(dmWorkerDataVolumeMountPath, dc.Spec.Worker.DataSubDir),
 		MasterAddress: controller.DMMasterMemberName(dc.Name) + ":8261",
 	})

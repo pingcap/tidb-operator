@@ -441,9 +441,9 @@ func TestTiCDCMemberManagerSyncTidbClusterStatus(t *testing.T) {
 
 				// mock status of captures
 				cdcControl := m.deps.CDCControl.(*controller.FakeTiCDCControl)
-				cdcControl.MockGetStatus(func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+				cdcControl.GetStatusFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
 					return &controller.CaptureStatus{}, nil
-				})
+				}
 			},
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				// check status of statefulset
@@ -480,13 +480,13 @@ func TestTiCDCMemberManagerSyncTidbClusterStatus(t *testing.T) {
 
 				// mock status of captures
 				cdcControl := m.deps.CDCControl.(*controller.FakeTiCDCControl)
-				cdcControl.MockGetStatus(func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+				cdcControl.GetStatusFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
 					if ordinal == 1 {
 						return nil, fmt.Errorf("mock err")
 					}
 
 					return &controller.CaptureStatus{}, nil
-				})
+				}
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {

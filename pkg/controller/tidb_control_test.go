@@ -14,7 +14,9 @@
 package controller
 
 import (
+	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -318,6 +320,59 @@ func TestGetHTTPClient(t *testing.T) {
 		httpClient, err := control.getHTTPClient(tc)
 		g.Expect(err).NotTo(HaveOccurred())
 		c.expected(httpClient)
+	}
+}
+
+func TestSetLabels(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	cases := []struct {
+		caseName string
+		labels   map[string]string
+		failed   bool
+	}{
+		{
+			caseName: "SetLabelsSuccessfully",
+			failed:   false,
+			labels:   map[string]string{"zone": "test1"},
+		},
+		{
+			caseName: "SetLabelsFailed",
+			failed:   true,
+			labels:   map[string]string{"zone": "test1", "topology.kubernetes.io/zone": "test1"},
+		},
+	}
+
+	for _, c := range cases {
+		svc := getClientServer(func(w http.ResponseWriter, request *http.Request) {
+			g.Expect(request.Method).To(Equal(http.MethodPost), "check method")
+			g.Expect(request.URL.Path).To(Equal("/labels"), "check url")
+			buffer := bytes.NewBuffer([]byte{})
+			g.Expect(json.NewEncoder(buffer).Encode(c.labels)).NotTo(HaveOccurred())
+			body, err := ioutil.ReadAll(request.Body)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(body).To(Equal(buffer.Bytes()))
+
+			w.Header().Set("Content-Type", ContentTypeJSON)
+			if c.failed {
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				w.Write(buffer.Bytes())
+			}
+		})
+		defer svc.Close()
+
+		fakeClient := &fake.Clientset{}
+		informer := kubeinformers.NewSharedInformerFactory(fakeClient, 0)
+		control := NewDefaultTiDBControl(informer.Core().V1().Secrets().Lister())
+		control.testURL = svc.URL
+		tc := getTidbCluster()
+		err := control.SetServerLabels(tc, 0, c.labels)
+		if c.failed {
+			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+		}
 	}
 }
 
