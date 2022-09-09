@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
+	"io/ioutil"
 	"os/exec"
 	"path"
 	"regexp"
@@ -119,7 +119,7 @@ func (ro *Options) restoreData(
 		errMsg = ro.processExecOutput(stdOut)
 	}
 
-	tmpErr, _ := io.ReadAll(stdErr)
+	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)
@@ -144,7 +144,7 @@ func (ro *Options) processRestoreResult(
 		if !backupUtil.IsFileExist(csbPath) {
 			return false, fmt.Errorf("cluster %s, the CSB file not found, path: %s", ro, csbPath)
 		}
-		bs, err := os.ReadFile(csbPath)
+		bs, err := ioutil.ReadFile(csbPath)
 		if err != nil {
 			return false, fmt.Errorf("cluster %s, read the CSB file failed, path: %s, err: %v", ro, csbPath, err)
 		}
@@ -227,7 +227,7 @@ func (ro *Options) processExecOutputForCSB(
 				if !backupUtil.IsFileExist(progressFile) {
 					continue
 				}
-				bs, err := os.ReadFile(progressFile)
+				bs, err := ioutil.ReadFile(progressFile)
 				if err != nil {
 					klog.Errorf("Read progress file failed, err: %v", err)
 					continue

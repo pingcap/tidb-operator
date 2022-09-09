@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -68,7 +69,7 @@ func (bo *Options) backupData(
 		isCSB = true
 		klog.Infof("Running cloud-snapshot-backup with metadata: %s", csb)
 		csbPath := path.Join(util.BRBinPath, "csb_backup.json")
-		err := os.WriteFile(csbPath, []byte(csb), 0644)
+		err := ioutil.WriteFile(csbPath, []byte(csb), 0644)
 		if err != nil {
 			return false, err
 		}
@@ -117,7 +118,7 @@ func (bo *Options) backupData(
 		errMsg = bo.processExecOutput(stdOut)
 	}
 
-	tmpErr, _ := io.ReadAll(stdErr)
+	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)
@@ -211,7 +212,7 @@ func (bo *Options) processExecOutputForCSB(
 				if !backupUtil.IsFileExist(progressFile) {
 					continue
 				}
-				bs, err := os.ReadFile(progressFile)
+				bs, err := ioutil.ReadFile(progressFile)
 				if err != nil {
 					return
 				}
