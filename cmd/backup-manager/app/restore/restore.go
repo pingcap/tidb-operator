@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -26,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -114,12 +114,12 @@ func (ro *Options) restoreData(
 
 	var errMsg string
 	if isCSB {
-		ts, errMsg = ro.processExecOutputForCSB(restoreType, stdOut)
+		ts, errMsg = ro.processExecOutputForCSB(restore, restoreType, stdOut, statusUpdater)
 	} else {
 		errMsg = ro.processExecOutput(stdOut)
 	}
 
-	tmpErr, _ := ioutil.ReadAll(stdErr)
+	tmpErr, _ := io.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)
@@ -144,38 +144,33 @@ func (ro *Options) processRestoreResult(
 		if !backupUtil.IsFileExist(csbPath) {
 			return false, fmt.Errorf("cluster %s, the CSB file not found, path: %s", ro, csbPath)
 		}
-		file, err := os.Open(csbPath)
+		bs, err := os.ReadFile(csbPath)
 		if err != nil {
-			return false, fmt.Errorf("cluster %s, open the CSB file failed, path: %s, err: %v", ro, csbPath, err)
-		}
-		defer file.Close()
-		if bs, err := ioutil.ReadAll(file); err != nil {
 			return false, fmt.Errorf("cluster %s, read the CSB file failed, path: %s, err: %v", ro, csbPath, err)
-		} else {
-			if len(restore.GetAnnotations()) == 0 {
-				restore.Annotations = make(map[string]string)
-			}
-			klog.Infof("Get restore for cluster %s, annotations: %v", ro, restore.GetAnnotations())
-			restore.Annotations[label.AnnBackupCloudSnapKey] = string(bs)
-			if _, err = restoreControl.UpdateRestore(restore); err != nil {
-				return false, fmt.Errorf("cluster %s, update restore annotation for CSB failed, err: %v", ro, err)
-			}
-
-			updateStatus := &controller.RestoreUpdateStatus{
-				TimeStarted:   &metav1.Time{Time: started},
-				TimeCompleted: &metav1.Time{Time: time.Now()},
-				CommitTs:      &resolvedTS,
-			}
-			if err := statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-				Type:   v1alpha1.RestoreVolumeComplete,
-				Status: corev1.ConditionTrue,
-			}, updateStatus); err != nil {
-				return false, fmt.Errorf("cluster %s, update restore status volume-complete failed, err: %v", ro, err)
-			}
-			klog.Infof("Restore TiKV-volumes for cluster %s successfully", ro)
-			return true, nil
 		}
 
+		if len(restore.GetAnnotations()) == 0 {
+			restore.Annotations = make(map[string]string)
+		}
+		klog.Infof("Get restore for cluster %s, annotations: %v", ro, restore.GetAnnotations())
+		restore.Annotations[label.AnnBackupCloudSnapKey] = string(bs)
+		if _, err = restoreControl.UpdateRestore(restore); err != nil {
+			return false, fmt.Errorf("cluster %s, update restore annotation for CSB failed, err: %v", ro, err)
+		}
+
+		updateStatus := &controller.RestoreUpdateStatus{
+			TimeStarted:   &metav1.Time{Time: started},
+			TimeCompleted: &metav1.Time{Time: time.Now()},
+			CommitTs:      &resolvedTS,
+		}
+		if err := statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreVolumeComplete,
+			Status: corev1.ConditionTrue,
+		}, updateStatus); err != nil {
+			return false, fmt.Errorf("cluster %s, update restore status volume-complete failed, err: %v", ro, err)
+		}
+		klog.Infof("Restore TiKV-volumes for cluster %s successfully", ro)
+		return true, nil
 	case v1alpha1.BackupTypeData:
 		updateStatus := &controller.RestoreUpdateStatus{
 			TimeCompleted: &metav1.Time{Time: time.Now()},
@@ -214,7 +209,47 @@ func (ro *Options) processExecOutput(stdOut io.ReadCloser) (errMsg string) {
 
 // processExecOutputForCSB processes the output from exec br binary for CloudSnapBackup
 // NOTE: distinguish between previous code logic
-func (ro *Options) processExecOutputForCSB(restoreType string, stdOut io.ReadCloser) (ts, errMsg string) {
+func (ro *Options) processExecOutputForCSB(
+	restore *v1alpha1.Restore,
+	restoreType string,
+	stdOut io.ReadCloser,
+	statusUpdater controller.RestoreConditionUpdaterInterface,
+) (ts, errMsg string) {
+	quit := make(chan struct{})
+	progressFile := path.Join(util.BRBinPath, "progress.txt")
+	go func() {
+		ticker := time.NewTicker(constants.ProgressInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if !backupUtil.IsFileExist(progressFile) {
+					continue
+				}
+				bs, err := os.ReadFile(progressFile)
+				if err != nil {
+					klog.Errorf("Read progress file failed, err: %v", err)
+					continue
+				}
+				progress := strings.TrimSpace(string(bs))
+				klog.Infof("Restore progress: %s", progress)
+				updateStatus := &controller.RestoreUpdateStatus{
+					Progress: &progress,
+				}
+				err = statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+					Type:   v1alpha1.RestoreRunning,
+					Status: corev1.ConditionTrue,
+				}, updateStatus)
+				if err != nil {
+					klog.Warningf("Failed to update RestoreUpdateStatus-Running for cluster %s, %s", ro, err.Error())
+				}
+			case <-quit:
+				return
+			}
+		}
+	}()
+
 	var line string
 	var err error
 	successTag := fmt.Sprintf("[\"%s restore success\"]", strings.ToUpper(restoreType))
@@ -230,6 +265,7 @@ func (ro *Options) processExecOutputForCSB(restoreType string, stdOut io.ReadClo
 		}
 
 		if err != nil || io.EOF == err {
+			quit <- struct{}{}
 			break
 		}
 	}

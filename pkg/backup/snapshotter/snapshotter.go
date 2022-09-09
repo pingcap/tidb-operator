@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -26,10 +27,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/klog/v2"
 )
 
@@ -44,7 +45,7 @@ type Snapshotter interface {
 
 	// PrepareBackupMetadata performs the preparations for creating
 	// a snapshot from the used volume for PV/PVC.
-	PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error)
+	PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error)
 
 	// PrepareRestoreMetadata performs the preparations for creating
 	// a volume from the snapshot that has been backed up.
@@ -293,16 +294,17 @@ func (m *StoresMixture) extractVolumeIDs() (string, error) {
 	return "", nil
 }
 
-func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, ns string) ([]*corev1.Pod, string, error) {
+func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, tc *v1alpha1.TidbCluster) ([]*corev1.Pod, string, error) {
 	if s.deps == nil {
 		return nil, "NotExistDependencies", fmt.Errorf("unexpected error for nil dependencies")
 	}
-	req, err := labels.NewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
+
+	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
 	if err != nil {
 		return nil, fmt.Sprintf("unexpected error generating label selector: %v", err), err
 	}
-	sel := labels.NewSelector().Add(*req)
-	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(ns).List(sel)
+
+	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(tc.Namespace).List(sel)
 
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch pvcs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
@@ -313,7 +315,7 @@ func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, ns string) ([]
 		return nil, fmt.Sprintf("failed to fetch pvs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
 	csb.Kubernetes.PVs = pvs
-	pods, err := s.deps.PodLister.Pods(ns).List(sel)
+	pods, err := s.deps.PodLister.Pods(tc.Namespace).List(sel)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch pods %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
@@ -354,9 +356,9 @@ func (m *StoresMixture) PrepareCSBStoresMeta(csb *CloudSnapBackup, pods []*corev
 }
 
 func (s *BaseSnapshotter) prepareBackupMetadata(
-	b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string, execr Snapshotter) (string, error) {
+	b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, execr Snapshotter) (string, error) {
 	csb := NewCloudSnapshotBackup(tc)
-	pods, reason, err := s.PrepareCSBK8SMeta(csb, ns)
+	pods, reason, err := s.PrepareCSBK8SMeta(csb, tc)
 	if err != nil {
 		return reason, err
 	}
@@ -379,22 +381,40 @@ func placeCloudSnapBackup(b *v1alpha1.Backup, csb *CloudSnapBackup) (string, err
 		return "ParseCloudSnapshotBackupFailed", err
 	}
 
+	if b.Annotations == nil {
+		b.Annotations = make(map[string]string)
+	}
 	b.Annotations[label.AnnBackupCloudSnapKey] = util.BytesToString(out)
 	return "", nil
 }
 
-func (m *StoresMixture) ProcessCSBPVCsAndPVs(csb *CloudSnapBackup) (string, error) {
+func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error) {
 	pvcs := csb.Kubernetes.PVCs
 	pvs := csb.Kubernetes.PVs
 
 	m.generateRestoreVolumeIDMap(csb.TiKV.Stores)
 
-	for i, pv := range pvs {
+	backupClusterName := csb.Kubernetes.TiDBCluster.Name
+
+	pvcMap := make(map[string]*corev1.PersistentVolumeClaim)
+	for _, pvc := range pvcs {
+		pvcMap[pvc.Name] = pvc
+	}
+
+	for _, pv := range pvs {
 		klog.Infof("snapshotter-pv: %v", pv)
+
+		if pv.Spec.ClaimRef == nil {
+			return "PVClaimRefNil", fmt.Errorf("pv %s claimRef is nil", pv.Name)
+		}
+		pvc, ok := pvcMap[pv.Spec.ClaimRef.Name]
+		if !ok {
+			return "PVCNotFound", fmt.Errorf("pvc %s/%s not found", pv.Spec.ClaimRef.Namespace, pv.Spec.ClaimRef.Name)
+		}
 
 		// Reset the PV's binding status so that Kubernetes can properly
 		// associate it with the restored PVC.
-		resetVolumeBindingInfo(pvcs[i], pv)
+		resetVolumeBindingInfo(pvc, pv)
 
 		// Reset the PV's volumeID for restore from snapshot
 		// Note: This function has to precede the following `resetMetadataAndStatus`
@@ -403,7 +423,7 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(csb *CloudSnapBackup) (string, erro
 		}
 
 		// Clear out non-core metadata fields and status
-		resetMetadataAndStatus(pvcs[i], pv)
+		resetMetadataAndStatus(r, backupClusterName, pvc, pv)
 	}
 
 	return "", nil
@@ -420,7 +440,7 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snap
 	}
 
 	m := NewRestoreStoresMixture(execr, r.Spec.DryRun)
-	if reason, err := m.ProcessCSBPVCsAndPVs(csb); err != nil {
+	if reason, err := m.ProcessCSBPVCsAndPVs(r, csb); err != nil {
 		return reason, err
 	}
 
@@ -455,7 +475,29 @@ func commitPVsAndPVCsToK8S(
 		return "", nil
 	}
 
+	sel, err := label.New().Instance(r.Spec.BR.Cluster).TiKV().Selector()
+	if err != nil {
+		return "BuildTiKVSelectorFailed", err
+	}
+	existingPVs, err := deps.PVLister.List(sel)
+	if err != nil {
+		return "ListPVsFailed", err
+	}
+	refPVCMap := make(map[string]struct{})
+	for _, pv := range existingPVs {
+		if pv.Spec.ClaimRef != nil {
+			refPVCMap[pv.Spec.ClaimRef.Name] = struct{}{}
+		}
+	}
+
+	// Since we may generate random PV names, to avoid creating duplicate PVs,
+	// we need to check if the PV already exists before creating it.
 	for _, pv := range pvs {
+		if pv.Spec.ClaimRef != nil {
+			if _, ok := refPVCMap[pv.Spec.ClaimRef.Name]; ok {
+				continue
+			}
+		}
 		if err := deps.PVControl.CreatePV(r, pv); err != nil {
 			return "CreatePVFailed", err
 		}
@@ -463,6 +505,9 @@ func commitPVsAndPVCsToK8S(
 
 	for _, pvc := range pvcs {
 		if err := deps.PVCControl.CreatePVC(r, pvc); err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				continue
+			}
 			return "CreatePVCFailed", err
 		}
 	}
@@ -552,13 +597,55 @@ func resetVolumeBindingInfo(pvc *corev1.PersistentVolumeClaim, pv *corev1.Persis
 	delete(pv.Annotations, constants.KubeAnnDynamicallyProvisioned)
 }
 
-func resetMetadataAndStatus(pvc *corev1.PersistentVolumeClaim, pv *corev1.PersistentVolume) {
+func resetMetadataAndStatus(
+	r *v1alpha1.Restore,
+	backupClusterName string,
+	pvc *corev1.PersistentVolumeClaim,
+	pv *corev1.PersistentVolume,
+) {
 	// clear out metadata except core fields: "name", "namespace", "labels", "annotations"
 	pvc.ObjectMeta = newMetaWithCoreFields(pvc.ObjectMeta)
 	pv.ObjectMeta = newMetaWithCoreFields(pv.ObjectMeta)
 
 	// clear out the annotation for store temporary volumeID
 	delete(pv.Annotations, constants.AnnTemporaryVolumeID)
+
+	restoreClusterNamespace := r.Spec.BR.ClusterNamespace
+	restoreClusterName := r.Spec.BR.Cluster
+	// The restore cluster is not the same as the backup cluster, we need to reset the
+	// pvc/pv namespace and name to the restore cluster's namespace and name.
+	if restoreClusterNamespace != pvc.Namespace || restoreClusterName != backupClusterName {
+		// The PVC name format is tikv[-${additionalVolumeName}]-${statefulSetName}-${ordinal}.
+		// We need to replace the statefulSetName with the restore cluster's statefulSetName.
+		backupStatefulSetName := controller.TiKVMemberName(backupClusterName)
+		restoreStatefulSetName := controller.TiKVMemberName(restoreClusterName)
+		newPVCName := regexp.MustCompile(fmt.Sprintf("%s-([0-9]+)$", backupStatefulSetName)).
+			ReplaceAllString(pvc.Name, fmt.Sprintf("%s-$1", restoreStatefulSetName))
+		klog.Infof("reset PVC %s/%s to %s/%s", pvc.Namespace, pvc.Name, restoreClusterNamespace, newPVCName)
+		pvc.Namespace = restoreClusterNamespace
+		pvc.Name = newPVCName
+
+		newPVName := "pvc-" + string(uuid.NewUUID())
+		klog.Infof("reset PV %s to %s", pv.Name, newPVName)
+		pv.Name = newPVName
+
+		if pv.Spec.ClaimRef != nil {
+			pv.Spec.ClaimRef.Name = newPVCName
+			pv.Spec.ClaimRef.Namespace = restoreClusterNamespace
+		}
+		pvc.Spec.VolumeName = pv.Name
+
+		if pvc.Labels != nil {
+			pvc.Labels[label.InstanceLabelKey] = restoreClusterName
+			if podName, ok := pvc.Labels[label.AnnPodNameKey]; ok {
+				pvc.Labels[label.AnnPodNameKey] = strings.ReplaceAll(podName, backupStatefulSetName, restoreStatefulSetName)
+			}
+		}
+		if pv.Labels != nil {
+			pv.Labels[label.InstanceLabelKey] = restoreClusterName
+			pv.Labels[label.NamespaceLabelKey] = restoreClusterNamespace
+		}
+	}
 
 	// Never restore status
 	pvc.Status = corev1.PersistentVolumeClaimStatus{}

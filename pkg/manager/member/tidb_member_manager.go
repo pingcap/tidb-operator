@@ -157,7 +157,7 @@ func (m *tidbMemberManager) syncRecoveryForTidbCluster(tc *v1alpha1.TidbCluster)
 
 	anns := tc.GetAnnotations()
 	if rMark, ok := anns[label.AnnWaitTiKVVolumesKey]; ok {
-		strs := strings.SplitN(rMark, "-", 2)
+		strs := strings.SplitN(rMark, "/", 2)
 		rNs := strs[0]
 		rName := strs[1]
 		if r, err := m.deps.RestoreLister.Restores(rNs).Get(rName); err != nil {

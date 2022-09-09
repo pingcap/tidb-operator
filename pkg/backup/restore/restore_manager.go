@@ -58,12 +58,10 @@ func (rm *restoreManager) UpdateCondition(restore *v1alpha1.Restore, condition *
 func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
-	restoreJobName := restore.GetRestoreJobName()
 
 	var (
 		err              error
 		tc               *v1alpha1.TidbCluster
-		continueSync     bool
 		restoreNamespace string
 	)
 
@@ -104,7 +102,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 	if restore.Spec.BR != nil {
 		// restore based snapshot for cloudprovider
-		needCreateJob, reason, err := rm.tryRestoreIfCanSnapshot(restore, tc, restoreNamespace)
+		reason, err := rm.tryRestoreIfCanSnapshot(restore, tc)
 		if err != nil {
 			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestoreRetryFailed,
@@ -114,16 +112,13 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}, nil)
 			return err
 		}
-		continueSync = needCreateJob
 	}
 
+	restoreJobName := restore.GetRestoreJobName()
 	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
 	if err == nil {
-		// already have a restore job running, return directly
-		// except for the condition `continueSync` from restore based snapshot
-		if !continueSync {
-			return nil
-		}
+		klog.Infof("restore job %s/%s has been created, skip", ns, restoreJobName)
+		return nil
 	} else if !errors.IsNotFound(err) {
 		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
 	}
@@ -185,12 +180,13 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 }
 
 func (rm *restoreManager) tryRestoreIfCanSnapshot(
-	r *v1alpha1.Restore, tc *v1alpha1.TidbCluster, ns string) (bool, string, error) {
+	r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
 	s, reason, err := snapshotter.NewDefaultSnapshotter(r.Spec.Type, rm.deps)
 	if err != nil {
-		return false, reason, err
-	} else if s == nil {
-		return true, "", nil
+		return reason, err
+	}
+	if s == nil {
+		return "", nil
 	}
 
 	switch r.Status.Phase {
@@ -204,25 +200,25 @@ func (rm *restoreManager) tryRestoreIfCanSnapshot(
 			// deal with data consistency for TiKV restore data
 			if _, ok := err.(*snapshotter.NoPreparedError); ok {
 				r.Annotations[label.AnnJobNameSuffixKey] = string(r.Spec.Type)
-				return true, "", nil
+				return "", nil
 			}
 
-			return false, reason, err
+			return reason, err
 		}
 
 		// unset TiKV member reconcile block mark, meanwhile,
 		// as followed TiDB member sync recovery for TidbCluster
 		if _, ok := tc.Annotations[label.AnnWaitTiKVVolumesKey]; !ok {
-			restoreMark := fmt.Sprintf("%s-%s", r.Namespace, r.Name)
+			restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
 			if len(tc.GetAnnotations()) == 0 {
 				tc.Annotations = make(map[string]string)
 			}
 			tc.Annotations[label.AnnWaitTiKVVolumesKey] = restoreMark
 			if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
-				return false, "AddTCAnnWaitTiKVFailed", err
+				return "AddTCAnnWaitTiKVFailed", err
 			}
 		}
-		return false, "", nil
+		return "", nil
 
 	case v1alpha1.RestoreDataComplete:
 		klog.Infof("restore-manager prepares to deal with the phase DataComplete")
@@ -231,25 +227,44 @@ func (rm *restoreManager) tryRestoreIfCanSnapshot(
 		// may manual restart the the cluster or all TiKVs
 		tc.Spec.RecoveryMode = false
 		delete(tc.Annotations, label.AnnWaitTiKVVolumesKey)
+
+		// When restore is based on ebs snapshot, we need to restart all TiKV pods
+		// after restore data is complete.
+		sel, err := label.New().Instance(tc.Name).TiKV().Selector()
+		if err != nil {
+			return "BuildTiKVSelectorFailed", err
+		}
+		pods, err := rm.deps.PodLister.Pods(tc.Namespace).List(sel)
+		if err != nil {
+			return "ListTiKVPodsFailed", err
+		}
+		for _, pod := range pods {
+			if pod.DeletionTimestamp == nil {
+				klog.Infof("restore-manager restarts pod %s/%s", pod.Namespace, pod.Name)
+				if err := rm.deps.PodControl.DeletePod(tc, pod); err != nil {
+					return "DeleteTiKVPodFailed", err
+				}
+			}
+		}
+
 		if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
-			return false, "ClearTCRecoveryMarkFailed", err
+			return "ClearTCRecoveryMarkFailed", err
 		}
 
 		// restore TidbCluster completed
-		err := rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+		if err := rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
 			Type:   v1alpha1.RestoreComplete,
 			Status: corev1.ConditionTrue,
-		}, nil)
-		if err != nil {
-			return false, "UpdateRestoreCompleteFailed", err
+		}, nil); err != nil {
+			return "UpdateRestoreCompleteFailed", err
 		}
-		return false, "", nil
+		return "", nil
 
 	default:
 		// do nothing, still continue with previous code logic
 	}
 
-	return false, "", nil
+	return "", nil
 }
 
 func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {

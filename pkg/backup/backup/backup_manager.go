@@ -387,7 +387,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	reason, err = bm.tryBackupIfCanSnapshot(backup, tc, backupNamespace)
+	reason, err = bm.tryBackupIfCanSnapshot(backup, tc)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -535,11 +535,11 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	return job, "", nil
 }
 
-func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error) {
+func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
 	if s, reason, err := snapshotter.NewDefaultSnapshotter(b.Spec.Type, bm.deps); err != nil {
 		return reason, err
 	} else if s != nil {
-		return s.PrepareBackupMetadata(b, tc, ns)
+		return s.PrepareBackupMetadata(b, tc)
 	}
 	return "", nil
 }

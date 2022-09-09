@@ -39,6 +39,8 @@ type RestoreUpdateStatus struct {
 	TimeCompleted *metav1.Time
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
+	// Progress is the progress of the restore job.
+	Progress *string
 }
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
@@ -106,6 +108,9 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 	}
 	if newStatus.CommitTs != nil {
 		status.CommitTs = *newStatus.CommitTs
+	}
+	if newStatus.Progress != nil {
+		status.Progress = *newStatus.Progress
 	}
 }
 

@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -69,7 +68,7 @@ func (bo *Options) backupData(
 		isCSB = true
 		klog.Infof("Running cloud-snapshot-backup with metadata: %s", csb)
 		csbPath := path.Join(util.BRBinPath, "csb_backup.json")
-		err := ioutil.WriteFile(csbPath, []byte(csb), 0644)
+		err := os.WriteFile(csbPath, []byte(csb), 0644)
 		if err != nil {
 			return false, err
 		}
@@ -118,7 +117,7 @@ func (bo *Options) backupData(
 		errMsg = bo.processExecOutput(stdOut)
 	}
 
-	tmpErr, _ := ioutil.ReadAll(stdErr)
+	tmpErr, _ := io.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)
@@ -129,10 +128,7 @@ func (bo *Options) backupData(
 	}
 
 	klog.Infof("Backup data for cluster %s successfully", bo)
-	if isCSB {
-		return true, nil
-	}
-	return false, nil
+	return isCSB, nil
 }
 
 // processExecOutput processes the output from exec br binary
@@ -166,7 +162,6 @@ func (bo *Options) processExecOutputForCSB(
 	progressFile := path.Join(util.BRBinPath, "progress.txt")
 	go func() {
 		ticker := time.NewTicker(constants.ProgressInterval)
-		var file *os.File
 		var lastUpdate string
 		var completed bool
 		for {
@@ -216,15 +211,7 @@ func (bo *Options) processExecOutputForCSB(
 				if !backupUtil.IsFileExist(progressFile) {
 					continue
 				}
-				if file == nil {
-					file, err := os.Open(progressFile)
-					if err != nil {
-						return
-					}
-					defer file.Close()
-				}
-				file.Seek(0, 0)
-				bs, err := ioutil.ReadAll(file)
+				bs, err := os.ReadFile(progressFile)
 				if err != nil {
 					return
 				}

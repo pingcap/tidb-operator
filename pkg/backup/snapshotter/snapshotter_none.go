@@ -39,7 +39,7 @@ func (s *NoneSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, erro
 	return "", nil
 }
 
-func (s *NoneSnapshotter) PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, ns string) (string, error) {
+func (s *NoneSnapshotter) PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
 	return "", &NoPreparedError{"backup"}
 }
 
