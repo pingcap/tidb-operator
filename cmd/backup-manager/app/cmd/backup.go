@@ -47,7 +47,7 @@ func NewBackupCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&bo.TLSClient, "client-tls", false, "Whether client tls is enabled")
 	cmd.Flags().BoolVar(&bo.TLSCluster, "cluster-tls", false, "Whether cluster tls is enabled")
 	cmd.Flags().BoolVar(&bo.SkipClientCA, "skipClientCA", false, "Whether to skip tidb server's certificates validation")
-	cmd.Flags().StringVar(&bo.Mode, "mode", string(v1alpha1.RestoreModeSnapshot), "backup mode, which is log or snapshot(default)")
+	cmd.Flags().StringVar(&bo.Mode, "mode", string(v1alpha1.BackupModeSnapshot), "backup mode, which is log or snapshot(default)")
 	cmd.Flags().StringVar(&bo.SubCommand, "subcommand", string(v1alpha1.LogStartCommand), "the log backup subcommand")
 	cmd.Flags().StringVar(&bo.CommitTS, "commit-ts", "0", "the log backup start ts")
 	cmd.Flags().StringVar(&bo.TruncateUntil, "truncate-until", "0", "the log backup truncate until")
