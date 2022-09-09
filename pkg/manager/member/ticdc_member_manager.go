@@ -133,6 +133,17 @@ func (m *ticdcMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
+	// skip sync if ticdc is suspended
+	component := v1alpha1.TiCDCMemberType
+	needSuspend, err := m.suspender.SuspendComponent(tc, component)
+	if err != nil {
+		return fmt.Errorf("suspend %s failed: %v", component, err)
+	}
+	if needSuspend {
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", component, ns, tcName)
+		return nil
+	}
+
 	// NB: All TiCDC operations, e.g. creation, scale, upgrade will be blocked.
 	//     if PD or TiKV is not available.
 	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
