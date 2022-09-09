@@ -1097,7 +1097,7 @@ outer:
 
 		labels, err := getNodeLabels(m.deps.NodeLister, db.NodeName, config.Replication.LocationLabels)
 		if err != nil || len(labels) == 0 {
-			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", db.NodeName, ns, name)
+			klog.Warningf("node: [%s] has no node labels %v, skipping set store labels for Pod: [%s/%s]", db.NodeName, config.Replication.LocationLabels, ns, name)
 			continue
 		}
 		// add the special `zone` label because tidb depends on this label for follower read.

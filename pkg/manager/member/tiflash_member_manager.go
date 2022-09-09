@@ -823,7 +823,7 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 		nodeName := pod.Spec.NodeName
 		ls, err := getNodeLabels(m.deps.NodeLister, nodeName, locationLabels)
 		if err != nil || len(ls) == 0 {
-			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
+			klog.Warningf("node: [%s] has no node labels %v, skipping set store labels for Pod: [%s/%s]", nodeName, locationLabels, ns, podName)
 			continue
 		}
 
