@@ -596,7 +596,6 @@ func TestParseRestoreProgress(t *testing.T) {
 		step, progress := ParseRestoreProgress(test.testStr)
 		g.Expect(step).To(Equal(test.expectStep))
 		g.Expect(progress).To(Equal(test.expectProgress))
-
 	}
 }
 

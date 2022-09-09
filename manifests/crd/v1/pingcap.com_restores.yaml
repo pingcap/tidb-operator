@@ -2111,6 +2111,10 @@ spec:
                 type: array
               phase:
                 type: string
+              pointRestoreProgress:
+                type: string
+              snapshotRestoreProgress:
+                type: string
               timeCompleted:
                 format: date-time
                 nullable: true

@@ -13328,6 +13328,28 @@ string
 </tr>
 <tr>
 <td>
+<code>snapshotRestoreProgress</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SnapshotRestoreProgress is the snapshot backup restore progress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pointRestoreProgress</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PointRestoreProgress is the PiTR point restore progress, PiTR have SnapshotRestoreProgress first and then PointRestoreProgress</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>phase</code></br>
 <em>
 <a href="#restoreconditiontype">
