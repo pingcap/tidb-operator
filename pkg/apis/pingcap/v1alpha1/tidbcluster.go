@@ -38,6 +38,9 @@ const (
 	defaultEnablePVReclaim    = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
 	defaultEvictLeaderTimeout = 1500 * time.Minute
+	// defaultTiCDCGracefulShutdownTimeout is the timeout limit of graceful
+	// shutdown a TiCDC pod.
+	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
 )
 
 var (
@@ -194,6 +197,14 @@ func (tc *TidbCluster) TiFlashVersion() string {
 	return "latest"
 }
 
+func (tc *TidbCluster) TiFlashContainerPrivilege() *bool {
+	if tc.Spec.TiFlash == nil || tc.Spec.TiFlash.Privileged == nil {
+		pri := false
+		return &pri
+	}
+	return tc.Spec.TiFlash.Privileged
+}
+
 // TiCDCImage return the image used by TiCDC.
 //
 // If TiCDC isn't specified, return empty string.
@@ -219,12 +230,30 @@ func (tc *TidbCluster) TiCDCImage() string {
 	return image
 }
 
-func (tc *TidbCluster) TiFlashContainerPrivilege() *bool {
-	if tc.Spec.TiFlash == nil || tc.Spec.TiFlash.Privileged == nil {
-		pri := false
-		return &pri
+// TiCDCVersion returns the image version used by TiCDC.
+//
+// If TiCDC isn't specified, return empty string.
+func (tc *TidbCluster) TiCDCVersion() string {
+	if tc.Spec.TiCDC == nil {
+		return ""
 	}
-	return tc.Spec.TiFlash.Privileged
+
+	image := tc.TiCDCImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return "latest"
+}
+
+// TiCDCGracefulShutdownTimeout returns the timeout of gracefully shutdown
+// a TiCDC pod.
+func (tc *TidbCluster) TiCDCGracefulShutdownTimeout() time.Duration {
+	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.GracefulShutdownTimeout != nil {
+		return tc.Spec.TiCDC.GracefulShutdownTimeout.Duration
+	}
+	return defaultTiCDCGracefulShutdownTimeout
 }
 
 // TiDBImage return the image used by TiDB.
@@ -593,14 +622,6 @@ func (tc *TidbCluster) TiFlashStsDesiredReplicas() int32 {
 	return tc.Spec.TiFlash.Replicas + int32(len(tc.Status.TiFlash.FailureStores))
 }
 
-func (tc *TidbCluster) TiCDCDeployDesiredReplicas() int32 {
-	if tc.Spec.TiCDC == nil {
-		return 0
-	}
-
-	return tc.Spec.TiCDC.Replicas
-}
-
 func (tc *TidbCluster) TiFlashStsActualReplicas() int32 {
 	stsStatus := tc.Status.TiFlash.StatefulSet
 	if stsStatus == nil {
@@ -618,6 +639,35 @@ func (tc *TidbCluster) TiFlashStsDesiredOrdinals(excludeFailover bool) sets.Int3
 		replicas = tc.TiFlashStsDesiredReplicas()
 	}
 	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiFlashLabelVal))
+}
+
+// TiCDCAllCapturesReady return whether all captures of TiCDC are ready.
+//
+// If TiCDC isn't specified, return false.
+func (tc *TidbCluster) TiCDCAllCapturesReady() bool {
+	if tc.Spec.TiCDC == nil {
+		return false
+	}
+
+	if int(tc.TiCDCDeployDesiredReplicas()) != len(tc.Status.TiCDC.Captures) {
+		return false
+	}
+
+	for _, c := range tc.Status.TiCDC.Captures {
+		if !c.Ready {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (tc *TidbCluster) TiCDCDeployDesiredReplicas() int32 {
+	if tc.Spec.TiCDC == nil {
+		return 0
+	}
+
+	return tc.Spec.TiCDC.Replicas
 }
 
 // TiDBAllPodsStarted return whether all pods of TiDB are started.

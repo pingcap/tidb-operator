@@ -15,6 +15,7 @@ package v1alpha1
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
@@ -670,6 +671,69 @@ func TestPDVersion(t *testing.T) {
 	for i := range tests {
 		testFn(&tests[i], t)
 	}
+}
+
+func TestTiCDCVersion(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name     string
+		update   func(*TidbCluster)
+		expectFn func(*GomegaWithT, *TidbCluster)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbCluster()
+		test.update(tc)
+		test.expectFn(g, tc)
+	}
+	tests := []testcase{
+		{
+			name: "has tag",
+			update: func(tc *TidbCluster) {
+				tc.Spec.TiCDC.Image = "pingcap/ticdc:v3.1.0"
+			},
+			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
+				g.Expect(tc.TiCDCVersion()).To(Equal("v3.1.0"))
+			},
+		},
+		{
+			name: "don't have tag",
+			update: func(tc *TidbCluster) {
+				tc.Spec.TiCDC.Image = "pingcap/ticdc"
+			},
+			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
+				g.Expect(tc.TiCDCVersion()).To(Equal("latest"))
+			},
+		},
+		{
+			name: "don't have ticdc",
+			update: func(tc *TidbCluster) {
+				tc.Spec.TiCDC = nil
+			},
+			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
+				g.Expect(tc.TiCDCVersion()).To(Equal(""))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
+func TestTiCDCGracefulShutdownTimeout(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbCluster()
+	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(defaultTiCDCGracefulShutdownTimeout))
+
+	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: nil}
+	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(defaultTiCDCGracefulShutdownTimeout))
+
+	tc.Spec.TiCDC = &TiCDCSpec{GracefulShutdownTimeout: &metav1.Duration{Duration: time.Minute}}
+	g.Expect(tc.TiCDCGracefulShutdownTimeout()).To(Equal(time.Minute))
 }
 
 func TestComponentFunc(t *testing.T) {
