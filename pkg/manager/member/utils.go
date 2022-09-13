@@ -102,7 +102,7 @@ func templateEqual(new *apps.StatefulSet, old *apps.StatefulSet) bool {
 			klog.Errorf("unmarshal PodTemplate: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
 			return false
 		}
-		return apiequality.Semantic.DeepEqual(oldStsSpec.Template.Spec, new.Spec.Template.Spec)
+		return apiequality.Semantic.DeepEqual(oldStsSpec.Template, new.Spec.Template)
 	}
 	return false
 }
