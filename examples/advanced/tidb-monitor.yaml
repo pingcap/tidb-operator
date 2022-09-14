@@ -11,10 +11,10 @@ spec:
 
   ## TidbCluster to be monitored
   clusters:
-  - name: advanced-tidb
-    namespace: default
-    ## ClusterDomain is the domain of TidbCluster object
-    # clusterDomain: cluster.local
+    - name: advanced-tidb
+      namespace: default
+      ## ClusterDomain is the domain of TidbCluster object
+      # clusterDomain: cluster.local
 
   ## Replicas is the number of desired replicas.
   ## Defaults to 1.
@@ -127,7 +127,6 @@ spec:
   ## There may be a possible case to turn on it that you customize the image of tidb-monitor-initializer but not define alertmanager urls.
   # enableAlertRules: false
 
-
   ###########################
   # TidbMonitor Components #
   ###########################
@@ -190,23 +189,23 @@ spec:
     #     secretName: testsecret-tls
 
     # config:
-      ## ConfigMapRef defines Prometheus custom config with external configMap.
-      ## The external configMap must contain `prometheus-config` key in data.
-      # configMapRef:
-      #   name: custom-config
-      #   namespace: default
+    ## ConfigMapRef defines Prometheus custom config with external configMap.
+    ## The external configMap must contain `prometheus-config` key in data.
+    # configMapRef:
+    #   name: custom-config
+    #   namespace: default
 
-      ## CommandOptions defines prometheus command options.
-      # commandOptions:
-      #   - --web.read-timeout=5m
-      #   - --web.max-connections=512
-      #   - --storage.remote.read-concurrent-limit=10
+    ## CommandOptions defines prometheus command options.
+    # commandOptions:
+    #   - --web.read-timeout=5m
+    #   - --web.max-connections=512
+    #   - --storage.remote.read-concurrent-limit=10
 
-      ## RuleConfigRef defines Prometheus custom rules config with external configMap.
-      ## The external configMap must use the key with suffix `.rules.yml`.
-      # ruleConfigRef:
-      #   name: external-config
-      #   namespace: default
+    ## RuleConfigRef defines Prometheus custom rules config with external configMap.
+    ## The external configMap must use the key with suffix `.rules.yml`.
+    # ruleConfigRef:
+    #   name: external-config
+    #   namespace: default
 
     ## Disable prometheus compaction if set to true.
     ## Ref: https://prometheus.io/docs/prometheus/latest/storage/#compaction
@@ -263,7 +262,6 @@ spec:
     # - name: nfs
     #   mountPath: /nfs
 
-
   grafana:
     ##########################
     # Configuration of grafana #
@@ -274,7 +272,7 @@ spec:
     ## ImagePullPolicy of grafana.
     # imagePullPolicy: IfNotPresent
     ## Grafana version.
-    version: v7.5.11
+    version: 7.5.11
     ## Describes the compute resource requirements and limits of grafana.
     ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
     # requests:
@@ -316,13 +314,13 @@ spec:
     ## Ingress configuration of grafana, you need to deploy an ingress controller like ingress-nginx.
     ## Ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
     # ingress:
-      ## Hosts describe the hosts for the ingress.
-      # hosts:
-      # - grafana-advanced-tidb.example.com
-      ## Ingress Annotations configuration.
-      ## Ref of ingress-nginx: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/
-      # annotations:
-      #   foo: bar
+    ## Hosts describe the hosts for the ingress.
+    # hosts:
+    # - grafana-advanced-tidb.example.com
+    ## Ingress Annotations configuration.
+    ## Ref of ingress-nginx: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/
+    # annotations:
+    #   foo: bar
     ##  TLS configuration. Currently the Ingress only supports a single TLS
     ##  port, 443. If multiple members of this list specify different hosts, they
     ##  will be multiplexed on the same port according to the hostname specified
@@ -339,7 +337,6 @@ spec:
     ## This must match `name` in `additionalVolumes`
     # - name: nfs
     #   mountPath: /nfs
-
 
   reloader:
     ##########################
@@ -392,10 +389,10 @@ spec:
     # env: []
 
   # prometheusReloader:
-    ##########################
-    # Configuration of prometheusReloader  #
-    # If prometheusReloader set, prometheus can reload config automatically. #
-    ##########################
+  ##########################
+  # Configuration of prometheusReloader  #
+  # If prometheusReloader set, prometheus can reload config automatically. #
+  ##########################
 
   ##  Base image of the prometheusReloader.
   #   baseImage: quay.io/prometheus-operator/prometheus-config-reloader
@@ -412,12 +409,11 @@ spec:
   #     cpu: 1000m
   #     memory: 1Gi
 
-
   # dm:
-    ##########################
-    # Configuration of monitoring dm  #
-    ##########################
-    # DmCluster to be monitored
+  ##########################
+  # Configuration of monitoring dm  #
+  ##########################
+  # DmCluster to be monitored
   #   clusters:
   #   - namespace: default
   #     name: advanced-dm
@@ -441,12 +437,11 @@ spec:
   ##    List of environment variables to set in the initializer container.
   #     env: []
 
-
   # thanos:
-    ##########################
-    # Configuration of thanos sidecar
-    # Ref: https://thanos.io/tip/thanos/design.md/
-    ##########################
+  ##########################
+  # Configuration of thanos sidecar
+  # Ref: https://thanos.io/tip/thanos/design.md/
+  ##########################
 
   ##  Base image of the thanos.
   #   baseImage: thanosio/thanos
