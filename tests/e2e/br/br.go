@@ -43,8 +43,8 @@ import (
 
 var (
 	tidbReadyTimeout       = time.Minute * 15
-	backupCompleteTimeout  = time.Minute * 7
-	restoreCompleteTimeout = time.Minute * 7
+	backupCompleteTimeout  = time.Minute * 15
+	restoreCompleteTimeout = time.Minute * 15
 )
 
 const (
@@ -369,6 +369,88 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		})
 
 	})
+
+	ginkgo.Context("Log Backup Test", func() {
+		ginkgo.It("start,truncate,stop log backup", func() {
+			backupClusterName := "log-backup"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create log-backup.enable TiDB cluster for log backup")
+			err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for log backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Start log backup")
+			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+
+			ginkgo.By("Truncate log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
+
+			ginkgo.By("Truncate log backup again")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
+
+			ginkgo.By("Stop log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+				backup.Spec.LogStop = true
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupComplete)
+
+			ginkgo.By("Truncate log backup after stop")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogStop = false
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
+
+	})
 })
 
 func getTiDBServiceResourceName(tcName string) string {
@@ -393,6 +475,31 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 		}
 	}
 
+	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), tc, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// createLogBackupEnableTidbCluster create tidb cluster and set "log-backup.enable = true" in tikv to enable log backup.
+func createLogBackupEnableTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool) error {
+	ns := f.Namespace.Name
+	// TODO: change to use tidbclusterutil like brutil
+	tc := fixture.GetTidbCluster(ns, name, version)
+	tc.Spec.PD.Replicas = 1
+	tc.Spec.TiKV.Replicas = 1
+	tc.Spec.TiDB.Replicas = 1
+	if enableTLS {
+		tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+		tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+		tc.Spec.TiDB.TLSClient.SkipInternalClientCA = skipCA
+
+		if err := f.TLSManager.CreateTLSForTidbCluster(tc); err != nil {
+			return err
+		}
+	}
+	tc.Spec.TiKV.Config.Set("log-backup.enable", true)
 	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), tc, metav1.CreateOptions{}); err != nil {
 		return err
 	}
@@ -578,7 +685,27 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	if err := brutil.WaitForBackupComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
 		return backup, err
 	}
-	return backup, nil
+	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+}
+
+// continueLogBackupAndWaitForComplete update backup cr to continue run log backup subcommand
+func continueLogBackupAndWaitForComplete(f *e2eframework.Framework, backup *v1alpha1.Backup, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
+	ns := f.Namespace.Name
+	name := backup.Name
+
+	if configure != nil {
+		configure(backup)
+	}
+
+	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{}); err != nil {
+		return nil, err
+	}
+
+	if err := brutil.WaitForBackupComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
+		return backup, err
+	}
+
+	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 func deleteBackup(f *e2eframework.Framework, name string) error {
@@ -588,7 +715,7 @@ func deleteBackup(f *e2eframework.Framework, name string) error {
 		return err
 	}
 
-	if err := brutil.WaitForBackupDeleted(f.ExtClient, ns, name, time.Second*30); err != nil {
+	if err := brutil.WaitForBackupDeleted(f.ExtClient, ns, name, time.Second*60); err != nil {
 		return err
 	}
 	return nil

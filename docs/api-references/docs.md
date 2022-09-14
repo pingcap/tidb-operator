@@ -258,6 +258,18 @@ Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2
 </tr>
 <tr>
 <td>
+<code>logStop</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogStop indicates that will stop the log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -3228,7 +3240,8 @@ bool
 <h3 id="backupcondition">BackupCondition</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupstatus">BackupStatus</a>)
+<a href="#backupstatus">BackupStatus</a>, 
+<a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>
 <p>BackupCondition describes the observed state of a Backup at a certain point.</p>
@@ -3241,6 +3254,18 @@ bool
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>command</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 <tr>
 <td>
 <code>type</code></br>
@@ -3303,7 +3328,8 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#backupcondition">BackupCondition</a>, 
-<a href="#backupstatus">BackupStatus</a>)
+<a href="#backupstatus">BackupStatus</a>, 
+<a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
@@ -3680,6 +3706,18 @@ Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2
 </tr>
 <tr>
 <td>
+<code>logStop</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogStop indicates that will stop the log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -3924,13 +3962,24 @@ string
 </tr>
 <tr>
 <td>
-<code>logTruncateUntil</code></br>
+<code>logSuccessTruncateUntil</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>LogTruncateUntil is log backup truncate until timestamp.</p>
+<p>LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logCheckpointTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogCheckpointTs is the ts of log backup process.</p>
 </td>
 </tr>
 <tr>
@@ -3956,6 +4005,19 @@ BackupConditionType
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>logSubCommandStatuses</code></br>
+<em>
+<a href="#logsubcommandstatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandStatus
+</a>
+</em>
+</td>
+<td>
+<p>LogSubCommandStatuses is the detail status of log backup subcommands, record each command separately, but only record the last command.</p>
 </td>
 </tr>
 </tbody>
@@ -7828,6 +7890,110 @@ uint32
 </tr>
 </tbody>
 </table>
+<h3 id="logsubcommandstatus">LogSubCommandStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupstatus">BackupStatus</a>)
+</p>
+<p>
+<p>LogSubCommandStatus is the log backup subcommand&rsquo;s status.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>command</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+<p>Command is the log backup subcommand.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeStarted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeStarted is the time at which the command was started.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeCompleted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeCompleted is the time at which the command was completed.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncatingUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogTruncatingUntil is log backup truncate until timestamp which is used to mark the truncate command.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#backupconditiontype">
+BackupConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Phase is the command current phase.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="#backupcondition">
+[]BackupCondition
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="logsubcommandtype">LogSubCommandType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupcondition">BackupCondition</a>, 
+<a href="#logsubcommandstatus">LogSubCommandStatus</a>)
+</p>
+<p>
+<p>LogSubCommandType is the log backup subcommand type.</p>
+</p>
 <h3 id="logtailerspec">LogTailerSpec</h3>
 <p>
 (<em>Appears on:</em>
