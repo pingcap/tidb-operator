@@ -21,19 +21,17 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-)
-
-var (
-	fullRestoreStep  = "Full Restore"
-	pointRestoreStep = "Point Restore"
 )
 
 type Options struct {
@@ -109,15 +107,22 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore, s
 			errMsg += line
 		} else {
 			step, progress := backupUtil.ParseRestoreProgress(line)
-			switch step {
-			case fullRestoreStep:
-				err = statusUpdater.Update(restore, nil, &controller.RestoreUpdateStatus{
-					SnapshotRestoreProgress: &progress,
+
+			if step != "" {
+				fvalue, progressUpdateErr := strconv.ParseFloat(progress, 64)
+				if progressUpdateErr != nil {
+					klog.Errorf("parse restore %s progress string value %s to float error %v", ro, progress, progressUpdateErr)
+					fvalue = 0
+				}
+				klog.Infof("update restore %s step %s progress %s float value %f", ro, step, progress, fvalue)
+				progressUpdateErr = statusUpdater.Update(restore, nil, &controller.RestoreUpdateStatus{
+					ProgressStep:       &step,
+					Progress:           &fvalue,
+					ProgressUpdateTime: &metav1.Time{Time: time.Now()},
 				})
-			case pointRestoreStep:
-				err = statusUpdater.Update(restore, nil, &controller.RestoreUpdateStatus{
-					PointRestoreProgress: &progress,
-				})
+				if progressUpdateErr != nil {
+					klog.Errorf("update restore %s progress error %v", ro, progressUpdateErr)
+				}
 			}
 		}
 		klog.Info(strings.Replace(line, "\n", "", -1))

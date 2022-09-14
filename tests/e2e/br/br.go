@@ -513,6 +513,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			currentTS := strconv.FormatUint(config.GoTimeToTS(time.Now()), 10)
 			err = brutil.WaitForLogBackupReachTS(logBackupName, masterPDHost, currentTS, logbackupCatchUpTimeout)
 			framework.ExpectNoError(err)
+			ginkgo.By("wait log backup progress reach current ts")
+			err = brutil.WaitForLogBackupProgressReachTS(f.ExtClient, ns, logBackupName, currentTS, logbackupCatchUpTimeout)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create log-backup.enable TiDB cluster for pitr-backup")
 			backupClusterName := "pitr-backup"
@@ -529,6 +532,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				restore.Spec.PitrFullBackupStorageProvider.S3 = fullBackup.Spec.S3
 				restore.Spec.PitrRestoredTs = currentTS
 			})
+			framework.ExpectNoError(err)
+			ginkgo.By("wait pitr restore progress done")
+			err = brutil.WaitForRestoreProgressDone(f.ExtClient, ns, restoreName, restoreCompleteTimeout)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Forward restore TiDB cluster service")
@@ -557,7 +563,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, fullBackup.Spec.S3.Prefix) // now we only use s3
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
-
 		})
 	})
 })

@@ -1,3 +1,3 @@
-E0908 07:16:22.989058   51352 util.go:280] Parse version v4.0.x failure, error: Invalid Semantic Version
+E0914 07:10:15.764253   23547 util.go:280] Parse version v4.0.x failure, error: Invalid Semantic Version
 PASS
-ok  	github.com/pingcap/tidb-operator/cmd/backup-manager/app/util	17.207s
+ok  	github.com/pingcap/tidb-operator/cmd/backup-manager/app/util	16.200s

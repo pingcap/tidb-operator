@@ -2100,6 +2100,16 @@ type RestoreCondition struct {
 	Message            string      `json:"message,omitempty"`
 }
 
+type RestoreProgress struct {
+	// Step is the step name of progress
+	Step string `json:"step,omitempty"`
+	// Progress is the restore progress value
+	Progress float64 `json:"progress,omitempty"`
+	// LastTransitionTime is the update time
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
 // +k8s:openapi-gen=true
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
@@ -2189,14 +2199,13 @@ type RestoreStatus struct {
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs,omitempty"`
-	// SnapshotRestoreProgress is the snapshot backup restore progress
-	SnapshotRestoreProgress string `json:"snapshotRestoreProgress,omitempty"`
-	// PointRestoreProgress is the PiTR point restore progress, PiTR have SnapshotRestoreProgress first and then PointRestoreProgress
-	PointRestoreProgress string `json:"pointRestoreProgress,omitempty"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
 	Phase RestoreConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []RestoreCondition `json:"conditions,omitempty"`
+	// Progresses is the progress of restore.
+	// +nullable
+	Progresses []RestoreProgress `json:"progresses,omitempty"`
 }
 
 // +k8s:openapi-gen=true

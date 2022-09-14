@@ -464,7 +464,7 @@ func RetryOnError(ctx context.Context, attempts int, sleep time.Duration,
 
 // ParseRestoreProgress parse restore progress and return restore step and progress
 func ParseRestoreProgress(line string) (step, progress string) {
-	matchStr := "\\[progress\\] \\[step=\"(.*?)\"\\] \\[progress=(.*?)\\]"
+	matchStr := "\\[progress\\] \\[step=\"(.*?)\"\\] \\[progress=(.*?)\\%\\]"
 	complieRegex := regexp.MustCompile(matchStr)
 	matchs := complieRegex.FindStringSubmatch(line)
 	if len(matchs) < 3 {
