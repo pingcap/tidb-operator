@@ -106,24 +106,7 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore, s
 		if strings.Contains(line, "[ERROR]") {
 			errMsg += line
 		} else {
-			step, progress := backupUtil.ParseRestoreProgress(line)
-
-			if step != "" {
-				fvalue, progressUpdateErr := strconv.ParseFloat(progress, 64)
-				if progressUpdateErr != nil {
-					klog.Errorf("parse restore %s progress string value %s to float error %v", ro, progress, progressUpdateErr)
-					fvalue = 0
-				}
-				klog.Infof("update restore %s step %s progress %s float value %f", ro, step, progress, fvalue)
-				progressUpdateErr = statusUpdater.Update(restore, nil, &controller.RestoreUpdateStatus{
-					ProgressStep:       &step,
-					Progress:           &fvalue,
-					ProgressUpdateTime: &metav1.Time{Time: time.Now()},
-				})
-				if progressUpdateErr != nil {
-					klog.Errorf("update restore %s progress error %v", ro, progressUpdateErr)
-				}
-			}
+			ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
 		}
 		klog.Info(strings.Replace(line, "\n", "", -1))
 		if err != nil || io.EOF == err {
@@ -167,4 +150,25 @@ func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
 	}
 	args = append(args, config.Options...)
 	return args, nil
+}
+
+// updateProgressAccordingToBrLog update restore progress according to the br log.
+func (ro *Options) updateProgressAccordingToBrLog(line string, restore *v1alpha1.Restore, statusUpdater controller.RestoreConditionUpdaterInterface) {
+	step, progress := backupUtil.ParseRestoreProgress(line)
+	if step != "" {
+		fvalue, progressUpdateErr := strconv.ParseFloat(progress, 64)
+		if progressUpdateErr != nil {
+			klog.Errorf("parse restore %s progress string value %s to float error %v", ro, progress, progressUpdateErr)
+			fvalue = 0
+		}
+		klog.Infof("update restore %s step %s progress %s float value %f", ro, step, progress, fvalue)
+		progressUpdateErr = statusUpdater.Update(restore, nil, &controller.RestoreUpdateStatus{
+			ProgressStep:       &step,
+			Progress:           &fvalue,
+			ProgressUpdateTime: &metav1.Time{Time: time.Now()},
+		})
+		if progressUpdateErr != nil {
+			klog.Errorf("update restore %s progress error %v", ro, progressUpdateErr)
+		}
+	}
 }

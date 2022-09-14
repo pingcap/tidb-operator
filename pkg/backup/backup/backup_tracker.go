@@ -51,7 +51,7 @@ func NewBackupTracker(deps *controller.Dependencies, statusUpdater controller.Ba
 	return &backupTracker{
 		deps:          deps,
 		statusUpdater: statusUpdater,
-		logBackups:    make(map[string]interface{}, 0),
+		logBackups:    make(map[string]interface{}),
 	}
 }
 
