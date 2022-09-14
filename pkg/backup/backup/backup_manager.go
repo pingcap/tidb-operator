@@ -90,11 +90,10 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	if skip, err = bm.skipBackupSync(backup); err != nil {
 		klog.Errorf("backup %s/%s skip error %v.", ns, name, err)
 		return err
-	} else {
-		if skip {
-			klog.Infof("backup %s/%s is already done and skip sync.", ns, name)
-			return nil
-		}
+	}
+	if skip {
+		klog.Infof("backup %s/%s is already done and skip sync.", ns, name)
+		return nil
 	}
 
 	// wait pre task done
@@ -269,7 +268,6 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 			// log start need to start tracker
 			bm.backupTracker.StartTrackLogBackupProgress(backup)
 		} else if logBackupSubcommand == v1alpha1.LogTruncateCommand {
-			// log truncate need to update truncating ts
 			updateStatus = &controller.BackupUpdateStatus{
 				LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
 			}
