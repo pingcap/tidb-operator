@@ -410,7 +410,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
@@ -419,7 +419,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
@@ -437,7 +437,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 				backup.Spec.LogStop = false
 			})
 			framework.ExpectNoError(err)
