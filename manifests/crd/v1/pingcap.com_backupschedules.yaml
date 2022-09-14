@@ -1207,6 +1207,8 @@ spec:
                     - volume
                     - volumeMount
                     type: object
+                  logStop:
+                    type: boolean
                   logTruncateUntil:
                     type: string
                   podSecurityContext:

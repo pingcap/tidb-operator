@@ -54,17 +54,30 @@ func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.
 		if err != nil {
 			return false, err
 		}
-		for _, cond := range b.Status.Conditions {
-			switch cond.Type {
-			case v1alpha1.BackupComplete:
-				if cond.Status == corev1.ConditionTrue {
-					return true, nil
+
+		if b.Spec.Mode == v1alpha1.BackupModeLog {
+			if v1alpha1.IsLogBackupSubCommandOntheCondition(b, v1alpha1.BackupComplete) {
+				return true, nil
+			}
+			if v1alpha1.IsLogBackupSubCommandOntheCondition(b, v1alpha1.BackupFailed) || v1alpha1.IsLogBackupSubCommandOntheCondition(b, v1alpha1.BackupInvalid) {
+				reason, message := v1alpha1.GetLogSubcommandConditionInfo(b)
+				return false, fmt.Errorf("log backup is failed, reason: %s, message: %s", reason, message)
+			}
+		} else {
+			for _, cond := range b.Status.Conditions {
+				switch cond.Type {
+				case v1alpha1.BackupComplete:
+					if cond.Status == corev1.ConditionTrue {
+						if cond.Status == corev1.ConditionTrue {
+							return true, nil
+						}
+					}
+				case v1alpha1.BackupFailed, v1alpha1.BackupInvalid:
+					if cond.Status == corev1.ConditionTrue {
+						return false, fmt.Errorf("backup is failed, reason: %s, message: %s", cond.Reason, cond.Message)
+					}
+				default: // do nothing
 				}
-			case v1alpha1.BackupFailed, v1alpha1.BackupInvalid:
-				if cond.Status == corev1.ConditionTrue {
-					return false, fmt.Errorf("backup is failed, reason: %s, message: %s", cond.Reason, cond.Message)
-				}
-			default: // do nothing
 			}
 		}
 
