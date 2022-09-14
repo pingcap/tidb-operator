@@ -49,7 +49,7 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&ro.TLSClient, "client-tls", false, "Whether client tls is enabled")
 	cmd.Flags().BoolVar(&ro.TLSCluster, "cluster-tls", false, "Whether cluster tls is enabled")
 	cmd.Flags().BoolVar(&ro.SkipClientCA, "skipClientCA", false, "Whether to skip tidb server's certificates validation")
-	cmd.Flags().StringVar(&ro.Mode, "mode", string(v1alpha1.RestoreModeSnapshot), "backup mode, which is log or snapshot(default)")
+	cmd.Flags().StringVar(&ro.Mode, "mode", string(v1alpha1.RestoreModeSnapshot), "restore mode, which is pitr or snapshot(default)")
 	cmd.Flags().StringVar(&ro.PitrRestoredTs, "pitrRestoredTs", "0", "The pitr restored ts")
 	return cmd
 }
