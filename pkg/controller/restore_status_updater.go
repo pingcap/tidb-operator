@@ -158,7 +158,7 @@ func doUpdateRestoreProgress(status *v1alpha1.RestoreStatus, step *string, progr
 	}
 
 	isUpdate := false
-	if oldProgress.Progress != *progress {
+	if oldProgress.Progress < *progress {
 		oldProgress.Progress = *progress
 		isUpdate = true
 	}
