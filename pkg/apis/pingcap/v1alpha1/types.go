@@ -2140,8 +2140,8 @@ type RestoreSpec struct {
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
-	// LogBackupStorageProvider configures where and how log backup should be stored.
-	LogBackupStorageProvider StorageProvider `json:"logBackupStorageProvider,omitempty"`
+	// PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.
+	PitrFullBackupStorageProvider StorageProvider `json:"pitrFullBackupStorageProvider,omitempty"`
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
