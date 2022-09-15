@@ -18,6 +18,15 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
+// a pre-defined mapping that mapping some short label name to k8s well-known labels.
+// PD depend on short label name to gain better performance.
+// See: https://github.com/pingcap/tidb-operator/issues/4678 for more details.
+var shortLabelNameToK8sLabel = map[string][]string{
+	"region": {corev1.LabelZoneRegionStable, corev1.LabelZoneRegion},
+	"zone":   {corev1.LabelZoneFailureDomainStable, corev1.LabelZoneFailureDomain},
+	"host":   {corev1.LabelHostname},
+}
+
 func getNodeLabels(nodeLister corelisterv1.NodeLister, nodeName string, storeLabels []string) (map[string]string, error) {
 	node, err := nodeLister.Get(nodeName)
 	if err != nil {
@@ -31,13 +40,14 @@ func getNodeLabels(nodeLister corelisterv1.NodeLister, nodeName string, storeLab
 			continue
 		}
 
-		// TODO after pd supports storeLabel containing slash character, these codes should be deleted
-		if storeLabel == "host" {
-			if host, found := ls[corev1.LabelHostname]; found {
-				labels[storeLabel] = host
+		if k8sLabels, ok := shortLabelNameToK8sLabel[storeLabel]; ok {
+			for _, name := range k8sLabels {
+				if value, ok := ls[name]; ok {
+					labels[storeLabel] = value
+					break
+				}
 			}
 		}
-
 	}
 	return labels, nil
 }
