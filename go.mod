@@ -67,6 +67,7 @@ require (
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/yisaer/crd-validation v0.0.3
+	github.com/zhouqiang-cl/gocovmerge v0.0.0-20190125174600-5256314471af
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
