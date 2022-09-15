@@ -22,6 +22,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
@@ -32,6 +33,8 @@ var (
 	// the first version which allows skipping setting tikv_gc_life_time
 	// https://github.com/pingcap/br/pull/553
 	tikvLessThanV408, _ = semver.NewConstraint("<v4.0.8-0")
+	// the first version which supports log backup
+	tikvLessThanV610, _ = semver.NewConstraint("<v6.1.0-0")
 )
 
 // CheckAllKeysExistInSecret check if all keys are included in the specific secret
@@ -524,6 +527,27 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 				return err
 			}
 		}
+
+		// validate log backup
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+			if !isLogBackSupport(tikvImage) {
+				return fmt.Errorf("tikv %s doesn't support log backup in spec of %s/%s, the first version is v6.1.0", tikvImage, ns, name)
+			}
+			var err error
+			_, err = config.ParseTSString(backup.Spec.CommitTs)
+			if err != nil {
+				return err
+			}
+			if v1alpha1.ParseLogBackupSubcommand(backup) == v1alpha1.LogTruncateCommand && backup.Spec.LogTruncateUntil == "" {
+				return fmt.Errorf("log backup %s/%s truncate command missing 'logTruncateUntil'", ns, name)
+
+			}
+			_, err = config.ParseTSString(backup.Spec.LogTruncateUntil)
+			if err != nil {
+				return err
+			}
+		}
+
 	}
 	return nil
 }
@@ -669,4 +693,18 @@ func StringToBytes(s string) []byte {
 			Cap int
 		}{s, len(s)},
 	))
+}
+
+// isLogBackSupport returns whether tikv supports log backup
+func isLogBackSupport(tikvImage string) bool {
+	_, version := ParseImage(tikvImage)
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		return true
+	}
+	if tikvLessThanV610.Check(v) {
+		return false
+	}
+	return true
 }

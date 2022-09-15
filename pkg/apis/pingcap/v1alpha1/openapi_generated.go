@@ -1032,6 +1032,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"logStop": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LogStop indicates that will stop the log backup.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"dumpling": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DumplingConfig is the configs for dumpling",

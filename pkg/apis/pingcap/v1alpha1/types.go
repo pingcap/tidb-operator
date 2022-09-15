@@ -1500,7 +1500,7 @@ type TLSCluster struct {
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
 // +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.status.progress`,description="The current progress of the backup",priority=1
-// +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logTruncateUntil`,description="The log backup truncate until ts"
+// +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logSuccessTruncateUntil`,description="The log backup truncate until ts"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -1790,6 +1790,9 @@ type BackupSpec struct {
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// +optional
 	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
+	// LogStop indicates that will stop the log backup.
+	// +optional
+	LogStop bool `json:"logStop,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1888,24 +1891,49 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
-	// LogBackupPrepareTruncate means the log backup prepare truncation
-	LogBackupTruncatePrepare BackupConditionType = "LogTruncatePrepare"
-	// LogBackupTruncating means the log backup is trancating
-	LogBackupTruncating BackupConditionType = "LogTruncating"
-	// LogBackupTruncateComplete means the log backup complete truncation
-	LogBackupTruncateComplete BackupConditionType = "LogTruncateComplete"
-	// LogBackupTruncateFailed means failed to truncate the log backup
-	LogBackupTruncateFailed BackupConditionType = "LogTruncateFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
 type BackupCondition struct {
-	Type   BackupConditionType    `json:"type"`
-	Status corev1.ConditionStatus `json:"status"`
+	Command LogSubCommandType      `json:"command,omitempty"`
+	Type    BackupConditionType    `json:"type"`
+	Status  corev1.ConditionStatus `json:"status"`
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	Reason             string      `json:"reason,omitempty"`
 	Message            string      `json:"message,omitempty"`
+}
+
+// LogSubCommandType is the log backup subcommand type.
+type LogSubCommandType string
+
+const (
+	// LogStartCommand is the start command of log backup.
+	LogStartCommand LogSubCommandType = "log-start"
+	// LogTruncateCommand is the truncate command of log backup.
+	LogTruncateCommand LogSubCommandType = "log-truncate"
+	// LogStopCommand is the stop command of log backup.
+	LogStopCommand LogSubCommandType = "log-stop"
+)
+
+// LogSubCommandStatus is the log backup subcommand's status.
+type LogSubCommandStatus struct {
+	// Command is the log backup subcommand.
+	Command LogSubCommandType `json:"command,omitempty"`
+	// TimeStarted is the time at which the command was started.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
+	// TimeCompleted is the time at which the command was completed.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+	// LogTruncatingUntil is log backup truncate until timestamp which is used to mark the truncate command.
+	LogTruncatingUntil string `json:"logTruncatingUntil,omitempty"`
+	// Phase is the command current phase.
+	Phase BackupConditionType `json:"phase,omitempty"`
+	// +nullable
+	Conditions []BackupCondition `json:"conditions,omitempty"`
 }
 
 // BackupStatus represents the current status of a backup.
@@ -1929,12 +1957,16 @@ type BackupStatus struct {
 	CommitTs string `json:"commitTs,omitempty"`
 	// The current progress of the backup.
 	Progress string `json:"progress,omitempty"`
-	// LogTruncateUntil is log backup truncate until timestamp.
-	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
+	// LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.
+	LogSuccessTruncateUntil string `json:"logSuccessTruncateUntil,omitempty"`
+	// LogCheckpointTs is the ts of log backup process.
+	LogCheckpointTs string `json:"logCheckpointTs,omitempty"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
 	Phase BackupConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []BackupCondition `json:"conditions,omitempty"`
+	// LogSubCommandStatuses is the detail status of log backup subcommands, record each command separately, but only record the last command.
+	LogSubCommandStatuses map[LogSubCommandType]LogSubCommandStatus `json:"logSubCommandStatuses,omitempty"`
 }
 
 // +genclient
