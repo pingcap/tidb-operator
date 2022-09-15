@@ -15,11 +15,15 @@ package backup
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -112,6 +116,39 @@ func WaitForRestoreComplete(c versioned.Interface, ns, name string, timeout time
 		return false, nil
 	}); err != nil {
 		return fmt.Errorf("can't wait for restore complete: %v", err)
+	}
+	return nil
+}
+
+// WaitForRestoreComplete will poll and wait until timeout or restore complete condition is true
+func WaitForLogBackupReachTS(name, pdhost, expect string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll*5, timeout, func() (bool, error) {
+		etcdCli, err := pdapi.NewPdEtcdClient(pdhost, 30*time.Second, nil)
+		if err != nil {
+			return false, err
+		}
+		streamKeyPrefix := "/tidb/br-stream"
+		taskCheckpointPath := "/checkpoint"
+		key := path.Join(streamKeyPrefix, taskCheckpointPath, name)
+		kvs, err := etcdCli.Get(key, true)
+		if err != nil {
+			return false, err
+		}
+		if len(kvs) != 1 {
+			return false, fmt.Errorf("get log backup checkpoint ts from pd %s failed", pdhost)
+		}
+		checkpointTS := binary.BigEndian.Uint64(kvs[0].Value)
+		expectTS, err := config.ParseTSString(expect)
+
+		if err != nil {
+			return false, err
+		}
+		if checkpointTS >= expectTS {
+			return true, nil
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for log backup reach ts complete: %v", err)
 	}
 	return nil
 }
