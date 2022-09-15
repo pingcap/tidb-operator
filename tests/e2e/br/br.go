@@ -513,6 +513,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			currentTS := strconv.FormatUint(config.GoTimeToTS(time.Now()), 10)
 			err = brutil.WaitForLogBackupReachTS(logBackupName, masterPDHost, currentTS, logbackupCatchUpTimeout)
 			framework.ExpectNoError(err)
+
 			ginkgo.By("wait log backup progress reach current ts")
 			err = brutil.WaitForLogBackupProgressReachTS(f.ExtClient, ns, logBackupName, currentTS, logbackupCatchUpTimeout)
 			framework.ExpectNoError(err)
@@ -533,6 +534,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				restore.Spec.PitrRestoredTs = currentTS
 			})
 			framework.ExpectNoError(err)
+
 			ginkgo.By("wait pitr restore progress done")
 			err = brutil.WaitForRestoreProgressDone(f.ExtClient, ns, restoreName, restoreCompleteTimeout)
 			framework.ExpectNoError(err)
