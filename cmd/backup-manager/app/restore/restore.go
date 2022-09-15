@@ -59,6 +59,21 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore) e
 	} else {
 		restoreType = string(restore.Spec.Type)
 	}
+
+	// gen PiTR args
+	if ro.Mode == string(v1alpha1.RestoreModePiTR) {
+		// init pitr restore args
+		args = append(args, fmt.Sprintf("--restored-ts=%s", ro.PitrRestoredTs))
+
+		if fullBackupArgs, err := backupUtil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage"); err != nil {
+			return err
+		} else {
+			// parse full backup path
+			args = append(args, fullBackupArgs...)
+		}
+		restoreType = "point"
+	}
+
 	fullArgs := []string{
 		"restore",
 		restoreType,
