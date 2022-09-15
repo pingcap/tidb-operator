@@ -52,13 +52,7 @@ spec:
         docker system prune -af || true
       }
       function setup_docker_mirror() {
-        cat > /etc/docker/daemon.json <<EOF
-        {
-          "registry-mirrors": [
-            "https://registry-mirror.pingcap.net"
-          ]
-        }
-      EOF
+        sed -i "s/mirror.gcr.io/registry-mirror.pingcap.net/g" /etc/default/docker
         service docker restart
       }
       setup_docker_mirror

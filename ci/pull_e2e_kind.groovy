@@ -52,13 +52,7 @@ spec:
         docker system prune -af || true
       }
       function setup_docker_mirror() {
-        cat > /etc/docker/daemon.json <<EOF
-        {
-          "registry-mirrors": [
-            "https://registry-mirror.pingcap.net"
-          ]
-        }
-      EOF
+        sed -i "s/mirror.gcr.io/registry-mirror.pingcap.net/g" /etc/default/docker
         service docker restart
       }
       setup_docker_mirror
@@ -369,7 +363,7 @@ try {
                             docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
                             echo "info: build and push images for e2e"
                             echo "test: show docker daemon config file"
-                            cat /etc/docker/daemon.json
+                            cat /etc/docker/daemon.json || true
                             E2E=y NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
                             echo "info: download binaries for e2e"
                             E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
