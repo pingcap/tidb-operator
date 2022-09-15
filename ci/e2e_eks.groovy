@@ -16,7 +16,7 @@ kind: Pod
 spec:
   containers:
   - name: main
-    image: gcr.io/k8s-testimages/kubekins-e2e:v20200311-1e25827-master
+    image: gcr.io/k8s-testimages/kubekins-e2e:v20210808-1eaeec7-master
     command:
     - runner.sh
     - sleep
