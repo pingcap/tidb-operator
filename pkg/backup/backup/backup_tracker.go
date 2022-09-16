@@ -100,8 +100,13 @@ func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 			klog.Infof("get log backup %s/%s error, will skip to the next time refresh %v", ns, name, err)
 			continue
 		}
-		if backup.DeletionTimestamp != nil || backup.Status.Phase != v1alpha1.BackupRunning {
-			klog.Infof("log backup %s/%s is deleting or not running, will skip to the next time refresh", ns, name)
+		if backup.DeletionTimestamp != nil || backup.Status.Phase == v1alpha1.BackupComplete {
+			klog.Infof("log backup %s/%s is being deleting or complete, will remove %s from tracker", ns, name, logkey)
+			bt.removeLogBackup(ns, name)
+			return
+		}
+		if backup.Status.Phase != v1alpha1.BackupRunning {
+			klog.Infof("log backup %s/%s is not running, will skip to the next time refresh", ns, name)
 			continue
 		}
 		bt.doRefreshLogBackupCheckpointTs(backup)
@@ -139,6 +144,7 @@ func (bt *backupTracker) doRefreshLogBackupCheckpointTs(backup *v1alpha1.Backup)
 
 	klog.Infof("update log backup %s/%s checkpointTS %s", ns, name, ckTS)
 	updateStatus := &controller.BackupUpdateStatus{
+		// Avoid log backup cr delete and recreate in short time, update will check the start time.
 		TimeStarted:     &backup.Status.TimeStarted,
 		LogCheckpointTs: &ckTS,
 	}

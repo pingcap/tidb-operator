@@ -40,12 +40,11 @@ type RestoreUpdateStatus struct {
 	TimeCompleted *metav1.Time
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
-	// // SnapshotRestoreProgress is the snapshot backup restore progress
-	// SnapshotRestoreProgress *string
-	// // PointRestoreProgress is the PiTR point restore progress, PiTR have SnapshotRestoreProgress first and then PointRestoreProgress
-	// PointRestoreProgress *string
-	ProgressStep       *string
-	Progress           *float64
+	// ProgressStep the step name of progress.
+	ProgressStep *string
+	// Progress is the step's progress value.
+	Progress *float64
+	// ProgressUpdateTime is the progress update time.
 	ProgressUpdateTime *metav1.Time
 }
 
