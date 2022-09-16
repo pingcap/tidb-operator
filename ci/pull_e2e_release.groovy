@@ -37,7 +37,7 @@ metadata:
 spec:
   containers:
   - name: main
-    image: gcr.io/k8s-testimages/kubekins-e2e:v20200311-1e25827-master
+    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v20210808-1eaeec7-master
     command:
     - runner.sh
     # Clean containers on TERM signal in root process to avoid cgroup leaking.
@@ -52,13 +52,7 @@ spec:
         docker system prune -af || true
       }
       function setup_docker_mirror() {
-        cat > /etc/docker/daemon.json <<EOF
-        {
-          "registry-mirrors": [
-            "https://registry-mirror.pingcap.net"
-          ]
-        }
-      EOF
+        sed -i "s/mirror.gcr.io/registry-mirror.pingcap.net/g" /etc/default/docker
         service docker restart
       }
       setup_docker_mirror
@@ -240,7 +234,7 @@ try {
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
-        def buildPodLabel = "tidb-operator-build-v1-pingcap-docker-mirror"
+        def buildPodLabel = "tidb-operator-build-v2-pingcap-docker-mirror"
         def resources = [
             requests: [
                 cpu: "6",
