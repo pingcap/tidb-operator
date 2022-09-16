@@ -144,8 +144,6 @@ func (bt *backupTracker) doRefreshLogBackupCheckpointTs(backup *v1alpha1.Backup)
 
 	klog.Infof("update log backup %s/%s checkpointTS %s", ns, name, ckTS)
 	updateStatus := &controller.BackupUpdateStatus{
-		// Avoid log backup cr delete and recreate in short time, update will check the start time.
-		TimeStarted:     &backup.Status.TimeStarted,
 		LogCheckpointTs: &ckTS,
 	}
 	err = bt.statusUpdater.Update(backup, nil, updateStatus)
