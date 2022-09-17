@@ -77,6 +77,7 @@ var (
 	tikvRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
 	tiflashRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiFlashLabelVal})
 	ticdcRequirement   = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiCDCLabelVal})
+	tiproxyRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiProxyLabelVal})
 	pumpRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PumpLabelVal})
 
 	dmMasterRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.DMMasterLabelVal})
@@ -193,6 +194,12 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, status v1alpha1
 	}
 	storageVolumes := []v1alpha1.StorageVolume{}
 	switch comp {
+	case v1alpha1.TiProxyMemberType:
+		ctx.selector = selector.Add(*tiproxyRequirement)
+		if tc.Status.TiProxy.Volumes == nil {
+			tc.Status.TiProxy.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
+		}
+		storageVolumes = tc.Spec.TiProxy.StorageVolumes
 	case v1alpha1.PDMemberType:
 		ctx.selector = selector.Add(*pdRequirement)
 		if tc.Status.PD.Volumes == nil {

@@ -275,7 +275,7 @@ function hack::ensure_misspell() {
 
 function hack::ensure_golangci_lint() {
     echo "Installing golangci_lint..."
-    GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.41.1
+    GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.49.0
 }
 
 function hack::ensure_controller_gen() {

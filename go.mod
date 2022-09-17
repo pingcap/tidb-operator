@@ -48,6 +48,7 @@ require (
 	github.com/openshift/generic-admission-server v1.14.1-0.20210422140326-da96454c926d
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
+	github.com/pingcap/TiProxy/lib v0.0.0-20220919023837-ea3cd6f48bbb
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b2938
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/errors v0.11.4
@@ -74,14 +75,11 @@ require (
 	github.com/yisaer/crd-validation v0.0.3
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5
 	go.uber.org/atomic v1.9.0
-	go.uber.org/multierr v1.7.0 // indirect
-	go.uber.org/zap v1.23.0 // indirect
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gomodules.xyz/jsonpatch/v2 v2.1.0
 	google.golang.org/grpc v1.27.0
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.19.16

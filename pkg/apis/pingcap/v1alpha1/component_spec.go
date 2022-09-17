@@ -100,6 +100,9 @@ func (tc *TidbCluster) AllComponentSpec() []ComponentAccessor {
 	if tc.Spec.Pump != nil {
 		components = append(components, tc.BasePumpSpec())
 	}
+	if tc.Spec.TiProxy != nil {
+		components = append(components, tc.BaseTiProxySpec())
+	}
 	return components
 }
 
@@ -608,6 +611,16 @@ func (tc *TidbCluster) BaseTiFlashSpec() ComponentAccessor {
 	}
 
 	return buildTidbClusterComponentAccessor(TiFlashMemberType, tc, spec)
+}
+
+// BaseTiProxySpec returns the base spec of TiProxy servers
+func (tc *TidbCluster) BaseTiProxySpec() ComponentAccessor {
+	var spec *ComponentSpec
+	if tc.Spec.TiProxy != nil {
+		spec = &tc.Spec.TiProxy.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(TiProxyMemberType, tc, spec)
 }
 
 // BaseTiCDCSpec returns the base spec of TiCDC servers
