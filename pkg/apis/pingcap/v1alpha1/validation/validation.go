@@ -359,7 +359,7 @@ func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) fi
 	return allErrs
 }
 
-//validateRequestsStorage validates resources requests storage
+// validateRequestsStorage validates resources requests storage
 func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if _, ok := requests[corev1.ResourceStorage]; !ok {
@@ -368,7 +368,7 @@ func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) 
 	return allErrs
 }
 
-//validateTiKVStorageSize validates resources requests storage
+// validateTiKVStorageSize validates resources requests storage
 func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	for i, storageVolume := range storageVolumes {

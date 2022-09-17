@@ -25,7 +25,7 @@ boiler="${ROOT}/hack/boilerplate/boilerplate.py"
 # ignored files is a list of files we should ignore, e.g. k8s script.
 # one file per line
 ignored_files='./hack/cherry_pick_pull.sh
-hack/generate-internal-groups.sh'
+hack/generate-groups.sh'
 
 #
 # TODO update license information for following files
@@ -40,7 +40,6 @@ files=($(find . -type f -not \( \
         -o -path './_tools/*' \
         -o -path './.git/*' \
         -o -path './.*/*' \
-        -o -path './vendor/*' \
         -o -path './pkg/client/*' \
         -o -path './*/.terraform/*' \
         -o -path './tests/images/*/*' \
@@ -48,7 +47,7 @@ files=($(find . -type f -not \( \
         -o -path '*/Makefile' \
         -o -path '*/Dockerfile' \
         -o -path '*/*.register.go' \
-        -o -path '*/hack/tools/vendor/*' \
+        -o -path '*/hack/localtest/*' \
     \) | grep -v -F "$ignored_files"
 ))
 
