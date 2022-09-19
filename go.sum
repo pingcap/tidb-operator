@@ -630,7 +630,6 @@ github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b
 github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b2938/go.mod h1:pPv7hNjiBHrhnaept9u1Hd2G6fN0TOn+3uDi0/PdOk4=
 github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 h1:USx2/E1bX46VG32FIw034Au6seQ2fY9NEILmNh/UlQg=
 github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8/go.mod h1:B1+S9LNcuMyLH/4HMTViQOJevkGiik3wW2AN9zb2fNQ=
-github.com/pingcap/errors v0.11.0/go.mod h1:Oi8TUi2kEtXXLMJk9l1cGmz20kV3TaQ0usTwv5KuLY8=
 github.com/pingcap/errors v0.11.4 h1:lFuQV/oaUMGcD2tqt+01ROSmJs75VG1ToEOkZIZ4nE4=
 github.com/pingcap/errors v0.11.4/go.mod h1:Oi8TUi2kEtXXLMJk9l1cGmz20kV3TaQ0usTwv5KuLY8=
 github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0 h1:yNUYt8kP/fAEhNi7wUfU0pvk6ZgoEHgJIyeM/CTeS3g=
