@@ -16,6 +16,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -39,6 +40,12 @@ type RestoreUpdateStatus struct {
 	TimeCompleted *metav1.Time
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
+	// ProgressStep the step name of progress.
+	ProgressStep *string
+	// Progress is the step's progress value.
+	Progress *float64
+	// ProgressUpdateTime is the progress update time.
+	ProgressUpdateTime *metav1.Time
 }
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
@@ -67,12 +74,13 @@ func NewRealRestoreConditionUpdater(
 func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition, newStatus *RestoreUpdateStatus) error {
 	ns := restore.GetNamespace()
 	restoreName := restore.GetName()
-	var isUpdate bool
+	var isStatusUpdate bool
+	var isConditionUpdate bool
 	// try best effort to guarantee restore is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		updateRestoreStatus(&restore.Status, newStatus)
-		isUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
-		if isUpdate {
+		isStatusUpdate = updateRestoreStatus(&restore.Status, newStatus)
+		isConditionUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
+		if isStatusUpdate || isConditionUpdate {
 			_, updateErr := u.cli.PingcapV1alpha1().Restores(ns).Update(context.TODO(), restore, metav1.UpdateOptions{})
 			if updateErr == nil {
 				klog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
@@ -94,19 +102,72 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 
 // updateRestoreStatus updates existing Restore status
 // from the fields in RestoreUpdateStatus.
-func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdateStatus) {
+func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdateStatus) bool {
+	isUpdate := false
 	if newStatus == nil {
-		return
+		return isUpdate
 	}
-	if newStatus.TimeStarted != nil {
+	if newStatus.TimeStarted != nil && status.TimeStarted != *newStatus.TimeStarted {
 		status.TimeStarted = *newStatus.TimeStarted
+		isUpdate = true
 	}
-	if newStatus.TimeCompleted != nil {
+	if newStatus.TimeCompleted != nil && status.TimeCompleted != *newStatus.TimeCompleted {
 		status.TimeCompleted = *newStatus.TimeCompleted
+		isUpdate = true
 	}
-	if newStatus.CommitTs != nil {
+	if newStatus.CommitTs != nil && status.CommitTs != *newStatus.CommitTs {
 		status.CommitTs = *newStatus.CommitTs
+		isUpdate = true
 	}
+	if newStatus.ProgressStep != nil {
+		isUpdate = doUpdateRestoreProgress(status, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
+	}
+
+	return isUpdate
+}
+
+func doUpdateRestoreProgress(status *v1alpha1.RestoreStatus, step *string, progress *float64, updateTime *metav1.Time) bool {
+	var oldProgress *v1alpha1.RestoreProgress
+	for i, p := range status.Progresses {
+		if p.Step == *step {
+			oldProgress = &status.Progresses[i]
+			break
+		}
+	}
+
+	makeSureLastProgressOver := func() {
+		size := len(status.Progresses)
+		if size == 0 || status.Progresses[size-1].Progress >= 100 {
+			return
+		}
+		status.Progresses[size-1].Progress = 100
+		status.Progresses[size-1].LastTransitionTime = metav1.Time{Time: time.Now()}
+	}
+
+	// no such progress, will new
+	if oldProgress == nil {
+		makeSureLastProgressOver()
+		oldProgress = &v1alpha1.RestoreProgress{
+			Step:               *step,
+			Progress:           *progress,
+			LastTransitionTime: *updateTime,
+		}
+		status.Progresses = append(status.Progresses, *oldProgress)
+		return true
+	}
+
+	isUpdate := false
+	if oldProgress.Progress < *progress {
+		oldProgress.Progress = *progress
+		isUpdate = true
+	}
+
+	if oldProgress.LastTransitionTime != *updateTime {
+		oldProgress.LastTransitionTime = *updateTime
+		isUpdate = true
+	}
+
+	return isUpdate
 }
 
 var _ RestoreConditionUpdaterInterface = &realRestoreConditionUpdater{}

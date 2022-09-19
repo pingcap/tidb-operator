@@ -374,7 +374,10 @@ func ParseTSString(ts string) (uint64, error) {
 	}
 	t, err := time.ParseInLocation("2006-01-02 15:04:05", ts, time.Local)
 	if err != nil {
-		return 0, fmt.Errorf("cannot parse ts string %s, err: %v", ts, err)
+		t, err = time.Parse(time.RFC3339, ts)
+		if err != nil {
+			return 0, fmt.Errorf("cannot parse ts string %s, err: %v", ts, err)
+		}
 	}
 	return GoTimeToTS(t), nil
 }
