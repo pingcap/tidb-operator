@@ -249,7 +249,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		}
 	}
 
-	restoreErr := rm.restoreData(ctx, restore)
+	restoreErr := rm.restoreData(ctx, restore, rm.StatusUpdater)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.

@@ -410,7 +410,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
@@ -419,7 +419,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
@@ -437,7 +437,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 				backup.Spec.LogStop = false
 			})
 			framework.ExpectNoError(err)
@@ -514,6 +514,10 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			err = brutil.WaitForLogBackupReachTS(logBackupName, masterPDHost, currentTS, logbackupCatchUpTimeout)
 			framework.ExpectNoError(err)
 
+			ginkgo.By("wait log backup progress reach current ts")
+			err = brutil.WaitForLogBackupProgressReachTS(f.ExtClient, ns, logBackupName, currentTS, logbackupCatchUpTimeout)
+			framework.ExpectNoError(err)
+
 			ginkgo.By("Create log-backup.enable TiDB cluster for pitr-backup")
 			backupClusterName := "pitr-backup"
 			err = createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
@@ -529,6 +533,10 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				restore.Spec.PitrFullBackupStorageProvider.S3 = fullBackup.Spec.S3
 				restore.Spec.PitrRestoredTs = currentTS
 			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("wait pitr restore progress done")
+			err = brutil.WaitForRestoreProgressDone(f.ExtClient, ns, restoreName, restoreCompleteTimeout)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Forward restore TiDB cluster service")
@@ -557,7 +565,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, fullBackup.Spec.S3.Prefix) // now we only use s3
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
-
 		})
 	})
 })

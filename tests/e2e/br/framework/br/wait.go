@@ -120,7 +120,7 @@ func WaitForRestoreComplete(c versioned.Interface, ns, name string, timeout time
 	return nil
 }
 
-// WaitForRestoreComplete will poll and wait until timeout or restore complete condition is true
+// WaitForLogBackupReachTS will poll and wait until timeout or log backup reach expect ts
 func WaitForLogBackupReachTS(name, pdhost, expect string, timeout time.Duration) error {
 	if err := wait.PollImmediate(poll*5, timeout, func() (bool, error) {
 		etcdCli, err := pdapi.NewPdEtcdClient(pdhost, 30*time.Second, nil)
@@ -149,6 +149,52 @@ func WaitForLogBackupReachTS(name, pdhost, expect string, timeout time.Duration)
 		return false, nil
 	}); err != nil {
 		return fmt.Errorf("can't wait for log backup reach ts complete: %v", err)
+	}
+	return nil
+}
+
+// WaitForRestoreProgressDone will poll and wait until timeout or restore progress has update to 100
+func WaitForRestoreProgressDone(c versioned.Interface, ns, name string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll*5, timeout, func() (bool, error) {
+		r, err := c.PingcapV1alpha1().Restores(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		count := len(r.Status.Progresses)
+		if count == 0 {
+			return false, nil
+		}
+		if r.Status.Progresses[count-1].Progress == 100 {
+			return true, nil
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for restore progress done: %v", err)
+	}
+	return nil
+}
+
+// WaitForLogBackupProgressReachTS will poll and wait until timeout or log backup tracker has update checkpoint ts to expect
+func WaitForLogBackupProgressReachTS(c versioned.Interface, ns, name, expect string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll*5, timeout, func() (bool, error) {
+		b, err := c.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		expectTS, err := config.ParseTSString(expect)
+		if err != nil {
+			return false, err
+		}
+		checkpointTs, err := config.ParseTSString(b.Status.LogCheckpointTs)
+		if err != nil {
+			return false, err
+		}
+		if checkpointTs >= expectTS {
+			return true, nil
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for log backup tracker reach ts complete: %v", err)
 	}
 	return nil
 }
