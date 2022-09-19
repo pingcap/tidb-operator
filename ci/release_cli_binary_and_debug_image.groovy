@@ -16,7 +16,7 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID) {
 				containers: [
 						containerTemplate(
 							name: 'golang', alwaysPullImage: true,
-							image: "hub.pingcap.net/jenkins/centos7_golang-1.13:latest", 
+							image: "hub.pingcap.net/jenkins/centos7_golang-1.16:latest", 
 							ttyEnabled: true, privileged: true,
 							resourceRequestCpu: '2000m', resourceRequestMemory: '4Gi',
 							command: '/bin/sh -c', args: 'cat',
