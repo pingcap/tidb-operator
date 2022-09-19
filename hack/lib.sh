@@ -265,7 +265,7 @@ function hack::ensure_aws_k8s_tester() {
 
 function hack::ensure_gen_crd_api_references_docs() {
     echo "Installing gen_crd_api_references_docs..."
-    GOBIN=$OUTPUT_BIN go install github.com/xhebox/gen-crd-api-reference-docs@master
+    GOBIN=$OUTPUT_BIN go install github.com/xhebox/gen-crd-api-reference-docs@e46d84594a6d158ec7123ff05acd57acf62e140f
 }
 
 function hack::ensure_misspell() {
