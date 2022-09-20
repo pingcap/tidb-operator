@@ -389,6 +389,16 @@ func TestCanSuspendComponent(t *testing.T) {
 				g.Expect(reason).To(BeEmpty())
 			},
 		},
+		"component's phase is not Normal and Suspend": {
+			setup: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+			},
+			component: v1alpha1.TiKVMemberType,
+			expect: func(can bool, reason string) {
+				g.Expect(can).To(BeFalse())
+				g.Expect(reason).To(Equal("component phase is not Normal or Suspend"))
+			},
+		},
 		"wait for other components to be suspended": {
 			setup: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase

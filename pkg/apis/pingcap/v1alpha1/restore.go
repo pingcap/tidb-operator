@@ -63,6 +63,9 @@ func GetRestoreCondition(status *RestoreStatus, conditionType RestoreConditionTy
 // one. Sets LastTransitionTime to now if the status has changed.
 // Returns true if Restore condition has changed or has been added.
 func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) bool {
+	if condition == nil {
+		return false
+	}
 	condition.LastTransitionTime = metav1.Now()
 	// Try to find this Restore condition.
 	conditionIndex, oldCondition := GetRestoreCondition(status, condition.Type)

@@ -2100,6 +2100,16 @@ type RestoreCondition struct {
 	Message            string      `json:"message,omitempty"`
 }
 
+type RestoreProgress struct {
+	// Step is the step name of progress
+	Step string `json:"step,omitempty"`
+	// Progress is the restore progress value
+	Progress float64 `json:"progress,omitempty"`
+	// LastTransitionTime is the update time
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
 // +k8s:openapi-gen=true
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
@@ -2140,8 +2150,8 @@ type RestoreSpec struct {
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
-	// LogBackupStorageProvider configures where and how log backup should be stored.
-	LogBackupStorageProvider StorageProvider `json:"logBackupStorageProvider,omitempty"`
+	// PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.
+	PitrFullBackupStorageProvider StorageProvider `json:"pitrFullBackupStorageProvider,omitempty"`
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -2193,6 +2203,9 @@ type RestoreStatus struct {
 	Phase RestoreConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []RestoreCondition `json:"conditions,omitempty"`
+	// Progresses is the progress of restore.
+	// +nullable
+	Progresses []RestoreProgress `json:"progresses,omitempty"`
 }
 
 // +k8s:openapi-gen=true

@@ -4,7 +4,7 @@
 
 module github.com/pingcap/tidb-operator
 
-go 1.13
+go 1.16
 
 require (
 	cloud.google.com/go/storage v1.0.0
@@ -22,7 +22,6 @@ require (
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elazarl/goproxy v0.0.0-20190421051319-9d40249d3c2f // indirect; indirectload
-	github.com/elazarl/goproxy/ext v0.0.0-20190421051319-9d40249d3c2f // indirect
 	github.com/emicklei/go-restful v2.9.5+incompatible
 	github.com/fatih/color v1.7.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
@@ -68,6 +67,7 @@ require (
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/yisaer/crd-validation v0.0.3
+	github.com/zhouqiang-cl/gocovmerge v0.0.0-20190125174600-5256314471af
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c

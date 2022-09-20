@@ -1255,7 +1255,7 @@ StorageProvider
 </tr>
 <tr>
 <td>
-<code>logBackupStorageProvider</code></br>
+<code>pitrFullBackupStorageProvider</code></br>
 <em>
 <a href="#storageprovider">
 StorageProvider
@@ -1263,7 +1263,7 @@ StorageProvider
 </em>
 </td>
 <td>
-<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
+<p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -12959,6 +12959,58 @@ string
 <p>
 <p>RestoreMode represents the restore mode, such as snapshot or pitr.</p>
 </p>
+<h3 id="restoreprogress">RestoreProgress</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorestatus">RestoreStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>step</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Step is the step name of progress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>progress</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<p>Progress is the restore progress value</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LastTransitionTime is the update time</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="restorespec">RestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -13109,7 +13161,7 @@ StorageProvider
 </tr>
 <tr>
 <td>
-<code>logBackupStorageProvider</code></br>
+<code>pitrFullBackupStorageProvider</code></br>
 <em>
 <a href="#storageprovider">
 StorageProvider
@@ -13117,7 +13169,7 @@ StorageProvider
 </em>
 </td>
 <td>
-<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
+<p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -13349,6 +13401,19 @@ RestoreConditionType
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>progresses</code></br>
+<em>
+<a href="#restoreprogress">
+[]RestoreProgress
+</a>
+</em>
+</td>
+<td>
+<p>Progresses is the progress of restore.</p>
 </td>
 </tr>
 </tbody>

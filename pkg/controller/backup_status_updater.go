@@ -166,7 +166,8 @@ func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCo
 	// update whole backup status
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
 	// DeletionTimestamp is not nil when delete and clean backup, no subcommand status needs to be updated
-	if backup.DeletionTimestamp != nil {
+	// LogCheckpointTs is not nil when just update checkpoint ts, no subcommand status needs to be updated
+	if backup.DeletionTimestamp != nil || (newStatus != nil && newStatus.LogCheckpointTs != nil) {
 		return isWholeStatusUpdate
 	}
 	// update subcommand status
@@ -283,6 +284,11 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 	// DeletionTimestamp is not nil when delete and clean backup, condition and status can be directly used to update whole status.
 	if backup.DeletionTimestamp != nil {
 		return doUpdateStatusAndCondition(condition, status)
+	}
+
+	// just update checkpoint ts
+	if status != nil && status.LogCheckpointTs != nil {
+		return doUpdateStatusAndCondition(nil, status)
 	}
 
 	// subcommand type should be set in condition, if not, will not update status info according to these condion and status.

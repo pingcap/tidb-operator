@@ -1,6 +1,6 @@
 module github.com/pingcap/tidb-operator/pkg/client
 
-go 1.13
+go 1.16
 
 require (
 	github.com/pingcap/tidb-operator/pkg/apis v1.3.8
