@@ -1,6 +1,6 @@
 module github.com/pingcap/tidb-operator/pkg/apis
 
-go 1.13
+go 1.16
 
 require (
 	github.com/BurntSushi/toml v0.3.1
