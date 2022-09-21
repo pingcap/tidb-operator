@@ -2861,6 +2861,7 @@ func (in *Networks) DeepCopy() *Networks {
 func (in *ObservedStorageVolumeStatus) DeepCopyInto(out *ObservedStorageVolumeStatus) {
 	*out = *in
 	out.CurrentCapacity = in.CurrentCapacity.DeepCopy()
+	out.ModifiedCapacity = in.ModifiedCapacity.DeepCopy()
 	out.ResizedCapacity = in.ResizedCapacity.DeepCopy()
 	return
 }

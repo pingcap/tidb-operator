@@ -17,10 +17,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -28,6 +24,11 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 )
 
 // TidbClusterControlInterface manages TidbClusters
@@ -74,6 +75,9 @@ func (c *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new
 		if updated, err := c.tcLister.TidbClusters(ns).Get(tcName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			tc = updated.DeepCopy()
+			// TiKV.EvictLeader is controlled by pod leader evictor in pkg/controller/tidbcluster/pod_control.go
+			// So don't overwrite it
+			status.TiKV.EvictLeader = tc.Status.TiKV.EvictLeader
 			tc.Status = *status
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated TidbCluster %s/%s from lister: %v", ns, tcName, err))

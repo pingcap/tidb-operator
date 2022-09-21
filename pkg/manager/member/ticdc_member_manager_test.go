@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -593,9 +594,10 @@ func TestGetNewTiCDCStatefulSet(t *testing.T) {
 func newFakeTiCDCMemberManager() (*ticdcMemberManager, *controller.FakeStatefulSetControl, *controller.FakeTiDBControl, *fakeIndexers) {
 	fakeDeps := controller.NewFakeDependencies()
 	tmm := &ticdcMemberManager{
-		deps:      fakeDeps,
-		scaler:    NewTiCDCScaler(fakeDeps),
-		suspender: suspender.NewFakeSuspender(),
+		deps:              fakeDeps,
+		scaler:            NewTiCDCScaler(fakeDeps),
+		suspender:         suspender.NewFakeSuspender(),
+		podVolumeModifier: &volumes.FakePodVolumeModifier{},
 	}
 	tmm.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	indexers := &fakeIndexers{

@@ -15,6 +15,10 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/agiledragon/gomonkey/v2 v2.3.0
 	github.com/aws/aws-sdk-go v1.30.9
+	github.com/aws/aws-sdk-go-v2 v1.16.11
+	github.com/aws/aws-sdk-go-v2/config v1.17.1
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.53.0
+	github.com/aws/smithy-go v1.12.1
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/docker/docker v1.4.2-0.20200309214505-aa6a9891b09c
@@ -29,7 +33,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/google/go-cmp v0.5.6
+	github.com/google/go-cmp v0.5.8
 	github.com/google/gofuzz v1.1.0
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
