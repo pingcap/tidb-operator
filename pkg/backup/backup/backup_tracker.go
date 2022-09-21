@@ -36,14 +36,18 @@ var (
 
 // BackupCleaner implements the logic for cleaning backup
 type BackupTracker interface {
-	StartTrackLogBackupProgress(backup *v1alpha1.Backup)
+	StartTrackLogBackupProgress(backup *v1alpha1.Backup) error
 }
 
 type backupTracker struct {
 	deps          *controller.Dependencies
 	statusUpdater controller.BackupConditionUpdaterInterface
 	operateLock   sync.Mutex
-	logBackups    map[string]interface{}
+	logBackups    map[string]*trackDepends
+}
+
+type trackDepends struct {
+	tc *v1alpha1.TidbCluster
 }
 
 // NewBackupCleaner returns a BackupCleaner
@@ -51,13 +55,13 @@ func NewBackupTracker(deps *controller.Dependencies, statusUpdater controller.Ba
 	return &backupTracker{
 		deps:          deps,
 		statusUpdater: statusUpdater,
-		logBackups:    make(map[string]interface{}),
+		logBackups:    make(map[string]*trackDepends),
 	}
 }
 
-func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) {
+func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) error {
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
-		return
+		return nil
 	}
 	ns := backup.Namespace
 	name := backup.Name
@@ -68,17 +72,36 @@ func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) {
 	logkey := genLogBackupKey(ns, name)
 	if _, exist := bt.logBackups[logkey]; exist {
 		klog.Infof("log backup %s/%s has exist in tracker %s", ns, name, logkey)
-		return
+		return nil
 	}
 	klog.Infof("add log backup %s/%s to tracker", ns, name)
-	bt.logBackups[logkey] = logkey
+	tc, err := bt.getLogBackupTC(backup)
+	if err != nil {
+		return err
+	}
+	bt.logBackups[logkey] = &trackDepends{tc: tc}
 	go bt.refreshLogBackupCheckpointTs(ns, name)
+	return nil
 }
 
 func (bt *backupTracker) removeLogBackup(ns, name string) {
 	bt.operateLock.Lock()
 	defer bt.operateLock.Unlock()
 	delete(bt.logBackups, genLogBackupKey(ns, name))
+}
+
+func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.TidbCluster, error) {
+	ns := backup.Namespace
+	name := backup.Name
+	clusterNamespace := backup.Spec.BR.ClusterNamespace
+	if backup.Spec.BR.ClusterNamespace == "" {
+		clusterNamespace = ns
+	}
+	tc, err := bt.deps.TiDBClusterLister.TidbClusters(clusterNamespace).Get(backup.Spec.BR.Cluster)
+	if err != nil {
+		return nil, fmt.Errorf(fmt.Sprintf("get log backup %s/%s tidbcluster %s/%s failed", ns, name, clusterNamespace, backup.Spec.BR.Cluster), err)
+	}
+	return tc, nil
 }
 
 func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
@@ -109,25 +132,19 @@ func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 			klog.Infof("log backup %s/%s is not running, will skip to the next time refresh", ns, name)
 			continue
 		}
-		bt.doRefreshLogBackupCheckpointTs(backup)
+		bt.doRefreshLogBackupCheckpointTs(backup, bt.logBackups[logkey])
 	}
 }
 
-func (bt *backupTracker) doRefreshLogBackupCheckpointTs(backup *v1alpha1.Backup) {
+func (bt *backupTracker) doRefreshLogBackupCheckpointTs(backup *v1alpha1.Backup, dep *trackDepends) {
 	ns := backup.Namespace
 	name := backup.Name
-	clusterNamespace := backup.Spec.BR.ClusterNamespace
-	if backup.Spec.BR.ClusterNamespace == "" {
-		clusterNamespace = backup.Namespace
-	}
-	url := fmt.Sprintf("%s-pd.%s:2379", backup.Spec.BR.Cluster, clusterNamespace)
-	klog.Infof("log backup %s/%s pd url %s", ns, name, url)
-
-	etcdCli, err := pdapi.NewPdEtcdClient(url, 30*time.Second, nil)
+	etcdCli, err := bt.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(dep.tc.Namespace), dep.tc.Name, dep.tc.IsTLSClusterEnabled())
 	if err != nil {
 		klog.Errorf("get log backup %s/%s pd cli error %v", ns, name, err)
 		return
 	}
+	defer etcdCli.Close()
 	key := path.Join(streamKeyPrefix, taskCheckpointPath, name)
 	klog.Infof("log backup %s/%s checkpointTS key %s", ns, name, key)
 
