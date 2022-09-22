@@ -34,7 +34,7 @@ var (
 	taskCheckpointPath        = "/checkpoint"
 )
 
-// BackupCleaner implements the logic for cleaning backup
+// BackupTracker implements the logic for tracking log backup progress
 type BackupTracker interface {
 	StartTrackLogBackupProgress(backup *v1alpha1.Backup) error
 }
@@ -46,11 +46,12 @@ type backupTracker struct {
 	logBackups    map[string]*trackDepends
 }
 
+// trackDepends is the tracker depends, such as tidb cluster info.
 type trackDepends struct {
 	tc *v1alpha1.TidbCluster
 }
 
-// NewBackupCleaner returns a BackupCleaner
+// NewBackupTracker returns a BackupTracker
 func NewBackupTracker(deps *controller.Dependencies, statusUpdater controller.BackupConditionUpdaterInterface) BackupTracker {
 	return &backupTracker{
 		deps:          deps,
@@ -59,6 +60,7 @@ func NewBackupTracker(deps *controller.Dependencies, statusUpdater controller.Ba
 	}
 }
 
+// StartTrackLogBackupProgress starts to track log backup progress.
 func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) error {
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
 		return nil
@@ -84,12 +86,14 @@ func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) er
 	return nil
 }
 
+// removeLogBackup removes log backup from tracker.
 func (bt *backupTracker) removeLogBackup(ns, name string) {
 	bt.operateLock.Lock()
 	defer bt.operateLock.Unlock()
 	delete(bt.logBackups, genLogBackupKey(ns, name))
 }
 
+// getLogBackupTC gets log backup's tidb cluster info.
 func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.TidbCluster, error) {
 	ns := backup.Namespace
 	name := backup.Name
@@ -104,6 +108,7 @@ func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.Tidb
 	return tc, nil
 }
 
+// refreshLogBackupCheckpointTs updates log backup progress periodically.
 func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 	ticker := time.NewTicker(refreshCheckpointTsPeriod)
 	defer ticker.Stop()
@@ -136,6 +141,7 @@ func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 	}
 }
 
+// doRefreshLogBackupCheckpointTs gets log backup checkpoint ts from pd and updates log backup cr.
 func (bt *backupTracker) doRefreshLogBackupCheckpointTs(backup *v1alpha1.Backup, dep *trackDepends) {
 	ns := backup.Namespace
 	name := backup.Name
