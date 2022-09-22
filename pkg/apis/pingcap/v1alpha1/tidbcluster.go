@@ -19,12 +19,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 )
 
 const (
@@ -1125,6 +1126,15 @@ func (tc *TidbCluster) IsComponentVolumeResizing(compType MemberType) bool {
 	}
 	conds := comp.GetConditions()
 	return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
+}
+
+func (tc *TidbCluster) IsComponentLeaderEvicting(compType MemberType) bool {
+	comp := tc.ComponentStatus(compType)
+	if comp == nil {
+		return false
+	}
+	conds := comp.GetConditions()
+	return meta.IsStatusConditionTrue(conds, ConditionTypeLeaderEvicting)
 }
 
 func (tc *TidbCluster) StartScriptVersion() StartScriptVersion {

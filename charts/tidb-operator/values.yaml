@@ -32,10 +32,14 @@ tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.3.8
 #     to turn it off when the tidb-operator already uses AdvancedStatefulSet to
 #     manage pods. This is in alpha phase.
 #
+#   VolumeModifying (default false)
+#     If enabled, tidb-operator support to increase the size or performance of volumes
+#     for specific volume provisioner.
 features: []
 # - AdvancedStatefulSet=false
 # - StableScheduling=true
 # - AutoScaling=false
+# - VolumeModifying=false
 
 appendReleaseSuffix: false
 
@@ -108,7 +112,14 @@ controllerManager:
   # - canary-release=v1
   # - k1==v1
   # - k2!=v2
-
+  ## Env define environments for the controller manager.
+  ## NOTE that the following env names is reserved: 
+  ##  - NAMESPACE
+  ##  - TZ
+  ##  - HELM_RELEASE
+  env: []
+  # - name: AWS_REGION
+  #   value: us-west-2
   # SecurityContext is security config of this component, it will set template.spec.securityContext
   # Refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context
   securityContext: {}

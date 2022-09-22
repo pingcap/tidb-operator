@@ -33,8 +33,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -74,23 +76,25 @@ var (
 )
 
 type tidbMemberManager struct {
-	deps         *controller.Dependencies
-	scaler       Scaler
-	tidbUpgrader Upgrader
-	tidbFailover Failover
-	suspender    suspender.Suspender
+	deps              *controller.Dependencies
+	scaler            Scaler
+	tidbUpgrader      Upgrader
+	tidbFailover      Failover
+	suspender         suspender.Suspender
+	podVolumeModifier volumes.PodVolumeModifier
 
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
-func NewTiDBMemberManager(deps *controller.Dependencies, scaler Scaler, tidbUpgrader Upgrader, tidbFailover Failover, spder suspender.Suspender) manager.Manager {
+func NewTiDBMemberManager(deps *controller.Dependencies, scaler Scaler, tidbUpgrader Upgrader, tidbFailover Failover, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	return &tidbMemberManager{
 		deps:                         deps,
 		scaler:                       scaler,
 		tidbUpgrader:                 tidbUpgrader,
 		tidbFailover:                 tidbFailover,
 		suspender:                    spder,
+		podVolumeModifier:            pvm,
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 	}
 }
@@ -1039,6 +1043,12 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if c != nil {
 		tc.Status.TiDB.Image = c.Image
 	}
+
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.TiDBMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for tidb: %v", err)
+	}
+
 	return nil
 }
 

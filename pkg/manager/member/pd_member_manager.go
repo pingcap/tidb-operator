@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	"github.com/Masterminds/semver"
@@ -53,21 +54,23 @@ const (
 )
 
 type pdMemberManager struct {
-	deps      *controller.Dependencies
-	scaler    Scaler
-	upgrader  Upgrader
-	failover  Failover
-	suspender suspender.Suspender
+	deps              *controller.Dependencies
+	scaler            Scaler
+	upgrader          Upgrader
+	failover          Failover
+	suspender         suspender.Suspender
+	podVolumeModifier volumes.PodVolumeModifier
 }
 
 // NewPDMemberManager returns a *pdMemberManager
-func NewPDMemberManager(dependencies *controller.Dependencies, pdScaler Scaler, pdUpgrader Upgrader, pdFailover Failover, spder suspender.Suspender) manager.Manager {
+func NewPDMemberManager(dependencies *controller.Dependencies, pdScaler Scaler, pdUpgrader Upgrader, pdFailover Failover, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	return &pdMemberManager{
-		deps:      dependencies,
-		scaler:    pdScaler,
-		upgrader:  pdUpgrader,
-		failover:  pdFailover,
-		suspender: spder,
+		deps:              dependencies,
+		scaler:            pdScaler,
+		upgrader:          pdUpgrader,
+		failover:          pdFailover,
+		suspender:         spder,
+		podVolumeModifier: pvm,
 	}
 }
 
@@ -416,6 +419,11 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 
 	if err := m.collectUnjoinedMembers(tc, set, pdStatus); err != nil {
 		return err
+	}
+
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.PDMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for pd: %v", err)
 	}
 	return nil
 }

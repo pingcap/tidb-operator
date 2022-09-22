@@ -31,6 +31,7 @@ var (
 		StableScheduling:    true,
 		AdvancedStatefulSet: false,
 		AutoScaling:         false,
+		VolumeModifying:     false,
 	}
 	// DefaultFeatureGate is a shared global FeatureGate.
 	DefaultFeatureGate FeatureGate = NewDefaultFeatureGate()
@@ -45,6 +46,9 @@ const (
 
 	// AutoScaling controls whether to use TidbClusterAutoScaler to auto scale-in/out pods
 	AutoScaling string = "AutoScaling"
+
+	// VolumeModifying controls whether allow to modify volumes
+	VolumeModifying string = "VolumeModifying"
 )
 
 type FeatureGate interface {

@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -840,6 +841,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		tidbFailover:                 NewFakeTiDBFailover(),
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 		suspender:                    suspender.NewFakeSuspender(),
+		podVolumeModifier:            &volumes.FakePodVolumeModifier{},
 	}
 	indexers := &fakeIndexers{
 		pod:    fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer(),
