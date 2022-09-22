@@ -38,9 +38,9 @@ COPY run_flamegraph.sh /run_flamegraph.sh
 COPY gdbinit /root/.gdbinit
 
 # used for go pprof
-ENV GOLANG_VERSION 1.12.4
-ENV GOLANG_DOWNLOAD_URL https://golang.org/dl/go$GOLANG_VERSION.linux-amd64.tar.gz
-ENV GOLANG_DOWNLOAD_SHA256 d7d1f1f88ddfe55840712dc1747f37a790cbcaa448f6c9cf51bbe10aa65442f5
+ENV GOLANG_VERSION 1.16.15
+ENV GOLANG_DOWNLOAD_URL https://go.dev/dl/go$GOLANG_VERSION.linux-amd64.tar.gz
+ENV GOLANG_DOWNLOAD_SHA256 77c782a633186d78c384f972fb113a43c24be0234c42fef22c2d8c4c4c8e7475
 RUN curl -fsSL "$GOLANG_DOWNLOAD_URL" -o golang.tar.gz \
     && echo "$GOLANG_DOWNLOAD_SHA256  golang.tar.gz" | sha256sum -c - \
     && tar -C /usr/local -xzf golang.tar.gz \
@@ -50,7 +50,7 @@ ENV GOROOT /usr/local/go
 ENV PATH $GOPATH/bin:$GOROOT/bin:$PATH
 
 # build delve
-RUN go get github.com/go-delve/delve/cmd/dlv
+RUN go get github.com/go-delve/delve/cmd/dlv@v1.9.1
 
 ADD banner /etc/banner
 ADD profile  /etc/profile

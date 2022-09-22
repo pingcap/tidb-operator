@@ -113,6 +113,9 @@ spec:
           - name: HELM_RELEASE
             value: {{ .Release.Name }}
           {{- end }}
+          {{- with .Values.controllerManager.env }}
+{{ toYaml . | indent 10 }}
+          {{- end }}
       {{- with .Values.controllerManager.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
