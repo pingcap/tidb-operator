@@ -58,6 +58,8 @@ type ComponentStatus interface {
 	SetSynced(bool)
 	// SetPhase sets the phase of the component.
 	SetPhase(phase MemberPhase)
+	// SetVolumes sets the `status.volumes`
+	SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus)
 	// SetCondition sets the corresponding condition in conditions to newCondition.
 	// 1. if the condition of the specified type already exists (all fields of the existing condition are updated to
 	//    newCondition, LastTransitionTime is set to now if the new status differs from the old status)
@@ -164,6 +166,9 @@ func (s *PDStatus) SetPhase(phase MemberPhase) {
 func (s *PDStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 	s.StatefulSet = sts
 }
+func (s *PDStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
+}
 
 func (s *TiKVStatus) MemberType() MemberType {
 	return TiKVMemberType
@@ -208,6 +213,9 @@ func (s *TiKVStatus) SetPhase(phase MemberPhase) {
 func (s *TiKVStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 	s.StatefulSet = sts
 }
+func (s *TiKVStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
+}
 
 func (s *TiDBStatus) MemberType() MemberType {
 	return TiDBMemberType
@@ -250,6 +258,9 @@ func (s *TiDBStatus) SetPhase(phase MemberPhase) {
 func (s *TiDBStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 	s.StatefulSet = sts
 }
+func (s *TiDBStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
+}
 
 func (s *PumpStatus) MemberType() MemberType {
 	return PumpMemberType
@@ -291,6 +302,9 @@ func (s *PumpStatus) SetPhase(phase MemberPhase) {
 }
 func (s *PumpStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 	s.StatefulSet = sts
+}
+func (s *PumpStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
 }
 
 func (s *TiFlashStatus) MemberType() MemberType {
@@ -336,6 +350,9 @@ func (s *TiFlashStatus) SetPhase(phase MemberPhase) {
 func (s *TiFlashStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 	s.StatefulSet = sts
 }
+func (s *TiFlashStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
+}
 
 func (s *TiCDCStatus) MemberType() MemberType {
 	return TiCDCMemberType
@@ -379,6 +396,9 @@ func (s *TiCDCStatus) SetPhase(phase MemberPhase) {
 }
 func (s *TiCDCStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 	s.StatefulSet = sts
+}
+func (s *TiCDCStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
 }
 
 func (s *MasterStatus) MemberType() MemberType {
@@ -424,6 +444,9 @@ func (s *MasterStatus) SetPhase(phase MemberPhase) {
 func (s *MasterStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 	s.StatefulSet = sts
 }
+func (s *MasterStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
+}
 
 func (s *WorkerStatus) MemberType() MemberType {
 	return DMWorkerMemberType
@@ -467,4 +490,7 @@ func (s *WorkerStatus) SetPhase(phase MemberPhase) {
 }
 func (s *WorkerStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 	s.StatefulSet = sts
+}
+func (s *WorkerStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
 }

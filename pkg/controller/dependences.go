@@ -14,21 +14,13 @@
 package controller
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/dmapi"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
-	"github.com/pingcap/tidb-operator/pkg/tikvapi"
-	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -45,6 +37,18 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
+	"github.com/pingcap/tidb-operator/pkg/tikvapi"
+	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 )
 
 // CLIConfig is used save all configuration read from command line parameters
@@ -217,6 +221,8 @@ type Dependencies struct {
 
 	// Controls
 	Controls
+
+	AWSConfig aws.Config
 }
 
 func newRealControls(
@@ -314,6 +320,11 @@ func newDependencies(
 		ingv1beta1Lister = kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister()
 	}
 
+	cfg, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("can't load aws config: %w", err)
+	}
+
 	return &Dependencies{
 		CLIConfig:                      cliCfg,
 		InformerFactory:                informerFactory,
@@ -348,6 +359,8 @@ func newDependencies(
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
 		TiDBNGMonitoringLister:      informerFactory.Pingcap().V1alpha1().TidbNGMonitorings().Lister(),
+
+		AWSConfig: cfg,
 	}, nil
 }
 

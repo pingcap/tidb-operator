@@ -9150,14 +9150,14 @@ int
 </tr>
 <tr>
 <td>
-<code>resizedCount</code></br>
+<code>modifiedCount</code></br>
 <em>
 int
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ResizedCount is the count of volumes whose capacity is equal to <code>resizedCapacity</code>.</p>
+<p>ModifiedCount is the count of modified volumes.</p>
 </td>
 </tr>
 <tr>
@@ -9168,9 +9168,46 @@ k8s.io/apimachinery/pkg/api/resource.Quantity
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>CurrentCapacity is the current capacity of the volume.
 If any volume is resizing, it is the capacity before resizing.
 If all volumes are resized, it is the resized capacity and same as desired capacity.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>modifiedCapacity</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ModifiedCapacity is the modified capacity of the volume.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentStorageClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CurrentStorageClass is the modified capacity of the volume.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>modifiedStorageClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ModifiedStorageClass is the modified storage calss of the volume.</p>
 </td>
 </tr>
 <tr>
@@ -9181,7 +9218,20 @@ k8s.io/apimachinery/pkg/api/resource.Quantity
 </em>
 </td>
 <td>
-<p>ResizedCapacity is the desired capacity of the volume.</p>
+<em>(Optional)</em>
+<p>(Deprecated) ResizedCapacity is the desired capacity of the volume.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resizedCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>(Deprecated) ResizedCount is the count of volumes whose capacity is equal to <code>resizedCapacity</code>.</p>
 </td>
 </tr>
 </tbody>

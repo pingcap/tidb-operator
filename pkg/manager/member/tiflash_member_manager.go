@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -55,17 +56,19 @@ type tiflashMemberManager struct {
 	scaler                   Scaler
 	upgrader                 Upgrader
 	suspender                suspender.Suspender
+	podVolumeModifier        volumes.PodVolumeModifier
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiFlashMemberManager returns a *tiflashMemberManager
-func NewTiFlashMemberManager(deps *controller.Dependencies, tiflashFailover Failover, tiflashScaler Scaler, tiflashUpgrader Upgrader, spder suspender.Suspender) manager.Manager {
+func NewTiFlashMemberManager(deps *controller.Dependencies, tiflashFailover Failover, tiflashScaler Scaler, tiflashUpgrader Upgrader, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	m := tiflashMemberManager{
-		deps:      deps,
-		failover:  tiflashFailover,
-		scaler:    tiflashScaler,
-		upgrader:  tiflashUpgrader,
-		suspender: spder,
+		deps:              deps,
+		failover:          tiflashFailover,
+		scaler:            tiflashScaler,
+		upgrader:          tiflashUpgrader,
+		suspender:         spder,
+		podVolumeModifier: pvm,
 	}
 	m.statefulSetIsUpgradingFn = tiflashStatefulSetIsUpgrading
 	return &m
@@ -753,6 +756,12 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	if c != nil {
 		tc.Status.TiFlash.Image = c.Image
 	}
+
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.TiFlashMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for tiflash: %v", err)
+	}
+
 	return nil
 }
 
