@@ -1316,6 +1316,14 @@ type EvictLeaderStatus struct {
 	Value         string      `json:"value,omitempty"`
 }
 
+const (
+	// It means whether some pods are evicting leader
+	// This condition is used to avoid too many pods evict leader at same time
+	// Normally we only allow one pod evicts leader.
+	// TODO: set this condition before all leader eviction behavior
+	ConditionTypeLeaderEvicting = "LeaderEvicting"
+)
+
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
 	Synced          bool                          `json:"synced,omitempty"`
@@ -2674,15 +2682,30 @@ type ObservedStorageVolumeStatus struct {
 	// CurrentCount is the count of volumes whose capacity is equal to `currentCapacity`.
 	// +optional
 	CurrentCount int `json:"currentCount"`
-	// ResizedCount is the count of volumes whose capacity is equal to `resizedCapacity`.
+	// ModifiedCount is the count of modified volumes.
 	// +optional
-	ResizedCount int `json:"resizedCount"`
+	ModifiedCount int `json:"modifiedCount"`
 	// CurrentCapacity is the current capacity of the volume.
 	// If any volume is resizing, it is the capacity before resizing.
 	// If all volumes are resized, it is the resized capacity and same as desired capacity.
+	// +optional
 	CurrentCapacity resource.Quantity `json:"currentCapacity"`
-	// ResizedCapacity is the desired capacity of the volume.
+	// ModifiedCapacity is the modified capacity of the volume.
+	// +optional
+	ModifiedCapacity resource.Quantity `json:"modifiedCapacity"`
+	// CurrentStorageClass is the modified capacity of the volume.
+	// +optional
+	CurrentStorageClass string `json:"currentStorageClass"`
+	// ModifiedStorageClass is the modified storage calss of the volume.
+	// +optional
+	ModifiedStorageClass string `json:"modifiedStorageClass"`
+
+	// (Deprecated) ResizedCapacity is the desired capacity of the volume.
+	// +optional
 	ResizedCapacity resource.Quantity `json:"resizedCapacity"`
+	// (Deprecated) ResizedCount is the count of volumes whose capacity is equal to `resizedCapacity`.
+	// +optional
+	ResizedCount int `json:"resizedCount"`
 }
 
 // StorageVolumeName is the volume name which is same as `volumes.name` in Pod spec.
