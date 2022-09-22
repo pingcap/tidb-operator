@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -56,16 +57,18 @@ type pumpMemberManager struct {
 	deps   *controller.Dependencies
 	scaler Scaler
 	// only use for test
-	binlogClient binlogClient
-	suspender    suspender.Suspender
+	binlogClient      binlogClient
+	suspender         suspender.Suspender
+	podVolumeModifier volumes.PodVolumeModifier
 }
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
-func NewPumpMemberManager(deps *controller.Dependencies, scaler Scaler, spder suspender.Suspender) manager.Manager {
+func NewPumpMemberManager(deps *controller.Dependencies, scaler Scaler, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	return &pumpMemberManager{
-		deps:      deps,
-		scaler:    scaler,
-		suspender: spder,
+		deps:              deps,
+		scaler:            scaler,
+		suspender:         spder,
+		podVolumeModifier: pvm,
 	}
 }
 
@@ -213,6 +216,11 @@ func (m *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 
 	tc.Status.Pump.Members = status
+
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.PumpMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for pump: %v", err)
+	}
 
 	return nil
 }
