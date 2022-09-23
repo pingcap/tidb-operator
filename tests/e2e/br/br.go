@@ -47,7 +47,7 @@ var (
 	tidbReadyTimeout        = time.Minute * 15
 	backupCompleteTimeout   = time.Minute * 15
 	restoreCompleteTimeout  = time.Minute * 15
-	logbackupCatchUpTimeout = time.Minute * 15
+	logbackupCatchUpTimeout = time.Minute * 25
 )
 
 const (
