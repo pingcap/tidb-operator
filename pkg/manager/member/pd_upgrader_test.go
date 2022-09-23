@@ -226,7 +226,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changePods:        nil,
 			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err.Error()).To(Equal(fmt.Sprintf("tidbcluster: [default/upgrader]'s pd upgraded pod: [%s] is not ready", PdPodName(upgradeTcName, 2))))
+				g.Expect(err.Error()).To(Equal(fmt.Sprintf("tidbcluster: [default/upgrader]'s pd upgraded pod: [%s] is not health", PdPodName(upgradeTcName, 2))))
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
