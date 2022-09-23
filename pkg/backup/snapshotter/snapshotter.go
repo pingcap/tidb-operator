@@ -301,7 +301,7 @@ func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, tc *v1alpha1.T
 
 	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
 	if err != nil {
-		return nil, fmt.Sprintf("unexpected error generating label selector: %v", err), err
+		return nil, fmt.Sprintf("unexpected error generating pvc label selector: %v", err), err
 	}
 
 	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(tc.Namespace).List(sel)
@@ -310,7 +310,12 @@ func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, tc *v1alpha1.T
 		return nil, fmt.Sprintf("failed to fetch pvcs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
 	csb.Kubernetes.PVCs = pvcs
-	pvs, err := s.deps.PVLister.List(sel)
+
+	pvSels, err := label.New().Instance(tc.Name).Namespace(tc.Namespace).TiKV().Selector()
+	if err != nil {
+		return nil, fmt.Sprintf("unexpected error generating pv label selector: %v", err), err
+	}
+	pvs, err := s.deps.PVLister.List(pvSels)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch pvs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
