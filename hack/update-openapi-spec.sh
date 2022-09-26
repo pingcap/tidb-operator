@@ -21,15 +21,8 @@ ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
 source "${ROOT}/hack/lib.sh"
+hack::ensure_openapi
 
-# Ensure that we find the binaries we build before anything else.
-export GOBIN="${OUTPUT_BIN}"
-PATH="${GOBIN}:${PATH}"
-
-# Enable go modules explicitly.
-export GO111MODULE=on
-go install k8s.io/code-generator/cmd/openapi-gen
-
-openapi-gen --go-header-file=./hack/boilerplate/boilerplate.generatego.txt \
+$OUTPUT_BIN/openapi-gen --go-header-file=./hack/boilerplate/boilerplate.generatego.txt \
     -i github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
     -p apis/pingcap/v1alpha1 -O openapi_generated -o ./pkg
