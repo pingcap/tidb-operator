@@ -2770,7 +2770,7 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 		},
 		{
 			name:        "skip old version tidb",
-			tidbVersion: "v6.1.0",
+			tidbVersion: "v6.2.9",
 			members: []Member{
 				{
 					node: "node-1",
