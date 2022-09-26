@@ -1052,7 +1052,7 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	return nil
 }
 
-const tidbSupportLabelsMinVersin = "6.2.0"
+const tidbSupportLabelsMinVersin = "6.3.0"
 
 func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, error) {
 	tidbVersion := tc.TiDBVersion()
