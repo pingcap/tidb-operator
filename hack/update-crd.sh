@@ -26,14 +26,11 @@ cd ${ROOT}
 source hack/lib.sh
 
 CONTROLLER_GEN=${OUTPUT_BIN}/controller-gen
+hack::ensure_controller_gen
+
 API_PACKAGES="github.com/pingcap/tidb-operator/pkg/apis/..."
 CRD_OUTPUT_DIR=${ROOT}/manifests/crd
 CRD_OPTIONS="preserveUnknownFields=false,allowDangerousTypes=true,maxDescLen=0"
-
-# build controller-gen
-pushd "${ROOT}/hack/tools" >/dev/null
-    make controller-gen OUTPUT_DIR=${OUTPUT_BIN}
-popd >/dev/null
 
 # generate CRDs
 ${CONTROLLER_GEN} \
