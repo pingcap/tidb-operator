@@ -23,12 +23,6 @@ jobs:
         - test
         - e2e-examples
     steps:
-    - name: Set up Go 1.16
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.16.4
-      id: go
-
     # the GITHUB_SHA env is not the real commit hash but is the pre-merge commit ID for `pull_request` event,
     # see https://github.community/t/github-sha-isnt-the-value-expected/17903/2
     # so we checkout the repo with `fetch-depth: 2` and let `codecov/codecov-action` to retrieve the real commit hash.
@@ -37,7 +31,24 @@ jobs:
       with:
         path: go/src/github.com/${{ github.repository }}
         fetch-depth: 2
-
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version-file: go/src/github.com/${{ github.repository }}/go.mod
+        check-latest: true
+    - name: Set vars
+      run: |
+        echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_ENV
+        echo "GOMODCACHE=$(go env GOMODCACHE)" >> $GITHUB_ENV
+    - name: Try to use build cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ env.GOCACHE }}
+          ${{ env.GOMODCACHE }}
+        key: ${{ runner.os }}-go-${{ hashFiles(format('go/src/github.com/{0}/**/go.sum', github.repository)) }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - name: ${{ matrix.job }}
       run: |
         # workaround for https://github.com/actions/setup-go/issues/14

@@ -178,6 +178,7 @@ func ordinalPodName(memberType v1alpha1.MemberType, tcName string, ordinal int32
 //   - 0: no scaling required
 //   - 1: scaling out
 //   - -1: scaling in
+//
 // - ordinal: pod ordinal to create or delete
 // - replicas/deleteSlots: desired replicas and deleteSlots by allowing only one pod to be deleted or created
 func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int, ordinal int32, replicas int32, deleteSlots sets.Int32) {
@@ -198,6 +199,7 @@ func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int,
 //   - 0: no scaling required
 //   - 1: scaling out
 //   - -1: scaling in
+//
 // - ordinals: pod ordinals to create or delete
 // - replicas/deleteSlots: desired replicas and deleteSlots by allowing no more than maxCount pods to be deleted or created
 func scaleMulti(actual *apps.StatefulSet, desired *apps.StatefulSet, maxCount int) (scaling int, ordinals []int32, replicas int32, deleteSlots sets.Int32) {
@@ -271,6 +273,7 @@ func normalizeDeleteSlots(replicas int32, deleteSlots sets.Int32, desiredDeleteS
 // - scaling:
 //   - 1: scaling out
 //   - -1: scaling in
+//
 // - ordinals: pod oridnals to create or delete this round, in processing order, which means increasing when scale out and decreasing when scale in.
 // - finishedOrdinals: oridnals finished successfully in this round.
 func setReplicasAndDeleteSlotsByFinished(scaling int, newSet, oldSet *apps.StatefulSet, ordinals []int32, finishedOrdinals sets.Int32) {

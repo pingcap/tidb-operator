@@ -299,17 +299,17 @@ func GetOptions(provider v1alpha1.StorageProvider) []string {
 }
 
 /*
-	GetCommitTsFromMetadata get commitTs from mydumper's metadata file
+GetCommitTsFromMetadata get commitTs from mydumper's metadata file
 
-	metadata file format is as follows:
+metadata file format is as follows:
 
-		Started dump at: 2019-06-13 10:00:04
-		SHOW MASTER STATUS:
-			Log: tidb-binlog
-			Pos: 409054741514944513
-			GTID:
+	Started dump at: 2019-06-13 10:00:04
+	SHOW MASTER STATUS:
+		Log: tidb-binlog
+		Pos: 409054741514944513
+		GTID:
 
-		Finished dump at: 2019-06-13 10:00:04
+	Finished dump at: 2019-06-13 10:00:04
 */
 func GetCommitTsFromMetadata(backupPath string) (string, error) {
 	var commitTs string
