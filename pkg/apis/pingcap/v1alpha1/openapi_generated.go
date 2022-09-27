@@ -6617,9 +6617,9 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider"),
 						},
 					},
-					"logBackupStorageProvider": {
+					"pitrFullBackupStorageProvider": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LogBackupStorageProvider configures where and how log backup should be stored.",
+							Description: "PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider"),
 						},
 					},

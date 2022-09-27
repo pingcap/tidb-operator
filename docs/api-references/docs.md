@@ -1255,7 +1255,7 @@ StorageProvider
 </tr>
 <tr>
 <td>
-<code>logBackupStorageProvider</code></br>
+<code>pitrFullBackupStorageProvider</code></br>
 <em>
 <a href="#storageprovider">
 StorageProvider
@@ -1263,7 +1263,7 @@ StorageProvider
 </em>
 </td>
 <td>
-<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
+<p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -6392,6 +6392,10 @@ Only named struct is allowed by controller-gen</p>
 </p>
 <h3 id="evictleaderstatus">EvictLeaderStatus</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#tikvstatus">TiKVStatus</a>)
+</p>
+<p>
 </p>
 <table>
 <thead>
@@ -8810,7 +8814,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -9185,14 +9189,14 @@ int
 </tr>
 <tr>
 <td>
-<code>resizedCount</code></br>
+<code>modifiedCount</code></br>
 <em>
 int
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ResizedCount is the count of volumes whose capacity is equal to <code>resizedCapacity</code>.</p>
+<p>ModifiedCount is the count of modified volumes.</p>
 </td>
 </tr>
 <tr>
@@ -9203,9 +9207,46 @@ k8s.io/apimachinery/pkg/api/resource.Quantity
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>CurrentCapacity is the current capacity of the volume.
 If any volume is resizing, it is the capacity before resizing.
 If all volumes are resized, it is the resized capacity and same as desired capacity.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>modifiedCapacity</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ModifiedCapacity is the modified capacity of the volume.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentStorageClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CurrentStorageClass is the modified capacity of the volume.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>modifiedStorageClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ModifiedStorageClass is the modified storage calss of the volume.</p>
 </td>
 </tr>
 <tr>
@@ -9216,7 +9257,20 @@ k8s.io/apimachinery/pkg/api/resource.Quantity
 </em>
 </td>
 <td>
-<p>ResizedCapacity is the desired capacity of the volume.</p>
+<em>(Optional)</em>
+<p>(Deprecated) ResizedCapacity is the desired capacity of the volume.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resizedCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>(Deprecated) ResizedCount is the count of volumes whose capacity is equal to <code>resizedCapacity</code>.</p>
 </td>
 </tr>
 </tbody>
@@ -11198,7 +11252,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -11937,8 +11991,8 @@ Defaults to false.</p>
 <td>
 <code>remoteWrite</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.remotewritespec">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RemoteWriteSpec
+<a href="#remotewritespec">
+[]RemoteWriteSpec
 </a>
 </em>
 </td>
@@ -12215,6 +12269,10 @@ uint
 </table>
 <h3 id="pumpnodestatus">PumpNodeStatus</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#pumpstatus">PumpStatus</a>)
+</p>
+<p>
 <p>PumpNodeStatus represents the status saved in etcd.</p>
 </p>
 <table>
@@ -12419,8 +12477,8 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>members</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.pumpnodestatus">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpNodeStatus
+<a href="#pumpnodestatus">
+[]PumpNodeStatus
 </a>
 </em>
 </td>
@@ -12431,7 +12489,7 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -12736,6 +12794,10 @@ ServiceSpec
 </table>
 <h3 id="remotewritespec">RemoteWriteSpec</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#prometheusspec">PrometheusSpec</a>)
+</p>
+<p>
 <p>RemoteWriteSpec defines the remote_write configuration for prometheus.</p>
 </p>
 <table>
@@ -12994,6 +13056,58 @@ string
 <p>
 <p>RestoreMode represents the restore mode, such as snapshot or pitr.</p>
 </p>
+<h3 id="restoreprogress">RestoreProgress</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorestatus">RestoreStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>step</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Step is the step name of progress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>progress</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<p>Progress is the restore progress value</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LastTransitionTime is the update time</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="restorespec">RestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -13144,7 +13258,7 @@ StorageProvider
 </tr>
 <tr>
 <td>
-<code>logBackupStorageProvider</code></br>
+<code>pitrFullBackupStorageProvider</code></br>
 <em>
 <a href="#storageprovider">
 StorageProvider
@@ -13152,7 +13266,7 @@ StorageProvider
 </em>
 </td>
 <td>
-<p>LogBackupStorageProvider configures where and how log backup should be stored.</p>
+<p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -13406,6 +13520,19 @@ RestoreConditionType
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>progresses</code></br>
+<em>
+<a href="#restoreprogress">
+[]RestoreProgress
+</a>
+</em>
+</td>
+<td>
+<p>Progresses is the progress of restore.</p>
 </td>
 </tr>
 </tbody>
@@ -14389,6 +14516,16 @@ string
 </p>
 <h3 id="storagevolumestatus">StorageVolumeStatus</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>, 
+<a href="#pdstatus">PDStatus</a>, 
+<a href="#pumpstatus">PumpStatus</a>, 
+<a href="#ticdcstatus">TiCDCStatus</a>, 
+<a href="#tidbstatus">TiDBStatus</a>, 
+<a href="#tikvstatus">TiKVStatus</a>, 
+<a href="#workerstatus">WorkerStatus</a>)
+</p>
+<p>
 <p>StorageVolumeStatus is the actual status for a storage</p>
 </p>
 <table>
@@ -15095,7 +15232,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCaptu
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -16523,7 +16660,7 @@ bool
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -21186,7 +21323,7 @@ string
 <td>
 <code>evictLeader</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.evictleaderstatus">
+<a href="#evictleaderstatus">
 map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLeaderStatus
 </a>
 </em>
@@ -21198,7 +21335,7 @@ map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLead
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -24613,7 +24750,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>

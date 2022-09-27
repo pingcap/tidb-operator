@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -561,6 +562,70 @@ func TestRetryOnError(t *testing.T) {
 			err := RetryOnError(context.TODO(), tt.attempts, tt.sleep, retriable, tt.setupFunc())
 			tt.expect(g, err)
 		})
+	}
+}
+
+func TestParseRestoreProgress(t *testing.T) {
+	g := NewGomegaWithT(t)
+	cases := []struct {
+		testStr        string
+		expectStep     string
+		expectProgress string
+		expectFloat    float64
+	}{
+		{
+			testStr:        "",
+			expectStep:     "",
+			expectProgress: "",
+			expectFloat:    -1,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Full Restore\"] [progress=10%] abcdefeg",
+			expectStep:     "Full Restore",
+			expectProgress: "10",
+			expectFloat:    10,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Restore Meta Files\"] [progress=10%] abcdefeg",
+			expectStep:     "Restore Meta Files",
+			expectProgress: "10",
+			expectFloat:    10,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Restore KV Files\"] [progress=10.9%] abcdefeg",
+			expectStep:     "Restore KV Files",
+			expectProgress: "10.9",
+			expectFloat:    10.9,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Full Restore\"] [progress=?%] abcdefeg",
+			expectStep:     "Full Restore",
+			expectProgress: "?",
+			expectFloat:    -1,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Full Restore\"] [progress=%] abcdefeg",
+			expectStep:     "Full Restore",
+			expectProgress: "",
+			expectFloat:    -1,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Restore KV Files\"] abcdefeg",
+			expectStep:     "",
+			expectProgress: "",
+			expectFloat:    -1,
+		},
+	}
+	for _, test := range cases {
+		step, progress := ParseRestoreProgress(test.testStr)
+		g.Expect(step).To(Equal(test.expectStep))
+		g.Expect(progress).To(Equal(test.expectProgress))
+		fvalue, err := strconv.ParseFloat(progress, 64)
+		if test.expectFloat == -1 {
+			g.Expect(err).ShouldNot(BeNil())
+		} else {
+			g.Expect(fvalue).To(Equal(test.expectFloat))
+		}
 	}
 }
 

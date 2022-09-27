@@ -38,6 +38,7 @@ import (
 type backupManager struct {
 	deps          *controller.Dependencies
 	backupCleaner BackupCleaner
+	backupTracker BackupTracker
 	statusUpdater controller.BackupConditionUpdaterInterface
 }
 
@@ -47,6 +48,7 @@ func NewBackupManager(deps *controller.Dependencies) backup.BackupManager {
 	return &backupManager{
 		deps:          deps,
 		backupCleaner: NewBackupCleaner(deps, statusUpdater),
+		backupTracker: NewBackupTracker(deps, statusUpdater),
 		statusUpdater: statusUpdater,
 	}
 }
@@ -263,8 +265,10 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 			return nil, nil, "", err
 		}
 
-		// log truncate need to update truncating ts
-		if logBackupSubcommand == v1alpha1.LogTruncateCommand {
+		if logBackupSubcommand == v1alpha1.LogStartCommand {
+			// log start need to start tracker
+			bm.backupTracker.StartTrackLogBackupProgress(backup)
+		} else if logBackupSubcommand == v1alpha1.LogTruncateCommand {
 			updateStatus = &controller.BackupUpdateStatus{
 				LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
 			}

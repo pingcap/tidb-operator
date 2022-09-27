@@ -1321,6 +1321,14 @@ type EvictLeaderStatus struct {
 	Value         string      `json:"value,omitempty"`
 }
 
+const (
+	// It means whether some pods are evicting leader
+	// This condition is used to avoid too many pods evict leader at same time
+	// Normally we only allow one pod evicts leader.
+	// TODO: set this condition before all leader eviction behavior
+	ConditionTypeLeaderEvicting = "LeaderEvicting"
+)
+
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
 	Synced          bool                          `json:"synced,omitempty"`
@@ -2120,6 +2128,16 @@ type RestoreCondition struct {
 	Message            string      `json:"message,omitempty"`
 }
 
+type RestoreProgress struct {
+	// Step is the step name of progress
+	Step string `json:"step,omitempty"`
+	// Progress is the restore progress value
+	Progress float64 `json:"progress,omitempty"`
+	// LastTransitionTime is the update time
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
 // +k8s:openapi-gen=true
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
@@ -2160,8 +2178,8 @@ type RestoreSpec struct {
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
-	// LogBackupStorageProvider configures where and how log backup should be stored.
-	LogBackupStorageProvider StorageProvider `json:"logBackupStorageProvider,omitempty"`
+	// PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.
+	PitrFullBackupStorageProvider StorageProvider `json:"pitrFullBackupStorageProvider,omitempty"`
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -2219,6 +2237,9 @@ type RestoreStatus struct {
 	Phase RestoreConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []RestoreCondition `json:"conditions,omitempty"`
+	// Progresses is the progress of restore.
+	// +nullable
+	Progresses []RestoreProgress `json:"progresses,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -2687,15 +2708,30 @@ type ObservedStorageVolumeStatus struct {
 	// CurrentCount is the count of volumes whose capacity is equal to `currentCapacity`.
 	// +optional
 	CurrentCount int `json:"currentCount"`
-	// ResizedCount is the count of volumes whose capacity is equal to `resizedCapacity`.
+	// ModifiedCount is the count of modified volumes.
 	// +optional
-	ResizedCount int `json:"resizedCount"`
+	ModifiedCount int `json:"modifiedCount"`
 	// CurrentCapacity is the current capacity of the volume.
 	// If any volume is resizing, it is the capacity before resizing.
 	// If all volumes are resized, it is the resized capacity and same as desired capacity.
+	// +optional
 	CurrentCapacity resource.Quantity `json:"currentCapacity"`
-	// ResizedCapacity is the desired capacity of the volume.
+	// ModifiedCapacity is the modified capacity of the volume.
+	// +optional
+	ModifiedCapacity resource.Quantity `json:"modifiedCapacity"`
+	// CurrentStorageClass is the modified capacity of the volume.
+	// +optional
+	CurrentStorageClass string `json:"currentStorageClass"`
+	// ModifiedStorageClass is the modified storage calss of the volume.
+	// +optional
+	ModifiedStorageClass string `json:"modifiedStorageClass"`
+
+	// (Deprecated) ResizedCapacity is the desired capacity of the volume.
+	// +optional
 	ResizedCapacity resource.Quantity `json:"resizedCapacity"`
+	// (Deprecated) ResizedCount is the count of volumes whose capacity is equal to `resizedCapacity`.
+	// +optional
+	ResizedCount int `json:"resizedCount"`
 }
 
 // StorageVolumeName is the volume name which is same as `volumes.name` in Pod spec.

@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"math/rand"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
@@ -42,9 +44,10 @@ import (
 )
 
 var (
-	tidbReadyTimeout       = time.Minute * 15
-	backupCompleteTimeout  = time.Minute * 15
-	restoreCompleteTimeout = time.Minute * 15
+	tidbReadyTimeout        = time.Minute * 15
+	backupCompleteTimeout   = time.Minute * 15
+	restoreCompleteTimeout  = time.Minute * 15
+	logbackupCatchUpTimeout = time.Minute * 15
 )
 
 const (
@@ -224,7 +227,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		}
 
 		ginkgo.By("Create restore")
-		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName)
+		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName, nil)
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Forward restore TiDB cluster service")
@@ -407,7 +410,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
@@ -416,7 +419,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
@@ -434,7 +437,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogTruncateUntil = time.Now().Format("2006-01-02 15:04:05")
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 				backup.Spec.LogStop = false
 			})
 			framework.ExpectNoError(err)
@@ -451,11 +454,129 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		})
 
 	})
+
+	ginkgo.Context("PiTR Restore Test", func() {
+		ginkgo.It("Base test of PiRR restore", func() {
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			ns := f.Namespace.Name
+			dbName := "e2etest"
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create log-backup.enable TiDB cluster for pitr-master")
+			masterClusterName := "pitr-master"
+			err := createLogBackupEnableTidbCluster(f, masterClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+			ginkgo.By("Wait for pitr-master TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, masterClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			logBackupName := "log-backup"
+			typ := strings.ToLower(typeBR)
+			ginkgo.By("Start log backup")
+			logBackup, err := createBackupAndWaitForComplete(f, logBackupName, masterClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(logBackup.Status.CommitTs, "")
+
+			fullBackupName := "full-backup"
+			ginkgo.By("Start full backup")
+			fullBackup, err := createBackupAndWaitForComplete(f, fullBackupName, masterClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(fullBackup.Status.CommitTs, "")
+
+			ginkgo.By("Forward master TiDB cluster service")
+			masterHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(masterClusterName), int(brutil.TiDBServicePort))
+			framework.ExpectNoError(err)
+			err = initDatabase(masterHost, dbName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Write data into master TiDB cluster")
+			masterDSN := getDefaultDSN(masterHost, dbName)
+			err = blockwriter.New().Write(context.Background(), masterDSN)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Forward master PD service")
+			masterPDHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getPDServiceResourceName(masterClusterName), int(brutil.PDServicePort))
+			framework.ExpectNoError(err)
+			ginkgo.By("Wait log backup reach current ts")
+			currentTS := strconv.FormatUint(config.GoTimeToTS(time.Now()), 10)
+			err = brutil.WaitForLogBackupReachTS(logBackupName, masterPDHost, currentTS, logbackupCatchUpTimeout)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("wait log backup progress reach current ts")
+			err = brutil.WaitForLogBackupProgressReachTS(f.ExtClient, ns, logBackupName, currentTS, logbackupCatchUpTimeout)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create log-backup.enable TiDB cluster for pitr-backup")
+			backupClusterName := "pitr-backup"
+			err = createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+			ginkgo.By("Wait for pitr-backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create pitr restore")
+			restoreName := "pitr-restore"
+			err = createRestoreAndWaitForComplete(f, restoreName, backupClusterName, typ, logBackupName, func(restore *v1alpha1.Restore) {
+				restore.Spec.Mode = v1alpha1.RestoreModePiTR
+				restore.Spec.PitrFullBackupStorageProvider.S3 = fullBackup.Spec.S3
+				restore.Spec.PitrRestoredTs = currentTS
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("wait pitr restore progress done")
+			err = brutil.WaitForRestoreProgressDone(f.ExtClient, ns, restoreName, restoreCompleteTimeout)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Forward restore TiDB cluster service")
+			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(brutil.TiDBServicePort))
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Validate pitr restore result")
+			backupDSN := getDefaultDSN(backupHost, dbName)
+			err = checkDataIsSame(masterDSN, backupDSN)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Delete pitr log backup")
+			err = deleteBackup(f, logBackupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all pitr log backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, logBackup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+
+			ginkgo.By("Delete pitr full backup")
+			err = deleteBackup(f, fullBackupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all pitr full backup files in storage is deleted")
+			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, fullBackup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
+	})
 })
 
 func getTiDBServiceResourceName(tcName string) string {
 	// TODO: use common util to get tidb service name
 	return "svc/" + tcName + "-tidb"
+}
+
+func getPDServiceResourceName(tcName string) string {
+	// TODO: use common util to get tidb service name
+	return "svc/" + tcName + "-pd"
 }
 
 func createTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool) error {
@@ -737,7 +858,7 @@ func cleanBackup(f *e2eframework.Framework) error {
 	return nil
 }
 
-func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string, backupName string) error {
+func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string, backupName string, configure func(*v1alpha1.Restore)) error {
 	ns := f.Namespace.Name
 
 	// secret to visit tidb cluster
@@ -759,6 +880,11 @@ func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, ty
 	}
 
 	restore := brutil.GetRestore(ns, name, tcName, typ, cfg)
+
+	if configure != nil {
+		configure(restore)
+	}
+
 	if _, err := f.ExtClient.PingcapV1alpha1().Restores(ns).Create(context.TODO(), restore, metav1.CreateOptions{}); err != nil {
 		return err
 	}

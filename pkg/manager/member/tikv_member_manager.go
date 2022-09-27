@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -59,17 +60,19 @@ type tikvMemberManager struct {
 	scaler                   Scaler
 	upgrader                 TiKVUpgrader
 	suspender                suspender.Suspender
+	podVolumeModifier        volumes.PodVolumeModifier
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiKVMemberManager returns a *tikvMemberManager
-func NewTiKVMemberManager(deps *controller.Dependencies, failover Failover, scaler Scaler, upgrader TiKVUpgrader, spder suspender.Suspender) manager.Manager {
+func NewTiKVMemberManager(deps *controller.Dependencies, failover Failover, scaler Scaler, upgrader TiKVUpgrader, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	m := &tikvMemberManager{
-		deps:      deps,
-		failover:  failover,
-		scaler:    scaler,
-		upgrader:  upgrader,
-		suspender: spder,
+		deps:              deps,
+		failover:          failover,
+		scaler:            scaler,
+		upgrader:          upgrader,
+		suspender:         spder,
+		podVolumeModifier: pvm,
 	}
 	m.statefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
 	return m
@@ -794,7 +797,9 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
 		tc.Status.TiKV.Phase = v1alpha1.ScalePhase
 	} else if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
-		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+		if !tc.IsComponentLeaderEvicting(v1alpha1.TiKVMemberType) { // skip upgrade if someone is evicting leader
+			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+		}
 	} else {
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 	}
@@ -877,6 +882,12 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if c != nil {
 		tc.Status.TiKV.Image = c.Image
 	}
+
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.TiKVMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for tikv: %v", err)
+	}
+
 	return nil
 }
 

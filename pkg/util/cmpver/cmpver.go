@@ -31,6 +31,7 @@ const (
 // Compare compare ver1 and ver2 by operation
 //
 // For example:
+//
 //	Compare(ver1, Greater, ver2) is same as "ver1 > ver2"
 //
 // Dirty versions and pre versions are regarded as standard version.
@@ -54,6 +55,7 @@ func Compare(ver1 string, op Operation, ver2 string) (bool, error) {
 // CompareByStr compare ver1 and ver2
 //
 // For example:
+//
 //	CompareByStr(ver1, ">", ver2) is same as "ver1 > ver2"
 //
 // Dirty versions and pre versions are regarded as standard version.

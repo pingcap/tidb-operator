@@ -21,6 +21,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -155,7 +156,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 		return nil, fmt.Errorf("no config for br in Backup %s/%s", backup.Namespace, backup.Name)
 	}
 	args = append(args, constructBRGlobalOptions(spec.BR)...)
-	storageArgs, err := genStorageArgs(backup.Spec.StorageProvider)
+	storageArgs, err := GenStorageArgsForFlag(backup.Spec.StorageProvider, "")
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +225,7 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config.BR)...)
-	storageArgs, err := genStorageArgs(restore.Spec.StorageProvider)
+	storageArgs, err := GenStorageArgsForFlag(restore.Spec.StorageProvider, "")
 	if err != nil {
 		return nil, err
 	}
@@ -298,17 +299,17 @@ func GetOptions(provider v1alpha1.StorageProvider) []string {
 }
 
 /*
-	GetCommitTsFromMetadata get commitTs from mydumper's metadata file
+GetCommitTsFromMetadata get commitTs from mydumper's metadata file
 
-	metadata file format is as follows:
+metadata file format is as follows:
 
-		Started dump at: 2019-06-13 10:00:04
-		SHOW MASTER STATUS:
-			Log: tidb-binlog
-			Pos: 409054741514944513
-			GTID:
+	Started dump at: 2019-06-13 10:00:04
+	SHOW MASTER STATUS:
+		Log: tidb-binlog
+		Pos: 409054741514944513
+		GTID:
 
-		Finished dump at: 2019-06-13 10:00:04
+	Finished dump at: 2019-06-13 10:00:04
 */
 func GetCommitTsFromMetadata(backupPath string) (string, error) {
 	var commitTs string
@@ -469,4 +470,16 @@ func RetryOnError(ctx context.Context, attempts int, sleep time.Duration,
 	}
 
 	return err
+}
+
+// ParseRestoreProgress parse restore progress and return restore step and progress
+func ParseRestoreProgress(line string) (step, progress string) {
+	matchStr := "\\[progress\\] \\[step=\"(.*?)\"\\] \\[progress=(.*?)\\%\\]"
+	complieRegex := regexp.MustCompile(matchStr)
+	matchs := complieRegex.FindStringSubmatch(line)
+	if len(matchs) < 3 {
+		return
+	}
+	step, progress = matchs[1], matchs[2]
+	return
 }

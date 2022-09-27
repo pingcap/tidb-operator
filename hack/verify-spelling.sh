@@ -22,9 +22,7 @@ cd $ROOT
 
 source hack/lib.sh
 
-pushd "${ROOT}/hack/tools" >/dev/null
-    make misspell OUTPUT_DIR=${OUTPUT_BIN}
-popd >/dev/null
+hack::ensure_misspell
 
 ignore_words=(
     "importas"
