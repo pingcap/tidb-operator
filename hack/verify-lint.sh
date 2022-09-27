@@ -22,9 +22,7 @@ cd $ROOT
 
 source hack/lib.sh
 
-pushd "${ROOT}/hack/tools" >/dev/null
-    make golangci-lint OUTPUT_DIR=${OUTPUT_BIN}
-popd >/dev/null
+hack::ensure_golangci_lint
 
 # main module
 ${OUTPUT_BIN}/golangci-lint run --timeout 10m $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
