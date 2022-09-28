@@ -408,12 +408,11 @@ func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *fl
 	// no such progress, will new
 	if oldProgress == nil {
 		makeSureLastProgressOver()
-		oldProgress = &v1alpha1.Progress{
+		progresses = append(progresses, v1alpha1.Progress{
 			Step:               *step,
 			Progress:           *progress,
 			LastTransitionTime: *updateTime,
-		}
-		progresses = append(progresses, *oldProgress)
+		})
 		return progresses, true
 	}
 

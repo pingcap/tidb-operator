@@ -135,6 +135,7 @@ func (ro *Options) restoreData(
 	if shouldUpdateProgressFromFile {
 		stopCh := make(chan struct{})
 		var wg sync.WaitGroup
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			ro.updateProgressFromFile(restore, progressFile, progressStep, statusUpdater, stopCh)
