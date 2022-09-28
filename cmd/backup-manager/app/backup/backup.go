@@ -66,7 +66,7 @@ func (bo *Options) backupData(
 	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 		var (
 			progressFile = "progress.txt"
-			progressStep = "Backup Full"
+			progressStep = "Full Backup"
 			successTag   = "EBS backup success"
 		)
 

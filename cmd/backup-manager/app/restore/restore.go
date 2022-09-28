@@ -103,9 +103,9 @@ func (ro *Options) restoreData(
 			args = append(args, "--prepare")
 			csbPath = path.Join(util.BRBinPath, "csb_restore.json")
 			args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
-			progressStep = "Restore Volume"
+			progressStep = "Volume Restore"
 		} else {
-			progressStep = "Restore Data"
+			progressStep = "Data Restore"
 		}
 		shouldUpdateProgressFromFile = true
 	}

@@ -278,21 +278,21 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	}
 	klog.Infof("restore cluster %s from %s succeed", rm, restore.Spec.Type)
 
-	finish := time.Now()
-
 	var (
 		commitTS    *string
 		restoreType v1alpha1.RestoreConditionType
+		allFinished bool
 	)
 	switch rm.Mode {
 	case string(v1alpha1.RestoreModeVolumeSnapshot):
+		// In volume snapshot mode, commitTS and size have been updated according to the
+		// br command output, so we don't need to update them here.
 		if rm.Prepare {
 			restoreType = v1alpha1.RestoreVolumeComplete
 		} else {
 			restoreType = v1alpha1.RestoreDataComplete
+			allFinished = true
 		}
-		// In volume snapshot mode, commitTS and size have been updated according to the
-		// br command output, so we don't need to update them here.
 	default:
 		ts, err := util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
 		if err != nil {
@@ -310,12 +310,15 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		restoreType = v1alpha1.RestoreComplete
 		tsStr := strconv.FormatUint(ts, 10)
 		commitTS = &tsStr
+		allFinished = true
 	}
 
 	updateStatus := &controller.RestoreUpdateStatus{
-		TimeStarted:   &metav1.Time{Time: started},
-		TimeCompleted: &metav1.Time{Time: finish},
-		CommitTs:      commitTS,
+		TimeStarted: &metav1.Time{Time: started},
+		CommitTs:    commitTS,
+	}
+	if allFinished {
+		updateStatus.TimeCompleted = &metav1.Time{Time: time.Now()}
 	}
 	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   restoreType,
