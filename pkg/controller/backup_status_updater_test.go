@@ -64,7 +64,6 @@ func newUpdateBackupStatus() *BackupUpdateStatus {
 	path := "abcd"
 	sizeReadable := "5M"
 	size := int64(5024)
-	progress := "30%"
 	return &BackupUpdateStatus{
 		CommitTs:           &ts,
 		TimeCompleted:      &metav1.Time{Time: end},
@@ -72,7 +71,6 @@ func newUpdateBackupStatus() *BackupUpdateStatus {
 		BackupPath:         &path,
 		BackupSizeReadable: &sizeReadable,
 		BackupSize:         &size,
-		Progress:           &progress,
 	}
 }
 
@@ -81,7 +79,6 @@ func newBackupStatus() *v1alpha1.BackupStatus {
 	path := "xyz"
 	sizeReadable := "1M"
 	size := int64(1024)
-	progress := "30%"
 	return &v1alpha1.BackupStatus{
 		CommitTs: "421762809912885249",
 		Conditions: []v1alpha1.BackupCondition{
@@ -106,7 +103,6 @@ func newBackupStatus() *v1alpha1.BackupStatus {
 		BackupPath:         path,
 		BackupSizeReadable: sizeReadable,
 		BackupSize:         size,
-		Progress:           progress,
 	}
 }
 func newExpectBackupStatus() *v1alpha1.BackupStatus {
@@ -116,7 +112,6 @@ func newExpectBackupStatus() *v1alpha1.BackupStatus {
 	path := "abcd"
 	sizeReadable := "5M"
 	size := int64(5024)
-	progress := "30%"
 	s := newBackupStatus()
 	s.CommitTs = ts
 	s.TimeStarted = metav1.Time{Time: start}
@@ -124,6 +119,5 @@ func newExpectBackupStatus() *v1alpha1.BackupStatus {
 	s.BackupPath = path
 	s.BackupSizeReadable = sizeReadable
 	s.BackupSize = size
-	s.Progress = progress
 	return s
 }

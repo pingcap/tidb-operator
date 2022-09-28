@@ -365,8 +365,6 @@ spec:
               required:
               - cluster
               type: object
-            dryRun:
-              type: boolean
             env:
               items:
                 properties:
@@ -2111,8 +2109,6 @@ spec:
               nullable: true
               type: array
             phase:
-              type: string
-            progress:
               type: string
             progresses:
               items:

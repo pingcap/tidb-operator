@@ -1507,7 +1507,6 @@ type TLSCluster struct {
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
-// +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.status.progress`,description="The current progress of the backup",priority=1
 // +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logSuccessTruncateUntil`,description="The log backup truncate until ts"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
@@ -1662,12 +1661,6 @@ const (
 	BackupTypeDB BackupType = "db"
 	// BackupTypeTable represents the backup of one table for the tidb cluster.
 	BackupTypeTable BackupType = "table"
-	// BackupTypeEBS represents the backup based EBS snapshot for the tidb cluster.
-	BackupTypeEBS BackupType = "ebs"
-	// BackupTypeGCEPD represents the backup based GCEPD snapshot for the tidb cluster.
-	BackupTypeGCEPD BackupType = "gcepd"
-	// BackupTypeData represents the backup based volume to deal with data consistency for the tidb cluster.
-	BackupTypeData BackupType = "data"
 	// BackupTypeTiFlashReplica represents restoring the tiflash replica removed by a failed restore of the older version BR
 	BackupTypeTiFlashReplica BackupType = "tiflash-replica"
 )
@@ -1681,6 +1674,8 @@ const (
 	BackupModeSnapshot BackupMode = "snapshot"
 	// BackupModeLog represents the log backup of tidb cluster.
 	BackupModeLog BackupMode = "log"
+	// BackupModeVolumeSnapshot represents volume backup of tidb cluster.
+	BackupModeVolumeSnapshot BackupMode = "volumeSnapshot"
 )
 
 // TiDBAccessConfig defines the configuration for access tidb cluster
@@ -1743,6 +1738,16 @@ type CleanOption struct {
 	BackoffEnabled bool `json:"backoffEnabled,omitempty"`
 
 	BatchDeleteOption `json:",inline"`
+}
+
+type Progress struct {
+	// Step is the step name of progress
+	Step string `json:"step,omitempty"`
+	// Progress is the backup progress value
+	Progress float64 `json:"progress,omitempty"`
+	// LastTransitionTime is the update time
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 // BackupSpec contains the backup specification for a tidb cluster.
@@ -1963,8 +1968,6 @@ type BackupStatus struct {
 	BackupSize int64 `json:"backupSize,omitempty"`
 	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	CommitTs string `json:"commitTs,omitempty"`
-	// The current progress of the backup.
-	Progress string `json:"progress,omitempty"`
 	// LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.
 	LogSuccessTruncateUntil string `json:"logSuccessTruncateUntil,omitempty"`
 	// LogCheckpointTs is the ts of log backup process.
@@ -1975,6 +1978,9 @@ type BackupStatus struct {
 	Conditions []BackupCondition `json:"conditions,omitempty"`
 	// LogSubCommandStatuses is the detail status of log backup subcommands, record each command separately, but only record the last command.
 	LogSubCommandStatuses map[LogSubCommandType]LogSubCommandStatus `json:"logSubCommandStatuses,omitempty"`
+	// Progresses is the progress of backup.
+	// +nullable
+	Progresses []Progress `json:"progresses,omitempty"`
 }
 
 // +genclient
@@ -2090,6 +2096,8 @@ const (
 	RestoreModeSnapshot RestoreMode = "snapshot"
 	// RestoreModePiTR represents PiTR restore which is from a snapshot backup and log backup.
 	RestoreModePiTR RestoreMode = "pitr"
+	// RestoreModeVolumeSnapshot represents restore from a volume snapshot backup.
+	RestoreModeVolumeSnapshot RestoreMode = "volumeSnapshot"
 )
 
 // RestoreConditionType represents a valid condition of a Restore.
@@ -2126,16 +2134,6 @@ type RestoreCondition struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	Reason             string      `json:"reason,omitempty"`
 	Message            string      `json:"message,omitempty"`
-}
-
-type RestoreProgress struct {
-	// Step is the step name of progress
-	Step string `json:"step,omitempty"`
-	// Progress is the restore progress value
-	Progress float64 `json:"progress,omitempty"`
-	// LastTransitionTime is the update time
-	// +nullable
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -2198,10 +2196,6 @@ type RestoreSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of restore
 	ServiceAccount string `json:"serviceAccount,omitempty"`
-
-	// DryRun mode for local test
-	DryRun bool `json:"dryRun,omitempty"`
-
 	// ToolImage specifies the tool image used in `Restore`, which supports BR and TiDB Lightning images.
 	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/tidb-lightning:v4.0.8`
 	// For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.
@@ -2231,15 +2225,13 @@ type RestoreStatus struct {
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs,omitempty"`
-	// The current progress of the restore.
-	Progress string `json:"progress,omitempty"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
 	Phase RestoreConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []RestoreCondition `json:"conditions,omitempty"`
 	// Progresses is the progress of restore.
 	// +nullable
-	Progresses []RestoreProgress `json:"progresses,omitempty"`
+	Progresses []Progress `json:"progresses,omitempty"`
 }
 
 // +k8s:openapi-gen=true

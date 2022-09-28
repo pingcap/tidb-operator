@@ -651,7 +651,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 }
 
 func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
-	if s, reason, err := snapshotter.NewDefaultSnapshotter(b.Spec.Type, bm.deps); err != nil {
+	if s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps); err != nil {
 		return reason, err
 	} else if s != nil {
 		return s.PrepareBackupMetadata(b, tc)

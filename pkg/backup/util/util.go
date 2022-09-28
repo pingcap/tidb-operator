@@ -500,8 +500,7 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 		if backup.Spec.Type != "" &&
 			backup.Spec.Type != v1alpha1.BackupTypeFull &&
 			backup.Spec.Type != v1alpha1.BackupTypeDB &&
-			backup.Spec.Type != v1alpha1.BackupTypeTable &&
-			backup.Spec.Type != v1alpha1.BackupTypeEBS {
+			backup.Spec.Type != v1alpha1.BackupTypeTable {
 			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", backup.Spec.Type, ns, name)
 		}
 
@@ -577,9 +576,7 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 		if restore.Spec.Type != "" &&
 			restore.Spec.Type != v1alpha1.BackupTypeFull &&
 			restore.Spec.Type != v1alpha1.BackupTypeDB &&
-			restore.Spec.Type != v1alpha1.BackupTypeTable &&
-			restore.Spec.Type != v1alpha1.BackupTypeEBS &&
-			restore.Spec.Type != v1alpha1.BackupTypeData {
+			restore.Spec.Type != v1alpha1.BackupTypeTable {
 			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", restore.Spec.Type, ns, name)
 		}
 

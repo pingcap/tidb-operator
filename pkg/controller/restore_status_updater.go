@@ -16,7 +16,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -103,10 +102,10 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 // updateRestoreStatus updates existing Restore status
 // from the fields in RestoreUpdateStatus.
 func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdateStatus) bool {
-	isUpdate := false
 	if newStatus == nil {
-		return isUpdate
+		return false
 	}
+	isUpdate := false
 	if newStatus.TimeStarted != nil && status.TimeStarted != *newStatus.TimeStarted {
 		status.TimeStarted = *newStatus.TimeStarted
 		isUpdate = true
@@ -120,51 +119,7 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 		isUpdate = true
 	}
 	if newStatus.ProgressStep != nil {
-		isUpdate = doUpdateRestoreProgress(status, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
-	}
-
-	return isUpdate
-}
-
-func doUpdateRestoreProgress(status *v1alpha1.RestoreStatus, step *string, progress *float64, updateTime *metav1.Time) bool {
-	var oldProgress *v1alpha1.RestoreProgress
-	for i, p := range status.Progresses {
-		if p.Step == *step {
-			oldProgress = &status.Progresses[i]
-			break
-		}
-	}
-
-	makeSureLastProgressOver := func() {
-		size := len(status.Progresses)
-		if size == 0 || status.Progresses[size-1].Progress >= 100 {
-			return
-		}
-		status.Progresses[size-1].Progress = 100
-		status.Progresses[size-1].LastTransitionTime = metav1.Time{Time: time.Now()}
-	}
-
-	// no such progress, will new
-	if oldProgress == nil {
-		makeSureLastProgressOver()
-		oldProgress = &v1alpha1.RestoreProgress{
-			Step:               *step,
-			Progress:           *progress,
-			LastTransitionTime: *updateTime,
-		}
-		status.Progresses = append(status.Progresses, *oldProgress)
-		return true
-	}
-
-	isUpdate := false
-	if oldProgress.Progress < *progress {
-		oldProgress.Progress = *progress
-		isUpdate = true
-	}
-
-	if oldProgress.LastTransitionTime != *updateTime {
-		oldProgress.LastTransitionTime = *updateTime
-		isUpdate = true
+		status.Progresses, isUpdate = updateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
 	}
 
 	return isUpdate

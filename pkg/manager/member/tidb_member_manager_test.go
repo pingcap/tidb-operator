@@ -593,11 +593,11 @@ func TestSyncRecoveryForTidbCluster(t *testing.T) {
 	if len(tc.GetAnnotations()) == 0 {
 		tc.Annotations = make(map[string]string)
 	}
-	tc.Annotations[label.AnnWaitTiKVVolumesKey] = "default-rt-cloud-test"
+	tc.Annotations[label.AnnTiKVVolumesReadyKey] = "default-rt-cloud-test"
 	err = tmm.syncRecoveryForTidbCluster(tc)
 	g.Expect(err).NotTo(BeNil())
 
-	ann := tc.Annotations[label.AnnWaitTiKVVolumesKey]
+	ann := tc.Annotations[label.AnnTiKVVolumesReadyKey]
 	strs := strings.SplitN(ann, "-", 2)
 	rtNs := strs[0]
 	rtName := strs[1]

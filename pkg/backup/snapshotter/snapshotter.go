@@ -68,33 +68,6 @@ func (s *BaseSnapshotter) Init(deps *controller.Dependencies, conf map[string]st
 	return nil
 }
 
-type CloudProviderFactory struct {
-}
-
-func NewCloudProviderFactory() *CloudProviderFactory {
-	return &CloudProviderFactory{}
-}
-
-type CloudProviderInter interface {
-	CreateSnapshotter(bt v1alpha1.BackupType) Snapshotter
-}
-
-// AWSElasticBlockStore/GCEPersistentDisk
-func (cpf *CloudProviderFactory) CreateSnapshotter(bt v1alpha1.BackupType) (s Snapshotter) {
-	switch bt {
-	case v1alpha1.BackupTypeEBS:
-		s = new(AWSSnapshotter)
-	case v1alpha1.BackupTypeGCEPD:
-		s = new(GCPSnapshotter)
-	case v1alpha1.BackupTypeData:
-		s = new(NoneSnapshotter)
-	default:
-		// do nothing and return nil directly
-		return
-	}
-	return
-}
-
 type CloudSnapBackup struct {
 	TiKV       *TiKVBackup            `json:"tikv"`
 	PD         Component              `json:"pd"`
@@ -178,29 +151,6 @@ type StoresMixture struct {
 	rsVolIDMap map[string]string
 	// support snapshot for the cloudprovider
 	snapshotter Snapshotter
-	// dry-run mode for local pv test
-	dryRun bool
-}
-
-func NewIntactStoresMixture(
-	tc *v1alpha1.TidbCluster,
-	pod *corev1.Pod,
-	pvcs []*corev1.PersistentVolumeClaim,
-	pvs []*corev1.PersistentVolume,
-	volsMap map[string]string,
-	mpTypeMap map[string]string,
-	mpVolIDMap map[string]string,
-	s Snapshotter) *StoresMixture {
-	return &StoresMixture{
-		tc:          tc,
-		pod:         pod,
-		pvcs:        pvcs,
-		pvs:         pvs,
-		volsMap:     volsMap,
-		mpTypeMap:   mpTypeMap,
-		mpVolIDMap:  mpVolIDMap,
-		snapshotter: s,
-	}
 }
 
 func NewBackupStoresMixture(
@@ -219,11 +169,10 @@ func NewBackupStoresMixture(
 	}
 }
 
-func NewRestoreStoresMixture(s Snapshotter, dryRun bool) *StoresMixture {
+func NewRestoreStoresMixture(s Snapshotter) *StoresMixture {
 	return &StoresMixture{
 		rsVolIDMap:  make(map[string]string),
 		snapshotter: s,
-		dryRun:      dryRun,
 	}
 }
 
@@ -444,7 +393,7 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snap
 		return reason, err
 	}
 
-	m := NewRestoreStoresMixture(execr, r.Spec.DryRun)
+	m := NewRestoreStoresMixture(execr)
 	if reason, err := m.ProcessCSBPVCsAndPVs(r, csb); err != nil {
 		return reason, err
 	}
@@ -476,10 +425,6 @@ func commitPVsAndPVCsToK8S(
 	r *v1alpha1.Restore,
 	pvcs []*corev1.PersistentVolumeClaim,
 	pvs []*corev1.PersistentVolume) (string, error) {
-	if r.Spec.DryRun {
-		return "", nil
-	}
-
 	sel, err := label.New().Instance(r.Spec.BR.Cluster).TiKV().Selector()
 	if err != nil {
 		return "BuildTiKVSelectorFailed", err
@@ -541,10 +486,6 @@ func (m *StoresMixture) resetRestoreVolumeID(pv *corev1.PersistentVolume) (strin
 	var rsVolID string
 	if rsVolID, ok = m.rsVolIDMap[volID]; !ok {
 		return "GetRestoreVolumeIDFailed", fmt.Errorf("%s volumeID-%s mapping restoreVolumeID not found", pv.GetName(), volID)
-	}
-
-	if m.dryRun {
-		return "", nil
 	}
 
 	if err := m.snapshotter.SetVolumeID(pv, rsVolID); err != nil {
@@ -667,13 +608,34 @@ func newMetaWithCoreFields(meta metav1.ObjectMeta) metav1.ObjectMeta {
 	return newMeta
 }
 
-func NewDefaultSnapshotter(t v1alpha1.BackupType, d *controller.Dependencies) (Snapshotter, string, error) {
-	f := NewCloudProviderFactory()
-	s := f.CreateSnapshotter(t)
-	if s == nil {
-		return nil, "", nil
+func NewSnapshotterForBackup(m v1alpha1.BackupMode, d *controller.Dependencies) (Snapshotter, string, error) {
+	var s Snapshotter
+	switch m {
+	case v1alpha1.BackupModeVolumeSnapshot:
+		// Currently, we only support aws volume snapshot. If gcp volume snapshot is supported
+		// in the future, we can infer the provider from the storage class.
+		s = &AWSSnapshotter{}
+	default:
+		s = &NoneSnapshotter{}
+	}
+	err := s.Init(d, nil)
+	if err != nil {
+		return s, "InitSnapshotterFailed", err
 	}
 
+	return s, "", nil
+}
+
+func NewSnapshotterForRestore(m v1alpha1.RestoreMode, d *controller.Dependencies) (Snapshotter, string, error) {
+	var s Snapshotter
+	switch m {
+	case v1alpha1.RestoreModeVolumeSnapshot:
+		// Currently, we only support aws volume snapshot. If gcp volume snapshot is supported
+		// in the future, we can infer the provider from the storage class.
+		s = &AWSSnapshotter{}
+	default:
+		s = &NoneSnapshotter{}
+	}
 	err := s.Init(d, nil)
 	if err != nil {
 		return s, "InitSnapshotterFailed", err

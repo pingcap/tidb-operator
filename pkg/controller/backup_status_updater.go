@@ -16,6 +16,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"k8s.io/klog/v2"
 
@@ -47,14 +48,18 @@ type BackupUpdateStatus struct {
 	BackupSize *int64
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
-	// Progress is the progress of the backup.
-	Progress *string
 	// LogCheckpointTs is the ts of log backup process.
 	LogCheckpointTs *string
 	// LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.
 	LogSuccessTruncateUntil *string
 	// LogTruncatingUntil is log backup truncate until timestamp which is used to mark the truncate command.
 	LogTruncatingUntil *string
+	// ProgressStep the step name of progress.
+	ProgressStep *string
+	// Progress is the step's progress value.
+	Progress *float64
+	// ProgressUpdateTime is the progress update time.
+	ProgressUpdateTime *metav1.Time
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -115,10 +120,10 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 // updateBackupStatus updates existing Backup status.
 // from the fields in BackupUpdateStatus.
 func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
-	isUpdate := false
 	if newStatus == nil {
-		return isUpdate
+		return false
 	}
+	isUpdate := false
 	if newStatus.BackupPath != nil && status.BackupPath != *newStatus.BackupPath {
 		status.BackupPath = *newStatus.BackupPath
 		isUpdate = true
@@ -143,9 +148,6 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		status.CommitTs = *newStatus.CommitTs
 		isUpdate = true
 	}
-	if newStatus.Progress != nil {
-		status.Progress = *newStatus.Progress
-	}
 	if newStatus.LogCheckpointTs != nil && status.LogCheckpointTs != *newStatus.LogCheckpointTs {
 		status.LogCheckpointTs = *newStatus.LogCheckpointTs
 		isUpdate = true
@@ -153,6 +155,9 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	if newStatus.LogSuccessTruncateUntil != nil && status.LogSuccessTruncateUntil != *newStatus.LogSuccessTruncateUntil {
 		status.LogSuccessTruncateUntil = *newStatus.LogSuccessTruncateUntil
 		isUpdate = true
+	}
+	if newStatus.ProgressStep != nil {
+		status.Progresses, isUpdate = updateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
 	}
 	return isUpdate
 }
@@ -379,6 +384,51 @@ func updateLogSubCommandConditionOnly(status *v1alpha1.LogSubCommandStatus, cond
 	}
 	// Return true if one of the fields have changed.
 	return isUpdate
+}
+
+// updateBRProgress updates progress for backup/restore.
+func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *float64, updateTime *metav1.Time) ([]v1alpha1.Progress, bool) {
+	var oldProgress *v1alpha1.Progress
+	for i, p := range progresses {
+		if p.Step == *step {
+			oldProgress = &progresses[i]
+			break
+		}
+	}
+
+	makeSureLastProgressOver := func() {
+		size := len(progresses)
+		if size == 0 || progresses[size-1].Progress >= 100 {
+			return
+		}
+		progresses[size-1].Progress = 100
+		progresses[size-1].LastTransitionTime = metav1.Time{Time: time.Now()}
+	}
+
+	// no such progress, will new
+	if oldProgress == nil {
+		makeSureLastProgressOver()
+		oldProgress = &v1alpha1.Progress{
+			Step:               *step,
+			Progress:           *progress,
+			LastTransitionTime: *updateTime,
+		}
+		progresses = append(progresses, *oldProgress)
+		return progresses, true
+	}
+
+	isUpdate := false
+	if oldProgress.Progress < *progress {
+		oldProgress.Progress = *progress
+		isUpdate = true
+	}
+
+	if oldProgress.LastTransitionTime != *updateTime {
+		oldProgress.LastTransitionTime = *updateTime
+		isUpdate = true
+	}
+
+	return progresses, isUpdate
 }
 
 var _ BackupConditionUpdaterInterface = &realBackupConditionUpdater{}

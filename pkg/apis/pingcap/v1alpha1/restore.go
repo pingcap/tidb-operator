@@ -23,11 +23,10 @@ import (
 
 // GetRestoreJobName return the restore job name
 func (rs *Restore) GetRestoreJobName() string {
-	name := fmt.Sprintf("restore-%s", rs.GetName())
-	if suffix, ok := rs.Annotations[label.AnnJobNameSuffixKey]; ok {
-		name = fmt.Sprintf("%s-%s", name, suffix)
+	if rs.Status.Phase == RestoreVolumeComplete {
+		return fmt.Sprintf("restore-data-%s", rs.GetName())
 	}
-	return name
+	return fmt.Sprintf("restore-%s", rs.GetName())
 }
 
 // GetInstanceName return the restore instance name

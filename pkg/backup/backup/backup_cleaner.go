@@ -89,8 +89,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 
 	// Leave unprocessed cleaner
 	// TODO: GC clean volume snapshot later
-	switch backup.Spec.Type {
-	case v1alpha1.BackupTypeEBS, v1alpha1.BackupTypeGCEPD:
+	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:   v1alpha1.BackupClean,
 			Status: corev1.ConditionTrue,

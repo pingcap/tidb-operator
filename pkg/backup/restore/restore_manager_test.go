@@ -251,7 +251,8 @@ func TestBRRestoreByEBS(t *testing.T) {
 					Name: "test-1",
 				},
 				Spec: v1alpha1.RestoreSpec{
-					Type: v1alpha1.BackupTypeEBS,
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
 					BR: &v1alpha1.BRConfig{
 						ClusterNamespace: "ns-1",
 						Cluster:          "cluster-1",
@@ -274,7 +275,8 @@ func TestBRRestoreByEBS(t *testing.T) {
 					Name: "test-2",
 				},
 				Spec: v1alpha1.RestoreSpec{
-					Type: v1alpha1.BackupTypeEBS,
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
 					BR: &v1alpha1.BRConfig{
 						ClusterNamespace: "ns-2",
 						Cluster:          "cluster-2",
@@ -299,7 +301,8 @@ func TestBRRestoreByEBS(t *testing.T) {
 					Name: "test-3",
 				},
 				Spec: v1alpha1.RestoreSpec{
-					Type: v1alpha1.BackupTypeData,
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
 					BR: &v1alpha1.BRConfig{
 						ClusterNamespace: "ns-3",
 						Cluster:          "cluster-3",
@@ -324,7 +327,8 @@ func TestBRRestoreByEBS(t *testing.T) {
 					Name: "test-4",
 				},
 				Spec: v1alpha1.RestoreSpec{
-					Type: v1alpha1.BackupTypeData,
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
 					BR: &v1alpha1.BRConfig{
 						ClusterNamespace: "ns-4",
 						Cluster:          "cluster-4",

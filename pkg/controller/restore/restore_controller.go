@@ -181,12 +181,7 @@ func (c *Controller) updateRestore(cur interface{}) {
 			return
 		}
 
-		if newRestore.Spec.Type == v1alpha1.BackupTypeData {
-			c.enqueueRestore(newRestore)
-			return
-		}
-
-		if _, ok := tc.Annotations[label.AnnWaitTiKVVolumesKey]; ok {
+		if _, ok := tc.Annotations[label.AnnTiKVVolumesReadyKey]; ok {
 			klog.V(4).Infof("restore %s/%s is already VolumeComplete, skipping.", ns, name)
 			return
 		}

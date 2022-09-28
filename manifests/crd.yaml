@@ -1450,11 +1450,6 @@ spec:
       jsonPath: .status.commitTs
       name: CommitTS
       type: string
-    - description: The current progress of the backup
-      jsonPath: .status.progress
-      name: Progress
-      priority: 1
-      type: string
     - description: The log backup truncate until ts
       jsonPath: .status.logSuccessTruncateUntil
       name: LogTruncateUntil
@@ -2868,8 +2863,20 @@ spec:
                 type: string
               phase:
                 type: string
-              progress:
-                type: string
+              progresses:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      nullable: true
+                      type: string
+                    progress:
+                      type: number
+                    step:
+                      type: string
+                  type: object
+                nullable: true
+                type: array
               timeCompleted:
                 format: date-time
                 nullable: true
@@ -11169,8 +11176,6 @@ spec:
                 required:
                 - cluster
                 type: object
-              dryRun:
-                type: boolean
               env:
                 items:
                   properties:
@@ -12916,8 +12921,6 @@ spec:
                 nullable: true
                 type: array
               phase:
-                type: string
-              progress:
                 type: string
               progresses:
                 items:

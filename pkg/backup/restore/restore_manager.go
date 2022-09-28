@@ -101,7 +101,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	if restore.Spec.BR != nil {
-		// restore based snapshot for cloudprovider
+		// restore based snapshot for cloud provider
 		reason, err := rm.tryRestoreIfCanSnapshot(restore, tc)
 		if err != nil {
 			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
@@ -111,6 +111,10 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 				Message: err.Error(),
 			}, nil)
 			return err
+		}
+		if restore.Status.Phase == v1alpha1.RestoreVolumeComplete && !tc.AllTiKVsAreAvailable() {
+			klog.Infof("restore %s/%s volume has completed, but not all TiKVs are available in tidbcluster %s/%s, will requeue", ns, name, tc.Namespace, tc.Name)
+			return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 		}
 	}
 
@@ -179,56 +183,43 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}, nil)
 }
 
-func (rm *restoreManager) tryRestoreIfCanSnapshot(
-	r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
-	s, reason, err := snapshotter.NewDefaultSnapshotter(r.Spec.Type, rm.deps)
-	if err != nil {
-		return reason, err
-	}
-	if s == nil {
-		return "", nil
-	}
-
+func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
 	switch r.Status.Phase {
 	case v1alpha1.RestoreVolumeComplete:
 		klog.Infof("restore-manager prepares to deal with the phase VolumeComplete")
 
+		// TiKV volumes are ready, we can skip prepare restore metadata.
+		if _, ok := tc.Annotations[label.AnnTiKVVolumesReadyKey]; ok {
+			return "", nil
+		}
+
+		s, reason, err := snapshotter.NewSnapshotterForRestore(r.Spec.Mode, rm.deps)
+		if err != nil {
+			return reason, err
+		}
 		// setRestoreVolumeID for all PVs, and reset PVC/PVs,
 		// then commit all PVC/PVs for TiKV restore volumes
 		if reason, err := s.PrepareRestoreMetadata(r); err != nil {
-			// wait for TiKV running then spwan new Job for BR to
-			// deal with data consistency for TiKV restore data
-			if _, ok := err.(*snapshotter.NoPreparedError); ok {
-				r.Annotations[label.AnnJobNameSuffixKey] = string(r.Spec.Type)
-				return "", nil
-			}
-
 			return reason, err
 		}
 
-		// unset TiKV member reconcile block mark, meanwhile,
-		// as followed TiDB member sync recovery for TidbCluster
-		if _, ok := tc.Annotations[label.AnnWaitTiKVVolumesKey]; !ok {
-			restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
-			if len(tc.GetAnnotations()) == 0 {
-				tc.Annotations = make(map[string]string)
-			}
-			tc.Annotations[label.AnnWaitTiKVVolumesKey] = restoreMark
-			if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
-				return "AddTCAnnWaitTiKVFailed", err
-			}
+		restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
+		if len(tc.GetAnnotations()) == 0 {
+			tc.Annotations = make(map[string]string)
+		}
+		tc.Annotations[label.AnnTiKVVolumesReadyKey] = restoreMark
+		if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
+			return "AddTCAnnWaitTiKVFailed", err
 		}
 		return "", nil
 
 	case v1alpha1.RestoreDataComplete:
 		klog.Infof("restore-manager prepares to deal with the phase DataComplete")
 
-		// clear out the recovery marks in TidbCluster,
-		// may manual restart the the cluster or all TiKVs
 		tc.Spec.RecoveryMode = false
-		delete(tc.Annotations, label.AnnWaitTiKVVolumesKey)
+		delete(tc.Annotations, label.AnnTiKVVolumesReadyKey)
 
-		// When restore is based on ebs snapshot, we need to restart all TiKV pods
+		// When restore is based on volume snapshot, we need to restart all TiKV pods
 		// after restore data is complete.
 		sel, err := label.New().Instance(tc.Name).TiKV().Selector()
 		if err != nil {
@@ -460,9 +451,13 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	// set pitr restore parameters
-	if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
+	switch restore.Spec.Mode {
+	case v1alpha1.RestoreModePiTR:
 		args = append(args, fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
+	case v1alpha1.RestoreModeVolumeSnapshot:
+		if restore.Status.Phase != v1alpha1.RestoreVolumeComplete {
+			args = append(args, "--prepare")
+		}
 	}
 
 	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)

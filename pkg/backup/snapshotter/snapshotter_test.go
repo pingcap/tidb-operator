@@ -427,20 +427,8 @@ func TestPrepareBackupMetadata(t *testing.T) {
 					Annotations: make(map[string]string),
 				},
 				Spec: v1alpha1.BackupSpec{
-					Type: "ebs",
-				},
-			},
-			wantSSNil: false,
-			wantErr:   false,
-		},
-		{
-			name: "test-gcp",
-			backup: &v1alpha1.Backup{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: make(map[string]string),
-				},
-				Spec: v1alpha1.BackupSpec{
-					Type: "gcepd",
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.BackupModeVolumeSnapshot,
 				},
 			},
 			wantSSNil: false,
@@ -453,7 +441,8 @@ func TestPrepareBackupMetadata(t *testing.T) {
 					Annotations: make(map[string]string),
 				},
 				Spec: v1alpha1.BackupSpec{
-					Type: "full",
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.BackupModeVolumeSnapshot,
 				},
 			},
 			wantSSNil: true,
@@ -463,22 +452,15 @@ func TestPrepareBackupMetadata(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			cpFactory := &CloudProviderFactory{}
-			s := cpFactory.CreateSnapshotter(tt.backup.Spec.Type)
-			if tt.wantSSNil {
-				assert.Nil(t, s)
-				return
-			} else {
-				assert.NotNil(t, s)
-			}
-			s.Init(deps, nil)
-			_, err := s.PrepareBackupMetadata(tt.backup, tc)
+			s, _, err := NewSnapshotterForBackup(tt.backup.Spec.Mode, deps)
+			require.NoError(t, err)
+			_, err = s.PrepareBackupMetadata(tt.backup, tc)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
-			assert.NotNil(t, tt.backup.Annotations[label.AnnBackupCloudSnapKey])
+			require.NotNil(t, tt.backup.Annotations[label.AnnBackupCloudSnapKey])
 		})
 	}
 }
@@ -855,56 +837,6 @@ func TestSetVolumeIDForCSI(t *testing.T) {
 	}
 }
 
-func TestNewDefaultSnapshotter(t *testing.T) {
-	helper := newHelper(t)
-	defer helper.Close()
-	deps := helper.Deps
-
-	cases := []struct {
-		name       string
-		bt         v1alpha1.BackupType
-		wantErr    bool
-		wantIgnore bool
-	}{
-		{
-			name:       "aws-snapshotter",
-			bt:         "ebs",
-			wantErr:    false,
-			wantIgnore: false,
-		},
-		{
-			name:       "gcp-snapshotter",
-			bt:         "gcepd",
-			wantErr:    false,
-			wantIgnore: false,
-		},
-		{
-			name:       "non-snapshotter",
-			bt:         "full",
-			wantErr:    false,
-			wantIgnore: true,
-		},
-	}
-
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			s, reason, err := NewDefaultSnapshotter(tt.bt, deps)
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.NotEmpty(t, reason)
-			} else {
-				assert.NoError(t, err)
-				assert.Empty(t, reason)
-				if tt.wantIgnore {
-					assert.Empty(t, s)
-				} else {
-					assert.NotEmpty(t, s)
-				}
-			}
-		})
-	}
-}
-
 func TestPrepareRestoreMetadata(t *testing.T) {
 	helper := newHelper(t)
 	defer helper.Close()
@@ -915,7 +847,8 @@ func TestPrepareRestoreMetadata(t *testing.T) {
 			Annotations: map[string]string{},
 		},
 		Spec: v1alpha1.RestoreSpec{
-			Type: "ebs",
+			Type: v1alpha1.BackupTypeFull,
+			Mode: v1alpha1.RestoreModeVolumeSnapshot,
 			BR: &v1alpha1.BRConfig{
 				Cluster:          "test",
 				ClusterNamespace: "test",
@@ -923,22 +856,21 @@ func TestPrepareRestoreMetadata(t *testing.T) {
 		},
 	}
 
-	cpFactory := &CloudProviderFactory{}
-	s := cpFactory.CreateSnapshotter(restore.Spec.Type)
-	s.Init(deps, nil)
+	s, _, err := NewSnapshotterForRestore(restore.Spec.Mode, deps)
+	require.NoError(t, err)
 
 	// missing .annotation["tidb.pingcap.com/backup-cloud-snapshot"] as metadata
 	reason, err := s.PrepareRestoreMetadata(restore)
-	assert.NotEmpty(t, reason)
-	assert.Error(t, err)
+	require.NotEmpty(t, reason)
+	require.Error(t, err)
 
 	meta := testutils.ConstructRestoreMetaStr()
 	restore.Annotations[label.AnnBackupCloudSnapKey] = meta
 
 	// happy path
 	reason, err = s.PrepareRestoreMetadata(restore)
-	assert.Empty(t, reason)
-	assert.NoError(t, err)
+	require.Empty(t, reason)
+	require.NoError(t, err)
 }
 
 func TestProcessCSBPVCsAndPVs(t *testing.T) {
@@ -1182,7 +1114,8 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: v1alpha1.RestoreSpec{
-			Type: v1alpha1.BackupTypeEBS,
+			Type: v1alpha1.BackupTypeFull,
+			Mode: v1alpha1.RestoreModeVolumeSnapshot,
 			BR: &v1alpha1.BRConfig{
 				Cluster:          "test",
 				ClusterNamespace: "default",
@@ -1190,7 +1123,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 		},
 	}
 
-	m := NewRestoreStoresMixture(sAWS, false)
+	m := NewRestoreStoresMixture(sAWS)
 	reason, err := m.ProcessCSBPVCsAndPVs(restore, csb)
 	require.Empty(t, reason)
 	require.NoError(t, err)

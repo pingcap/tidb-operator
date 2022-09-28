@@ -19,16 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// The snapshotter for nothing to do
 type NoneSnapshotter struct {
-}
-
-type NoPreparedError struct {
-	name string
-}
-
-func (e *NoPreparedError) Error() string {
-	return "Metadata preparation is not required for " + e.name
 }
 
 func (s *NoneSnapshotter) Init(deps *controller.Dependencies, conf map[string]string) error {
@@ -40,7 +31,7 @@ func (s *NoneSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, erro
 }
 
 func (s *NoneSnapshotter) PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
-	return "", &NoPreparedError{"backup"}
+	return "", nil
 }
 
 func (s *NoneSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error {
@@ -48,5 +39,5 @@ func (s *NoneSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID stri
 }
 
 func (s *NoneSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore) (string, error) {
-	return "", &NoPreparedError{"restore"}
+	return "", nil
 }

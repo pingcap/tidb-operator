@@ -51,6 +51,7 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&ro.SkipClientCA, "skipClientCA", false, "Whether to skip tidb server's certificates validation")
 	cmd.Flags().StringVar(&ro.Mode, "mode", string(v1alpha1.RestoreModeSnapshot), "restore mode, which is pitr or snapshot(default)")
 	cmd.Flags().StringVar(&ro.PitrRestoredTs, "pitrRestoredTs", "0", "The pitr restored ts")
+	cmd.Flags().BoolVar(&ro.Prepare, "prepare", false, "Whether to prepare for restore")
 	return cmd
 }
 

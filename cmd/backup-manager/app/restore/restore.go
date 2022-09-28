@@ -19,17 +19,15 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path"
-<<<<<<< HEAD
 	"regexp"
-=======
 	"strconv"
->>>>>>> master
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -42,18 +40,16 @@ import (
 
 type Options struct {
 	backupUtil.GenericOptions
+	// Prepare to restore data. It's used in volumeSnapshot mode.
+	Prepare bool
 }
 
-<<<<<<< HEAD
 func (ro *Options) restoreData(
 	ctx context.Context,
 	restore *v1alpha1.Restore,
-	started time.Time,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
-	restoreControl controller.RestoreControlInterface) (bool, error) {
-=======
-func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore, statusUpdater controller.RestoreConditionUpdaterInterface) error {
->>>>>>> master
+	restoreControl controller.RestoreControlInterface,
+) error {
 	clusterNamespace := restore.Spec.BR.ClusterNamespace
 	if restore.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = restore.Namespace
@@ -65,30 +61,10 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore, s
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
-
-	// CloudSnapBackup is the metadata for restore TiDBCluster,
-	// especially TiKV-volumes for BR to restore snapshot
-	var (
-		isCSB   bool
-		csbPath string
-		ts      string
-	)
-	switch restore.Spec.Type {
-	case v1alpha1.BackupTypeEBS, v1alpha1.BackupTypeGCEPD:
-		isCSB = true
-		csbPath = path.Join(util.BRBinPath, "csb_restore.json")
-		args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
-	case v1alpha1.BackupTypeData:
-		if restore.Spec.DryRun {
-			args = append(args, "--dry-run=true")
-		}
-		restore.Spec.BR.Options = backupUtil.GetSliceExcludeOneString(restore.Spec.BR.Options, "--skip-aws")
-	}
-
 	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
 	dataArgs, err := constructBROptions(restore)
 	if err != nil {
-		return false, err
+		return err
 	}
 	args = append(args, dataArgs...)
 
@@ -99,8 +75,17 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore, s
 		restoreType = string(restore.Spec.Type)
 	}
 
-	// gen PiTR args
-	if ro.Mode == string(v1alpha1.RestoreModePiTR) {
+	var (
+		csbPath      string
+		progressStep string
+	)
+
+	progressFile := "progress.txt"
+	shouldUpdateProgressFromFile := false
+
+	// gen args PiTR and volumeSnapshot.
+	switch ro.Mode {
+	case string(v1alpha1.RestoreModePiTR):
 		// init pitr restore args
 		args = append(args, fmt.Sprintf("--restored-ts=%s", ro.PitrRestoredTs))
 
@@ -111,6 +96,18 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore, s
 			args = append(args, fullBackupArgs...)
 		}
 		restoreType = "point"
+	case string(v1alpha1.RestoreModeVolumeSnapshot):
+		// Currently, we only support aws ebs volume snapshot.
+		args = append(args, "--type=aws-ebs")
+		if ro.Prepare {
+			args = append(args, "--prepare")
+			csbPath = path.Join(util.BRBinPath, "csb_restore.json")
+			args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
+			progressStep = "Restore Volume"
+		} else {
+			progressStep = "Restore Data"
+		}
+		shouldUpdateProgressFromFile = true
 	}
 
 	fullArgs := []string{
@@ -124,39 +121,48 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore, s
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return false, fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
 	}
 	stdErr, err := cmd.StderrPipe()
 	if err != nil {
-		return false, fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
+		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return false, fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
+	}
+
+	if shouldUpdateProgressFromFile {
+		stopCh := make(chan struct{})
+		var wg sync.WaitGroup
+		go func() {
+			defer wg.Done()
+			ro.updateProgressFromFile(restore, progressFile, progressStep, statusUpdater, stopCh)
+		}()
+
+		defer func() {
+			close(stopCh)
+			wg.Wait()
+		}()
 	}
 
 	var errMsg string
-<<<<<<< HEAD
-	if isCSB {
-		ts, errMsg = ro.processExecOutputForCSB(restore, restoreType, stdOut, statusUpdater)
-	} else {
-		errMsg = ro.processExecOutput(stdOut)
-=======
 	reader := bufio.NewReader(stdOut)
 	for {
 		line, err := reader.ReadString('\n')
 		if strings.Contains(line, "[ERROR]") {
 			errMsg += line
 		} else {
-			ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+			if !shouldUpdateProgressFromFile {
+				ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+			}
+			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
 		}
 		klog.Info(strings.Replace(line, "\n", "", -1))
 		if err != nil || io.EOF == err {
 			break
 		}
->>>>>>> master
 	}
-
 	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
@@ -165,158 +171,37 @@ func (ro *Options) restoreData(ctx context.Context, restore *v1alpha1.Restore, s
 
 	err = cmd.Wait()
 	if err != nil {
-		return false, fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
+		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
 	}
 
-	return ro.processRestoreResult(csbPath, ts, restore, started, statusUpdater, restoreControl)
-}
-
-func (ro *Options) processRestoreResult(
-	csbPath, resolvedTS string,
-	restore *v1alpha1.Restore,
-	started time.Time,
-	statusUpdater controller.RestoreConditionUpdaterInterface,
-	restoreControl controller.RestoreControlInterface) (bool, error) {
-	switch restore.Spec.Type {
-	case v1alpha1.BackupTypeEBS, v1alpha1.BackupTypeGCEPD:
-		if !backupUtil.IsFileExist(csbPath) {
-			return false, fmt.Errorf("cluster %s, the CSB file not found, path: %s", ro, csbPath)
-		}
-		bs, err := ioutil.ReadFile(csbPath)
+	if csbPath != "" {
+		err = ro.processCloudSnapBackup(restore, csbPath, restoreControl)
 		if err != nil {
-			return false, fmt.Errorf("cluster %s, read the CSB file failed, path: %s, err: %v", ro, csbPath, err)
-		}
-
-		if len(restore.GetAnnotations()) == 0 {
-			restore.Annotations = make(map[string]string)
-		}
-		klog.Infof("Get restore for cluster %s, annotations: %v", ro, restore.GetAnnotations())
-		restore.Annotations[label.AnnBackupCloudSnapKey] = string(bs)
-		if _, err = restoreControl.UpdateRestore(restore); err != nil {
-			return false, fmt.Errorf("cluster %s, update restore annotation for CSB failed, err: %v", ro, err)
-		}
-
-		updateStatus := &controller.RestoreUpdateStatus{
-			TimeStarted:   &metav1.Time{Time: started},
-			TimeCompleted: &metav1.Time{Time: time.Now()},
-			CommitTs:      &resolvedTS,
-		}
-		if err := statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:   v1alpha1.RestoreVolumeComplete,
-			Status: corev1.ConditionTrue,
-		}, updateStatus); err != nil {
-			return false, fmt.Errorf("cluster %s, update restore status volume-complete failed, err: %v", ro, err)
-		}
-		klog.Infof("Restore TiKV-volumes for cluster %s successfully", ro)
-		return true, nil
-	case v1alpha1.BackupTypeData:
-		updateStatus := &controller.RestoreUpdateStatus{
-			TimeCompleted: &metav1.Time{Time: time.Now()},
-		}
-		if restore.Status.TimeStarted.IsZero() {
-			updateStatus.TimeStarted = &metav1.Time{Time: started}
-		}
-		if err := statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:   v1alpha1.RestoreDataComplete,
-			Status: corev1.ConditionTrue,
-		}, updateStatus); err != nil {
-			return false, fmt.Errorf("cluster %s, update restore status data-complete failed, err: %v", ro, err)
-		}
-		klog.Infof("Restore TiKV-data for cluster %s successfully", ro)
-		return true, nil
-
-	default:
-		klog.Infof("Restore data for cluster %s successfully", ro)
-	}
-	return false, nil
-}
-
-// processExecOutput processes the output from exec br binary
-// NOTE: keep original logic for code
-func (ro *Options) processExecOutput(stdOut io.ReadCloser) (errMsg string) {
-	var err error
-	reader := bufio.NewReader(stdOut)
-	for {
-		_, errMsg, err = readExecOutputLine(reader)
-		if err != nil || io.EOF == err {
-			break
+			return err
 		}
 	}
-	return
+	klog.Infof("Restore data for cluster %s successfully", ro)
+	return nil
 }
 
-// processExecOutputForCSB processes the output from exec br binary for CloudSnapBackup
-// NOTE: distinguish between previous code logic
-func (ro *Options) processExecOutputForCSB(
+func (ro *Options) processCloudSnapBackup(
 	restore *v1alpha1.Restore,
-	restoreType string,
-	stdOut io.ReadCloser,
-	statusUpdater controller.RestoreConditionUpdaterInterface,
-) (ts, errMsg string) {
-	quit := make(chan struct{})
-	progressFile := path.Join(util.BRBinPath, "progress.txt")
-	go func() {
-		ticker := time.NewTicker(constants.ProgressInterval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				if !backupUtil.IsFileExist(progressFile) {
-					continue
-				}
-				bs, err := ioutil.ReadFile(progressFile)
-				if err != nil {
-					klog.Errorf("Read progress file failed, err: %v", err)
-					continue
-				}
-				progress := strings.TrimSpace(string(bs))
-				klog.Infof("Restore progress: %s", progress)
-				updateStatus := &controller.RestoreUpdateStatus{
-					Progress: &progress,
-				}
-				err = statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-					Type:   v1alpha1.RestoreRunning,
-					Status: corev1.ConditionTrue,
-				}, updateStatus)
-				if err != nil {
-					klog.Warningf("Failed to update RestoreUpdateStatus-Running for cluster %s, %s", ro, err.Error())
-				}
-			case <-quit:
-				return
-			}
-		}
-	}()
-
-	var line string
-	var err error
-	successTag := fmt.Sprintf("[\"%s restore success\"]", strings.ToUpper(restoreType))
-	reader := bufio.NewReader(stdOut)
-	for {
-		line, errMsg, err = readExecOutputLine(reader)
-
-		if strings.Contains(line, successTag) {
-			extract := strings.Split(line, successTag)[1]
-			tsStr := regexp.MustCompile(`resolved_ts=\d+`).FindString(extract)
-			ts = strings.ReplaceAll(tsStr, "resolved_ts=", "")
-			klog.Infof("%s resolved_ts: %s", successTag, ts)
-		}
-
-		if err != nil || io.EOF == err {
-			quit <- struct{}{}
-			break
-		}
+	csbPath string,
+	restoreControl controller.RestoreControlInterface,
+) error {
+	data, err := os.ReadFile(csbPath)
+	if err != nil {
+		return fmt.Errorf("cluster %s, read the CSB file failed, path: %s, err: %v", ro, csbPath, err)
 	}
-	return
-}
-
-func readExecOutputLine(reader *bufio.Reader) (line, errMsg string, err error) {
-	line, err = reader.ReadString('\n')
-	if strings.Contains(line, "[ERROR]") {
-		errMsg += line
+	if len(restore.GetAnnotations()) == 0 {
+		restore.Annotations = make(map[string]string)
 	}
-	klog.Info(strings.Replace(line, "\n", "", -1))
-	return
+	klog.Infof("Get restore for cluster %s, annotations: %v", ro, restore.GetAnnotations())
+	restore.Annotations[label.AnnBackupCloudSnapKey] = string(data)
+	if _, err = restoreControl.UpdateRestore(restore); err != nil {
+		return fmt.Errorf("cluster %s, update restore annotation for CSB failed, err: %v", ro, err)
+	}
+	return nil
 }
 
 func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
@@ -361,6 +246,73 @@ func (ro *Options) updateProgressAccordingToBrLog(line string, restore *v1alpha1
 		})
 		if progressUpdateErr != nil {
 			klog.Errorf("update restore %s progress error %v", ro, progressUpdateErr)
+		}
+	}
+}
+
+func (ro *Options) updateResolvedTSForCSB(
+	line string,
+	restore *v1alpha1.Restore,
+	progressStep string,
+	statusUpdater controller.RestoreConditionUpdaterInterface,
+) {
+	const successTag = "EBS restore success"
+
+	if strings.Contains(line, successTag) {
+		extract := strings.Split(line, successTag)[1]
+		tsStr := regexp.MustCompile(`resolved_ts=\d+`).FindString(extract)
+		ts := strings.ReplaceAll(tsStr, "resolved_ts=", "")
+		klog.Infof("%s resolved_ts: %s", successTag, ts)
+
+		progress := 100.0
+		if err := statusUpdater.Update(restore, nil, &controller.RestoreUpdateStatus{
+			CommitTs:           &ts,
+			ProgressStep:       &progressStep,
+			Progress:           &progress,
+			ProgressUpdateTime: &metav1.Time{Time: time.Now()},
+		}); err != nil {
+			klog.Errorf("update restore %s resolved ts error %v", ro, err)
+		}
+	}
+	return
+}
+
+func (ro *Options) updateProgressFromFile(
+	backup *v1alpha1.Restore,
+	progressFile string,
+	progressStep string,
+	statusUpdater controller.RestoreConditionUpdaterInterface,
+	stopCh chan struct{},
+) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			data, err := os.ReadFile(progressFile)
+			if err != nil {
+				continue
+			}
+			progressStr := strings.TrimSpace(string(data))
+			progressStr = strings.TrimSuffix(progressStr, "%")
+			if progressStr == "" {
+				continue
+			}
+			progress, err := strconv.ParseFloat(progressStr, 64)
+			if err != nil {
+				klog.Warningf("Failed to parse progress %s, err: %v", string(data), err)
+				continue
+			}
+			if err := statusUpdater.Update(backup, nil, &controller.RestoreUpdateStatus{
+				ProgressStep:       &progressStep,
+				Progress:           &progress,
+				ProgressUpdateTime: &metav1.Time{Time: time.Now()},
+			}); err != nil {
+				klog.Errorf("Failed to update BackupUpdateStatus for cluster %s, %v", ro, err)
+			}
+		case <-stopCh:
+			return
 		}
 	}
 }

@@ -151,24 +151,6 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	}
 
 	var errs []error
-	var commitTs uint64
-	switch restore.Spec.Type {
-	case v1alpha1.BackupTypeEBS, v1alpha1.BackupTypeGCEPD, v1alpha1.BackupTypeData:
-	default:
-		commitTs, err = util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
-			uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestoreFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "GetCommitTsFailed",
-				Message: err.Error(),
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-	}
 
 	var (
 		oldTikvGCTime, tikvGCLifeTime             string
@@ -256,11 +238,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		}
 	}
 
-<<<<<<< HEAD
-	isCompletetd, restoreErr := rm.restoreData(ctx, restore, started, rm.StatusUpdater, rm.RestoreControl)
-=======
-	restoreErr := rm.restoreData(ctx, restore, rm.StatusUpdater)
->>>>>>> master
+	restoreErr := rm.restoreData(ctx, restore, rm.StatusUpdater, rm.RestoreControl)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
@@ -298,22 +276,49 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
-
-	// The status update has been completed, so return success directly
 	klog.Infof("restore cluster %s from %s succeed", rm, restore.Spec.Type)
-	if isCompletetd {
-		return nil
-	}
 
 	finish := time.Now()
-	ts := strconv.FormatUint(commitTs, 10)
+
+	var (
+		commitTS    *string
+		restoreType v1alpha1.RestoreConditionType
+	)
+	switch rm.Mode {
+	case string(v1alpha1.RestoreModeVolumeSnapshot):
+		if rm.Prepare {
+			restoreType = v1alpha1.RestoreVolumeComplete
+		} else {
+			restoreType = v1alpha1.RestoreDataComplete
+		}
+		// In volume snapshot mode, commitTS and size have been updated according to the
+		// br command output, so we don't need to update them here.
+	default:
+		ts, err := util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
+		if err != nil {
+			errs = append(errs, err)
+			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
+			uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "GetCommitTsFailed",
+				Message: err.Error(),
+			}, nil)
+			errs = append(errs, uerr)
+			return errorutils.NewAggregate(errs)
+		}
+		restoreType = v1alpha1.RestoreComplete
+		tsStr := strconv.FormatUint(ts, 10)
+		commitTS = &tsStr
+	}
+
 	updateStatus := &controller.RestoreUpdateStatus{
 		TimeStarted:   &metav1.Time{Time: started},
 		TimeCompleted: &metav1.Time{Time: finish},
-		CommitTs:      &ts,
+		CommitTs:      commitTS,
 	}
 	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-		Type:   v1alpha1.RestoreComplete,
+		Type:   restoreType,
 		Status: corev1.ConditionTrue,
 	}, updateStatus)
 }

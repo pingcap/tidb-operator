@@ -145,8 +145,8 @@ func (m *tikvMemberManager) checkRecoveryForTidbCluster(tc *v1alpha1.TidbCluster
 	tcName := tc.GetName()
 
 	anns := tc.GetAnnotations()
-	if _, ok := anns[label.AnnWaitTiKVVolumesKey]; !ok {
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV restore volumes completed", ns, tcName)
+	if _, ok := anns[label.AnnTiKVVolumesReadyKey]; !ok {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV volumes ready", ns, tcName)
 	}
 
 	return nil

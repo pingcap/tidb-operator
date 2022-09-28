@@ -15,6 +15,7 @@ package testutils
 
 import (
 	"context"
+	apps "k8s.io/api/apps/v1"
 	"testing"
 	"time"
 
@@ -137,6 +138,14 @@ func (h *Helper) CreateTC(namespace, clusterName string) {
 			},
 			TiDB: &v1alpha1.TiDBSpec{
 				TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			TiKV: v1alpha1.TiKVStatus{
+				StatefulSet: &apps.StatefulSetStatus{
+					Replicas:      3,
+					ReadyReplicas: 3,
+				},
 			},
 		},
 	}

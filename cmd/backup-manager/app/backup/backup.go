@@ -17,7 +17,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -26,10 +25,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	backupConst "github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -45,10 +44,12 @@ type Options struct {
 	backupUtil.GenericOptions
 }
 
-func (bo *Options) backupData(ctx context.Context,
+// backupData generates br args and runs br binary to do the real backup work
+func (bo *Options) backupData(
+	ctx context.Context,
 	backup *v1alpha1.Backup,
 	statusUpdater controller.BackupConditionUpdaterInterface,
-) (bool, error) {
+) error {
 	var backupType string
 	if backup.Spec.Type == "" {
 		backupType = string(v1alpha1.BackupTypeFull)
@@ -60,170 +61,76 @@ func (bo *Options) backupData(ctx context.Context,
 		backupType,
 	}
 
-	// CloudSnapBackup is the metadata for backup TiDBCluster,
-	// especially TiKV-volumes for BR to take snapshot
-	var isCSB bool
-	csb := os.Getenv(backupConst.EnvCloudSnapMeta)
-	if csb != "" {
-		isCSB = true
-		klog.Infof("Running cloud-snapshot-backup with metadata: %s", csb)
-		csbPath := path.Join(util.BRBinPath, "csb_backup.json")
-		err := ioutil.WriteFile(csbPath, []byte(csb), 0644)
-		if err != nil {
-			return false, err
+	var logCallback func(line string)
+	// Add extra args for volume snapshot backup.
+	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+		var (
+			progressFile = "progress.txt"
+			progressStep = "Backup Full"
+			successTag   = "EBS backup success"
+		)
+
+		cloudSnapMeta := os.Getenv(backupConst.EnvCloudSnapMeta)
+		if cloudSnapMeta == "" {
+			return fmt.Errorf("cloud snapshot metadata not found, env %s is empty", backupConst.EnvCloudSnapMeta)
 		}
+		klog.Infof("Running cloud-snapshot-backup with metadata: %s", cloudSnapMeta)
+		csbPath := path.Join(util.BRBinPath, "csb_backup.json")
+		err := os.WriteFile(csbPath, []byte(cloudSnapMeta), 0644)
+		if err != nil {
+			return err
+		}
+		// Currently, we only support aws ebs volume snapshot.
+		specificArgs = append(specificArgs, "--type=aws-ebs")
 		specificArgs = append(specificArgs, fmt.Sprintf("--volume-file=%s", csbPath))
+		logCallback = func(line string) {
+			if strings.Contains(line, successTag) {
+				extract := strings.Split(line, successTag)[1]
+				sizeStr := regexp.MustCompile(`size=(\d+)`).FindString(extract)
+				size := strings.ReplaceAll(sizeStr, "size=", "")
+				tsStr := regexp.MustCompile(`resolved_ts=(\d+)`).FindString(extract)
+				ts := strings.ReplaceAll(tsStr, "resolved_ts=", "")
+				klog.Infof("%s size: %s, resolved_ts: %s", successTag, size, ts)
+
+				backupSize, err := strconv.ParseInt(size, 10, 64)
+				if err != nil {
+					klog.Warningf("Failed to parse BackupSize %s, %v", size, err)
+				}
+				backupSize = backupSize << 30 // Convert GiB to bytes.
+				backupSizeReadable := humanize.Bytes(uint64(backupSize))
+				progress := 100.0
+				if err := statusUpdater.Update(backup, nil, &controller.BackupUpdateStatus{
+					CommitTs:           &ts,
+					BackupSize:         &backupSize,
+					BackupSizeReadable: &backupSizeReadable,
+					ProgressStep:       &progressStep,
+					Progress:           &progress,
+					ProgressUpdateTime: &metav1.Time{Time: time.Now()},
+				}); err != nil {
+					klog.Errorf("Failed to update BackupUpdateStatus for cluster %s, %v", bo, err)
+				}
+			}
+		}
+
+		stopCh := make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			bo.updateProgressFromFile(backup, progressFile, progressStep, statusUpdater, stopCh)
+		}()
+
+		defer func() {
+			close(stopCh)
+			wg.Wait()
+		}()
 	}
 
 	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs)
 	if err != nil {
-		return isCSB, err
+		return err
 	}
-
-	if isCSB {
-		return true, bo.brCommandRun(ctx, fullArgs, func(stdout io.ReadCloser) string {
-			return bo.processExecOutputForCSB(backup, backupType, stdout, statusUpdater)
-		})
-	} else {
-		return false, bo.brCommandRun(ctx, fullArgs, nil)
-	}
-}
-
-// processExecOutput processes the output from exec br binary
-// NOTE: keep original logic for code
-func (bo *Options) processExecOutput(stdOut io.ReadCloser) (errMsg string) {
-	var err error
-	reader := bufio.NewReader(stdOut)
-	for {
-		_, errMsg, err = readExecOutputLine(reader)
-		if err != nil || io.EOF == err {
-			break
-		}
-	}
-	return
-}
-
-// processExecOutputForCSB processes the output from exec br binary for CloudSnapBackup
-// NOTE: distinguish between previous code logic
-func (bo *Options) processExecOutputForCSB(
-	backup *v1alpha1.Backup,
-	backupType string,
-	stdOut io.ReadCloser,
-	statusUpdater controller.BackupConditionUpdaterInterface) (errMsg string) {
-	type progressUpdate struct {
-		progress, backupSize, resolvedTs *string
-	}
-
-	started := time.Now()
-	quit := make(chan struct{})
-	update := make(chan *progressUpdate)
-	progressFile := path.Join(util.BRBinPath, "progress.txt")
-	go func() {
-		ticker := time.NewTicker(constants.ProgressInterval)
-		var lastUpdate string
-		var completed bool
-		for {
-			select {
-			case <-quit:
-				ticker.Stop()
-				return
-			case val := <-update:
-				if completed {
-					continue
-				}
-				updateStatus := &controller.BackupUpdateStatus{
-					Progress: val.progress,
-				}
-				if val.resolvedTs != nil || val.backupSize != nil {
-					updateStatus.CommitTs = val.resolvedTs
-					backupSize, err := strconv.ParseInt(*val.backupSize, 10, 64)
-					if err == nil {
-						updateStatus.BackupSize = &backupSize
-						backupSizeReadable := humanize.Bytes(uint64(backupSize))
-						updateStatus.BackupSizeReadable = &backupSizeReadable
-					} else {
-						klog.Warningf("Failed to parse BackupSize %s, %s", *val.backupSize, err.Error())
-					}
-
-					updateStatus.TimeStarted = &metav1.Time{Time: started}
-					updateStatus.TimeCompleted = &metav1.Time{Time: time.Now()}
-					err = statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-						Type:   v1alpha1.BackupComplete,
-						Status: corev1.ConditionTrue,
-					}, updateStatus)
-					if err == nil {
-						completed = true
-					} else {
-						klog.Warningf("Failed to update BackupUpdateStatus-Complete for cluster %s, %s", bo, err.Error())
-					}
-				} else {
-					err := statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-						Type:   v1alpha1.BackupRunning,
-						Status: corev1.ConditionTrue,
-					}, updateStatus)
-					if err != nil {
-						klog.Warningf("Failed to update BackupUpdateStatus-Running for cluster %s, %s", bo, err.Error())
-					}
-				}
-			case <-ticker.C:
-				if !backupUtil.IsFileExist(progressFile) {
-					continue
-				}
-				bs, err := ioutil.ReadFile(progressFile)
-				if err != nil {
-					return
-				}
-				go func() {
-					progress := string(bs)
-					klog.Infof("update progress for current: %s and last: %s", progress, lastUpdate)
-					if lastUpdate != progress {
-						update <- &progressUpdate{
-							progress: &progress,
-						}
-						lastUpdate = progress
-					}
-				}()
-			}
-		}
-	}()
-
-	var line string
-	var err error
-	successTag := fmt.Sprintf("[\"%s backup success\"]", strings.ToUpper(backupType))
-	reader := bufio.NewReader(stdOut)
-	for {
-		line, errMsg, err = readExecOutputLine(reader)
-
-		if strings.Contains(line, successTag) {
-			extract := strings.Split(line, successTag)[1]
-			sizeStr := regexp.MustCompile(`size=\d+`).FindString(extract)
-			size := strings.ReplaceAll(sizeStr, "size=", "")
-			tsStr := regexp.MustCompile(`resolved_ts=\d+`).FindString(extract)
-			ts := strings.ReplaceAll(tsStr, "resolved_ts=", "")
-			klog.Infof("%s size: %s, resolved_ts: %s", successTag, size, ts)
-			update <- &progressUpdate{
-				progress:   func(s string) *string { return &s }("100%"),
-				resolvedTs: &ts,
-				backupSize: &size,
-			}
-		}
-
-		if err != nil || io.EOF == err {
-			quit <- struct{}{}
-			break
-		}
-	}
-
-	return
-}
-
-func readExecOutputLine(reader *bufio.Reader) (line, errMsg string, err error) {
-	line, err = reader.ReadString('\n')
-	if strings.Contains(line, "[ERROR]") {
-		errMsg += line
-	}
-	klog.Info(strings.Replace(line, "\n", "", -1))
-	return
+	return bo.brCommandRunWithLogCallback(ctx, fullArgs, logCallback)
 }
 
 // constructOptions constructs options for BR
@@ -266,7 +173,7 @@ func (bo *Options) doStartLogBackup(ctx context.Context, backup *v1alpha1.Backup
 	if err != nil {
 		return err
 	}
-	return bo.brCommandRun(ctx, fullArgs, nil)
+	return bo.brCommandRun(ctx, fullArgs)
 }
 
 // doStoplogBackup generates br args about log backup stop and runs br binary to do the real backup work.
@@ -280,7 +187,7 @@ func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 	if err != nil {
 		return err
 	}
-	return bo.brCommandRun(ctx, fullArgs, nil)
+	return bo.brCommandRun(ctx, fullArgs)
 }
 
 // doTruncatelogBackup generates br args about log backup truncate and runs br binary to do the real backup work.
@@ -298,7 +205,7 @@ func (bo *Options) doTruncatelogBackup(ctx context.Context, backup *v1alpha1.Bac
 	if err != nil {
 		return err
 	}
-	return bo.brCommandRun(ctx, fullArgs, nil)
+	return bo.brCommandRun(ctx, fullArgs)
 }
 
 // logBackupCommandTemplate is the template to generate br args.
@@ -329,12 +236,13 @@ func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs [
 	return fullArgs, nil
 }
 
-// brCommandRun run br binary to do backup work
-func (bo *Options) brCommandRun(
-	ctx context.Context,
-	fullArgs []string,
-	processStdout func(stdout io.ReadCloser) string,
-) error {
+// brCommandRun run br binary to do backup work.
+func (bo *Options) brCommandRun(ctx context.Context, fullArgs []string) error {
+	return bo.brCommandRunWithLogCallback(ctx, fullArgs, nil)
+}
+
+// brCommandRun run br binary to do backup work with log callback.
+func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []string, logCallback func(line string)) error {
 	if len(fullArgs) == 0 {
 		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
 	}
@@ -354,14 +262,22 @@ func (bo *Options) brCommandRun(
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
 	}
-
 	var errMsg string
-	if processStdout != nil {
-		errMsg = processStdout(stdOut)
-	} else {
-		errMsg = bo.processExecOutput(stdOut)
-	}
+	reader := bufio.NewReader(stdOut)
+	for {
+		line, err := reader.ReadString('\n')
+		if strings.Contains(line, "[ERROR]") {
+			errMsg += line
+		}
+		if logCallback != nil {
+			logCallback(line)
+		}
 
+		klog.Info(strings.Replace(line, "\n", "", -1))
+		if err != nil {
+			break
+		}
+	}
 	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
@@ -374,4 +290,44 @@ func (bo *Options) brCommandRun(
 
 	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
 	return nil
+}
+
+func (bo *Options) updateProgressFromFile(
+	backup *v1alpha1.Backup,
+	progressFile string,
+	progressStep string,
+	statusUpdater controller.BackupConditionUpdaterInterface,
+	stopCh chan struct{},
+) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			data, err := os.ReadFile(progressFile)
+			if err != nil {
+				continue
+			}
+			progressStr := strings.TrimSpace(string(data))
+			progressStr = strings.TrimSuffix(progressStr, "%")
+			if progressStr == "" {
+				continue
+			}
+			progress, err := strconv.ParseFloat(progressStr, 64)
+			if err != nil {
+				klog.Warningf("Failed to parse progress %s, err: %v", string(data), err)
+				continue
+			}
+			if err := statusUpdater.Update(backup, nil, &controller.BackupUpdateStatus{
+				ProgressStep:       &progressStep,
+				Progress:           &progress,
+				ProgressUpdateTime: &metav1.Time{Time: time.Now()},
+			}); err != nil {
+				klog.Errorf("Failed to update BackupUpdateStatus for cluster %s, %v", bo, err)
+			}
+		case <-stopCh:
+			return
+		}
+	}
 }

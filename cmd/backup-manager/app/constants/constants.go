@@ -25,9 +25,6 @@ const (
 	// CheckTimeout is the maximum time to wait for the tidb cluster ready
 	CheckTimeout = 30 * time.Minute
 
-	// ProgressInterval is the interval to collect the progress from backup
-	ProgressInterval = time.Second
-
 	// BackupRootPath is the root path to backup data
 	BackupRootPath = "/backup"
 
@@ -71,7 +68,4 @@ const (
 
 	// DefaultTableFilter is the default table filter 'db.table' matching
 	DefaultTableFilter = "!/^(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA)$/.*"
-
-	// the metadata for cloud provider to take snapshot
-	EnvCloudSnapMeta = "CLOUD_SNAPSHOT_METADATA"
 )
