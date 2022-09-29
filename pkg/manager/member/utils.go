@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
@@ -140,10 +141,19 @@ func DMMasterPodName(dcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), ordinal)
 }
 
-func PdName(tcName string, ordinal int32, namespace string, clusterDomain string) string {
+// PdName should match the start arg `--name` of pd-server
+// See the start script of PD in pkg/manager/member/startscript/v1.pdStartScriptTpl
+// and pkg/manager/member/startscript/v2.RenderPDStartScript
+func PdName(tcName string, ordinal int32, namespace string, clusterDomain string, acrossK8s bool) string {
 	if len(clusterDomain) > 0 {
 		return fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", PdPodName(tcName, ordinal), tcName, namespace, clusterDomain)
 	}
+
+	// clusterDomain is not set
+	if acrossK8s {
+		return fmt.Sprintf("%s.%s-pd-peer.%s.svc", PdPodName(tcName, ordinal), tcName, namespace)
+	}
+
 	return PdPodName(tcName, ordinal)
 }
 
