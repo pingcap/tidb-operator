@@ -77,6 +77,7 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 	var isConditionUpdate bool
 	// try best effort to guarantee restore is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+		// Always get the latest restore before update.
 		if updated, err := u.restoreLister.Restores(ns).Get(restoreName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			restore = updated.DeepCopy()
@@ -120,7 +121,11 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 		isUpdate = true
 	}
 	if newStatus.ProgressStep != nil {
-		status.Progresses, isUpdate = updateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
+		progresses, updated := updateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
+		if updated {
+			status.Progresses = progresses
+			isUpdate = true
+		}
 	}
 
 	return isUpdate
