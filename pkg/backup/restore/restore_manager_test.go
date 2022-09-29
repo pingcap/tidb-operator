@@ -290,7 +290,13 @@ func TestBRRestoreByEBS(t *testing.T) {
 					},
 				},
 				Status: v1alpha1.RestoreStatus{
-					Phase: v1alpha1.RestoreVolumeComplete,
+					Phase: v1alpha1.RestoreRunning,
+					Conditions: []v1alpha1.RestoreCondition{
+						{
+							Type:   v1alpha1.RestoreVolumeComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
 				},
 			},
 		},
@@ -316,7 +322,13 @@ func TestBRRestoreByEBS(t *testing.T) {
 					},
 				},
 				Status: v1alpha1.RestoreStatus{
-					Phase: v1alpha1.RestoreVolumeComplete,
+					Phase: v1alpha1.RestoreRunning,
+					Conditions: []v1alpha1.RestoreCondition{
+						{
+							Type:   v1alpha1.RestoreVolumeComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
 				},
 			},
 		},
@@ -342,7 +354,17 @@ func TestBRRestoreByEBS(t *testing.T) {
 					},
 				},
 				Status: v1alpha1.RestoreStatus{
-					Phase: v1alpha1.RestoreDataComplete,
+					Phase: v1alpha1.RestoreRunning,
+					Conditions: []v1alpha1.RestoreCondition{
+						{
+							Type:   v1alpha1.RestoreVolumeComplete,
+							Status: corev1.ConditionTrue,
+						},
+						{
+							Type:   v1alpha1.RestoreDataComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
 				},
 			},
 		},

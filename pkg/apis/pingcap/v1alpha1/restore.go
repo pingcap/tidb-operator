@@ -23,7 +23,7 @@ import (
 
 // GetRestoreJobName return the restore job name
 func (rs *Restore) GetRestoreJobName() string {
-	if IsRestoreVolumeComplete(rs) {
+	if IsRestoreVolumeComplete(rs) && !IsRestoreDataComplete(rs) {
 		return fmt.Sprintf("restore-data-%s", rs.GetName())
 	}
 	return fmt.Sprintf("restore-%s", rs.GetName())
