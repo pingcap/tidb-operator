@@ -15,15 +15,14 @@ package testutils
 
 import (
 	"context"
-	apps "k8s.io/api/apps/v1"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -142,7 +141,7 @@ func (h *Helper) CreateTC(namespace, clusterName string) {
 		},
 		Status: v1alpha1.TidbClusterStatus{
 			TiKV: v1alpha1.TiKVStatus{
-				StatefulSet: &apps.StatefulSetStatus{
+				StatefulSet: &appsv1.StatefulSetStatus{
 					Replicas:      3,
 					ReadyReplicas: 3,
 				},

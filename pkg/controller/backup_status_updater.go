@@ -15,6 +15,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -100,7 +101,11 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		if isUpdate {
 			_, updateErr := u.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 			if updateErr == nil {
-				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
+				backupBytes, err := json.Marshal(backup)
+				if err != nil {
+					panic(err)
+				}
+				klog.Infof("Backup: [%s/%s] updated successfully, content: %s", ns, backupName, string(backupBytes))
 				return nil
 			}
 			klog.Errorf("Failed to update backup [%s/%s], error: %v", ns, backupName, updateErr)

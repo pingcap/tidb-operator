@@ -25,7 +25,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -112,18 +111,9 @@ func (bo *Options) backupData(
 			}
 		}
 
-		stopCh := make(chan struct{})
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			bo.updateProgressFromFile(backup, progressFile, progressStep, statusUpdater, stopCh)
-		}()
-
-		defer func() {
-			close(stopCh)
-			wg.Wait()
-		}()
+		progressCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		go bo.updateProgressFromFile(progressCtx.Done(), backup, progressFile, progressStep, statusUpdater)
 	}
 
 	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs)
@@ -293,11 +283,11 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 }
 
 func (bo *Options) updateProgressFromFile(
+	stopCh <-chan struct{},
 	backup *v1alpha1.Backup,
 	progressFile string,
 	progressStep string,
 	statusUpdater controller.BackupConditionUpdaterInterface,
-	stopCh chan struct{},
 ) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()

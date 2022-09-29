@@ -81,7 +81,7 @@ func (ro *Options) restoreData(
 	)
 
 	progressFile := "progress.txt"
-	shouldUpdateProgressFromFile := false
+	useProgressFile := false
 
 	// gen args PiTR and volumeSnapshot.
 	switch ro.Mode {
@@ -107,7 +107,7 @@ func (ro *Options) restoreData(
 		} else {
 			progressStep = "Data Restore"
 		}
-		shouldUpdateProgressFromFile = true
+		useProgressFile = true
 	}
 
 	fullArgs := []string{
@@ -132,18 +132,19 @@ func (ro *Options) restoreData(
 		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
 	}
 
-	if shouldUpdateProgressFromFile {
-		stopCh := make(chan struct{})
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			ro.updateProgressFromFile(restore, progressFile, progressStep, statusUpdater, stopCh)
-		}()
+	var (
+		progressWg     sync.WaitGroup
+		progressCancel context.CancelFunc
+	)
+	if useProgressFile {
+		progressCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		progressCancel = cancel
 
-		defer func() {
-			close(stopCh)
-			wg.Wait()
+		progressWg.Add(1)
+		go func() {
+			defer progressWg.Done()
+			ro.updateProgressFromFile(progressCtx.Done(), restore, progressFile, progressStep, statusUpdater)
 		}()
 	}
 
@@ -154,7 +155,7 @@ func (ro *Options) restoreData(
 		if strings.Contains(line, "[ERROR]") {
 			errMsg += line
 		} else {
-			if !shouldUpdateProgressFromFile {
+			if !useProgressFile {
 				ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
 			}
 			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
@@ -181,6 +182,23 @@ func (ro *Options) restoreData(
 			return err
 		}
 	}
+
+	// When using progress file, we may not get the last progress update.
+	// So we need to update the progress to 100% here since the restore is done.
+	if useProgressFile {
+		progressCancel()
+		progressWg.Wait()
+
+		progress := 100.0
+		if err := statusUpdater.Update(restore, nil, &controller.RestoreUpdateStatus{
+			ProgressStep:       &progressStep,
+			Progress:           &progress,
+			ProgressUpdateTime: &metav1.Time{Time: time.Now()},
+		}); err != nil {
+			klog.Errorf("update restore %s progress error %v", ro, err)
+		}
+	}
+
 	klog.Infof("Restore data for cluster %s successfully", ro)
 	return nil
 }
@@ -279,11 +297,11 @@ func (ro *Options) updateResolvedTSForCSB(
 }
 
 func (ro *Options) updateProgressFromFile(
+	stopCh <-chan struct{},
 	backup *v1alpha1.Restore,
 	progressFile string,
 	progressStep string,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
-	stopCh chan struct{},
 ) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
