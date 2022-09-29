@@ -23,7 +23,7 @@ import (
 
 // GetRestoreJobName return the restore job name
 func (rs *Restore) GetRestoreJobName() string {
-	if rs.Status.Phase == RestoreVolumeComplete {
+	if IsRestoreVolumeComplete(rs) {
 		return fmt.Sprintf("restore-data-%s", rs.GetName())
 	}
 	return fmt.Sprintf("restore-%s", rs.GetName())
@@ -73,7 +73,13 @@ func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) 
 	// Try to find this Restore condition.
 	conditionIndex, oldCondition := GetRestoreCondition(status, condition.Type)
 
-	status.Phase = condition.Type
+	switch condition.Type {
+	case RestoreVolumeComplete, RestoreDataComplete:
+		// VolumeComplete and DataComplete are intermediately conditions,
+		// they can not represent the current phase of restore.
+	default:
+		status.Phase = condition.Type
+	}
 
 	if oldCondition == nil {
 		// We are adding new Restore condition.

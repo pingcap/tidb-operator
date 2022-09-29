@@ -1675,7 +1675,7 @@ const (
 	// BackupModeLog represents the log backup of tidb cluster.
 	BackupModeLog BackupMode = "log"
 	// BackupModeVolumeSnapshot represents volume backup of tidb cluster.
-	BackupModeVolumeSnapshot BackupMode = "volumeSnapshot"
+	BackupModeVolumeSnapshot BackupMode = "volume-snapshot"
 )
 
 // TiDBAccessConfig defines the configuration for access tidb cluster
@@ -2097,7 +2097,7 @@ const (
 	// RestoreModePiTR represents PiTR restore which is from a snapshot backup and log backup.
 	RestoreModePiTR RestoreMode = "pitr"
 	// RestoreModeVolumeSnapshot represents restore from a volume snapshot backup.
-	RestoreModeVolumeSnapshot RestoreMode = "volumeSnapshot"
+	RestoreModeVolumeSnapshot RestoreMode = "volume-snapshot"
 )
 
 // RestoreConditionType represents a valid condition of a Restore.

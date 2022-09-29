@@ -112,7 +112,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}, nil)
 			return err
 		}
-		if restore.Status.Phase == v1alpha1.RestoreVolumeComplete && !tc.AllTiKVsAreAvailable() {
+		if v1alpha1.IsRestoreVolumeComplete(restore) && !tc.AllTiKVsAreAvailable() {
 			klog.Infof("restore %s/%s volume has completed, but not all TiKVs are available in tidbcluster %s/%s, will requeue", ns, name, tc.Namespace, tc.Name)
 			return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 		}
@@ -184,8 +184,8 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 }
 
 func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
-	switch r.Status.Phase {
-	case v1alpha1.RestoreVolumeComplete:
+	switch {
+	case v1alpha1.IsRestoreVolumeComplete(r):
 		klog.Infof("restore-manager prepares to deal with the phase VolumeComplete")
 
 		// TiKV volumes are ready, we can skip prepare restore metadata.
@@ -213,7 +213,7 @@ func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alp
 		}
 		return "", nil
 
-	case v1alpha1.RestoreDataComplete:
+	case v1alpha1.IsRestoreDataComplete(r):
 		klog.Infof("restore-manager prepares to deal with the phase DataComplete")
 
 		tc.Spec.RecoveryMode = false
