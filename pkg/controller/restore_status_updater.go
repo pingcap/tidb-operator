@@ -77,6 +77,13 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 	var isConditionUpdate bool
 	// try best effort to guarantee restore is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+		if updated, err := u.restoreLister.Restores(ns).Get(restoreName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			restore = updated.DeepCopy()
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated restore %s/%s from lister: %v", ns, restoreName, err))
+			return err
+		}
 		isStatusUpdate = updateRestoreStatus(&restore.Status, newStatus)
 		isConditionUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
 		if isStatusUpdate || isConditionUpdate {
@@ -86,12 +93,6 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 				return nil
 			}
 			klog.Errorf("Failed to update resotre [%s/%s], error: %v", ns, restoreName, updateErr)
-			if updated, err := u.restoreLister.Restores(ns).Get(restoreName); err == nil {
-				// make a copy so we don't mutate the shared cache
-				restore = updated.DeepCopy()
-			} else {
-				utilruntime.HandleError(fmt.Errorf("error getting updated restore %s/%s from lister: %v", ns, restoreName, err))
-			}
 			return updateErr
 		}
 		return nil

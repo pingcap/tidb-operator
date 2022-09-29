@@ -15,11 +15,8 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
-
-	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -30,6 +27,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/klog/v2"
 )
 
 // BackupUpdateStatus represents the status of a backup to be updated.
@@ -91,6 +89,14 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 	backupName := backup.GetName()
 	// try best effort to guarantee backup is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+		// Always get the latest backup before update.
+		if updated, err := u.backupLister.Backups(ns).Get(backupName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			backup = updated.DeepCopy()
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
+			return err
+		}
 		isUpdate := false
 		// log backup needs update both subcommand status and whole backup status.
 		if backup.Spec.Mode == v1alpha1.BackupModeLog {
@@ -101,20 +107,10 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		if isUpdate {
 			_, updateErr := u.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 			if updateErr == nil {
-				backupBytes, err := json.Marshal(backup)
-				if err != nil {
-					panic(err)
-				}
-				klog.Infof("Backup: [%s/%s] updated successfully, content: %s", ns, backupName, string(backupBytes))
+				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
 				return nil
 			}
 			klog.Errorf("Failed to update backup [%s/%s], error: %v", ns, backupName, updateErr)
-			if updated, err := u.backupLister.Backups(ns).Get(backupName); err == nil {
-				// make a copy so we don't mutate the shared cache
-				backup = updated.DeepCopy()
-			} else {
-				utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
-			}
 			return updateErr
 		}
 		return nil
