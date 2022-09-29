@@ -927,7 +927,7 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 			if err != nil {
 				return fmt.Errorf("unexpected pod name %q: %v", pod.Name, err)
 			}
-			if strings.EqualFold(PdName(tc.Name, ordinal, tc.Namespace, tc.Spec.ClusterDomain), pdName) {
+			if strings.EqualFold(PdName(tc.Name, ordinal, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s), pdName) {
 				joined = true
 				break
 			}

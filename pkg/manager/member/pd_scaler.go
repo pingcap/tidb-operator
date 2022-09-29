@@ -17,13 +17,14 @@ import (
 	"fmt"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/util"
 )
 
 // TODO add e2e test specs
@@ -84,7 +85,7 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 	tcName := tc.GetName()
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
-	memberName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
+	memberName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)
 	pdPodName := PdPodName(tcName, ordinal)
 
 	if !tc.Status.PD.Synced {
@@ -113,7 +114,7 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 			if ordinal > minOrdinal {
 				targetOrdinal = minOrdinal
 			}
-			targetPdName := PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
+			targetPdName := PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)
 			if _, exist := tc.Status.PD.Members[targetPdName]; exist {
 				err = pdClient.TransferPDLeader(targetPdName)
 			} else {
