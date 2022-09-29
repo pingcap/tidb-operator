@@ -5,7 +5,7 @@ metadata:
   namespace: default
 spec:
   backupType: full
-  backupMode: volumeSnapshot
+  backupMode: volume-snapshot
   # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
   # from:
   #   host: ${tidb-host}

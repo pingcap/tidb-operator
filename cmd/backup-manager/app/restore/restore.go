@@ -40,7 +40,7 @@ import (
 
 type Options struct {
 	backupUtil.GenericOptions
-	// Prepare to restore data. It's used in volumeSnapshot mode.
+	// Prepare to restore data. It's used in volume-snapshot mode.
 	Prepare bool
 }
 
@@ -83,7 +83,7 @@ func (ro *Options) restoreData(
 	progressFile := "progress.txt"
 	useProgressFile := false
 
-	// gen args PiTR and volumeSnapshot.
+	// gen args PiTR and volume-snapshot.
 	switch ro.Mode {
 	case string(v1alpha1.RestoreModePiTR):
 		// init pitr restore args
@@ -293,7 +293,6 @@ func (ro *Options) updateResolvedTSForCSB(
 			klog.Errorf("update restore %s resolved ts error %v", ro, err)
 		}
 	}
-	return
 }
 
 func (ro *Options) updateProgressFromFile(

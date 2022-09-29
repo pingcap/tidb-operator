@@ -57,6 +57,7 @@ type Snapshotter interface {
 }
 
 type BaseSnapshotter struct {
+	//nolint:structcheck // false positive
 	volRegexp *regexp.Regexp
 	deps      *controller.Dependencies
 	config    map[string]string

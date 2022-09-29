@@ -161,7 +161,7 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		progresses, updated := updateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
 		if updated {
 			status.Progresses = progresses
-			updated = true
+			isUpdate = true
 		}
 	}
 	return isUpdate
