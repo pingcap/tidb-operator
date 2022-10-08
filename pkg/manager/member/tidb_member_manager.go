@@ -171,17 +171,8 @@ func (m *tidbMemberManager) syncRecoveryForTidbCluster(tc *v1alpha1.TidbCluster)
 	}
 
 	anns := tc.GetAnnotations()
-	if rMark, ok := anns[label.AnnTiKVVolumesReadyKey]; ok {
-		strs := strings.SplitN(rMark, "/", 2)
-		rNs := strs[0]
-		rName := strs[1]
-		r, err := m.deps.RestoreLister.Restores(rNs).Get(rName)
-		if err != nil {
-			return err
-		}
-		_ = r
-		// TODO(gozssky): notify restore manager to continue restore data.
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV restore data completed", ns, tcName)
+	if _, ok := anns[label.AnnTiKVVolumesReadyKey]; ok {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV restore volume completed", ns, tcName)
 	}
 
 	return nil

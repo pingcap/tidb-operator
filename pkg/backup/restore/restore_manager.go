@@ -100,7 +100,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return controller.IgnoreErrorf("invalid restore spec %s/%s", ns, name)
 	}
 
-	if restore.Spec.BR != nil {
+	if restore.Spec.BR != nil && restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot {
 		// restore based snapshot for cloud provider
 		reason, err := rm.tryRestoreIfCanSnapshot(restore, tc)
 		if err != nil {
@@ -115,6 +115,10 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreDataComplete(restore) && !tc.AllTiKVsAreAvailable() {
 			klog.Infof("restore %s/%s volume has completed, but not all TiKVs are available in tidbcluster %s/%s, will requeue", ns, name, tc.Namespace, tc.Name)
 			return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
+		}
+		if v1alpha1.IsRestoreDataComplete(restore) && !tc.PDAllMembersReady() {
+			klog.Infof("restore %s/%s data has completed, but not all PD members are ready in tidbcluster %s/%s, will requeue", ns, name, tc.Namespace, tc.Name)
+			return controller.RequeueErrorf("restore %s/%s: waiting for all PD members are ready in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 		}
 	}
 
@@ -184,36 +188,11 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 }
 
 func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
-	switch {
-	case v1alpha1.IsRestoreVolumeComplete(r) && !v1alpha1.IsRestoreDataComplete(r):
-		klog.Infof("restore-manager prepares to deal with the phase VolumeComplete")
-
-		// TiKV volumes are ready, we can skip prepare restore metadata.
-		if _, ok := tc.Annotations[label.AnnTiKVVolumesReadyKey]; ok {
-			return "", nil
-		}
-
-		s, reason, err := snapshotter.NewSnapshotterForRestore(r.Spec.Mode, rm.deps)
-		if err != nil {
-			return reason, err
-		}
-		// setRestoreVolumeID for all PVs, and reset PVC/PVs,
-		// then commit all PVC/PVs for TiKV restore volumes
-		if reason, err := s.PrepareRestoreMetadata(r); err != nil {
-			return reason, err
-		}
-
-		restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
-		if len(tc.GetAnnotations()) == 0 {
-			tc.Annotations = make(map[string]string)
-		}
-		tc.Annotations[label.AnnTiKVVolumesReadyKey] = restoreMark
-		if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
-			return "AddTCAnnWaitTiKVFailed", err
-		}
+	if v1alpha1.IsRestoreComplete(r) {
 		return "", nil
+	}
 
-	case v1alpha1.IsRestoreDataComplete(r):
+	if v1alpha1.IsRestoreDataComplete(r) {
 		klog.Infof("restore-manager prepares to deal with the phase DataComplete")
 
 		tc.Spec.RecoveryMode = false
@@ -250,9 +229,35 @@ func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alp
 			return "UpdateRestoreCompleteFailed", err
 		}
 		return "", nil
+	}
 
-	default:
-		// do nothing, still continue with previous code logic
+	if v1alpha1.IsRestoreVolumeComplete(r) {
+		klog.Infof("restore-manager prepares to deal with the phase VolumeComplete")
+
+		// TiKV volumes are ready, we can skip prepare restore metadata.
+		if _, ok := tc.Annotations[label.AnnTiKVVolumesReadyKey]; ok {
+			return "", nil
+		}
+
+		s, reason, err := snapshotter.NewSnapshotterForRestore(r.Spec.Mode, rm.deps)
+		if err != nil {
+			return reason, err
+		}
+		// setRestoreVolumeID for all PVs, and reset PVC/PVs,
+		// then commit all PVC/PVs for TiKV restore volumes
+		if reason, err := s.PrepareRestoreMetadata(r); err != nil {
+			return reason, err
+		}
+
+		restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
+		if len(tc.GetAnnotations()) == 0 {
+			tc.Annotations = make(map[string]string)
+		}
+		tc.Annotations[label.AnnTiKVVolumesReadyKey] = restoreMark
+		if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
+			return "AddTCAnnWaitTiKVFailed", err
+		}
+		return "", nil
 	}
 
 	return "", nil
