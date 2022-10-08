@@ -466,7 +466,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	case v1alpha1.RestoreModePiTR:
 		args = append(args, fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
 	case v1alpha1.RestoreModeVolumeSnapshot:
-		if !v1alpha1.IsRestoreComplete(restore) {
+		if !v1alpha1.IsRestoreVolumeComplete(restore) {
 			args = append(args, "--prepare")
 		}
 	}
