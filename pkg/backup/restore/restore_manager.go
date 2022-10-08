@@ -179,10 +179,18 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return errMsg
 	}
 
-	return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-		Type:   v1alpha1.RestoreScheduled,
-		Status: corev1.ConditionTrue,
-	}, nil)
+	// Currently, the restore phase reuses the condition type and is updated when the condition is changed.
+	// However, conditions are only used to describe the detailed status of the restore job. It shouldn't
+	// be used as a state machine. Some restore may create multiple jobs, and the phase will be changed to
+	// running when the first job is running. To avoid the phase going back from running to scheduled, we
+	// don't update the condition when the scheduled condition has already been set to true.
+	if !v1alpha1.IsRestoreScheduled(restore) {
+		return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreScheduled,
+			Status: corev1.ConditionTrue,
+		}, nil)
+	}
+	return nil
 }
 
 func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
@@ -458,7 +466,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	case v1alpha1.RestoreModePiTR:
 		args = append(args, fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
 	case v1alpha1.RestoreModeVolumeSnapshot:
-		if restore.Status.Phase != v1alpha1.RestoreVolumeComplete {
+		if !v1alpha1.IsRestoreComplete(restore) {
 			args = append(args, "--prepare")
 		}
 	}
