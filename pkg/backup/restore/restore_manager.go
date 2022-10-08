@@ -112,13 +112,11 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}, nil)
 			return err
 		}
-		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreDataComplete(restore) && !tc.AllTiKVsAreAvailable() {
-			klog.Infof("restore %s/%s volume has completed, but not all TiKVs are available in tidbcluster %s/%s, will requeue", ns, name, tc.Namespace, tc.Name)
-			return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
-		}
-		if v1alpha1.IsRestoreDataComplete(restore) && !tc.PDAllMembersReady() {
-			klog.Infof("restore %s/%s data has completed, but not all PD members are ready in tidbcluster %s/%s, will requeue", ns, name, tc.Namespace, tc.Name)
+		if !tc.PDAllMembersReady() {
 			return controller.RequeueErrorf("restore %s/%s: waiting for all PD members are ready in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
+		}
+		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreDataComplete(restore) && !tc.AllTiKVsAreAvailable() {
+			return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 		}
 	}
 
