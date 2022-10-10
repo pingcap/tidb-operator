@@ -87,15 +87,6 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	// Leave unprocessed cleaner
-	// TODO: GC clean volume snapshot later
-	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:   v1alpha1.BackupClean,
-			Status: corev1.ConditionTrue,
-		}, nil)
-	}
-
 	// no found the clean job, we start to create the clean job.
 	if backup.Status.BackupPath == "" {
 		// the backup path is empty, so there is no need to clean up backup data
