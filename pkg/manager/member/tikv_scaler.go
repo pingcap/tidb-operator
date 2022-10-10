@@ -305,7 +305,7 @@ func (s *tikvScaler) preCheckUpStores(tc *v1alpha1.TidbCluster, podName string, 
 		return false
 	} else if upNumber == maxReplicas {
 		if storeState == v1alpha1.TiKVStateUp {
-			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too", tc.GetNamespace(), tc.GetName(), maxReplicas, podName)
+			errMsg := fmt.Sprintf("can't scale in TiKV of TidbCluster [%s/%s], cause the number of up stores is equal to MaxReplicas in PD configuration(%d), and the store in Pod %s which is going to be deleted is up too. MaxReplicas can be update online using pd-ctl or SQL statements ,as https://docs.pingcap.com/tidb/stable/dynamic-config", tc.GetNamespace(), tc.GetName(), maxReplicas, podName)
 			klog.Error(errMsg)
 			s.deps.Recorder.Event(tc, v1.EventTypeWarning, "FailedScaleIn", errMsg)
 			return false
