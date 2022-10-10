@@ -71,11 +71,16 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 
 	var errs []error
 	var err error
-	if backup.Spec.BR != nil {
-		err = bm.cleanBRRemoteBackupData(ctx, backup)
+	// volume-snapshot backup requires to delete the snapshot firstly, then delete the backup meta file
+	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+		err = bm.cleanBackupMetaWithVolSnapshots(ctx, backup)
 	} else {
-		opts := util.GetOptions(backup.Spec.StorageProvider)
-		err = bm.cleanRemoteBackupData(ctx, backup.Status.BackupPath, opts)
+		if backup.Spec.BR != nil {
+			err = bm.cleanBRRemoteBackupData(ctx, backup)
+		} else {
+			opts := util.GetOptions(backup.Spec.StorageProvider)
+			err = bm.cleanRemoteBackupData(ctx, backup.Status.BackupPath, opts)
+		}
 	}
 
 	if err != nil {
