@@ -32672,6 +32672,8 @@ spec:
                     max-connections:
                       format: int64
                       type: integer
+                    proxy-protocol:
+                      type: string
                     tcp-keep-alive:
                       type: boolean
                   type: object
@@ -34020,6 +34022,8 @@ spec:
                     max-connections:
                       format: int64
                       type: integer
+                    proxy-protocol:
+                      type: string
                     tcp-keep-alive:
                       type: boolean
                   type: object

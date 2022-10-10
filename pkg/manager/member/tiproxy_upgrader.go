@@ -41,11 +41,11 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	if !tc.Status.TiProxy.Synced {
-		return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed, can not to be upgraded", ns, tcName)
+		return fmt.Errorf("tidbcluster: [%s/%s]'s tiproxy status sync failed, can not to be upgraded", ns, tcName)
 	}
 	if tc.Status.TiProxy.Phase == v1alpha1.ScalePhase {
-		klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, can not upgrade pd",
-			ns, tcName, tc.Status.PD.Phase)
+		klog.Infof("TidbCluster: [%s/%s]'s tiproxy status is %v, can not upgrade tiproxy",
+			ns, tcName, tc.Status.TiProxy.Phase)
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
@@ -75,15 +75,12 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tiproxy pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
-		if revision == tc.Status.PD.StatefulSet.UpdateRevision {
+		if revision == tc.Status.TiProxy.StatefulSet.UpdateRevision {
 			if !podutil.IsPodReady(pod) {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pd pod: [%s] is not ready", ns, tcName, podName)
-			}
-			if member, exist := tc.Status.PD.Members[PdName(tc.Name, i, tc.Namespace, tc.Spec.ClusterDomain)]; !exist || !member.Health {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not ready", ns, tcName, podName)
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tiproxy pod: [%s] is not ready", ns, tcName, podName)
 			}
 			continue
 		}

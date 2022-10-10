@@ -767,6 +767,7 @@ type TiProxySpec struct {
 	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 
 	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/tiproxy
 	// +optional
 	BaseImage string `json:"baseImage"`
 

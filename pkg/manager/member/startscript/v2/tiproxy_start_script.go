@@ -28,7 +28,7 @@ func RenderTiProxyStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &TiProxyStartScriptModel{}
 	return renderTemplateFunc(template.Must(template.New("tiproxy").Parse(componentCommonScript+`
 ARGS="--config=/etc/proxy/proxy.toml"
-echo "starting: weirproxy ${ARGS}"
-exec /bin/weirproxy ${ARGS}
+echo "starting: tiproxy ${ARGS}"
+exec /bin/tiproxy ${ARGS}
 `)), m)
 }

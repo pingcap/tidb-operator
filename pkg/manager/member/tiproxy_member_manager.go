@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pingcap/TiProxy/lib/cli"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -61,7 +60,6 @@ type tiproxyMemberManager struct {
 
 // NewTiProxyMemberManager returns a *tiproxyMemberManager
 func NewTiProxyMemberManager(deps *controller.Dependencies, scaler Scaler, upgrader Upgrader, spder suspender.Suspender) manager.Manager {
-	_ = cli.GetRootCmd()
 	m := &tiproxyMemberManager{
 		deps:      deps,
 		scaler:    scaler,
