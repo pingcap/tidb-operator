@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"time"
 
@@ -79,6 +80,9 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	if err := bo.copyRemoteBackupMetaToLocal(ctx, backup.Status.BackupPath, opts); err != nil {
 		klog.Errorf("rclone copy remote backupmeta to local failure.")
 	}
+	defer func() {
+		_ = os.Remove(metaFile)
+	}()
 
 	contents, err := ioutil.ReadFile(metaFile)
 	if err != nil {
@@ -101,6 +105,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	if err = bo.cleanRemoteBackupData(ctx, backup.Status.BackupPath, opts); err != nil {
 		return err
 	}
+
 	return nil
 }
 
