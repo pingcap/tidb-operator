@@ -18,17 +18,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog/v2"
-
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog/v2"
 )
 
 var (
@@ -58,22 +56,20 @@ func (bo *Options) String() string {
 
 // cleanBackupMetaWithVolSnapshots clean snapshot and the backup meta
 func (bo *Options) cleanBackupMetaWithVolSnapshots(ctx context.Context, backup *v1alpha1.Backup) error {
-	opt := backup.GetCleanOption()
-
 	backend, err := util.NewStorageBackend(backup.Spec.StorageProvider)
 	if err != nil {
 		return err
 	}
 	defer backend.Close()
 
-	err = bo.deleteSnapshotsAndBackupMeta(ctx, backup, opt)
+	err = bo.deleteSnapshotsAndBackupMeta(ctx, backup)
 	if err != nil {
 		klog.Errorf("For backup %s clean, failed to clean backup: %s", bo, err)
 	}
 	return err
 }
 
-func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1alpha1.Backup, opt v1alpha1.CleanOption) error {
+func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1alpha1.Backup) error {
 	//1. get backupmeta and fetch the snapshot information
 	//rclone copy remote:/bukect/backup/backupmeta /backupmeta
 	opts := util.GetOptions(backup.Spec.StorageProvider)
@@ -84,7 +80,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 		_ = os.Remove(metaFile)
 	}()
 
-	contents, err := ioutil.ReadFile(metaFile)
+	contents, err := os.ReadFile(metaFile)
 	if err != nil {
 		klog.Errorf("read metadata file %s failed, err: %s", metaFile, err)
 		return err
@@ -97,7 +93,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	}
 
 	//2. delete the snapshot
-	if err = bo.deleteVolumeSnapshots(ctx, metaInfo); err != nil {
+	if err = bo.deleteVolumeSnapshots(metaInfo); err != nil {
 		return err
 	}
 
@@ -109,7 +105,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	return nil
 }
 
-func (bo *Options) deleteVolumeSnapshots(ctx context.Context, meta *util.EBSBasedBRMeta) error {
+func (bo *Options) deleteVolumeSnapshots(meta *util.EBSBasedBRMeta) error {
 	newVolumeIDMap := make(map[string]string)
 	for i := range meta.TiKVComponent.Stores {
 		store := meta.TiKVComponent.Stores[i]
