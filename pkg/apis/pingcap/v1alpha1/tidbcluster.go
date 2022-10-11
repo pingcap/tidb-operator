@@ -815,18 +815,22 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 }
 
 func (tc *TidbCluster) AllTiKVsAreAvailable() bool {
-	for _, store := range tc.Status.TiKV.Stores {
-		if store.State != TiKVStateUp {
-			return false
-		}
-	}
-
 	if tc.Status.TiKV.StatefulSet == nil {
 		return false
 	}
 
 	if tc.Status.TiKV.StatefulSet.ReadyReplicas != tc.Status.TiKV.StatefulSet.Replicas {
 		return false
+	}
+
+	if len(tc.Status.TiKV.Stores) != int(tc.Status.TiKV.StatefulSet.Replicas) {
+		return false
+	}
+
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State != TiKVStateUp {
+			return false
+		}
 	}
 
 	return true

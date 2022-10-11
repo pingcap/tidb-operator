@@ -201,9 +201,6 @@ func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alp
 	if v1alpha1.IsRestoreDataComplete(r) {
 		klog.Infof("restore-manager prepares to deal with the phase DataComplete")
 
-		tc.Spec.RecoveryMode = false
-		delete(tc.Annotations, label.AnnTiKVVolumesReadyKey)
-
 		// When restore is based on volume snapshot, we need to restart all TiKV pods
 		// after restore data is complete.
 		sel, err := label.New().Instance(tc.Name).TiKV().Selector()
@@ -223,6 +220,8 @@ func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alp
 			}
 		}
 
+		tc.Spec.RecoveryMode = false
+		delete(tc.Annotations, label.AnnTiKVVolumesReadyKey)
 		if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
 			return "ClearTCRecoveryMarkFailed", err
 		}

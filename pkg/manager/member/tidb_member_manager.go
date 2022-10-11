@@ -165,17 +165,7 @@ func (m *tidbMemberManager) syncRecoveryForTidbCluster(tc *v1alpha1.TidbCluster)
 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-
-	if !tc.AllTiKVsAreAvailable() {
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for all TiKVs running", ns, tcName)
-	}
-
-	anns := tc.GetAnnotations()
-	if _, ok := anns[label.AnnTiKVVolumesReadyKey]; ok {
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV restore volume completed", ns, tcName)
-	}
-
-	return nil
+	return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV restore data completed", ns, tcName)
 }
 
 func (m *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error {
