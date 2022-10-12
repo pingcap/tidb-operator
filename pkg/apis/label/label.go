@@ -142,7 +142,7 @@ const (
 	TiFlashLabelVal string = "tiflash"
 	// TiCDCLabelVal is TiCDC label value
 	TiCDCLabelVal string = "ticdc"
-	// PDLabelVal is PD label value
+	// TiProxyLabelVal is TiProxy label value
 	TiProxyLabelVal string = "tiproxy"
 	// PumpLabelVal is Pump label value
 	PumpLabelVal string = "pump"
