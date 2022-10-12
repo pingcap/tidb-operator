@@ -248,7 +248,8 @@ func TestBRRestoreByEBS(t *testing.T) {
 			name: "restore-volume",
 			restore: &v1alpha1.Restore{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-1",
+					Name:      "test-1",
+					Namespace: "ns-1",
 				},
 				Spec: v1alpha1.RestoreSpec{
 					Type: v1alpha1.BackupTypeFull,
@@ -272,7 +273,8 @@ func TestBRRestoreByEBS(t *testing.T) {
 			name: "restore-volume-complete",
 			restore: &v1alpha1.Restore{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-2",
+					Name:      "test-2",
+					Namespace: "ns-2",
 				},
 				Spec: v1alpha1.RestoreSpec{
 					Type: v1alpha1.BackupTypeFull,
@@ -304,7 +306,8 @@ func TestBRRestoreByEBS(t *testing.T) {
 			name: "restore-data",
 			restore: &v1alpha1.Restore{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-3",
+					Name:      "test-3",
+					Namespace: "ns-3",
 				},
 				Spec: v1alpha1.RestoreSpec{
 					Type: v1alpha1.BackupTypeFull,
@@ -336,7 +339,8 @@ func TestBRRestoreByEBS(t *testing.T) {
 			name: "restore-data-complete",
 			restore: &v1alpha1.Restore{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-4",
+					Name:      "test-4",
+					Namespace: "ns-4",
 				},
 				Spec: v1alpha1.RestoreSpec{
 					Type: v1alpha1.BackupTypeFull,
@@ -373,6 +377,7 @@ func TestBRRestoreByEBS(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster)
+			helper.CreateRestore(tt.restore)
 			tt.restore.Annotations = map[string]string{
 				label.AnnBackupCloudSnapKey: testutils.ConstructRestoreMetaStr(),
 			}
