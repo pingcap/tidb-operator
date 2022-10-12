@@ -29,8 +29,8 @@ type EBSVolumeType string
 
 const (
 	GP3Volume EBSVolumeType = "gp3"
-	IO1Volume               = "io1"
-	IO2Volume               = "io2"
+	IO1Volume EBSVolumeType = "io1"
+	IO2Volume EBSVolumeType = "io2"
 )
 
 func (t EBSVolumeType) Valid() bool {
