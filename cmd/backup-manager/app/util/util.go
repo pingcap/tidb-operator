@@ -379,10 +379,7 @@ func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvb
 		return nil
 	}
 	isRetry := func(err error) bool {
-		if strings.Contains(err.Error(), "not exist") {
-			return false
-		}
-		return true
+		return !strings.Contains(err.Error(), "not exist")
 	}
 	err = retry.OnError(backoff, isRetry, readBackupMeta)
 	if err != nil {
