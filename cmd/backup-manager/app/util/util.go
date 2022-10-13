@@ -357,7 +357,7 @@ func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvb
 	defer s.Close()
 
 	var metaData []byte
-	// use exponential backoff, every retry duration is duration * factor ^ used_step
+	// use exponential backoff, every retry duration is duration * factor ^ (used_step - 1)
 	backoff := wait.Backoff{
 		Duration: time.Second,
 		Steps:    6,
