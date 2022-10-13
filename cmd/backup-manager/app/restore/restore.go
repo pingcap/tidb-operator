@@ -310,6 +310,9 @@ func (ro *Options) updateProgressFromFile(
 		case <-ticker.C:
 			data, err := os.ReadFile(progressFile)
 			if err != nil {
+				if !os.IsNotExist(err) {
+					klog.Warningf("Failed to read progress file %s: %v", progressFile, err)
+				}
 				continue
 			}
 			progressStr := strings.TrimSpace(string(data))

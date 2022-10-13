@@ -99,7 +99,7 @@ func (c *Controller) processNextWorkItem() bool {
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			klog.V(4).Infof("Restore: %v, ignore err: %v", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("restore: %v, sync failed, err: %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("Restore: %v, sync failed, err: %v, requeuing", key.(string), err))
 			c.queue.AddRateLimited(key)
 		}
 	} else {

@@ -75,6 +75,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	opts := util.GetOptions(backup.Spec.StorageProvider)
 	if err := bo.copyRemoteBackupMetaToLocal(ctx, backup.Status.BackupPath, opts); err != nil {
 		klog.Errorf("rclone copy remote backupmeta to local failure.")
+		return err
 	}
 	defer func() {
 		_ = os.Remove(metaFile)
