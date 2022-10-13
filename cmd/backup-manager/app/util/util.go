@@ -17,6 +17,8 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	"os"
 	"os/signal"
 	"path"
@@ -353,18 +355,40 @@ func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvb
 		return nil, err
 	}
 	defer s.Close()
-	exist, err := s.Exists(ctx, constants.MetaFile)
-	if err != nil {
-		return nil, err
-	}
-	if !exist {
-		return nil, fmt.Errorf("%s not exist", constants.MetaFile)
 
+	var metaData []byte
+	// use exponential backoff, every retry duration is duration * factor ^ used_step
+	backoff := wait.Backoff{
+		Duration: time.Second,
+		Steps:    6,
+		Factor:   2.0,
+		Cap:      time.Minute,
 	}
-	metaData, err := s.ReadAll(ctx, constants.MetaFile)
+	readBackupMeta := func() error {
+		exist, err := s.Exists(ctx, constants.MetaFile)
+		if err != nil {
+			return err
+		}
+		if !exist {
+			return fmt.Errorf("%s not exist", constants.MetaFile)
+		}
+		metaData, err = s.ReadAll(ctx, constants.MetaFile)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	isRetry := func(err error) bool {
+		if strings.Contains(err.Error(), "not exist") {
+			return false
+		}
+		return true
+	}
+	err = retry.OnError(backoff, isRetry, readBackupMeta)
 	if err != nil {
 		return nil, err
 	}
+
 	backupMeta := &kvbackup.BackupMeta{}
 	err = proto.Unmarshal(metaData, backupMeta)
 	if err != nil {
