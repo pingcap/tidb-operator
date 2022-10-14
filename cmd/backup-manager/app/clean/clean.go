@@ -239,7 +239,7 @@ func (bo *Options) cleanRemoteBackupData(ctx context.Context, bucket string, opt
 	return nil
 }
 
-// copy remote backupmeto to local
+// copy remote backupmeta to local
 func (bo *Options) copyRemoteBackupMetaToLocal(ctx context.Context, bucket string, opts []string) error {
 	destBucket := util.NormalizeBucketURI(bucket)
 	args := util.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copy", fmt.Sprintf("%s/backupmeta", destBucket), "/", true)

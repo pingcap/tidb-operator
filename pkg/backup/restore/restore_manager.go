@@ -180,8 +180,10 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	// Currently, the restore phase reuses the condition type and is updated when the condition is changed.
-	// However, conditions are only used to describe the detailed status of the restore job. It shouldn't
-	// be used as a state machine. Some restore may create multiple jobs, and the phase will be changed to
+	// However, conditions are only used to describe the detailed status of the restore job. It is not suitable
+	// for describing a state machine.
+	//
+	// Some restore such as volume-snapshot will create multiple jobs, and the phase will be changed to
 	// running when the first job is running. To avoid the phase going back from running to scheduled, we
 	// don't update the condition when the scheduled condition has already been set to true.
 	if !v1alpha1.IsRestoreScheduled(restore) {
