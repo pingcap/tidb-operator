@@ -110,7 +110,6 @@ func (c *Controller) processNextWorkItem() bool {
 
 // sync syncs the given restore.
 func (c *Controller) sync(key string) error {
-	klog.Infof("restore-manager sync-key %s", key)
 	startTime := time.Now()
 	defer func() {
 		klog.V(4).Infof("Finished syncing Restore %q (%v)", key, time.Since(startTime))
