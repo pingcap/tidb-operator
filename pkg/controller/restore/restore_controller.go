@@ -120,7 +120,6 @@ func (c *Controller) sync(key string) error {
 		return err
 	}
 	restore, err := c.deps.RestoreLister.Restores(ns).Get(name)
-	klog.Infof("restore-manager sync %v", restore)
 	if errors.IsNotFound(err) {
 		klog.Infof("Restore has been deleted %v", key)
 		return nil
