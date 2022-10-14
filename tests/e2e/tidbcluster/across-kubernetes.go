@@ -192,7 +192,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				tc2.Spec.Pump.Replicas = 0
 				return nil
 			}), "failed to scale in cluster 2")
-			err = wait.PollImmediate(10*time.Second, 6*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(10*time.Second, 10*time.Minute, func() (bool, error) {
 				if err := CheckPeerMembersAndClusterStatus(genericCli, tc1, tc2); err != nil {
 					log.Logf("wait for tc2 member deleted, status: %s", err)
 					return false, nil

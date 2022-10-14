@@ -134,10 +134,11 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		return err
 	}
 
-	// Wait for PD & TiKV & TiFlash upgrading/scaling done
-	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase ||
-		tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.PD.Phase == v1alpha1.ScalePhase ||
-		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.ScalePhase {
+	// Wait for PD & TiKV upgrading done
+	// NO check for v1alpha1.ScalePhase now, as it shouldn't block when some other components scaling to 0 and deleting Pump
+	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		klog.Infof("TidbCluster: [%s/%s]'s tiflash status is %s, "+
 			"pd status is %s, tikv status is %s, can not upgrade pump",
 			tc.Namespace, tc.Name,
