@@ -413,7 +413,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 		klog.Errorf("Get backup full path of cluster %s failed, err: %s", bm, err)
 		return nil, "GetBackupRemotePathFailed", err
 	}
-	klog.Infof("Get backup full path %s of cluster %s failed", backupFullPath, bm)
+	klog.Infof("Get backup full path %s of cluster %s success", backupFullPath, bm)
 
 	updatePathStatus := &controller.BackupUpdateStatus{
 		BackupPath: &backupFullPath,
