@@ -28,6 +28,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/gogo/protobuf/proto"
+	"github.com/pingcap/errors"
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -383,13 +384,13 @@ func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvb
 	}
 	err = retry.OnError(backoff, isRetry, readBackupMeta)
 	if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, "read backup meta from bucket %s and prefix %s", s.GetBucket(), s.GetPrefix())
 	}
 
 	backupMeta := &kvbackup.BackupMeta{}
 	err = proto.Unmarshal(metaData, backupMeta)
 	if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, "unmarshal backup meta from bucket %s and prefix %s", s.GetBucket(), s.GetPrefix())
 	}
 	return backupMeta, nil
 }
