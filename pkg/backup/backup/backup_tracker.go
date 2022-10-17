@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
 
@@ -66,13 +67,26 @@ func NewBackupTracker(deps *controller.Dependencies, statusUpdater controller.Ba
 
 // initTrackLogBackupsProgress lists all log backups and track their progress.
 func (bt *backupTracker) initTrackLogBackupsProgress() {
-	backups, err := bt.deps.Clientset.PingcapV1alpha1().Backups("").List(context.TODO(), metav1.ListOptions{})
+	var (
+		backups *v1alpha1.BackupList
+		err     error
+	)
+	err = retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+		backups, err = bt.deps.Clientset.PingcapV1alpha1().Backups("").List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			klog.Warningf("list backups error %v, will retry", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		klog.Warningf("list backups error %v, skip track all log backups progress when init, will track when log backup start", err)
+		klog.Errorf("list backups error %v after retry, skip track all log backups progress when init, will track when log backup start", err)
 		return
 	}
-	klog.Infof("list backups size %d", len(backups.Items))
-	for _, backup := range backups.Items {
+
+	klog.Infof("list backups success, size %d", len(backups.Items))
+	for i := range backups.Items {
+		backup := backups.Items[i]
 		if backup.Spec.Mode == v1alpha1.BackupModeLog {
 			err = bt.StartTrackLogBackupProgress(&backup)
 			if err != nil {
@@ -117,15 +131,28 @@ func (bt *backupTracker) removeLogBackup(ns, name string) {
 
 // getLogBackupTC gets log backup's tidb cluster info.
 func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.TidbCluster, error) {
-	ns := backup.Namespace
-	name := backup.Name
-	clusterNamespace := backup.Spec.BR.ClusterNamespace
+	var (
+		ns               = backup.Namespace
+		name             = backup.Name
+		clusterNamespace = backup.Spec.BR.ClusterNamespace
+		tc               *v1alpha1.TidbCluster
+		err              error
+	)
 	if backup.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = ns
 	}
 
-	tc, err := bt.deps.Clientset.PingcapV1alpha1().TidbClusters(clusterNamespace).Get(context.TODO(), backup.Spec.BR.Cluster, metav1.GetOptions{})
+	err = retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+		tc, err = bt.deps.Clientset.PingcapV1alpha1().TidbClusters(clusterNamespace).Get(context.TODO(), backup.Spec.BR.Cluster, metav1.GetOptions{})
+		if err != nil {
+			klog.Warningf("get log backup %s/%s tidbcluster %s/%s failed and will retry, err is %v", ns, name, clusterNamespace, backup.Spec.BR.Cluster, err)
+			return err
+		}
+		return nil
+	})
+
 	if err != nil {
+		klog.Errorf("get log backup %s/%s tidbcluster %s/%s failed and will retry, err is %v", ns, name, clusterNamespace, backup.Spec.BR.Cluster, err)
 		return nil, fmt.Errorf(fmt.Sprintf("get log backup %s/%s tidbcluster %s/%s failed", ns, name, clusterNamespace, backup.Spec.BR.Cluster), err)
 	}
 	return tc, nil
