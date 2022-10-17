@@ -22004,7 +22004,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>TLSClientSecretName is the name of secret which stores tidb server client certificate
-which used by Dashboard.</p>
+used by TiProxy to check health status.</p>
 </td>
 </tr>
 <tr>

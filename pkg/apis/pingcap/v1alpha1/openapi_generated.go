@@ -12117,7 +12117,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 					},
 					"tlsClientSecretName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TLSClientSecretName is the name of secret which stores tidb server client certificate which used by Dashboard.",
+							Description: "TLSClientSecretName is the name of secret which stores tidb server client certificate used by TiProxy to check health status.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
