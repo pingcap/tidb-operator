@@ -94,7 +94,7 @@ func (m *tiproxyMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	// If PD is available, wait it
+	// If PD is not available, wait it
 	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiProxy is waiting for PD cluster running", ns, tcName)
 	}
