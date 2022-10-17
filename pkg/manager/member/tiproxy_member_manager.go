@@ -28,7 +28,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	apps "k8s.io/api/apps/v1"
@@ -139,8 +138,8 @@ proxy:
   tcp-keep-alive: true
   max-connections: 1000
   pd-addrs: {{ .PDAddr }}
+	# proxy-protocol: "v2"
 metrics:
-  prom-cluster: "default"
 api:
   addr: "0.0.0.0:3080"
   enable-basic-auth: false
@@ -288,7 +287,7 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 	}
 
 	tc.Status.TiProxy.StatefulSet = &sts.Status
-	upgrading, err := m.statefulSetIsUpgradingFn(m.deps.PodLister, m.deps.PDControl, sts, tc)
+	upgrading, err := m.statefulSetIsUpgradingFn(m.deps.PodLister, sts, tc)
 	if err != nil {
 		tc.Status.TiProxy.Synced = false
 		return err
@@ -610,7 +609,7 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 	return tiproxySts, nil
 }
 
-func (m *tiproxyMemberManager) statefulSetIsUpgradingFn(podLister corelisters.PodLister, pdControl pdapi.PDControlInterface, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+func (m *tiproxyMemberManager) statefulSetIsUpgradingFn(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
 	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}

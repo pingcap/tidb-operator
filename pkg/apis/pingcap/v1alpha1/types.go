@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	tconfig "github.com/pingcap/TiProxy/lib/config"
+	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
@@ -762,7 +762,7 @@ type TiProxySpec struct {
 	Replicas int32 `json:"replicas"`
 
 	// TLSClientSecretName is the name of secret which stores tidb server client certificate
-	// which used by Dashboard.
+	// used by TiProxy to check health status.
 	// +optional
 	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 
@@ -773,7 +773,7 @@ type TiProxySpec struct {
 
 	// Proxy is the proxy part of config
 	// +optional
-	Proxy *tconfig.ProxyServerOnline `json:"proxy,omitempty"`
+	Proxy *tiproxyConfig.ProxyServerOnline `json:"proxy,omitempty"`
 
 	// StorageVolumes configure additional storage for TiProxy pods.
 	// +optional
@@ -1419,7 +1419,7 @@ type TiProxyStatus struct {
 	Synced      bool                                       `json:"synced,omitempty"`
 	Phase       MemberPhase                                `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
-	Proxy       tconfig.ProxyServerOnline                  `json:"proxy,omitempty"`
+	Proxy       tiproxyConfig.ProxyServerOnline            `json:"proxy,omitempty"`
 	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
 	// +optional
