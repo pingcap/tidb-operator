@@ -267,7 +267,17 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 
 		if logBackupSubcommand == v1alpha1.LogStartCommand {
 			// log start need to start tracker
-			bm.backupTracker.StartTrackLogBackupProgress(backup)
+			err = bm.backupTracker.StartTrackLogBackupProgress(backup)
+			if err != nil {
+				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+					Command: logBackupSubcommand,
+					Type:    v1alpha1.BackupRetryFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  "start log backup progress tracker error",
+					Message: err.Error(),
+				}, nil)
+				return nil, nil, "", err
+			}
 		} else if logBackupSubcommand == v1alpha1.LogTruncateCommand {
 			updateStatus = &controller.BackupUpdateStatus{
 				LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
@@ -479,7 +489,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
-		fmt.Sprintf("--mode=%s", backup.Spec.Mode),
 	}
 	tikvImage := tc.TiKVImage()
 	_, tikvVersion := backuputil.ParseImage(tikvImage)
@@ -493,6 +502,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	}
 
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeLog))
 		subcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		args = append(args, fmt.Sprintf("--subcommand=%s", subcommand))
 		switch subcommand {
@@ -505,6 +515,8 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 				args = append(args, fmt.Sprintf("--truncate-until=%s", backup.Spec.LogTruncateUntil))
 			}
 		}
+	} else {
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeSnapshot))
 	}
 
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
