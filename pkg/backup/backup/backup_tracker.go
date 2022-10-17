@@ -14,6 +14,7 @@
 package backup
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"path"
@@ -25,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -53,10 +55,30 @@ type trackDepends struct {
 
 // NewBackupTracker returns a BackupTracker
 func NewBackupTracker(deps *controller.Dependencies, statusUpdater controller.BackupConditionUpdaterInterface) BackupTracker {
-	return &backupTracker{
+	tracker := &backupTracker{
 		deps:          deps,
 		statusUpdater: statusUpdater,
 		logBackups:    make(map[string]*trackDepends),
+	}
+	go tracker.initTrackLogBackupsProgress()
+	return tracker
+}
+
+// initTrackLogBackupsProgress lists all log backups and track their progress.
+func (bt *backupTracker) initTrackLogBackupsProgress() {
+	backups, err := bt.deps.Clientset.PingcapV1alpha1().Backups("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Warningf("list backups error %v, skip track all log backups progress when init, will track when log backup start", err)
+		return
+	}
+	klog.Infof("list backups size %d", len(backups.Items))
+	for _, backup := range backups.Items {
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+			err = bt.StartTrackLogBackupProgress(&backup)
+			if err != nil {
+				klog.Warningf("start track log backup %s/%s error %v, will skip and track when log backup start", backup.Namespace, backup.Name, err)
+			}
+		}
 	}
 }
 
@@ -101,7 +123,8 @@ func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.Tidb
 	if backup.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = ns
 	}
-	tc, err := bt.deps.TiDBClusterLister.TidbClusters(clusterNamespace).Get(backup.Spec.BR.Cluster)
+
+	tc, err := bt.deps.Clientset.PingcapV1alpha1().TidbClusters(clusterNamespace).Get(context.TODO(), backup.Spec.BR.Cluster, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf(fmt.Sprintf("get log backup %s/%s tidbcluster %s/%s failed", ns, name, clusterNamespace, backup.Spec.BR.Cluster), err)
 	}
@@ -120,12 +143,12 @@ func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 		}
 		backup, err := bt.deps.BackupLister.Backups(ns).Get(name)
 		if errors.IsNotFound(err) {
-			klog.Infof("log backup %s/%s has been deleted %v, will remove %s from tracker", ns, name, logkey, err)
+			klog.Infof("log backup %s/%s has been deleted, will remove %s from tracker", ns, name, logkey)
 			bt.removeLogBackup(ns, name)
 			return
 		}
 		if err != nil {
-			klog.Infof("get log backup %s/%s error, will skip to the next time refresh %v", ns, name, err)
+			klog.Infof("get log backup %s/%s error %v, will skip to the next time", ns, name, err)
 			continue
 		}
 		if backup.DeletionTimestamp != nil || backup.Status.Phase == v1alpha1.BackupComplete {
