@@ -292,7 +292,9 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 		tc.Status.TiProxy.Synced = false
 		return err
 	}
-	if upgrading {
+	if tc.Spec.TiProxy.Replicas != *sts.Spec.Replicas {
+		tc.Status.TiProxy.Phase = v1alpha1.ScalePhase
+	} else if upgrading {
 		tc.Status.TiProxy.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.TiProxy.Phase = v1alpha1.NormalPhase
