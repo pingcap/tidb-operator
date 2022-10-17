@@ -727,7 +727,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				framework.ExpectNoError(err, "failed to start script version to v2")
 
 				ginkgo.By(fmt.Sprintf("Wait for phase is %q", v1alpha1.UpgradePhase))
-				utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
+				utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*3)
 
 				ginkgo.By("Wait for cluster is ready")
 				err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
