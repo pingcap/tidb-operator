@@ -220,7 +220,7 @@ pd:
   priorityClassName: ""
 
 tiproxy:
-  replicas: 1
+  replicas: 0
   storageClassName: local-storage
   baseImage: pingcap/tiproxy
   version: v6.1.0
