@@ -501,7 +501,8 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
 
-	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+	switch backup.Spec.Mode {
+	case v1alpha1.BackupModeLog:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeLog))
 		subcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		args = append(args, fmt.Sprintf("--subcommand=%s", subcommand))
@@ -515,7 +516,9 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 				args = append(args, fmt.Sprintf("--truncate-until=%s", backup.Spec.LogTruncateUntil))
 			}
 		}
-	} else {
+	case v1alpha1.BackupModeVolumeSnapshot:
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeVolumeSnapshot))
+	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeSnapshot))
 	}
 
