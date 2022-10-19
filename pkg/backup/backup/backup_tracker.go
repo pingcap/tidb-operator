@@ -42,6 +42,11 @@ type BackupTracker interface {
 	StartTrackLogBackupProgress(backup *v1alpha1.Backup) error
 }
 
+// On the whole，the main processes of log backup track:
+// a. tracker init will try to find all log backup and add them to the map which key is namespack and cluster.
+// b. log backup start will add it to the map
+// c. if add log backup to the map will start a go routine which has a loop to track log backup's checkpoint ts and will stop when log backup complete.
+// d. by the way, add or delete the map has a mutex.
 type backupTracker struct {
 	deps          *controller.Dependencies
 	statusUpdater controller.BackupConditionUpdaterInterface
