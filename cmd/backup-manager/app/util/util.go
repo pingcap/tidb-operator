@@ -28,11 +28,14 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/gogo/protobuf/proto"
+	"github.com/pingcap/errors"
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
@@ -353,22 +356,41 @@ func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvb
 		return nil, err
 	}
 	defer s.Close()
-	exist, err := s.Exists(ctx, constants.MetaFile)
-	if err != nil {
-		return nil, err
-	}
-	if !exist {
-		return nil, fmt.Errorf("%s not exist", constants.MetaFile)
 
+	var metaData []byte
+	// use exponential backoff, every retry duration is duration * factor ^ (used_step - 1)
+	backoff := wait.Backoff{
+		Duration: time.Second,
+		Steps:    6,
+		Factor:   2.0,
+		Cap:      time.Minute,
 	}
-	metaData, err := s.ReadAll(ctx, constants.MetaFile)
+	readBackupMeta := func() error {
+		exist, err := s.Exists(ctx, constants.MetaFile)
+		if err != nil {
+			return err
+		}
+		if !exist {
+			return fmt.Errorf("%s not exist", constants.MetaFile)
+		}
+		metaData, err = s.ReadAll(ctx, constants.MetaFile)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	isRetry := func(err error) bool {
+		return !strings.Contains(err.Error(), "not exist")
+	}
+	err = retry.OnError(backoff, isRetry, readBackupMeta)
 	if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, "read backup meta from bucket %s and prefix %s", s.GetBucket(), s.GetPrefix())
 	}
+
 	backupMeta := &kvbackup.BackupMeta{}
 	err = proto.Unmarshal(metaData, backupMeta)
 	if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, "unmarshal backup meta from bucket %s and prefix %s", s.GetBucket(), s.GetPrefix())
 	}
 	return backupMeta, nil
 }
