@@ -157,8 +157,7 @@ func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.Tidb
 	})
 
 	if err != nil {
-		klog.Errorf("get log backup %s/%s tidbcluster %s/%s failed and will retry, err is %v", ns, name, clusterNamespace, backup.Spec.BR.Cluster, err)
-		return nil, fmt.Errorf(fmt.Sprintf("get log backup %s/%s tidbcluster %s/%s failed", ns, name, clusterNamespace, backup.Spec.BR.Cluster), err)
+		return nil, fmt.Errorf("get log backup %s/%s tidbcluster %s/%s failed, err is %v", ns, name, clusterNamespace, backup.Spec.BR.Cluster, err)
 	}
 	return tc, nil
 }
