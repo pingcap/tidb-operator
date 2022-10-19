@@ -192,7 +192,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				tc2.Spec.Pump.Replicas = 0
 				return nil
 			}), "failed to scale in cluster 2")
-			err = wait.PollImmediate(10*time.Second, 6*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(10*time.Second, 10*time.Minute, func() (bool, error) {
 				if err := CheckPeerMembersAndClusterStatus(genericCli, tc1, tc2); err != nil {
 					log.Logf("wait for tc2 member deleted, status: %s", err)
 					return false, nil
@@ -727,7 +727,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				framework.ExpectNoError(err, "failed to start script version to v2")
 
 				ginkgo.By(fmt.Sprintf("Wait for phase is %q", v1alpha1.UpgradePhase))
-				utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
+				utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*3)
 
 				ginkgo.By("Wait for cluster is ready")
 				err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
