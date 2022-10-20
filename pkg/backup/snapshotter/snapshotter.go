@@ -69,6 +69,215 @@ func (s *BaseSnapshotter) Init(deps *controller.Dependencies, conf map[string]st
 	return nil
 }
 
+func NewSnapshotterForBackup(m v1alpha1.BackupMode, d *controller.Dependencies) (Snapshotter, string, error) {
+	var s Snapshotter
+	switch m {
+	case v1alpha1.BackupModeVolumeSnapshot:
+		// Currently, we only support aws volume snapshot. If gcp volume snapshot is supported
+		// in the future, we can infer the provider from the storage class.
+		s = &AWSSnapshotter{}
+	default:
+		s = &NoneSnapshotter{}
+	}
+	err := s.Init(d, nil)
+	if err != nil {
+		return s, "InitSnapshotterFailed", err
+	}
+
+	return s, "", nil
+}
+
+func NewSnapshotterForRestore(m v1alpha1.RestoreMode, d *controller.Dependencies) (Snapshotter, string, error) {
+	var s Snapshotter
+	switch m {
+	case v1alpha1.RestoreModeVolumeSnapshot:
+		// Currently, we only support aws volume snapshot. If gcp volume snapshot is supported
+		// in the future, we can infer the provider from the storage class.
+		s = &AWSSnapshotter{}
+	default:
+		s = &NoneSnapshotter{}
+	}
+	err := s.Init(d, nil)
+	if err != nil {
+		return s, "InitSnapshotterFailed", err
+	}
+
+	return s, "", nil
+}
+
+func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, tc *v1alpha1.TidbCluster) ([]*corev1.Pod, string, error) {
+	if s.deps == nil {
+		return nil, "NotExistDependencies", fmt.Errorf("unexpected error for nil dependencies")
+	}
+
+	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
+	if err != nil {
+		return nil, fmt.Sprintf("unexpected error generating pvc label selector: %v", err), err
+	}
+
+	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(tc.Namespace).List(sel)
+
+	if err != nil {
+		return nil, fmt.Sprintf("failed to fetch pvcs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
+	}
+	csb.Kubernetes.PVCs = pvcs
+
+	pvSels, err := label.New().Instance(tc.Name).Namespace(tc.Namespace).TiKV().Selector()
+	if err != nil {
+		return nil, fmt.Sprintf("unexpected error generating pv label selector: %v", err), err
+	}
+	pvs, err := s.deps.PVLister.List(pvSels)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to fetch pvs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
+	}
+	csb.Kubernetes.PVs = pvs
+	pods, err := s.deps.PodLister.Pods(tc.Namespace).List(sel)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to fetch pods %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
+	}
+	return pods, "", nil
+}
+
+func (s *BaseSnapshotter) prepareBackupMetadata(
+	b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, execr Snapshotter) (string, error) {
+	csb := NewCloudSnapshotBackup(tc)
+	pods, reason, err := s.PrepareCSBK8SMeta(csb, tc)
+	if err != nil {
+		return reason, err
+	}
+
+	m := NewBackupStoresMixture(tc, csb.Kubernetes.PVCs, csb.Kubernetes.PVs, execr)
+	if reason, err := m.PrepareCSBStoresMeta(csb, pods); err != nil {
+		return reason, err
+	}
+
+	if reason, err := placeCloudSnapBackup(b, csb); err != nil {
+		return reason, err
+	}
+
+	return "", nil
+}
+
+func placeCloudSnapBackup(b *v1alpha1.Backup, csb *CloudSnapBackup) (string, error) {
+	out, err := json.Marshal(csb)
+	if err != nil {
+		return "ParseCloudSnapshotBackupFailed", err
+	}
+
+	if b.Annotations == nil {
+		b.Annotations = make(map[string]string)
+	}
+	b.Annotations[label.AnnBackupCloudSnapKey] = util.BytesToString(out)
+	return "", nil
+}
+
+func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snapshotter) (string, error) {
+	csb, reason, err := extractCloudSnapBackup(r)
+	if err != nil {
+		return reason, err
+	}
+
+	if reason, err := checkCloudSnapBackup(csb); err != nil {
+		return reason, err
+	}
+
+	m := NewRestoreStoresMixture(execr)
+	if reason, err := m.ProcessCSBPVCsAndPVs(r, csb); err != nil {
+		return reason, err
+	}
+
+	// commit new PVs and PVCs to kubernetes api-server
+	if reason, err := commitPVsAndPVCsToK8S(s.deps, r, csb.Kubernetes.PVCs, csb.Kubernetes.PVs); err != nil {
+		return reason, err
+	}
+
+	return "", nil
+}
+
+func extractCloudSnapBackup(r *v1alpha1.Restore) (*CloudSnapBackup, string, error) {
+	str, ok := r.Annotations[label.AnnBackupCloudSnapKey]
+	if !ok {
+		return nil, "GetCloudSnapBackupFailed", errors.New("restore.annotation for CloudSnapBackup not found")
+	}
+
+	csb := &CloudSnapBackup{}
+	err := json.Unmarshal(util.StringToBytes(str), csb)
+	if err != nil {
+		return nil, "ParseCloudSnapBackupFailed", err
+	}
+	return csb, "", nil
+}
+
+func checkCloudSnapBackup(b *CloudSnapBackup) (string, error) {
+	if b == nil {
+		return "GetCloudSnapBackupFailed", errors.New("restore for CloudSnapBackup not found")
+	}
+	if b.Kubernetes == nil {
+		return "GetKubernetesFailed", errors.New(".kubernetes for CloudSnapBackup not found")
+	}
+
+	pvsLen := len(b.Kubernetes.PVs)
+	pvcsLen := len(b.Kubernetes.PVCs)
+	if len(b.Kubernetes.PVs) == 0 || len(b.Kubernetes.PVCs) == 0 {
+		return "GetKubernetesResourceFailed", errors.New(".kubernetes.pvcs or pvs for CloudSnapBackup not found")
+	}
+
+	if pvsLen != pvcsLen {
+		return "InvalidKubernetesResource", errors.New(".kubernetes.pvcs and pvs for CloudSnapBackup not matched")
+	}
+
+	if b.TiKV == nil || len(b.TiKV.Stores) == 0 {
+		return "GetTiKVStoresFailed", errors.New(".tikv.stores for CloudSnapBackup not found")
+	}
+
+	return "", nil
+}
+
+func commitPVsAndPVCsToK8S(
+	deps *controller.Dependencies,
+	r *v1alpha1.Restore,
+	pvcs []*corev1.PersistentVolumeClaim,
+	pvs []*corev1.PersistentVolume) (string, error) {
+	sel, err := label.New().Instance(r.Spec.BR.Cluster).TiKV().Selector()
+	if err != nil {
+		return "BuildTiKVSelectorFailed", err
+	}
+	existingPVs, err := deps.PVLister.List(sel)
+	if err != nil {
+		return "ListPVsFailed", err
+	}
+	refPVCMap := make(map[string]struct{})
+	for _, pv := range existingPVs {
+		if pv.Spec.ClaimRef != nil {
+			refPVCMap[pv.Spec.ClaimRef.Name] = struct{}{}
+		}
+	}
+
+	// Since we may generate random PV names, to avoid creating duplicate PVs,
+	// we need to check if the PV already exists before creating it.
+	for _, pv := range pvs {
+		if pv.Spec.ClaimRef != nil {
+			if _, ok := refPVCMap[pv.Spec.ClaimRef.Name]; ok {
+				continue
+			}
+		}
+		if err := deps.PVControl.CreatePV(r, pv); err != nil {
+			return "CreatePVFailed", err
+		}
+	}
+
+	for _, pvc := range pvcs {
+		if err := deps.PVCControl.CreatePVC(r, pvc); err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				continue
+			}
+			return "CreatePVCFailed", err
+		}
+	}
+
+	return "", nil
+}
+
 type CloudSnapBackup struct {
 	TiKV       *TiKVBackup            `json:"tikv"`
 	PD         Component              `json:"pd"`
@@ -244,39 +453,6 @@ func (m *StoresMixture) extractVolumeIDs() (string, error) {
 	return "", nil
 }
 
-func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, tc *v1alpha1.TidbCluster) ([]*corev1.Pod, string, error) {
-	if s.deps == nil {
-		return nil, "NotExistDependencies", fmt.Errorf("unexpected error for nil dependencies")
-	}
-
-	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
-	if err != nil {
-		return nil, fmt.Sprintf("unexpected error generating pvc label selector: %v", err), err
-	}
-
-	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(tc.Namespace).List(sel)
-
-	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch pvcs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
-	}
-	csb.Kubernetes.PVCs = pvcs
-
-	pvSels, err := label.New().Instance(tc.Name).Namespace(tc.Namespace).TiKV().Selector()
-	if err != nil {
-		return nil, fmt.Sprintf("unexpected error generating pv label selector: %v", err), err
-	}
-	pvs, err := s.deps.PVLister.List(pvSels)
-	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch pvs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
-	}
-	csb.Kubernetes.PVs = pvs
-	pods, err := s.deps.PodLister.Pods(tc.Namespace).List(sel)
-	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch pods %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
-	}
-	return pods, "", nil
-}
-
 func (m *StoresMixture) PrepareCSBStoresMeta(csb *CloudSnapBackup, pods []*corev1.Pod) (string, error) {
 	if csb.TiKV.Stores == nil {
 		csb.TiKV.Stores = []*StoresBackup{}
@@ -307,39 +483,6 @@ func (m *StoresMixture) PrepareCSBStoresMeta(csb *CloudSnapBackup, pods []*corev
 		csb.TiKV.Stores = append(csb.TiKV.Stores, stores)
 	}
 
-	return "", nil
-}
-
-func (s *BaseSnapshotter) prepareBackupMetadata(
-	b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, execr Snapshotter) (string, error) {
-	csb := NewCloudSnapshotBackup(tc)
-	pods, reason, err := s.PrepareCSBK8SMeta(csb, tc)
-	if err != nil {
-		return reason, err
-	}
-
-	m := NewBackupStoresMixture(tc, csb.Kubernetes.PVCs, csb.Kubernetes.PVs, execr)
-	if reason, err := m.PrepareCSBStoresMeta(csb, pods); err != nil {
-		return reason, err
-	}
-
-	if reason, err := placeCloudSnapBackup(b, csb); err != nil {
-		return reason, err
-	}
-
-	return "", nil
-}
-
-func placeCloudSnapBackup(b *v1alpha1.Backup, csb *CloudSnapBackup) (string, error) {
-	out, err := json.Marshal(csb)
-	if err != nil {
-		return "ParseCloudSnapshotBackupFailed", err
-	}
-
-	if b.Annotations == nil {
-		b.Annotations = make(map[string]string)
-	}
-	b.Annotations[label.AnnBackupCloudSnapKey] = util.BytesToString(out)
 	return "", nil
 }
 
@@ -384,88 +527,6 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnap
 	return "", nil
 }
 
-func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snapshotter) (string, error) {
-	csb, reason, err := extractCloudSnapBackup(r)
-	if err != nil {
-		return reason, err
-	}
-
-	if reason, err := checkCloudSnapBackup(csb); err != nil {
-		return reason, err
-	}
-
-	m := NewRestoreStoresMixture(execr)
-	if reason, err := m.ProcessCSBPVCsAndPVs(r, csb); err != nil {
-		return reason, err
-	}
-
-	// commit new PVs and PVCs to kubernetes api-server
-	if reason, err := commitPVsAndPVCsToK8S(s.deps, r, csb.Kubernetes.PVCs, csb.Kubernetes.PVs); err != nil {
-		return reason, err
-	}
-
-	return "", nil
-}
-
-func extractCloudSnapBackup(r *v1alpha1.Restore) (*CloudSnapBackup, string, error) {
-	str, ok := r.Annotations[label.AnnBackupCloudSnapKey]
-	if !ok {
-		return nil, "GetCloudSnapBackupFailed", errors.New("restore.annotation for CloudSnapBackup not found")
-	}
-
-	csb := &CloudSnapBackup{}
-	err := json.Unmarshal(util.StringToBytes(str), csb)
-	if err != nil {
-		return nil, "ParseCloudSnapBackupFailed", err
-	}
-	return csb, "", nil
-}
-
-func commitPVsAndPVCsToK8S(
-	deps *controller.Dependencies,
-	r *v1alpha1.Restore,
-	pvcs []*corev1.PersistentVolumeClaim,
-	pvs []*corev1.PersistentVolume) (string, error) {
-	sel, err := label.New().Instance(r.Spec.BR.Cluster).TiKV().Selector()
-	if err != nil {
-		return "BuildTiKVSelectorFailed", err
-	}
-	existingPVs, err := deps.PVLister.List(sel)
-	if err != nil {
-		return "ListPVsFailed", err
-	}
-	refPVCMap := make(map[string]struct{})
-	for _, pv := range existingPVs {
-		if pv.Spec.ClaimRef != nil {
-			refPVCMap[pv.Spec.ClaimRef.Name] = struct{}{}
-		}
-	}
-
-	// Since we may generate random PV names, to avoid creating duplicate PVs,
-	// we need to check if the PV already exists before creating it.
-	for _, pv := range pvs {
-		if pv.Spec.ClaimRef != nil {
-			if _, ok := refPVCMap[pv.Spec.ClaimRef.Name]; ok {
-				continue
-			}
-		}
-		if err := deps.PVControl.CreatePV(r, pv); err != nil {
-			return "CreatePVFailed", err
-		}
-	}
-
-	for _, pvc := range pvcs {
-		if err := deps.PVCControl.CreatePVC(r, pvc); err != nil {
-			if apierrors.IsAlreadyExists(err) {
-				continue
-			}
-			return "CreatePVCFailed", err
-		}
-	}
-
-	return "", nil
-}
-
 func (m *StoresMixture) generateRestoreVolumeIDMap(stores []*StoresBackup) {
 	vols := []*VolumeBackup{}
 	for _, store := range stores {
@@ -491,31 +552,6 @@ func (m *StoresMixture) resetRestoreVolumeID(pv *corev1.PersistentVolume) (strin
 
 	if err := m.snapshotter.SetVolumeID(pv, rsVolID); err != nil {
 		return "ResetRestoreVolumeIDFailed", fmt.Errorf("failed to set pv-%s, %s", pv.Name, err.Error())
-	}
-
-	return "", nil
-}
-
-func checkCloudSnapBackup(b *CloudSnapBackup) (string, error) {
-	if b == nil {
-		return "GetCloudSnapBackupFailed", errors.New("restore for CloudSnapBackup not found")
-	}
-	if b.Kubernetes == nil {
-		return "GetKubernetesFailed", errors.New(".kubernetes for CloudSnapBackup not found")
-	}
-
-	pvsLen := len(b.Kubernetes.PVs)
-	pvcsLen := len(b.Kubernetes.PVCs)
-	if len(b.Kubernetes.PVs) == 0 || len(b.Kubernetes.PVCs) == 0 {
-		return "GetKubernetesResourceFailed", errors.New(".kubernetes.pvcs or pvs for CloudSnapBackup not found")
-	}
-
-	if pvsLen != pvcsLen {
-		return "InvalidKubernetesResource", errors.New(".kubernetes.pvcs and pvs for CloudSnapBackup not matched")
-	}
-
-	if b.TiKV == nil || len(b.TiKV.Stores) == 0 {
-		return "GetTiKVStoresFailed", errors.New(".tikv.stores for CloudSnapBackup not found")
 	}
 
 	return "", nil
@@ -607,40 +643,4 @@ func newMetaWithCoreFields(meta metav1.ObjectMeta) metav1.ObjectMeta {
 		Annotations: meta.GetAnnotations(),
 	}
 	return newMeta
-}
-
-func NewSnapshotterForBackup(m v1alpha1.BackupMode, d *controller.Dependencies) (Snapshotter, string, error) {
-	var s Snapshotter
-	switch m {
-	case v1alpha1.BackupModeVolumeSnapshot:
-		// Currently, we only support aws volume snapshot. If gcp volume snapshot is supported
-		// in the future, we can infer the provider from the storage class.
-		s = &AWSSnapshotter{}
-	default:
-		s = &NoneSnapshotter{}
-	}
-	err := s.Init(d, nil)
-	if err != nil {
-		return s, "InitSnapshotterFailed", err
-	}
-
-	return s, "", nil
-}
-
-func NewSnapshotterForRestore(m v1alpha1.RestoreMode, d *controller.Dependencies) (Snapshotter, string, error) {
-	var s Snapshotter
-	switch m {
-	case v1alpha1.RestoreModeVolumeSnapshot:
-		// Currently, we only support aws volume snapshot. If gcp volume snapshot is supported
-		// in the future, we can infer the provider from the storage class.
-		s = &AWSSnapshotter{}
-	default:
-		s = &NoneSnapshotter{}
-	}
-	err := s.Init(d, nil)
-	if err != nil {
-		return s, "InitSnapshotterFailed", err
-	}
-
-	return s, "", nil
 }
