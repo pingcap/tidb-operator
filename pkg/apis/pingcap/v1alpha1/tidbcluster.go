@@ -814,6 +814,20 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 	return true
 }
 
+func (tc *TidbCluster) AllTiKVsAreAvailable() bool {
+	if len(tc.Status.TiKV.Stores) != int(tc.Spec.TiKV.Replicas) {
+		return false
+	}
+
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State != TiKVStateUp {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (tc *TidbCluster) PumpIsAvailable() bool {
 	lowerLimit := 1
 	if len(tc.Status.Pump.Members) < lowerLimit {
@@ -840,6 +854,10 @@ func (tc *TidbCluster) GetClusterID() string {
 
 func (tc *TidbCluster) IsTLSClusterEnabled() bool {
 	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
+}
+
+func (tc *TidbCluster) IsRecoveryMode() bool {
+	return tc.Spec.RecoveryMode
 }
 
 func (tc *TidbCluster) NeedToSyncTiDBInitializer() bool {

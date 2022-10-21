@@ -67,4 +67,30 @@ const (
 
 	// RootKey represents the username in tidb secret
 	TidbRootKey = "root"
+
+	// the volumes provisioned by CSI driver on AWSElasticBlockStore
+	EbsCSIDriver = "ebs.csi.aws.com"
+
+	// the volumes provisioned by CSI driver on GCEPersistentDisk
+	PdCSIDriver = "pd.csi.storage.gke.io"
+
+	// the mount path for TiKV data volume
+	TiKVDataVolumeMountPath = "/var/lib/tikv"
+
+	// the configuration for TiKV data volume as type for snapshotter
+	TiKVDataVolumeConfType = "storage.data-dir"
+
+	// the metadata for cloud provider to take snapshot
+	EnvCloudSnapMeta = "CLOUD_SNAPSHOT_METADATA"
+
+	// the annotation for store temporary volumeID
+	AnnTemporaryVolumeID = "temporary/volume-id"
+
+	// These annotations are taken from the Kubernetes persistent volume/persistent volume claim controller.
+	// They cannot be directly importing because they are part of the kubernetes/kubernetes package, and importing that package is unsupported.
+	// Their values are well-known and slow changing. They're duplicated here as constants to provide compile-time checking.
+	// Originals can be found in kubernetes/kubernetes/pkg/controller/volume/persistentvolume/util/util.go.
+	KubeAnnBindCompleted          = "pv.kubernetes.io/bind-completed"
+	KubeAnnBoundByController      = "pv.kubernetes.io/bound-by-controller"
+	KubeAnnDynamicallyProvisioned = "pv.kubernetes.io/provisioned-by"
 )

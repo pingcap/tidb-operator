@@ -72,3 +72,239 @@ func GenValidStorageProviders() []v1alpha1.StorageProvider {
 		},
 	}
 }
+
+func ConstructRestoreMetaStr() string {
+	return `{
+		"tikv": {
+			"replicas": 3,
+			"stores": [{
+				"store_id": 1,
+				"volumes": [{
+					"volume_id": "vol-0e65f40961a9f6244",
+					"type": "",
+					"mount_path": "",
+					"snapshot_id": "snap-1234567890abcdef0",
+					"restore_volume_id": "vol-0e65f40961a9f0001"
+				}]
+			}, {
+				"store_id": 2,
+				"volumes": [{
+					"volume_id": "vol-0e65f40961a9f6245",
+					"type": "",
+					"mount_path": "",
+					"snapshot_id": "snap-1234567890abcdef1",
+					"restore_volume_id": "vol-0e65f40961a9f0002"
+				}]
+			}, {
+				"store_id": 3,
+				"volumes": [{
+					"volume_id": "vol-0e65f40961a9f6246",
+					"type": "",
+					"mount_path": "",
+					"snapshot_id": "snap-1234567890abcdef2",
+					"restore_volume_id": "vol-0e65f40961a9f0003"
+				}]
+			}]
+		},
+		"pd": {
+			"replicas": 0
+		},
+		"tidb": {
+			"replicas": 0
+		},
+		"kubernetes": {
+			"pvcs": [{
+				"metadata": {
+					"name": "pvc-1",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
+					"resourceVersion": "1957",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/bind-completed": "yes",
+						"pv.kubernetes.io/bound-by-controller": "yes",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pvc-protection"]
+				},
+				"spec": {
+					"resources": {},
+					"volumeName": "pv-1"
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}, {
+				"metadata": {
+					"name": "pvc-2",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
+					"resourceVersion": "1959",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/bind-completed": "yes",
+						"pv.kubernetes.io/bound-by-controller": "yes",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pvc-protection"]
+				},
+				"spec": {
+					"resources": {},
+					"volumeName": "pv-2"
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}, {
+				"metadata": {
+					"name": "pvc-3",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
+					"resourceVersion": "1961",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/bind-completed": "yes",
+						"pv.kubernetes.io/bound-by-controller": "yes",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pvc-protection"]
+				},
+				"spec": {
+					"resources": {},
+					"volumeName": "pv-3"
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}],
+			"pvs": [{
+				"metadata": {
+					"name": "pv-1",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3122",
+					"resourceVersion": "1958",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/provisioned-by": "ebs.csi.aws.com",
+						"temporary/volume-id": "vol-0e65f40961a9f6244",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pv-protection"]
+				},
+				"spec": {
+					"csi": {
+						"driver": "ebs.csi.aws.com",
+						"volumeHandle": "vol-0e65f40961a9f6244",
+						"fsType": "ext4"
+					},
+					"claimRef": {
+						"name": "pvc-1",
+						"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
+						"resourceVersion": "1957"
+					}
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}, {
+				"metadata": {
+					"name": "pv-2",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3124",
+					"resourceVersion": "1960",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/provisioned-by": "ebs.csi.aws.com",
+						"temporary/volume-id": "vol-0e65f40961a9f6245",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pv-protection"]
+				},
+				"spec": {
+					"csi": {
+						"driver": "ebs.csi.aws.com",
+						"volumeHandle": "vol-0e65f40961a9f6245",
+						"fsType": "ext4"
+					},
+					"claimRef": {
+						"name": "pvc-2",
+						"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
+						"resourceVersion": "1959"
+					}
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}, {
+				"metadata": {
+					"name": "pv-3",
+					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3126",
+					"resourceVersion": "1962",
+					"creationTimestamp": null,
+					"labels": {
+						"test/label": "retained"
+					},
+					"annotations": {
+						"pv.kubernetes.io/provisioned-by": "ebs.csi.aws.com",
+						"temporary/volume-id": "vol-0e65f40961a9f6246",
+						"test/annotation": "retained"
+					},
+					"finalizers": ["kubernetes.io/pv-protection"]
+				},
+				"spec": {
+					"csi": {
+						"driver": "ebs.csi.aws.com",
+						"volumeHandle": "vol-0e65f40961a9f6246",
+						"fsType": "ext4"
+					},
+					"claimRef": {
+						"name": "pvc-3",
+						"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
+						"resourceVersion": "1961"
+					}
+				},
+				"status": {
+					"phase": "Bound"
+				}
+			}],
+			"crd_tidb_cluster": {
+				"metadata": {
+					"creationTimestamp": null
+				},
+				"spec": {
+					"discovery": {},
+					"version": ""
+				},
+				"status": {
+					"pd": {
+						"synced": false,
+						"leader": {
+							"name": "",
+							"id": "",
+							"clientURL": "",
+							"health": false,
+							"lastTransitionTime": null
+						}
+					},
+					"tikv": {},
+					"tidb": {},
+					"pump": {},
+					"tiflash": {},
+					"ticdc": {}
+				}
+			},
+			"options": null
+		},
+		"options": null
+	}`
+}

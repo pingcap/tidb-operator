@@ -15,17 +15,18 @@ package clean
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"time"
-
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog/v2"
 )
 
 var (
@@ -38,6 +39,11 @@ var (
 	}
 )
 
+const (
+	metaFile            = "/backupmeta"
+	CloudAPIConcurrency = 3
+)
+
 // Options contains the input arguments to the backup command
 type Options struct {
 	Namespace  string
@@ -46,6 +52,81 @@ type Options struct {
 
 func (bo *Options) String() string {
 	return fmt.Sprintf("%s/%s", bo.Namespace, bo.BackupName)
+}
+
+// cleanBackupMetaWithVolSnapshots clean snapshot and the backup meta
+func (bo *Options) cleanBackupMetaWithVolSnapshots(ctx context.Context, backup *v1alpha1.Backup) error {
+	backend, err := util.NewStorageBackend(backup.Spec.StorageProvider)
+	if err != nil {
+		return err
+	}
+	defer backend.Close()
+
+	err = bo.deleteSnapshotsAndBackupMeta(ctx, backup)
+	if err != nil {
+		klog.Errorf("For backup %s clean, failed to clean backup: %s", bo, err)
+	}
+	return err
+}
+
+func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1alpha1.Backup) error {
+	//1. get backupmeta and fetch the snapshot information
+	//rclone copy remote:/bukect/backup/backupmeta /backupmeta
+	opts := util.GetOptions(backup.Spec.StorageProvider)
+	if err := bo.copyRemoteBackupMetaToLocal(ctx, backup.Status.BackupPath, opts); err != nil {
+		klog.Errorf("rclone copy remote backupmeta to local failure.")
+		return err
+	}
+	defer func() {
+		_ = os.Remove(metaFile)
+	}()
+
+	contents, err := os.ReadFile(metaFile)
+	if err != nil {
+		klog.Errorf("read metadata file %s failed, err: %s", metaFile, err)
+		return err
+	}
+
+	metaInfo := &util.EBSBasedBRMeta{}
+	if err = json.Unmarshal(contents, metaInfo); err != nil {
+		klog.Errorf("rclone copy remote backupmeta to local failure.")
+		return err
+	}
+
+	//2. delete the snapshot
+	if err = bo.deleteVolumeSnapshots(metaInfo); err != nil {
+		return err
+	}
+
+	//3. delete the backupmeta info
+	if err = bo.cleanRemoteBackupData(ctx, backup.Status.BackupPath, opts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (bo *Options) deleteVolumeSnapshots(meta *util.EBSBasedBRMeta) error {
+	newVolumeIDMap := make(map[string]string)
+	for i := range meta.TiKVComponent.Stores {
+		store := meta.TiKVComponent.Stores[i]
+		for j := range store.Volumes {
+			vol := store.Volumes[j]
+			newVolumeIDMap[vol.ID] = vol.SnapshotID
+		}
+	}
+
+	ec2Session, err := util.NewEC2Session(CloudAPIConcurrency)
+	if err != nil {
+		klog.Errorf("new a ec2 session failure.")
+		return err
+	}
+	if err = ec2Session.DeleteSnapshots(newVolumeIDMap); err != nil {
+		klog.Errorf("delete snapshot failure.")
+		return err
+	}
+
+	return nil
 }
 
 // cleanBRRemoteBackupData clean the backup data from remote
@@ -155,5 +236,17 @@ func (bo *Options) cleanRemoteBackupData(ctx context.Context, bucket string, opt
 	}
 
 	klog.Infof("cluster %s backup %s was deleted successfully", bo, bucket)
+	return nil
+}
+
+// copy remote backupmeta to local
+func (bo *Options) copyRemoteBackupMetaToLocal(ctx context.Context, bucket string, opts []string) error {
+	destBucket := util.NormalizeBucketURI(bucket)
+	args := util.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copy", fmt.Sprintf("%s/backupmeta", destBucket), "/", true)
+	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute rclone copy command failed, output: %s, err: %v", bo, string(output), err)
+	}
+	klog.Infof("cluster %s backup %s was copy successfully", bo, bucket)
 	return nil
 }
