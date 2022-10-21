@@ -12254,6 +12254,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"recoveryMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether RecoveryMode is enabled for TiDB cluster to restore Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"version": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TiDB cluster version",

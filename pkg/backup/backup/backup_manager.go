@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/backup/snapshotter"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -447,6 +448,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	if backup.Spec.BR.ClusterNamespace != "" {
 		backupNamespace = backup.Spec.BR.ClusterNamespace
 	}
+
 	tc, err := bm.deps.TiDBClusterLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
@@ -474,6 +476,12 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		Value: string(rune(1)),
 	})
 
+	dwAPIEnvs, reason, err := backuputil.GenerateDownwardAPIEnvs()
+	if err != nil {
+		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+	}
+	envVars = append(envVars, dwAPIEnvs...)
+
 	// set env vars specified in backup.Spec.Env
 	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
@@ -488,7 +496,13 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+	reason, err = bm.tryBackupIfCanSnapshot(backup, tc)
+	if err != nil {
+		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+	}
+
+	switch backup.Spec.Mode {
+	case v1alpha1.BackupModeLog:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeLog))
 		subcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		args = append(args, fmt.Sprintf("--subcommand=%s", subcommand))
@@ -502,7 +516,9 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 				args = append(args, fmt.Sprintf("--truncate-until=%s", backup.Spec.LogTruncateUntil))
 			}
 		}
-	} else {
+	case v1alpha1.BackupModeVolumeSnapshot:
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeVolumeSnapshot))
+	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeSnapshot))
 	}
 
@@ -647,6 +663,15 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	}
 
 	return job, "", nil
+}
+
+func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
+	if s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps); err != nil {
+		return reason, err
+	} else if s != nil {
+		return s.PrepareBackupMetadata(b, tc)
+	}
+	return "", nil
 }
 
 func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, error) {
