@@ -412,6 +412,8 @@ func TestAllTiKVsAreAvailable(t *testing.T) {
 			update: func(tc *TidbCluster) {
 				tc.Status.TiKV.Stores = map[string]TiKVStore{
 					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+					"tikv-1": {PodName: "tikv-1", State: TiKVStateUp},
+					"tikv-2": {PodName: "tikv-2", State: TiKVStateUp},
 				}
 				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{
 					Replicas:      1,

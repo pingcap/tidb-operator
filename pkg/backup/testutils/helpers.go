@@ -134,6 +134,7 @@ func (h *Helper) CreateTC(namespace, clusterName string) {
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 			TiKV: &v1alpha1.TiKVSpec{
 				BaseImage: "pingcap/tikv",
+				Replicas:  3,
 			},
 			TiDB: &v1alpha1.TiDBSpec{
 				TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
