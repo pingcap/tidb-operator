@@ -17,8 +17,10 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"unsafe"
 
 	"github.com/Masterminds/semver"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -369,6 +371,20 @@ func GenerateTidbPasswordEnv(ns, tcName, tidbSecretName string, useKMS bool, sec
 	return certEnv, "", nil
 }
 
+// GenerateDownwardAPIEnvs generate the downward-api EnvVars
+func GenerateDownwardAPIEnvs() ([]corev1.EnvVar, string, error) {
+	var envs []corev1.EnvVar
+	envs = append(envs, corev1.EnvVar{
+		Name: constants.EnvCloudSnapMeta,
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: fmt.Sprintf("metadata.annotations['%s']", label.AnnBackupCloudSnapKey),
+			},
+		},
+	})
+	return envs, "", nil
+}
+
 // GetBackupBucketName return the bucket name for remote storage
 func GetBackupBucketName(backup *v1alpha1.Backup) (string, string, error) {
 	ns := backup.GetNamespace()
@@ -661,6 +677,19 @@ func canSkipSetGCLifeTime(image string) bool {
 		return false
 	}
 	return true
+}
+
+func BytesToString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func StringToBytes(s string) []byte {
+	return *(*[]byte)(unsafe.Pointer(
+		&struct {
+			string
+			Cap int
+		}{s, len(s)},
+	))
 }
 
 // isLogBackSupport returns whether tikv supports log backup

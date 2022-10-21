@@ -1,4 +1,4 @@
-// Copyright 2018 PingCAP, Inc.
+// Copyright 2022 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,46 +28,40 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
-func TestTidbClusterControlUpdateTidbCluster(t *testing.T) {
+func TestRestoreControlUpdateRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
-	tc := newTidbCluster()
-	tc.Spec.PD.Replicas = int32(5)
+	rs := newRestore()
+	var testVal v1alpha1.BackupType = "test"
+	rs.Spec.Type = testVal
 	fakeClient := &fake.Clientset{}
-	control := NewRealTidbClusterControl(fakeClient, nil, recorder)
-	fakeClient.AddReactor("update", "tidbclusters", func(action core.Action) (bool, runtime.Object, error) {
+	control := NewRealRestoreControl(fakeClient, nil, recorder)
+	fakeClient.AddReactor("update", "restores", func(action core.Action) (bool, runtime.Object, error) {
 		update := action.(core.UpdateAction)
 		return true, update.GetObject(), nil
 	})
-	updateTC, err := control.UpdateTidbCluster(tc, &v1alpha1.TidbClusterStatus{}, &v1alpha1.TidbClusterStatus{})
+	updateRs, err := control.UpdateRestore(rs)
 	g.Expect(err).To(Succeed())
-	g.Expect(updateTC.Spec.PD.Replicas).To(Equal(int32(5)))
-
-	updateTC1, err := control.Update(tc)
-	g.Expect(err).To(Succeed())
-	g.Expect(updateTC1.Spec.PD.Replicas).To(Equal(int32(5)))
+	g.Expect(updateRs.Spec.Type).To(Equal(testVal))
 }
 
-func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
+func TestRestoreControlUpdateRestoreConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
-	tc := newTidbCluster()
+	rs := newRestore()
 	fakeClient := &fake.Clientset{}
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-	tcLister := listers.NewTidbClusterLister(indexer)
-	control := NewRealTidbClusterControl(fakeClient, tcLister, recorder)
+	rsLister := listers.NewRestoreLister(indexer)
+	control := NewRealRestoreControl(fakeClient, rsLister, recorder)
 	conflict := false
-	fakeClient.AddReactor("update", "tidbclusters", func(action core.Action) (bool, runtime.Object, error) {
+	fakeClient.AddReactor("update", "restores", func(action core.Action) (bool, runtime.Object, error) {
 		update := action.(core.UpdateAction)
 		if !conflict {
 			conflict = true
-			return true, update.GetObject(), apierrors.NewConflict(action.GetResource().GroupResource(), tc.Name, errors.New("conflict"))
+			return true, update.GetObject(), apierrors.NewConflict(action.GetResource().GroupResource(), rs.Name, errors.New("conflict"))
 		}
 		return true, update.GetObject(), nil
 	})
-	_, err := control.UpdateTidbCluster(tc, &v1alpha1.TidbClusterStatus{}, &v1alpha1.TidbClusterStatus{})
-	g.Expect(err).To(Succeed())
-
-	_, err = control.Update(tc)
+	_, err := control.UpdateRestore(rs)
 	g.Expect(err).To(Succeed())
 }

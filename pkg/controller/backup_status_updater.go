@@ -16,8 +16,7 @@ package controller
 import (
 	"context"
 	"fmt"
-
-	"k8s.io/klog/v2"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -28,6 +27,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/klog/v2"
 )
 
 // BackupUpdateStatus represents the status of a backup to be updated.
@@ -53,6 +53,12 @@ type BackupUpdateStatus struct {
 	LogSuccessTruncateUntil *string
 	// LogTruncatingUntil is log backup truncate until timestamp which is used to mark the truncate command.
 	LogTruncatingUntil *string
+	// ProgressStep the step name of progress.
+	ProgressStep *string
+	// Progress is the step's progress value.
+	Progress *float64
+	// ProgressUpdateTime is the progress update time.
+	ProgressUpdateTime *metav1.Time
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -83,6 +89,14 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 	backupName := backup.GetName()
 	// try best effort to guarantee backup is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+		// Always get the latest backup before update.
+		if updated, err := u.backupLister.Backups(ns).Get(backupName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			backup = updated.DeepCopy()
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
+			return err
+		}
 		isUpdate := false
 		// log backup needs update both subcommand status and whole backup status.
 		if backup.Spec.Mode == v1alpha1.BackupModeLog {
@@ -97,12 +111,6 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 				return nil
 			}
 			klog.Errorf("Failed to update backup [%s/%s], error: %v", ns, backupName, updateErr)
-			if updated, err := u.backupLister.Backups(ns).Get(backupName); err == nil {
-				// make a copy so we don't mutate the shared cache
-				backup = updated.DeepCopy()
-			} else {
-				utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
-			}
 			return updateErr
 		}
 		return nil
@@ -113,10 +121,10 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 // updateBackupStatus updates existing Backup status.
 // from the fields in BackupUpdateStatus.
 func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
-	isUpdate := false
 	if newStatus == nil {
-		return isUpdate
+		return false
 	}
+	isUpdate := false
 	if newStatus.BackupPath != nil && status.BackupPath != *newStatus.BackupPath {
 		status.BackupPath = *newStatus.BackupPath
 		isUpdate = true
@@ -148,6 +156,13 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	if newStatus.LogSuccessTruncateUntil != nil && status.LogSuccessTruncateUntil != *newStatus.LogSuccessTruncateUntil {
 		status.LogSuccessTruncateUntil = *newStatus.LogSuccessTruncateUntil
 		isUpdate = true
+	}
+	if newStatus.ProgressStep != nil {
+		progresses, updated := updateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
+		if updated {
+			status.Progresses = progresses
+			isUpdate = true
+		}
 	}
 	return isUpdate
 }
@@ -374,6 +389,50 @@ func updateLogSubCommandConditionOnly(status *v1alpha1.LogSubCommandStatus, cond
 	}
 	// Return true if one of the fields have changed.
 	return isUpdate
+}
+
+// updateBRProgress updates progress for backup/restore.
+func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *float64, updateTime *metav1.Time) ([]v1alpha1.Progress, bool) {
+	var oldProgress *v1alpha1.Progress
+	for i, p := range progresses {
+		if p.Step == *step {
+			oldProgress = &progresses[i]
+			break
+		}
+	}
+
+	makeSureLastProgressOver := func() {
+		size := len(progresses)
+		if size == 0 || progresses[size-1].Progress >= 100 {
+			return
+		}
+		progresses[size-1].Progress = 100
+		progresses[size-1].LastTransitionTime = metav1.Time{Time: time.Now()}
+	}
+
+	// no such progress, will new
+	if oldProgress == nil {
+		makeSureLastProgressOver()
+		progresses = append(progresses, v1alpha1.Progress{
+			Step:               *step,
+			Progress:           *progress,
+			LastTransitionTime: *updateTime,
+		})
+		return progresses, true
+	}
+
+	isUpdate := false
+	if oldProgress.Progress < *progress {
+		oldProgress.Progress = *progress
+		isUpdate = true
+	}
+
+	if oldProgress.LastTransitionTime != *updateTime {
+		oldProgress.LastTransitionTime = *updateTime
+		isUpdate = true
+	}
+
+	return progresses, isUpdate
 }
 
 var _ BackupConditionUpdaterInterface = &realBackupConditionUpdater{}

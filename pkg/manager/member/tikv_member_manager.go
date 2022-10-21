@@ -112,6 +112,11 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
+	// Check TidbCluster Recovery
+	if err := m.checkRecoveryForTidbCluster(tc); err != nil {
+		return err
+	}
+
 	svcList := []SvcConfig{
 		{
 			Name:       "peer",
@@ -127,6 +132,24 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 	return m.syncStatefulSetForTidbCluster(tc)
+}
+
+func (m *tikvMemberManager) checkRecoveryForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	// Check whether the cluster is in recovery mode
+	// and whether the volumes have been restored for TiKV
+	if !tc.Spec.RecoveryMode {
+		return nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	anns := tc.GetAnnotations()
+	if _, ok := anns[label.AnnTiKVVolumesReadyKey]; !ok {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV volumes ready", ns, tcName)
+	}
+
+	return nil
 }
 
 func (m *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) error {
