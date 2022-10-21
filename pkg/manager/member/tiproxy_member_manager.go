@@ -137,6 +137,7 @@ proxy:
   addr: "0.0.0.0:6000"
   tcp-keep-alive: true
   max-connections: 1000
+	require-backend-tls: false
   pd-addrs: {{ .PDAddr }}
 	# proxy-protocol: "v2"
 metrics:
@@ -168,8 +169,6 @@ security:
     ca: {{ .ClusterClientTLS }}/ca.crt
     cert: {{ .ClusterClientTLS }}/tls.crt
     key: {{ .ClusterClientTLS }}/tls.key
-    {{else}}
-    skip-ca: true
     {{end}}
   server-tls:
     {{if .ServerTLS}}

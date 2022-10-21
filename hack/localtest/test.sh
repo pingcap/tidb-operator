@@ -13,12 +13,6 @@ kubectl delete --force namespace $namespace || true
 
 if [ -n "$1" ]; then
 	eval $(minikube docker-env)
-	if [ "$1" = "all" ] && [ -e "$PWD/../weir" ]; then
-		oldpwd=$PWD
-		cd ../weir
-		make docker
-		cd $oldpwd
-	fi
 	make operator-docker
 fi
 
@@ -41,4 +35,4 @@ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=../ca-config.json -profile=c
 kubectl create secret generic ${cluster}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
 
 helm install operator $BASE/../../charts/tidb-operator/ --namespace testing --set "operatorImage=operator:latest"
-helm install cluster $BASE/../../charts/tidb-cluster/ --namespace testing -f $BASE/test.yml
+kubectl apply -f $BASE/cluster.yaml --namespace testing
