@@ -135,6 +135,7 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	}
 
 	// Wait for PD & TiKV upgrading done
+	// NO check for v1alpha1.ScalePhase now, as it shouldn't block when some other components scaling to 0 and deleting Pump
 	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
