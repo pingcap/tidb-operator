@@ -7498,6 +7498,8 @@ spec:
               pvReclaimPolicy:
                 default: Retain
                 type: string
+              recoveryMode:
+                type: boolean
               schedulerName:
                 type: string
               serviceAccount:

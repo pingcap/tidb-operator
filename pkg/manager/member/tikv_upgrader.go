@@ -378,10 +378,10 @@ func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *
 }
 
 func isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) (bool, string) {
-	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase {
+	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase {
 		return false, fmt.Sprintf("tiflash status is %s", tc.Status.TiFlash.Phase)
 	}
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.PD.Phase == v1alpha1.ScalePhase {
 		return false, fmt.Sprintf("pd status is %s", tc.Status.PD.Phase)
 	}
 	if tc.TiKVScaling() {
