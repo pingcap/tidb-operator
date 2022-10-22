@@ -311,13 +311,11 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 		if err != nil {
 			return err
 		}
-		if sameConfigProxy {
-			if tc.Spec.TiProxy.Proxy == nil || tc.Spec.TiProxy.Proxy.MaxConnections != cfg.MaxConnections || tc.Spec.TiProxy.Proxy.TCPKeepAlive != cfg.TCPKeepAlive {
-				sameConfigProxy = false
-				tc.Status.TiProxy.Proxy = *cfg
-				if err := m.deps.ProxyControl.SetConfigProxy(tc, pods.UnsortedList()[0], tc.Spec.TiProxy.Proxy); err != nil {
-					return err
-				}
+		if tc.Spec.TiProxy.Proxy != nil && (tc.Spec.TiProxy.Proxy.MaxConnections != cfg.MaxConnections || tc.Spec.TiProxy.Proxy.TCPKeepAlive != cfg.TCPKeepAlive) {
+			sameConfigProxy = false
+			tc.Status.TiProxy.Proxy = *cfg
+			if err := m.deps.ProxyControl.SetConfigProxy(tc, pods.UnsortedList()[0], tc.Spec.TiProxy.Proxy); err != nil {
+				return err
 			}
 		}
 	}

@@ -58,6 +58,8 @@ func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) 
 		tcName := tc.GetName()
 
 		args := append([]string{},
+			"--log_level",
+			"error",
 			"--curls",
 			fmt.Sprintf("%s:3080", TiProxyPeerMemberName(tcName)),
 		)
