@@ -305,6 +305,8 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 		if podHealthy {
 			replicas++
 		}
+	}
+	if replicas > 0 {
 		cfg, err := m.deps.ProxyControl.GetConfigProxy(tc, pods.UnsortedList()[0])
 		if err != nil {
 			return err
