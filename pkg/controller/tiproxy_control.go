@@ -59,12 +59,7 @@ func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) 
 
 		args := append([]string{},
 			"--curls",
-			fmt.Sprintf("%s://%s.%s.%s:3080",
-				tc.Scheme(),
-				fmt.Sprintf("%s-%d", TiProxyMemberName(tcName), ordinal),
-				TiProxyPeerMemberName(tcName),
-				tc.GetNamespace(),
-			),
+			fmt.Sprintf("%s:3080", TiProxyPeerMemberName(tcName)),
 		)
 		var cmd *cobra.Command
 

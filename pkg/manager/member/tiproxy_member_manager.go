@@ -93,11 +93,6 @@ func (m *tiproxyMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	// If PD is not available, wait it
-	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiProxy is waiting for PD cluster running", ns, tcName)
-	}
-
 	if err := m.syncProxyService(tc, false); err != nil {
 		return err
 	}
@@ -137,9 +132,9 @@ proxy:
   addr: "0.0.0.0:6000"
   tcp-keep-alive: true
   max-connections: 1000
-	require-backend-tls: false
+  require-backend-tls: false
   pd-addrs: {{ .PDAddr }}
-	# proxy-protocol: "v2"
+  # proxy-protocol: "v2"
 metrics:
 api:
   addr: "0.0.0.0:3080"
@@ -314,11 +309,13 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 		if err != nil {
 			return err
 		}
-		if sameConfigProxy && tc.Spec.TiProxy.Proxy.MaxConnections != cfg.MaxConnections || tc.Spec.TiProxy.Proxy.TCPKeepAlive != cfg.TCPKeepAlive {
-			sameConfigProxy = false
-			tc.Status.TiProxy.Proxy = *cfg
-			if err := m.deps.ProxyControl.SetConfigProxy(tc, pods.UnsortedList()[0], tc.Spec.TiProxy.Proxy); err != nil {
-				return err
+		if sameConfigProxy {
+			if tc.Spec.TiProxy.Proxy == nil || tc.Spec.TiProxy.Proxy.MaxConnections != cfg.MaxConnections || tc.Spec.TiProxy.Proxy.TCPKeepAlive != cfg.TCPKeepAlive {
+				sameConfigProxy = false
+				tc.Status.TiProxy.Proxy = *cfg
+				if err := m.deps.ProxyControl.SetConfigProxy(tc, pods.UnsortedList()[0], tc.Spec.TiProxy.Proxy); err != nil {
+					return err
+				}
 			}
 		}
 	}
