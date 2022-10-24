@@ -208,7 +208,7 @@ security:
 
 	klog.Info("get tiproxy in use config map name: ", inUseName)
 
-	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiProxySpec().ConfigUpdateStrategy(), inUseName, newCm)
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, v1alpha1.ConfigUpdateStrategyInPlace, inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}

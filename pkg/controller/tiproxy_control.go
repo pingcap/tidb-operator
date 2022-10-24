@@ -55,13 +55,18 @@ func NewDefaultTiProxyControl(secretLister corelisterv1.SecretLister) *defaultTi
 
 func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) func(io.Reader, ...string) (*bytes.Buffer, error) {
 	return func(in io.Reader, s ...string) (*bytes.Buffer, error) {
-		tcName := tc.GetName()
+		name := tc.GetName()
+		ns := tc.GetNamespace()
+		if tc.Heterogeneous() && tc.Spec.TiProxy == nil {
+			name = tc.Spec.Cluster.Name
+			ns = tc.Spec.Cluster.Namespace
+		}
 
 		args := append([]string{},
 			"--log_level",
 			"error",
 			"--curls",
-			fmt.Sprintf("%s:3080", TiProxyPeerMemberName(tcName)),
+			fmt.Sprintf("%s.%s:3080", TiProxyPeerMemberName(name), ns),
 		)
 		var cmd *cobra.Command
 
@@ -70,7 +75,7 @@ func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) 
 		} else {
 
 			ns := tc.Namespace
-			secretName := util.ClusterClientTLSSecretName(tcName)
+			secretName := util.ClusterClientTLSSecretName(name)
 			secret, err := c.secretLister.Secrets(ns).Get(secretName)
 			if err != nil {
 				return nil, err
