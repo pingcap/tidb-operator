@@ -48,7 +48,7 @@ require (
 	github.com/openshift/generic-admission-server v1.14.1-0.20210422140326-da96454c926d
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
-	github.com/pingcap/TiProxy/lib v0.0.0-20221010031757-343299153484
+	github.com/pingcap/TiProxy/lib v0.0.0-20221024031838-544b0cc89dd9
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b2938
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/errors v0.11.4
