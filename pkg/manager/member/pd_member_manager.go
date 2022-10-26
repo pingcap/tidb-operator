@@ -829,6 +829,8 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	return pdSet, nil
 }
 
+const PDNamePrefixAnnKey = "tidb.pingcap.com/pd-name-prefix"
+
 func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	// For backward compatibility, only sync tidb configmap when .tidb.config is non-nil
 	if tc.Spec.PD.Config == nil {
@@ -873,6 +875,11 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		Scheme:  tc.Scheme(),
 		DataDir: filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
 	}
+
+	if v, ok := tc.Annotations[PDNamePrefixAnnKey]; ok {
+		sm.PDNamePrefix = v
+	}
+
 	if tc.Spec.PD.StartUpScriptVersion == "v1" {
 		sm.CheckDomainScript = checkDNSV1
 	}

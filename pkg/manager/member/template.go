@@ -177,7 +177,7 @@ fi {{- else}}{{.CheckDomainScript}}{{end}}
 done
 
 ARGS="--data-dir={{ .DataDir }} \
---name={{- if or .AcrossK8s .ClusterDomain }}${domain}{{- else }}${POD_NAME}{{- end }} \
+--name={{ .PDNamePrefix }}{{- if or .AcrossK8s .ClusterDomain }}${domain}{{- else }}${POD_NAME}{{- end }} \
 --peer-urls={{ .Scheme }}://0.0.0.0:2380 \
 --advertise-peer-urls={{ .Scheme }}://${domain}:2380 \
 --client-urls={{ .Scheme }}://0.0.0.0:2379 \
@@ -233,6 +233,7 @@ type PDStartScriptModel struct {
 	Scheme            string
 	DataDir           string
 	CheckDomainScript string
+	PDNamePrefix      string
 }
 
 func RenderPDStartScript(model *PDStartScriptModel) (string, error) {
