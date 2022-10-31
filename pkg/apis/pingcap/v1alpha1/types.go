@@ -500,6 +500,11 @@ type PDSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1"
 	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
+
+	// ReadinessProbe describes actions that probe the PD's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
@@ -608,6 +613,11 @@ type TiKVSpec struct {
 	// ScalePolicy is the scale configuration for TiKV
 	// +optional
 	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
+
+	// ReadinessProbe describes actions that probe the TiKV's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -845,9 +855,9 @@ type TiDBSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// ReadinessProbe describes actions that probe the tidb's readiness.
-	// the default behavior is like setting type as "tcp"
+	// the default behavior is like setting type as "tcp", check 4000 port.
 	// +optional
-	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 
 	// Initializer is the init configurations of TiDB
 	//
@@ -866,13 +876,12 @@ const (
 	CommandProbeType string = "command"
 )
 
-// TiDBProbe contains details of probing tidb.
+// Probe contains details of probing tidb component instance.
 // +k8s:openapi-gen=true
-// default probe by TCPPort on 4000.
-type TiDBProbe struct {
-	// "tcp" will use TCP socket to connetct port 4000
+type Probe struct {
+	// "tcp" will use TCP socket to connect component port.
 	//
-	// "command" will probe the status api of tidb.
+	// "command" will probe the status tidb component.
 	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
 	// So do not use this before v4.0.9.
 	// +kubebuilder:validation:Enum=tcp;command

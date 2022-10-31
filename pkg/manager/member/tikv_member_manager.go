@@ -621,6 +621,10 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
+		ReadinessProbe: &corev1.Probe{
+			Handler:             buildTiKVReadinessProbHandler(tc),
+			InitialDelaySeconds: int32(10),
+		},
 	}
 
 	if tc.Spec.TiKV.EnableNamedStatusPort {
@@ -701,6 +705,55 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	tikvset.Spec.VolumeClaimTemplates = append(tikvset.Spec.VolumeClaimTemplates, additionalPVCs...)
 	return tikvset, nil
+}
+
+func buildTiKVReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
+	if tc.Spec.TiKV.ReadinessProbe != nil {
+		if tp := tc.Spec.TiKV.ReadinessProbe.Type; tp != nil {
+			if *tp == v1alpha1.CommandProbeType {
+				command := buildTiKVProbeCommand(tc)
+				return corev1.Handler{
+					Exec: &corev1.ExecAction{
+						Command: command,
+					},
+				}
+			}
+		}
+	}
+
+	// fall to default case v1alpha1.TCPProbeType
+	return corev1.Handler{
+		TCPSocket: &corev1.TCPSocketAction{
+			Port: intstr.FromInt(20160),
+		},
+	}
+}
+
+func buildTiKVProbeCommand(tc *v1alpha1.TidbCluster) (command []string) {
+	tcName := tc.Name
+	svcName := controller.PDPeerMemberName(tcName)
+
+	readinessURL := fmt.Sprintf("%s://%s:2379/status", tc.Scheme(), svcName)
+	command = append(command, "curl")
+	command = append(command, readinessURL)
+	command = append(command, "| grep -c \"$(POD_NAME)\"")
+
+	// Fail silently (no output at all) on server errors
+	// without this if the server return 500, the exist code will be 0
+	// and probe is success.
+	command = append(command, "--fail")
+	// follow 301 or 302 redirect
+	command = append(command, "--location")
+
+	if tc.IsTLSClusterEnabled() {
+		cacert := path.Join(clusterCertPath, tlsSecretRootCAKey)
+		cert := path.Join(clusterCertPath, corev1.TLSCertKey)
+		key := path.Join(clusterCertPath, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert)
+		command = append(command, "--cert", cert)
+		command = append(command, "--key", key)
+	}
+	return
 }
 
 // transformTiKVConfigMap change the `wait-for-lock-timeout` and `wake-up-delay-duration` due to their content type.
