@@ -11125,7 +11125,7 @@ Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>ReadinessProbe describes actions that probe the tikv&rsquo;s readiness.
+<p>ReadinessProbe describes actions that probe the pd&rsquo;s readiness.
 the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>

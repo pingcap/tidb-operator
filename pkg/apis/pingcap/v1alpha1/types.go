@@ -502,7 +502,7 @@ type PDSpec struct {
 	// +kubebuilder:validation:Enum:="";"v1"
 	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
 
-	// ReadinessProbe describes actions that probe the tikv's readiness.
+	// ReadinessProbe describes actions that probe the pd's readiness.
 	// the default behavior is like setting type as "tcp"
 	// +optional
 	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
