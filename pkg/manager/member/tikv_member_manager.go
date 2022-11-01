@@ -623,6 +623,13 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		Resources:    controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
 	}
 
+	if tc.Spec.TiKV.ReadinessProbe != nil {
+		tikvContainer.ReadinessProbe = &corev1.Probe{
+			Handler:             buildTiKVReadinessProbHandler(),
+			InitialDelaySeconds: int32(10),
+		}
+	}
+
 	if tc.Spec.TiKV.EnableNamedStatusPort {
 		kvStatusPort := corev1.ContainerPort{
 			Name:          "status",
@@ -1023,6 +1030,14 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 	}
 
 	return false, nil
+}
+
+func buildTiKVReadinessProbHandler() corev1.Handler {
+	return corev1.Handler{
+		TCPSocket: &corev1.TCPSocketAction{
+			Port: intstr.FromInt(20160),
+		},
+	}
 }
 
 type FakeTiKVMemberManager struct {

@@ -11114,6 +11114,21 @@ string
 <p>Start up script version</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>readinessProbe</code></br>
+<em>
+<a href="#probe">
+Probe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReadinessProbe describes actions that probe the tikv&rsquo;s readiness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -11707,6 +11722,68 @@ float64
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 0.1</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="probe">Probe</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pdspec">PDSpec</a>, 
+<a href="#tidbspec">TiDBSpec</a>, 
+<a href="#tikvspec">TiKVSpec</a>)
+</p>
+<p>
+<p>Probe contains details of probing tidb.
+default probe by TCPPort on tidb 4000 / tikv 20160 / pd 2349.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>&ldquo;tcp&rdquo; will use TCP socket to connect component port.</p>
+<p>&ldquo;command&rdquo; will probe the status api of tidb.
+This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
+So do not use this before v4.0.9.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initialDelaySeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Number of seconds after the container has started before liveness probes are initiated.
+Default to 10 seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>periodSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>How often (in seconds) to perform the probe.
+Default to Kubernetes default (10 seconds). Minimum value is 1.</p>
 </td>
 </tr>
 </tbody>
@@ -16036,66 +16113,6 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tidbprobe">TiDBProbe</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbspec">TiDBSpec</a>)
-</p>
-<p>
-<p>TiDBProbe contains details of probing tidb.
-default probe by TCPPort on 4000.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>type</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>&ldquo;tcp&rdquo; will use TCP socket to connetct port 4000</p>
-<p>&ldquo;command&rdquo; will probe the status api of tidb.
-This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
-So do not use this before v4.0.9.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>initialDelaySeconds</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Number of seconds after the container has started before liveness probes are initiated.
-Default to 10 seconds.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>periodSeconds</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>How often (in seconds) to perform the probe.
-Default to Kubernetes default (10 seconds). Minimum value is 1.</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tidbservicespec">TiDBServiceSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -16505,8 +16522,8 @@ Defaults to Kubernetes default storage class.</p>
 <td>
 <code>readinessProbe</code></br>
 <em>
-<a href="#tidbprobe">
-TiDBProbe
+<a href="#probe">
+Probe
 </a>
 </em>
 </td>
@@ -21157,6 +21174,21 @@ ScalePolicy
 <td>
 <em>(Optional)</em>
 <p>ScalePolicy is the scale configuration for TiKV</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>readinessProbe</code></br>
+<em>
+<a href="#probe">
+Probe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReadinessProbe describes actions that probe the tikv&rsquo;s readiness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
 </tbody>

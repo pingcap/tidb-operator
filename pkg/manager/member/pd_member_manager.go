@@ -741,6 +741,14 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.PD.ResourceRequirements),
 	}
+
+	if tc.Spec.PD.ReadinessProbe != nil {
+		pdContainer.ReadinessProbe = &corev1.Probe{
+			Handler:             buildPDReadinessProbHandler(),
+			InitialDelaySeconds: int32(10),
+		}
+	}
+
 	env := []corev1.EnvVar{
 		{
 			Name: "NAMESPACE",
@@ -949,6 +957,14 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 
 	tc.Status.PD.UnjoinedMembers = unjoined
 	return nil
+}
+
+func buildPDReadinessProbHandler() corev1.Handler {
+	return corev1.Handler{
+		TCPSocket: &corev1.TCPSocketAction{
+			Port: intstr.FromInt(2379),
+		},
+	}
 }
 
 // TODO: seems not used

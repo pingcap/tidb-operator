@@ -496,10 +496,16 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
 	// Start up script version
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1"
 	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
+
+	// ReadinessProbe describes actions that probe the tikv's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
@@ -608,6 +614,11 @@ type TiKVSpec struct {
 	// ScalePolicy is the scale configuration for TiKV
 	// +optional
 	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
+
+	// ReadinessProbe describes actions that probe the tikv's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -847,7 +858,7 @@ type TiDBSpec struct {
 	// ReadinessProbe describes actions that probe the tidb's readiness.
 	// the default behavior is like setting type as "tcp"
 	// +optional
-	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 
 	// Initializer is the init configurations of TiDB
 	//
@@ -866,11 +877,11 @@ const (
 	CommandProbeType string = "command"
 )
 
-// TiDBProbe contains details of probing tidb.
+// Probe contains details of probing tidb.
 // +k8s:openapi-gen=true
-// default probe by TCPPort on 4000.
-type TiDBProbe struct {
-	// "tcp" will use TCP socket to connetct port 4000
+// default probe by TCPPort on tidb 4000 / tikv 20160 / pd 2349.
+type Probe struct {
+	// "tcp" will use TCP socket to connect component port.
 	//
 	// "command" will probe the status api of tidb.
 	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
