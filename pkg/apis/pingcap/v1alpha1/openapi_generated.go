@@ -5426,7 +5426,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the tikv's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
