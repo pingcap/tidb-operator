@@ -5940,7 +5940,7 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 	}
 	if in.ReadinessProbe != nil {
 		in, out := &in.ReadinessProbe, &out.ReadinessProbe
-		*out = new(TiDBProbe)
+		*out = new(Probe)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Initializer != nil {
