@@ -7,7 +7,6 @@ require (
 	github.com/Masterminds/semver v1.4.2
 	github.com/aws/aws-sdk-go v1.44.72 // indirect
 	github.com/go-openapi/spec v0.19.3
-	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/google/go-cmp v0.5.8
 	github.com/google/gofuzz v1.1.0
 	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
