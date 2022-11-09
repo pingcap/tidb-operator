@@ -93,7 +93,7 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 				klog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
 				return nil
 			}
-			klog.Errorf("Failed to update resotre [%s/%s], error: %v", ns, restoreName, updateErr)
+			klog.Errorf("Failed to update restore [%s/%s], error: %v", ns, restoreName, updateErr)
 			return updateErr
 		}
 		return nil
