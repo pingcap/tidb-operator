@@ -221,6 +221,8 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix, backupPrefix)
 		} else if backupSpec.Gcs != nil {
 			backupSpec.Gcs.Prefix = path.Join(backupSpec.Gcs.Prefix, backupPrefix)
+		} else if backupSpec.Azblob != nil {
+			backupSpec.Azblob.Prefix = path.Join(backupSpec.Azblob.Prefix, backupPrefix)
 		} else if backupSpec.Local != nil {
 			backupSpec.Local.Prefix = path.Join(backupSpec.Local.Prefix, backupPrefix)
 		}
