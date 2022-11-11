@@ -299,7 +299,7 @@ function hack::ensure_openapi() {
 }
 
 function hack::ensure_go117() {
-    echo "Adjust go117+ to go116 ..."
+		echo "Adjust go117+ to go116 ..."
 		patch -d $ROOT -NRp1 -i $ROOT/hack/go117.patch -r .rej --no-backup-if-mismatch || true
 		rm -rf .rej
 }
