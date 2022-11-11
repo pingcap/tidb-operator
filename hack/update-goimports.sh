@@ -24,5 +24,4 @@ source hack/lib.sh
 hack::ensure_goimports
 
 find . -type f -name '*.go' | xargs ${OUTPUT_BIN}/goimports -w
-patch -d $ROOT -NRp1 -i $ROOT/hack/go117.patch -r .rej || true
-rm -rf .rej
+hack::ensure_go117
