@@ -1628,6 +1628,19 @@ the controller.</p>
 </tr>
 <tr>
 <td>
+<code>recoveryMode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether RecoveryMode is enabled for TiDB cluster to restore
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>version</code></br>
 <em>
 string
@@ -4018,6 +4031,19 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType
 </td>
 <td>
 <p>LogSubCommandStatuses is the detail status of log backup subcommands, record each command separately, but only record the last command.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>progresses</code></br>
+<em>
+<a href="#progress">
+[]Progress
+</a>
+</em>
+</td>
+<td>
+<p>Progresses is the progress of backup.</p>
 </td>
 </tr>
 </tbody>
@@ -11743,6 +11769,59 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="progress">Progress</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupstatus">BackupStatus</a>, 
+<a href="#restorestatus">RestoreStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>step</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Step is the step name of progress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>progress</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<p>Progress is the backup progress value</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LastTransitionTime is the update time</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="prometheusconfiguration">PrometheusConfiguration</h3>
 <p>
 (<em>Appears on:</em>
@@ -13021,58 +13100,6 @@ string
 <p>
 <p>RestoreMode represents the restore mode, such as snapshot or pitr.</p>
 </p>
-<h3 id="restoreprogress">RestoreProgress</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#restorestatus">RestoreStatus</a>)
-</p>
-<p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>step</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Step is the step name of progress</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>progress</code></br>
-<em>
-float64
-</em>
-</td>
-<td>
-<p>Progress is the restore progress value</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>lastTransitionTime</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
-Kubernetes meta/v1.Time
-</a>
-</em>
-</td>
-<td>
-<p>LastTransitionTime is the update time</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="restorespec">RestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -13469,8 +13496,8 @@ RestoreConditionType
 <td>
 <code>progresses</code></br>
 <em>
-<a href="#restoreprogress">
-[]RestoreProgress
+<a href="#progress">
+[]Progress
 </a>
 </em>
 </td>
@@ -22400,6 +22427,19 @@ bool
 <em>(Optional)</em>
 <p>Indicates that the tidb cluster is paused and will not be processed by
 the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recoveryMode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether RecoveryMode is enabled for TiDB cluster to restore
+Optional: Defaults to false</p>
 </td>
 </tr>
 <tr>

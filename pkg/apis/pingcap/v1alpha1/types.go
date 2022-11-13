@@ -216,6 +216,11 @@ type TidbClusterSpec struct {
 	// +optional
 	Paused bool `json:"paused,omitempty"`
 
+	// Whether RecoveryMode is enabled for TiDB cluster to restore
+	// Optional: Defaults to false
+	// +optional
+	RecoveryMode bool `json:"recoveryMode,omitempty"`
+
 	// TiDB cluster version
 	// +optional
 	Version string `json:"version"`
@@ -1669,6 +1674,8 @@ const (
 	BackupModeSnapshot BackupMode = "snapshot"
 	// BackupModeLog represents the log backup of tidb cluster.
 	BackupModeLog BackupMode = "log"
+	// BackupModeVolumeSnapshot represents volume backup of tidb cluster.
+	BackupModeVolumeSnapshot BackupMode = "volume-snapshot"
 )
 
 // TiDBAccessConfig defines the configuration for access tidb cluster
@@ -1731,6 +1738,16 @@ type CleanOption struct {
 	BackoffEnabled bool `json:"backoffEnabled,omitempty"`
 
 	BatchDeleteOption `json:",inline"`
+}
+
+type Progress struct {
+	// Step is the step name of progress
+	Step string `json:"step,omitempty"`
+	// Progress is the backup progress value
+	Progress float64 `json:"progress,omitempty"`
+	// LastTransitionTime is the update time
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 // BackupSpec contains the backup specification for a tidb cluster.
@@ -1961,6 +1978,9 @@ type BackupStatus struct {
 	Conditions []BackupCondition `json:"conditions,omitempty"`
 	// LogSubCommandStatuses is the detail status of log backup subcommands, record each command separately, but only record the last command.
 	LogSubCommandStatuses map[LogSubCommandType]LogSubCommandStatus `json:"logSubCommandStatuses,omitempty"`
+	// Progresses is the progress of backup.
+	// +nullable
+	Progresses []Progress `json:"progresses,omitempty"`
 }
 
 // +genclient
@@ -2076,6 +2096,8 @@ const (
 	RestoreModeSnapshot RestoreMode = "snapshot"
 	// RestoreModePiTR represents PiTR restore which is from a snapshot backup and log backup.
 	RestoreModePiTR RestoreMode = "pitr"
+	// RestoreModeVolumeSnapshot represents restore from a volume snapshot backup.
+	RestoreModeVolumeSnapshot RestoreMode = "volume-snapshot"
 )
 
 // RestoreConditionType represents a valid condition of a Restore.
@@ -2086,6 +2108,12 @@ const (
 	RestoreScheduled RestoreConditionType = "Scheduled"
 	// RestoreRunning means the Restore is currently being executed.
 	RestoreRunning RestoreConditionType = "Running"
+	// RestoreVolumeComplete means the Restore has successfully executed part-1 and the
+	// backup volumes have been rebuilded from the corresponding snapshot
+	RestoreVolumeComplete RestoreConditionType = "VolumeComplete"
+	// RestoreDataComplete means the Restore has successfully executed part-2 and the
+	// data in restore volumes has been deal with consistency based on min_resolved_ts
+	RestoreDataComplete RestoreConditionType = "DataComplete"
 	// RestoreComplete means the Restore has successfully executed and the
 	// backup data has been loaded into tidb cluster.
 	RestoreComplete RestoreConditionType = "Complete"
@@ -2106,16 +2134,6 @@ type RestoreCondition struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	Reason             string      `json:"reason,omitempty"`
 	Message            string      `json:"message,omitempty"`
-}
-
-type RestoreProgress struct {
-	// Step is the step name of progress
-	Step string `json:"step,omitempty"`
-	// Progress is the restore progress value
-	Progress float64 `json:"progress,omitempty"`
-	// LastTransitionTime is the update time
-	// +nullable
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -2213,7 +2231,7 @@ type RestoreStatus struct {
 	Conditions []RestoreCondition `json:"conditions,omitempty"`
 	// Progresses is the progress of restore.
 	// +nullable
-	Progresses []RestoreProgress `json:"progresses,omitempty"`
+	Progresses []Progress `json:"progresses,omitempty"`
 }
 
 // +k8s:openapi-gen=true

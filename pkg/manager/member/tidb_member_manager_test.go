@@ -579,6 +579,18 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 }
 
+func TestSyncRecoveryForTidbCluster(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbClusterForTiDB()
+	tmm, _, _, _ := newFakeTiDBMemberManager()
+	err := tmm.syncRecoveryForTidbCluster(tc)
+	g.Expect(err).To(BeNil())
+
+	tc.Spec.RecoveryMode = true
+	err = tmm.syncRecoveryForTidbCluster(tc)
+	g.Expect(err).NotTo(BeNil())
+}
+
 func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
