@@ -3,7 +3,7 @@ ARG TARGETARCH
 ARG RCLONE_VERSION=v1.51.0
 ARG SHUSH_VERSION=v1.4.0
 ARG TOOLKIT_VERSION=v6.1.0
-RUN yum install wget unzip bind-tools --no-cache
+RUN yum install wget unzip bind-utils && rm -rf /var/cache/yum
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip \
   && unzip rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip \
