@@ -123,6 +123,11 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 
+	// Sync TidbCluster Recovery
+	if err := m.syncRecoveryForTidbCluster(tc); err != nil {
+		return err
+	}
+
 	if tc.Spec.Pump != nil && !tc.PumpIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
 	}
@@ -149,6 +154,18 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	// Sync TiDB StatefulSet
 	return m.syncTiDBStatefulSetForTidbCluster(tc)
+}
+
+func (m *tidbMemberManager) syncRecoveryForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	// Check whether the cluster is in recovery mode
+	// and whether the volumes have been restored for TiKV
+	if !tc.Spec.RecoveryMode {
+		return nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV restore data completed", ns, tcName)
 }
 
 func (m *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error {
@@ -1052,7 +1069,7 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	return nil
 }
 
-const tidbSupportLabelsMinVersin = "6.2.0"
+const tidbSupportLabelsMinVersin = "6.3.0"
 
 func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, error) {
 	tidbVersion := tc.TiDBVersion()

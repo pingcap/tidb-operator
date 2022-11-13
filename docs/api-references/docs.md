@@ -1628,6 +1628,19 @@ the controller.</p>
 </tr>
 <tr>
 <td>
+<code>recoveryMode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether RecoveryMode is enabled for TiDB cluster to restore
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>version</code></br>
 <em>
 string
@@ -4020,6 +4033,19 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType
 <p>LogSubCommandStatuses is the detail status of log backup subcommands, record each command separately, but only record the last command.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>progresses</code></br>
+<em>
+<a href="#progress">
+[]Progress
+</a>
+</em>
+</td>
+<td>
+<p>Progresses is the progress of backup.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="backupstoragetype">BackupStorageType</h3>
@@ -6356,6 +6382,10 @@ Kubernetes core/v1.ResourceRequirements
 Only named struct is allowed by controller-gen</p>
 </p>
 <h3 id="evictleaderstatus">EvictLeaderStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvstatus">TiKVStatus</a>)
+</p>
 <p>
 </p>
 <table>
@@ -8775,7 +8805,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -11213,7 +11243,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -11739,6 +11769,59 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="progress">Progress</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupstatus">BackupStatus</a>, 
+<a href="#restorestatus">RestoreStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>step</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Step is the step name of progress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>progress</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<p>Progress is the backup progress value</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LastTransitionTime is the update time</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="prometheusconfiguration">PrometheusConfiguration</h3>
 <p>
 (<em>Appears on:</em>
@@ -11952,8 +12035,8 @@ Defaults to false.</p>
 <td>
 <code>remoteWrite</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.remotewritespec">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RemoteWriteSpec
+<a href="#remotewritespec">
+[]RemoteWriteSpec
 </a>
 </em>
 </td>
@@ -12230,6 +12313,10 @@ uint
 </table>
 <h3 id="pumpnodestatus">PumpNodeStatus</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#pumpstatus">PumpStatus</a>)
+</p>
+<p>
 <p>PumpNodeStatus represents the status saved in etcd.</p>
 </p>
 <table>
@@ -12434,8 +12521,8 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>members</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.pumpnodestatus">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpNodeStatus
+<a href="#pumpnodestatus">
+[]PumpNodeStatus
 </a>
 </em>
 </td>
@@ -12446,7 +12533,7 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -12751,6 +12838,10 @@ ServiceSpec
 </table>
 <h3 id="remotewritespec">RemoteWriteSpec</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#prometheusspec">PrometheusSpec</a>)
+</p>
+<p>
 <p>RemoteWriteSpec defines the remote_write configuration for prometheus.</p>
 </p>
 <table>
@@ -13009,58 +13100,6 @@ string
 <p>
 <p>RestoreMode represents the restore mode, such as snapshot or pitr.</p>
 </p>
-<h3 id="restoreprogress">RestoreProgress</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#restorestatus">RestoreStatus</a>)
-</p>
-<p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>step</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Step is the step name of progress</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>progress</code></br>
-<em>
-float64
-</em>
-</td>
-<td>
-<p>Progress is the restore progress value</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>lastTransitionTime</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
-Kubernetes meta/v1.Time
-</a>
-</em>
-</td>
-<td>
-<p>LastTransitionTime is the update time</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="restorespec">RestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -13457,8 +13496,8 @@ RestoreConditionType
 <td>
 <code>progresses</code></br>
 <em>
-<a href="#restoreprogress">
-[]RestoreProgress
+<a href="#progress">
+[]Progress
 </a>
 </em>
 </td>
@@ -14447,6 +14486,16 @@ string
 </p>
 <h3 id="storagevolumestatus">StorageVolumeStatus</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>, 
+<a href="#pdstatus">PDStatus</a>, 
+<a href="#pumpstatus">PumpStatus</a>, 
+<a href="#ticdcstatus">TiCDCStatus</a>, 
+<a href="#tidbstatus">TiDBStatus</a>, 
+<a href="#tikvstatus">TiKVStatus</a>, 
+<a href="#workerstatus">WorkerStatus</a>)
+</p>
+<p>
 <p>StorageVolumeStatus is the actual status for a storage</p>
 </p>
 <table>
@@ -15153,7 +15202,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCaptu
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -16581,7 +16630,7 @@ bool
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -21244,7 +21293,7 @@ string
 <td>
 <code>evictLeader</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.evictleaderstatus">
+<a href="#evictleaderstatus">
 map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLeaderStatus
 </a>
 </em>
@@ -21256,7 +21305,7 @@ map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLead
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -22378,6 +22427,19 @@ bool
 <em>(Optional)</em>
 <p>Indicates that the tidb cluster is paused and will not be processed by
 the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recoveryMode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether RecoveryMode is enabled for TiDB cluster to restore
+Optional: Defaults to false</p>
 </td>
 </tr>
 <tr>
@@ -24658,7 +24720,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>

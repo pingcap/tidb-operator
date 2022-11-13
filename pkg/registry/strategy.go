@@ -27,34 +27,35 @@ import (
 // is applied to versioned resource, and PrepareForCreate/Update is applied to resource after conversion.
 // MutatingAdmissionWebhook is also applied to resource after conversion, which allows it to implement the correct
 // semantic of PrepareForCreate/Update as the following figure shows:
-//             +
-//          Resource
-//             |
-//    +--------v---------+
-//    |    Conversion    |
-//    +--------+---------+
-//             |     MutatingWebhook   +---------------------+
-//             +---------------------->+   Prepare(Webhook)  |
-//                                     +----------+----------+
-//                                                |
-//             +----------------------------------+
-//             |
-//    +--------v---------+
-//    |  Prepare(Server) |
-//    +--------+---------+
-//             |
-//    +--------v---------+
-//    | Validate(Server) |
-//    +--------+---------+
-//             |    ValidatingWebhook  +---------------------+
-//             +---------------------->+  Validate(Webhook)  |
-//                                     +----------+----------+
-//                                                |
-//             +----------------------------------+
-//             |
-//    +--------v---------+
-//    |       ETCD       |
-//    +------------------+
+//
+//	         +
+//	      Resource
+//	         |
+//	+--------v---------+
+//	|    Conversion    |
+//	+--------+---------+
+//	         |     MutatingWebhook   +---------------------+
+//	         +---------------------->+   Prepare(Webhook)  |
+//	                                 +----------+----------+
+//	                                            |
+//	         +----------------------------------+
+//	         |
+//	+--------v---------+
+//	|  Prepare(Server) |
+//	+--------+---------+
+//	         |
+//	+--------v---------+
+//	| Validate(Server) |
+//	+--------+---------+
+//	         |    ValidatingWebhook  +---------------------+
+//	         +---------------------->+  Validate(Webhook)  |
+//	                                 +----------+----------+
+//	                                            |
+//	         +----------------------------------+
+//	         |
+//	+--------v---------+
+//	|       ETCD       |
+//	+------------------+
 //
 // There is a special case for custom resource, if there is only one version specified, the conversion is actually no-op.
 // And if there is multiple versions specified, a storage version could be specified in CustomResourceDefinition which acts

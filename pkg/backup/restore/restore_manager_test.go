@@ -22,6 +22,7 @@ import (
 
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	corev1 "k8s.io/api/core/v1"
@@ -117,7 +118,7 @@ func genValidBRRestores() []*v1alpha1.Restore {
 						Name:  fmt.Sprintf("env_name_%d", i),
 						Value: fmt.Sprintf("env_value_%d", i),
 					},
-					// existing env name will be overwritten for backup
+					// existing env name will be overwritten for restore
 					{
 						Name:  "BR_LOG_TO_TERM",
 						Value: "value",
@@ -131,7 +132,7 @@ func genValidBRRestores() []*v1alpha1.Restore {
 			},
 		}
 		r.Namespace = "ns"
-		r.Name = fmt.Sprintf("backup_name_%d", i)
+		r.Name = fmt.Sprintf("restore_name_%d", i)
 		rs = append(rs, r)
 	}
 
@@ -230,5 +231,159 @@ func TestBRRestore(t *testing.T) {
 		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
 		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
 		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
+	}
+}
+
+func TestBRRestoreByEBS(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	cases := []struct {
+		name    string
+		restore *v1alpha1.Restore
+	}{
+		{
+			name: "restore-volume",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1",
+					Namespace: "ns-1",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-1",
+						Cluster:          "cluster-1",
+					},
+					StorageProvider: v1alpha1.StorageProvider{
+						S3: &v1alpha1.S3StorageProvider{
+							Bucket:   "s3",
+							Prefix:   "prefix-",
+							Endpoint: "s3://localhost:80",
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{},
+			},
+		},
+		{
+			name: "restore-volume-complete",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-2",
+					Namespace: "ns-2",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-2",
+						Cluster:          "cluster-2",
+					},
+					StorageProvider: v1alpha1.StorageProvider{
+						S3: &v1alpha1.S3StorageProvider{
+							Bucket:   "s3",
+							Prefix:   "prefix-",
+							Endpoint: "s3://localhost:80",
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{
+					Phase: v1alpha1.RestoreRunning,
+					Conditions: []v1alpha1.RestoreCondition{
+						{
+							Type:   v1alpha1.RestoreVolumeComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "restore-data",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-3",
+					Namespace: "ns-3",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-3",
+						Cluster:          "cluster-3",
+					},
+					StorageProvider: v1alpha1.StorageProvider{
+						S3: &v1alpha1.S3StorageProvider{
+							Bucket:   "s3",
+							Prefix:   "prefix-",
+							Endpoint: "s3://localhost:80",
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{
+					Phase: v1alpha1.RestoreRunning,
+					Conditions: []v1alpha1.RestoreCondition{
+						{
+							Type:   v1alpha1.RestoreVolumeComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "restore-data-complete",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-4",
+					Namespace: "ns-4",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-4",
+						Cluster:          "cluster-4",
+					},
+					StorageProvider: v1alpha1.StorageProvider{
+						S3: &v1alpha1.S3StorageProvider{
+							Bucket:   "s3",
+							Prefix:   "prefix-",
+							Endpoint: "s3://localhost:80",
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{
+					Phase: v1alpha1.RestoreRunning,
+					Conditions: []v1alpha1.RestoreCondition{
+						{
+							Type:   v1alpha1.RestoreVolumeComplete,
+							Status: corev1.ConditionTrue,
+						},
+						{
+							Type:   v1alpha1.RestoreDataComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster)
+			helper.CreateRestore(tt.restore)
+			tt.restore.Annotations = map[string]string{
+				label.AnnBackupCloudSnapKey: testutils.ConstructRestoreMetaStr(),
+			}
+			m := NewRestoreManager(deps)
+			err := m.Sync(tt.restore)
+			g.Expect(err).Should(BeNil())
+		})
 	}
 }

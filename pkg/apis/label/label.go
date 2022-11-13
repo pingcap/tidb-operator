@@ -124,6 +124,14 @@ const (
 	// AnnSkipTLSWhenConnectTiDB describes whether skip TLS when connecting to TiDB Server
 	AnnSkipTLSWhenConnectTiDB = "tidb.tidb.pingcap.com/skip-tls-when-connect-tidb"
 
+	// AnnBackupCloudSnapKey is the annotation key for backup metadata based cloud snapshot
+	AnnBackupCloudSnapKey string = "tidb.pingcap.com/backup-cloud-snapshot"
+
+	// AnnTiKVVolumesReadyKey is the annotation key to indicate whether the TiKV volumes are ready.
+	// TiKV member manager will wait until the TiKV volumes are ready before starting the TiKV pod
+	// when TiDB cluster is restored from volume snapshot based backup.
+	AnnTiKVVolumesReadyKey = "tidb.pingcap.com/tikv-volumes-ready"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value

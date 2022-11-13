@@ -2861,6 +2861,20 @@ spec:
               type: string
             phase:
               type: string
+            progresses:
+              items:
+                properties:
+                  lastTransitionTime:
+                    format: date-time
+                    nullable: true
+                    type: string
+                  progress:
+                    type: number
+                  step:
+                    type: string
+                type: object
+              nullable: true
+              type: array
             timeCompleted:
               format: date-time
               nullable: true
@@ -20676,6 +20690,8 @@ spec:
               type: object
             pvReclaimPolicy:
               type: string
+            recoveryMode:
+              type: boolean
             schedulerName:
               type: string
             serviceAccount:

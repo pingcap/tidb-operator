@@ -47,8 +47,9 @@ import (
 // Implementation:
 //
 // for every unmatched PVC (desiredCapacity != actualCapacity)
-//  if storageClass does not support VolumeExpansion, skip and continue
-//  if not patched, patch
+//
+//	if storageClass does not support VolumeExpansion, skip and continue
+//	if not patched, patch
 //
 // We patch all PVCs of one Pod  at the same time. For many cloud storage plugins (e.g.
 // AWS-EBS, GCE-PD), they support online file system expansion in latest
@@ -56,16 +57,15 @@ import (
 //
 // Limitations:
 //
-// - Note that the current statfulset implementation does not allow
-//   `volumeClaimTemplates` to be changed, so new PVCs created by statefulset
-//   controller will use the old storage request.
-// - This is best effort, before statefulset volume resize feature (e.g.
-//   https://github.com/kubernetes/enhancements/pull/1848) to be implemented.
-// - If the feature `ExpandInUsePersistentVolumes` is not enabled or the volume
-//   plugin does not support, the pod referencing the volume must be deleted and
-//   recreated after the `FileSystemResizePending` condition becomes true.
-// - Shrinking volumes is not supported.
-//
+//   - Note that the current statfulset implementation does not allow
+//     `volumeClaimTemplates` to be changed, so new PVCs created by statefulset
+//     controller will use the old storage request.
+//   - This is best effort, before statefulset volume resize feature (e.g.
+//     https://github.com/kubernetes/enhancements/pull/1848) to be implemented.
+//   - If the feature `ExpandInUsePersistentVolumes` is not enabled or the volume
+//     plugin does not support, the pod referencing the volume must be deleted and
+//     recreated after the `FileSystemResizePending` condition becomes true.
+//   - Shrinking volumes is not supported.
 type PVCResizerInterface interface {
 	Sync(*v1alpha1.TidbCluster) error
 	SyncDM(*v1alpha1.DMCluster) error

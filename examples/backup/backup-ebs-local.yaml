@@ -1,0 +1,37 @@
+apiVersion: pingcap.com/v1alpha1
+kind: Backup
+metadata:
+  name: basic-backup-ebs
+  namespace: default
+spec:
+  cleanPolicy: Delete
+  backupType: full
+  backupMode: volume-snapshot
+  # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
+  # from:
+  #   host: ${tidb-host}
+  #   port: ${tidb-port}
+  #   user: ${tidb-user}
+  #   secretName: backup-basic-tidb-secret
+  toolImage: localhost:5000/pingcap/br:latest
+  br:
+    cluster: basic
+    clusterNamespace: default
+    # logLevel: info
+    # statusAddr: ${status-addr}
+    # concurrency: 4
+    # rateLimit: 0
+    # checksum: true
+    # sendCredToTikv: true
+    options:
+    - --skip-aws=true
+    - --check-requirements=false
+  local:
+    volume:
+      name: xhostpath
+      hostPath:
+        path: /home
+        type: DirectoryOrCreate
+    volumeMount:
+      name: xhostpath
+      mountPath: /mnt
