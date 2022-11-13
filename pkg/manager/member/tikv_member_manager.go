@@ -1041,6 +1041,7 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 	return false, nil
 }
 
+// TODO: Support check pd status http request in future.
 func buildTiKVReadinessProbHandler() corev1.Handler {
 	return corev1.Handler{
 		TCPSocket: &corev1.TCPSocketAction{
