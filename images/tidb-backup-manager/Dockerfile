@@ -20,9 +20,9 @@ ARG TOOLKIT_PKG_NAME=tidb-community-toolkit-${TOOLKIT_NAME}
 RUN \
   wget -nv https://download.pingcap.org/${TOOLKIT_PKG_NAME}.tar.gz \
   && tar -xzf ${TOOLKIT_PKG_NAME}.tar.gz \
-  && tar -xzf ${TOOLKIT_PKG_NAME}/tidb-lightning-${TOOLKIT_NAME}.tar.gz && mv tidb-lightning /tidb-lightning \
+  && tar -xzf ${TOOLKIT_PKG_NAME}/tidb-lightning-${TOOLKIT_NAME}.tar.gz \
   && mv ${TOOLKIT_PKG_NAME}/tidb-lightning-ctl /tidb-lightning-ctl \
-  && tar -xzf ${TOOLKIT_PKG_NAME}/dumpling-${TOOLKIT_NAME}.tar.gz && mv dumpling /dumpling \
+  && tar -xzf ${TOOLKIT_PKG_NAME}/dumpling-${TOOLKIT_NAME}.tar.gz \
   && chmod 755 /dumpling /tidb-lightning /tidb-lightning-ctl \
   && rm -rf ${TOOLKIT_PKG_NAME}.tar.gz \
   && rm -rf ${TOOLKIT_PKG_NAME}
