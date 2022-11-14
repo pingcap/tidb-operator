@@ -1,6 +1,6 @@
-FROM alpine:3.14
+FROM rockylinux:9.0
 
-RUN apk add tzdata bash bind-tools --no-cache
+RUN yum install -y tzdata bind-utils && rm -rf /var/cache/yum
 
 ADD bin/tidb-scheduler /usr/local/bin/tidb-scheduler
 ADD bin/tidb-discovery /usr/local/bin/tidb-discovery
