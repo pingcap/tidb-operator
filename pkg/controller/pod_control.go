@@ -199,15 +199,15 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 }
 
 func (c *realPodControl) DeletePod(controller runtime.Object, pod *corev1.Pod) error {
-	return c.deletePodWithGrace(controller, pod, false)
+	return c.deletePodWithNoGrace(controller, pod, false)
 }
 
 func (c *realPodControl) ForceDeletePod(controller runtime.Object, pod *corev1.Pod) error {
-	return c.deletePodWithGrace(controller, pod, true)
+	return c.deletePodWithNoGrace(controller, pod, true)
 }
 
-// deletePodWithGrace takes an extra nonGraceful boolean which determines whether to remove the grace period in delete command
-func (c *realPodControl) deletePodWithGrace(controller runtime.Object, pod *corev1.Pod, nonGraceful bool) error {
+// deletePodWithNoGrace takes an extra nonGraceful boolean which determines whether to remove the grace period in delete command
+func (c *realPodControl) deletePodWithNoGrace(controller runtime.Object, pod *corev1.Pod, nonGraceful bool) error {
 	controllerMo, ok := controller.(metav1.Object)
 	if !ok {
 		return fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
