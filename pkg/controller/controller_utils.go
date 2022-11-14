@@ -290,12 +290,12 @@ func TiFlashPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tiflash-peer", clusterName)
 }
 
-// TiProxyMemberName returns ticdc member name
+// TiProxyMemberName returns tiproxy member name
 func TiProxyMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tiproxy", clusterName)
 }
 
-// TiProxyPeerMemberName returns ticdc peer service name
+// TiProxyPeerMemberName returns tiproxy peer service name
 func TiProxyPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tiproxy-peer", clusterName)
 }
