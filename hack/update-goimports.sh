@@ -24,3 +24,4 @@ source hack/lib.sh
 hack::ensure_goimports
 
 find . -type f -name '*.go' | xargs ${OUTPUT_BIN}/goimports -w
+hack::ensure_go117
