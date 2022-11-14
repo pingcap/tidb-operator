@@ -81,6 +81,12 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 		_ = os.Remove(metaFile)
 	}()
 
+	if _, err := os.Stat(metaFile); err != nil {
+		// file does not existed, need a manual delete
+		klog.Warningf("backupmeta does not existed, a mannual check or delete aciton require.")
+		return nil
+	}
+
 	contents, err := os.ReadFile(metaFile)
 	if err != nil {
 		klog.Errorf("read metadata file %s failed, err: %s", metaFile, err)
@@ -95,6 +101,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 
 	//2. delete the snapshot
 	if err = bo.deleteVolumeSnapshots(metaInfo); err != nil {
+		klog.Errorf("delete volume snapshot failure, a mannual check or delete aciton require.")
 		return err
 	}
 
