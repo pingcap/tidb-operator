@@ -13,7 +13,7 @@ kubectl delete --force namespace $namespace || true
 
 if [ -n "$1" ]; then
 	eval $(minikube docker-env)
-	make operator-docker
+	make DOCKER_REPO=xx operator-docker
 fi
 
 kubectl create namespace $namespace
@@ -36,5 +36,5 @@ if [ -n "$ENABLE_SSL" ]; then
 	kubectl create secret generic ${cluster}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
 fi
 
-helm install operator $BASE/../../charts/tidb-operator/ --namespace testing --set "operatorImage=operator:latest"
+helm install operator $BASE/../../charts/tidb-operator/ --namespace testing --set "operatorImage=xx/tidb-operator:latest"
 kubectl apply -f $BASE/cluster.yaml --namespace testing
