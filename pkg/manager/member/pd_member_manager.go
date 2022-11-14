@@ -967,6 +967,7 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 	tc.Status.PD.UnjoinedMembers = unjoined
 	return nil
 }
+
 // TODO: Support check status http request in future.
 func buildPDReadinessProbHandler() corev1.Handler {
 	return corev1.Handler{
