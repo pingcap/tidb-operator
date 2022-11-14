@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/semver v1.4.2
-	github.com/aws/aws-sdk-go v1.30.9 // indirect
+	github.com/aws/aws-sdk-go v1.44.72 // indirect
 	github.com/go-openapi/spec v0.19.3
 	github.com/google/go-cmp v0.5.8
 	github.com/google/gofuzz v1.1.0
@@ -15,7 +15,6 @@ require (
 	github.com/pingcap/errors v0.11.4
 	github.com/prometheus/common v0.26.0
 	github.com/prometheus/prometheus v1.8.2
-	golang.org/x/sys v0.0.0-20210925032602-92d5a993a665 // indirect
 	k8s.io/api v0.19.16
 	k8s.io/apiextensions-apiserver v0.19.16
 	k8s.io/apimachinery v0.19.16

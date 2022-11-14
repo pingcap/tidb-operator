@@ -14,7 +14,7 @@ require (
 	github.com/Masterminds/semver v1.4.2
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/agiledragon/gomonkey/v2 v2.3.0
-	github.com/aws/aws-sdk-go v1.30.9
+	github.com/aws/aws-sdk-go v1.44.72
 	github.com/aws/aws-sdk-go-v2 v1.16.11
 	github.com/aws/aws-sdk-go-v2/config v1.17.1
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.53.0
@@ -54,8 +54,8 @@ require (
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
-	github.com/pingcap/tidb-operator/pkg/apis v1.4.0-alpha.2
-	github.com/pingcap/tidb-operator/pkg/client v1.4.0-alpha.2
+	github.com/pingcap/tidb-operator/pkg/apis v1.4.0-beta.2
+	github.com/pingcap/tidb-operator/pkg/client v1.4.0-beta.2
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.26.0
