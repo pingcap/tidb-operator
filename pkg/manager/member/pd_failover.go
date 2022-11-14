@@ -78,6 +78,28 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		return f.tryToMarkAPeerAsFailure(tc)
 	}
 
+	// Before delete of failure member try to detect node failure for the pod and set HostDown
+	// If any HostDown is set then force restart failure pod for re-creation
+	if isFailurePdPodHostDown(tc) {
+		if canAutoFailureRecovery(tc) {
+			if err := f.restartPodForHostDown(tc); err != nil {
+				if controller.IsIgnoreError(err) {
+					return nil
+				}
+				return err
+			}
+		}
+	} else {
+		if f.deps.CLIConfig.DetectNodeFailure {
+			if err := f.checkAndMarkHostDown(tc); err != nil {
+				if controller.IsIgnoreError(err) {
+					return nil
+				}
+				return err
+			}
+		}
+	}
+
 	return f.tryToDeleteAFailureMember(tc)
 }
 
@@ -139,9 +161,79 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
+// isFailurePdPodHostDown checks if HostDown is set for any pd failure member
+func isFailurePdPodHostDown(tc *v1alpha1.TidbCluster) bool {
+	for pdName := range tc.Status.PD.FailureMembers {
+		pdMember := tc.Status.PD.FailureMembers[pdName]
+		if pdMember.HostDown {
+			return true
+		}
+	}
+	return false
+}
+
+// checkAndMarkHostDown checks the availability of nodes of failure pods and marks HostDown for one failure member at a time
+func (f *pdFailover) checkAndMarkHostDown(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	for pdName, failureMember := range tc.Status.PD.FailureMembers {
+		// Skip if HostDown is already marked true
+		if failureMember.HostDown {
+			continue
+		}
+		failurePodName := strings.Split(pdName, ".")[0]
+		pod, err := f.deps.PodLister.Pods(ns).Get(failurePodName)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("pd failover[checkAndMarkHostDown]: failed to get pod %s of tc %s/%s, error: %s", failurePodName, ns, tcName, err)
+		}
+		if pod != nil {
+			hostingNodeUnavailable, roDiskFound, hnuErr := isHostingNodeUnavailable(f.deps.NodeLister, pod)
+			if hnuErr != nil {
+				return hnuErr
+			}
+			if hostingNodeUnavailable || roDiskFound {
+				failureMember.HostDown = true
+				tc.Status.PD.FailureMembers[pdName] = failureMember
+				return controller.RequeueErrorf("Marked host down true for pod: %s of tc %s/%s", failureMember.PodName, ns, tcName)
+			}
+		}
+	}
+	return nil
+}
+
+// restartPodForHostDown restarts pod of one pd failure member if HostDown is set for the pd failure member
+func (f *pdFailover) restartPodForHostDown(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	for pdName := range tc.Status.PD.FailureMembers {
+		failedMember := tc.Status.PD.FailureMembers[pdName]
+		if failedMember.HostDown {
+			failurePodName := strings.Split(pdName, ".")[0]
+			pod, err := f.deps.PodLister.Pods(ns).Get(failurePodName)
+			if err != nil && !errors.IsNotFound(err) {
+				return fmt.Errorf("pd failover[forceRestartFailurePod]: failed to get pod %s of tc %s/%s, error: %s", failurePodName, ns, tcName, err)
+			}
+			// If the failed pod has already been restarted once, its CreationTimestamp will be after FailureMember.CreatedAt
+			if pod != nil && failedMember.CreatedAt.After(pod.CreationTimestamp.Time) {
+				// Use force option to delete the pod
+				if err = f.deps.PodControl.ForceDeletePod(tc, pod); err != nil {
+					return err
+				}
+				msg := fmt.Sprintf("Failed pd pod %s of tc %s/%s is force deleted for recovery", failedMember.PodName, ns, tcName)
+				klog.Infof(msg)
+				return controller.IgnoreErrorf(msg)
+			}
+			klog.Infof("Failed pd pod %s of tc %s/%s was restarted once", failedMember.PodName, ns, tcName)
+		}
+	}
+	return nil
+}
+
 // tryToDeleteAFailureMember tries to delete a PD member and associated Pod & PVC.
 // On success, new Pod & PVC will be created.
-// Note that this will fail if the kubelet on the node on which failed Pod was running is not responding.
+// Note that in case auto failure recovery is not enabled, this will fail if the kubelet on the node on which failed Pod
+// was running is not responding.
 func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -152,6 +244,10 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	for pdName := range tc.Status.PD.FailureMembers {
 		pdMember := tc.Status.PD.FailureMembers[pdName]
 		if !pdMember.MemberDeleted {
+			if pdMem, exists := tc.Status.PD.Members[pdName]; exists && pdMem.Health {
+				klog.Infof("PD FailureMember %s of tc %s/%s is healthy again", pdName, ns, tcName)
+				continue
+			}
 			failureMember = &pdMember
 			failurePodName = strings.Split(pdName, ".")[0]
 			failurePDName = pdName
@@ -163,6 +259,20 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	pod, pvcs, err := getPodAndPvcs(tc, failurePodName, v1alpha1.PDMemberType, f.deps.PodLister, f.deps.PVCLister)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to get pod %s for tc %s/%s, error: %s", failurePodName, ns, tcName, err)
+	}
+	if pod == nil {
+		klog.Infof("pd failover[tryToDeleteAFailureMember]: failure pod %s/%s not found, skip", ns, failurePodName)
+	}
+
+	// If HostDown is set for the pod of the failure member check if pod was restarted, in which case the CreationTimestamp
+	// of the new pod should be after FailureMember.CreatedAt
+	if failureMember.HostDown &&
+		(failureMember.CreatedAt.After(pod.CreationTimestamp.Time) || pod.CreationTimestamp.Add(restartToDeleteStoreGap).After(time.Now())) {
+		return nil
+	}
 	memberID, err := strconv.ParseUint(failureMember.MemberID, 10, 64)
 	if err != nil {
 		return err
@@ -183,31 +293,20 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	// 2. If the old PVCs are first deleted successfully here, the new Pods will try to mount non-existing PVCs, which will pend forever.
 	//    This is where OrphanPodsCleaner kicks in, which will delete the pending Pods in this situation.
 	//    Please refer to orphan_pods_cleaner.go for details.
-	pod, err := f.deps.PodLister.Pods(ns).Get(failurePodName)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to get pod %s/%s for tc %s/%s, error: %s", ns, failurePodName, ns, tcName, err)
-	}
-	if pod != nil {
-		if pod.DeletionTimestamp == nil {
-			if err := f.deps.PodControl.DeletePod(tc, pod); err != nil {
-				return err
-			}
+	// In case auto failure recovery is enabled, the force pod restart would ensure that the new pod that was created
+	// is in Pending state if the node has failed and is not ready or cordoned off after disk becomes read-only. Deleting
+	// the pod and pvc will then cause new pvc and pod creation.
+	if pod.DeletionTimestamp == nil {
+		// If Scheduled condition of pod is True, then it would have re-used the old PVC after the pod restart and
+		// clean up of pvc will not happen. It is expected that scheduling be disabled on the bad node by cordoning
+		// it before pod and pvc delete.
+		podScheduled := isPodConditionScheduledTrue(pod.Status.Conditions)
+		klog.Infof("pd failover[checkAndRemoveFailurePVC]: Scheduled condition of pod %s of tc %s/%s: %t", failurePodName, ns, tcName, podScheduled)
+		if deleteErr := f.deps.PodControl.DeletePod(tc, pod); deleteErr != nil {
+			return deleteErr
 		}
 	} else {
-		klog.Infof("pd failover[tryToDeleteAFailureMember]: failure pod %s/%s not found, skip", ns, failurePodName)
-	}
-
-	ordinal, err := util.GetOrdinalFromPodName(failurePodName)
-	if err != nil {
-		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to parse ordinal from Pod name for %s/%s, error: %s", ns, failurePodName, err)
-	}
-	pvcSelector, err := GetPVCSelectorForPod(tc, v1alpha1.PDMemberType, ordinal)
-	if err != nil {
-		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to get PVC selector for Pod %s/%s, error: %s", ns, failurePodName, err)
-	}
-	pvcs, err := f.deps.PVCLister.PersistentVolumeClaims(ns).List(pvcSelector)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to get PVCs for pod %s/%s, error: %s", ns, failurePodName, err)
+		klog.Infof("pod %s/%s has DeletionTimestamp set to %s", ns, pod.Name, pod.DeletionTimestamp)
 	}
 
 	for _, pvc := range pvcs {

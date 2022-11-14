@@ -79,6 +79,10 @@ type CLIConfig struct {
 	WaitDuration          time.Duration
 	// ResyncDuration is the resync time of informer
 	ResyncDuration time.Duration
+	// DetectNodeFailure enables detection of node failures for stateful failure pods for recovery
+	DetectNodeFailure bool
+	// PodHardRecoveryPeriod is the hard recovery period for a failure pod
+	PodHardRecoveryPeriod time.Duration
 	// Defines whether tidb operator run in test mode, test mode is
 	// only open when test
 	TestMode               bool
@@ -106,6 +110,8 @@ func DefaultCLIConfig() *CLIConfig {
 		RetryPeriod:            2 * time.Second,
 		WaitDuration:           5 * time.Second,
 		ResyncDuration:         30 * time.Second,
+		PodHardRecoveryPeriod:  24 * time.Hour,
+		DetectNodeFailure:      false,
 		TiDBBackupManagerImage: "pingcap/tidb-backup-manager:latest",
 		TiDBDiscoveryImage:     "pingcap/tidb-operator:latest",
 		Selector:               "",
@@ -128,6 +134,8 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.DurationVar(&c.TiDBFailoverPeriod, "tidb-failover-period", c.TiDBFailoverPeriod, "TiDB failover period")
 	flag.DurationVar(&c.MasterFailoverPeriod, "dm-master-failover-period", c.MasterFailoverPeriod, "dm-master failover period")
 	flag.DurationVar(&c.WorkerFailoverPeriod, "dm-worker-failover-period", c.WorkerFailoverPeriod, "dm-worker failover period")
+	flag.DurationVar(&c.PodHardRecoveryPeriod, "pod-hard-recovery-period", 24*time.Hour, "Hard recovery period for a failure pod")
+	flag.BoolVar(&c.DetectNodeFailure, "detect-node-failure", false, "Automatically detect node failures")
 	flag.DurationVar(&c.ResyncDuration, "resync-duration", c.ResyncDuration, "Resync time of informer")
 	flag.BoolVar(&c.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
 	flag.StringVar(&c.TiDBBackupManagerImage, "tidb-backup-manager-image", c.TiDBBackupManagerImage, "The image of backup manager tool")
