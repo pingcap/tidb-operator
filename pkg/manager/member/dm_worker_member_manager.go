@@ -443,7 +443,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	setName := controller.DMWorkerMemberName(dcName)
 	stsLabels := label.NewDM().Instance(instanceName).DMWorker()
 	podLabels := util.CombineStringMap(stsLabels, baseWorkerSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(8262), baseWorkerSpec.Annotations())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(8262, "/metrics"), baseWorkerSpec.Annotations())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMWorkerLabelVal)
 
 	workerContainer := corev1.Container{
