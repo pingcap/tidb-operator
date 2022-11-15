@@ -1,0 +1,19 @@
+{
+    "CN": "TiDB",
+    "CA": {
+        "expiry": "87600h"
+    },
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C": "US",
+            "L": "CA",
+            "O": "PingCAP",
+            "ST": "Beijing",
+            "OU": "TiDB"
+        }
+    ]
+}

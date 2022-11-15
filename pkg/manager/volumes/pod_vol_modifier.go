@@ -164,6 +164,20 @@ func (p *podVolModifier) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha1
 	storageVolumes := []v1alpha1.StorageVolume{}
 	var defaultSc *storagev1.StorageClass
 	switch mt {
+	case v1alpha1.TiProxyMemberType:
+		sc, err := getStorageClass(tc.Spec.TiProxy.StorageClassName, scLister)
+		if err != nil {
+			return nil, err
+		}
+		defaultSc = sc
+		d := DesiredVolume{
+			Name:         v1alpha1.GetStorageVolumeName("", mt),
+			Size:         getStorageSize(tc.Spec.TiProxy.Requests),
+			StorageClass: sc,
+		}
+		desiredVolumes = append(desiredVolumes, d)
+
+		storageVolumes = tc.Spec.TiProxy.StorageVolumes
 	case v1alpha1.PDMemberType:
 		sc, err := getStorageClass(tc.Spec.PD.StorageClassName, scLister)
 		if err != nil {
