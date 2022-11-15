@@ -2112,7 +2112,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
 				g.Expect(sts.Spec.Template.Spec.Containers[0].ReadinessProbe).To(Equal(&corev1.Probe{
-					Handler:             buildTiKVReadinessProbHandler(),
+					Handler:             buildTiKVReadinessProbHandler(nil),
 					InitialDelaySeconds: int32(10),
 				}))
 			},

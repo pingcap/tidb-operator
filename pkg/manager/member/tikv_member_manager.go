@@ -625,7 +625,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	if tc.Spec.TiKV.ReadinessProbe != nil {
 		tikvContainer.ReadinessProbe = &corev1.Probe{
-			Handler:             buildTiKVReadinessProbHandler(),
+			Handler:             buildTiKVReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),
 		}
 	}

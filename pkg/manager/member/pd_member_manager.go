@@ -744,7 +744,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 
 	if tc.Spec.PD.ReadinessProbe != nil {
 		pdContainer.ReadinessProbe = &corev1.Probe{
-			Handler:             buildPDReadinessProbHandler(),
+			Handler:             buildPDReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),
 		}
 	}
