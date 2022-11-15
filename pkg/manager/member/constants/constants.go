@@ -14,6 +14,9 @@
 package constants
 
 const (
+	// TiProxyVolumeMountPath is the path for tiproxy data volume
+	TiProxyVolumeMountPath = "/var/lib/tiproxy"
+
 	// TiKVDataVolumeMountPath is the mount path for tikv data volume
 	TiKVDataVolumeMountPath = "/var/lib/tikv"
 
