@@ -135,7 +135,6 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	}
 
 	klog.Infof("scaling in pump statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	// We need remove member from cluster before reducing statefulset replicas
 	var podName string
 
 	switch meta.(type) {

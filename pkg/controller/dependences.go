@@ -182,6 +182,7 @@ type Controls struct {
 	TiDBClusterControl TidbClusterControlInterface
 	DMClusterControl   DMClusterControlInterface
 	CDCControl         TiCDCControlInterface
+	ProxyControl       TiProxyControlInterface
 	TiDBControl        TiDBControlInterface
 	BackupControl      BackupControlInterface
 	RestoreControl     RestoreControlInterface
@@ -281,6 +282,7 @@ func newRealControls(
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
 		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
 		CDCControl:         NewDefaultTiCDCControl(secretLister),
+		ProxyControl:       NewDefaultTiProxyControl(secretLister),
 		TiDBControl:        NewDefaultTiDBControl(secretLister),
 		BackupControl:      NewRealBackupControl(clientset, recorder),
 		RestoreControl:     NewRealRestoreControl(clientset, restoreLister, recorder),

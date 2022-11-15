@@ -142,6 +142,8 @@ const (
 	TiFlashLabelVal string = "tiflash"
 	// TiCDCLabelVal is TiCDC label value
 	TiCDCLabelVal string = "ticdc"
+	// TiProxyLabelVal is TiProxy label value
+	TiProxyLabelVal string = "tiproxy"
 	// PumpLabelVal is Pump label value
 	PumpLabelVal string = "pump"
 	// DiscoveryLabelVal is Discovery label value
@@ -353,6 +355,16 @@ func (l Label) PD() Label {
 // IsPD returns whether label is a PD component
 func (l Label) IsPD() bool {
 	return l[ComponentLabelKey] == PDLabelVal
+}
+
+// TiProxy assigns tiproxy to component key in label
+func (l Label) TiProxy() Label {
+	return l.Component(TiProxyLabelVal)
+}
+
+// IsTiProxy returns whether label is a TiProxy component
+func (l Label) IsTiProxy() bool {
+	return l[ComponentLabelKey] == TiProxyLabelVal
 }
 
 // Pump assigns pump to component key in label

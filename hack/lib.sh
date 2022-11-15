@@ -297,3 +297,9 @@ function hack::ensure_openapi() {
     echo "Installing openpi_gen..."
     GOBIN=$OUTPUT_BIN go install k8s.io/code-generator/cmd/openapi-gen@v$K8S_VERSION
 }
+
+function hack::ensure_go117() {
+		echo "Adjust go117+ to go116 ..."
+		patch -d $ROOT -NRp1 -i $ROOT/hack/go117.patch -r .rej --no-backup-if-mismatch || true
+		rm -rf .rej
+}

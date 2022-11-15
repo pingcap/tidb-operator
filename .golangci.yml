@@ -3,7 +3,7 @@ run:
 
 linters:
   enable:
-    - structcheck
+    - typecheck
     - goimports
     - gosimple
     - staticcheck
@@ -19,6 +19,9 @@ linters-settings:
       - G306 # Rule: Poor file permissions used when writing to a new file
       - G402 # Rule: Look for bad TLS connection settings
       - G404 # Rule: Insecure random number source (rand)
+      - G201 # Rule: SQL query construction using format string
+      - G114 # Rule: Use of net/http serve function that has no support for setting timeouts
+      - G112 # Rule: Potential slowloris attack
 
 issues:
   exclude-rules:
