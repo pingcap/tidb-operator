@@ -219,6 +219,17 @@ pd:
   # refer to https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#how-to-use-priority-and-preemption
   priorityClassName: ""
 
+tiproxy:
+  replicas: 0
+  storageClassName: local-storage
+  baseImage: pingcap/tiproxy
+  version: v6.1.0
+  imagePullPolicy: IfNotPresent
+  resources:
+    limits: {}
+    requests:
+      storage: 1Gi
+
 tikv:
   # Please refer to https://github.com/tikv/tikv/blob/master/etc/config-template.toml for the default
   # tikv configurations (change to the tags of your tikv version),

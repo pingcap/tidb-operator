@@ -468,7 +468,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	stsLabels := labelTiKV(tc)
 	podLabels := util.CombineStringMap(stsLabels.Labels(), baseTiKVSpec.Labels())
 	setName := controller.TiKVMemberName(tcName)
-	podAnnotations := util.CombineStringMap(controller.AnnProm(20180), baseTiKVSpec.Annotations())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(20180, "/metrics"), baseTiKVSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiKVLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
@@ -1041,7 +1041,7 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 	return false, nil
 }
 
-// TODO: Support check pd status http request in future.
+// TODO: Support check tikv status http request in future.
 func buildTiKVReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 	return corev1.Handler{
 		TCPSocket: &corev1.TCPSocketAction{
