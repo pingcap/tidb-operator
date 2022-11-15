@@ -969,7 +969,7 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 }
 
 // TODO: Support check status http request in future.
-func buildPDReadinessProbHandler() corev1.Handler {
+func buildPDReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 	return corev1.Handler{
 		TCPSocket: &corev1.TCPSocketAction{
 			Port: intstr.FromInt(2379),
