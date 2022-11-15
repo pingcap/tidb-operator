@@ -305,7 +305,7 @@ func TestDMWorkerPeerMemberName(t *testing.T) {
 func TestAnnProm(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	ann := AnnProm(int32(9090))
+	ann := AnnProm(int32(9090), "/metrics")
 	g.Expect(ann["prometheus.io/scrape"]).To(Equal("true"))
 	g.Expect(ann["prometheus.io/path"]).To(Equal("/metrics"))
 	g.Expect(ann["prometheus.io/port"]).To(Equal("9090"))
