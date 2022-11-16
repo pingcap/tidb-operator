@@ -31,6 +31,7 @@ import (
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	backupConst "github.com/pingcap/tidb-operator/pkg/backup/constants"
+	bkUtil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
@@ -68,15 +69,11 @@ func (bo *Options) backupData(
 			progressStep = "Full Backup"
 			successTag   = "EBS backup success"
 		)
-
-		cloudSnapMeta := os.Getenv(backupConst.EnvCloudSnapMeta)
-		if cloudSnapMeta == "" {
-			return fmt.Errorf("cloud snapshot metadata not found, env %s is empty", backupConst.EnvCloudSnapMeta)
-		}
-		klog.Infof("Running cloud-snapshot-backup with metadata: %s", cloudSnapMeta)
 		csbPath := path.Join(util.BRBinPath, "csb_backup.json")
-		err := os.WriteFile(csbPath, []byte(cloudSnapMeta), 0644)
-		if err != nil {
+		opts := bkUtil.GetOptions(backup.Spec.StorageProvider)
+		backupFullPath, _ := bkUtil.GetStoragePath(backup)
+		if err := bo.copyRemoteClusterMetaToLocal(ctx, backupFullPath, opts, csbPath); err != nil {
+			klog.Errorf("rclone copy remote cluster info to local failure.")
 			return err
 		}
 		// Currently, we only support aws ebs volume snapshot.
@@ -323,4 +320,16 @@ func (bo *Options) updateProgressFromFile(
 			return
 		}
 	}
+}
+
+// copy remote clustermeta file to local csb_backup.json
+func (bo *Options) copyRemoteClusterMetaToLocal(ctx context.Context, bucket string, opts []string, csbPath string) error {
+	destBucket := backupUtil.NormalizeBucketURI(bucket)
+	args := backupUtil.ConstructRcloneArgs(backupConst.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", destBucket, backupConst.ClusterBackupMeta), csbPath, true)
+	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute rclone copy command failed, output: %s, err: %v", bo, string(output), err)
+	}
+	klog.Infof("cluster %s backup %s was copy successfully", bo, bucket)
+	return nil
 }

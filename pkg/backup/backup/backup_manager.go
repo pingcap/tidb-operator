@@ -476,12 +476,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		Value: string(rune(1)),
 	})
 
-	dwAPIEnvs, reason, err := backuputil.GenerateDownwardAPIEnvs()
-	if err != nil {
-		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
-	}
-	envVars = append(envVars, dwAPIEnvs...)
-
 	// set env vars specified in backup.Spec.Env
 	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 

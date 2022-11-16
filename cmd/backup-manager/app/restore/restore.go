@@ -28,9 +28,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	backupConst "github.com/pingcap/tidb-operator/pkg/backup/constants"
+	bkUtil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
@@ -177,7 +179,7 @@ func (ro *Options) restoreData(
 	}
 
 	if csbPath != "" {
-		err = ro.processCloudSnapBackup(restore, csbPath, restoreControl)
+		err = ro.processCloudSnapBackup(ctx, restore, csbPath, restoreControl)
 		if err != nil {
 			return err
 		}
@@ -204,22 +206,19 @@ func (ro *Options) restoreData(
 }
 
 func (ro *Options) processCloudSnapBackup(
+	ctx context.Context,
 	restore *v1alpha1.Restore,
 	csbPath string,
 	restoreControl controller.RestoreControlInterface,
 ) error {
-	data, err := os.ReadFile(csbPath)
-	if err != nil {
-		return fmt.Errorf("cluster %s, read the CSB file failed, path: %s, err: %v", ro, csbPath, err)
+	klog.Infof("Get restore meta file %s for cluster %s", csbPath, ro)
+	opts := bkUtil.GetOptions(restore.Spec.StorageProvider)
+	backupFullPath, _ := bkUtil.GetStorageRestorePath(restore)
+	if err := ro.copyRestoreMetaToRemote(ctx, backupFullPath, opts, csbPath); err != nil {
+		klog.Errorf("rclone copy remote cluster info to local failure.")
+		return err
 	}
-	if len(restore.GetAnnotations()) == 0 {
-		restore.Annotations = make(map[string]string)
-	}
-	klog.Infof("Get restore for cluster %s, annotations: %v", ro, restore.GetAnnotations())
-	restore.Annotations[label.AnnBackupCloudSnapKey] = string(data)
-	if _, err = restoreControl.UpdateRestore(restore); err != nil {
-		return fmt.Errorf("cluster %s, update restore annotation for CSB failed, err: %v", ro, err)
-	}
+
 	return nil
 }
 
@@ -336,4 +335,16 @@ func (ro *Options) updateProgressFromFile(
 			return
 		}
 	}
+}
+
+// copy local restoremeta file to remote
+func (ro *Options) copyRestoreMetaToRemote(ctx context.Context, bucket string, opts []string, restoreMetaFile string) error {
+	destBucket := backupUtil.NormalizeBucketURI(bucket)
+	args := backupUtil.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", restoreMetaFile, fmt.Sprintf("%s/%s", destBucket, backupConst.ClusterRestoreMeta), true)
+	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("restore ns %s, execute rclone copy command failed, output: %s, err: %v", ro, string(output), err)
+	}
+	klog.Infof("restore ns %s copy local file to %s successfully", ro, bucket)
+	return nil
 }

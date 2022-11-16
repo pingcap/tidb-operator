@@ -93,4 +93,15 @@ const (
 	KubeAnnBindCompleted          = "pv.kubernetes.io/bind-completed"
 	KubeAnnBoundByController      = "pv.kubernetes.io/bound-by-controller"
 	KubeAnnDynamicallyProvisioned = "pv.kubernetes.io/provisioned-by"
+
+	LocalTmp           = "/tmp"
+	ClusterBackupMeta  = "clustermeta"
+	ClusterRestoreMeta = "restoremeta"
+	// RcloneConfigFile represents the path to the file that contains rclone
+	// configs. This path should be the same as defined in docker entrypoint
+	// script from backup-manager/entrypoint.sh. /tmp/rclone.conf
+	RcloneConfigFile = "/tmp/rclone.conf"
+
+	// RcloneConfigArg represents the config argument to rclone cmd
+	RcloneConfigArg = "--config=" + RcloneConfigFile
 )

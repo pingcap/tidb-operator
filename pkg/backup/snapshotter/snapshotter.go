@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -151,23 +152,38 @@ func (s *BaseSnapshotter) prepareBackupMetadata(
 		return reason, err
 	}
 
-	if reason, err := placeCloudSnapBackup(b, csb); err != nil {
+	if reason, err := uploadClusterMetaToRemote(b, csb); err != nil {
 		return reason, err
 	}
 
 	return "", nil
 }
 
-func placeCloudSnapBackup(b *v1alpha1.Backup, csb *CloudSnapBackup) (string, error) {
+func uploadClusterMetaToRemote(b *v1alpha1.Backup, csb *CloudSnapBackup) (string, error) {
 	out, err := json.Marshal(csb)
 	if err != nil {
 		return "ParseCloudSnapshotBackupFailed", err
 	}
-
-	if b.Annotations == nil {
-		b.Annotations = make(map[string]string)
+	// must init rclone config before upload tc_meta to remote
+	// 1. write a file into local
+	klog.Infof("upload the cluster meta to remote storage")
+	err = os.WriteFile(constants.ClusterBackupMeta, []byte(out), 0644)
+	if err != nil {
+		return "WriteClusterMetaToLocalFailed", err
 	}
-	b.Annotations[label.AnnBackupCloudSnapKey] = util.BytesToString(out)
+	// 2. upload to remote
+	rclone := util.NewRclone(b.Namespace, b.ClusterName)
+
+	// 3. config rclone
+	rclone.Config(b.Spec.StorageProvider)
+
+	backupFullPath, _ := util.GetStoragePath(b)
+	opts := util.GetOptions(b.Spec.StorageProvider)
+	// 4. copy to s3
+	if err = rclone.CopyLocalClusterMetaToRemote(backupFullPath, opts); err != nil {
+		return "CopyLocalClusterMetaToRemoteFailed", err
+	}
+
 	return "", nil
 }
 
@@ -195,13 +211,30 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snap
 }
 
 func extractCloudSnapBackup(r *v1alpha1.Restore) (*CloudSnapBackup, string, error) {
-	str, ok := r.Annotations[label.AnnBackupCloudSnapKey]
-	if !ok {
-		return nil, "GetCloudSnapBackupFailed", errors.New("restore.annotation for CloudSnapBackup not found")
+	// must init rclone config before download tc_meta to local
+	// 1. write a file into local
+	klog.Infof("upload the cluster meta to remote storage")
+
+	// 2. upload to remote
+	rclone := util.NewRclone(r.Namespace, r.ClusterName)
+
+	// 3. config rclone
+	rclone.Config(r.Spec.StorageProvider)
+
+	backupFullPath, _ := util.GetStorageRestorePath(r)
+	opts := util.GetOptions(r.Spec.StorageProvider)
+	// 4. copy to s3
+	if err := rclone.CopyRemoteClusterMetaToLocal(backupFullPath, opts); err != nil {
+		return nil, "CopyLocalClusterMetaToRemoteFailed", err
+	}
+
+	clusterMeta, err := os.ReadFile(constants.ClusterBackupMeta)
+	if err != nil {
+		return nil, "ReadFileFailed", err
 	}
 
 	csb := &CloudSnapBackup{}
-	err := json.Unmarshal(util.StringToBytes(str), csb)
+	err = json.Unmarshal(clusterMeta, csb)
 	if err != nil {
 		return nil, "ParseCloudSnapBackupFailed", err
 	}

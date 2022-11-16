@@ -16,11 +16,13 @@ package util
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"os/exec"
+	"path"
 	"strings"
 	"unsafe"
 
 	"github.com/Masterminds/semver"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -371,20 +373,6 @@ func GenerateTidbPasswordEnv(ns, tcName, tidbSecretName string, useKMS bool, sec
 	return certEnv, "", nil
 }
 
-// GenerateDownwardAPIEnvs generate the downward-api EnvVars
-func GenerateDownwardAPIEnvs() ([]corev1.EnvVar, string, error) {
-	var envs []corev1.EnvVar
-	envs = append(envs, corev1.EnvVar{
-		Name: constants.EnvCloudSnapMeta,
-		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: fmt.Sprintf("metadata.annotations['%s']", label.AnnBackupCloudSnapKey),
-			},
-		},
-	})
-	return envs, "", nil
-}
-
 // GetBackupBucketName return the bucket name for remote storage
 func GetBackupBucketName(backup *v1alpha1.Backup) (string, string, error) {
 	ns := backup.GetNamespace()
@@ -704,4 +692,301 @@ func isLogBackSupport(tikvImage string) bool {
 		return false
 	}
 	return true
+}
+
+// GetStoragePath generate the path of a specific storage
+func GetStorageRestorePath(restore *v1alpha1.Restore) (string, error) {
+	var url, bucket, prefix string
+	st := GetStorageType(restore.Spec.StorageProvider)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		prefix = restore.Spec.StorageProvider.S3.Prefix
+		bucket = restore.Spec.StorageProvider.S3.Bucket
+		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeGcs:
+		prefix = restore.Spec.StorageProvider.Gcs.Prefix
+		bucket = restore.Spec.StorageProvider.Gcs.Bucket
+		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeAzblob:
+		prefix = restore.Spec.StorageProvider.Azblob.Prefix
+		bucket = restore.Spec.StorageProvider.Azblob.Container
+		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeLocal:
+		prefix = restore.Spec.StorageProvider.Local.Prefix
+		mountPath := restore.Spec.StorageProvider.Local.VolumeMount.MountPath
+		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
+		return url, nil
+	default:
+		return "", fmt.Errorf("storage %s not supported yet", st)
+	}
+}
+
+// GetStoragePath generate the path of a specific storage
+func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
+	var url, bucket, prefix string
+	st := GetStorageType(backup.Spec.StorageProvider)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		prefix = backup.Spec.StorageProvider.S3.Prefix
+		bucket = backup.Spec.StorageProvider.S3.Bucket
+		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeGcs:
+		prefix = backup.Spec.StorageProvider.Gcs.Prefix
+		bucket = backup.Spec.StorageProvider.Gcs.Bucket
+		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeAzblob:
+		prefix = backup.Spec.StorageProvider.Azblob.Prefix
+		bucket = backup.Spec.StorageProvider.Azblob.Container
+		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeLocal:
+		prefix = backup.Spec.StorageProvider.Local.Prefix
+		mountPath := backup.Spec.StorageProvider.Local.VolumeMount.MountPath
+		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
+		return url, nil
+	default:
+		return "", fmt.Errorf("storage %s not supported yet", st)
+	}
+}
+
+// GetOptions gets the rclone options
+func GetOptions(provider v1alpha1.StorageProvider) []string {
+	st := GetStorageType(provider)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		return provider.S3.Options
+	default:
+		return nil
+	}
+}
+
+// NormalizeBucketURI normal bucket URL for rclone, e.g. s3://bucket -> s3:bucket
+func NormalizeBucketURI(bucket string) string {
+	return strings.Replace(bucket, "://", ":", 1)
+}
+
+// ConstructRcloneArgs constructs the rclone args
+func ConstructRcloneArgs(conf string, opts []string, command, source, dest string, verboseLog bool) []string {
+	var args []string
+	defaultLog := true
+	if conf != "" {
+		args = append(args, conf)
+	}
+	if len(opts) > 0 {
+		for _, opt := range opts {
+			// If forbid logging with verboseLog==false, user-provided args starting with -v or --verbose should be filtered out.
+			if !verboseLog && (strings.HasPrefix(opt, "-v") || strings.HasPrefix(opt, "--verbose")) {
+				continue
+			}
+			if opt == "-q" || opt == "--quiet" {
+				defaultLog = false
+			}
+			args = append(args, opt)
+		}
+	}
+	if defaultLog && verboseLog {
+		args = append(args, "-v")
+	}
+	if command != "" {
+		args = append(args, command)
+	}
+	if source != "" {
+		args = append(args, source)
+	}
+	if dest != "" {
+		args = append(args, dest)
+	}
+	return args
+}
+
+// RClone for backup and restore controller, since volume snapshot backup and restore generate huge cluster info, the k8s related techinical
+// can not handle it
+// annotation limit: 256K
+// configMap limit: 1MB
+// envVar limt: 1MB
+// remote storage choose as solution for pass cluster info between controller and backup-manager/br
+type Rclone struct {
+	Namespace  string
+	BackupName string
+}
+
+func NewRclone(ns string, bkName string) *Rclone {
+	return &Rclone{
+		ns,
+		bkName,
+	}
+}
+
+func (rc *Rclone) String() string {
+	return fmt.Sprintf("%s/%s", rc.Namespace, rc.BackupName)
+}
+
+// generateS3Confg generate the rclone config in order to access S3 compliant storage
+func (rc *Rclone) generateS3Confg(s3 *v1alpha1.S3StorageProvider) (string, error) {
+	switch s3.Provider {
+	case v1alpha1.S3StorageProviderTypeCeph:
+		if !strings.Contains(s3.Endpoint, "://") {
+			// convert xxx.xxx.xxx.xxx:port to http://xxx.xxx.xxx.xxx:port
+			// the endpoint must start with http://
+			s3.Endpoint = fmt.Sprintf("http://%s", s3.Endpoint)
+			break
+		}
+		if !strings.HasPrefix(s3.Endpoint, "http://") {
+			return "InvalidS3Endpoint", fmt.Errorf("ceph endpoint URI %s must start with http://", s3.Endpoint)
+		}
+	case v1alpha1.S3StorageProviderTypeAWS:
+		// TODO: Check the storage class, if it is not a legal storage class, use the default storage class instead
+		if len(s3.StorageClass) == 0 {
+			// The optional storage class reference https://rclone.org/s3
+			s3.StorageClass = "STANDARD_IA"
+		}
+		if len(s3.Acl) == 0 {
+			// The optional acl reference https://rclone.org/s3/
+			s3.Acl = "private"
+		}
+	}
+	localRcloneConfig := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta)
+	f, err := os.Create(localRcloneConfig)
+	if err != nil {
+		return "create rclone config file failure", err
+	}
+	defer f.Close()
+	_, err = f.WriteString("[s3]")
+	_, err = f.WriteString("type = s3")
+	_, err = f.WriteString("env_auth = true")
+
+	provider := "provider =  " + string(s3.Provider)
+	_, err = f.WriteString(provider)
+
+	s3AccessKey := &corev1.EnvVarSource{
+		SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+			Key:                  constants.S3AccessKey,
+		},
+	}
+
+	accessKeyId := "access_key_id = " + s3AccessKey.String()
+	_, err = f.WriteString(accessKeyId)
+
+	s3SecretKey := &corev1.EnvVarSource{
+		SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+			Key:                  constants.S3SecretKey,
+		},
+	}
+
+	secretAccessKey := "secret_access_key = " + s3SecretKey.String() + ":-"
+	_, err = f.WriteString(secretAccessKey)
+
+	region := "region = " + s3.Region
+	_, err = f.WriteString(region)
+
+	acl := "acl = " + s3.Acl
+	_, err = f.WriteString(acl)
+
+	endpoint := "endpoint = " + s3.Endpoint
+	_, err = f.WriteString(endpoint)
+	storageClass := "storage_class = " + s3.StorageClass
+	_, err = f.WriteString(storageClass)
+
+	f.Sync()
+
+	return "", nil
+}
+
+// TODO: generateGcsConfig generate the rclone config file in order to access google cloud storage
+func (rc *Rclone) generateGcsConfig(gcs *v1alpha1.GcsStorageProvider) (string, error) {
+	// [gcs]
+	// type = google cloud storage
+	// project_number = ${GCS_PROJECT_ID}
+	// service_account_file = ${GOOGLE_APPLICATION_CREDENTIALS}
+	// object_acl = ${GCS_OBJECT_ACL}
+	// bucket_acl = ${GCS_BUCKET_ACL}
+	// location =  ${GCS_LOCATION}
+	// storage_class = ${GCS_STORAGE_CLASS:-"COLDLINE"}
+	// [azure]
+	// type = azureblob
+	// account = ${AZUREBLOB_ACCOUNT}
+	// key = ${AZUREBLOB_KEY}
+	klog.Infof("volume-snapshot currently doesn't support gcs yet")
+	return "", nil
+}
+
+// before use rclone, firstly we need to config it.
+func (rc *Rclone) Config(provider v1alpha1.StorageProvider) (string, error) {
+	// check config file existed or not, if existed, remove it, keep config update
+	localRcloneConfig := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta)
+	if _, err := os.Stat(localRcloneConfig); err == nil {
+		_ = os.Remove(localRcloneConfig)
+	}
+
+	// regenerate a new config from current backup
+	var reason string
+	var err error
+	storageType := GetStorageType(provider)
+
+	switch storageType {
+	case v1alpha1.BackupStorageTypeS3:
+		reason, err = rc.generateS3Confg(provider.S3.DeepCopy())
+		if err != nil {
+			return reason, err
+		}
+	case v1alpha1.BackupStorageTypeGcs:
+		reason, err = rc.generateGcsConfig(provider.Gcs)
+
+		if err != nil {
+			return reason, err
+		}
+	case v1alpha1.BackupStorageTypeLocal:
+		return "", nil
+	default:
+		err := fmt.Errorf("volume-snapshot unsupported storage type %s", storageType)
+		return "UnsupportedStorageType", err
+	}
+	return reason, nil
+}
+
+// restore: copy remote cluster meta to local
+func (rc *Rclone) CopyRemoteClusterMetaToLocal(bucket string, opts []string) error {
+	destBucket := NormalizeBucketURI(bucket)
+	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copy", fmt.Sprintf("%s/%s", destBucket, constants.ClusterRestoreMeta), fmt.Sprintf("%s/", constants.LocalTmp), true)
+	cmdString := fmt.Sprintf("rclone %s", args)
+
+	cmd := exec.Command(cmdString)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
+	}
+	klog.Infof("backup %s was copy from %s successfully", rc.BackupName, bucket)
+
+	// delete remote restore meta to local
+	argsDelete := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "deletefile", fmt.Sprintf("%s/%s", destBucket, constants.ClusterRestoreMeta), "", true)
+	cmdDelString := fmt.Sprintf("rclone %s", argsDelete)
+
+	cmdDel := exec.Command(cmdDelString)
+	if err := cmdDel.Run(); err != nil {
+		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
+	}
+	klog.Infof("backup %s was copy from %s successfully", rc.BackupName, bucket)
+
+	return nil
+}
+
+// backup: copy local cluster meta to remote
+func (rc *Rclone) CopyLocalClusterMetaToRemote(bucket string, opts []string) error {
+	destBucket := NormalizeBucketURI(bucket)
+	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copy", fmt.Sprintf("%s/", constants.LocalTmp), fmt.Sprintf("%s/%s", destBucket, constants.ClusterBackupMeta), true)
+	cmdString := fmt.Sprintf("rclone %s", args)
+
+	cmd := exec.Command(cmdString)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
+	}
+
+	klog.Infof("backup %s was copy to %s successfully", rc, bucket)
+	return nil
 }
