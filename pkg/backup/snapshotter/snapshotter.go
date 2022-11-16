@@ -17,7 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -167,7 +167,8 @@ func uploadClusterMetaToRemote(b *v1alpha1.Backup, csb *CloudSnapBackup) (string
 	// must init rclone config before upload tc_meta to remote
 	// 1. write a file into local
 	klog.Infof("upload the cluster meta to remote storage")
-	err = os.WriteFile(constants.ClusterBackupMeta, []byte(out), 0644)
+	localMetaFile := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta)
+	err = ioutil.WriteFile(localMetaFile, []byte(out), 0644)
 	if err != nil {
 		return "WriteClusterMetaToLocalFailed", err
 	}
@@ -228,7 +229,8 @@ func extractCloudSnapBackup(r *v1alpha1.Restore) (*CloudSnapBackup, string, erro
 		return nil, "CopyLocalClusterMetaToRemoteFailed", err
 	}
 
-	clusterMeta, err := os.ReadFile(constants.ClusterBackupMeta)
+	localMetaFile := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta)
+	clusterMeta, err := ioutil.ReadFile(localMetaFile)
 	if err != nil {
 		return nil, "ReadFileFailed", err
 	}
