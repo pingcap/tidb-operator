@@ -216,6 +216,31 @@ func (tc *TidbCluster) TiCDCImage() string {
 	return image
 }
 
+// TiProxyImage return the image used by TiProxy.
+//
+// If TiProxy isn't specified, return empty string.
+func (tc *TidbCluster) TiProxyImage() string {
+	if tc.Spec.TiProxy == nil {
+		return ""
+	}
+
+	image := tc.Spec.TiProxy.Image
+	baseImage := tc.Spec.TiProxy.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := tc.Spec.TiProxy.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
+	}
+	return image
+}
+
 // TiCDCVersion returns the image version used by TiCDC.
 //
 // If TiCDC isn't specified, return empty string.
@@ -667,6 +692,14 @@ func (tc *TidbCluster) TiCDCAllCapturesReady() bool {
 	}
 
 	return true
+}
+
+func (tc *TidbCluster) TiProxyDeployDesiredReplicas() int32 {
+	if tc.Spec.TiProxy == nil {
+		return 0
+	}
+
+	return tc.Spec.TiProxy.Replicas
 }
 
 func (tc *TidbCluster) TiCDCDeployDesiredReplicas() int32 {

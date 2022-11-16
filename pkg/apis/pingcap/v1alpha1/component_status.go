@@ -91,6 +91,9 @@ func (tc *TidbCluster) AllComponentStatus() []ComponentStatus {
 	if tc.Spec.Pump != nil {
 		components = append(components, &tc.Status.Pump)
 	}
+	if tc.Spec.TiProxy != nil {
+		components = append(components, &tc.Status.TiProxy)
+	}
 	return components
 }
 
@@ -492,5 +495,51 @@ func (s *WorkerStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 	s.StatefulSet = sts
 }
 func (s *WorkerStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
+}
+func (s *TiProxyStatus) MemberType() MemberType {
+	return TiProxyMemberType
+}
+func (s *TiProxyStatus) GetSynced() bool {
+	return s.Synced
+}
+func (s *TiProxyStatus) GetPhase() MemberPhase {
+	return s.Phase
+}
+func (s *TiProxyStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
+	return s.Volumes
+}
+func (s *TiProxyStatus) GetConditions() []metav1.Condition {
+	return s.Conditions
+}
+func (s *TiProxyStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *TiProxyStatus) SetSynced(synced bool) {
+	s.Synced = synced
+}
+func (s *TiProxyStatus) SetCondition(newCondition metav1.Condition) {
+	if s.Conditions == nil {
+		s.Conditions = []metav1.Condition{}
+	}
+	conditions := s.Conditions
+	meta.SetStatusCondition(&conditions, newCondition)
+	s.Conditions = conditions
+}
+func (s *TiProxyStatus) RemoveCondition(conditionType string) {
+	if s.Conditions == nil {
+		return
+	}
+	conditions := s.Conditions
+	meta.RemoveStatusCondition(&conditions, conditionType)
+	s.Conditions = conditions
+}
+func (s *TiProxyStatus) SetPhase(phase MemberPhase) {
+	s.Phase = phase
+}
+func (s *TiProxyStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
+func (s *TiProxyStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }

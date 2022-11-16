@@ -285,14 +285,24 @@ func TiFlashMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tiflash", clusterName)
 }
 
-// TiCDCMemberName returns ticdc member name
-func TiCDCMemberName(clusterName string) string {
-	return fmt.Sprintf("%s-ticdc", clusterName)
-}
-
 // TiFlashPeerMemberName returns tiflash peer service name
 func TiFlashPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tiflash-peer", clusterName)
+}
+
+// TiProxyMemberName returns tiproxy member name
+func TiProxyMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tiproxy", clusterName)
+}
+
+// TiProxyPeerMemberName returns tiproxy peer service name
+func TiProxyPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tiproxy-peer", clusterName)
+}
+
+// TiCDCMemberName returns ticdc member name
+func TiCDCMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-ticdc", clusterName)
 }
 
 // TiCDCPeerMemberName returns ticdc peer service name
@@ -357,10 +367,10 @@ func TiDBInitSecret(clusterName string) string {
 }
 
 // AnnProm adds annotations for prometheus scraping metrics
-func AnnProm(port int32) map[string]string {
+func AnnProm(port int32, path string) map[string]string {
 	return map[string]string{
 		"prometheus.io/scrape": "true",
-		"prometheus.io/path":   "/metrics",
+		"prometheus.io/path":   path,
 		"prometheus.io/port":   fmt.Sprintf("%d", port),
 	}
 }

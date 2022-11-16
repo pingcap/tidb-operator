@@ -362,7 +362,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	replicas := tc.Spec.Pump.Replicas
 	storageClass := tc.Spec.Pump.StorageClassName
 	podLabels := util.CombineStringMap(stsLabels.Labels(), spec.Labels())
-	podAnnos := util.CombineStringMap(controller.AnnProm(8250), spec.Annotations())
+	podAnnos := util.CombineStringMap(controller.AnnProm(8250, "/metrics"), spec.Annotations())
 	storageRequest, err := controller.ParseStorageRequest(tc.Spec.Pump.Requests)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
