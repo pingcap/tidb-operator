@@ -213,7 +213,7 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snap
 func extractCloudSnapBackup(r *v1alpha1.Restore) (*CloudSnapBackup, string, error) {
 	// must init rclone config before download tc_meta to local
 	// 1. write a file into local
-	klog.Infof("upload the cluster meta to remote storage")
+	klog.Infof("download the remote cluster meta to local")
 
 	// 2. upload to remote
 	rclone := util.NewRclone(r.Namespace, r.ClusterName)

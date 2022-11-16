@@ -850,18 +850,18 @@ func (rc *Rclone) generateS3Confg(s3 *v1alpha1.S3StorageProvider) (string, error
 			s3.Acl = "private"
 		}
 	}
-	localRcloneConfig := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta)
-	f, err := os.Create(localRcloneConfig)
+
+	f, err := os.Create(constants.RcloneConfigFile)
 	if err != nil {
 		return "create rclone config file failure", err
 	}
 	defer f.Close()
-	_, err = f.WriteString("[s3]")
-	_, err = f.WriteString("type = s3")
-	_, err = f.WriteString("env_auth = true")
+	fmt.Fprintln(f, "[s3]")
+	fmt.Fprintln(f, "type = s3")
+	fmt.Fprintln(f, "env_auth = true")
 
 	provider := "provider =  " + string(s3.Provider)
-	_, err = f.WriteString(provider)
+	fmt.Fprintln(f, provider)
 
 	s3AccessKey := &corev1.EnvVarSource{
 		SecretKeyRef: &corev1.SecretKeySelector{
@@ -871,7 +871,7 @@ func (rc *Rclone) generateS3Confg(s3 *v1alpha1.S3StorageProvider) (string, error
 	}
 
 	accessKeyId := "access_key_id = " + s3AccessKey.String()
-	_, err = f.WriteString(accessKeyId)
+	fmt.Fprintln(f, accessKeyId)
 
 	s3SecretKey := &corev1.EnvVarSource{
 		SecretKeyRef: &corev1.SecretKeySelector{
@@ -880,19 +880,19 @@ func (rc *Rclone) generateS3Confg(s3 *v1alpha1.S3StorageProvider) (string, error
 		},
 	}
 
-	secretAccessKey := "secret_access_key = " + s3SecretKey.String() + ":-"
-	_, err = f.WriteString(secretAccessKey)
+	secretAccessKey := "secret_access_key = " + s3SecretKey.String()
+	fmt.Fprintln(f, secretAccessKey)
 
 	region := "region = " + s3.Region
-	_, err = f.WriteString(region)
+	fmt.Fprintln(f, region)
 
 	acl := "acl = " + s3.Acl
-	_, err = f.WriteString(acl)
+	fmt.Fprintln(f, acl)
 
 	endpoint := "endpoint = " + s3.Endpoint
-	_, err = f.WriteString(endpoint)
+	fmt.Fprintln(f, endpoint)
 	storageClass := "storage_class = " + s3.StorageClass
-	_, err = f.WriteString(storageClass)
+	fmt.Fprintln(f, storageClass)
 
 	f.Sync()
 
@@ -920,9 +920,8 @@ func (rc *Rclone) generateGcsConfig(gcs *v1alpha1.GcsStorageProvider) (string, e
 // before use rclone, firstly we need to config it.
 func (rc *Rclone) Config(provider v1alpha1.StorageProvider) (string, error) {
 	// check config file existed or not, if existed, remove it, keep config update
-	localRcloneConfig := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta)
-	if _, err := os.Stat(localRcloneConfig); err == nil {
-		_ = os.Remove(localRcloneConfig)
+	if _, err := os.Stat(constants.RcloneConfigFile); err == nil {
+		_ = os.Remove(constants.RcloneConfigFile)
 	}
 
 	// regenerate a new config from current backup
@@ -979,7 +978,7 @@ func (rc *Rclone) CopyRemoteClusterMetaToLocal(bucket string, opts []string) err
 // backup: copy local cluster meta to remote
 func (rc *Rclone) CopyLocalClusterMetaToRemote(bucket string, opts []string) error {
 	destBucket := NormalizeBucketURI(bucket)
-	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copy", fmt.Sprintf("%s/", constants.LocalTmp), fmt.Sprintf("%s/%s", destBucket, constants.ClusterBackupMeta), true)
+	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta), fmt.Sprintf("%s/%s", destBucket, constants.ClusterBackupMeta), true)
 	cmdString := fmt.Sprintf("rclone %s", args)
 
 	cmd := exec.Command(cmdString)
