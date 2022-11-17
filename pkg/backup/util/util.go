@@ -856,14 +856,18 @@ func generateS3Confg(s3 *v1alpha1.S3StorageProvider, secret *corev1.Secret) (str
 	if s3.SecretName != "" {
 
 		s3AccessKey := secret.Data[constants.S3AccessKey]
+		klog.Infof("access key is %s before decode", string(s3AccessKey))
 		accessKey, err := base64DecodeToString(s3AccessKey)
+		klog.Infof("access key is %s after decode", s3AccessKey)
 		if err != nil {
 			return "DecodeAccessKeyFailed", err
 		}
 		accessKeyId = accessKeyId + accessKey
 
 		s3SecretKey := secret.Data[constants.S3SecretKey]
+		klog.Infof("secret is %s before decode", string(s3SecretKey))
 		secretKey, err := base64DecodeToString(s3SecretKey)
+		klog.Infof("secret is %s after decode", s3SecretKey)
 		if err != nil {
 			return "DecodeSecretKeyFailed", err
 		}
@@ -961,8 +965,7 @@ func GenerateRemoteConfig(ns string, provider v1alpha1.StorageProvider, secretLi
 	return reason, nil
 }
 
-// RClone for backup and restore controller, since volume snapshot backup and restore generate huge cluster info, the k8s related techinical
-// can not handle it
+// Rclone for backup and restore controller, since volume snapshot backup and restore generate huge cluster info, and hit the k8s limitation
 // annotation limit: 256K
 // configMap limit: 1MB
 // envVar limt: 1MB
