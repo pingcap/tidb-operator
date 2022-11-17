@@ -848,7 +848,7 @@ func generateS3Confg(s3 *v1alpha1.S3StorageProvider, secret *corev1.Secret) (str
 	fmt.Fprintln(f, "type = s3")
 	fmt.Fprintln(f, "env_auth = true")
 
-	provider := "provider =  " + string(s3.Provider)
+	provider := "provider = " + string(s3.Provider)
 	fmt.Fprintln(f, provider)
 
 	accessKeyId := "access_key_id = "
@@ -957,6 +957,7 @@ func GenerateRemoteConfig(ns string, provider v1alpha1.StorageProvider, secretLi
 		err := fmt.Errorf("volume-snapshot unsupported storage type %s", storageType)
 		return "UnsupportedStorageType", err
 	}
+	klog.Infof("volume-snapshot created rclone file done")
 	return reason, nil
 }
 
@@ -1012,6 +1013,8 @@ func (rc *Rclone) CopyLocalClusterMetaToRemote(bucket string, opts []string) err
 	destBucket := NormalizeBucketURI(bucket)
 	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta), fmt.Sprintf("%s/%s", destBucket, constants.ClusterBackupMeta), true)
 	cmdString := fmt.Sprintf("rclone %s", args)
+
+	klog.Infof("cmd %s was copy to %s start", cmdString, bucket)
 
 	cmd := exec.Command(cmdString)
 	if err := cmd.Run(); err != nil {
