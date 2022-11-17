@@ -991,16 +991,17 @@ func (rc *Rclone) CopyRemoteClusterMetaToLocal(bucket string, opts []string) err
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
 	}
-	klog.Infof("backup %s was copy from %s successfully", rc.BackupName, bucket)
+	klog.Infof("restore meta for %s was copy from %s to local successfully", rc.BackupName, bucket)
 
 	// delete remote restore meta to local
 	argsDelete := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "deletefile", fmt.Sprintf("%s/%s", destBucket, constants.ClusterRestoreMeta), "", true)
 
 	cmdDel := exec.Command("rclone", argsDelete...)
 	if err := cmdDel.Run(); err != nil {
-		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
+		klog.Warningf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
+		return nil
 	}
-	klog.Infof("backup %s was copy from %s successfully", rc.BackupName, bucket)
+	klog.Infof("restore meta %s was deleted from %s successfully", rc.BackupName, bucket)
 
 	return nil
 }

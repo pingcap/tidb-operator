@@ -209,28 +209,28 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snap
 }
 
 func extractCloudSnapBackup(r *v1alpha1.Restore) (*CloudSnapBackup, string, error) {
-	// must init rclone config before download tc_meta to local
-	// 1. write a file into local
+
 	klog.Infof("download the remote cluster meta to local")
 
-	// 2. upload to remote
+	// 1. download remote meta to local
 	rclone := util.NewRclone(r.Namespace, r.ClusterName)
 
-	backupFullPath, _ := util.GetStorageRestorePath(r)
+	restoreFullPath, _ := util.GetStorageRestorePath(r)
 	opts := util.GetOptions(r.Spec.StorageProvider)
-	// 4. copy to s3
-	if err := rclone.CopyRemoteClusterMetaToLocal(backupFullPath, opts); err != nil {
+	// 2. copy to local
+	if err := rclone.CopyRemoteClusterMetaToLocal(restoreFullPath, opts); err != nil {
 		return nil, "CopyLocalClusterMetaToRemoteFailed", err
 	}
 
-	localMetaFile := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta)
-	clusterMeta, err := ioutil.ReadFile(localMetaFile)
+	// 3. read the local file
+	localMetaFile := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterRestoreMeta)
+	restoreMeta, err := ioutil.ReadFile(localMetaFile)
 	if err != nil {
 		return nil, "ReadFileFailed", err
 	}
 
 	csb := &CloudSnapBackup{}
-	err = json.Unmarshal(clusterMeta, csb)
+	err = json.Unmarshal(restoreMeta, csb)
 	if err != nil {
 		return nil, "ParseCloudSnapBackupFailed", err
 	}
