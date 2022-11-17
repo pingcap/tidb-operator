@@ -987,9 +987,7 @@ func (rc *Rclone) String() string {
 func (rc *Rclone) CopyRemoteClusterMetaToLocal(bucket string, opts []string) error {
 	destBucket := NormalizeBucketURI(bucket)
 	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", destBucket, constants.ClusterRestoreMeta), fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterRestoreMeta), true)
-	cmdString := fmt.Sprintf("rclone %s", args)
-
-	cmd := exec.Command(cmdString)
+	cmd := exec.Command("rclone", args...)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
 	}
@@ -997,9 +995,8 @@ func (rc *Rclone) CopyRemoteClusterMetaToLocal(bucket string, opts []string) err
 
 	// delete remote restore meta to local
 	argsDelete := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "deletefile", fmt.Sprintf("%s/%s", destBucket, constants.ClusterRestoreMeta), "", true)
-	cmdDelString := fmt.Sprintf("rclone %s", argsDelete)
 
-	cmdDel := exec.Command(cmdDelString)
+	cmdDel := exec.Command("rclone", argsDelete...)
 	if err := cmdDel.Run(); err != nil {
 		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
 	}
@@ -1012,11 +1009,9 @@ func (rc *Rclone) CopyRemoteClusterMetaToLocal(bucket string, opts []string) err
 func (rc *Rclone) CopyLocalClusterMetaToRemote(bucket string, opts []string) error {
 	destBucket := NormalizeBucketURI(bucket)
 	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta), fmt.Sprintf("%s/%s", destBucket, constants.ClusterBackupMeta), true)
-	cmdString := fmt.Sprintf("rclone %s", args)
+	klog.Infof("cmd %s was copy to %s start", args, bucket)
 
-	klog.Infof("cmd %s was copy to %s start", cmdString, bucket)
-
-	cmd := exec.Command(cmdString)
+	cmd := exec.Command("rclone", args...)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
 	}
