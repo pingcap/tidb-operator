@@ -68,11 +68,11 @@ function hack::install_cfssl() {
     echo "info: Installing cfssl/cfssljson R${CFSSL_VERSION}"
     tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
-    
+
     curl --retry 10 -L -o $tmpfile https://pkg.cfssl.org/R${CFSSL_VERSION}/cfssl_linux-amd64
     mv $tmpfile $CFSSL_BIN
     chmod +x $CFSSL_BIN
-    
+
     curl --retry 10 -L -o $tmpfile https://pkg.cfssl.org/R${CFSSL_VERSION}/cfssljson_linux-amd64
     mv $tmpfile $CFSSLJSON_BIN
     chmod +x $CFSSLJSON_BIN
@@ -275,7 +275,7 @@ function hack::ensure_misspell() {
 
 function hack::ensure_golangci_lint() {
     echo "Installing golangci_lint..."
-    GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.41.1
+    GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
 }
 
 function hack::ensure_controller_gen() {
@@ -299,7 +299,11 @@ function hack::ensure_openapi() {
 }
 
 function hack::ensure_go117() {
-		echo "Adjust go117+ to go116 ..."
-		patch -d $ROOT -NRp1 -i $ROOT/hack/go117.patch -r .rej --no-backup-if-mismatch || true
-		rm -rf .rej
+    echo "Adjust go117+ generated code indent to go116 ..."
+    echo "Since CICD depends on go116 while developers could have go117+ development environment, we need to patch go117+ generated code indent format to go116, to avoid fail CICD."
+    patch -d $ROOT -NRp1 -i $ROOT/hack/go117_0.patch -r .rej --no-backup-if-mismatch || true
+    patch -d $ROOT -NRp1 -i $ROOT/hack/go117_1.patch -r .rej --no-backup-if-mismatch || true
+    patch -d $ROOT -NRp1 -i $ROOT/hack/go117_2.patch -r .rej --no-backup-if-mismatch || true
+    patch -d $ROOT -NRp1 -i $ROOT/hack/go117_3.patch -r .rej --no-backup-if-mismatch || true
+    rm -rf .rej
 }
