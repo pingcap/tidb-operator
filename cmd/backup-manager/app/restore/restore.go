@@ -214,7 +214,11 @@ func (ro *Options) processCloudSnapBackup(
 ) error {
 	klog.Infof("Get restore meta file %s for cluster %s", csbPath, ro)
 	opts := bkUtil.GetOptions(restore.Spec.StorageProvider)
-	remoteStoragePath, _ := bkUtil.GetStorageRestorePath(restore)
+	remoteStoragePath, err := bkUtil.GetStorageRestorePath(restore)
+	if err != nil {
+		klog.Errorf("Get restore full path of cluster %s failed, err: %s", ro, err)
+		return err
+	}
 	if err := ro.copyRestoreMetaToRemote(ctx, remoteStoragePath, opts, csbPath); err != nil {
 		klog.Errorf("rclone copy remote cluster info to local failure.")
 		return err
@@ -344,7 +348,7 @@ func (ro *Options) copyRestoreMetaToRemote(ctx context.Context, bucket string, o
 	args := backupUtil.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", restoreMetaFile, fmt.Sprintf("%s/%s", destBucket, backupConst.ClusterRestoreMeta), true)
 	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("restore ns %s, execute rclone copy command failed, output: %s, err: %v", ro, string(output), err)
+		return fmt.Errorf("restore ns %s, execute rclone copyto command failed, output: %s, err: %v", ro, string(output), err)
 	}
 	klog.Infof("restore ns %s copy local file to %s successfully", ro, bucket)
 	return nil

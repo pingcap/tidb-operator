@@ -71,7 +71,12 @@ func (bo *Options) backupData(
 		)
 		localCSBFile := path.Join(util.BRBinPath, "csb_backup.json")
 		opts := bkUtil.GetOptions(backup.Spec.StorageProvider)
-		remoteStoragePath, _ := bkUtil.GetStoragePath(backup)
+		remoteStoragePath, err := bkUtil.GetStorageBackupPath(backup)
+		if err != nil {
+			klog.Errorf("Get backup full path of cluster %s failed, err: %s", bo, err)
+			return err
+		}
+
 		if err := bo.copyRemoteClusterMetaToLocal(ctx, remoteStoragePath, opts, localCSBFile); err != nil {
 			klog.Errorf("rclone copy remote cluster info to local failure.")
 			return err
@@ -328,8 +333,8 @@ func (bo *Options) copyRemoteClusterMetaToLocal(ctx context.Context, bucket stri
 	args := backupUtil.ConstructRcloneArgs(backupConst.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", destBucket, backupConst.ClusterBackupMeta), csbPath, true)
 	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute rclone copy command failed, output: %s, err: %v", bo, string(output), err)
+		return fmt.Errorf("cluster %s, execute rclone copyto command failed, output: %s, err: %v", bo, string(output), err)
 	}
-	klog.Infof("cluster %s backup %s was copy successfully", bo, bucket)
+	klog.Infof("cluster %s cluster meta from %s copy to local successfully", bo, bucket)
 	return nil
 }

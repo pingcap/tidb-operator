@@ -159,12 +159,12 @@ func (s *BaseSnapshotter) prepareBackupMetadata(
 	return "", nil
 }
 
+// copy cluster info to remote storage since k8s size limitation on annotation/configMap
 func uploadClusterMetaToRemote(b *v1alpha1.Backup, csb *CloudSnapBackup) (string, error) {
 	out, err := json.Marshal(csb)
 	if err != nil {
 		return "ParseCloudSnapshotBackupFailed", err
 	}
-	// must init rclone config before upload tc_meta to remote
 	// 1. write a file into local
 	klog.Infof("upload the cluster meta to remote storage")
 	localMetaFile := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta)
@@ -172,12 +172,16 @@ func uploadClusterMetaToRemote(b *v1alpha1.Backup, csb *CloudSnapBackup) (string
 	if err != nil {
 		return "WriteClusterMetaToLocalFailed", err
 	}
-	// 2. upload to remote
+	// 2. upload local file to remote
 	rclone := util.NewRclone(b.Namespace, b.ClusterName)
 
-	backupFullPath, _ := util.GetStoragePath(b)
+	backupFullPath, err := util.GetStorageBackupPath(b)
+	if err != nil {
+		klog.Errorf("Get backup full path of cluster %s failed, err: %s", b.ClusterName, err)
+		return "GetStorageBackupPathFailed", err
+	}
 	opts := util.GetOptions(b.Spec.StorageProvider)
-	// 4. copy to s3
+	// copy to remote storage
 	if err = rclone.CopyLocalClusterMetaToRemote(backupFullPath, opts); err != nil {
 		return "CopyLocalClusterMetaToRemoteFailed", err
 	}
@@ -208,14 +212,20 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snap
 	return "", nil
 }
 
+// after volume retore job complete, br output a meta file for controller to reconfig the tikvs
+// since the meta file may big, so we use remote storage as bridge to pass it from restore manager to controller
 func extractCloudSnapBackup(r *v1alpha1.Restore) (*CloudSnapBackup, string, error) {
 
-	klog.Infof("download the remote cluster meta to local")
+	klog.Infof("download the remote restore meta to local")
 
 	// 1. download remote meta to local
 	rclone := util.NewRclone(r.Namespace, r.ClusterName)
 
-	restoreFullPath, _ := util.GetStorageRestorePath(r)
+	restoreFullPath, err := util.GetStorageRestorePath(r)
+	if err != nil {
+		klog.Errorf("Get restore full path of cluster %s failed, err: %s", r.Name, err)
+		return nil, "GetStorageRestorePathFailed", err
+	}
 	opts := util.GetOptions(r.Spec.StorageProvider)
 	// 2. copy to local
 	if err := rclone.CopyRemoteClusterMetaToLocal(restoreFullPath, opts); err != nil {

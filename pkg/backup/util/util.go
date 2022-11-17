@@ -14,7 +14,6 @@
 package util
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/url"
 	"os"
@@ -695,7 +694,7 @@ func isLogBackSupport(tikvImage string) bool {
 	return true
 }
 
-// GetStoragePath generate the path of a specific storage
+// GetStorageRestorePath generate the path of a specific storage from Restore
 func GetStorageRestorePath(restore *v1alpha1.Restore) (string, error) {
 	var url, bucket, prefix string
 	st := GetStorageType(restore.Spec.StorageProvider)
@@ -725,8 +724,8 @@ func GetStorageRestorePath(restore *v1alpha1.Restore) (string, error) {
 	}
 }
 
-// GetStoragePath generate the path of a specific storage
-func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
+// GetStorageBackupPath generate the path of a specific storage from Backup
+func GetStorageBackupPath(backup *v1alpha1.Backup) (string, error) {
 	var url, bucket, prefix string
 	st := GetStorageType(backup.Spec.StorageProvider)
 	switch st {
@@ -805,15 +804,6 @@ func ConstructRcloneArgs(conf string, opts []string, command, source, dest strin
 	return args
 }
 
-func base64DecodeToString(src []byte) (string, error) {
-	dstLen := base64.StdEncoding.DecodedLen(len(src))
-	dst := make([]byte, dstLen)
-	if _, err := base64.StdEncoding.Decode(dst, src); err != nil {
-		return "", err
-	}
-	return string(dst), nil
-}
-
 // generateS3Confg generate the rclone config in order to access S3 compliant storage
 func generateS3Confg(s3 *v1alpha1.S3StorageProvider, secret *corev1.Secret) (string, error) {
 	switch s3.Provider {
@@ -844,6 +834,7 @@ func generateS3Confg(s3 *v1alpha1.S3StorageProvider, secret *corev1.Secret) (str
 		return "create rclone config file failure", err
 	}
 	defer f.Close()
+
 	fmt.Fprintln(f, "[s3]")
 	fmt.Fprintln(f, "type = s3")
 	fmt.Fprintln(f, "env_auth = true")
@@ -870,7 +861,6 @@ func generateS3Confg(s3 *v1alpha1.S3StorageProvider, secret *corev1.Secret) (str
 	}
 
 	fmt.Fprintln(f, accessKeyId)
-
 	fmt.Fprintln(f, secretAccessKey)
 
 	region := "region = " + s3.Region
@@ -881,6 +871,7 @@ func generateS3Confg(s3 *v1alpha1.S3StorageProvider, secret *corev1.Secret) (str
 
 	endpoint := "endpoint = " + s3.Endpoint
 	fmt.Fprintln(f, endpoint)
+
 	storageClass := "storage_class = " + s3.StorageClass
 	fmt.Fprintln(f, storageClass)
 
@@ -986,7 +977,7 @@ func (rc *Rclone) CopyRemoteClusterMetaToLocal(bucket string, opts []string) err
 	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", destBucket, constants.ClusterRestoreMeta), fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterRestoreMeta), true)
 	cmd := exec.Command("rclone", args...)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc, err)
+		return fmt.Errorf("backup %s, execute rclone copyto command failed, err: %v", rc, err)
 	}
 	klog.Infof("restore meta for %s was copy from %s to local successfully", rc, bucket)
 
@@ -995,7 +986,7 @@ func (rc *Rclone) CopyRemoteClusterMetaToLocal(bucket string, opts []string) err
 
 	cmdDel := exec.Command("rclone", argsDelete...)
 	if err := cmdDel.Run(); err != nil {
-		klog.Warningf("backup %s, execute rclone copy command failed, err: %v", rc, err)
+		klog.Warningf("backup %s, execute rclone deletefile command failed, err: %v", rc, err)
 		return nil
 	}
 	klog.Infof("restore meta %s was deleted from %s successfully", rc, bucket)
@@ -1011,7 +1002,7 @@ func (rc *Rclone) CopyLocalClusterMetaToRemote(bucket string, opts []string) err
 
 	cmd := exec.Command("rclone", args...)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc, err)
+		return fmt.Errorf("backup %s, execute rclone copyto command failed, err: %v", rc, err)
 	}
 
 	klog.Infof("backup %s was copy to %s successfully", rc, bucket)
