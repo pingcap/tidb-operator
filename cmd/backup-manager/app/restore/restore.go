@@ -205,6 +205,7 @@ func (ro *Options) restoreData(
 	return nil
 }
 
+// copy the restore meta to remote storage since k8s has limit to handle massive data pass between pods
 func (ro *Options) processCloudSnapBackup(
 	ctx context.Context,
 	restore *v1alpha1.Restore,

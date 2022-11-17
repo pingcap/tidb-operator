@@ -854,25 +854,19 @@ func generateS3Confg(s3 *v1alpha1.S3StorageProvider, secret *corev1.Secret) (str
 	accessKeyId := "access_key_id = "
 	secretAccessKey := "secret_access_key = "
 	if s3.SecretName != "" {
-
+		// get ak/sk from k8s secret
 		s3AccessKey := secret.Data[constants.S3AccessKey]
-		klog.Infof("access key is %s before decode", string(s3AccessKey))
-		accessKey, err := base64DecodeToString(s3AccessKey)
-		klog.Infof("access key is %s after decode", s3AccessKey)
 		if err != nil {
 			return "DecodeAccessKeyFailed", err
 		}
-		accessKeyId = accessKeyId + accessKey
+		accessKeyId = accessKeyId + string(s3AccessKey)
 
 		s3SecretKey := secret.Data[constants.S3SecretKey]
-		klog.Infof("secret is %s before decode", string(s3SecretKey))
-		secretKey, err := base64DecodeToString(s3SecretKey)
-		klog.Infof("secret is %s after decode", s3SecretKey)
 		if err != nil {
 			return "DecodeSecretKeyFailed", err
 		}
 
-		secretAccessKey = secretAccessKey + secretKey
+		secretAccessKey = secretAccessKey + string(s3SecretKey)
 	}
 
 	fmt.Fprintln(f, accessKeyId)
@@ -916,7 +910,7 @@ func generateGcsConfig(gcs *v1alpha1.GcsStorageProvider, secret *corev1.Secret) 
 // before use rclone, firstly we need to config rclone config.
 // for more detail info of rclone, you may refer to https://rclone.org/s3/#configuration
 func GenerateRemoteConfig(ns string, provider v1alpha1.StorageProvider, secretLister corelisterv1.SecretLister) (string, error) {
-	// check config file existed or not, if existed, remove it, keep config update
+	// check config file existed or not, if existed, remove it, keep rclone config update always
 	if _, err := os.Stat(constants.RcloneConfigFile); err == nil {
 		_ = os.Remove(constants.RcloneConfigFile)
 	}
@@ -971,8 +965,8 @@ func GenerateRemoteConfig(ns string, provider v1alpha1.StorageProvider, secretLi
 // envVar limt: 1MB
 // remote storage choose as solution for pass cluster info between controller and backup-manager/br
 type Rclone struct {
-	Namespace  string
-	BackupName string
+	Namespace string
+	Name      string
 }
 
 func NewRclone(ns string, bkName string) *Rclone {
@@ -983,7 +977,7 @@ func NewRclone(ns string, bkName string) *Rclone {
 }
 
 func (rc *Rclone) String() string {
-	return fmt.Sprintf("%s/%s", rc.Namespace, rc.BackupName)
+	return fmt.Sprintf("%s/%s", rc.Namespace, rc.Name)
 }
 
 // restore: copy remote cluster meta to local
@@ -992,19 +986,19 @@ func (rc *Rclone) CopyRemoteClusterMetaToLocal(bucket string, opts []string) err
 	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", destBucket, constants.ClusterRestoreMeta), fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterRestoreMeta), true)
 	cmd := exec.Command("rclone", args...)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
+		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc, err)
 	}
-	klog.Infof("restore meta for %s was copy from %s to local successfully", rc.BackupName, bucket)
+	klog.Infof("restore meta for %s was copy from %s to local successfully", rc, bucket)
 
 	// delete remote restore meta to local
 	argsDelete := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "deletefile", fmt.Sprintf("%s/%s", destBucket, constants.ClusterRestoreMeta), "", true)
 
 	cmdDel := exec.Command("rclone", argsDelete...)
 	if err := cmdDel.Run(); err != nil {
-		klog.Warningf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
+		klog.Warningf("backup %s, execute rclone copy command failed, err: %v", rc, err)
 		return nil
 	}
-	klog.Infof("restore meta %s was deleted from %s successfully", rc.BackupName, bucket)
+	klog.Infof("restore meta %s was deleted from %s successfully", rc, bucket)
 
 	return nil
 }
@@ -1017,7 +1011,7 @@ func (rc *Rclone) CopyLocalClusterMetaToRemote(bucket string, opts []string) err
 
 	cmd := exec.Command("rclone", args...)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc.BackupName, err)
+		return fmt.Errorf("backup %s, execute rclone copy command failed, err: %v", rc, err)
 	}
 
 	klog.Infof("backup %s was copy to %s successfully", rc, bucket)
