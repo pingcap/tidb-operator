@@ -101,6 +101,13 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	if restore.Spec.BR != nil && restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot {
+		// generate the rclone config before volume restore complete
+		if !v1alpha1.IsRestoreVolumeComplete(restore) {
+			_, err = backuputil.GenerateRemoteConfig(ns, restore.Spec.StorageProvider, rm.deps.SecretLister)
+			if err != nil {
+				return fmt.Errorf("restore %s/%s, %v", ns, name, err)
+			}
+		}
 		// restore based snapshot for cloud provider
 		reason, err := rm.tryRestoreIfCanSnapshot(restore, tc)
 		if err != nil {

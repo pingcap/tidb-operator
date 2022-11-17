@@ -476,6 +476,14 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		Value: string(rune(1)),
 	})
 
+	// generate the rclone config for controller
+	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+		reason, err = backuputil.GenerateRemoteConfig(ns, backup.Spec.StorageProvider, bm.deps.SecretLister)
+		if err != nil {
+			return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+		}
+	}
+
 	// set env vars specified in backup.Spec.Env
 	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 

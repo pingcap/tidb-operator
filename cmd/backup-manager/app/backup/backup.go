@@ -69,16 +69,16 @@ func (bo *Options) backupData(
 			progressStep = "Full Backup"
 			successTag   = "EBS backup success"
 		)
-		csbPath := path.Join(util.BRBinPath, "csb_backup.json")
+		localCSBFile := path.Join(util.BRBinPath, "csb_backup.json")
 		opts := bkUtil.GetOptions(backup.Spec.StorageProvider)
-		backupFullPath, _ := bkUtil.GetStoragePath(backup)
-		if err := bo.copyRemoteClusterMetaToLocal(ctx, backupFullPath, opts, csbPath); err != nil {
+		remoteStoragePath, _ := bkUtil.GetStoragePath(backup)
+		if err := bo.copyRemoteClusterMetaToLocal(ctx, remoteStoragePath, opts, localCSBFile); err != nil {
 			klog.Errorf("rclone copy remote cluster info to local failure.")
 			return err
 		}
 		// Currently, we only support aws ebs volume snapshot.
 		specificArgs = append(specificArgs, "--type=aws-ebs")
-		specificArgs = append(specificArgs, fmt.Sprintf("--volume-file=%s", csbPath))
+		specificArgs = append(specificArgs, fmt.Sprintf("--volume-file=%s", localCSBFile))
 		logCallback = func(line string) {
 			if strings.Contains(line, successTag) {
 				extract := strings.Split(line, successTag)[1]

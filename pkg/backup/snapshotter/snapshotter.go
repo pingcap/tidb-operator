@@ -175,9 +175,6 @@ func uploadClusterMetaToRemote(b *v1alpha1.Backup, csb *CloudSnapBackup) (string
 	// 2. upload to remote
 	rclone := util.NewRclone(b.Namespace, b.ClusterName)
 
-	// 3. config rclone
-	rclone.Config(b.Spec.StorageProvider)
-
 	backupFullPath, _ := util.GetStoragePath(b)
 	opts := util.GetOptions(b.Spec.StorageProvider)
 	// 4. copy to s3
@@ -218,9 +215,6 @@ func extractCloudSnapBackup(r *v1alpha1.Restore) (*CloudSnapBackup, string, erro
 
 	// 2. upload to remote
 	rclone := util.NewRclone(r.Namespace, r.ClusterName)
-
-	// 3. config rclone
-	rclone.Config(r.Spec.StorageProvider)
 
 	backupFullPath, _ := util.GetStorageRestorePath(r)
 	opts := util.GetOptions(r.Spec.StorageProvider)
