@@ -395,7 +395,7 @@ func TestPrepareCSBStoresMeta(t *testing.T) {
 	}
 }
 
-func TestPrepareBackupMetadata(t *testing.T) {
+func TestGenerateBackupMetadata(t *testing.T) {
 	helper := newHelper(t)
 	defer helper.Close()
 	deps := helper.Deps
@@ -454,7 +454,7 @@ func TestPrepareBackupMetadata(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s, _, err := NewSnapshotterForBackup(tt.backup.Spec.Mode, deps)
 			require.NoError(t, err)
-			_, err = s.PrepareBackupMetadata(tt.backup, tc)
+			_, _, err = s.GenerateBackupMetadata(tt.backup, tc)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {

@@ -14,12 +14,14 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 	"unsafe"
 
 	"github.com/Masterminds/semver"
@@ -694,6 +696,24 @@ func isLogBackSupport(tikvImage string) bool {
 	return true
 }
 
+// GetContextForTerminationSignals get a context for some termination signals, and the context will become done after any of these signals triggered.
+func GetContextForTerminationSignals(op string) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	go func() {
+		sig := <-sc
+		klog.Errorf("got signal %s to exit, %s will be canceled", sig, op)
+		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
+	}()
+	return ctx, cancel
+}
+
 // GetStorageRestorePath generate the path of a specific storage from Restore
 func GetStorageRestorePath(restore *v1alpha1.Restore) (string, error) {
 	var url, bucket, prefix string
@@ -763,248 +783,4 @@ func GetOptions(provider v1alpha1.StorageProvider) []string {
 	default:
 		return nil
 	}
-}
-
-// NormalizeBucketURI normal bucket URL for rclone, e.g. s3://bucket -> s3:bucket
-func NormalizeBucketURI(bucket string) string {
-	return strings.Replace(bucket, "://", ":", 1)
-}
-
-// ConstructRcloneArgs constructs the rclone args
-func ConstructRcloneArgs(conf string, opts []string, command, source, dest string, verboseLog bool) []string {
-	var args []string
-	defaultLog := true
-	if conf != "" {
-		args = append(args, conf)
-	}
-	if len(opts) > 0 {
-		for _, opt := range opts {
-			// If forbid logging with verboseLog==false, user-provided args starting with -v or --verbose should be filtered out.
-			if !verboseLog && (strings.HasPrefix(opt, "-v") || strings.HasPrefix(opt, "--verbose")) {
-				continue
-			}
-			if opt == "-q" || opt == "--quiet" {
-				defaultLog = false
-			}
-			args = append(args, opt)
-		}
-	}
-	if defaultLog && verboseLog {
-		args = append(args, "-v")
-	}
-	if command != "" {
-		args = append(args, command)
-	}
-	if source != "" {
-		args = append(args, source)
-	}
-	if dest != "" {
-		args = append(args, dest)
-	}
-	return args
-}
-
-// generateS3Confg generate the rclone config in order to access S3 compliant storage
-func generateS3Confg(s3 *v1alpha1.S3StorageProvider, secret *corev1.Secret) (string, error) {
-	switch s3.Provider {
-	case v1alpha1.S3StorageProviderTypeCeph:
-		if !strings.Contains(s3.Endpoint, "://") {
-			// convert xxx.xxx.xxx.xxx:port to http://xxx.xxx.xxx.xxx:port
-			// the endpoint must start with http://
-			s3.Endpoint = fmt.Sprintf("http://%s", s3.Endpoint)
-			break
-		}
-		if !strings.HasPrefix(s3.Endpoint, "http://") {
-			return "InvalidS3Endpoint", fmt.Errorf("ceph endpoint URI %s must start with http://", s3.Endpoint)
-		}
-	case v1alpha1.S3StorageProviderTypeAWS:
-		// TODO: Check the storage class, if it is not a legal storage class, use the default storage class instead
-		if len(s3.StorageClass) == 0 {
-			// The optional storage class reference https://rclone.org/s3
-			s3.StorageClass = "STANDARD_IA"
-		}
-		if len(s3.Acl) == 0 {
-			// The optional acl reference https://rclone.org/s3/
-			s3.Acl = "private"
-		}
-	}
-
-	f, err := os.Create(constants.RcloneConfigFile)
-	if err != nil {
-		return "create rclone config file failure", err
-	}
-	defer f.Close()
-
-	fmt.Fprintln(f, "[s3]")
-	fmt.Fprintln(f, "type = s3")
-	fmt.Fprintln(f, "env_auth = true")
-
-	provider := "provider = " + string(s3.Provider)
-	fmt.Fprintln(f, provider)
-
-	accessKeyId := "access_key_id = "
-	secretAccessKey := "secret_access_key = "
-	if s3.SecretName != "" {
-		// get ak/sk from k8s secret
-		s3AccessKey := secret.Data[constants.S3AccessKey]
-		if err != nil {
-			return "DecodeAccessKeyFailed", err
-		}
-		accessKeyId = accessKeyId + string(s3AccessKey)
-
-		s3SecretKey := secret.Data[constants.S3SecretKey]
-		if err != nil {
-			return "DecodeSecretKeyFailed", err
-		}
-
-		secretAccessKey = secretAccessKey + string(s3SecretKey)
-	}
-
-	fmt.Fprintln(f, accessKeyId)
-	fmt.Fprintln(f, secretAccessKey)
-
-	region := "region = " + s3.Region
-	fmt.Fprintln(f, region)
-
-	acl := "acl = " + s3.Acl
-	fmt.Fprintln(f, acl)
-
-	endpoint := "endpoint = " + s3.Endpoint
-	fmt.Fprintln(f, endpoint)
-
-	storageClass := "storage_class = " + s3.StorageClass
-	fmt.Fprintln(f, storageClass)
-
-	f.Sync()
-
-	return "", nil
-}
-
-// TODO: generateGcsConfig generate the rclone config file in order to access google cloud storage
-func generateGcsConfig(gcs *v1alpha1.GcsStorageProvider, secret *corev1.Secret) (string, error) {
-	// [gcs]
-	// type = google cloud storage
-	// project_number = ${GCS_PROJECT_ID}
-	// service_account_file = ${GOOGLE_APPLICATION_CREDENTIALS}
-	// object_acl = ${GCS_OBJECT_ACL}
-	// bucket_acl = ${GCS_BUCKET_ACL}
-	// location =  ${GCS_LOCATION}
-	// storage_class = ${GCS_STORAGE_CLASS:-"COLDLINE"}
-	// [azure]
-	// type = azureblob
-	// account = ${AZUREBLOB_ACCOUNT}
-	// key = ${AZUREBLOB_KEY}
-	klog.Infof("volume-snapshot currently doesn't support gcs yet")
-	return "", nil
-}
-
-// before use rclone, firstly we need to config rclone config.
-// for more detail info of rclone, you may refer to https://rclone.org/s3/#configuration
-func GenerateRemoteConfig(ns string, provider v1alpha1.StorageProvider, secretLister corelisterv1.SecretLister) (string, error) {
-	// check config file existed or not, if existed, remove it, keep rclone config update always
-	if _, err := os.Stat(constants.RcloneConfigFile); err == nil {
-		_ = os.Remove(constants.RcloneConfigFile)
-	}
-
-	// regenerate a new config from current backup
-	var reason string
-	var err error
-	var secret *corev1.Secret
-	storageType := GetStorageType(provider)
-
-	switch storageType {
-	case v1alpha1.BackupStorageTypeS3:
-		s3SecretName := provider.S3.SecretName
-		if s3SecretName != "" {
-			secret, err = secretLister.Secrets(ns).Get(s3SecretName)
-			if err != nil {
-				err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
-				return "GetS3SecretFailed", err
-			}
-		}
-		reason, err = generateS3Confg(provider.S3.DeepCopy(), secret)
-		if err != nil {
-			return reason, err
-		}
-	case v1alpha1.BackupStorageTypeGcs:
-		gcsSecretName := provider.Gcs.SecretName
-		if gcsSecretName != "" {
-			secret, err = secretLister.Secrets(ns).Get(gcsSecretName)
-			if err != nil {
-				err := fmt.Errorf("get gcs secret %s/%s failed, err: %v", ns, gcsSecretName, err)
-				return "GetGcsSecretFailed", err
-			}
-		}
-		reason, err = generateGcsConfig(provider.Gcs, secret)
-
-		if err != nil {
-			return reason, err
-		}
-	case v1alpha1.BackupStorageTypeLocal:
-		return "", nil
-	default:
-		err := fmt.Errorf("volume-snapshot unsupported storage type %s", storageType)
-		return "UnsupportedStorageType", err
-	}
-	klog.Infof("volume-snapshot created rclone file done")
-	return reason, nil
-}
-
-// Rclone for backup and restore controller, since volume snapshot backup and restore generate huge cluster info, and hit the k8s limitation
-// annotation limit: 256K
-// configMap limit: 1MB
-// envVar limt: 1MB
-// remote storage choose as solution for pass cluster info between controller and backup-manager/br
-type Rclone struct {
-	Namespace string
-	Name      string
-}
-
-func NewRclone(ns string, bkName string) *Rclone {
-	return &Rclone{
-		ns,
-		bkName,
-	}
-}
-
-func (rc *Rclone) String() string {
-	return fmt.Sprintf("%s/%s", rc.Namespace, rc.Name)
-}
-
-// restore: copy remote cluster meta to local
-func (rc *Rclone) CopyRemoteClusterMetaToLocal(bucket string, opts []string) error {
-	destBucket := NormalizeBucketURI(bucket)
-	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", destBucket, constants.ClusterRestoreMeta), fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterRestoreMeta), true)
-	cmd := exec.Command("rclone", args...)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("backup %s, execute rclone copyto command failed, err: %v", rc, err)
-	}
-	klog.Infof("restore meta for %s was copy from %s to local successfully", rc, bucket)
-
-	// delete remote restore meta to local
-	argsDelete := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "deletefile", fmt.Sprintf("%s/%s", destBucket, constants.ClusterRestoreMeta), "", true)
-
-	cmdDel := exec.Command("rclone", argsDelete...)
-	if err := cmdDel.Run(); err != nil {
-		klog.Warningf("backup %s, execute rclone deletefile command failed, err: %v", rc, err)
-		return nil
-	}
-	klog.Infof("restore meta %s was deleted from %s successfully", rc, bucket)
-
-	return nil
-}
-
-// backup: copy local cluster meta to remote
-func (rc *Rclone) CopyLocalClusterMetaToRemote(bucket string, opts []string) error {
-	destBucket := NormalizeBucketURI(bucket)
-	args := ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta), fmt.Sprintf("%s/%s", destBucket, constants.ClusterBackupMeta), true)
-	klog.Infof("cmd %s was copy to %s start", args, bucket)
-
-	cmd := exec.Command("rclone", args...)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("backup %s, execute rclone copyto command failed, err: %v", rc, err)
-	}
-
-	klog.Infof("backup %s was copy to %s successfully", rc, bucket)
-	return nil
 }

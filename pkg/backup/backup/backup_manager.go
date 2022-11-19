@@ -14,6 +14,7 @@
 package backup
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -476,14 +477,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		Value: string(rune(1)),
 	})
 
-	// generate the rclone config for controller
-	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-		reason, err = backuputil.GenerateRemoteConfig(ns, backup.Spec.StorageProvider, bm.deps.SecretLister)
-		if err != nil {
-			return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
-		}
-	}
-
 	// set env vars specified in backup.Spec.Env
 	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
@@ -667,11 +660,50 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	return job, "", nil
 }
 
+// copy cluster info to external storage since k8s size limitation on annotation/configMap
+func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, csb *snapshotter.CloudSnapBackup) (string, error) {
+
+	data, err := json.Marshal(csb)
+	if err != nil {
+		return "ParseCloudSnapshotBackupFailed", err
+	}
+	ctx, cancel := backuputil.GetContextForTerminationSignals(b.ClusterName)
+	defer cancel()
+
+	// write a file into external storage
+	klog.Infof("save the cluster meta to external storage")
+	cred := backuputil.GetStorageCredential(b.Namespace, b.Spec.StorageProvider, bm.deps.SecretLister)
+	externalStorage, err := backuputil.NewStorageBackend(b.Spec.StorageProvider, cred)
+	if err != nil {
+		return "NewStorageBackendFailed", err
+	}
+
+	// if file existed, it looks backup write into a storage has backup already
+	exist, err := externalStorage.Exists(ctx, constants.ClusterBackupMeta)
+	if err != nil {
+		return "FileExistedInExternalStorageFailed", err
+	}
+	if exist {
+		return "FileExistedInExternalStorage", fmt.Errorf("%s exist", constants.ClusterBackupMeta)
+	}
+
+	err = externalStorage.WriteAll(ctx, constants.ClusterBackupMeta, data, nil)
+	if err != nil {
+		return "SaveFileToExternalStorageFailed", err
+	}
+	return "", nil
+}
+
 func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
 	if s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps); err != nil {
 		return reason, err
 	} else if s != nil {
-		return s.PrepareBackupMetadata(b, tc)
+		csb, reason, err := s.GenerateBackupMetadata(b, tc)
+		if err != nil {
+			return reason, err
+		}
+
+		return bm.saveClusterMetaToExternalStorage(b, csb)
 	}
 	return "", nil
 }

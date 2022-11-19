@@ -91,7 +91,7 @@ func (ro *Options) restoreData(
 		// init pitr restore args
 		args = append(args, fmt.Sprintf("--restored-ts=%s", ro.PitrRestoredTs))
 
-		if fullBackupArgs, err := backupUtil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage"); err != nil {
+		if fullBackupArgs, err := bkUtil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage"); err != nil {
 			return err
 		} else {
 			// parse full backup path

@@ -14,6 +14,7 @@
 package restore
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -101,13 +102,6 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	if restore.Spec.BR != nil && restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot {
-		// generate the rclone config before volume restore complete
-		if !v1alpha1.IsRestoreVolumeComplete(restore) {
-			_, err = backuputil.GenerateRemoteConfig(ns, restore.Spec.StorageProvider, rm.deps.SecretLister)
-			if err != nil {
-				return fmt.Errorf("restore %s/%s, %v", ns, name, err)
-			}
-		}
 		// restore based snapshot for cloud provider
 		reason, err := rm.tryRestoreIfCanSnapshot(restore, tc)
 		if err != nil {
@@ -202,6 +196,44 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	return nil
 }
 
+// read cluster info from external storage since k8s size limitation on annotation/configMap
+// after volume retore job complete, br output a meta file for controller to reconfig the tikvs
+// since the meta file may big, so we use remote storage as bridge to pass it from restore manager to controller
+func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore) (*snapshotter.CloudSnapBackup, string, error) {
+	ctx, cancel := backuputil.GetContextForTerminationSignals(r.ClusterName)
+	defer cancel()
+
+	// write a file into external storage
+	klog.Infof("read the restore meta from external storage")
+	cred := backuputil.GetStorageCredential(r.Namespace, r.Spec.StorageProvider, rm.deps.SecretLister)
+	externalStorage, err := backuputil.NewStorageBackend(r.Spec.StorageProvider, cred)
+	if err != nil {
+		return nil, "NewStorageBackendFailed", err
+	}
+
+	// if file existed, it looks backup write into a storage has backup already
+	exist, err := externalStorage.Exists(ctx, constants.ClusterRestoreMeta)
+	if err != nil {
+		return nil, "FileExistedInExternalStorageFailed", err
+	}
+	if !exist {
+		return nil, "FileExistedInExternalStorage", fmt.Errorf("%s does not exist", constants.ClusterRestoreMeta)
+	}
+
+	restoreMeta, err := externalStorage.ReadAll(ctx, constants.ClusterRestoreMeta)
+	if err != nil {
+		return nil, "ReadAllOnExternalStorageFailed", err
+	}
+
+	csb := &snapshotter.CloudSnapBackup{}
+	err = json.Unmarshal(restoreMeta, csb)
+	if err != nil {
+		return nil, "ParseCloudSnapBackupFailed", err
+	}
+
+	return csb, "", nil
+}
+
 func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
 	if v1alpha1.IsRestoreComplete(r) {
 		return "", nil
@@ -259,7 +291,12 @@ func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alp
 		}
 		// setRestoreVolumeID for all PVs, and reset PVC/PVs,
 		// then commit all PVC/PVs for TiKV restore volumes
-		if reason, err := s.PrepareRestoreMetadata(r); err != nil {
+		csb, reason, err := rm.readRestoreMetaFromExternalStorage(r)
+		if err != nil {
+			return reason, err
+		}
+
+		if reason, err := s.PrepareRestoreMetadata(r, csb); err != nil {
 			return reason, err
 		}
 

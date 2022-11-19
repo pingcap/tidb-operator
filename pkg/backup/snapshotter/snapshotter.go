@@ -14,10 +14,8 @@
 package snapshotter
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -25,7 +23,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -44,13 +41,13 @@ type Snapshotter interface {
 	// for the PersistentVolume-PV.
 	GetVolumeID(pv *corev1.PersistentVolume) (string, error)
 
-	// PrepareBackupMetadata performs the preparations for creating
+	// GenerateBackupMetadata performs the preparations for creating
 	// a snapshot from the used volume for PV/PVC.
-	PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error)
+	GenerateBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (*CloudSnapBackup, string, error)
 
 	// PrepareRestoreMetadata performs the preparations for creating
 	// a volume from the snapshot that has been backed up.
-	PrepareRestoreMetadata(r *v1alpha1.Restore) (string, error)
+	PrepareRestoreMetadata(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error)
 
 	// SetVolumeID sets the cloud provider specific identifier
 	// for the PersistentVolume-PV.
@@ -139,62 +136,23 @@ func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, tc *v1alpha1.T
 	return pods, "", nil
 }
 
-func (s *BaseSnapshotter) prepareBackupMetadata(
-	b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, execr Snapshotter) (string, error) {
+func (s *BaseSnapshotter) generateBackupMetadata(
+	b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, execr Snapshotter) (*CloudSnapBackup, string, error) {
 	csb := NewCloudSnapshotBackup(tc)
 	pods, reason, err := s.PrepareCSBK8SMeta(csb, tc)
 	if err != nil {
-		return reason, err
+		return nil, reason, err
 	}
 
 	m := NewBackupStoresMixture(tc, csb.Kubernetes.PVCs, csb.Kubernetes.PVs, execr)
 	if reason, err := m.PrepareCSBStoresMeta(csb, pods); err != nil {
-		return reason, err
+		return nil, reason, err
 	}
 
-	if reason, err := uploadClusterMetaToRemote(b, csb); err != nil {
-		return reason, err
-	}
-
-	return "", nil
+	return csb, "", nil
 }
 
-// copy cluster info to remote storage since k8s size limitation on annotation/configMap
-func uploadClusterMetaToRemote(b *v1alpha1.Backup, csb *CloudSnapBackup) (string, error) {
-	out, err := json.Marshal(csb)
-	if err != nil {
-		return "ParseCloudSnapshotBackupFailed", err
-	}
-	// 1. write a file into local
-	klog.Infof("upload the cluster meta to remote storage")
-	localMetaFile := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterBackupMeta)
-	err = ioutil.WriteFile(localMetaFile, []byte(out), 0644)
-	if err != nil {
-		return "WriteClusterMetaToLocalFailed", err
-	}
-	// 2. upload local file to remote
-	rclone := util.NewRclone(b.Namespace, b.ClusterName)
-
-	backupFullPath, err := util.GetStorageBackupPath(b)
-	if err != nil {
-		klog.Errorf("Get backup full path of cluster %s failed, err: %s", b.ClusterName, err)
-		return "GetStorageBackupPathFailed", err
-	}
-	opts := util.GetOptions(b.Spec.StorageProvider)
-	// copy to remote storage
-	if err = rclone.CopyLocalClusterMetaToRemote(backupFullPath, opts); err != nil {
-		return "CopyLocalClusterMetaToRemoteFailed", err
-	}
-
-	return "", nil
-}
-
-func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snapshotter) (string, error) {
-	csb, reason, err := extractCloudSnapBackup(r)
-	if err != nil {
-		return reason, err
-	}
-
+func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, csb *CloudSnapBackup, execr Snapshotter) (string, error) {
 	if reason, err := checkCloudSnapBackup(csb); err != nil {
 		return reason, err
 	}
@@ -210,41 +168,6 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, execr Snap
 	}
 
 	return "", nil
-}
-
-// after volume retore job complete, br output a meta file for controller to reconfig the tikvs
-// since the meta file may big, so we use remote storage as bridge to pass it from restore manager to controller
-func extractCloudSnapBackup(r *v1alpha1.Restore) (*CloudSnapBackup, string, error) {
-
-	klog.Infof("download the remote restore meta to local")
-
-	// 1. download remote meta to local
-	rclone := util.NewRclone(r.Namespace, r.ClusterName)
-
-	restoreFullPath, err := util.GetStorageRestorePath(r)
-	if err != nil {
-		klog.Errorf("Get restore full path of cluster %s failed, err: %s", r.Name, err)
-		return nil, "GetStorageRestorePathFailed", err
-	}
-	opts := util.GetOptions(r.Spec.StorageProvider)
-	// 2. copy to local
-	if err := rclone.CopyRemoteClusterMetaToLocal(restoreFullPath, opts); err != nil {
-		return nil, "CopyLocalClusterMetaToRemoteFailed", err
-	}
-
-	// 3. read the local file
-	localMetaFile := fmt.Sprintf("%s/%s", constants.LocalTmp, constants.ClusterRestoreMeta)
-	restoreMeta, err := ioutil.ReadFile(localMetaFile)
-	if err != nil {
-		return nil, "ReadFileFailed", err
-	}
-
-	csb := &CloudSnapBackup{}
-	err = json.Unmarshal(restoreMeta, csb)
-	if err != nil {
-		return nil, "ParseCloudSnapBackupFailed", err
-	}
-	return csb, "", nil
 }
 
 func checkCloudSnapBackup(b *CloudSnapBackup) (string, error) {
