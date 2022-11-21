@@ -196,7 +196,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	return nil
 }
 
-// read cluster info from external storage since k8s size limitation on annotation/configMap
+// read cluster meta from external storage since k8s size limitation on annotation/configMap
 // after volume retore job complete, br output a meta file for controller to reconfig the tikvs
 // since the meta file may big, so we use remote storage as bridge to pass it from restore manager to controller
 func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore) (*snapshotter.CloudSnapBackup, string, error) {
@@ -211,7 +211,7 @@ func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore
 		return nil, "NewStorageBackendFailed", err
 	}
 
-	// if file existed, it looks backup write into a storage has backup already
+	// if file doesn't exist, br create volume has problem
 	exist, err := externalStorage.Exists(ctx, constants.ClusterRestoreMeta)
 	if err != nil {
 		return nil, "FileExistedInExternalStorageFailed", err

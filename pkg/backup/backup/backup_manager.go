@@ -660,7 +660,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	return job, "", nil
 }
 
-// copy cluster info to external storage since k8s size limitation on annotation/configMap
+// save cluster meta to external storage since k8s size limitation on annotation/configMap
 func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, csb *snapshotter.CloudSnapBackup) (string, error) {
 
 	data, err := json.Marshal(csb)

@@ -215,26 +215,6 @@ type BatchDeleteObjectsResult struct {
 	Errors  []ObjectError
 }
 
-// WriteFile writes a complete file to storage, similar to os.WriteFile,
-func (b *StorageBackend) WriteFile(ctx context.Context, name string, data []byte) error {
-	return nil
-}
-
-// ReadFile reads a complete file from storage, similar to os.ReadFile
-func (b *StorageBackend) ReadFile(ctx context.Context, name string) ([]byte, error) {
-	return []byte(""), nil
-}
-
-// FileExists return true if file exists
-func (b *StorageBackend) FileExists(ctx context.Context, name string) (bool, error) {
-	return false, nil
-}
-
-// DeleteFile delete the file in storage
-func (b *StorageBackend) DeleteFile(ctx context.Context, name string) error {
-	return nil
-}
-
 // BatchDeleteObjects delete mutli objects
 //
 // Depending on storage type, it use function 'BatchDeleteObjectsOfS3' or 'BatchDeleteObjectsConcurrently'
