@@ -28,11 +28,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	backupConst "github.com/pingcap/tidb-operator/pkg/backup/constants"
-	bkUtil "github.com/pingcap/tidb-operator/pkg/backup/util"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	pkgutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
@@ -91,7 +90,7 @@ func (ro *Options) restoreData(
 		// init pitr restore args
 		args = append(args, fmt.Sprintf("--restored-ts=%s", ro.PitrRestoredTs))
 
-		if fullBackupArgs, err := bkUtil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage"); err != nil {
+		if fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage"); err != nil {
 			return err
 		} else {
 			// parse full backup path
@@ -213,17 +212,22 @@ func (ro *Options) processCloudSnapBackup(
 	restoreControl controller.RestoreControlInterface,
 ) error {
 	klog.Infof("Get restore meta file %s for cluster %s", csbPath, ro)
-	opts := bkUtil.GetOptions(restore.Spec.StorageProvider)
-	remoteStoragePath, err := bkUtil.GetStorageRestorePath(restore)
+	contents, err := os.ReadFile(csbPath)
 	if err != nil {
-		klog.Errorf("Get restore full path of cluster %s failed, err: %s", ro, err)
+		klog.Errorf("read metadata file %s failed, err: %s", csbPath, err)
 		return err
 	}
-	if err := ro.copyRestoreMetaToRemote(ctx, remoteStoragePath, opts, csbPath); err != nil {
-		klog.Errorf("rclone copy remote cluster info to local failure.")
+	// write a file into external storage
+	klog.Infof("save the restore meta to external storage")
+	externalStorage, err := pkgutil.NewStorageBackend(restore.Spec.StorageProvider, &pkgutil.StorageCredential{})
+	if err != nil {
 		return err
 	}
 
+	err = externalStorage.WriteAll(ctx, constants.ClusterRestoreMeta, contents, nil)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -340,16 +344,4 @@ func (ro *Options) updateProgressFromFile(
 			return
 		}
 	}
-}
-
-// copy local restoremeta file to remote
-func (ro *Options) copyRestoreMetaToRemote(ctx context.Context, bucket string, opts []string, restoreMetaFile string) error {
-	destBucket := backupUtil.NormalizeBucketURI(bucket)
-	args := backupUtil.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", restoreMetaFile, fmt.Sprintf("%s/%s", destBucket, backupConst.ClusterRestoreMeta), true)
-	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("restore ns %s, execute rclone copyto command failed, output: %s, err: %v", ro, string(output), err)
-	}
-	klog.Infof("restore ns %s copy local file to %s successfully", ro, bucket)
-	return nil
 }

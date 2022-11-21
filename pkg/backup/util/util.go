@@ -715,58 +715,28 @@ func GetContextForTerminationSignals(op string) (context.Context, context.Cancel
 }
 
 // GetStorageRestorePath generate the path of a specific storage from Restore
-func GetStorageRestorePath(restore *v1alpha1.Restore) (string, error) {
+func GetStoragePath(privoder v1alpha1.StorageProvider) (string, error) {
 	var url, bucket, prefix string
-	st := GetStorageType(restore.Spec.StorageProvider)
+	st := GetStorageType(privoder)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
-		prefix = restore.Spec.StorageProvider.S3.Prefix
-		bucket = restore.Spec.StorageProvider.S3.Bucket
+		prefix = privoder.S3.Prefix
+		bucket = privoder.S3.Bucket
 		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeGcs:
-		prefix = restore.Spec.StorageProvider.Gcs.Prefix
-		bucket = restore.Spec.StorageProvider.Gcs.Bucket
+		prefix = privoder.Gcs.Prefix
+		bucket = privoder.Gcs.Bucket
 		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeAzblob:
-		prefix = restore.Spec.StorageProvider.Azblob.Prefix
-		bucket = restore.Spec.StorageProvider.Azblob.Container
+		prefix = privoder.Azblob.Prefix
+		bucket = privoder.Azblob.Container
 		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeLocal:
-		prefix = restore.Spec.StorageProvider.Local.Prefix
-		mountPath := restore.Spec.StorageProvider.Local.VolumeMount.MountPath
-		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
-		return url, nil
-	default:
-		return "", fmt.Errorf("storage %s not supported yet", st)
-	}
-}
-
-// GetStorageBackupPath generate the path of a specific storage from Backup
-func GetStorageBackupPath(backup *v1alpha1.Backup) (string, error) {
-	var url, bucket, prefix string
-	st := GetStorageType(backup.Spec.StorageProvider)
-	switch st {
-	case v1alpha1.BackupStorageTypeS3:
-		prefix = backup.Spec.StorageProvider.S3.Prefix
-		bucket = backup.Spec.StorageProvider.S3.Bucket
-		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
-		return url, nil
-	case v1alpha1.BackupStorageTypeGcs:
-		prefix = backup.Spec.StorageProvider.Gcs.Prefix
-		bucket = backup.Spec.StorageProvider.Gcs.Bucket
-		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
-		return url, nil
-	case v1alpha1.BackupStorageTypeAzblob:
-		prefix = backup.Spec.StorageProvider.Azblob.Prefix
-		bucket = backup.Spec.StorageProvider.Azblob.Container
-		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
-		return url, nil
-	case v1alpha1.BackupStorageTypeLocal:
-		prefix = backup.Spec.StorageProvider.Local.Prefix
-		mountPath := backup.Spec.StorageProvider.Local.VolumeMount.MountPath
+		prefix = privoder.Local.Prefix
+		mountPath := privoder.Local.VolumeMount.MountPath
 		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
 		return url, nil
 	default:

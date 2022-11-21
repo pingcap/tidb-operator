@@ -30,8 +30,9 @@ import (
 	"github.com/dustin/go-humanize"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backupConst "github.com/pingcap/tidb-operator/pkg/backup/constants"
-	bkUtil "github.com/pingcap/tidb-operator/pkg/backup/util"
+	pkgutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
@@ -70,15 +71,20 @@ func (bo *Options) backupData(
 			successTag   = "EBS backup success"
 		)
 		localCSBFile := path.Join(util.BRBinPath, "csb_backup.json")
-		opts := bkUtil.GetOptions(backup.Spec.StorageProvider)
-		remoteStoragePath, err := bkUtil.GetStorageBackupPath(backup)
+		// read cluster meta from external storage and pass it to BR
+		klog.Infof("read the restore meta from external storage")
+		externalStorage, err := pkgutil.NewStorageBackend(backup.Spec.StorageProvider, &pkgutil.StorageCredential{})
 		if err != nil {
-			klog.Errorf("Get backup full path of cluster %s failed, err: %s", bo, err)
 			return err
 		}
 
-		if err := bo.copyRemoteClusterMetaToLocal(ctx, remoteStoragePath, opts, localCSBFile); err != nil {
-			klog.Errorf("rclone copy remote cluster info to local failure.")
+		clustermeta, err := externalStorage.ReadAll(ctx, constants.ClusterBackupMeta)
+		if err != nil {
+			return err
+		}
+
+		err = os.WriteFile(localCSBFile, []byte(clustermeta), 0644)
+		if err != nil {
 			return err
 		}
 		// Currently, we only support aws ebs volume snapshot.

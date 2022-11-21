@@ -53,7 +53,7 @@ const (
 	defaultStorageFlag = "storage"
 )
 
-type storageCredential struct {
+type StorageCredential struct {
 	//TODO: currently, we do not have better way to unify storage credentials, temp solution using s3 credentials
 	awsCred *credentials.Credentials
 }
@@ -101,12 +101,12 @@ type StorageBackend struct {
 	gcs    *gcsConfig
 	azblob *azblobConfig
 	local  *localConfig
-	cred   *storageCredential
+	cred   *StorageCredential
 }
 
 // NewStorageBackend creates new storage backend, now supports S3/GCS/Azblob/Local
 // function called by both controller and backup/restore, since BR already has env config in BR pod, cred can be nil.
-func NewStorageBackend(provider v1alpha1.StorageProvider, cred *storageCredential) (*StorageBackend, error) {
+func NewStorageBackend(provider v1alpha1.StorageProvider, cred *StorageCredential) (*StorageBackend, error) {
 	var bucket *blob.Bucket
 	var err error
 
@@ -325,7 +325,7 @@ func BatchDeleteObjectsConcurrently(ctx context.Context, bucket *blob.Bucket, ob
 	return result
 }
 
-func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLister corelisterv1.SecretLister) *storageCredential {
+func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLister corelisterv1.SecretLister) *StorageCredential {
 	var err error
 	var secret *corev1.Secret
 	storageType := GetStorageType(provider)
@@ -336,7 +336,7 @@ func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLi
 		if s3SecretName != "" {
 			secret, err = secretLister.Secrets(ns).Get(s3SecretName)
 			if err != nil {
-				return nil
+				return &StorageCredential{}
 			}
 
 			s3AccessKey := string(secret.Data[constants.S3AccessKey])
@@ -344,7 +344,7 @@ func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLi
 
 			if s3AccessKey != "" && s3SecretKey != "" {
 				cred := credentials.NewStaticCredentials(s3AccessKey, s3SecretKey, "")
-				return &storageCredential{
+				return &StorageCredential{
 					cred,
 				}
 			}
@@ -352,12 +352,12 @@ func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLi
 		}
 	//TODO: will support gcs
 	case v1alpha1.BackupStorageTypeGcs:
-		return nil
+		return &StorageCredential{}
 	default:
-		return nil
+		return &StorageCredential{}
 	}
 
-	return nil
+	return &StorageCredential{}
 }
 
 // genStorageArgs returns the arg for --flag option and the remote/local path for br, default flag is storage.
@@ -437,7 +437,7 @@ func newLocalStorage(conf *localConfig) (*blob.Bucket, error) {
 }
 
 // newS3Storage initialize a new s3 storage
-func newS3Storage(conf *s3Config, cred *storageCredential) (*blob.Bucket, error) {
+func newS3Storage(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error) {
 	awsConfig := aws.NewConfig().WithMaxRetries(maxRetries).
 		WithS3ForcePathStyle(conf.forcePathStyle)
 	if conf.region != "" {

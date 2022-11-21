@@ -1,7 +1,6 @@
 FROM alpine:3.14
 
 ARG TARGETARCH
-ARG RCLONE_VERSION=v1.51.0
 RUN apk add tzdata bind-tools --no-cache
 ADD bin/${TARGETARCH}/tidb-scheduler /usr/local/bin/tidb-scheduler
 ADD bin/${TARGETARCH}/tidb-discovery /usr/local/bin/tidb-discovery
