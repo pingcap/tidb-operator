@@ -273,7 +273,7 @@ func TestStorageBackendBasic(t *testing.T) {
 		})
 		defer localPatches.Reset()
 
-		backend, err := NewStorageBackend(provider, nil)
+		backend, err := NewStorageBackend(provider, &StorageCredential{})
 		g.Expect(err).Should(gomega.Succeed())
 
 		g.Expect(backend.StorageType()).Should(gomega.Equal(tcases.expectStorageType))

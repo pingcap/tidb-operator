@@ -351,7 +351,7 @@ func GetBRArchiveSize(meta *kvbackup.BackupMeta) uint64 {
 
 // GetBRMetaData get backup metadata from cloud storage
 func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvbackup.BackupMeta, error) {
-	s, err := util.NewStorageBackend(provider, nil)
+	s, err := util.NewStorageBackend(provider, &util.StorageCredential{})
 	if err != nil {
 		return nil, err
 	}
