@@ -31,7 +31,6 @@ import (
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	backupConst "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	pkgutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -331,16 +330,4 @@ func (bo *Options) updateProgressFromFile(
 			return
 		}
 	}
-}
-
-// copy remote clustermeta file to local csb_backup.json
-func (bo *Options) copyRemoteClusterMetaToLocal(ctx context.Context, bucket string, opts []string, csbPath string) error {
-	destBucket := backupUtil.NormalizeBucketURI(bucket)
-	args := backupUtil.ConstructRcloneArgs(backupConst.RcloneConfigArg, opts, "copyto", fmt.Sprintf("%s/%s", destBucket, backupConst.ClusterBackupMeta), csbPath, true)
-	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("cluster %s, execute rclone copyto command failed, output: %s, err: %v", bo, string(output), err)
-	}
-	klog.Infof("cluster %s cluster meta from %s copy to local successfully", bo, bucket)
-	return nil
 }

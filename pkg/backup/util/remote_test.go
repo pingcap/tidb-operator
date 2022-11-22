@@ -256,7 +256,7 @@ func TestStorageBackendBasic(t *testing.T) {
 		provider := tcases.provider
 
 		// mock function
-		s3patches := gomonkey.ApplyFunc(newS3Storage, func(conf *s3Config) (*blob.Bucket, error) {
+		s3patches := gomonkey.ApplyFunc(newS3Storage, func(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error) {
 			return nil, nil
 		})
 		defer s3patches.Reset()

@@ -101,7 +101,6 @@ type StorageBackend struct {
 	gcs    *gcsConfig
 	azblob *azblobConfig
 	local  *localConfig
-	cred   *StorageCredential
 }
 
 // NewStorageBackend creates new storage backend, now supports S3/GCS/Azblob/Local

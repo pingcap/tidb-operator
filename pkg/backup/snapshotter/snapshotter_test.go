@@ -867,7 +867,7 @@ func TestPrepareRestoreMetadata(t *testing.T) {
 
 	meta := testutils.ConstructRestoreMetaStr()
 	csb := &CloudSnapBackup{}
-	err = json.Unmarshal([]byte(meta), csb)
+	_ = json.Unmarshal([]byte(meta), csb)
 	// happy path
 	reason, err = s.PrepareRestoreMetadata(restore, csb)
 	require.Empty(t, reason)

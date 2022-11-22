@@ -491,11 +491,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	reason, err = bm.tryBackupIfCanSnapshot(backup, tc)
-	if err != nil {
-		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
-	}
-
 	switch backup.Spec.Mode {
 	case v1alpha1.BackupModeLog:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeLog))
@@ -512,6 +507,10 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			}
 		}
 	case v1alpha1.BackupModeVolumeSnapshot:
+		reason, err = bm.volSnapshotBackup(backup, tc)
+		if err != nil {
+			return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+		}
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeVolumeSnapshot))
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeSnapshot))
@@ -694,7 +693,7 @@ func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, cs
 	return "", nil
 }
 
-func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
+func (bm *backupManager) volSnapshotBackup(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
 	if s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps); err != nil {
 		return reason, err
 	} else if s != (&snapshotter.NoneSnapshotter{}) {
