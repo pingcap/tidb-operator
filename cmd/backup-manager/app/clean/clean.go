@@ -74,8 +74,8 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	//rclone copy remote:/bukect/backup/backupmeta /backupmeta
 	opts := util.GetOptions(backup.Spec.StorageProvider)
 	if err := bo.copyRemoteBackupMetaToLocal(ctx, backup.Status.BackupPath, opts); err != nil {
-		klog.Errorf("rclone copy remote backupmeta to local failure.")
-		return err
+		klog.Warningf("rclone copy remote backupmeta to local failure, err: %s. it possible that bucket or backup folder is deleted already. a mannual check is require", err)
+		return nil
 	}
 	defer func() {
 		_ = os.Remove(metaFile)
@@ -89,8 +89,8 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 
 	contents, err := os.ReadFile(metaFile)
 	if err != nil {
-		klog.Errorf("read metadata file %s failed, err: %s", metaFile, err)
-		return err
+		klog.Warningf("read metadata file %s failed, err: %s, a mannual check or delete aciton require.", metaFile, err)
+		return nil
 	}
 
 	metaInfo := &util.EBSBasedBRMeta{}
