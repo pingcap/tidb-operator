@@ -697,7 +697,7 @@ func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, cs
 func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
 	if s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps); err != nil {
 		return reason, err
-	} else if s != nil {
+	} else if s != (&snapshotter.NoneSnapshotter{}) {
 		csb, reason, err := s.GenerateBackupMetadata(b, tc)
 		if err != nil {
 			return reason, err

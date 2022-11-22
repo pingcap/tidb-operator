@@ -14,6 +14,7 @@
 package snapshotter
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 	"testing"
@@ -860,15 +861,15 @@ func TestPrepareRestoreMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	// missing .annotation["tidb.pingcap.com/backup-cloud-snapshot"] as metadata
-	reason, err := s.PrepareRestoreMetadata(restore)
+	reason, err := s.PrepareRestoreMetadata(restore, &CloudSnapBackup{})
 	require.NotEmpty(t, reason)
 	require.Error(t, err)
 
 	meta := testutils.ConstructRestoreMetaStr()
-	restore.Annotations[label.AnnBackupCloudSnapKey] = meta
-
+	csb := &CloudSnapBackup{}
+	err = json.Unmarshal([]byte(meta), csb)
 	// happy path
-	reason, err = s.PrepareRestoreMetadata(restore)
+	reason, err = s.PrepareRestoreMetadata(restore, csb)
 	require.Empty(t, reason)
 	require.NoError(t, err)
 }
