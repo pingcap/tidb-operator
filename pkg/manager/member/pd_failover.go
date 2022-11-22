@@ -80,17 +80,17 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 
 	// Before delete of failure member try to detect node failure for the pod and set HostDown
 	// If any HostDown is set then force restart failure pod for re-creation
-	if isFailurePdPodHostDown(tc) {
-		if canAutoFailureRecovery(tc) {
-			if err := f.restartPodForHostDown(tc); err != nil {
-				if controller.IsIgnoreError(err) {
-					return nil
+	if f.deps.CLIConfig.DetectNodeFailure {
+		if isFailurePdPodHostDown(tc) {
+			if canAutoFailureRecovery(tc) {
+				if err := f.restartPodForHostDown(tc); err != nil {
+					if controller.IsIgnoreError(err) {
+						return nil
+					}
+					return err
 				}
-				return err
 			}
-		}
-	} else {
-		if f.deps.CLIConfig.DetectNodeFailure {
+		} else {
 			if err := f.checkAndMarkHostDown(tc); err != nil {
 				if controller.IsIgnoreError(err) {
 					return nil

@@ -60,18 +60,18 @@ func (f *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
 	}
 	// If HostDown is set for any FailureStore then do restart of pod
-	if isFailureTikvPodHostDown(tc) {
-		if canAutoFailureRecovery(tc) {
-			if err := f.restartPodForHostDown(tc); err != nil {
-				if controller.IsIgnoreError(err) {
-					return nil
+	if f.deps.CLIConfig.DetectNodeFailure {
+		if isFailureTikvPodHostDown(tc) {
+			if canAutoFailureRecovery(tc) {
+				if err := f.restartPodForHostDown(tc); err != nil {
+					if controller.IsIgnoreError(err) {
+						return nil
+					}
+					return err
 				}
-				return err
 			}
-		}
-	} else {
-		// If HostDown is not set for any FailureStore then try to detect node failure
-		if f.deps.CLIConfig.DetectNodeFailure {
+		} else {
+			// If HostDown is not set for any FailureStore then try to detect node failure
 			if err := f.checkAndMarkHostDown(tc); err != nil {
 				if controller.IsIgnoreError(err) {
 					return nil
@@ -278,7 +278,6 @@ func (f *tikvFailover) invokeDeleteFailureStore(tc *v1alpha1.TidbCluster, failur
 		if pod == nil {
 			return nil
 		}
-
 		// Check if pod was restarted. The CreationTimestamp of new pod should be after FailureMember.CreatedAt
 		if pod.CreationTimestamp.After(failureStore.CreatedAt.Time) && pod.CreationTimestamp.Add(restartToDeleteStoreGap).Before(time.Now()) {
 			storeUintId, parseErr := strconv.ParseUint(failureStore.StoreID, 10, 64)
