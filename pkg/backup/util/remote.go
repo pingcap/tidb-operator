@@ -43,6 +43,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -335,6 +336,7 @@ func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLi
 		if s3SecretName != "" {
 			secret, err = secretLister.Secrets(ns).Get(s3SecretName)
 			if err != nil {
+				klog.Errorf("Get the secret key failed.")
 				return &StorageCredential{}
 			}
 

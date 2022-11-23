@@ -217,7 +217,7 @@ func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore
 		return nil, "FileExistedInExternalStorageFailed", err
 	}
 	if !exist {
-		return nil, "FileExistedInExternalStorage", fmt.Errorf("%s does not exist", constants.ClusterRestoreMeta)
+		return nil, "FileNotExists", fmt.Errorf("%s does not exist", constants.ClusterRestoreMeta)
 	}
 
 	restoreMeta, err := externalStorage.ReadAll(ctx, constants.ClusterRestoreMeta)
