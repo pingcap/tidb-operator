@@ -430,9 +430,6 @@ func TestBRRestoreByEBS(t *testing.T) {
 
 			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster)
 			helper.CreateRestore(tt.restore)
-			// tt.restore.Annotations = map[string]string{
-			// 	label.AnnBackupCloudSnapKey: testutils.ConstructRestoreMetaStr(),
-			// }
 			m := NewRestoreManager(deps)
 			err := m.Sync(tt.restore)
 			g.Expect(err).Should(BeNil())
