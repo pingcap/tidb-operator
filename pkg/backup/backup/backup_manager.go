@@ -14,6 +14,7 @@
 package backup
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -666,7 +667,8 @@ func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, cs
 	if err != nil {
 		return "ParseCloudSnapshotBackupFailed", err
 	}
-	ctx, cancel := backuputil.GetContextForTerminationSignals(b.ClusterName)
+	// since the cluster meta is small (~5M), assume 1 minutes is enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
 	defer cancel()
 
 	// write a file into external storage

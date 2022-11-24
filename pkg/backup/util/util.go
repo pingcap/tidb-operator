@@ -14,14 +14,10 @@
 package util
 
 import (
-	"context"
 	"fmt"
 	"net/url"
-	"os"
-	"os/signal"
 	"path"
 	"strings"
-	"syscall"
 	"unsafe"
 
 	"github.com/Masterminds/semver"
@@ -694,24 +690,6 @@ func isLogBackSupport(tikvImage string) bool {
 		return false
 	}
 	return true
-}
-
-// GetContextForTerminationSignals get a context for some termination signals, and the context will become done after any of these signals triggered.
-func GetContextForTerminationSignals(op string) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-	go func() {
-		sig := <-sc
-		klog.Errorf("got signal %s to exit, %s will be canceled", sig, op)
-		cancel() // NOTE: the `Message` in `Status.Conditions` will contain `context canceled`.
-	}()
-	return ctx, cancel
 }
 
 // GetStorageRestorePath generate the path of a specific storage from Restore

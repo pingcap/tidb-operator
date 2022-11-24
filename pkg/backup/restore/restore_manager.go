@@ -14,9 +14,11 @@
 package restore
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -200,7 +202,8 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 // after volume retore job complete, br output a meta file for controller to reconfig the tikvs
 // since the meta file may big, so we use remote storage as bridge to pass it from restore manager to controller
 func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore) (*snapshotter.CloudSnapBackup, string, error) {
-	ctx, cancel := backuputil.GetContextForTerminationSignals(r.ClusterName)
+	// since the restore meta is small (~5M), assume 1 minutes is enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
 	defer cancel()
 
 	// write a file into external storage
