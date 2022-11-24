@@ -16,6 +16,7 @@ package clean
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -81,16 +82,13 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 		_ = os.Remove(metaFile)
 	}()
 
-	if _, err := os.Stat(metaFile); err != nil {
-		// file does not existed, need a manual delete
-		klog.Warningf("backupmeta does not existed, a mannual check or delete aciton require.")
-		return nil
-	}
-
 	contents, err := os.ReadFile(metaFile)
-	if err != nil {
+	if errors.Is(err, os.ErrNotExist) {
 		klog.Warningf("read metadata file %s failed, err: %s, a mannual check or delete aciton require.", metaFile, err)
 		return nil
+	} else { // will retry it
+		klog.Warningf("read metadata file %s failed, err: %s", metaFile, err)
+		return err
 	}
 
 	metaInfo := &util.EBSBasedBRMeta{}
