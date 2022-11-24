@@ -138,3 +138,14 @@ spec:
       {{- if .Values.tidb.slowLogTailer.resources }}
 {{ toYaml .Values.tidb.slowLogTailer.resources | indent 6 }}
       {{- end }}
+  tiproxy:
+    replicas: {{ .Values.tiproxy.replicas }}
+    baseImage: {{ .Values.tiproxy.baseImage }}
+    version: {{ .Values.tiproxy.version }}
+    imagePullPolicy: {{ .Values.tiproxy.imagePullPolicy }}
+  {{- if .Values.tiproxy.storageClassName }}
+    storageClassName: {{ .Values.tiproxy.storageClassName }}
+  {{- end }}
+  {{- if .Values.tiproxy.resources }}
+{{ toYaml .Values.tiproxy.resources | indent 4 }}
+  {{- end }}

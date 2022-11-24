@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
@@ -75,6 +76,8 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc member type
 	TiCDCMemberType MemberType = "ticdc"
+	// TiProxyMemberType is ticdc member type
+	TiProxyMemberType MemberType = "tiproxy"
 	// PumpMemberType is pump member type
 	PumpMemberType MemberType = "pump"
 
@@ -202,6 +205,10 @@ type TidbClusterSpec struct {
 	// TiCDC cluster spec
 	// +optional
 	TiCDC *TiCDCSpec `json:"ticdc,omitempty"`
+
+	// TiProxy cluster spec
+	// +optional
+	TiProxy *TiProxySpec `json:"tiproxy,omitempty"`
 
 	// Pump cluster spec
 	// +optional
@@ -372,6 +379,7 @@ type TidbClusterStatus struct {
 	TiDB       TiDBStatus                `json:"tidb,omitempty"`
 	Pump       PumpStatus                `json:"pump,omitempty"`
 	TiFlash    TiFlashStatus             `json:"tiflash,omitempty"`
+	TiProxy    TiProxyStatus             `json:"tiproxy,omitempty"`
 	TiCDC      TiCDCStatus               `json:"ticdc,omitempty"`
 	AutoScaler *TidbClusterAutoScalerRef `json:"auto-scaler,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
@@ -738,6 +746,43 @@ type TiCDCConfig struct {
 	// Optional: Defaults to /dev/stderr
 	// +optional
 	LogFile *string `toml:"log-file,omitempty" json:"logFile,omitempty"`
+}
+
+// TiProxySpec contains details of TiProxy members
+// +k8s:openapi-gen=true
+type TiProxySpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiProxy
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// used by TiProxy to check health status.
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/tiproxy
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// Proxy is the proxy part of config
+	// +optional
+	Proxy *tiproxyConfig.ProxyServerOnline `json:"proxy,omitempty"`
+
+	// StorageVolumes configure additional storage for TiProxy pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiProxy data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
 // LogTailerSpec represents an optional log tailer sidecar container
@@ -1363,6 +1408,19 @@ type TiFlashStatus struct {
 	Image           string                      `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// TiProxyStatus is TiProxy status
+type TiProxyStatus struct {
+	Synced      bool                                       `json:"synced,omitempty"`
+	Phase       MemberPhase                                `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
+	Proxy       tiproxyConfig.ProxyServerOnline            `json:"proxy,omitempty"`
+	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
 	// +optional
 	// +nullable
