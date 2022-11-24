@@ -94,6 +94,9 @@ const (
 	// NGMonitoringMemberType is ng monitoring member type
 	NGMonitoringMemberType MemberType = "ng-monitoring"
 
+	// TiDBDashboardMemberType is tidb-dashboard member type
+	TiDBDashboardMemberType MemberType = "tidb-dashboard"
+
 	// UnknownMemberType is unknown member type
 	UnknownMemberType MemberType = "unknown"
 )

@@ -220,6 +220,7 @@ type Dependencies struct {
 	TiDBInitializerLister       listers.TidbInitializerLister
 	TiDBMonitorLister           listers.TidbMonitorLister
 	TiDBNGMonitoringLister      listers.TidbNGMonitoringLister
+	TiDBDashboardLister         listers.TidbDashboardLister
 
 	// Controls
 	Controls
@@ -364,6 +365,7 @@ func newDependencies(
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
 		TiDBNGMonitoringLister:      informerFactory.Pingcap().V1alpha1().TidbNGMonitorings().Lister(),
+		TiDBDashboardLister:         informerFactory.Pingcap().V1alpha1().TidbDashboards().Lister(),
 
 		AWSConfig: cfg,
 	}, nil
