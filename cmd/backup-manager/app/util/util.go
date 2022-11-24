@@ -159,7 +159,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 		return nil, fmt.Errorf("no config for br in Backup %s/%s", backup.Namespace, backup.Name)
 	}
 	args = append(args, constructBRGlobalOptions(spec.BR)...)
-	storageArgs, err := GenStorageArgsForFlag(backup.Spec.StorageProvider, "")
+	storageArgs, err := util.GenStorageArgsForFlag(backup.Spec.StorageProvider, "")
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config.BR)...)
-	storageArgs, err := GenStorageArgsForFlag(restore.Spec.StorageProvider, "")
+	storageArgs, err := util.GenStorageArgsForFlag(restore.Spec.StorageProvider, "")
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +351,7 @@ func GetBRArchiveSize(meta *kvbackup.BackupMeta) uint64 {
 
 // GetBRMetaData get backup metadata from cloud storage
 func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvbackup.BackupMeta, error) {
-	s, err := NewStorageBackend(provider)
+	s, err := util.NewStorageBackend(provider, &util.StorageCredential{})
 	if err != nil {
 		return nil, err
 	}

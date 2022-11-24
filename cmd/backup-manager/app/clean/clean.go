@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	bkutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 )
@@ -56,7 +57,7 @@ func (bo *Options) String() string {
 
 // cleanBackupMetaWithVolSnapshots clean snapshot and the backup meta
 func (bo *Options) cleanBackupMetaWithVolSnapshots(ctx context.Context, backup *v1alpha1.Backup) error {
-	backend, err := util.NewStorageBackend(backup.Spec.StorageProvider)
+	backend, err := bkutil.NewStorageBackend(backup.Spec.StorageProvider, &bkutil.StorageCredential{})
 	if err != nil {
 		return err
 	}
@@ -133,7 +134,7 @@ func (bo *Options) deleteVolumeSnapshots(meta *util.EBSBasedBRMeta) error {
 func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1.Backup) error {
 	opt := backup.GetCleanOption()
 
-	backend, err := util.NewStorageBackend(backup.Spec.StorageProvider)
+	backend, err := bkutil.NewStorageBackend(backup.Spec.StorageProvider, &bkutil.StorageCredential{})
 	if err != nil {
 		return err
 	}
@@ -150,7 +151,7 @@ func (bo *Options) cleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 	})
 }
 
-func (bo *Options) cleanBRRemoteBackupDataOnce(ctx context.Context, backend *util.StorageBackend, opt v1alpha1.CleanOption, round int) error {
+func (bo *Options) cleanBRRemoteBackupDataOnce(ctx context.Context, backend *bkutil.StorageBackend, opt v1alpha1.CleanOption, round int) error {
 	klog.Infof("For backup %s clean %d, start to clean backup with opt: %+v", bo, round, opt)
 
 	iter := backend.ListPage(nil)
