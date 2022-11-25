@@ -26,8 +26,8 @@ import (
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/driver"
 
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/util"
 )
 
 func TestCleanBRRemoteBackupDataOnce(t *testing.T) {

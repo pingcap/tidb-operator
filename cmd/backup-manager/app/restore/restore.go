@@ -29,8 +29,9 @@ import (
 	"time"
 
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	pkgutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
@@ -89,7 +90,7 @@ func (ro *Options) restoreData(
 		// init pitr restore args
 		args = append(args, fmt.Sprintf("--restored-ts=%s", ro.PitrRestoredTs))
 
-		if fullBackupArgs, err := backupUtil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage"); err != nil {
+		if fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage"); err != nil {
 			return err
 		} else {
 			// parse full backup path
@@ -177,7 +178,7 @@ func (ro *Options) restoreData(
 	}
 
 	if csbPath != "" {
-		err = ro.processCloudSnapBackup(restore, csbPath, restoreControl)
+		err = ro.processCloudSnapBackup(ctx, restore, csbPath, restoreControl)
 		if err != nil {
 			return err
 		}
@@ -203,22 +204,29 @@ func (ro *Options) restoreData(
 	return nil
 }
 
+// copy the restore meta to remote storage since k8s has limit to handle massive data pass between pods
 func (ro *Options) processCloudSnapBackup(
+	ctx context.Context,
 	restore *v1alpha1.Restore,
 	csbPath string,
 	restoreControl controller.RestoreControlInterface,
 ) error {
-	data, err := os.ReadFile(csbPath)
+	klog.Infof("Get restore meta file %s for cluster %s", csbPath, ro)
+	contents, err := os.ReadFile(csbPath)
 	if err != nil {
-		return fmt.Errorf("cluster %s, read the CSB file failed, path: %s, err: %v", ro, csbPath, err)
+		klog.Errorf("read metadata file %s failed, err: %s", csbPath, err)
+		return err
 	}
-	if len(restore.GetAnnotations()) == 0 {
-		restore.Annotations = make(map[string]string)
+	// write a file into external storage
+	klog.Infof("save the restore meta to external storage")
+	externalStorage, err := pkgutil.NewStorageBackend(restore.Spec.StorageProvider, &pkgutil.StorageCredential{})
+	if err != nil {
+		return err
 	}
-	klog.Infof("Get restore for cluster %s, annotations: %v", ro, restore.GetAnnotations())
-	restore.Annotations[label.AnnBackupCloudSnapKey] = string(data)
-	if _, err = restoreControl.UpdateRestore(restore); err != nil {
-		return fmt.Errorf("cluster %s, update restore annotation for CSB failed, err: %v", ro, err)
+
+	err = externalStorage.WriteAll(ctx, constants.ClusterRestoreMeta, contents, nil)
+	if err != nil {
+		return err
 	}
 	return nil
 }
