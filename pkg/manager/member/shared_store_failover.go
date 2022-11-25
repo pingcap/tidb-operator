@@ -1,3 +1,16 @@
+// Copyright 2022 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package member
 
 import (
@@ -32,16 +45,26 @@ type sharedStoreFailover struct {
 	deps        *controller.Dependencies
 }
 
-func (sf *sharedStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster, failoverPeriod time.Duration) error {
+func (ssf *sharedStoreFailover) doFailover(tc *v1alpha1.TidbCluster, failoverPeriod time.Duration) error {
+	if err := ssf.tryMarkAStoreAsFailure(tc, failoverPeriod); err != nil {
+		if controller.IsIgnoreError(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func (ssf *sharedStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster, failoverPeriod time.Duration) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	for storeID, store := range sf.storeAccess.GetStores(tc) {
+	for storeID, store := range ssf.storeAccess.GetStores(tc) {
 		podName := store.PodName
 		if store.LastTransitionTime.IsZero() {
 			continue
 		}
-		if !sf.isPodDesired(tc, podName) {
+		if !ssf.isPodDesired(tc, podName) {
 			// we should ignore the store record of deleted pod, otherwise the
 			// record of deleted pod may be added back to failure stores
 			// (before it enters into Offline/Tombstone state)
@@ -49,29 +72,29 @@ func (sf *sharedStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster, 
 		}
 		deadline := store.LastTransitionTime.Add(failoverPeriod)
 		exist := false
-		for _, failureStore := range sf.storeAccess.GetFailureStores(tc) {
+		for _, failureStore := range ssf.storeAccess.GetFailureStores(tc) {
 			if failureStore.PodName == podName {
 				exist = true
 				break
 			}
 		}
 		if store.State == v1alpha1.TiKVStateDown && time.Now().After(deadline) {
-			maxFailoverCount := sf.storeAccess.GetMaxFailoverCount(tc)
+			maxFailoverCount := ssf.storeAccess.GetMaxFailoverCount(tc)
 			if maxFailoverCount != nil && *maxFailoverCount > 0 {
-				sf.storeAccess.SetFailoverUIDIfAbsent(tc)
+				ssf.storeAccess.SetFailoverUIDIfAbsent(tc)
 				if !exist {
-					sf.storeAccess.CreateFailureStoresIfAbsent(tc)
-					if len(sf.storeAccess.GetFailureStores(tc)) >= int(*maxFailoverCount) {
-						klog.Warningf("%s/%s %s failure stores count reached the limit: %d", ns, tcName, sf.storeAccess.GetMemberType(), maxFailoverCount)
+					ssf.storeAccess.CreateFailureStoresIfAbsent(tc)
+					if len(ssf.storeAccess.GetFailureStores(tc)) >= int(*maxFailoverCount) {
+						klog.Warningf("%s/%s %s failure stores count reached the limit: %d", ns, tcName, ssf.storeAccess.GetMemberType(), maxFailoverCount)
 						return nil
 					}
-					sf.storeAccess.SetFailureStores(tc, storeID, v1alpha1.TiKVFailureStore{
+					ssf.storeAccess.SetFailureStores(tc, storeID, v1alpha1.TiKVFailureStore{
 						PodName:   podName,
 						StoreID:   store.ID,
 						CreatedAt: metav1.Now(),
 					})
 					msg := fmt.Sprintf("store[%s] is Down", store.ID)
-					sf.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, sf.storeAccess.GetMemberType(), podName, msg))
+					ssf.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, ssf.storeAccess.GetMemberType(), podName, msg))
 				}
 			}
 		}
@@ -79,8 +102,8 @@ func (sf *sharedStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster, 
 	return nil
 }
 
-func (sf *sharedStoreFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
-	ordinals := sf.storeAccess.GetStsDesiredOrdinals(tc, true)
+func (ssf *sharedStoreFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
+	ordinals := ssf.storeAccess.GetStsDesiredOrdinals(tc, true)
 	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
 		klog.Errorf("unexpected pod name %q: %v", podName, err)
@@ -89,18 +112,18 @@ func (sf *sharedStoreFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName st
 	return ordinals.Has(ordinal)
 }
 
-func (sf *sharedStoreFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
-	for key, failureStore := range sf.storeAccess.GetFailureStores(tc) {
-		if !sf.isPodDesired(tc, failureStore.PodName) {
+func (ssf *sharedStoreFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+	for key, failureStore := range ssf.storeAccess.GetFailureStores(tc) {
+		if !ssf.isPodDesired(tc, failureStore.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete
 			// slots feature. We should remove the record of undesired pods,
 			// otherwise an extra replacement pod will be created.
-			delete(sf.storeAccess.GetFailureStores(tc), key)
+			delete(ssf.storeAccess.GetFailureStores(tc), key)
 		}
 	}
 }
 
-func (sf *sharedStoreFailover) Recover(tc *v1alpha1.TidbCluster) {
-	sf.storeAccess.ClearFailStatus(tc)
-	klog.Infof("%s recover: clear FailureStores, %s/%s", sf.storeAccess.GetMemberType(), tc.GetNamespace(), tc.GetName())
+func (ssf *sharedStoreFailover) Recover(tc *v1alpha1.TidbCluster) {
+	ssf.storeAccess.ClearFailStatus(tc)
+	klog.Infof("%s recover: clear FailureStores, %s/%s", ssf.storeAccess.GetMemberType(), tc.GetNamespace(), tc.GetName())
 }

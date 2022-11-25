@@ -30,13 +30,7 @@ func NewTiFlashFailover(deps *controller.Dependencies) Failover {
 }
 
 func (f *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
-	if err := f.sharedFailover.tryMarkAStoreAsFailure(tc, f.sharedFailover.deps.CLIConfig.TiFlashFailoverPeriod); err != nil {
-		if controller.IsIgnoreError(err) {
-			return nil
-		}
-		return err
-	}
-	return nil
+	return f.sharedFailover.doFailover(tc, f.sharedFailover.deps.CLIConfig.TiFlashFailoverPeriod)
 }
 
 func (f *tiflashFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {

@@ -30,13 +30,7 @@ func NewTiKVFailover(deps *controller.Dependencies) Failover {
 }
 
 func (f *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
-	if err := f.sharedFailover.tryMarkAStoreAsFailure(tc, f.sharedFailover.deps.CLIConfig.TiKVFailoverPeriod); err != nil {
-		if controller.IsIgnoreError(err) {
-			return nil
-		}
-		return err
-	}
-	return nil
+	return f.sharedFailover.doFailover(tc, f.sharedFailover.deps.CLIConfig.TiKVFailoverPeriod)
 }
 
 func (f *tikvFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
