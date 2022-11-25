@@ -324,7 +324,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 
 			fakeDeps := controller.NewFakeDependencies()
 			fakeDeps.CLIConfig.TiKVFailoverPeriod = 1 * time.Hour
-			tikvFailover := &tikvFailover{deps: fakeDeps}
+			tikvFailover := &tikvFailover{sharedFailover: sharedStoreFailover{storeAccess: &tikvStoreAccess{}, deps: fakeDeps}}
 
 			err := tikvFailover.Failover(tc)
 			if tt.err {
