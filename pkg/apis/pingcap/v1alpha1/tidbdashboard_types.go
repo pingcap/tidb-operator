@@ -73,9 +73,6 @@ type TidbDashboardSpec struct {
 	// +kubebuilder:default=Retain
 	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 
-	// ClusterDomain is the Kubernetes Cluster Domain of tidb dashboard.
-	ClusterDomain string `json:"clusterDomain,omitempty"`
-
 	// Base image of the component (image tag is now allowed during validation).
 	//
 	// +kubebuilder:default=pingcap/tidb-dashboard
@@ -90,6 +87,9 @@ type TidbDashboardSpec struct {
 
 	// PathPrefix is public URL path prefix for reverse proxies.
 	PathPrefix *string `json:"pathPrefix,omitempty"`
+
+	// Service defines a Kubernetes service of Grafana.
+	Service ServiceSpec `json:"service,omitempty"`
 
 	// Telemetry is whether to enable telemetry.
 	// When enabled, usage data will be sent to PingCAP for improving user experience.

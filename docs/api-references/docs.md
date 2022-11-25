@@ -14032,7 +14032,8 @@ string
 <a href="#pdspec">PDSpec</a>, 
 <a href="#prometheusspec">PrometheusSpec</a>, 
 <a href="#reloaderspec">ReloaderSpec</a>, 
-<a href="#tidbservicespec">TiDBServiceSpec</a>)
+<a href="#tidbservicespec">TiDBServiceSpec</a>, 
+<a href="#tidbdashboardspec">TidbDashboardSpec</a>)
 </p>
 <p>
 <p>ServiceSpec specifies the service object in k8s</p>
@@ -23345,17 +23346,6 @@ Kubernetes core/v1.PersistentVolumeReclaimPolicy
 </tr>
 <tr>
 <td>
-<code>clusterDomain</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>ClusterDomain is the Kubernetes Cluster Domain of tidb dashboard.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>baseImage</code></br>
 <em>
 string
@@ -23399,6 +23389,19 @@ string
 </td>
 <td>
 <p>PathPrefix is public URL path prefix for reverse proxies.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>service</code></br>
+<em>
+<a href="#servicespec">
+ServiceSpec
+</a>
+</em>
+</td>
+<td>
+<p>Service defines a Kubernetes service of Grafana.</p>
 </td>
 </tr>
 <tr>
@@ -23524,17 +23527,6 @@ Kubernetes core/v1.PersistentVolumeReclaimPolicy
 </tr>
 <tr>
 <td>
-<code>clusterDomain</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>ClusterDomain is the Kubernetes Cluster Domain of tidb dashboard.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>baseImage</code></br>
 <em>
 string
@@ -23578,6 +23570,19 @@ string
 </td>
 <td>
 <p>PathPrefix is public URL path prefix for reverse proxies.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>service</code></br>
+<em>
+<a href="#servicespec">
+ServiceSpec
+</a>
+</em>
+</td>
+<td>
+<p>Service defines a Kubernetes service of Grafana.</p>
 </td>
 </tr>
 <tr>

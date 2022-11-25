@@ -9061,6 +9061,7 @@ func (in *TidbDashboardSpec) DeepCopyInto(out *TidbDashboardSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	in.Service.DeepCopyInto(&out.Service)
 	if in.Telemetry != nil {
 		in, out := &in.Telemetry, &out.Telemetry
 		*out = new(bool)

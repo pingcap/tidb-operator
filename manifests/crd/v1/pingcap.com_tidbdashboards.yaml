@@ -1537,8 +1537,6 @@ spec:
               baseImage:
                 default: pingcap/tidb-dashboard
                 type: string
-              clusterDomain:
-                type: string
               clusters:
                 items:
                   properties:
@@ -2317,6 +2315,34 @@ spec:
                 type: object
               schedulerName:
                 type: string
+              service:
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  clusterIP:
+                    type: string
+                  labels:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  loadBalancerIP:
+                    type: string
+                  loadBalancerSourceRanges:
+                    items:
+                      type: string
+                    type: array
+                  port:
+                    format: int32
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                  portName:
+                    type: string
+                  type:
+                    type: string
+                type: object
               statefulSetUpdateStrategy:
                 type: string
               storageClassName:
