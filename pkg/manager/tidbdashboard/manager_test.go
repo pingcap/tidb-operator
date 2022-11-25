@@ -127,7 +127,7 @@ func TestManager(t *testing.T) {
 
 			if testcase.getServices != nil {
 				old, newly := testcase.getServices()
-				patch := gomonkey.ApplyFunc(generateTiDBDashboardNodePortService, func(_ *v1alpha1.TidbDashboard) *corev1.Service {
+				patch := gomonkey.ApplyFunc(generateTiDBDashboardService, func(_ *v1alpha1.TidbDashboard) *corev1.Service {
 					return newly
 				})
 				defer patch.Reset()
@@ -345,7 +345,7 @@ func TestManager(t *testing.T) {
 	})
 }
 
-func TestGenerateTiDBDashboardNodePortService(t *testing.T) {
+func TestGenerateTiDBDashboardService(t *testing.T) {
 
 	type testcase struct {
 		name      string
@@ -360,7 +360,7 @@ func TestGenerateTiDBDashboardNodePortService(t *testing.T) {
 			expectFn: func(td *v1alpha1.TidbDashboard, svc *corev1.Service) {
 				expectSvc := corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      NodePortServiceName(td.Name),
+						Name:      ServiceName(td.Name),
 						Namespace: td.Namespace,
 						Labels: map[string]string{
 							"app.kubernetes.io/name":       "tidb-dashboard",
@@ -398,7 +398,6 @@ func TestGenerateTiDBDashboardNodePortService(t *testing.T) {
 								Protocol:   corev1.ProtocolTCP,
 							},
 						},
-						Type:                     corev1.ServiceTypeNodePort,
 						PublishNotReadyAddresses: true,
 					},
 				}
@@ -419,7 +418,7 @@ func TestGenerateTiDBDashboardNodePortService(t *testing.T) {
 			testcase.setInputs(td)
 		}
 
-		svc := generateTiDBDashboardNodePortService(td)
+		svc := generateTiDBDashboardService(td)
 		testcase.expectFn(td, svc)
 	}
 }

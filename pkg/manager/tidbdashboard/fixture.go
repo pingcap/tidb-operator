@@ -35,9 +35,9 @@ func StatefulSetName(td string) string {
 	return fmt.Sprintf("%s-tidb-dashboard", td)
 }
 
-// NodePortServiceName return a service name for dashboard.
-func NodePortServiceName(td string) string {
-	return fmt.Sprintf("%s-tidb-dashboard-nodeport-exposed", td)
+// ServiceName return a service name for dashboard.
+func ServiceName(td string) string {
+	return fmt.Sprintf("%s-tidb-dashboard-exposed", td)
 }
 
 // TCClusterClientTLSSecretName return name of secret which contains cluster client certs borrowed from tc.

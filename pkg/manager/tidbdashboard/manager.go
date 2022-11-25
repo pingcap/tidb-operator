@@ -64,12 +64,12 @@ func (m *Manager) syncService(td *v1alpha1.TidbDashboard) error {
 	ns := td.GetNamespace()
 	name := td.GetName()
 
-	newSvc := generateTiDBDashboardNodePortService(td)
+	newSvc := generateTiDBDashboardService(td)
 	oldSvc, err := m.deps.ServiceLister.Services(newSvc.Namespace).Get(newSvc.Name)
 	svcNotFound := errors.IsNotFound(err)
 
 	if err != nil && !svcNotFound {
-		return fmt.Errorf("syncService: failed to get nodeport svc %s/%s for tidb dashboard %s/%s, error %s", newSvc.Namespace, newSvc.Name, ns, name, err)
+		return fmt.Errorf("syncService: failed to get svc %s/%s for tidb dashboard %s/%s, error %s", newSvc.Namespace, newSvc.Name, ns, name, err)
 	}
 
 	// Create the service if not found.
@@ -198,7 +198,28 @@ func generateTiDBDashboardStatefulSet(td *v1alpha1.TidbDashboard, tc *v1alpha1.T
 	clusterTLSEnabled := tc.IsTLSClusterEnabled()
 	mysqlTLSEnabled := tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB()
 
-	startArgs := dashboardStartArgs(port, tc.Spec.Version, clusterTLSEnabled, mysqlTLSEnabled, tc)
+	var pathPrefix string
+	if td.Spec.PathPrefix == nil {
+		pathPrefix = ""
+	} else {
+		pathPrefix = *td.Spec.PathPrefix
+	}
+
+	var telemetry bool
+	if td.Spec.Telemetry == nil {
+		telemetry = true
+	} else {
+		telemetry = *td.Spec.Telemetry
+	}
+
+	var experimental bool
+	if td.Spec.Experimental == nil {
+		experimental = false
+	} else {
+		experimental = *td.Spec.Experimental
+	}
+
+	startArgs := dashboardStartArgs(port, tc.Spec.Version, pathPrefix, clusterTLSEnabled, mysqlTLSEnabled, telemetry, experimental, tc)
 	spec := td.BaseTidbDashboardSpec()
 	meta, stsLabels := generateTiDBDashboardMeta(td, StatefulSetName(td.Name))
 
@@ -218,7 +239,7 @@ func generateTiDBDashboardStatefulSet(td *v1alpha1.TidbDashboard, tc *v1alpha1.T
 	var baseContainers []corev1.Container
 	baseContainers = append(baseContainers, corev1.Container{
 		Name:            memberName,
-		Image:           ensureImage(td),
+		Image:           EnsureImage(td),
 		ImagePullPolicy: spec.ImagePullPolicy(),
 		Args:            startArgs,
 		Ports: []corev1.ContainerPort{
@@ -271,7 +292,7 @@ func generateTiDBDashboardStatefulSet(td *v1alpha1.TidbDashboard, tc *v1alpha1.T
 		ObjectMeta: meta,
 		Spec: apps.StatefulSetSpec{
 			Selector:    stsLabels.LabelSelector(),
-			ServiceName: NodePortServiceName(td.GetName()),
+			ServiceName: ServiceName(td.GetName()),
 			// Default to 1 replica.
 			Replicas: pointer.Int32Ptr(1),
 
@@ -318,7 +339,7 @@ func generateTiDBDashboardStatefulSet(td *v1alpha1.TidbDashboard, tc *v1alpha1.T
 	return builder.Get(), nil
 }
 
-func ensureImage(td *v1alpha1.TidbDashboard) string {
+func EnsureImage(td *v1alpha1.TidbDashboard) string {
 	image := td.Spec.Image
 	baseImage := td.Spec.BaseImage
 	// BaseImage takes higher priority.
@@ -349,13 +370,16 @@ func generateTiDBDashboardMeta(td *v1alpha1.TidbDashboard, name string) (metav1.
 	return objMeta, ls
 }
 
-func generateTiDBDashboardNodePortService(td *v1alpha1.TidbDashboard) *corev1.Service {
-	meta, labels := generateTiDBDashboardMeta(td, NodePortServiceName(td.Name))
+func generateTiDBDashboardService(td *v1alpha1.TidbDashboard) *corev1.Service {
+	meta, labels := generateTiDBDashboardMeta(td, ServiceName(td.Name))
 
-	return &corev1.Service{
+	meta.Labels = util.CombineStringMap(meta.Labels, td.Spec.Service.Labels)
+	meta.Annotations = util.CombineStringMap(meta.Annotations, td.Spec.Service.Annotations)
+
+	svc := &corev1.Service{
 		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
-			Type: corev1.ServiceTypeNodePort,
+			Type: td.Spec.Service.Type,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "tidb-dashboard",
@@ -368,29 +392,49 @@ func generateTiDBDashboardNodePortService(td *v1alpha1.TidbDashboard) *corev1.Se
 			PublishNotReadyAddresses: true,
 		},
 	}
+
+	if td.Spec.Service.Type == corev1.ServiceTypeLoadBalancer {
+		if td.Spec.Service.LoadBalancerIP != nil {
+			svc.Spec.LoadBalancerIP = *td.Spec.Service.LoadBalancerIP
+		}
+		if td.Spec.Service.LoadBalancerSourceRanges != nil {
+			svc.Spec.LoadBalancerSourceRanges = td.Spec.Service.LoadBalancerSourceRanges
+		}
+	}
+
+	return svc
 }
 
-func dashboardStartArgs(port int, featureVersion string, clusterTLSEnable, mysqlTLSEnable bool, tc *v1alpha1.TidbCluster) []string {
+func dashboardStartArgs(
+	port int,
+	featureVersion, pathPrefix string,
+	clusterTLSEnable, mysqlTLSEnable, telemetry, experimental bool,
+	tc *v1alpha1.TidbCluster,
+) []string {
+	pdAddress := fmt.Sprintf("%s.%s:2379", controller.PDMemberName(tc.Name), tc.Namespace)
+
 	base := []string{
 		"-h=0.0.0.0",
 		fmt.Sprintf("-p=%d", port),
 		fmt.Sprintf("--data-dir=%s", dataPVCMountPath),
 		fmt.Sprintf("--temp-dir=%s", dataPVCMountPath),
-		"--path-prefix=\"\"",
+		fmt.Sprintf("--path-prefix=%s", pathPrefix),
 		fmt.Sprintf("--feature-version=%s", featureVersion),
+		fmt.Sprintf("--experimental=%t", experimental),
+		fmt.Sprintf("--telemetry=%t", telemetry),
 	}
 
 	// WARNING(@sabaping): the data key of the secret object must be "ca.crt", "tls.crt" and "tls.key" separately.
 	// Highlight this in the documentation!
 	if clusterTLSEnable {
 		base = append(base, []string{
-			"--pd=https://" + fmt.Sprintf("%s.%s:2379", controller.PDMemberName(tc.Name), tc.Namespace),
+			"--pd=https://" + pdAddress,
 			fmt.Sprintf("--cluster-ca=%s/ca.crt", clusterTLSMountPath),
 			fmt.Sprintf("--cluster-cert=%s/tls.crt", clusterTLSMountPath),
 			fmt.Sprintf("--cluster-key=%s/tls.key", clusterTLSMountPath),
 		}...)
 	} else {
-		base = append(base, "--pd=http://"+fmt.Sprintf("%s.%s:2379", controller.PDMemberName(tc.Name), tc.Namespace))
+		base = append(base, "--pd=http://"+pdAddress)
 	}
 
 	if mysqlTLSEnable {
