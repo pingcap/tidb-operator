@@ -14,6 +14,7 @@
 package snapshotter
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 	"testing"
@@ -395,7 +396,7 @@ func TestPrepareCSBStoresMeta(t *testing.T) {
 	}
 }
 
-func TestPrepareBackupMetadata(t *testing.T) {
+func TestGenerateBackupMetadata(t *testing.T) {
 	helper := newHelper(t)
 	defer helper.Close()
 	deps := helper.Deps
@@ -454,7 +455,7 @@ func TestPrepareBackupMetadata(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s, _, err := NewSnapshotterForBackup(tt.backup.Spec.Mode, deps)
 			require.NoError(t, err)
-			_, err = s.PrepareBackupMetadata(tt.backup, tc)
+			_, _, err = s.GenerateBackupMetadata(tt.backup, tc)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -860,15 +861,15 @@ func TestPrepareRestoreMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	// missing .annotation["tidb.pingcap.com/backup-cloud-snapshot"] as metadata
-	reason, err := s.PrepareRestoreMetadata(restore)
+	reason, err := s.PrepareRestoreMetadata(restore, &CloudSnapBackup{})
 	require.NotEmpty(t, reason)
 	require.Error(t, err)
 
 	meta := testutils.ConstructRestoreMetaStr()
-	restore.Annotations[label.AnnBackupCloudSnapKey] = meta
-
+	csb := &CloudSnapBackup{}
+	_ = json.Unmarshal([]byte(meta), csb)
 	// happy path
-	reason, err = s.PrepareRestoreMetadata(restore)
+	reason, err = s.PrepareRestoreMetadata(restore, csb)
 	require.Empty(t, reason)
 	require.NoError(t, err)
 }
