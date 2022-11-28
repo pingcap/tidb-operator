@@ -66,8 +66,8 @@ func (s *GCPSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, error
 	return "", nil
 }
 
-func (s *GCPSnapshotter) PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
-	return s.BaseSnapshotter.prepareBackupMetadata(b, tc, s)
+func (s *GCPSnapshotter) GenerateBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (*CloudSnapBackup, string, error) {
+	return s.BaseSnapshotter.generateBackupMetadata(b, tc, s)
 }
 
 func (s *GCPSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error {
@@ -95,6 +95,6 @@ func (s *GCPSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID strin
 	return nil
 }
 
-func (s *GCPSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore) (string, error) {
-	return s.BaseSnapshotter.prepareRestoreMetadata(r, s)
+func (s *GCPSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error) {
+	return s.BaseSnapshotter.prepareRestoreMetadata(r, csb, s)
 }
