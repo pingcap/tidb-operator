@@ -422,8 +422,12 @@ func TestBRRestoreByEBS(t *testing.T) {
 		},
 	}
 	//generate the restore meta in local nfs
-	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreMetaStr()), 0644)
+	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:all
 	g.Expect(err).To(Succeed())
+	defer func() {
+		err = os.Remove("/tmp/restoremeta")
+		g.Expect(err).To(Succeed())
+	}()
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -435,8 +439,4 @@ func TestBRRestoreByEBS(t *testing.T) {
 			g.Expect(err).Should(BeNil())
 		})
 	}
-
-	//generate the restore meta in local nfs
-	err = os.Remove("/tmp/restoremeta")
-	g.Expect(err).To(Succeed())
 }

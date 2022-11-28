@@ -58,12 +58,10 @@ func (m *TcTlsManager) synTLSSecret(td *v1alpha1.TidbDashboard, tc *v1alpha1.Tid
 		}
 
 		// Build the secret for tidb-dashboard.
-		clusterClientTLSdata := map[string][]byte{}
 		clusterClientTLSMeta, _ := generateTiDBDashboardMeta(td, TCClusterClientTLSSecretName(td.Name))
-		clusterClientTLSdata = tcSecret.DeepCopy().Data
 		clusterClientTLSSecret := &corev1.Secret{
 			ObjectMeta: clusterClientTLSMeta,
-			Data:       clusterClientTLSdata,
+			Data:       tcSecret.DeepCopy().Data,
 		}
 
 		// Create or update clusterClientTLSSecret.
@@ -75,18 +73,16 @@ func (m *TcTlsManager) synTLSSecret(td *v1alpha1.TidbDashboard, tc *v1alpha1.Tid
 
 	// Sync mysql client tls secret.
 	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
-		tcClientSecretName := util.TiDBClientTLSSecretName(tcName)
-		tcSecret, err := m.deps.SecretLister.Secrets(tcNS).Get(tcClientSecretName)
+		mysqlClientSecretName := util.TiDBClientTLSSecretName(tcName)
+		tcSecret, err := m.deps.SecretLister.Secrets(tcNS).Get(mysqlClientSecretName)
 		if err != nil {
 			return err
 		}
 
-		mysqlClientTLSdata := map[string][]byte{}
 		mysqlClientTLSMeta, _ := generateTiDBDashboardMeta(td, TCMySQLClientTLSSecretName(td.Name))
-		mysqlClientTLSdata = tcSecret.DeepCopy().Data
 		mysqlClientTLSSecret := &corev1.Secret{
 			ObjectMeta: mysqlClientTLSMeta,
-			Data:       mysqlClientTLSdata,
+			Data:       tcSecret.DeepCopy().Data,
 		}
 
 		_, err = m.deps.TypedControl.CreateOrUpdateSecret(td, mysqlClientTLSSecret)
