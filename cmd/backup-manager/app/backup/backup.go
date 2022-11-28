@@ -30,7 +30,8 @@ import (
 	"github.com/dustin/go-humanize"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	backupConst "github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	pkgutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
@@ -68,20 +69,26 @@ func (bo *Options) backupData(
 			progressStep = "Full Backup"
 			successTag   = "EBS backup success"
 		)
-
-		cloudSnapMeta := os.Getenv(backupConst.EnvCloudSnapMeta)
-		if cloudSnapMeta == "" {
-			return fmt.Errorf("cloud snapshot metadata not found, env %s is empty", backupConst.EnvCloudSnapMeta)
+		localCSBFile := path.Join(util.BRBinPath, "csb_backup.json")
+		// read cluster meta from external storage and pass it to BR
+		klog.Infof("read the restore meta from external storage")
+		externalStorage, err := pkgutil.NewStorageBackend(backup.Spec.StorageProvider, &pkgutil.StorageCredential{})
+		if err != nil {
+			return err
 		}
-		klog.Infof("Running cloud-snapshot-backup with metadata: %s", cloudSnapMeta)
-		csbPath := path.Join(util.BRBinPath, "csb_backup.json")
-		err := os.WriteFile(csbPath, []byte(cloudSnapMeta), 0644)
+
+		clustermeta, err := externalStorage.ReadAll(ctx, constants.ClusterBackupMeta)
+		if err != nil {
+			return err
+		}
+
+		err = os.WriteFile(localCSBFile, []byte(clustermeta), 0644)
 		if err != nil {
 			return err
 		}
 		// Currently, we only support aws ebs volume snapshot.
 		specificArgs = append(specificArgs, "--type=aws-ebs")
-		specificArgs = append(specificArgs, fmt.Sprintf("--volume-file=%s", csbPath))
+		specificArgs = append(specificArgs, fmt.Sprintf("--volume-file=%s", localCSBFile))
 		logCallback = func(line string) {
 			if strings.Contains(line, successTag) {
 				extract := strings.Split(line, successTag)[1]

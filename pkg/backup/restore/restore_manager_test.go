@@ -16,13 +16,13 @@ package restore
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	corev1 "k8s.io/api/core/v1"
@@ -259,10 +259,22 @@ func TestBRRestoreByEBS(t *testing.T) {
 						Cluster:          "cluster-1",
 					},
 					StorageProvider: v1alpha1.StorageProvider{
-						S3: &v1alpha1.S3StorageProvider{
-							Bucket:   "s3",
-							Prefix:   "prefix-",
-							Endpoint: "s3://localhost:80",
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
 						},
 					},
 				},
@@ -284,10 +296,22 @@ func TestBRRestoreByEBS(t *testing.T) {
 						Cluster:          "cluster-2",
 					},
 					StorageProvider: v1alpha1.StorageProvider{
-						S3: &v1alpha1.S3StorageProvider{
-							Bucket:   "s3",
-							Prefix:   "prefix-",
-							Endpoint: "s3://localhost:80",
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix1",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
 						},
 					},
 				},
@@ -317,10 +341,22 @@ func TestBRRestoreByEBS(t *testing.T) {
 						Cluster:          "cluster-3",
 					},
 					StorageProvider: v1alpha1.StorageProvider{
-						S3: &v1alpha1.S3StorageProvider{
-							Bucket:   "s3",
-							Prefix:   "prefix-",
-							Endpoint: "s3://localhost:80",
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
 						},
 					},
 				},
@@ -350,10 +386,22 @@ func TestBRRestoreByEBS(t *testing.T) {
 						Cluster:          "cluster-4",
 					},
 					StorageProvider: v1alpha1.StorageProvider{
-						S3: &v1alpha1.S3StorageProvider{
-							Bucket:   "s3",
-							Prefix:   "prefix-",
-							Endpoint: "s3://localhost:80",
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
 						},
 					},
 				},
@@ -373,17 +421,22 @@ func TestBRRestoreByEBS(t *testing.T) {
 			},
 		},
 	}
+	//generate the restore meta in local nfs
+	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreMetaStr()), 0644)
+	g.Expect(err).To(Succeed())
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+
 			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster)
 			helper.CreateRestore(tt.restore)
-			tt.restore.Annotations = map[string]string{
-				label.AnnBackupCloudSnapKey: testutils.ConstructRestoreMetaStr(),
-			}
 			m := NewRestoreManager(deps)
 			err := m.Sync(tt.restore)
 			g.Expect(err).Should(BeNil())
 		})
 	}
+
+	//generate the restore meta in local nfs
+	err = os.Remove("/tmp/restoremeta")
+	g.Expect(err).To(Succeed())
 }
