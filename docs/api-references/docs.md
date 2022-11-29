@@ -23401,7 +23401,7 @@ ServiceSpec
 </em>
 </td>
 <td>
-<p>Service defines a Kubernetes service of Grafana.</p>
+<p>Service defines a Kubernetes service of tidb dashboard web access.</p>
 </td>
 </tr>
 <tr>
@@ -23582,7 +23582,7 @@ ServiceSpec
 </em>
 </td>
 <td>
-<p>Service defines a Kubernetes service of Grafana.</p>
+<p>Service defines a Kubernetes service of tidb dashboard web access.</p>
 </td>
 </tr>
 <tr>

@@ -13328,7 +13328,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbDashboardSpec(ref common.ReferenceCall
 					},
 					"service": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Service defines a Kubernetes service of Grafana.",
+							Description: "Service defines a Kubernetes service of tidb dashboard web access.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"),
 						},
 					},
