@@ -132,7 +132,7 @@ func TestReconcile(t *testing.T) {
 			},
 			errExpectFn: func(err error) {
 				g.Expect(err).Should(HaveOccurred())
-				g.Expect(err.Error()).Should(ContainSubstring("sync tc asset error"))
+				g.Expect(err.Error()).Should(ContainSubstring("sync tc tls certs error"))
 			},
 		},
 		{
