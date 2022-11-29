@@ -275,7 +275,8 @@ function hack::ensure_misspell() {
 
 function hack::ensure_golangci_lint() {
   echo "Installing golangci_lint..."
-  echo "## Since v1.45.0+ version of golangci-lint has '//go:build' only while no '// +build',"
+  echo "## Since v1.45.0+ version of golangci-lint has bare '//go:build' comments (without additional '// +build') in its source code,"
+  echo "## and go116 does not support '//go:build' without '// +build',"
   echo "## golangci-lint@v1.45.0+ cannot be go-installed on go116 or older go versions."
   echo "## FIXME: Upgrade golangci-lint after upgrading project's go version to g118+."
 

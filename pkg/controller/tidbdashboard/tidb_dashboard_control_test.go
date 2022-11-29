@@ -205,7 +205,7 @@ func TestReconcile(t *testing.T) {
 			control.dashboardManager.(*tidbdashboard.FakeManager).MockSync(testcase.syncTCTLSCerts)
 		}
 
-		updateStatusPatch := gomonkey.ApplyMethod(reflect.TypeOf(control), "updateStatus", func(_ *defaultTiDBDashboardControl, td *v1alpha1.TidbDashboard) (*v1alpha1.TidbDashboard, error) {
+		updateStatusPatch := gomonkey.ApplyPrivateMethod(reflect.TypeOf(control), "updateStatus", func(_ *defaultTiDBDashboardControl, td *v1alpha1.TidbDashboard) (*v1alpha1.TidbDashboard, error) {
 			return td, testcase.updateStatusErr
 		})
 		defer updateStatusPatch.Reset()
@@ -272,7 +272,7 @@ func TestUpdateStatus(t *testing.T) {
 		control, _ := newTidbDashboardControlForTest()
 		td := newTidbDashboardForTest()
 
-		control.deps.Clientset.(*fake.Clientset).PrependReactor("updateStatus", v1alpha1.TiDBDashboardName, func(action clitesting.Action) (bool, runtime.Object, error) {
+		control.deps.Clientset.(*fake.Clientset).PrependReactor("update", v1alpha1.TiDBDashboardName, func(action clitesting.Action) (bool, runtime.Object, error) {
 			if testcase.updateFn != nil {
 				td, err := testcase.updateFn(action)
 				return true, td, err
