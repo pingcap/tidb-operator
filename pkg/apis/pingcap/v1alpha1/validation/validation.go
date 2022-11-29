@@ -71,7 +71,7 @@ func ValidateTiDBNGMonitoring(tngm *v1alpha1.TidbNGMonitoring) field.ErrorList {
 	return allErrs
 }
 
-// ValidateTiDBDashboard validates a TidbNGMonitoring
+// ValidateTiDBDashboard validates a TidbDashboard.
 func ValidateTiDBDashboard(td *v1alpha1.TidbDashboard) field.ErrorList {
 	allErrs := field.ErrorList{}
 

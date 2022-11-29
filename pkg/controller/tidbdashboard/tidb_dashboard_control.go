@@ -15,7 +15,6 @@ package tidbdashboard
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -46,7 +45,7 @@ type ControlInterface interface {
 func NewTiDBDashboardControl(
 	deps *controller.Dependencies,
 	dashboardManager manager.TiDBDashboardManager,
-	assetManager manager.TiDBDashboardManager,
+	tlsCertManager manager.TiDBDashboardManager,
 	reclaimPolicyManager ReclaimPolicyManager,
 	recorder record.EventRecorder,
 ) ControlInterface {
@@ -55,7 +54,7 @@ func NewTiDBDashboardControl(
 		deps:                 deps,
 		recorder:             recorder,
 		dashboardManager:     dashboardManager,
-		tlsCertManager:       assetManager,
+		tlsCertManager:       tlsCertManager,
 		reclaimPolicyManager: reclaimPolicyManager,
 	}
 }
@@ -106,7 +105,7 @@ func (c *defaultTiDBDashboardControl) Reconcile(td *v1alpha1.TidbDashboard) erro
 	}
 
 	if apiequality.Semantic.DeepEqual(&td.Status, oldStatus) {
-		return errors.New("no need to updateStatus")
+		return nil
 	}
 
 	_, err = c.updateStatus(td.DeepCopy())

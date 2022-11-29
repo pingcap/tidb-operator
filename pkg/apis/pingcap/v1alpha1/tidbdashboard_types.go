@@ -88,7 +88,7 @@ type TidbDashboardSpec struct {
 	// PathPrefix is public URL path prefix for reverse proxies.
 	PathPrefix *string `json:"pathPrefix,omitempty"`
 
-	// Service defines a Kubernetes service of Grafana.
+	// Service defines a Kubernetes service of tidb dashboard web access.
 	Service ServiceSpec `json:"service,omitempty"`
 
 	// Telemetry is whether to enable telemetry.

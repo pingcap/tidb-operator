@@ -72,21 +72,21 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return c
 }
 
-func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
+func (c *Controller) Run(numOfWorkers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
 	klog.Info("Starting tidb-dashboard controller")
 	defer klog.Info("Shutting down tidb-dashboard controller")
 
-	for i := 0; i < workers; i++ {
-		go wait.Until(c.worker, time.Second, stopCh)
+	for i := 0; i < numOfWorkers; i++ {
+		go wait.Until(c.doWork, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
-func (c *Controller) worker() {
+func (c *Controller) doWork() {
 	for c.processNextWorkItem() {
 	}
 }

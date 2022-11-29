@@ -368,6 +368,7 @@ func TestGenerateTiDBDashboardService(t *testing.T) {
 							"app.kubernetes.io/instance":   td.Name,
 							"app.kubernetes.io/component":  "tidb-dashboard",
 						},
+						Annotations: make(map[string]string),
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion: "pingcap.com/v1alpha1",

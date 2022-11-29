@@ -132,7 +132,7 @@ var _ = ginkgo.Describe("[TiDBDashboard]", func() {
 
 			ginkgo.By("Curl tidb dashboard main page")
 			err = checkHttp200(fmt.Sprintf("%s:%d", localHost, localPort))
-			framework.ExpectNoError(err, "failed to enable continue profile for TidbNGMonitoring %q", locator)
+			framework.ExpectNoError(err, "failed to enable continue profile for TidbDashboard %q", locator)
 		})
 	})
 })
