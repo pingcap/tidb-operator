@@ -16456,6 +16456,19 @@ Optional: Defaults to nil</p>
 </tr>
 <tr>
 <td>
+<code>tokenBasedAuthEnabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable <code>tidb_auth_token</code> authentication method. The tidb_auth_token authentication method is used only for the internal operation of TiDB Cloud.
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>plugins</code></br>
 <em>
 []string

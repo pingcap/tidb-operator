@@ -8573,6 +8573,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient"),
 						},
 					},
+					"tokenBasedAuthEnabled": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether enable `tidb_auth_token` authentication method. The tidb_auth_token authentication method is used only for the internal operation of TiDB Cloud. Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"plugins": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled",
