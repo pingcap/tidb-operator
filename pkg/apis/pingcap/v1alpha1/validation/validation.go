@@ -75,8 +75,8 @@ func ValidateTiDBNGMonitoring(tngm *v1alpha1.TidbNGMonitoring) field.ErrorList {
 func ValidateTiDBDashboard(td *v1alpha1.TidbDashboard) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if len(td.Spec.Clusters) < 1 {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("spec").Child("clusters"), len(td.Spec.Clusters), "must have at least one item"))
+	if len(td.Spec.Clusters) != 1 {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec").Child("clusters"), len(td.Spec.Clusters), "must have at exactly one item"))
 	}
 
 	allErrs = append(allErrs, validateComponentSpec(&td.Spec.ComponentSpec, field.NewPath("spec"))...)

@@ -83,6 +83,9 @@ func (c *defaultTiDBDashboardControl) Reconcile(td *v1alpha1.TidbDashboard) erro
 	var err error
 
 	// Only the first TidbClusterRef is respected.
+	if len(td.Spec.Clusters) != 1 {
+		return fmt.Errorf("tidb dashboard must have at exactly one tidb cluster reference, currenty # of references: %d", len(td.Spec.Clusters))
+	}
 	tcRef := td.Spec.Clusters[0]
 	tc, err := c.deps.TiDBClusterLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
 	if err != nil {
