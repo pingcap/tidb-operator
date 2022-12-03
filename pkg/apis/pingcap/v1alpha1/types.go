@@ -863,6 +863,11 @@ type TiDBSpec struct {
 	// +optional
 	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
 
+	// Whether enable `tidb_auth_token` authentication method. The tidb_auth_token authentication method is used only for the internal operation of TiDB Cloud.
+	// Optional: Defaults to false
+	// +optional
+	TokenBasedAuthEnabled *bool `json:"tokenBasedAuthEnabled,omitempty"`
+
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
 	// +optional
 	Plugins []string `json:"plugins,omitempty"`
