@@ -509,11 +509,6 @@ type PDSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1"
 	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
-
-	// ReadinessProbe describes actions that probe the pd's readiness.
-	// the default behavior is like setting type as "tcp"
-	// +optional
-	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
@@ -622,11 +617,6 @@ type TiKVSpec struct {
 	// ScalePolicy is the scale configuration for TiKV
 	// +optional
 	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
-
-	// ReadinessProbe describes actions that probe the tikv's readiness.
-	// the default behavior is like setting type as "tcp"
-	// +optional
-	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -900,10 +890,6 @@ type TiDBSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
-	// ReadinessProbe describes actions that probe the tidb's readiness.
-	// the default behavior is like setting type as "tcp"
-	// +optional
-	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 
 	// Initializer is the init configurations of TiDB
 	//
@@ -1162,6 +1148,11 @@ type ComponentSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// ReadinessProbe describes actions that probe the pd's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // ServiceSpec specifies the service object in k8s

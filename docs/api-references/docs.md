@@ -5077,6 +5077,21 @@ SuspendAction
 <p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>readinessProbe</code></br>
+<em>
+<a href="#probe">
+Probe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReadinessProbe describes actions that probe the pd&rsquo;s readiness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="componentstatus">ComponentStatus</h3>
@@ -11130,21 +11145,6 @@ string
 <p>Start up script version</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>readinessProbe</code></br>
-<em>
-<a href="#probe">
-Probe
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ReadinessProbe describes actions that probe the pd&rsquo;s readiness.
-the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -11745,9 +11745,7 @@ float64
 <h3 id="probe">Probe</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pdspec">PDSpec</a>, 
-<a href="#tidbspec">TiDBSpec</a>, 
-<a href="#tikvspec">TiKVSpec</a>)
+<a href="#componentspec">ComponentSpec</a>)
 </p>
 <p>
 <p>Probe contains details of probing tidb.
@@ -16538,21 +16536,6 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
-<code>readinessProbe</code></br>
-<em>
-<a href="#probe">
-Probe
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ReadinessProbe describes actions that probe the tidb&rsquo;s readiness.
-the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>initializer</code></br>
 <em>
 <a href="#tidbinitializer">
@@ -21192,21 +21175,6 @@ ScalePolicy
 <td>
 <em>(Optional)</em>
 <p>ScalePolicy is the scale configuration for TiKV</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>readinessProbe</code></br>
-<em>
-<a href="#probe">
-Probe
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ReadinessProbe describes actions that probe the tikv&rsquo;s readiness.
-the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
 </tbody>
