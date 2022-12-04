@@ -14,6 +14,8 @@
 package backup
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -476,12 +478,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		Value: string(rune(1)),
 	})
 
-	dwAPIEnvs, reason, err := backuputil.GenerateDownwardAPIEnvs()
-	if err != nil {
-		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
-	}
-	envVars = append(envVars, dwAPIEnvs...)
-
 	// set env vars specified in backup.Spec.Env
 	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
@@ -494,11 +490,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	_, tikvVersion := backuputil.ParseImage(tikvImage)
 	if tikvVersion != "" {
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
-	}
-
-	reason, err = bm.tryBackupIfCanSnapshot(backup, tc)
-	if err != nil {
-		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
 
 	switch backup.Spec.Mode {
@@ -517,6 +508,10 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			}
 		}
 	case v1alpha1.BackupModeVolumeSnapshot:
+		reason, err = bm.volSnapshotBackup(backup, tc)
+		if err != nil {
+			return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+		}
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeVolumeSnapshot))
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeSnapshot))
@@ -665,11 +660,51 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	return job, "", nil
 }
 
-func (bm *backupManager) tryBackupIfCanSnapshot(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
+// save cluster meta to external storage since k8s size limitation on annotation/configMap
+func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, csb *snapshotter.CloudSnapBackup) (string, error) {
+
+	data, err := json.Marshal(csb)
+	if err != nil {
+		return "ParseCloudSnapshotBackupFailed", err
+	}
+	// since the cluster meta is small (~5M), assume 1 minutes is enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
+	defer cancel()
+
+	// write a file into external storage
+	klog.Infof("save the cluster meta to external storage")
+	cred := backuputil.GetStorageCredential(b.Namespace, b.Spec.StorageProvider, bm.deps.SecretLister)
+	externalStorage, err := backuputil.NewStorageBackend(b.Spec.StorageProvider, cred)
+	if err != nil {
+		return "NewStorageBackendFailed", err
+	}
+
+	// if file existed, it looks backup write into a storage has backup already
+	exist, err := externalStorage.Exists(ctx, constants.ClusterBackupMeta)
+	if err != nil {
+		return "FileExistedInExternalStorageFailed", err
+	}
+	if exist {
+		return "FileExistedInExternalStorage", fmt.Errorf("%s exist", constants.ClusterBackupMeta)
+	}
+
+	err = externalStorage.WriteAll(ctx, constants.ClusterBackupMeta, data, nil)
+	if err != nil {
+		return "SaveFileToExternalStorageFailed", err
+	}
+	return "", nil
+}
+
+func (bm *backupManager) volSnapshotBackup(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
 	if s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps); err != nil {
 		return reason, err
 	} else if s != nil {
-		return s.PrepareBackupMetadata(b, tc)
+		csb, reason, err := s.GenerateBackupMetadata(b, tc)
+		if err != nil {
+			return reason, err
+		}
+
+		return bm.saveClusterMetaToExternalStorage(b, csb)
 	}
 	return "", nil
 }
