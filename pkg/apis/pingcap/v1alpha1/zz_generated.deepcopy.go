@@ -5917,6 +5917,11 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(TiDBTLSClient)
 		**out = **in
 	}
+	if in.TokenBasedAuthEnabled != nil {
+		in, out := &in.TokenBasedAuthEnabled, &out.TokenBasedAuthEnabled
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Plugins != nil {
 		in, out := &in.Plugins, &out.Plugins
 		*out = make([]string, len(*in))
