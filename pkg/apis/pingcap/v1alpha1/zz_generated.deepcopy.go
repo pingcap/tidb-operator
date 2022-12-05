@@ -926,6 +926,11 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 		*out = new(SuspendAction)
 		**out = **in
 	}
+	if in.ReadinessProbe != nil {
+		in, out := &in.ReadinessProbe, &out.ReadinessProbe
+		*out = new(Probe)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -3726,11 +3731,6 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.ReadinessProbe != nil {
-		in, out := &in.ReadinessProbe, &out.ReadinessProbe
-		*out = new(Probe)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 
@@ -5944,11 +5944,6 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.ReadinessProbe != nil {
-		in, out := &in.ReadinessProbe, &out.ReadinessProbe
-		*out = new(Probe)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.Initializer != nil {
 		in, out := &in.Initializer, &out.Initializer
 		*out = new(TiDBInitializer)
@@ -8059,11 +8054,6 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		copy(*out, *in)
 	}
 	in.ScalePolicy.DeepCopyInto(&out.ScalePolicy)
-	if in.ReadinessProbe != nil {
-		in, out := &in.ReadinessProbe, &out.ReadinessProbe
-		*out = new(Probe)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 
