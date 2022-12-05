@@ -57,6 +57,10 @@ const (
 	TiDBNGMonitoringKind    = "TidbNGMonitoring"
 	TiDBNGMonitoringKindKey = "tidbngmonitoring"
 
+	TiDBDashboardName    = "tidbdashboards"
+	TiDBDashboardKind    = "TidbDashboard"
+	TiDBDashboardKindKey = "tidbdashboard"
+
 	SpecPath = "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1."
 )
 
