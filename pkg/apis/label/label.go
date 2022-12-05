@@ -172,6 +172,9 @@ const (
 	// NGMonitorLabelVal is ng-monitoring label value
 	NGMonitorLabelVal string = "ng-monitoring"
 
+	// TiDBDashboardLabelVal is tidb-dashboard label value
+	TiDBDashboardLabelVal string = "tidb-dashboard"
+
 	// PrometheusVal is Prometheus label value
 	PrometheusVal string = "prometheus"
 
@@ -250,6 +253,13 @@ func NewMonitor() Label {
 func NewTiDBNGMonitoring() Label {
 	return Label{
 		NameLabelKey:      "tidb-ng-monitoring",
+		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
+func NewTiDBDashboard() Label {
+	return Label{
+		NameLabelKey:      "tidb-dashboard",
 		ManagedByLabelKey: TiDBOperator,
 	}
 }
@@ -415,6 +425,11 @@ func (l Label) Grafana() Label {
 // NGMonitoring assigns ng monitoring to component key in label
 func (l Label) NGMonitoring() Label {
 	return l.Component(NGMonitorLabelVal)
+}
+
+// TiDBDashboard assigns tidb dashboard to component key in label
+func (l Label) TiDBDashboard() Label {
+	return l.Component(TiDBDashboardLabelVal)
 }
 
 // IsNGMonitoring returns whether label is a NGMonitoring component
