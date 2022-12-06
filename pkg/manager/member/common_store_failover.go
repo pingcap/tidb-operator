@@ -131,12 +131,12 @@ func (sf *commonStoreFailover) Recover(tc *v1alpha1.TidbCluster) {
 
 type fakeStoreFailover struct{}
 
-func (ftf *fakeStoreFailover) Failover(_ *v1alpha1.TidbCluster) error {
+func (fsf *fakeStoreFailover) Failover(_ *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (ftf *fakeStoreFailover) Recover(_ *v1alpha1.TidbCluster) {
+func (fsf *fakeStoreFailover) Recover(_ *v1alpha1.TidbCluster) {
 }
 
-func (ftf *fakeStoreFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
+func (fsf *fakeStoreFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
 }
