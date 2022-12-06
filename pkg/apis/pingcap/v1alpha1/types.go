@@ -94,6 +94,9 @@ const (
 	// NGMonitoringMemberType is ng monitoring member type
 	NGMonitoringMemberType MemberType = "ng-monitoring"
 
+	// TiDBDashboardMemberType is tidb-dashboard member type
+	TiDBDashboardMemberType MemberType = "tidb-dashboard"
+
 	// UnknownMemberType is unknown member type
 	UnknownMemberType MemberType = "unknown"
 )
@@ -862,6 +865,11 @@ type TiDBSpec struct {
 	// Optional: Defaults to nil
 	// +optional
 	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
+
+	// Whether enable `tidb_auth_token` authentication method. The tidb_auth_token authentication method is used only for the internal operation of TiDB Cloud.
+	// Optional: Defaults to false
+	// +optional
+	TokenBasedAuthEnabled *bool `json:"tokenBasedAuthEnabled,omitempty"`
 
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
 	// +optional

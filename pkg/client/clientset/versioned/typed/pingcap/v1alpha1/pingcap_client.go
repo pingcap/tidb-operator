@@ -30,6 +30,7 @@ type PingcapV1alpha1Interface interface {
 	RestoresGetter
 	TidbClustersGetter
 	TidbClusterAutoScalersGetter
+	TidbDashboardsGetter
 	TidbInitializersGetter
 	TidbMonitorsGetter
 	TidbNGMonitoringsGetter
@@ -66,6 +67,10 @@ func (c *PingcapV1alpha1Client) TidbClusters(namespace string) TidbClusterInterf
 
 func (c *PingcapV1alpha1Client) TidbClusterAutoScalers(namespace string) TidbClusterAutoScalerInterface {
 	return newTidbClusterAutoScalers(c, namespace)
+}
+
+func (c *PingcapV1alpha1Client) TidbDashboards(namespace string) TidbDashboardInterface {
+	return newTidbDashboards(c, namespace)
 }
 
 func (c *PingcapV1alpha1Client) TidbInitializers(namespace string) TidbInitializerInterface {

@@ -201,6 +201,10 @@ func TiDBServerTLSSecretName(tcName string) string {
 	return fmt.Sprintf("%s-tidb-server-secret", tcName)
 }
 
+func TiDBAuthTokenJWKSSecretName(tcName string) string {
+	return fmt.Sprintf("%s-tidb-auth-token-jwks-secret", tcName)
+}
+
 // SortEnvByName implements sort.Interface to sort env list by name.
 type SortEnvByName []corev1.EnvVar
 

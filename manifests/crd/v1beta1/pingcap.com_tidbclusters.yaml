@@ -12381,6 +12381,8 @@ spec:
                     skipInternalClientCA:
                       type: boolean
                   type: object
+                tokenBasedAuthEnabled:
+                  type: boolean
                 tolerations:
                   items:
                     properties:

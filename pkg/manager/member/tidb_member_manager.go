@@ -65,6 +65,11 @@ const (
 	// When user use self-signed certificates, the root CA must be provided. We
 	// following the same convention used in Kubernetes service token.
 	tlsSecretRootCAKey = corev1.ServiceAccountRootCAKey
+	// nolint: gosec
+	// tidbAuthTokenPath is where the assets for auth tidb client stored. Such as: tidb auth token JWKS
+	tidbAuthTokenPath = "/var/lib/tidb-auth-token"
+	// nolint: gosec
+	tidbAuthTokenJWKS = "tidb_auth_token_jwks.json"
 
 	// tidb DC label Name
 	tidbDCLabel = "zone"
@@ -551,6 +556,10 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 	config := tc.Spec.TiDB.Config.DeepCopy()
 
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		config.Set("security.auth-token-jwks", path.Join(tidbAuthTokenPath, tidbAuthTokenJWKS))
+	}
+
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
 		config.Set("security.cluster-ssl-ca", path.Join(clusterCertPath, tlsSecretRootCAKey))
@@ -709,6 +718,11 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-auth-token", ReadOnly: true, MountPath: tidbAuthTokenPath,
+		})
+	}
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-tls", ReadOnly: true, MountPath: clusterCertPath,
@@ -738,6 +752,15 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
 			}},
 		},
+	}
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-auth-token", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBAuthTokenJWKSSecretName(tcName),
+				},
+			},
+		})
 	}
 	if tc.IsTLSClusterEnabled() {
 		vols = append(vols, corev1.Volume{
