@@ -47,6 +47,12 @@ func (tsa *tiflashStoreAccess) GetStores(tc *v1alpha1.TidbCluster) map[string]v1
 	return tc.Status.TiFlash.Stores
 }
 
+func (tsa *tiflashStoreAccess) SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster) {
+	if tc.Status.TiFlash.FailoverUID == "" {
+		tc.Status.TiFlash.FailoverUID = uuid.NewUUID()
+	}
+}
+
 func (tsa *tiflashStoreAccess) CreateFailureStoresIfAbsent(tc *v1alpha1.TidbCluster) {
 	if tc.Status.TiFlash.FailureStores == nil {
 		tc.Status.TiFlash.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
@@ -55,11 +61,6 @@ func (tsa *tiflashStoreAccess) CreateFailureStoresIfAbsent(tc *v1alpha1.TidbClus
 
 func (tsa *tiflashStoreAccess) GetFailureStores(tc *v1alpha1.TidbCluster) map[string]v1alpha1.TiKVFailureStore {
 	return tc.Status.TiFlash.FailureStores
-}
-func (tsa *tiflashStoreAccess) SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster) {
-	if tc.Status.TiFlash.FailoverUID == "" {
-		tc.Status.TiFlash.FailoverUID = uuid.NewUUID()
-	}
 }
 
 func (tsa *tiflashStoreAccess) SetFailureStore(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore) {
@@ -75,19 +76,7 @@ func (tsa *tiflashStoreAccess) ClearFailStatus(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiFlash.FailoverUID = ""
 }
 
-type fakeTiFlashFailover struct{}
-
 // NewFakeTiFlashFailover returns a fake Failover
 func NewFakeTiFlashFailover() Failover {
-	return &fakeTiFlashFailover{}
-}
-
-func (_ *fakeTiFlashFailover) Failover(_ *v1alpha1.TidbCluster) error {
-	return nil
-}
-
-func (_ *fakeTiFlashFailover) Recover(_ *v1alpha1.TidbCluster) {
-}
-
-func (_ *fakeTiFlashFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
+	return &fakeStoreFailover{}
 }

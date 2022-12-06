@@ -32,9 +32,9 @@ type StoreAccess interface {
 	GetMemberType() v1alpha1.MemberType
 	GetMaxFailoverCount(tc *v1alpha1.TidbCluster) *int32
 	GetStores(tc *v1alpha1.TidbCluster) map[string]v1alpha1.TiKVStore
+	SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster)
 	CreateFailureStoresIfAbsent(tc *v1alpha1.TidbCluster)
 	GetFailureStores(tc *v1alpha1.TidbCluster) map[string]v1alpha1.TiKVFailureStore
-	SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster)
 	SetFailureStore(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore)
 	ClearFailStatus(tc *v1alpha1.TidbCluster)
 	GetStsDesiredOrdinals(tc *v1alpha1.TidbCluster, excludeFailover bool) sets.Int32
@@ -47,7 +47,7 @@ type commonStoreFailover struct {
 }
 
 func (sf *commonStoreFailover) Failover(tc *v1alpha1.TidbCluster) error {
-	if err := sf.tryMarkAStoreAsFailure(tc, sf.storeAccess.GetFailoverPeriod(sf.deps.CLIConfig)); err != nil {
+	if err := sf.tryMarkAStoreAsFailure(tc); err != nil {
 		if controller.IsIgnoreError(err) {
 			return nil
 		}
@@ -56,7 +56,7 @@ func (sf *commonStoreFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (sf *commonStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster, failoverPeriod time.Duration) error {
+func (sf *commonStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -71,7 +71,7 @@ func (sf *commonStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster, 
 			// (before it enters into Offline/Tombstone state)
 			continue
 		}
-		deadline := store.LastTransitionTime.Add(failoverPeriod)
+		deadline := store.LastTransitionTime.Add(sf.storeAccess.GetFailoverPeriod(sf.deps.CLIConfig))
 		exist := false
 		for _, failureStore := range sf.storeAccess.GetFailureStores(tc) {
 			if failureStore.PodName == podName {
@@ -127,4 +127,16 @@ func (sf *commonStoreFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster)
 func (sf *commonStoreFailover) Recover(tc *v1alpha1.TidbCluster) {
 	sf.storeAccess.ClearFailStatus(tc)
 	klog.Infof("%s recover: clear FailureStores, %s/%s", sf.storeAccess.GetMemberType(), tc.GetNamespace(), tc.GetName())
+}
+
+type fakeStoreFailover struct{}
+
+func (ftf *fakeStoreFailover) Failover(_ *v1alpha1.TidbCluster) error {
+	return nil
+}
+
+func (ftf *fakeStoreFailover) Recover(_ *v1alpha1.TidbCluster) {
+}
+
+func (ftf *fakeStoreFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
 }

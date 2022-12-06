@@ -47,6 +47,12 @@ func (tsa *tikvStoreAccess) GetStores(tc *v1alpha1.TidbCluster) map[string]v1alp
 	return tc.Status.TiKV.Stores
 }
 
+func (tsa *tikvStoreAccess) SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster) {
+	if tc.Status.TiKV.FailoverUID == "" {
+		tc.Status.TiKV.FailoverUID = uuid.NewUUID()
+	}
+}
+
 func (tsa *tikvStoreAccess) CreateFailureStoresIfAbsent(tc *v1alpha1.TidbCluster) {
 	if tc.Status.TiKV.FailureStores == nil {
 		tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
@@ -55,11 +61,6 @@ func (tsa *tikvStoreAccess) CreateFailureStoresIfAbsent(tc *v1alpha1.TidbCluster
 
 func (tsa *tikvStoreAccess) GetFailureStores(tc *v1alpha1.TidbCluster) map[string]v1alpha1.TiKVFailureStore {
 	return tc.Status.TiKV.FailureStores
-}
-func (tsa *tikvStoreAccess) SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster) {
-	if tc.Status.TiKV.FailoverUID == "" {
-		tc.Status.TiKV.FailoverUID = uuid.NewUUID()
-	}
 }
 
 func (tsa *tikvStoreAccess) SetFailureStore(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore) {
@@ -75,19 +76,7 @@ func (tsa *tikvStoreAccess) ClearFailStatus(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.FailoverUID = ""
 }
 
-type fakeTiKVFailover struct{}
-
 // NewFakeTiKVFailover returns a fake Failover
 func NewFakeTiKVFailover() Failover {
-	return &fakeTiKVFailover{}
-}
-
-func (ftf *fakeTiKVFailover) Failover(_ *v1alpha1.TidbCluster) error {
-	return nil
-}
-
-func (ftf *fakeTiKVFailover) Recover(_ *v1alpha1.TidbCluster) {
-}
-
-func (ftf *fakeTiKVFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
+	return &fakeStoreFailover{}
 }
