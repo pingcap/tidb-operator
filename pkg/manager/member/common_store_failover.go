@@ -26,27 +26,28 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// StoreCommonAccess contains the set of functions to access the properties of TiKV and TiFlash types in a common way
-type StoreCommonAccess interface {
+// StoreAccess contains the common set of functions to access the properties of TiKV and TiFlash types
+type StoreAccess interface {
+	GetFailoverPeriod(cliConfig *controller.CLIConfig) time.Duration
 	GetMemberType() v1alpha1.MemberType
 	GetMaxFailoverCount(tc *v1alpha1.TidbCluster) *int32
 	GetStores(tc *v1alpha1.TidbCluster) map[string]v1alpha1.TiKVStore
 	CreateFailureStoresIfAbsent(tc *v1alpha1.TidbCluster)
 	GetFailureStores(tc *v1alpha1.TidbCluster) map[string]v1alpha1.TiKVFailureStore
 	SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster)
-	SetFailureStores(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore)
+	SetFailureStore(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore)
 	ClearFailStatus(tc *v1alpha1.TidbCluster)
 	GetStsDesiredOrdinals(tc *v1alpha1.TidbCluster, excludeFailover bool) sets.Int32
 }
 
-// sharedStoreFailover contains the shared failover logic of TiKV and TiFlash
-type sharedStoreFailover struct {
-	storeAccess StoreCommonAccess
+// commonStoreFailover handles the common failover logic for TiKV and TiFlash
+type commonStoreFailover struct {
 	deps        *controller.Dependencies
+	storeAccess StoreAccess
 }
 
-func (ssf *sharedStoreFailover) doFailover(tc *v1alpha1.TidbCluster, failoverPeriod time.Duration) error {
-	if err := ssf.tryMarkAStoreAsFailure(tc, failoverPeriod); err != nil {
+func (sf *commonStoreFailover) Failover(tc *v1alpha1.TidbCluster) error {
+	if err := sf.tryMarkAStoreAsFailure(tc, sf.storeAccess.GetFailoverPeriod(sf.deps.CLIConfig)); err != nil {
 		if controller.IsIgnoreError(err) {
 			return nil
 		}
@@ -55,16 +56,16 @@ func (ssf *sharedStoreFailover) doFailover(tc *v1alpha1.TidbCluster, failoverPer
 	return nil
 }
 
-func (ssf *sharedStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster, failoverPeriod time.Duration) error {
+func (sf *commonStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster, failoverPeriod time.Duration) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	for storeID, store := range ssf.storeAccess.GetStores(tc) {
+	for storeID, store := range sf.storeAccess.GetStores(tc) {
 		podName := store.PodName
 		if store.LastTransitionTime.IsZero() {
 			continue
 		}
-		if !ssf.isPodDesired(tc, podName) {
+		if !sf.isPodDesired(tc, podName) {
 			// we should ignore the store record of deleted pod, otherwise the
 			// record of deleted pod may be added back to failure stores
 			// (before it enters into Offline/Tombstone state)
@@ -72,29 +73,29 @@ func (ssf *sharedStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster,
 		}
 		deadline := store.LastTransitionTime.Add(failoverPeriod)
 		exist := false
-		for _, failureStore := range ssf.storeAccess.GetFailureStores(tc) {
+		for _, failureStore := range sf.storeAccess.GetFailureStores(tc) {
 			if failureStore.PodName == podName {
 				exist = true
 				break
 			}
 		}
 		if store.State == v1alpha1.TiKVStateDown && time.Now().After(deadline) {
-			maxFailoverCount := ssf.storeAccess.GetMaxFailoverCount(tc)
+			maxFailoverCount := sf.storeAccess.GetMaxFailoverCount(tc)
 			if maxFailoverCount != nil && *maxFailoverCount > 0 {
-				ssf.storeAccess.SetFailoverUIDIfAbsent(tc)
+				sf.storeAccess.SetFailoverUIDIfAbsent(tc)
 				if !exist {
-					ssf.storeAccess.CreateFailureStoresIfAbsent(tc)
-					if len(ssf.storeAccess.GetFailureStores(tc)) >= int(*maxFailoverCount) {
-						klog.Warningf("%s/%s %s failure stores count reached the limit: %d", ns, tcName, ssf.storeAccess.GetMemberType(), maxFailoverCount)
+					sf.storeAccess.CreateFailureStoresIfAbsent(tc)
+					if len(sf.storeAccess.GetFailureStores(tc)) >= int(*maxFailoverCount) {
+						klog.Warningf("%s/%s %s failure stores count reached the limit: %d", ns, tcName, sf.storeAccess.GetMemberType(), maxFailoverCount)
 						return nil
 					}
-					ssf.storeAccess.SetFailureStores(tc, storeID, v1alpha1.TiKVFailureStore{
+					sf.storeAccess.SetFailureStore(tc, storeID, v1alpha1.TiKVFailureStore{
 						PodName:   podName,
 						StoreID:   store.ID,
 						CreatedAt: metav1.Now(),
 					})
 					msg := fmt.Sprintf("store[%s] is Down", store.ID)
-					ssf.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, ssf.storeAccess.GetMemberType(), podName, msg))
+					sf.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, sf.storeAccess.GetMemberType(), podName, msg))
 				}
 			}
 		}
@@ -102,8 +103,8 @@ func (ssf *sharedStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster,
 	return nil
 }
 
-func (ssf *sharedStoreFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
-	ordinals := ssf.storeAccess.GetStsDesiredOrdinals(tc, true)
+func (sf *commonStoreFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
+	ordinals := sf.storeAccess.GetStsDesiredOrdinals(tc, true)
 	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
 		klog.Errorf("unexpected pod name %q: %v", podName, err)
@@ -112,18 +113,18 @@ func (ssf *sharedStoreFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName s
 	return ordinals.Has(ordinal)
 }
 
-func (ssf *sharedStoreFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
-	for key, failureStore := range ssf.storeAccess.GetFailureStores(tc) {
-		if !ssf.isPodDesired(tc, failureStore.PodName) {
+func (sf *commonStoreFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+	for key, failureStore := range sf.storeAccess.GetFailureStores(tc) {
+		if !sf.isPodDesired(tc, failureStore.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete
 			// slots feature. We should remove the record of undesired pods,
 			// otherwise an extra replacement pod will be created.
-			delete(ssf.storeAccess.GetFailureStores(tc), key)
+			delete(sf.storeAccess.GetFailureStores(tc), key)
 		}
 	}
 }
 
-func (ssf *sharedStoreFailover) Recover(tc *v1alpha1.TidbCluster) {
-	ssf.storeAccess.ClearFailStatus(tc)
-	klog.Infof("%s recover: clear FailureStores, %s/%s", ssf.storeAccess.GetMemberType(), tc.GetNamespace(), tc.GetName())
+func (sf *commonStoreFailover) Recover(tc *v1alpha1.TidbCluster) {
+	sf.storeAccess.ClearFailStatus(tc)
+	klog.Infof("%s recover: clear FailureStores, %s/%s", sf.storeAccess.GetMemberType(), tc.GetNamespace(), tc.GetName())
 }

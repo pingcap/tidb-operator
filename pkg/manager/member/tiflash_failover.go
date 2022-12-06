@@ -14,35 +14,25 @@
 package member
 
 import (
+	"time"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
-type tiflashFailover struct {
-	sharedFailover sharedStoreFailover
-}
-
 // NewTiFlashFailover returns a tiflash Failover
 func NewTiFlashFailover(deps *controller.Dependencies) Failover {
-	return &tiflashFailover{sharedFailover: sharedStoreFailover{storeAccess: &tiflashStoreAccess{}, deps: deps}}
+	return &commonStoreFailover{deps: deps, storeAccess: &tiflashStoreAccess{}}
 }
 
-func (f *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
-	return f.sharedFailover.doFailover(tc, f.sharedFailover.deps.CLIConfig.TiFlashFailoverPeriod)
-}
-
-func (f *tiflashFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
-	f.sharedFailover.RemoveUndesiredFailures(tc)
-}
-
-func (f *tiflashFailover) Recover(tc *v1alpha1.TidbCluster) {
-	f.sharedFailover.Recover(tc)
-}
-
-// tiflashStoreAccess is a folder of access functions for TiFlash store
+// tiflashStoreAccess is a folder of access functions for TiFlash store and implements StoreAccess
 type tiflashStoreAccess struct {
+}
+
+func (tsa *tiflashStoreAccess) GetFailoverPeriod(cliConfig *controller.CLIConfig) time.Duration {
+	return cliConfig.TiFlashFailoverPeriod
 }
 
 func (tsa *tiflashStoreAccess) GetMemberType() v1alpha1.MemberType {
@@ -72,7 +62,7 @@ func (tsa *tiflashStoreAccess) SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster) 
 	}
 }
 
-func (tsa *tiflashStoreAccess) SetFailureStores(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore) {
+func (tsa *tiflashStoreAccess) SetFailureStore(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore) {
 	tc.Status.TiFlash.FailureStores[storeID] = failureStore
 }
 

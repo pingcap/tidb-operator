@@ -14,35 +14,25 @@
 package member
 
 import (
+	"time"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
-type tikvFailover struct {
-	sharedFailover sharedStoreFailover
-}
-
 // NewTiKVFailover returns a tikv Failover
 func NewTiKVFailover(deps *controller.Dependencies) Failover {
-	return &tikvFailover{sharedFailover: sharedStoreFailover{storeAccess: &tikvStoreAccess{}, deps: deps}}
+	return &commonStoreFailover{deps: deps, storeAccess: &tikvStoreAccess{}}
 }
 
-func (f *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
-	return f.sharedFailover.doFailover(tc, f.sharedFailover.deps.CLIConfig.TiKVFailoverPeriod)
-}
-
-func (f *tikvFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
-	f.sharedFailover.RemoveUndesiredFailures(tc)
-}
-
-func (f *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
-	f.sharedFailover.Recover(tc)
-}
-
-// tikvStoreAccess is a folder of access functions for TiKV store
+// tikvStoreAccess is a folder of access functions for TiKV store and implements StoreAccess
 type tikvStoreAccess struct {
+}
+
+func (tsa *tikvStoreAccess) GetFailoverPeriod(cliConfig *controller.CLIConfig) time.Duration {
+	return cliConfig.TiKVFailoverPeriod
 }
 
 func (tsa *tikvStoreAccess) GetMemberType() v1alpha1.MemberType {
@@ -72,7 +62,7 @@ func (tsa *tikvStoreAccess) SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster) {
 	}
 }
 
-func (tsa *tikvStoreAccess) SetFailureStores(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore) {
+func (tsa *tikvStoreAccess) SetFailureStore(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore) {
 	tc.Status.TiKV.FailureStores[storeID] = failureStore
 }
 
