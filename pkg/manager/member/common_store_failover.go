@@ -133,6 +133,8 @@ func (sf *commonStoreFailover) Recover(tc *v1alpha1.TidbCluster) {
 
 type fakeStoreFailover struct{}
 
+var _ Failover = (*fakeStoreFailover)(nil)
+
 func (fsf *fakeStoreFailover) Failover(_ *v1alpha1.TidbCluster) error {
 	return nil
 }
@@ -140,5 +142,3 @@ func (fsf *fakeStoreFailover) Failover(_ *v1alpha1.TidbCluster) error {
 func (fsf *fakeStoreFailover) Recover(_ *v1alpha1.TidbCluster) {}
 
 func (fsf *fakeStoreFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {}
-
-var _ Failover = (*fakeStoreFailover)(nil)

@@ -28,8 +28,9 @@ func NewTiKVFailover(deps *controller.Dependencies) Failover {
 }
 
 // tikvStoreAccess is a folder of access functions for TiKV store and implements StoreAccess
-type tikvStoreAccess struct {
-}
+type tikvStoreAccess struct{}
+
+var _ StoreAccess = (*tiflashStoreAccess)(nil)
 
 func (tsa *tikvStoreAccess) GetFailoverPeriod(cliConfig *controller.CLIConfig) time.Duration {
 	return cliConfig.TiKVFailoverPeriod
