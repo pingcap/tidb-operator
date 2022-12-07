@@ -15,6 +15,7 @@ package cmpver
 
 import (
 	"fmt"
+	"strings"
 
 	semver "github.com/Masterminds/semver"
 )
@@ -130,8 +131,13 @@ func validateOperation(op Operation) error {
 }
 
 func isLatest(version string) bool {
-	switch version {
-	case "latest", "nightly":
+	switch {
+	case version == "latest",
+		version == "nightly",
+		version == "master",
+		strings.HasPrefix(version, "latest-"),
+		strings.HasPrefix(version, "nightly-"),
+		strings.HasPrefix(version, "master-"):
 		return true
 	}
 
