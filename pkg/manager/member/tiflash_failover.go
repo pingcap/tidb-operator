@@ -28,8 +28,9 @@ func NewTiFlashFailover(deps *controller.Dependencies) Failover {
 }
 
 // tiflashStoreAccess is a folder of access functions for TiFlash store and implements StoreAccess
-type tiflashStoreAccess struct {
-}
+type tiflashStoreAccess struct {}
+
+var _ StoreAccess = (*tiflashStoreAccess)(nil)
 
 func (tsa *tiflashStoreAccess) GetFailoverPeriod(cliConfig *controller.CLIConfig) time.Duration {
 	return cliConfig.TiFlashFailoverPeriod
