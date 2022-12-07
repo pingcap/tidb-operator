@@ -46,6 +46,8 @@ type commonStoreFailover struct {
 	storeAccess StoreAccess
 }
 
+var _ Failover = (*commonStoreFailover)(nil)
+
 func (sf *commonStoreFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	if err := sf.tryMarkAStoreAsFailure(tc); err != nil {
 		if controller.IsIgnoreError(err) {
