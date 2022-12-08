@@ -200,7 +200,7 @@ func commitPVsAndPVCsToK8S(
 	r *v1alpha1.Restore,
 	pvcs []*corev1.PersistentVolumeClaim,
 	pvs []*corev1.PersistentVolume) (string, error) {
-	sel, err := label.New().Instance(r.Spec.BR.Cluster).TiKV().Selector()
+	sel, err := label.New().Instance(r.Spec.BR.Cluster).TiKV().Namespace(r.Namespace).Selector()
 	if err != nil {
 		return "BuildTiKVSelectorFailed", err
 	}
