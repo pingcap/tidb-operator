@@ -2101,7 +2101,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec :v1alpha1.ComponentSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
 							ReadinessProbe: &v1alpha1.Probe{
 								Type: pointer.StringPtr("tcp"),
 							},
