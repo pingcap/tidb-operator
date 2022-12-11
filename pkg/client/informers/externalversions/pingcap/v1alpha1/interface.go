@@ -35,6 +35,8 @@ type Interface interface {
 	TidbClusters() TidbClusterInformer
 	// TidbClusterAutoScalers returns a TidbClusterAutoScalerInformer.
 	TidbClusterAutoScalers() TidbClusterAutoScalerInformer
+	// TidbDashboards returns a TidbDashboardInformer.
+	TidbDashboards() TidbDashboardInformer
 	// TidbInitializers returns a TidbInitializerInformer.
 	TidbInitializers() TidbInitializerInformer
 	// TidbMonitors returns a TidbMonitorInformer.
@@ -87,6 +89,11 @@ func (v *version) TidbClusters() TidbClusterInformer {
 // TidbClusterAutoScalers returns a TidbClusterAutoScalerInformer.
 func (v *version) TidbClusterAutoScalers() TidbClusterAutoScalerInformer {
 	return &tidbClusterAutoScalerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TidbDashboards returns a TidbDashboardInformer.
+func (v *version) TidbDashboards() TidbDashboardInformer {
+	return &tidbDashboardInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // TidbInitializers returns a TidbInitializerInformer.

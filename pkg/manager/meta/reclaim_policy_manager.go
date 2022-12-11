@@ -54,6 +54,10 @@ func (m *reclaimPolicyManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	return m.sync(v1alpha1.DMClusterKind, dc, dc.IsPVReclaimEnabled(), *dc.Spec.PVReclaimPolicy)
 }
 
+func (m *reclaimPolicyManager) SyncTiDBDashboard(td *v1alpha1.TidbDashboard) error {
+	return m.sync(v1alpha1.TiDBDashboardKind, td, false, *td.Spec.PVReclaimPolicy)
+}
+
 func (m *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy) error {
 	if m.deps.PVLister == nil {
 		klog.V(4).Infof("Persistent volumes lister is unavailable, skip syncing reclaim policy for %s. This may be caused by no relevant permissions", kind)
@@ -77,6 +81,8 @@ func (m *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVReclaim
 		selector, err = label.NewDM().Instance(instanceName).Selector()
 	case v1alpha1.TiDBNGMonitoringKind:
 		selector, err = label.NewTiDBNGMonitoring().Instance(instanceName).Selector()
+	case v1alpha1.TiDBDashboardKind:
+		selector, err = label.NewTiDBDashboard().Instance(instanceName).Selector()
 	default:
 		return fmt.Errorf("unsupported kind %s", kind)
 	}
@@ -139,5 +145,9 @@ func (m *FakeReclaimPolicyManager) SyncDM(_ *v1alpha1.DMCluster) error {
 }
 
 func (m *FakeReclaimPolicyManager) SyncTiDBNGMonitoring(_ *v1alpha1.TidbNGMonitoring) error {
+	return m.err
+}
+
+func (m *FakeReclaimPolicyManager) SyncTiDBDashboard(_ *v1alpha1.TidbDashboard) error {
 	return m.err
 }

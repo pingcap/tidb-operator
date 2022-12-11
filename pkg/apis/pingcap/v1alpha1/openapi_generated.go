@@ -168,6 +168,9 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterList":               schema_pkg_apis_pingcap_v1alpha1_TidbClusterList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef":                schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterSpec":               schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbDashboard":                 schema_pkg_apis_pingcap_v1alpha1_TidbDashboard(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbDashboardList":             schema_pkg_apis_pingcap_v1alpha1_TidbDashboardList(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbDashboardSpec":             schema_pkg_apis_pingcap_v1alpha1_TidbDashboardSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbInitializer":               schema_pkg_apis_pingcap_v1alpha1_TidbInitializer(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbInitializerList":           schema_pkg_apis_pingcap_v1alpha1_TidbInitializerList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbInitializerSpec":           schema_pkg_apis_pingcap_v1alpha1_TidbInitializerSpec(ref),
@@ -1404,7 +1407,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"namespace": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring",
+							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring/TidbDashboard",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -12583,7 +12586,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"namespace": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring",
+							Description: "Namespace is the namespace that TidbCluster object locates, default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring/TidbDashboard",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -12950,6 +12953,466 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiProxySpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TidbDashboard(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TidbDashboard contains the spec and status of tidb dashboard.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Spec contains all spec about tidb dashboard.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbDashboardSpec"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbDashboardSpec"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TidbDashboardList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TidbDashboardList is a TidbDashboard list.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbDashboard"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbDashboard"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TidbDashboardSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TidbDashboardSpec is spec of tidb dashboard.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version of the component. Override the cluster-level version if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imagePullPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imagePullSecrets": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.LocalObjectReference"),
+									},
+								},
+							},
+						},
+					},
+					"hostNetwork": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether Hostnetwork of the component is enabled. Override the cluster-level setting if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"affinity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Affinity of the component. Override the cluster-level setting if present. Optional: Defaults to cluster-level setting",
+							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
+					"priorityClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PriorityClassName of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"schedulerName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SchedulerName of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"nodeSelector": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NodeSelector of the component. Merged into the cluster-level nodeSelector if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"annotations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Annotations for the component. Merge into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"labels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Labels for the component. Merge into the cluster-level labels if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"tolerations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tolerations of the component. Override the cluster-level tolerations if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
+									},
+								},
+							},
+						},
+					},
+					"podSecurityContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodSecurityContext of the component",
+							Ref:         ref("k8s.io/api/core/v1.PodSecurityContext"),
+						},
+					},
+					"configUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"env": {
+						SchemaProps: spec.SchemaProps{
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following env names cannot be used and will be overridden by TiDB Operator builtin envs - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.EnvVar"),
+									},
+								},
+							},
+						},
+					},
+					"envFrom": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Extend the use scenarios for env",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.EnvFromSource"),
+									},
+								},
+							},
+						},
+					},
+					"initContainers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Init containers of the components",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Container"),
+									},
+								},
+							},
+						},
+					},
+					"additionalContainers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Additional containers of the component. If the container names in this field match with the ones generated by TiDB Operator, the container configurations will be merged into the containers generated by TiDB Operator via strategic merge patch. If the container names in this field do not match with the ones generated by TiDB Operator, the container configurations will be appended to the Pod container spec directly.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Container"),
+									},
+								},
+							},
+						},
+					},
+					"additionalVolumes": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Additional volumes of component pod.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Volume"),
+									},
+								},
+							},
+						},
+					},
+					"additionalVolumeMounts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Additional volume mounts of component pod.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.VolumeMount"),
+									},
+								},
+							},
+						},
+					},
+					"dnsConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSConfig Specifies the DNS parameters of a pod.",
+							Ref:         ref("k8s.io/api/core/v1.PodDNSConfig"),
+						},
+					},
+					"dnsPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DNSPolicy Specifies the DNSPolicy parameters of a pod.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"terminationGracePeriodSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"statefulSetUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatefulSetUpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podManagementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodManagementPolicy of TiDB cluster StatefulSets",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"topologySpreadConstraints": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"topologyKey",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "TopologySpreadConstraints describes how a group of pods ought to spread across topology domains. Scheduler will schedule pods in a way which abides by the constraints. This field is is only honored by clusters that enables the EvenPodsSpread feature. All topologySpreadConstraints are ANDed.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint"),
+									},
+								},
+							},
+						},
+					},
+					"suspendAction": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SuspendAction defines the suspend actions for all component.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction"),
+						},
+					},
+					"limits": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"clusters": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Clusters reference TiDB cluster.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef"),
+									},
+								},
+							},
+						},
+					},
+					"pvReclaimPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Persistent volume reclaim policy applied to the PVs that consumed by tidb dashboard.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"baseImage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Base image of the component (image tag is now allowed during validation).",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"storageClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageClassName is the default PVC storage class for tidb dashboard. Defaults to Kubernetes default storage class.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"storageVolumes": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageVolumes configures additional PVC for tidb dashboard.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume"),
+									},
+								},
+							},
+						},
+					},
+					"pathPrefix": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PathPrefix is public URL path prefix for reverse proxies.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"service": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Service defines a Kubernetes service of tidb dashboard web access.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"),
+						},
+					},
+					"telemetry": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Telemetry is whether to enable telemetry. When enabled, usage data will be sent to PingCAP for improving user experience. Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"experimental": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Experimental is whether to enable experimental features. When enabled, experimental TiDB Dashboard features will be available. These features are incomplete or not well tested. Suggest not to enable in production. Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"clusters"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
