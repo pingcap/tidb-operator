@@ -1246,10 +1246,15 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{},
-					TiDB: &v1alpha1.TiDBSpec{ReadinessProbe: &v1alpha1.Probe{
-						InitialDelaySeconds: pointer.Int32Ptr(5),
-						PeriodSeconds:       pointer.Int32Ptr(2),
-					}},
+
+					TiDB: &v1alpha1.TiDBSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{
+								InitialDelaySeconds: pointer.Int32Ptr(5),
+								PeriodSeconds:       pointer.Int32Ptr(2),
+							},
+						},
+					},
 					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
