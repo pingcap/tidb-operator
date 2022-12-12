@@ -11,8 +11,9 @@ require (
 	github.com/google/gofuzz v1.1.0
 	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/onsi/gomega v1.10.2
-	github.com/pingcap/TiProxy/lib v0.0.0-20221024031838-544b0cc89dd9
+	github.com/pingcap/TiProxy/lib v0.0.0-20221212075308-37df9d1e5c48
 	github.com/pingcap/errors v0.11.4
+	github.com/pingcap/log v1.1.0 // indirect
 	github.com/prometheus/common v0.26.0
 	github.com/prometheus/prometheus v1.8.2
 	k8s.io/api v0.19.16

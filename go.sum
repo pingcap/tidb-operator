@@ -629,6 +629,8 @@ github.com/pierrec/lz4 v2.0.5+incompatible h1:2xWsjqPFWcplujydGg4WmhC/6fZqK42wMM
 github.com/pierrec/lz4 v2.0.5+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
 github.com/pingcap/TiProxy/lib v0.0.0-20221024031838-544b0cc89dd9 h1:gyBm0indM0OWxJgQI6RIKT7eF2NK1aT5z4POCd6QZEg=
 github.com/pingcap/TiProxy/lib v0.0.0-20221024031838-544b0cc89dd9/go.mod h1:kTT+U6qKCzFOaE1pooqgP9eDTGXRf1IJOfk38cqjcsQ=
+github.com/pingcap/TiProxy/lib v0.0.0-20221212075308-37df9d1e5c48 h1:TchsAA8MhaHB7Z5rC6H5FVzuvGAvx/BucPqOH9o3YvY=
+github.com/pingcap/TiProxy/lib v0.0.0-20221212075308-37df9d1e5c48/go.mod h1:4wyWYXOrf3ApAXjtz2RlM4HWZVzeXwVqh7XOlurT+jI=
 github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b2938 h1:VnViTohM8PPnacFPPYjzLSUKVmKcmtiF7VUMSScm8vM=
 github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b2938/go.mod h1:pPv7hNjiBHrhnaept9u1Hd2G6fN0TOn+3uDi0/PdOk4=
 github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 h1:USx2/E1bX46VG32FIw034Au6seQ2fY9NEILmNh/UlQg=
