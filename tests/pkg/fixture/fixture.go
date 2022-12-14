@@ -628,6 +628,35 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 	return restore
 }
 
+func GetTidbDashboard(ns, name string, tc *v1alpha1.TidbCluster) *v1alpha1.TidbDashboard {
+	deletePVC := corev1.PersistentVolumeReclaimDelete
+	version := utilimage.TiDBLatest
+
+	td := &v1alpha1.TidbDashboard{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbDashboardSpec{
+			Clusters: []v1alpha1.TidbClusterRef{
+				{
+					Name:      tc.Name,
+					Namespace: tc.Namespace,
+				},
+			},
+			ComponentSpec: v1alpha1.ComponentSpec{
+				Version: &version,
+			},
+			// FIXME(@sabaping): use pingcap/tidb-dashboard after dashboard cicd ready.
+			BaseImage:            "sabaping/tidb-dashboard",
+			ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
+			PVReclaimPolicy:      &deletePVC,
+		},
+	}
+
+	return td
+}
+
 func GetTidbNGMonitoring(ns, name string, tc *v1alpha1.TidbCluster) *v1alpha1.TidbNGMonitoring {
 	deletePVP := corev1.PersistentVolumeReclaimDelete
 	version := utilimage.TiDBNGMonitoringLatest

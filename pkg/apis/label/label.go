@@ -142,6 +142,8 @@ const (
 	TiFlashLabelVal string = "tiflash"
 	// TiCDCLabelVal is TiCDC label value
 	TiCDCLabelVal string = "ticdc"
+	// TiProxyLabelVal is TiProxy label value
+	TiProxyLabelVal string = "tiproxy"
 	// PumpLabelVal is Pump label value
 	PumpLabelVal string = "pump"
 	// DiscoveryLabelVal is Discovery label value
@@ -169,6 +171,9 @@ const (
 
 	// NGMonitorLabelVal is ng-monitoring label value
 	NGMonitorLabelVal string = "ng-monitoring"
+
+	// TiDBDashboardLabelVal is tidb-dashboard label value
+	TiDBDashboardLabelVal string = "tidb-dashboard"
 
 	// PrometheusVal is Prometheus label value
 	PrometheusVal string = "prometheus"
@@ -248,6 +253,13 @@ func NewMonitor() Label {
 func NewTiDBNGMonitoring() Label {
 	return Label{
 		NameLabelKey:      "tidb-ng-monitoring",
+		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
+func NewTiDBDashboard() Label {
+	return Label{
+		NameLabelKey:      "tidb-dashboard",
 		ManagedByLabelKey: TiDBOperator,
 	}
 }
@@ -355,6 +367,16 @@ func (l Label) IsPD() bool {
 	return l[ComponentLabelKey] == PDLabelVal
 }
 
+// TiProxy assigns tiproxy to component key in label
+func (l Label) TiProxy() Label {
+	return l.Component(TiProxyLabelVal)
+}
+
+// IsTiProxy returns whether label is a TiProxy component
+func (l Label) IsTiProxy() bool {
+	return l[ComponentLabelKey] == TiProxyLabelVal
+}
+
 // Pump assigns pump to component key in label
 func (l Label) Pump() Label {
 	return l.Component(PumpLabelVal)
@@ -403,6 +425,11 @@ func (l Label) Grafana() Label {
 // NGMonitoring assigns ng monitoring to component key in label
 func (l Label) NGMonitoring() Label {
 	return l.Component(NGMonitorLabelVal)
+}
+
+// TiDBDashboard assigns tidb dashboard to component key in label
+func (l Label) TiDBDashboard() Label {
+	return l.Component(TiDBDashboardLabelVal)
 }
 
 // IsNGMonitoring returns whether label is a NGMonitoring component

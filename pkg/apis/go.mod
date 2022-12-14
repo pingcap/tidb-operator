@@ -5,12 +5,13 @@ go 1.16
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/semver v1.4.2
-	github.com/aws/aws-sdk-go v1.30.9 // indirect
+	github.com/aws/aws-sdk-go v1.44.72 // indirect
 	github.com/go-openapi/spec v0.19.3
 	github.com/google/go-cmp v0.5.8
 	github.com/google/gofuzz v1.1.0
 	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/onsi/gomega v1.10.2
+	github.com/pingcap/TiProxy/lib v0.0.0-20221024031838-544b0cc89dd9
 	github.com/pingcap/errors v0.11.4
 	github.com/prometheus/common v0.26.0
 	github.com/prometheus/prometheus v1.8.2

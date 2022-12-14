@@ -70,6 +70,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&DMClusterList{},
 		&TidbNGMonitoring{},
 		&TidbNGMonitoringList{},
+		&TidbDashboard{},
+		&TidbDashboardList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

@@ -1,0 +1,29 @@
+{
+	"CN": "TiDB",
+	"hosts": [
+		"127.0.0.1",
+		"::1",
+		"::",
+		"${cluster}-${component}",
+		"${cluster}-${component}.${namespace}",
+		"${cluster}-${component}.${namespace}.svc",
+		"${cluster}-${component}-peer",
+		"${cluster}-${component}-peer.${namespace}",
+		"${cluster}-${component}-peer.${namespace}.svc",
+		"*.${cluster}-${component}-peer",
+		"*.${cluster}-${component}-peer.${namespace}",
+		"*.${cluster}-${component}-peer.${namespace}.svc"
+	],
+	"key": {
+		"algo": "ecdsa",
+		"size": 256
+	},
+	"names": [
+		{
+			"C": "US",
+			"ST": "CA",
+			"L": "San Francisco"
+		}
+	]
+}
+

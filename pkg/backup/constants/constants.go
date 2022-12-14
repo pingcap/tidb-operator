@@ -93,4 +93,8 @@ const (
 	KubeAnnBindCompleted          = "pv.kubernetes.io/bind-completed"
 	KubeAnnBoundByController      = "pv.kubernetes.io/bound-by-controller"
 	KubeAnnDynamicallyProvisioned = "pv.kubernetes.io/provisioned-by"
+
+	LocalTmp           = "/tmp"
+	ClusterBackupMeta  = "clustermeta"
+	ClusterRestoreMeta = "restoremeta"
 )
