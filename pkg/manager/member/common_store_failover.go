@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -51,6 +52,8 @@ type commonStoreFailover struct {
 	storeAccess     StoreAccess
 	failureRecovery commonStatefulFailureRecovery
 }
+
+var _ Failover = (*commonStoreFailover)(nil)
 
 func (sf *commonStoreFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	// If store downtime exceeds failover time period then create a FailureStore
@@ -286,12 +289,12 @@ func (fsa *failureStoreAccess) GetPvcUIDSet(tc *v1alpha1.TidbCluster, storeId st
 
 type fakeStoreFailover struct{}
 
-func (ftf *fakeStoreFailover) Failover(_ *v1alpha1.TidbCluster) error {
+var _ Failover = (*fakeStoreFailover)(nil)
+
+func (fsf *fakeStoreFailover) Failover(_ *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (ftf *fakeStoreFailover) Recover(_ *v1alpha1.TidbCluster) {
-}
+func (fsf *fakeStoreFailover) Recover(_ *v1alpha1.TidbCluster) {}
 
-func (ftf *fakeStoreFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
-}
+func (fsf *fakeStoreFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {}
