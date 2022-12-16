@@ -31,6 +31,12 @@ var shortLabelNameToK8sLabel = map[string][]string{
 	"host":   {corev1.LabelHostname},
 }
 
+// NodeAvailabilityStatus has the availability status information of a k8s node
+type NodeAvailabilityStatus struct {
+	NodeUnavailable   bool
+	ReadOnlyDiskFound bool
+}
+
 func getNodeLabels(nodeLister corelisterv1.NodeLister, nodeName string, storeLabels []string) (map[string]string, error) {
 	node, err := nodeLister.Get(nodeName)
 	if err != nil {
@@ -64,33 +70,33 @@ func IsNodeReadyConditionFalseOrUnknown(status corev1.NodeStatus) bool {
 
 // IsNodeRODiskFoundConditionTrue returns true if a pod has RODiskFound condition set to True; false otherwise.
 func IsNodeRODiskFoundConditionTrue(status corev1.NodeStatus) bool {
-	_, condition := getNodeCondition(&status, nodeCondRODiskFound)
+	condition := getNodeCondition(&status, nodeCondRODiskFound)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
-// GetNodeReadyCondition extracts the node ready condition from the given status and returns that.
+// getNodeReadyCondition extracts the node ready condition from the given status and returns that.
 // Returns nil if the condition is not present.
 func getNodeReadyCondition(status corev1.NodeStatus) *corev1.NodeCondition {
-	_, condition := getNodeCondition(&status, corev1.NodeReady)
+	condition := getNodeCondition(&status, corev1.NodeReady)
 	return condition
 }
 
-// GetNodeCondition extracts the provided condition from the given status and returns that.
-// Returns nil and -1 if the condition is not present, and the index of the located condition.
-func getNodeCondition(status *corev1.NodeStatus, conditionType corev1.NodeConditionType) (int, *corev1.NodeCondition) {
+// getNodeCondition extracts the provided condition from the given status and returns that.
+// Returns nil if the condition is not present.
+func getNodeCondition(status *corev1.NodeStatus, conditionType corev1.NodeConditionType) *corev1.NodeCondition {
 	if status == nil {
-		return -1, nil
+		return nil
 	}
 	return getNodeConditionFromList(status.Conditions, conditionType)
 }
 
-// GetNodeConditionFromList extracts the provided condition from the given list of condition and
-// returns the index of the condition and the condition. Returns -1 and nil if the condition is not present.
-func getNodeConditionFromList(conditions []corev1.NodeCondition, conditionType corev1.NodeConditionType) (int, *corev1.NodeCondition) {
+// getNodeConditionFromList extracts the provided condition from the given list of condition and returns that
+// Returns nil if the condition is not present.
+func getNodeConditionFromList(conditions []corev1.NodeCondition, conditionType corev1.NodeConditionType) *corev1.NodeCondition {
 	for i := range conditions {
 		if conditions[i].Type == conditionType {
-			return i, &conditions[i]
+			return &conditions[i]
 		}
 	}
-	return -1, nil
+	return nil
 }

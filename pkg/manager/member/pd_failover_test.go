@@ -708,7 +708,12 @@ func TestPDFailoverRecovery(t *testing.T) {
 
 func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *pdapi.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
 	fakeDeps := controller.NewFakeDependencies()
-	pdFailover := &pdFailover{deps: fakeDeps}
+	pdFailover := &pdFailover{deps: fakeDeps,
+		failureRecovery: commonStatefulFailureRecovery{
+			deps:                fakeDeps,
+			failureObjectAccess: &pdFailureMemberAccess{},
+		},
+	}
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
