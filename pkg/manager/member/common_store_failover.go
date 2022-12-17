@@ -46,7 +46,7 @@ type StoreAccess interface {
 	IsHostDownForFailurePod(tc *v1alpha1.TidbCluster) bool
 }
 
-// commonStoreFailover contains the common failover logic of TiKV and TiFlash
+// commonStoreFailover has the common logic to handle the failover of TiKV and TiFlash store
 type commonStoreFailover struct {
 	deps            *controller.Dependencies
 	storeAccess     StoreAccess
@@ -134,7 +134,7 @@ func (sf *commonStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster) 
 						klog.Warningf("%s/%s %s failure stores count reached the limit: %d", ns, tcName, sf.storeAccess.GetMemberType(), maxFailoverCount)
 						return nil
 					}
-					pvcs, err := getPodPvcs(tc, podName, sf.storeAccess.GetMemberType(), sf.deps.PVCLister)
+					pvcs, err := sf.failureRecovery.getPodPvcs(tc, podName)
 					if err != nil {
 						return err
 					}
@@ -142,7 +142,7 @@ func (sf *commonStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster) 
 					for _, pvc := range pvcs {
 						pvcUIDSet[pvc.UID] = v1alpha1.EmptyStruct{}
 					}
-					klog.Infof("%s failover [tryToMarkAPeerAsFailure] PVCUIDSet for failure store %s is %s", sf.storeAccess.GetMemberType(), store.ID, pvcUIDSet)
+					klog.Infof("%s failover [tryMarkAStoreAsFailure] PVCUIDSet for failure store %s is %s", sf.storeAccess.GetMemberType(), store.ID, pvcUIDSet)
 					sf.storeAccess.SetFailureStore(tc, storeID, v1alpha1.TiKVFailureStore{
 						PodName:   podName,
 						StoreID:   store.ID,
@@ -158,8 +158,8 @@ func (sf *commonStoreFailover) tryMarkAStoreAsFailure(tc *v1alpha1.TidbCluster) 
 	return nil
 }
 
-// invokeDeleteFailureStore invokes Delete of a failure store. A gap after a pod restart which will give the pod a
-// chance to be created properly and store to come up in cases like EBS backed storage in which delete will not be done.
+// invokeDeleteFailureStore invokes delete of a failure store. A time gap is given after a pod restart to allow the pod to
+// be created properly and the store to come up, for ex., in cases like EBS volumes.
 func (sf *commonStoreFailover) invokeDeleteFailureStore(tc *v1alpha1.TidbCluster, failureStore v1alpha1.TiKVFailureStore) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -228,17 +228,18 @@ func (sf *commonStoreFailover) Recover(tc *v1alpha1.TidbCluster) {
 	klog.Infof("%s recover: clear FailureStores, %s/%s", sf.storeAccess.GetMemberType(), tc.GetNamespace(), tc.GetName())
 }
 
-// failureStoreAccess implements the CommonFailureObject interface for TiKV and TiFlash store
+// failureStoreAccess implements the FailureObjectAccess interface for TiKV and TiFlash store
 type failureStoreAccess struct {
 	storeAccess StoreAccess
 }
 
-var _ CommonFailureObject = (*failureStoreAccess)(nil)
+var _ FailureObjectAccess = (*failureStoreAccess)(nil)
 
 func (fsa *failureStoreAccess) GetMemberType() v1alpha1.MemberType {
 	return fsa.storeAccess.GetMemberType()
 }
 
+// GetFailureObjects returns the set of failure store ids of the particular store type
 func (fsa *failureStoreAccess) GetFailureObjects(tc *v1alpha1.TidbCluster) map[string]v1alpha1.EmptyStruct {
 	failureStores := make(map[string]v1alpha1.EmptyStruct, len(fsa.storeAccess.GetFailureStores(tc)))
 	for storeId := range fsa.storeAccess.GetFailureStores(tc) {
@@ -247,41 +248,49 @@ func (fsa *failureStoreAccess) GetFailureObjects(tc *v1alpha1.TidbCluster) map[s
 	return failureStores
 }
 
+// IsFailing returns if the particular store is in down state
 func (fsa *failureStoreAccess) IsFailing(tc *v1alpha1.TidbCluster, storeId string) bool {
 	store, exists := fsa.storeAccess.GetStore(tc, storeId)
 	return exists && store.State == v1alpha1.TiKVStateDown
 }
 
+// GetPodName returns the pod name of the given failure store
 func (fsa *failureStoreAccess) GetPodName(tc *v1alpha1.TidbCluster, storeId string) string {
 	failureStore, _ := fsa.storeAccess.GetFailureStore(tc, storeId)
 	return failureStore.PodName
 }
 
+// IsHostDownForFailurePod checks if HostDown is set for any failure store in the particular store type
 func (fsa *failureStoreAccess) IsHostDownForFailurePod(tc *v1alpha1.TidbCluster) bool {
 	return fsa.storeAccess.IsHostDownForFailurePod(tc)
 }
 
+// IsHostDown returns true if HostDown is set for the given failure store
 func (fsa *failureStoreAccess) IsHostDown(tc *v1alpha1.TidbCluster, storeId string) bool {
 	failureStore, _ := fsa.storeAccess.GetFailureStore(tc, storeId)
 	return failureStore.HostDown
 }
 
+// SetHostDown sets the HostDown property in the given failure store
 func (fsa *failureStoreAccess) SetHostDown(tc *v1alpha1.TidbCluster, storeId string, hostDown bool) {
 	failureStore, _ := fsa.storeAccess.GetFailureStore(tc, storeId)
 	failureStore.HostDown = hostDown
 	fsa.storeAccess.SetFailureStore(tc, storeId, failureStore)
 }
 
+// GetCreatedAt returns the CreatedAt timestamp of the given failure store
 func (fsa *failureStoreAccess) GetCreatedAt(tc *v1alpha1.TidbCluster, storeId string) metav1.Time {
 	failureStore, _ := fsa.storeAccess.GetFailureStore(tc, storeId)
 	return failureStore.CreatedAt
 }
 
+// GetLastTransitionTime returns the LastTransitionTime timestamp of the given failure store
 func (fsa *failureStoreAccess) GetLastTransitionTime(tc *v1alpha1.TidbCluster, storeId string) metav1.Time {
 	store, _ := fsa.storeAccess.GetStore(tc, storeId)
 	return store.LastTransitionTime
 }
 
+// GetPvcUIDSet returns the PVC UID set of the given failure store
 func (fsa *failureStoreAccess) GetPvcUIDSet(tc *v1alpha1.TidbCluster, storeId string) map[types.UID]v1alpha1.EmptyStruct {
 	failureStore, _ := fsa.storeAccess.GetFailureStore(tc, storeId)
 	return failureStore.PVCUIDSet

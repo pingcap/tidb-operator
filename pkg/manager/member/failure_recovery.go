@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -46,8 +45,8 @@ const (
 	restartToDeleteStoreGap = 10 * time.Minute
 )
 
-// CommonFailureObject contains the common set of functions to access the properties of a failure object
-type CommonFailureObject interface {
+// FailureObjectAccess contains the common set of functions to access the properties of a failure object
+type FailureObjectAccess interface {
 	GetMemberType() v1alpha1.MemberType
 	GetFailureObjects(tc *v1alpha1.TidbCluster) map[string]v1alpha1.EmptyStruct
 	IsFailing(tc *v1alpha1.TidbCluster, objectId string) bool
@@ -63,10 +62,10 @@ type CommonFailureObject interface {
 // commonStatefulFailureRecovery has the common logic to handle the failure recovery of a stateful component
 type commonStatefulFailureRecovery struct {
 	deps                *controller.Dependencies
-	failureObjectAccess CommonFailureObject
+	failureObjectAccess FailureObjectAccess
 }
 
-// CheckHostDownAndRestartPod checks for HostDown for any failure store or member then does restart of pod
+// CheckHostDownAndRestartPod checks for HostDown for any failure store or member then does a restart of pod
 func (fr *commonStatefulFailureRecovery) CheckHostDownAndRestartPod(tc *v1alpha1.TidbCluster) error {
 	if fr.deps.CLIConfig.DetectNodeFailure {
 		if fr.failureObjectAccess.IsHostDownForFailurePod(tc) {
@@ -106,7 +105,7 @@ func (fr *commonStatefulFailureRecovery) checkAndMarkHostDown(tc *v1alpha1.TidbC
 					return fmt.Errorf("%s failover [checkAndMarkHostDown]: failed to get pod %s for tc %s/%s, error: %s", fr.failureObjectAccess.GetMemberType(), fr.failureObjectAccess.GetPodName(tc, objectId), ns, tcName, err)
 				}
 				if pod == nil {
-					return nil
+					continue
 				}
 
 				// Check node and pod conditions and set HostDown in FailureStore
@@ -154,7 +153,7 @@ func (fr *commonStatefulFailureRecovery) getNodeAvailabilityStatus(pod *corev1.P
 		if podReadyCond != nil && fr.deps.NodeLister != nil {
 			podNode, err := fr.deps.NodeLister.Get(pod.Spec.NodeName)
 			if err != nil {
-				return NodeAvailabilityStatus{}, fmt.Errorf("failover[isHostingNodeUnavailable]: failed to get node for pod %s/%s, error: %s", ns, name, err)
+				return NodeAvailabilityStatus{}, fmt.Errorf("failover[getNodeAvailabilityStatus]: failed to get node for pod %s/%s, error: %s", ns, name, err)
 			}
 			if podReadyCond.Status == corev1.ConditionFalse {
 				nodeUnavailable = IsNodeReadyConditionFalseOrUnknown(podNode.Status)
@@ -172,12 +171,13 @@ func (fr *commonStatefulFailureRecovery) getNodeAvailabilityStatus(pod *corev1.P
 func (fr *commonStatefulFailureRecovery) restartPodForHostDown(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	memberType := fr.failureObjectAccess.GetMemberType()
 
 	for objectId := range fr.failureObjectAccess.GetFailureObjects(tc) {
 		if fr.failureObjectAccess.IsFailing(tc, objectId) && fr.failureObjectAccess.IsHostDown(tc, objectId) {
 			pod, err := fr.deps.PodLister.Pods(ns).Get(fr.failureObjectAccess.GetPodName(tc, objectId))
 			if err != nil && !errors.IsNotFound(err) {
-				return fmt.Errorf("%s failover [restartPodForHostDown]: failed to get pod %s for tc %s/%s, error: %s", fr.failureObjectAccess.GetMemberType(), fr.failureObjectAccess.GetPodName(tc, objectId), ns, tcName, err)
+				return fmt.Errorf("%s failover [restartPodForHostDown]: failed to get pod %s for tc %s/%s, error: %s", memberType, fr.failureObjectAccess.GetPodName(tc, objectId), ns, tcName, err)
 			}
 			if pod != nil {
 				// If the failed pod has already been restarted once, its CreationTimestamp will be after FailureMember.CreatedAt
@@ -186,7 +186,7 @@ func (fr *commonStatefulFailureRecovery) restartPodForHostDown(tc *v1alpha1.Tidb
 					if err = fr.deps.PodControl.ForceDeletePod(tc, pod); err != nil {
 						return err
 					}
-					msg := fmt.Sprintf("Failed %s pod %s/%s is force deleted for recovery", fr.failureObjectAccess.GetMemberType(), ns, fr.failureObjectAccess.GetPodName(tc, objectId))
+					msg := fmt.Sprintf("Failed %s pod %s/%s is force deleted for recovery", memberType, ns, fr.failureObjectAccess.GetPodName(tc, objectId))
 					klog.Infof(msg)
 					return controller.IgnoreErrorf(msg)
 				}
@@ -196,10 +196,10 @@ func (fr *commonStatefulFailureRecovery) restartPodForHostDown(tc *v1alpha1.Tidb
 	return nil
 }
 
-// canDoCleanUpNow checks if it is ok to do the cleanup of failure store or member and its pod and pvcs now
+// canDoCleanUpNow checks if it is ok to do the cleanup of the failure store or member and its pod and pvcs now
 func (fr *commonStatefulFailureRecovery) canDoCleanUpNow(tc *v1alpha1.TidbCluster, objectId string) bool {
 	// If HostDown is set for the pod of the failure store or member and the pod was restarted after that, then give some time gap
-	// (for it become up and ready again, for ex. in case of EBS volumes) before deleting the failure store or member
+	// (for it to come up and be ready again) before deleting the failure store or member
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	failurePodName := fr.failureObjectAccess.GetPodName(tc, objectId)
@@ -216,17 +216,18 @@ func (fr *commonStatefulFailureRecovery) canDoCleanUpNow(tc *v1alpha1.TidbCluste
 	return true
 }
 
-// deletePodAndPvcs deletes the pod and the pvcs of failure store or member
+// deletePodAndPvcs deletes the pod and the pvcs of the failure store or member
 func (fr *commonStatefulFailureRecovery) deletePodAndPvcs(tc *v1alpha1.TidbCluster, objectId string) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	memberType := fr.failureObjectAccess.GetMemberType()
 	failurePodName := fr.failureObjectAccess.GetPodName(tc, objectId)
-	pod, pvcs, err := fr.getPodAndPvcs(tc, failurePodName, fr.failureObjectAccess.GetMemberType())
+	pod, pvcs, err := fr.getPodAndPvcs(tc, failurePodName)
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("%s failover[deletePodAndPvcs]: failed to get pod %s for tc %s/%s, error: %s", fr.failureObjectAccess.GetMemberType(), failurePodName, ns, tcName, err)
+		return fmt.Errorf("%s failover[deletePodAndPvcs]: failed to get pod %s for tc %s/%s, error: %s", memberType, failurePodName, ns, tcName, err)
 	}
 	if pod == nil {
-		klog.Infof("%s failover[deletePodAndPvcs]: failure pod %s/%s not found, skip", fr.failureObjectAccess.GetMemberType(), ns, failurePodName)
+		klog.Infof("%s failover[deletePodAndPvcs]: failure pod %s/%s not found, skip", memberType, ns, failurePodName)
 		return nil
 	}
 	if pod.DeletionTimestamp == nil {
@@ -234,7 +235,7 @@ func (fr *commonStatefulFailureRecovery) deletePodAndPvcs(tc *v1alpha1.TidbClust
 		// Or else, after restart the pod would use the old PVC and then clean up of pvc will not happen.
 		// The Scheduled condition of pod if true can confirm that the K8s node is not cordoned.
 		podScheduled := isPodConditionScheduledTrue(pod.Status.Conditions)
-		klog.Infof("%s failover[deletePodAndPvcs]: Scheduled condition of pod %s of tc %s/%s: %t", fr.failureObjectAccess.GetMemberType(), failurePodName, ns, tcName, podScheduled)
+		klog.Infof("%s failover[deletePodAndPvcs]: Scheduled condition of pod %s of tc %s/%s: %t", memberType, failurePodName, ns, tcName, podScheduled)
 		if deleteErr := fr.deps.PodControl.DeletePod(tc, pod); deleteErr != nil {
 			return deleteErr
 		}
@@ -247,16 +248,16 @@ func (fr *commonStatefulFailureRecovery) deletePodAndPvcs(tc *v1alpha1.TidbClust
 	for p := range pvcs {
 		pvcUids = append(pvcUids, pvcs[p].ObjectMeta.UID)
 	}
-	klog.Infof("%s failover[deletePodAndPvcs]: PVCs used in cluster %s/%s: %s", fr.failureObjectAccess.GetMemberType(), ns, tcName, pvcUids)
+	klog.Infof("%s failover[deletePodAndPvcs]: PVCs used in cluster %s/%s: %s", memberType, ns, tcName, pvcUids)
 	for p := range pvcs {
 		pvc := pvcs[p]
 		if _, pvcUIDExist := pvcUIDSet[pvc.ObjectMeta.UID]; pvcUIDExist {
 			if pvc.DeletionTimestamp == nil /*&& pvcUIDExist*/ {
 				if deleteErr := fr.deps.PVCControl.DeletePVC(tc, pvc); deleteErr != nil {
-					klog.Errorf("%s failover[deletePodAndPvcs]: failed to delete PVC: %s/%s, error: %s", fr.failureObjectAccess.GetMemberType(), ns, pvc.Name, deleteErr)
+					klog.Errorf("%s failover[deletePodAndPvcs]: failed to delete PVC: %s/%s, error: %s", memberType, ns, pvc.Name, deleteErr)
 					return deleteErr
 				}
-				klog.Infof("%s failover[deletePodAndPvcs]: delete PVC %s/%s successfully", fr.failureObjectAccess.GetMemberType(), ns, pvc.Name)
+				klog.Infof("%s failover[deletePodAndPvcs]: delete PVC %s/%s successfully", memberType, ns, pvc.Name)
 			} else {
 				klog.Infof("pvc %s/%s has DeletionTimestamp set to %s", ns, pvc.Name, pvc.DeletionTimestamp)
 			}
@@ -266,30 +267,25 @@ func (fr *commonStatefulFailureRecovery) deletePodAndPvcs(tc *v1alpha1.TidbClust
 }
 
 // getPodAndPvcs returns the pod and pvcs of a component pod in a Tidb cluster
-func (fr *commonStatefulFailureRecovery) getPodAndPvcs(tc *v1alpha1.TidbCluster, podName string, memberType v1alpha1.MemberType) (*corev1.Pod, []*corev1.PersistentVolumeClaim, error) {
+func (fr *commonStatefulFailureRecovery) getPodAndPvcs(tc *v1alpha1.TidbCluster, podName string) (*corev1.Pod, []*corev1.PersistentVolumeClaim, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	pod, err := fr.deps.PodLister.Pods(ns).Get(podName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s failover: failed to get pod %s for tc %s/%s, error: %s", memberType, podName, ns, tcName, err)
+		return nil, nil, fmt.Errorf("%s failover: failed to get pod %s for tc %s/%s, error: %s", fr.failureObjectAccess.GetMemberType(), podName, ns, tcName, err)
 	}
-	pvcs, err := getPodPvcs(tc, podName, memberType, fr.deps.PVCLister)
+	pvcs, err := fr.getPodPvcs(tc, podName)
 	if err != nil {
 		return pod, nil, err
 	}
 	return pod, pvcs, nil
 }
 
-// canAutoFailureRecovery checks whether auto recovery of failure pods and pvc should be done
-func canAutoFailureRecovery(tc *v1alpha1.TidbCluster) bool {
-	// TODO Use a boolean in TidbCluster spec instead of annotation for this
-	return tc.Annotations[annAutoFailureRecovery] == strconv.FormatBool(true)
-}
-
 // getPodPvcs returns the pvcs of a component pod in a Tidb cluster
-func getPodPvcs(tc *v1alpha1.TidbCluster, podName string, memberType v1alpha1.MemberType, pvcLister corelisterv1.PersistentVolumeClaimLister) ([]*corev1.PersistentVolumeClaim, error) {
+func (fr *commonStatefulFailureRecovery) getPodPvcs(tc *v1alpha1.TidbCluster, podName string) ([]*corev1.PersistentVolumeClaim, error) {
 	ns := tc.GetNamespace()
 	ordinal, err := util.GetOrdinalFromPodName(podName)
+	memberType := fr.failureObjectAccess.GetMemberType()
 	if err != nil {
 		return nil, fmt.Errorf("%s failover: failed to parse ordinal from pod name for %s/%s, error: %s", memberType, ns, podName, err)
 	}
@@ -297,11 +293,17 @@ func getPodPvcs(tc *v1alpha1.TidbCluster, podName string, memberType v1alpha1.Me
 	if err != nil {
 		return nil, fmt.Errorf("%s failover: failed to get PVC selector for pod %s/%s, error: %s", memberType, ns, podName, err)
 	}
-	pvcs, err := pvcLister.PersistentVolumeClaims(ns).List(pvcSelector)
+	pvcs, err := fr.deps.PVCLister.PersistentVolumeClaims(ns).List(pvcSelector)
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, fmt.Errorf("%s failover: failed to get PVCs for pod %s/%s, error: %s", memberType, ns, podName, err)
 	}
 	return pvcs, nil
+}
+
+// canAutoFailureRecovery checks whether auto recovery of failure pods and pvc should be done
+func canAutoFailureRecovery(tc *v1alpha1.TidbCluster) bool {
+	// TODO Use a boolean in TidbCluster spec instead of annotation for this
+	return tc.Annotations[annAutoFailureRecovery] == strconv.FormatBool(true)
 }
 
 // isPodConditionScheduledTrue returns true if "PodScheduled" condition of pod is True

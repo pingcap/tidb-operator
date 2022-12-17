@@ -254,13 +254,14 @@ func (f *pdFailover) isPDInQuorum(tc *v1alpha1.TidbCluster) (bool, int) {
 	return healthCount > (len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers))/2, healthCount
 }
 
-// pdFailureMemberAccess implements the CommonFailureObject interface for PD member
+// pdFailureMemberAccess implements the FailureObjectAccess interface for PD member
 type pdFailureMemberAccess struct{}
 
 func (fma *pdFailureMemberAccess) GetMemberType() v1alpha1.MemberType {
 	return v1alpha1.PDMemberType
 }
 
+// GetFailureObjects returns the set of failure pd names
 func (fma *pdFailureMemberAccess) GetFailureObjects(tc *v1alpha1.TidbCluster) map[string]v1alpha1.EmptyStruct {
 	failurePdMembers := make(map[string]v1alpha1.EmptyStruct, len(tc.Status.PD.FailureMembers))
 	for pdName := range tc.Status.PD.FailureMembers {
@@ -269,10 +270,12 @@ func (fma *pdFailureMemberAccess) GetFailureObjects(tc *v1alpha1.TidbCluster) ma
 	return failurePdMembers
 }
 
+// IsFailing returns if the particular member is in unhealthy state
 func (fma *pdFailureMemberAccess) IsFailing(tc *v1alpha1.TidbCluster, pdName string) bool {
 	return !tc.Status.PD.Members[pdName].Health
 }
 
+// GetPodName returns the pod name of the given failure member
 func (fma *pdFailureMemberAccess) GetPodName(_ *v1alpha1.TidbCluster, pdName string) string {
 	return strings.Split(pdName, ".")[0]
 }
@@ -288,24 +291,29 @@ func (fma *pdFailureMemberAccess) IsHostDownForFailurePod(tc *v1alpha1.TidbClust
 	return false
 }
 
+// IsHostDown returns true if HostDown is set for the given failure member
 func (fma *pdFailureMemberAccess) IsHostDown(tc *v1alpha1.TidbCluster, pdName string) bool {
 	return tc.Status.PD.FailureMembers[pdName].HostDown
 }
 
+// SetHostDown sets the HostDown property in the given failure member
 func (fma *pdFailureMemberAccess) SetHostDown(tc *v1alpha1.TidbCluster, pdName string, hostDown bool) {
 	failureMember := tc.Status.PD.FailureMembers[pdName]
 	failureMember.HostDown = hostDown
 	tc.Status.PD.FailureMembers[pdName] = failureMember
 }
 
+// GetCreatedAt returns the CreatedAt timestamp of the given failure member
 func (fma *pdFailureMemberAccess) GetCreatedAt(tc *v1alpha1.TidbCluster, pdName string) metav1.Time {
 	return tc.Status.PD.FailureMembers[pdName].CreatedAt
 }
 
+// GetLastTransitionTime returns the LastTransitionTime timestamp of the given failure member
 func (fma *pdFailureMemberAccess) GetLastTransitionTime(tc *v1alpha1.TidbCluster, pdName string) metav1.Time {
 	return tc.Status.PD.Members[pdName].LastTransitionTime
 }
 
+// GetPvcUIDSet returns the PVC UID set of the given failure member
 func (fma *pdFailureMemberAccess) GetPvcUIDSet(tc *v1alpha1.TidbCluster, pdName string) map[types.UID]v1alpha1.EmptyStruct {
 	// for backward compatibility, if there exists failureMembers and user upgrades operator to newer version
 	// there will be failure member structures with PVCUID set from api server, we should handle this and return it in PVCUIDSet
