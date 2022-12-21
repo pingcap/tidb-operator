@@ -1740,3 +1740,15 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 		})
 	}
 }
+
+func TestSyncRecoveryForTiFlash(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbClusterForTiflash()
+	tmm, _, _, _, _, _ := newFakeTiFlashMemberManager(tc)
+	err := tmm.syncRecoveryForTiFlash(tc)
+	g.Expect(err).To(BeNil())
+
+	tc.Spec.RecoveryMode = true
+	err = tmm.syncRecoveryForTiFlash(tc)
+	g.Expect(err).NotTo(BeNil())
+}
