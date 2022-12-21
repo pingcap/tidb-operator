@@ -83,7 +83,7 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		return f.tryToMarkAPeerAsFailure(tc)
 	}
 
-	if err := f.failureRecovery.CheckHostDownAndRestartPod(tc); err != nil {
+	if err := f.failureRecovery.RestartPodOnHostDown(tc); err != nil {
 		if controller.IsIgnoreError(err) {
 			return nil
 		}
@@ -257,6 +257,8 @@ func (f *pdFailover) isPDInQuorum(tc *v1alpha1.TidbCluster) (bool, int) {
 // pdFailureMemberAccess implements the FailureObjectAccess interface for PD member
 type pdFailureMemberAccess struct{}
 
+var _ FailureObjectAccess = (*pdFailureMemberAccess)(nil)
+
 func (fma *pdFailureMemberAccess) GetMemberType() v1alpha1.MemberType {
 	return v1alpha1.PDMemberType
 }
@@ -280,8 +282,8 @@ func (fma *pdFailureMemberAccess) GetPodName(_ *v1alpha1.TidbCluster, pdName str
 	return strings.Split(pdName, ".")[0]
 }
 
-// IsHostDownForFailurePod checks if HostDown is set for any pd failure member
-func (fma *pdFailureMemberAccess) IsHostDownForFailurePod(tc *v1alpha1.TidbCluster) bool {
+// IsHostDownForFailedPod checks if HostDown is set for any pd failure member
+func (fma *pdFailureMemberAccess) IsHostDownForFailedPod(tc *v1alpha1.TidbCluster) bool {
 	for pdName := range tc.Status.PD.FailureMembers {
 		pdMember := tc.Status.PD.FailureMembers[pdName]
 		if pdMember.HostDown {
@@ -313,8 +315,8 @@ func (fma *pdFailureMemberAccess) GetLastTransitionTime(tc *v1alpha1.TidbCluster
 	return tc.Status.PD.Members[pdName].LastTransitionTime
 }
 
-// GetPvcUIDSet returns the PVC UID set of the given failure member
-func (fma *pdFailureMemberAccess) GetPvcUIDSet(tc *v1alpha1.TidbCluster, pdName string) map[types.UID]v1alpha1.EmptyStruct {
+// GetPVCUIDSet returns the PVC UID set of the given failure member
+func (fma *pdFailureMemberAccess) GetPVCUIDSet(tc *v1alpha1.TidbCluster, pdName string) map[types.UID]v1alpha1.EmptyStruct {
 	// for backward compatibility, if there exists failureMembers and user upgrades operator to newer version
 	// there will be failure member structures with PVCUID set from api server, we should handle this and return it in PVCUIDSet
 	failureMember := tc.Status.PD.FailureMembers[pdName]

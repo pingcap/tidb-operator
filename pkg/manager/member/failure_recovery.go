@@ -1,4 +1,4 @@
-// Copyright 2018 PingCAP, Inc.
+// Copyright 2022 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,30 +45,34 @@ const (
 	restartToDeleteStoreGap = 10 * time.Minute
 )
 
-// FailureObjectAccess contains the common set of functions to access the properties of a failure object
+// FailureObjectAccess contains the common methods to access the properties of a failure object.
+// Failure object denotes the instance running on a pod of a component like a FailureStore or FailureMember. Thus,
+// In case of PD, the objectId is PD name (which is the key of FailureMember)
+// In case of TiKV/TiFlash, the objectId is storeID (which is the key of FailureStore)
 type FailureObjectAccess interface {
 	GetMemberType() v1alpha1.MemberType
 	GetFailureObjects(tc *v1alpha1.TidbCluster) map[string]v1alpha1.EmptyStruct
 	IsFailing(tc *v1alpha1.TidbCluster, objectId string) bool
 	GetPodName(tc *v1alpha1.TidbCluster, objectId string) string
-	IsHostDownForFailurePod(tc *v1alpha1.TidbCluster) bool
+	IsHostDownForFailedPod(tc *v1alpha1.TidbCluster) bool
 	IsHostDown(tc *v1alpha1.TidbCluster, objectId string) bool
 	SetHostDown(tc *v1alpha1.TidbCluster, objectId string, hostDown bool)
 	GetCreatedAt(tc *v1alpha1.TidbCluster, objectId string) metav1.Time
 	GetLastTransitionTime(tc *v1alpha1.TidbCluster, objectId string) metav1.Time
-	GetPvcUIDSet(tc *v1alpha1.TidbCluster, objectId string) map[types.UID]v1alpha1.EmptyStruct
+	GetPVCUIDSet(tc *v1alpha1.TidbCluster, objectId string) map[types.UID]v1alpha1.EmptyStruct
 }
 
-// commonStatefulFailureRecovery has the common logic to handle the failure recovery of a stateful component
+// commonStatefulFailureRecovery has the common logic to handle the failure recovery of a stateful component like PD, TiKV/TiFlash
+// It is currently used in pdFailover and commonStoreFailover.
 type commonStatefulFailureRecovery struct {
 	deps                *controller.Dependencies
 	failureObjectAccess FailureObjectAccess
 }
 
-// CheckHostDownAndRestartPod checks for HostDown for any failure store or member then does a restart of pod
-func (fr *commonStatefulFailureRecovery) CheckHostDownAndRestartPod(tc *v1alpha1.TidbCluster) error {
+// RestartPodOnHostDown checks for HostDown for any failure store or member then does a force restart of the pod
+func (fr *commonStatefulFailureRecovery) RestartPodOnHostDown(tc *v1alpha1.TidbCluster) error {
 	if fr.deps.CLIConfig.DetectNodeFailure {
-		if fr.failureObjectAccess.IsHostDownForFailurePod(tc) {
+		if fr.failureObjectAccess.IsHostDownForFailedPod(tc) {
 			if canAutoFailureRecovery(tc) {
 				if err := fr.restartPodForHostDown(tc); err != nil {
 					if controller.IsIgnoreError(err) {
@@ -99,7 +103,7 @@ func (fr *commonStatefulFailureRecovery) checkAndMarkHostDown(tc *v1alpha1.TidbC
 			// for backward compatibility, if there exists failure stores and user upgrades operator to newer version there
 			// will be failure store structures with empty PVCUIDSet set from api server, we should not handle those failure
 			// stores for failure recovery (or failure member with empty PVCUIDSet)
-			if !fr.failureObjectAccess.IsHostDown(tc, objectId) && len(fr.failureObjectAccess.GetPvcUIDSet(tc, objectId)) > 0 {
+			if !fr.failureObjectAccess.IsHostDown(tc, objectId) && len(fr.failureObjectAccess.GetPVCUIDSet(tc, objectId)) > 0 {
 				pod, err := fr.deps.PodLister.Pods(ns).Get(fr.failureObjectAccess.GetPodName(tc, objectId))
 				if err != nil && !errors.IsNotFound(err) {
 					return fmt.Errorf("%s failover [checkAndMarkHostDown]: failed to get pod %s for tc %s/%s, error: %s", fr.failureObjectAccess.GetMemberType(), fr.failureObjectAccess.GetPodName(tc, objectId), ns, tcName, err)
@@ -243,7 +247,7 @@ func (fr *commonStatefulFailureRecovery) deletePodAndPvcs(tc *v1alpha1.TidbClust
 		klog.Infof("pod %s/%s has DeletionTimestamp set to %s", ns, pod.Name, pod.DeletionTimestamp)
 	}
 
-	pvcUIDSet := fr.failureObjectAccess.GetPvcUIDSet(tc, objectId)
+	pvcUIDSet := fr.failureObjectAccess.GetPVCUIDSet(tc, objectId)
 	pvcUids := make([]types.UID, 0, len(pvcs))
 	for p := range pvcs {
 		pvcUids = append(pvcUids, pvcs[p].ObjectMeta.UID)

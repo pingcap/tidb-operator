@@ -63,7 +63,7 @@ func (sf *commonStoreFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	// If HostDown is set and Store is Down then delete Store after some gap from the time of pod restart
 	// If HostDown is set and Store has been removed or become Tombstone then remove PVC and set StoreDeleted
 
-	if err := sf.failureRecovery.CheckHostDownAndRestartPod(tc); err != nil {
+	if err := sf.failureRecovery.RestartPodOnHostDown(tc); err != nil {
 		if controller.IsIgnoreError(err) {
 			return nil
 		}
@@ -260,8 +260,8 @@ func (fsa *failureStoreAccess) GetPodName(tc *v1alpha1.TidbCluster, storeId stri
 	return failureStore.PodName
 }
 
-// IsHostDownForFailurePod checks if HostDown is set for any failure store in the particular store type
-func (fsa *failureStoreAccess) IsHostDownForFailurePod(tc *v1alpha1.TidbCluster) bool {
+// IsHostDownForFailedPod checks if HostDown is set for any failure store in the particular store type
+func (fsa *failureStoreAccess) IsHostDownForFailedPod(tc *v1alpha1.TidbCluster) bool {
 	return fsa.storeAccess.IsHostDownForFailurePod(tc)
 }
 
@@ -290,8 +290,8 @@ func (fsa *failureStoreAccess) GetLastTransitionTime(tc *v1alpha1.TidbCluster, s
 	return store.LastTransitionTime
 }
 
-// GetPvcUIDSet returns the PVC UID set of the given failure store
-func (fsa *failureStoreAccess) GetPvcUIDSet(tc *v1alpha1.TidbCluster, storeId string) map[types.UID]v1alpha1.EmptyStruct {
+// GetPVCUIDSet returns the PVC UID set of the given failure store
+func (fsa *failureStoreAccess) GetPVCUIDSet(tc *v1alpha1.TidbCluster, storeId string) map[types.UID]v1alpha1.EmptyStruct {
 	failureStore, _ := fsa.storeAccess.GetFailureStore(tc, storeId)
 	return failureStore.PVCUIDSet
 }
