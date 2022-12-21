@@ -53,14 +53,17 @@ var (
 	// backupScheduleControllerKind contains the schema.GroupVersionKind for backupschedule controller type.
 	backupScheduleControllerKind = v1alpha1.SchemeGroupVersion.WithKind("BackupSchedule")
 
-	// tidbMonitorControllerkind cotnains the schema.GroupVersionKind for TidbMonitor controller type.
-	tidbMonitorControllerkind = v1alpha1.SchemeGroupVersion.WithKind("TidbMonitor")
+	// tidbMonitorControllerKind contains the schema.GroupVersionKind for TidbMonitor controller type.
+	tidbMonitorControllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbMonitor")
 
-	// tidbClusterAutoScalerKind cotnains the schema.GroupVersionKind for TidbClusterAutoScaler controller type.
+	// tidbClusterAutoScalerKind contains the schema.GroupVersionKind for TidbClusterAutoScaler controller type.
 	tidbClusterAutoScalerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbClusterAutoScaler")
 
-	// tidbNGMonitoringKind cotnains the schema.GroupVersionKind for TidbNGMonitoring controller type.
+	// tidbNGMonitoringKind contains the schema.GroupVersionKind for TidbNGMonitoring controller type.
 	tidbNGMonitoringKind = v1alpha1.SchemeGroupVersion.WithKind("TidbNGMonitoring")
+
+	// tidbDashboardKind contains the schema.GroupVersionKind for TidbDashboard controller type.
+	tidbDashboardKind = v1alpha1.SchemeGroupVersion.WithKind("TidbDashboard")
 )
 
 // RequeueError is used to requeue the item, this error type should't be considered as a real error
@@ -83,7 +86,7 @@ func IsRequeueError(err error) bool {
 	return stderrs.As(err, &rerr)
 }
 
-// IgnoreError is used to ignore this item, this error type should't be considered as a real error, no need to requeue
+// IgnoreError is used to ignore this item, this error type shouldn't be considered as a real error, no need to requeue
 type IgnoreError struct {
 	s string
 }
@@ -177,8 +180,8 @@ func GetTiDBMonitorOwnerRef(monitor *v1alpha1.TidbMonitor) metav1.OwnerReference
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
-		APIVersion:         tidbMonitorControllerkind.GroupVersion().String(),
-		Kind:               tidbMonitorControllerkind.Kind,
+		APIVersion:         tidbMonitorControllerKind.GroupVersion().String(),
+		Kind:               tidbMonitorControllerKind.Kind,
 		Name:               monitor.GetName(),
 		UID:                monitor.GetUID(),
 		Controller:         &controller,
@@ -207,6 +210,19 @@ func GetTiDBNGMonitoringOwnerRef(tngm *v1alpha1.TidbNGMonitoring) metav1.OwnerRe
 		Kind:               tidbNGMonitoringKind.Kind,
 		Name:               tngm.GetName(),
 		UID:                tngm.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+func GetTiDBDashboardOwnerRef(td *v1alpha1.TidbDashboard) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         tidbDashboardKind.GroupVersion().String(),
+		Kind:               tidbDashboardKind.Kind,
+		Name:               td.GetName(),
+		UID:                td.GetUID(),
 		Controller:         &controller,
 		BlockOwnerDeletion: &blockOwnerDeletion,
 	}
@@ -285,14 +301,24 @@ func TiFlashMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tiflash", clusterName)
 }
 
-// TiCDCMemberName returns ticdc member name
-func TiCDCMemberName(clusterName string) string {
-	return fmt.Sprintf("%s-ticdc", clusterName)
-}
-
 // TiFlashPeerMemberName returns tiflash peer service name
 func TiFlashPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tiflash-peer", clusterName)
+}
+
+// TiProxyMemberName returns tiproxy member name
+func TiProxyMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tiproxy", clusterName)
+}
+
+// TiProxyPeerMemberName returns tiproxy peer service name
+func TiProxyPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tiproxy-peer", clusterName)
+}
+
+// TiCDCMemberName returns ticdc member name
+func TiCDCMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-ticdc", clusterName)
 }
 
 // TiCDCPeerMemberName returns ticdc peer service name
@@ -357,10 +383,10 @@ func TiDBInitSecret(clusterName string) string {
 }
 
 // AnnProm adds annotations for prometheus scraping metrics
-func AnnProm(port int32) map[string]string {
+func AnnProm(port int32, path string) map[string]string {
 	return map[string]string{
 		"prometheus.io/scrape": "true",
-		"prometheus.io/path":   "/metrics",
+		"prometheus.io/path":   path,
 		"prometheus.io/port":   fmt.Sprintf("%d", port),
 	}
 }

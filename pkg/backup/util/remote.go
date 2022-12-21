@@ -28,6 +28,7 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -39,16 +40,24 @@ import (
 	"gocloud.dev/blob/s3blob"
 	"gocloud.dev/gcerrors"
 	"gocloud.dev/gcp"
+	corev1 "k8s.io/api/core/v1"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/backup/util"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 )
 
 const (
 	maxRetries         = 3 // number of retries to make of operations
 	defaultStorageFlag = "storage"
 )
+
+type StorageCredential struct {
+	//TODO: currently, we do not have better way to unify storage credentials, temp solution using s3 credentials
+	awsCred *credentials.Credentials
+}
 
 type s3Config struct {
 	region         string
@@ -96,17 +105,18 @@ type StorageBackend struct {
 }
 
 // NewStorageBackend creates new storage backend, now supports S3/GCS/Azblob/Local
-func NewStorageBackend(provider v1alpha1.StorageProvider) (*StorageBackend, error) {
+// function called by both controller and backup/restore, since BR already has env config in BR pod, cred can be nil.
+func NewStorageBackend(provider v1alpha1.StorageProvider, cred *StorageCredential) (*StorageBackend, error) {
 	var bucket *blob.Bucket
 	var err error
 
 	b := &StorageBackend{}
 
-	st := util.GetStorageType(provider)
+	st := GetStorageType(provider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
 		b.s3 = makeS3Config(provider.S3, true)
-		bucket, err = newS3Storage(b.s3)
+		bucket, err = newS3Storage(b.s3, cred)
 	case v1alpha1.BackupStorageTypeGcs:
 		b.gcs = makeGcsConfig(provider.Gcs, true)
 		bucket, err = newGcsStorage(b.gcs)
@@ -315,10 +325,46 @@ func BatchDeleteObjectsConcurrently(ctx context.Context, bucket *blob.Bucket, ob
 	return result
 }
 
+func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLister corelisterv1.SecretLister) *StorageCredential {
+	var err error
+	var secret *corev1.Secret
+	storageType := GetStorageType(provider)
+
+	switch storageType {
+	case v1alpha1.BackupStorageTypeS3:
+		s3SecretName := provider.S3.SecretName
+		if s3SecretName != "" {
+			secret, err = secretLister.Secrets(ns).Get(s3SecretName)
+			if err != nil {
+				klog.Errorf("Get the secret key failed.")
+				return &StorageCredential{}
+			}
+
+			s3AccessKey := string(secret.Data[constants.S3AccessKey])
+			s3SecretKey := string(secret.Data[constants.S3SecretKey])
+
+			if s3AccessKey != "" && s3SecretKey != "" {
+				cred := credentials.NewStaticCredentials(s3AccessKey, s3SecretKey, "")
+				return &StorageCredential{
+					cred,
+				}
+			}
+
+		}
+	//TODO: will support gcs
+	case v1alpha1.BackupStorageTypeGcs:
+		return &StorageCredential{}
+	default:
+		return &StorageCredential{}
+	}
+
+	return &StorageCredential{}
+}
+
 // genStorageArgs returns the arg for --flag option and the remote/local path for br, default flag is storage.
 // TODO: add unit test
 func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]string, error) {
-	st := util.GetStorageType(provider)
+	st := GetStorageType(provider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
 		qs := makeS3Config(provider.S3, false)
@@ -392,7 +438,7 @@ func newLocalStorage(conf *localConfig) (*blob.Bucket, error) {
 }
 
 // newS3Storage initialize a new s3 storage
-func newS3Storage(conf *s3Config) (*blob.Bucket, error) {
+func newS3Storage(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error) {
 	awsConfig := aws.NewConfig().WithMaxRetries(maxRetries).
 		WithS3ForcePathStyle(conf.forcePathStyle)
 	if conf.region != "" {
@@ -401,6 +447,11 @@ func newS3Storage(conf *s3Config) (*blob.Bucket, error) {
 	if conf.endpoint != "" {
 		awsConfig.WithEndpoint(conf.endpoint)
 	}
+
+	if cred != nil {
+		awsConfig.WithCredentials(cred.awsCred)
+	}
+
 	// awsConfig.WithLogLevel(aws.LogDebugWithSigning)
 	awsSessionOpts := session.Options{
 		Config: *awsConfig,
@@ -622,7 +673,6 @@ func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 	if fakeRegion && conf.region == "" {
 		conf.region = "us-east-1"
 	}
-
 	return &conf
 }
 

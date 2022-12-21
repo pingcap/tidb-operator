@@ -2,12 +2,12 @@
 
 > **Note:**
 >
-> This setup is for test or demo purpose only and **IS NOT** applicable for critical environment. Refer to the [Documents](https://pingcap.com/docs/stable/tidb-in-kubernetes/deploy/prerequisites/) for production setup.
+> This setup is for test or demo purpose only and **IS NOT** applicable for critical environment. Refer to the [Documents](https://docs.pingcap.com/tidb-in-kubernetes/stable/prerequisites/) for production setup.
 
 The following steps will create a TiDB cluster with TiFlash deployed and monitoring.
 
 **Prerequisites**: 
-- TiDB operator `v1.1.0-rc.3` or higher version installed. [Doc](https://pingcap.com/docs/stable/tidb-in-kubernetes/deploy/tidb-operator/)
+- TiDB operator `v1.1.0-rc.3` or higher version installed. [Doc](https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-tidb-operator/)
 - Available `StorageClass` configured, and there are enough PVs (by default, 9 PVs are required) of that storageClass:
   
   The available `StorageClass` can by checked with the following command:
@@ -52,7 +52,7 @@ Explore the TiDB SQL interface:
 > kubectl -n <namespace> port-forward svc/demo-tidb 4000:4000 &>/tmp/pf-tidb.log &
 > mysql -h 127.0.0.1 -P 4000 -u root --comments
 ```
-Refer to the [doc](https://pingcap.com/docs/stable/reference/tiflash/use-tiflash/) to try TiFlash.
+Refer to the [doc](https://docs.pingcap.com/tidb/stable/tiflash-overview/) to try TiFlash.
 
 Explore the monitoring dashboards:
 

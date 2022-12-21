@@ -31,3 +31,7 @@ type DMManager interface {
 type TiDBNGMonitoringManager interface {
 	Sync(*v1alpha1.TidbNGMonitoring, *v1alpha1.TidbCluster) error
 }
+
+type TiDBDashboardManager interface {
+	Sync(*v1alpha1.TidbDashboard, *v1alpha1.TidbCluster) error
+}

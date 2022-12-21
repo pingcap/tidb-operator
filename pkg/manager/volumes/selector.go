@@ -53,6 +53,7 @@ func convertMemberTypeToLabelVal(mt v1alpha1.MemberType) string {
 func NewSelectorFactory() (*selectorFactory, error) {
 	mts := []v1alpha1.MemberType{
 		v1alpha1.PDMemberType,
+		v1alpha1.TiProxyMemberType,
 		v1alpha1.TiDBMemberType,
 		v1alpha1.TiKVMemberType,
 		v1alpha1.TiFlashMemberType,
