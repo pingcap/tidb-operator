@@ -12894,6 +12894,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction"),
 						},
 					},
+					"preferIPv6": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PreferIPv6 indicates whether to prefer IPv6 addresses for all components.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
