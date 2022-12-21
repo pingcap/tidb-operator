@@ -196,14 +196,6 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	klog.Infof("pd failover[tryToDeleteAFailureMember]: delete member %s/%s(%d) successfully", ns, failurePodName, memberID)
 	f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberDeleted", "failure member %s/%s(%d) deleted from PD cluster", ns, failurePodName, memberID)
 
-	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
-	// If new Pod is created before old PVCs are deleted, the Statefulset will try to use the old PVCs and skip creating new PVCs.
-	// This could result in 2 possible cases:
-	// 1. If the old PVCs are first mounted successfully by the new Pod, the following pvc deletion will fail and return error.
-	//    We will try to delete the Pod and PVCs again in the next requeued run.
-	// 2. If the old PVCs are first deleted successfully here, the new Pods will try to mount non-existing PVCs, which will pend forever.
-	//    This is where OrphanPodsCleaner kicks in, which will delete the pending Pods in this situation.
-	//    Please refer to orphan_pods_cleaner.go for details.
 	err = f.failureRecovery.deletePodAndPvcs(tc, failurePDName)
 	if err != nil {
 		return err

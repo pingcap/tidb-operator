@@ -234,6 +234,14 @@ func (fr *commonStatefulFailureRecovery) deletePodAndPvcs(tc *v1alpha1.TidbClust
 		klog.Infof("%s failover[deletePodAndPvcs]: failure pod %s/%s not found, skip", memberType, ns, failurePodName)
 		return nil
 	}
+	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
+	// If new Pod is created before old PVCs are deleted, the Statefulset will try to use the old PVCs and skip creating new PVCs.
+	// This could result in 2 possible cases:
+	// 1. If the old PVCs are first mounted successfully by the new Pod, the following pvc deletion will fail and return error.
+	//    We will try to delete the Pod and PVCs again in the next requeued run.
+	// 2. If the old PVCs are first deleted successfully here, the new Pods will try to mount non-existing PVCs, which will pend forever.
+	//    This is where OrphanPodsCleaner kicks in, which will delete the pending Pods in this situation.
+	//    Please refer to orphan_pods_cleaner.go for details.
 	if pod.DeletionTimestamp == nil {
 		// In case of K8s node failure, it is expected that scheduling be disabled on the K8s node by cordoning it.
 		// Or else, after restart the pod would use the old PVC and then clean up of pvc will not happen.
