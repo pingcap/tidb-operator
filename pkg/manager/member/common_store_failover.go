@@ -47,6 +47,8 @@ type StoreAccess interface {
 }
 
 // commonStoreFailover has the common logic to handle the failover of TiKV and TiFlash store
+// It uses the StoreAccess interface thus enabling it to have the common logic for TiKV and TiFlash
+// It uses the commonStatefulFailureRecovery to handle the failure recovery of TiKV or TiFlash failed pods
 type commonStoreFailover struct {
 	deps            *controller.Dependencies
 	storeAccess     StoreAccess
@@ -228,6 +230,7 @@ func (sf *commonStoreFailover) Recover(tc *v1alpha1.TidbCluster) {
 }
 
 // failureStoreAccess implements the FailureObjectAccess interface for TiKV and TiFlash store
+// It uses the StoreAccess interface thus enabling it to have the common logic for TiKV and TiFlash
 type failureStoreAccess struct {
 	storeAccess StoreAccess
 }

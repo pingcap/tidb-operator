@@ -29,6 +29,8 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// pdFailover has the Failover logic for PD members
+// It uses the commonStatefulFailureRecovery to handle the failure recovery of PD failed pods
 type pdFailover struct {
 	deps            *controller.Dependencies
 	failureRecovery commonStatefulFailureRecovery

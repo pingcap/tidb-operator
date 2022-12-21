@@ -63,6 +63,7 @@ type FailureObjectAccess interface {
 }
 
 // commonStatefulFailureRecovery has the common logic to handle the failure recovery of a stateful component like PD, TiKV/TiFlash
+// It uses the FailureObjectAccess interface thus enabling it to have the common logic for failure recovery for PD, and TiKV/TiFlash
 // It is currently used in pdFailover and commonStoreFailover.
 type commonStatefulFailureRecovery struct {
 	deps                *controller.Dependencies
