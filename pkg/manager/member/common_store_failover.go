@@ -80,8 +80,7 @@ func (sf *commonStoreFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	if canAutoFailureRecovery(tc) {
 		// If the store has not come back Up in some time after pod was restarted, then delete store and remove failure PVC
 		failureStores := sf.storeAccess.GetFailureStores(tc)
-		for storeId := range failureStores {
-			failureStore := failureStores[storeId]
+		for _, failureStore := range failureStores {
 			if failureStore.HostDown && !failureStore.StoreDeleted {
 				if err := sf.invokeDeleteFailureStore(tc, failureStore); err != nil {
 					if controller.IsIgnoreError(err) {
