@@ -2092,7 +2092,33 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.Containers[1].Command[2]).To(ContainSubstring("raftdb.info"))
 			},
 		},
-		// TODO add more tests
+		{
+			name: "TiKV spec readiness",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{
+								Type: pointer.StringPtr("tcp"),
+							},
+						},
+					},
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.Containers[0].ReadinessProbe).To(Equal(&corev1.Probe{
+					Handler:             buildTiKVReadinessProbHandler(nil),
+					InitialDelaySeconds: int32(10),
+				}))
+			},
+		},
 	}
 
 	for _, tt := range tests {
