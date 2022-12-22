@@ -211,9 +211,9 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 				w.Write(readable.LEVEL_0, "%s\t", tc.Status.PD.Phase)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.PD.StatefulSet.ReadyReplicas)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.PD.StatefulSet.Replicas)
-				w.Write(readable.LEVEL_0, "%s\t", pdCPU)
-				w.Write(readable.LEVEL_0, "%s\t", pdMemory)
-				w.Write(readable.LEVEL_0, "%s\t", pdStorage)
+				w.Write(readable.LEVEL_0, "%s\t", pdCPU.String())
+				w.Write(readable.LEVEL_0, "%s\t", pdMemory.String())
+				w.Write(readable.LEVEL_0, "%s\t", pdStorage.String())
 				w.Write(readable.LEVEL_0, "%s\t\n", tc.PDImage())
 			}
 			w.Write(readable.LEVEL_1, "TiKV:\t")
@@ -221,9 +221,9 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 				w.Write(readable.LEVEL_0, "%s\t", tc.Status.TiKV.Phase)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.TiKV.StatefulSet.ReadyReplicas)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.TiKV.StatefulSet.Replicas)
-				w.Write(readable.LEVEL_0, "%s\t", tikvCPU)
-				w.Write(readable.LEVEL_0, "%s\t", tikvMemory)
-				w.Write(readable.LEVEL_0, "%s\t", tikvStorage)
+				w.Write(readable.LEVEL_0, "%s\t", tikvCPU.String())
+				w.Write(readable.LEVEL_0, "%s\t", tikvMemory.String())
+				w.Write(readable.LEVEL_0, "%s\t", tikvStorage.String())
 				w.Write(readable.LEVEL_0, "%s\t\n", tc.TiKVImage())
 			}
 			w.Write(readable.LEVEL_1, "TiDB\t")
@@ -231,9 +231,9 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 				w.Write(readable.LEVEL_0, "%s\t", tc.Status.TiDB.Phase)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.TiDB.StatefulSet.ReadyReplicas)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.TiDB.StatefulSet.Replicas)
-				w.Write(readable.LEVEL_0, "%s\t", tidbCPU)
-				w.Write(readable.LEVEL_0, "%s\t", tidbMemory)
-				w.Write(readable.LEVEL_0, "%s\t", tidbStorage)
+				w.Write(readable.LEVEL_0, "%s\t", tidbCPU.String())
+				w.Write(readable.LEVEL_0, "%s\t", tidbMemory.String())
+				w.Write(readable.LEVEL_0, "%s\t", tidbStorage.String())
 				w.Write(readable.LEVEL_0, "%s\t\n", tc.TiDBImage())
 			}
 		}
