@@ -554,3 +554,33 @@ func MergePatchContainers(base, patches []corev1.Container) ([]corev1.Container,
 
 	return out, nil
 }
+
+func BuildProbeCommand(tc *v1alpha1.TidbCluster, componentType string) (command []string) {
+	host := "127.0.0.1"
+	var readinessURL string
+	if componentType == label.PDLabelVal {
+		readinessURL = fmt.Sprintf("%s://%s:2379/status", tc.Scheme(), host)
+	}
+	if componentType == label.TiDBLabelVal {
+		readinessURL = fmt.Sprintf("%s://%s:10080/status", tc.Scheme(), host)
+	}
+	command = append(command, "curl")
+	command = append(command, readinessURL)
+
+	// Fail silently (no output at all) on server errors
+	// without this if the server return 500, the exist code will be 0
+	// and probe is success.
+	command = append(command, "--fail")
+	// follow 301 or 302 redirect
+	command = append(command, "--location")
+
+	if tc.IsTLSClusterEnabled() {
+		cacert := path.Join(clusterCertPath, tlsSecretRootCAKey)
+		cert := path.Join(clusterCertPath, corev1.TLSCertKey)
+		key := path.Join(clusterCertPath, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert)
+		command = append(command, "--cert", cert)
+		command = append(command, "--key", key)
+	}
+	return
+}
