@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"regexp"
 
 	"github.com/pingcap/TiProxy/lib/cli"
 	"github.com/pingcap/TiProxy/lib/config"
@@ -31,12 +30,8 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
-var serviceNotReady = regexp.MustCompile("service not ready")
-
 // TiProxyControlInterface is the interface that knows how to control tiproxy clusters
 type TiProxyControlInterface interface {
-	// IsPodHealthy gets the healthy status of TiProxy pod.
-	IsPodHealthy(tc *v1alpha1.TidbCluster, ordinal int32) (ok bool, err error)
 	// SetConfigProxy set the proxy part in config
 	SetConfigProxy(tc *v1alpha1.TidbCluster, ordinal int32, cfg *config.ProxyServerOnline) error
 	// GetConfigProxy get the proxy part in config
@@ -108,14 +103,6 @@ func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) 
 		cmd.SetArgs(append(args, s...))
 		return out, cmd.Execute()
 	}
-}
-
-func (c *defaultTiProxyControl) IsPodHealthy(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
-	out, err := c.getCli(tc, ordinal)(nil, "config", "proxy", "get")
-	if err != nil {
-		return false, err
-	}
-	return !serviceNotReady.MatchString(out.String()), nil
 }
 
 func (c *defaultTiProxyControl) GetConfigProxy(tc *v1alpha1.TidbCluster, ordinal int32) (*config.ProxyServerOnline, error) {
