@@ -623,6 +623,22 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		Resources:    controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
 	}
 
+	if tc.Spec.TiKV.ReadinessProbe != nil {
+		tikvContainer.ReadinessProbe = &corev1.Probe{
+			Handler:             buildTiKVReadinessProbHandler(tc),
+			InitialDelaySeconds: int32(10),
+		}
+	}
+
+	if tc.Spec.TiKV.ReadinessProbe != nil {
+		if tc.Spec.TiKV.ReadinessProbe.InitialDelaySeconds != nil {
+			tikvContainer.ReadinessProbe.InitialDelaySeconds = *tc.Spec.TiKV.ReadinessProbe.InitialDelaySeconds
+		}
+		if tc.Spec.TiKV.ReadinessProbe.PeriodSeconds != nil {
+			tikvContainer.ReadinessProbe.PeriodSeconds = *tc.Spec.TiKV.ReadinessProbe.PeriodSeconds
+		}
+	}
+
 	if tc.Spec.TiKV.EnableNamedStatusPort {
 		kvStatusPort := corev1.ContainerPort{
 			Name:          "status",
@@ -1023,6 +1039,15 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 	}
 
 	return false, nil
+}
+
+// TODO: Support check tikv status http request in future.
+func buildTiKVReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
+	return corev1.Handler{
+		TCPSocket: &corev1.TCPSocketAction{
+			Port: intstr.FromInt(20160),
+		},
+	}
 }
 
 type FakeTiKVMemberManager struct {
