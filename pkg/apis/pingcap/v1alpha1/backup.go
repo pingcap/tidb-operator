@@ -202,10 +202,10 @@ func IsBackupPrepared(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
-// IsBackupStopped returns true if a Backup is stopped.
+// IsLogBackupStopped returns true if a log backup is stopped.
 // It means log backup is at stopped status.
 // It used to filter CR update event which is stop command and stopped status, and let it run truncate after log backup stopped which is truncate command and stopped status.
-func IsBackupStopped(backup *Backup) bool {
+func IsLogBackupStopped(backup *Backup) bool {
 	if backup.Spec.Mode == BackupModeLog {
 		command := ParseLogBackupSubcommand(backup)
 		return command == LogStopCommand && backup.Status.Phase == BackupStopped
