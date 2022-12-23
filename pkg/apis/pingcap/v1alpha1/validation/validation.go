@@ -66,7 +66,24 @@ func ValidateDMCluster(dc *v1alpha1.DMCluster) field.ErrorList {
 func ValidateTiDBNGMonitoring(tngm *v1alpha1.TidbNGMonitoring) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, validateTidbNGMonitorinSpec(&tngm.Spec, field.NewPath("spec"))...)
+	allErrs = append(allErrs, validateTidbNGMonitoringSpec(&tngm.Spec, field.NewPath("spec"))...)
+
+	return allErrs
+}
+
+// ValidateTiDBDashboard validates a TidbDashboard.
+func ValidateTiDBDashboard(td *v1alpha1.TidbDashboard) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if len(td.Spec.Clusters) != 1 {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec").Child("clusters"), len(td.Spec.Clusters), "must have at exactly one item"))
+	}
+
+	allErrs = append(allErrs, validateComponentSpec(&td.Spec.ComponentSpec, field.NewPath("spec"))...)
+
+	if len(td.Spec.StorageVolumes) > 0 {
+		allErrs = append(allErrs, validateStorageVolumes(td.Spec.StorageVolumes, field.NewPath("spec").Child("storageVolumes"))...)
+	}
 
 	return allErrs
 }
@@ -328,7 +345,7 @@ func validateWorkerSpec(spec *v1alpha1.WorkerSpec, fldPath *field.Path) field.Er
 	return allErrs
 }
 
-func validateTidbNGMonitorinSpec(spec *v1alpha1.TidbNGMonitoringSpec, fldPath *field.Path) field.ErrorList {
+func validateTidbNGMonitoringSpec(spec *v1alpha1.TidbNGMonitoringSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(spec.Clusters) < 1 {
@@ -359,7 +376,7 @@ func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) fi
 	return allErrs
 }
 
-//validateRequestsStorage validates resources requests storage
+// validateRequestsStorage validates resources requests storage
 func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if _, ok := requests[corev1.ResourceStorage]; !ok {
@@ -368,7 +385,7 @@ func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) 
 	return allErrs
 }
 
-//validateTiKVStorageSize validates resources requests storage
+// validateTiKVStorageSize validates resources requests storage
 func validateStorageVolumes(storageVolumes []v1alpha1.StorageVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	for i, storageVolume := range storageVolumes {

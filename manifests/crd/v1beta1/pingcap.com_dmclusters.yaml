@@ -2593,6 +2593,22 @@ spec:
                   type: object
                 priorityClassName:
                   type: string
+                readinessProbe:
+                  properties:
+                    initialDelaySeconds:
+                      format: int32
+                      minimum: 0
+                      type: integer
+                    periodSeconds:
+                      format: int32
+                      minimum: 1
+                      type: integer
+                    type:
+                      enum:
+                      - tcp
+                      - command
+                      type: string
+                  type: object
                 requests:
                   additionalProperties:
                     anyOf:
@@ -4943,6 +4959,22 @@ spec:
                   type: object
                 priorityClassName:
                   type: string
+                readinessProbe:
+                  properties:
+                    initialDelaySeconds:
+                      format: int32
+                      minimum: 0
+                      type: integer
+                    periodSeconds:
+                      format: int32
+                      minimum: 1
+                      type: integer
+                    type:
+                      enum:
+                      - tcp
+                      - command
+                      type: string
+                  type: object
                 replicas:
                   format: int32
                   minimum: 0
@@ -7425,6 +7457,22 @@ spec:
                   type: object
                 priorityClassName:
                   type: string
+                readinessProbe:
+                  properties:
+                    initialDelaySeconds:
+                      format: int32
+                      minimum: 0
+                      type: integer
+                    periodSeconds:
+                      format: int32
+                      minimum: 1
+                      type: integer
+                    type:
+                      enum:
+                      - tcp
+                      - command
+                      type: string
+                  type: object
                 recoverFailover:
                   type: boolean
                 replicas:

@@ -33,12 +33,11 @@ import (
 //
 // Example:
 //
-//    pdClient, cancel, err := NewProxiedPDClient(...)
-//    if err != nil {
-//		log.Fatal(err)
-//	  }
-//    defer cancel()
-//
+//	   pdClient, cancel, err := NewProxiedPDClient(...)
+//	   if err != nil {
+//			log.Fatal(err)
+//		  }
+//	   defer cancel()
 func NewProxiedPDClient(secretLister corelisterv1.SecretLister, fw utilportforward.PortForward, namespace string, tcName string, tlsEnabled bool) (pdapi.PDClient, context.CancelFunc, error) {
 	var tlsConfig *tls.Config
 	var err error

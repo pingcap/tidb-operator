@@ -14,7 +14,7 @@ require (
 	github.com/Masterminds/semver v1.4.2
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/agiledragon/gomonkey/v2 v2.3.0
-	github.com/aws/aws-sdk-go v1.30.9
+	github.com/aws/aws-sdk-go v1.44.72
 	github.com/aws/aws-sdk-go-v2 v1.16.11
 	github.com/aws/aws-sdk-go-v2/config v1.17.1
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.53.0
@@ -27,7 +27,6 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elazarl/goproxy v0.0.0-20190421051319-9d40249d3c2f // indirect; indirectload
 	github.com/emicklei/go-restful v2.9.5+incompatible
-	github.com/fatih/color v1.7.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gogo/protobuf v1.3.2
@@ -49,44 +48,46 @@ require (
 	github.com/openshift/generic-admission-server v1.14.1-0.20210422140326-da96454c926d
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
+	github.com/pingcap/TiProxy/lib v0.0.0-20221215061730-32b4c29b9388
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b2938
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
-	github.com/pingcap/errors v0.11.0
+	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
-	github.com/pingcap/tidb-operator/pkg/apis v1.3.8
-	github.com/pingcap/tidb-operator/pkg/client v1.3.8
+	github.com/pingcap/tidb-operator/pkg/apis v1.4.0-beta.4
+	github.com/pingcap/tidb-operator/pkg/client v1.4.0-beta.4
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.26.0
 	github.com/prometheus/prom2json v1.3.0
+	github.com/r3labs/diff/v2 v2.15.1
 	github.com/robfig/cron v1.1.0
 	github.com/sethvargo/go-password v0.2.0
 	github.com/sirupsen/logrus v1.6.0
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.8.0
 	github.com/tikv/pd v2.1.17+incompatible
 	github.com/uber-go/atomic v0.0.0-00010101000000-000000000000 // indirect
 	github.com/uber/jaeger-client-go v2.19.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/yisaer/crd-validation v0.0.3
-	github.com/zhouqiang-cl/gocovmerge v0.0.0-20190125174600-5256314471af
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5
+	go.uber.org/atomic v1.9.0
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gomodules.xyz/jsonpatch/v2 v2.1.0
 	google.golang.org/grpc v1.27.0
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.19.16
 	k8s.io/apiextensions-apiserver v0.19.16
 	k8s.io/apimachinery v0.19.16
 	k8s.io/apiserver v0.19.16
 	k8s.io/cli-runtime v0.19.16
 	k8s.io/client-go v0.19.16
-	k8s.io/code-generator v0.19.16
 	k8s.io/component-base v0.19.16
 	k8s.io/klog/v2 v2.3.0
 	k8s.io/kube-aggregator v0.19.16
@@ -95,7 +96,6 @@ require (
 	k8s.io/kubernetes v1.19.16
 	k8s.io/utils v0.0.0-20200912215256-4140de9c8800
 	mvdan.cc/sh/v3 v3.4.3
-	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
 	sigs.k8s.io/controller-runtime v0.7.2
 )
 

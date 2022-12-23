@@ -226,7 +226,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			changePods:        nil,
 			transferLeaderErr: false,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err.Error()).To(Equal(fmt.Sprintf("tidbcluster: [default/upgrader]'s pd upgraded pod: [%s] is not ready", PdPodName(upgradeTcName, 2))))
+				g.Expect(err.Error()).To(Equal(fmt.Sprintf("tidbcluster: [default/upgrader]'s pd upgraded pod: [%s] is not health", PdPodName(upgradeTcName, 2))))
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
@@ -302,9 +302,9 @@ func TestChoosePDToTransferFromMembers(t *testing.T) {
 		{
 			name: "ordinal is max",
 			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
-				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
 			},
 			ordinal:          2,
 			expectTargetName: "upgrader-pd-0",
@@ -312,9 +312,9 @@ func TestChoosePDToTransferFromMembers(t *testing.T) {
 		{
 			name: "ordinal is max but min ordinal pod is unhealthy",
 			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
-				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
-				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
 			},
 			ordinal:          2,
 			expectTargetName: "upgrader-pd-1",
@@ -322,9 +322,9 @@ func TestChoosePDToTransferFromMembers(t *testing.T) {
 		{
 			name: "ordinal is max but others are unhealthy",
 			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
-				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
-				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
-				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
 			},
 			ordinal:          2,
 			expectTargetName: "",
@@ -332,9 +332,9 @@ func TestChoosePDToTransferFromMembers(t *testing.T) {
 		{
 			name: "ordinal is mid",
 			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
-				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
 			},
 			ordinal:          1,
 			expectTargetName: "upgrader-pd-2",
@@ -342,9 +342,9 @@ func TestChoosePDToTransferFromMembers(t *testing.T) {
 		{
 			name: "ordinal is mid but max ordinal pod is unhealthy",
 			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
-				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: false}
 			},
 			ordinal:          1,
 			expectTargetName: "upgrader-pd-0",
@@ -352,9 +352,9 @@ func TestChoosePDToTransferFromMembers(t *testing.T) {
 		{
 			name: "ordinal is mid but others are unhealthy",
 			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
-				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
-				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: false}
 			},
 			ordinal:          1,
 			expectTargetName: "",
@@ -362,9 +362,9 @@ func TestChoosePDToTransferFromMembers(t *testing.T) {
 		{
 			name: "ordinal is min",
 			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
-				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
 			},
 			ordinal:          0,
 			expectTargetName: "upgrader-pd-2",
@@ -372,9 +372,9 @@ func TestChoosePDToTransferFromMembers(t *testing.T) {
 		{
 			name: "ordinal is min but max ordinal pod is unhealthy",
 			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
-				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: false}
 			},
 			ordinal:          0,
 			expectTargetName: "upgrader-pd-1",
@@ -382,9 +382,9 @@ func TestChoosePDToTransferFromMembers(t *testing.T) {
 		{
 			name: "ordinal is min but others are unhealthy",
 			changeFn: func(tc *v1alpha1.TidbCluster, ss *apps.StatefulSet) {
-				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: true}
-				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
-				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 0, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: true}
+				tc.Status.PD.Members[PdName(tc.Name, 1, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: false}
+				tc.Status.PD.Members[PdName(tc.Name, 2, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)] = v1alpha1.PDMember{Health: false}
 			},
 			ordinal:          0,
 			expectTargetName: "",

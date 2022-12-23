@@ -174,8 +174,10 @@ type Controls struct {
 	TiDBClusterControl TidbClusterControlInterface
 	DMClusterControl   DMClusterControlInterface
 	CDCControl         TiCDCControlInterface
+	ProxyControl       TiProxyControlInterface
 	TiDBControl        TiDBControlInterface
 	BackupControl      BackupControlInterface
+	RestoreControl     RestoreControlInterface
 	SecretControl      SecretControlInterface
 }
 
@@ -218,6 +220,7 @@ type Dependencies struct {
 	TiDBInitializerLister       listers.TidbInitializerLister
 	TiDBMonitorLister           listers.TidbMonitorLister
 	TiDBNGMonitoringLister      listers.TidbNGMonitoringLister
+	TiDBDashboardLister         listers.TidbDashboardLister
 
 	// Controls
 	Controls
@@ -243,6 +246,7 @@ func newRealControls(
 		genericCtrl       = NewRealGenericControl(genericCli, recorder)
 		tidbClusterLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 		dmClusterLister   = informerFactory.Pingcap().V1alpha1().DMClusters().Lister()
+		restoreLister     = informerFactory.Pingcap().V1alpha1().Restores().Lister()
 		statefulSetLister = kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 		serviceLister     = kubeInformerFactory.Core().V1().Services().Lister()
 		pvcLister         = kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
@@ -271,8 +275,10 @@ func newRealControls(
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
 		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
 		CDCControl:         NewDefaultTiCDCControl(secretLister),
+		ProxyControl:       NewDefaultTiProxyControl(secretLister),
 		TiDBControl:        NewDefaultTiDBControl(secretLister),
 		BackupControl:      NewRealBackupControl(clientset, recorder),
+		RestoreControl:     NewRealRestoreControl(clientset, restoreLister, recorder),
 		SecretControl:      NewRealSecretControl(kubeClientset, secretLister, recorder),
 	}
 }
@@ -359,6 +365,7 @@ func newDependencies(
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
 		TiDBNGMonitoringLister:      informerFactory.Pingcap().V1alpha1().TidbNGMonitorings().Lister(),
+		TiDBDashboardLister:         informerFactory.Pingcap().V1alpha1().TidbDashboards().Lister(),
 
 		AWSConfig: cfg,
 	}, nil

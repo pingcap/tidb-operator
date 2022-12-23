@@ -72,7 +72,9 @@ func (m *VirshVMManager) StartVM(v *VM) error {
 }
 
 // example input:
-//  Id    Name                           State
+//
+//	Id    Name                           State
+//
 // ----------------------------------------------------
 // 6     vm2                            running
 // 11    vm3                            running

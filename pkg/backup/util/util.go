@@ -16,7 +16,9 @@ package util
 import (
 	"fmt"
 	"net/url"
+	"path"
 	"strings"
+	"unsafe"
 
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -663,6 +665,19 @@ func canSkipSetGCLifeTime(image string) bool {
 	return true
 }
 
+func BytesToString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func StringToBytes(s string) []byte {
+	return *(*[]byte)(unsafe.Pointer(
+		&struct {
+			string
+			Cap int
+		}{s, len(s)},
+	))
+}
+
 // isLogBackSupport returns whether tikv supports log backup
 func isLogBackSupport(tikvImage string) bool {
 	_, version := ParseImage(tikvImage)
@@ -675,4 +690,45 @@ func isLogBackSupport(tikvImage string) bool {
 		return false
 	}
 	return true
+}
+
+// GetStorageRestorePath generate the path of a specific storage from Restore
+func GetStoragePath(privoder v1alpha1.StorageProvider) (string, error) {
+	var url, bucket, prefix string
+	st := GetStorageType(privoder)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		prefix = privoder.S3.Prefix
+		bucket = privoder.S3.Bucket
+		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeGcs:
+		prefix = privoder.Gcs.Prefix
+		bucket = privoder.Gcs.Bucket
+		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeAzblob:
+		prefix = privoder.Azblob.Prefix
+		bucket = privoder.Azblob.Container
+		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeLocal:
+		prefix = privoder.Local.Prefix
+		mountPath := privoder.Local.VolumeMount.MountPath
+		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
+		return url, nil
+	default:
+		return "", fmt.Errorf("storage %s not supported yet", st)
+	}
+}
+
+// GetOptions gets the rclone options
+func GetOptions(provider v1alpha1.StorageProvider) []string {
+	st := GetStorageType(provider)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		return provider.S3.Options
+	default:
+		return nil
+	}
 }

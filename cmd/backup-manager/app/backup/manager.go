@@ -278,7 +278,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.backupData(ctx, backup)
+	backupErr := bm.backupData(ctx, backup, bm.StatusUpdater)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
@@ -318,35 +318,43 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}
 	klog.Infof("backup cluster %s data to %s success", bm, backupFullPath)
 
-	backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("Get backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetBackupMetadataFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-	klog.Infof("Get br metadata for backup files in %s of cluster %s success", backupFullPath, bm)
-	size := util.GetBRArchiveSize(backupMeta)
-	commitTs := backupMeta.EndVersion
-	klog.Infof("Get size %d for backup files in %s of cluster %s success", size, backupFullPath, bm)
-	klog.Infof("Get cluster %s commitTs %d success", bm, commitTs)
-	finish := time.Now()
-
-	backupSize := int64(size)
-	backupSizeReadable := humanize.Bytes(uint64(size))
-	ts := strconv.FormatUint(commitTs, 10)
-	updateStatus := &controller.BackupUpdateStatus{
-		TimeStarted:        &metav1.Time{Time: started},
-		TimeCompleted:      &metav1.Time{Time: finish},
-		BackupSize:         &backupSize,
-		BackupSizeReadable: &backupSizeReadable,
-		CommitTs:           &ts,
+	var updateStatus *controller.BackupUpdateStatus
+	switch bm.Mode {
+	case string(v1alpha1.BackupModeVolumeSnapshot):
+		// In volume snapshot mode, commitTS and size have been updated according to the
+		// br command output, so we don't need to update them here.
+		updateStatus = &controller.BackupUpdateStatus{
+			TimeStarted:   &metav1.Time{Time: started},
+			TimeCompleted: &metav1.Time{Time: time.Now()},
+		}
+	default:
+		backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
+		if err != nil {
+			errs = append(errs, err)
+			klog.Errorf("Get backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
+			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:    v1alpha1.BackupFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "GetBackupMetadataFailed",
+				Message: err.Error(),
+			}, nil)
+			errs = append(errs, uerr)
+			return errorutils.NewAggregate(errs)
+		}
+		klog.Infof("Get br metadata for backup files in %s of cluster %s success", backupFullPath, bm)
+		backupSize := int64(util.GetBRArchiveSize(backupMeta))
+		backupSizeReadable := humanize.Bytes(uint64(backupSize))
+		commitTS := backupMeta.EndVersion
+		klog.Infof("Get size %d for backup files in %s of cluster %s success", backupSize, backupFullPath, bm)
+		klog.Infof("Get cluster %s commitTs %d success", bm, commitTS)
+		ts := strconv.FormatUint(commitTS, 10)
+		updateStatus = &controller.BackupUpdateStatus{
+			TimeStarted:        &metav1.Time{Time: started},
+			TimeCompleted:      &metav1.Time{Time: time.Now()},
+			BackupSize:         &backupSize,
+			BackupSizeReadable: &backupSizeReadable,
+			CommitTs:           &ts,
+		}
 	}
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupComplete,
@@ -413,7 +421,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 		klog.Errorf("Get backup full path of cluster %s failed, err: %s", bm, err)
 		return nil, "GetBackupRemotePathFailed", err
 	}
-	klog.Infof("Get backup full path %s of cluster %s failed", backupFullPath, bm)
+	klog.Infof("Get backup full path %s of cluster %s success", backupFullPath, bm)
 
 	updatePathStatus := &controller.BackupUpdateStatus{
 		BackupPath: &backupFullPath,

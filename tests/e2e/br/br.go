@@ -47,7 +47,7 @@ var (
 	tidbReadyTimeout        = time.Minute * 15
 	backupCompleteTimeout   = time.Minute * 15
 	restoreCompleteTimeout  = time.Minute * 15
-	logbackupCatchUpTimeout = time.Minute * 15
+	logbackupCatchUpTimeout = time.Minute * 25
 )
 
 const (
@@ -453,6 +453,51 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 
+		// TODO: tikv error:[ERROR] [mod.rs:747] ["Status server error: TLS handshake error"], will open this test when this is fixed.
+		// ginkgo.It("Log backup progress track with tls cluster", func() {
+		// 	backupVersion := utilimage.TiDBLatest
+		// 	enableTLS := true
+		// 	skipCA := false
+		// 	ns := f.Namespace.Name
+		// 	ctx, cancel := context.WithCancel(context.Background())
+		// 	defer cancel()
+
+		// 	ginkgo.By("Create log-backup.enable TiDB cluster with tls")
+		// 	masterClusterName := "tls-master"
+		// 	err := createLogBackupEnableTidbCluster(f, masterClusterName, backupVersion, enableTLS, skipCA)
+		// 	framework.ExpectNoError(err)
+		// 	ginkgo.By("Wait for tls-master TiDB cluster ready")
+		// 	err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, masterClusterName, tidbReadyTimeout, 0)
+		// 	framework.ExpectNoError(err)
+
+		// 	ginkgo.By("Create RBAC for backup")
+		// 	err = createRBAC(f)
+		// 	framework.ExpectNoError(err)
+
+		// 	logBackupName := "log-backup"
+		// 	typ := strings.ToLower(typeBR)
+		// 	ginkgo.By("Start log backup")
+		// 	logBackup, err := createBackupAndWaitForComplete(f, logBackupName, masterClusterName, typ, func(backup *v1alpha1.Backup) {
+		// 		backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+		// 		backup.Spec.Mode = v1alpha1.BackupModeLog
+		// 	})
+		// 	framework.ExpectNoError(err)
+		// 	framework.ExpectNotEqual(logBackup.Status.CommitTs, "")
+
+		// 	ginkgo.By("wait log backup progress reach current ts")
+		// 	currentTS := strconv.FormatUint(config.GoTimeToTS(time.Now()), 10)
+		// 	err = brutil.WaitForLogBackupProgressReachTS(f.ExtClient, ns, logBackupName, currentTS, logbackupCatchUpTimeout)
+		// 	framework.ExpectNoError(err)
+
+		// 	ginkgo.By("Delete log backup")
+		// 	err = deleteBackup(f, logBackupName)
+		// 	framework.ExpectNoError(err)
+
+		// 	ginkgo.By("Check if all log backup files in storage is deleted")
+		// 	cleaned, err := f.Storage.IsDataCleaned(ctx, ns, logBackup.Spec.S3.Prefix) // now we only use s3
+		// 	framework.ExpectNoError(err)
+		// 	framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		// })
 	})
 
 	ginkgo.Context("PiTR Restore Test", func() {

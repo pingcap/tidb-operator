@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
@@ -140,10 +141,19 @@ func DMMasterPodName(dcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), ordinal)
 }
 
-func PdName(tcName string, ordinal int32, namespace string, clusterDomain string) string {
+// PdName should match the start arg `--name` of pd-server
+// See the start script of PD in pkg/manager/member/startscript/v1.pdStartScriptTpl
+// and pkg/manager/member/startscript/v2.RenderPDStartScript
+func PdName(tcName string, ordinal int32, namespace string, clusterDomain string, acrossK8s bool) string {
 	if len(clusterDomain) > 0 {
 		return fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", PdPodName(tcName, ordinal), tcName, namespace, clusterDomain)
 	}
+
+	// clusterDomain is not set
+	if acrossK8s {
+		return fmt.Sprintf("%s.%s-pd-peer.%s.svc", PdPodName(tcName, ordinal), tcName, namespace)
+	}
+
 	return PdPodName(tcName, ordinal)
 }
 
@@ -543,4 +553,34 @@ func MergePatchContainers(base, patches []corev1.Container) ([]corev1.Container,
 	}
 
 	return out, nil
+}
+
+func BuildProbeCommand(tc *v1alpha1.TidbCluster, componentType string) (command []string) {
+	host := "127.0.0.1"
+	var readinessURL string
+	if componentType == label.PDLabelVal {
+		readinessURL = fmt.Sprintf("%s://%s:2379/status", tc.Scheme(), host)
+	}
+	if componentType == label.TiDBLabelVal {
+		readinessURL = fmt.Sprintf("%s://%s:10080/status", tc.Scheme(), host)
+	}
+	command = append(command, "curl")
+	command = append(command, readinessURL)
+
+	// Fail silently (no output at all) on server errors
+	// without this if the server return 500, the exist code will be 0
+	// and probe is success.
+	command = append(command, "--fail")
+	// follow 301 or 302 redirect
+	command = append(command, "--location")
+
+	if tc.IsTLSClusterEnabled() {
+		cacert := path.Join(clusterCertPath, tlsSecretRootCAKey)
+		cert := path.Join(clusterCertPath, corev1.TLSCertKey)
+		key := path.Join(clusterCertPath, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert)
+		command = append(command, "--cert", cert)
+		command = append(command, "--key", key)
+	}
+	return
 }

@@ -2,7 +2,7 @@
 
 > **Note:**
 >
-> This setup is for test or demo purpose only and **IS NOT** applicable for critical environment. Refer to the [Documents](https://pingcap.com/docs/stable/tidb-in-kubernetes/deploy/prerequisites/) for production setup.
+> This setup is for test or demo purpose only and **IS NOT** applicable for critical environment. Refer to the [Documents](https://docs.pingcap.com/tidb-in-kubernetes/stable/prerequisites/) for production setup.
 
 1. create a namespaced scoped user, and a service account named `namespaced` will be created.
 

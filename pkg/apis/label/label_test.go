@@ -68,6 +68,14 @@ func TestLabelPD(t *testing.T) {
 	g.Expect(l.IsPD()).To(BeTrue())
 }
 
+func TestLabelTiProxy(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	l := New()
+	l.TiProxy()
+	g.Expect(l.IsTiProxy()).To(BeTrue())
+}
+
 func TestLabelTiDB(t *testing.T) {
 	g := NewGomegaWithT(t)
 
