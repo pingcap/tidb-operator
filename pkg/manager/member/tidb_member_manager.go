@@ -33,8 +33,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -63,6 +65,11 @@ const (
 	// When user use self-signed certificates, the root CA must be provided. We
 	// following the same convention used in Kubernetes service token.
 	tlsSecretRootCAKey = corev1.ServiceAccountRootCAKey
+	// nolint: gosec
+	// tidbAuthTokenPath is where the assets for auth tidb client stored. Such as: tidb auth token JWKS
+	tidbAuthTokenPath = "/var/lib/tidb-auth-token"
+	// nolint: gosec
+	tidbAuthTokenJWKS = "tidb_auth_token_jwks.json"
 
 	// tidb DC label Name
 	tidbDCLabel = "zone"
@@ -74,23 +81,25 @@ var (
 )
 
 type tidbMemberManager struct {
-	deps         *controller.Dependencies
-	scaler       Scaler
-	tidbUpgrader Upgrader
-	tidbFailover Failover
-	suspender    suspender.Suspender
+	deps              *controller.Dependencies
+	scaler            Scaler
+	tidbUpgrader      Upgrader
+	tidbFailover      Failover
+	suspender         suspender.Suspender
+	podVolumeModifier volumes.PodVolumeModifier
 
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
-func NewTiDBMemberManager(deps *controller.Dependencies, scaler Scaler, tidbUpgrader Upgrader, tidbFailover Failover, spder suspender.Suspender) manager.Manager {
+func NewTiDBMemberManager(deps *controller.Dependencies, scaler Scaler, tidbUpgrader Upgrader, tidbFailover Failover, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	return &tidbMemberManager{
 		deps:                         deps,
 		scaler:                       scaler,
 		tidbUpgrader:                 tidbUpgrader,
 		tidbFailover:                 tidbFailover,
 		suspender:                    spder,
+		podVolumeModifier:            pvm,
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 	}
 }
@@ -119,6 +128,11 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 
+	// Sync TidbCluster Recovery
+	if err := m.syncRecoveryForTidbCluster(tc); err != nil {
+		return err
+	}
+
 	if tc.Spec.Pump != nil && !tc.PumpIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
 	}
@@ -145,6 +159,18 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	// Sync TiDB StatefulSet
 	return m.syncTiDBStatefulSetForTidbCluster(tc)
+}
+
+func (m *tidbMemberManager) syncRecoveryForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	// Check whether the cluster is in recovery mode
+	// and whether the volumes have been restored for TiKV
+	if !tc.Spec.RecoveryMode {
+		return nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV restore data completed", ns, tcName)
 }
 
 func (m *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error {
@@ -530,6 +556,10 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 	config := tc.Spec.TiDB.Config.DeepCopy()
 
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		config.Set("security.auth-token-jwks", path.Join(tidbAuthTokenPath, tidbAuthTokenJWKS))
+	}
+
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
 		config.Set("security.cluster-ssl-ca", path.Join(clusterCertPath, tlsSecretRootCAKey))
@@ -688,6 +718,11 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-auth-token", ReadOnly: true, MountPath: tidbAuthTokenPath,
+		})
+	}
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-tls", ReadOnly: true, MountPath: clusterCertPath,
@@ -717,6 +752,15 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
 			}},
 		},
+	}
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-auth-token", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBAuthTokenJWKSSecretName(tcName),
+				},
+			},
+		})
 	}
 	if tc.IsTLSClusterEnabled() {
 		vols = append(vols, corev1.Volume{
@@ -933,7 +977,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	stsLabels := label.New().Instance(instanceName).TiDB()
 	podLabels := util.CombineStringMap(stsLabels, baseTiDBSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(10080), baseTiDBSpec.Annotations())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(10080, "/metrics"), baseTiDBSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiDBLabelVal)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
@@ -1039,10 +1083,16 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if c != nil {
 		tc.Status.TiDB.Image = c.Image
 	}
+
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.TiDBMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for tidb: %v", err)
+	}
+
 	return nil
 }
 
-const tidbSupportLabelsMinVersin = "6.2.0"
+const tidbSupportLabelsMinVersin = "6.3.0"
 
 func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, error) {
 	tidbVersion := tc.TiDBVersion()

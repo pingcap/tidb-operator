@@ -22,7 +22,9 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -47,12 +49,15 @@ type TiKVUpgrader interface {
 
 type tikvUpgrader struct {
 	deps *controller.Dependencies
+
+	volumeModifier volumes.PodVolumeModifier
 }
 
 // NewTiKVUpgrader returns a tikv Upgrader
-func NewTiKVUpgrader(deps *controller.Dependencies) TiKVUpgrader {
+func NewTiKVUpgrader(deps *controller.Dependencies, pvm volumes.PodVolumeModifier) TiKVUpgrader {
 	return &tikvUpgrader{
-		deps: deps,
+		deps:           deps,
+		volumeModifier: pvm,
 	}
 }
 
@@ -178,60 +183,91 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 	upgradePodName := TikvPodName(tcName, ordinal)
 	upgradePod, err := u.deps.PodLister.Pods(ns).Get(upgradePodName)
 	if err != nil {
-		return fmt.Errorf("upgradeTiKVPod: failed to get pods %s for cluster %s/%s, error: %s", upgradePodName, ns, tcName, err)
+		return fmt.Errorf("upgradeTiKVPod: failed to get pod %s for tc %s/%s, error: %s", upgradePodName, ns, tcName, err)
 	}
 
-	storeID, err := TiKVStoreIDFromStatus(tc, upgradePodName)
+	done, err := u.evictLeaderBeforeUpgrade(tc, upgradePod)
 	if err != nil {
-		if err == ErrNotFoundStoreID {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s] no store status found for tikv pod: [%s]", ns, tcName, upgradePodName)
+		return fmt.Errorf("upgradeTiKVPod: failed to evict leader of pod %s for tc %s/%s, error: %s", upgradePodName, ns, tcName, err)
+	}
+	if !done {
+		return controller.RequeueErrorf("upgradeTiKVPod: evicting leader of pod %s for tc %s/%s", upgradePodName, ns, tcName)
+	}
+
+	if features.DefaultFeatureGate.Enabled(features.VolumeModifying) {
+		done, err = u.modifyVolumesBeforeUpgrade(tc, upgradePod)
+		if err != nil {
+			return fmt.Errorf("upgradeTiKVPod: failed to modify volumes of pod %s for tc %s/%s, error: %s", upgradePodName, ns, tcName, err)
 		}
-		return err
+		if !done {
+			return controller.RequeueErrorf("upgradeTiKVPod: modifying volumes of pod %s for tc %s/%s", upgradePodName, ns, tcName)
+		}
 	}
 
-	_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
-	if !evicting {
-		return u.beginEvictLeader(tc, storeID, upgradePod)
-	}
-
-	if u.readyToUpgrade(upgradePod, tc) {
-		mngerutils.SetUpgradePartition(newSet, ordinal)
-		return nil
-	}
-
-	return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
+	mngerutils.SetUpgradePartition(newSet, ordinal)
+	return nil
 }
 
-func (u *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
-	evictLeaderTimeout := tc.TiKVEvictLeaderTimeout()
+func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgradePod *corev1.Pod) (bool, error) {
+	logPrefix := fmt.Sprintf("evict leader before upgrading tikv pod %s/%s", upgradePod.Namespace, upgradePod.Name)
 
+	storeID, err := TiKVStoreIDFromStatus(tc, upgradePod.Name)
+	if err != nil {
+		return false, err
+	}
+
+	// evict leader if needed
+	_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
+	if !evicting {
+		return false, u.beginEvictLeader(tc, storeID, upgradePod)
+	}
+
+	// wait for leader eviction to complete or timeout
+	evictLeaderTimeout := tc.TiKVEvictLeaderTimeout()
 	if evictLeaderBeginTimeStr, evicting := upgradePod.Annotations[EvictLeaderBeginTime]; evicting {
 		evictLeaderBeginTime, err := time.Parse(time.RFC3339, evictLeaderBeginTimeStr)
 		if err != nil {
-			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
-			return false
+			klog.Errorf("%s: parse annotation %q to time failed", logPrefix, EvictLeaderBeginTime)
+			return false, nil
 		}
 		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
-			klog.Infof("Evict region leader timeout (threshold: %v) for Pod %s/%s", evictLeaderTimeout, upgradePod.Namespace, upgradePod.Name)
-			return true
+			klog.Infof("%s: evict leader timeout with threshold %v, so ready to upgrade", logPrefix, evictLeaderTimeout)
+			return true, nil
 		}
 	}
 
-	tlsEnabled := tc.IsTLSClusterEnabled()
-	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, upgradePod.Name, tlsEnabled).GetLeaderCount()
+	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, upgradePod.Name, tc.IsTLSClusterEnabled()).GetLeaderCount()
 	if err != nil {
-		klog.Warningf("Fail to get region leader count for Pod %s/%s, error: %v", upgradePod.Namespace, upgradePod.Name, err)
-		return false
+		klog.Warningf("%s: failed to get leader count, error: %v", logPrefix, err)
+		return false, nil
 	}
 
 	if leaderCount == 0 {
-		klog.Infof("Region leader count is 0 for Pod %s/%s", upgradePod.Namespace, upgradePod.Name)
-		return true
+		klog.Infof("%s: leader count is 0, so ready to upgrade", logPrefix)
+		return true, nil
 	}
 
-	klog.Infof("Region leader count is %d for Pod %s/%s", leaderCount, upgradePod.Namespace, upgradePod.Name)
+	klog.Infof("%s: leader count is %d, and wait for evictition to complete", logPrefix, leaderCount)
+	return false, nil
+}
 
-	return false
+func (u *tikvUpgrader) modifyVolumesBeforeUpgrade(tc *v1alpha1.TidbCluster, upgradePod *corev1.Pod) (bool, error) {
+	desiredVolumes, err := u.volumeModifier.GetDesiredVolumes(tc, v1alpha1.TiKVMemberType)
+	if err != nil {
+		return false, err
+	}
+
+	actual, err := u.volumeModifier.GetActualVolumes(upgradePod, desiredVolumes)
+	if err != nil {
+		return false, err
+	}
+
+	if u.volumeModifier.ShouldModify(actual) {
+		err := u.volumeModifier.Modify(actual)
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
@@ -342,17 +378,14 @@ func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *
 }
 
 func isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) (bool, string) {
-	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase {
+	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase {
 		return false, fmt.Sprintf("tiflash status is %s", tc.Status.TiFlash.Phase)
 	}
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.PD.Phase == v1alpha1.ScalePhase {
 		return false, fmt.Sprintf("pd status is %s", tc.Status.PD.Phase)
 	}
 	if tc.TiKVScaling() {
 		return false, fmt.Sprintf("tikv status is %s", tc.Status.TiKV.Phase)
-	}
-	if tc.IsComponentVolumeResizing(v1alpha1.TiKVMemberType) {
-		return false, "tikv is resizing volumes"
 	}
 
 	return true, ""

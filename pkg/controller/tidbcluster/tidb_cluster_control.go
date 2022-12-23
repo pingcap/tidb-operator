@@ -14,18 +14,21 @@
 package tidbcluster
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
-	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/manager"
-	"github.com/pingcap/tidb-operator/pkg/manager/member"
-	"github.com/pingcap/tidb-operator/pkg/metrics"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
+	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 )
 
 // ControlInterface implements the control logic for updating TidbClusters and their children StatefulSets.
@@ -43,11 +46,13 @@ func NewDefaultTidbClusterControl(
 	pdMemberManager manager.Manager,
 	tikvMemberManager manager.Manager,
 	tidbMemberManager manager.Manager,
+	tiproxyMemberManager manager.Manager,
 	reclaimPolicyManager manager.Manager,
 	metaManager manager.Manager,
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
-	pvcResizer member.PVCResizerInterface,
+	// pvcResizer member.PVCResizerInterface,
+	pvcModifier volumes.PVCModifierInterface,
 	pumpMemberManager manager.Manager,
 	tiflashMemberManager manager.Manager,
 	ticdcMemberManager manager.Manager,
@@ -60,11 +65,12 @@ func NewDefaultTidbClusterControl(
 		pdMemberManager:          pdMemberManager,
 		tikvMemberManager:        tikvMemberManager,
 		tidbMemberManager:        tidbMemberManager,
+		tiproxyMemberManager:     tiproxyMemberManager,
 		reclaimPolicyManager:     reclaimPolicyManager,
 		metaManager:              metaManager,
 		orphanPodsCleaner:        orphanPodsCleaner,
 		pvcCleaner:               pvcCleaner,
-		pvcResizer:               pvcResizer,
+		pvcModifier:              pvcModifier,
 		pumpMemberManager:        pumpMemberManager,
 		tiflashMemberManager:     tiflashMemberManager,
 		ticdcMemberManager:       ticdcMemberManager,
@@ -80,11 +86,12 @@ type defaultTidbClusterControl struct {
 	pdMemberManager          manager.Manager
 	tikvMemberManager        manager.Manager
 	tidbMemberManager        manager.Manager
+	tiproxyMemberManager     manager.Manager
 	reclaimPolicyManager     manager.Manager
 	metaManager              manager.Manager
 	orphanPodsCleaner        member.OrphanPodsCleaner
 	pvcCleaner               member.PVCCleanerInterface
-	pvcResizer               member.PVCResizerInterface
+	pvcModifier              volumes.PVCModifierInterface
 	pumpMemberManager        manager.Manager
 	tiflashMemberManager     manager.Manager
 	ticdcMemberManager       manager.Manager
@@ -176,6 +183,18 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
+	// works that should be done to make the tiproxy cluster current state match the desired state:
+	//   - create or update the tiproxy service
+	//   - create or update the tiproxy headless service
+	//   - create the tiproxy statefulset
+	//   - sync tiproxy cluster status from tiproxy to TidbCluster object
+	//   - upgrade the tiproxy cluster
+	//   - scale out/in the tiproxy cluster
+	//   - failover the tiproxy cluster
+	if err := c.tiproxyMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
 	// works that should be done to make the tiflash cluster current state match the desired state:
 	//   - waiting for the tidb cluster available
 	//   - create or update tiflash headless service
@@ -247,9 +266,11 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
-	// resize PVC if necessary
-	if err := c.pvcResizer.Sync(tc); err != nil {
-		return err
+	// modify volumes if necessary
+	if features.DefaultFeatureGate.Enabled(features.VolumeModifying) {
+		if err := c.pvcModifier.Sync(tc); err != nil {
+			return err
+		}
 	}
 
 	// syncing the some tidbcluster status attributes

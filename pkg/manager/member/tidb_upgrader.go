@@ -56,10 +56,10 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
-		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
-		tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
-		tc.Status.Pump.Phase == v1alpha1.UpgradePhase ||
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.PD.Phase == v1alpha1.ScalePhase ||
+		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.ScalePhase ||
+		tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase ||
+		tc.Status.Pump.Phase == v1alpha1.UpgradePhase || tc.Status.Pump.Phase == v1alpha1.ScalePhase ||
 		tc.TiDBScaling() {
 		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
 			"tikv status is %s, tiflash status is %s, pump status is %s, "+

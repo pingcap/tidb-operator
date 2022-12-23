@@ -16,10 +16,13 @@ package util
 import (
 	"fmt"
 	"net/url"
+	"path"
 	"strings"
+	"unsafe"
 
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
@@ -30,6 +33,8 @@ var (
 	// the first version which allows skipping setting tikv_gc_life_time
 	// https://github.com/pingcap/br/pull/553
 	tikvLessThanV408, _ = semver.NewConstraint("<v4.0.8-0")
+	// the first version which supports log backup
+	tikvLessThanV610, _ = semver.NewConstraint("<v6.1.0-0")
 )
 
 // CheckAllKeysExistInSecret check if all keys are included in the specific secret
@@ -507,6 +512,27 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 				return err
 			}
 		}
+
+		// validate log backup
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+			if !isLogBackSupport(tikvImage) {
+				return fmt.Errorf("tikv %s doesn't support log backup in spec of %s/%s, the first version is v6.1.0", tikvImage, ns, name)
+			}
+			var err error
+			_, err = config.ParseTSString(backup.Spec.CommitTs)
+			if err != nil {
+				return err
+			}
+			if v1alpha1.ParseLogBackupSubcommand(backup) == v1alpha1.LogTruncateCommand && backup.Spec.LogTruncateUntil == "" {
+				return fmt.Errorf("log backup %s/%s truncate command missing 'logTruncateUntil'", ns, name)
+
+			}
+			_, err = config.ParseTSString(backup.Spec.LogTruncateUntil)
+			if err != nil {
+				return err
+			}
+		}
+
 	}
 	return nil
 }
@@ -637,4 +663,72 @@ func canSkipSetGCLifeTime(image string) bool {
 		return false
 	}
 	return true
+}
+
+func BytesToString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func StringToBytes(s string) []byte {
+	return *(*[]byte)(unsafe.Pointer(
+		&struct {
+			string
+			Cap int
+		}{s, len(s)},
+	))
+}
+
+// isLogBackSupport returns whether tikv supports log backup
+func isLogBackSupport(tikvImage string) bool {
+	_, version := ParseImage(tikvImage)
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		return true
+	}
+	if tikvLessThanV610.Check(v) {
+		return false
+	}
+	return true
+}
+
+// GetStorageRestorePath generate the path of a specific storage from Restore
+func GetStoragePath(privoder v1alpha1.StorageProvider) (string, error) {
+	var url, bucket, prefix string
+	st := GetStorageType(privoder)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		prefix = privoder.S3.Prefix
+		bucket = privoder.S3.Bucket
+		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeGcs:
+		prefix = privoder.Gcs.Prefix
+		bucket = privoder.Gcs.Bucket
+		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeAzblob:
+		prefix = privoder.Azblob.Prefix
+		bucket = privoder.Azblob.Container
+		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeLocal:
+		prefix = privoder.Local.Prefix
+		mountPath := privoder.Local.VolumeMount.MountPath
+		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
+		return url, nil
+	default:
+		return "", fmt.Errorf("storage %s not supported yet", st)
+	}
+}
+
+// GetOptions gets the rclone options
+func GetOptions(provider v1alpha1.StorageProvider) []string {
+	st := GetStorageType(provider)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		return provider.S3.Options
+	default:
+		return nil
+	}
 }

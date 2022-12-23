@@ -23,7 +23,7 @@ TARGET_DIR=${ROOT}/manifests/crd
 VERIFY_TMP_DIR=$(mktemp -d)
 trap "rm -rf $VERIFY_TMP_DIR" EXIT
 
-cp -R "$TARGET_DIR/" "$VERIFY_TMP_DIR"
+cp -R "$TARGET_DIR/." "$VERIFY_TMP_DIR"
 
 $ROOT/hack/update-crd.sh
 

@@ -32,14 +32,14 @@ import (
 
 const metricPort = 8090
 
-//Client request grafana API on a set of resource paths.
+// Client request grafana API on a set of resource paths.
 type Client struct {
 	// base is the root URL for all invocations of the client
 	baseUrl url.URL
 	client  *http.Client
 }
 
-//Annotation is a specification of the desired behavior of adding annotation
+// Annotation is a specification of the desired behavior of adding annotation
 type Annotation struct {
 	AnnotationOptions
 	Text                string   `json:"text"`
@@ -47,7 +47,7 @@ type Annotation struct {
 	TimestampInMilliSec int64    `json:"time"`
 }
 
-//AnnotationOptions is the query options to a standard REST list call.
+// AnnotationOptions is the query options to a standard REST list call.
 type AnnotationOptions struct {
 	DashboardID int   `json:"dashboardId,omitempty"`
 	PanelID     int   `json:"panelId,omitempty"`
@@ -55,8 +55,8 @@ type AnnotationOptions struct {
 	TimeEnd     int64 `json:"timeEnd,omitempty"`
 }
 
-//NewClient creates a new grafanaClient. This client performs rest functions
-//such as Get, Post on specified paths.
+// NewClient creates a new grafanaClient. This client performs rest functions
+// such as Get, Post on specified paths.
 func NewClient(grafanaURL string, userName string, password string) (*Client, error) {
 	u, err := url.Parse(grafanaURL)
 	if err != nil {
@@ -92,7 +92,7 @@ func initErrorMetric() prometheus.Counter {
 	})
 }
 
-//AddAnnotation adds an annotation to grafana.
+// AddAnnotation adds an annotation to grafana.
 func (cli *Client) AddAnnotation(annotation Annotation) error {
 	body, err := annotation.getBody()
 	if err != nil {
@@ -119,7 +119,7 @@ func (cli *Client) AddAnnotation(annotation Annotation) error {
 	return err
 }
 
-//IncrErrorCount increments the errorcount by 1.
+// IncrErrorCount increments the errorcount by 1.
 func (cli *Client) IncrErrorCount() {
 	counterMetric.Inc()
 }

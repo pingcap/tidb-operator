@@ -48,7 +48,6 @@ const (
 // them.
 //
 // https://github.com/kubernetes/kubernetes/blob/84fe3db5cf58bf0fc8ff792b885465ceaf70a435/pkg/controller/statefulset/stateful_pod_control.go#L175-L199
-//
 type OrphanPodsCleaner interface {
 	Clean(metav1.Object) (map[string]string, error)
 }

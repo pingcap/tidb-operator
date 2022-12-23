@@ -404,10 +404,13 @@ type GenericControlInterface interface {
 // instead of override a whole struct. e.g.
 //
 // Prefer:
-//     existing.spec.type = desired.spec.type
-//     existing.spec.externalTrafficPolicy = desired.spec.externalTrafficPolicy
+//
+//	existing.spec.type = desired.spec.type
+//	existing.spec.externalTrafficPolicy = desired.spec.externalTrafficPolicy
+//
 // Instead of:
-//     existing.spec = desired.spec
+//
+//	existing.spec = desired.spec
 //
 // However, this could be tedious for large object if the caller want to control lots of the fields,
 // if there is no one else will mutate this object or cooperation is not needed, it is okay to do aggressive

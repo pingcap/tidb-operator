@@ -14,13 +14,17 @@
 package restore
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/backup/snapshotter"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -29,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 
@@ -56,18 +61,21 @@ func (rm *restoreManager) UpdateCondition(restore *v1alpha1.Restore, condition *
 func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
-	restoreJobName := restore.GetRestoreJobName()
 
-	var err error
+	var (
+		err              error
+		tc               *v1alpha1.TidbCluster
+		restoreNamespace string
+	)
+
 	if restore.Spec.BR == nil {
 		err = backuputil.ValidateRestore(restore, "")
 	} else {
-		restoreNamespace := restore.GetNamespace()
+		restoreNamespace = restore.GetNamespace()
 		if restore.Spec.BR.ClusterNamespace != "" {
 			restoreNamespace = restore.Spec.BR.ClusterNamespace
 		}
 
-		var tc *v1alpha1.TidbCluster
 		tc, err = rm.deps.TiDBClusterLister.TidbClusters(restoreNamespace).Get(restore.Spec.BR.Cluster)
 		if err != nil {
 			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster)
@@ -95,13 +103,32 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return controller.IgnoreErrorf("invalid restore spec %s/%s", ns, name)
 	}
 
-	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
-	if err == nil {
-		// already have a backup job running，return directly
-		return nil
+	if restore.Spec.BR != nil && restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot {
+		// restore based snapshot for cloud provider
+		reason, err := rm.tryRestoreIfCanSnapshot(restore, tc)
+		if err != nil {
+			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreRetryFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			}, nil)
+			return err
+		}
+		if !tc.PDAllMembersReady() {
+			return controller.RequeueErrorf("restore %s/%s: waiting for all PD members are ready in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
+		}
+		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreDataComplete(restore) && !tc.AllTiKVsAreAvailable() {
+			return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
+		}
 	}
 
-	if !errors.IsNotFound(err) {
+	restoreJobName := restore.GetRestoreJobName()
+	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
+	if err == nil {
+		klog.Infof("restore job %s/%s has been created, skip", ns, restoreJobName)
+		return nil
+	} else if !errors.IsNotFound(err) {
 		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
 	}
 
@@ -155,10 +182,139 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return errMsg
 	}
 
-	return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-		Type:   v1alpha1.RestoreScheduled,
-		Status: corev1.ConditionTrue,
-	}, nil)
+	// Currently, the restore phase reuses the condition type and is updated when the condition is changed.
+	// However, conditions are only used to describe the detailed status of the restore job. It is not suitable
+	// for describing a state machine.
+	//
+	// Some restore such as volume-snapshot will create multiple jobs, and the phase will be changed to
+	// running when the first job is running. To avoid the phase going back from running to scheduled, we
+	// don't update the condition when the scheduled condition has already been set to true.
+	if !v1alpha1.IsRestoreScheduled(restore) {
+		return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreScheduled,
+			Status: corev1.ConditionTrue,
+		}, nil)
+	}
+	return nil
+}
+
+// read cluster meta from external storage since k8s size limitation on annotation/configMap
+// after volume retore job complete, br output a meta file for controller to reconfig the tikvs
+// since the meta file may big, so we use remote storage as bridge to pass it from restore manager to controller
+func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore) (*snapshotter.CloudSnapBackup, string, error) {
+	// since the restore meta is small (~5M), assume 1 minutes is enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
+	defer cancel()
+
+	// write a file into external storage
+	klog.Infof("read the restore meta from external storage")
+	cred := backuputil.GetStorageCredential(r.Namespace, r.Spec.StorageProvider, rm.deps.SecretLister)
+	externalStorage, err := backuputil.NewStorageBackend(r.Spec.StorageProvider, cred)
+	if err != nil {
+		return nil, "NewStorageBackendFailed", err
+	}
+
+	// if file doesn't exist, br create volume has problem
+	exist, err := externalStorage.Exists(ctx, constants.ClusterRestoreMeta)
+	if err != nil {
+		return nil, "FileExistedInExternalStorageFailed", err
+	}
+	if !exist {
+		return nil, "FileNotExists", fmt.Errorf("%s does not exist", constants.ClusterRestoreMeta)
+	}
+
+	restoreMeta, err := externalStorage.ReadAll(ctx, constants.ClusterRestoreMeta)
+	if err != nil {
+		return nil, "ReadAllOnExternalStorageFailed", err
+	}
+
+	csb := &snapshotter.CloudSnapBackup{}
+	err = json.Unmarshal(restoreMeta, csb)
+	if err != nil {
+		return nil, "ParseCloudSnapBackupFailed", err
+	}
+
+	return csb, "", nil
+}
+
+func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
+	if v1alpha1.IsRestoreComplete(r) {
+		return "", nil
+	}
+
+	if v1alpha1.IsRestoreDataComplete(r) {
+		klog.Infof("restore-manager prepares to deal with the phase DataComplete")
+
+		// When restore is based on volume snapshot, we need to restart all TiKV pods
+		// after restore data is complete.
+		sel, err := label.New().Instance(tc.Name).TiKV().Selector()
+		if err != nil {
+			return "BuildTiKVSelectorFailed", err
+		}
+		pods, err := rm.deps.PodLister.Pods(tc.Namespace).List(sel)
+		if err != nil {
+			return "ListTiKVPodsFailed", err
+		}
+		for _, pod := range pods {
+			if pod.DeletionTimestamp == nil {
+				klog.Infof("restore-manager restarts pod %s/%s", pod.Namespace, pod.Name)
+				if err := rm.deps.PodControl.DeletePod(tc, pod); err != nil {
+					return "DeleteTiKVPodFailed", err
+				}
+			}
+		}
+
+		tc.Spec.RecoveryMode = false
+		delete(tc.Annotations, label.AnnTiKVVolumesReadyKey)
+		if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
+			return "ClearTCRecoveryMarkFailed", err
+		}
+
+		// restore TidbCluster completed
+		if err := rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreComplete,
+			Status: corev1.ConditionTrue,
+		}, nil); err != nil {
+			return "UpdateRestoreCompleteFailed", err
+		}
+		return "", nil
+	}
+
+	if v1alpha1.IsRestoreVolumeComplete(r) {
+		klog.Infof("restore-manager prepares to deal with the phase VolumeComplete")
+
+		// TiKV volumes are ready, we can skip prepare restore metadata.
+		if _, ok := tc.Annotations[label.AnnTiKVVolumesReadyKey]; ok {
+			return "", nil
+		}
+
+		s, reason, err := snapshotter.NewSnapshotterForRestore(r.Spec.Mode, rm.deps)
+		if err != nil {
+			return reason, err
+		}
+		// setRestoreVolumeID for all PVs, and reset PVC/PVs,
+		// then commit all PVC/PVs for TiKV restore volumes
+		csb, reason, err := rm.readRestoreMetaFromExternalStorage(r)
+		if err != nil {
+			return reason, err
+		}
+
+		if reason, err := s.PrepareRestoreMetadata(r, csb); err != nil {
+			return reason, err
+		}
+
+		restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
+		if len(tc.GetAnnotations()) == 0 {
+			tc.Annotations = make(map[string]string)
+		}
+		tc.Annotations[label.AnnTiKVVolumesReadyKey] = restoreMark
+		if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
+			return "AddTCAnnWaitTiKVFailed", err
+		}
+		return "", nil
+	}
+
+	return "", nil
 }
 
 func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
@@ -351,6 +507,19 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	_, tikvVersion := backuputil.ParseImage(tikvImage)
 	if tikvVersion != "" {
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
+	}
+
+	switch restore.Spec.Mode {
+	case v1alpha1.RestoreModePiTR:
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModePiTR))
+		args = append(args, fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
+	case v1alpha1.RestoreModeVolumeSnapshot:
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeVolumeSnapshot))
+		if !v1alpha1.IsRestoreVolumeComplete(restore) {
+			args = append(args, "--prepare")
+		}
+	default:
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))
 	}
 
 	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)

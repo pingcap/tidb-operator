@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	"github.com/Masterminds/semver"
@@ -53,21 +54,23 @@ const (
 )
 
 type pdMemberManager struct {
-	deps      *controller.Dependencies
-	scaler    Scaler
-	upgrader  Upgrader
-	failover  Failover
-	suspender suspender.Suspender
+	deps              *controller.Dependencies
+	scaler            Scaler
+	upgrader          Upgrader
+	failover          Failover
+	suspender         suspender.Suspender
+	podVolumeModifier volumes.PodVolumeModifier
 }
 
 // NewPDMemberManager returns a *pdMemberManager
-func NewPDMemberManager(dependencies *controller.Dependencies, pdScaler Scaler, pdUpgrader Upgrader, pdFailover Failover, spder suspender.Suspender) manager.Manager {
+func NewPDMemberManager(dependencies *controller.Dependencies, pdScaler Scaler, pdUpgrader Upgrader, pdFailover Failover, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	return &pdMemberManager{
-		deps:      dependencies,
-		scaler:    pdScaler,
-		upgrader:  pdUpgrader,
-		failover:  pdFailover,
-		suspender: spder,
+		deps:              dependencies,
+		scaler:            pdScaler,
+		upgrader:          pdUpgrader,
+		failover:          pdFailover,
+		suspender:         spder,
+		podVolumeModifier: pvm,
 	}
 }
 
@@ -417,6 +420,11 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 	if err := m.collectUnjoinedMembers(tc, set, pdStatus); err != nil {
 		return err
 	}
+
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.PDMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for pd: %v", err)
+	}
 	return nil
 }
 
@@ -705,7 +713,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	stsLabels := label.New().Instance(instanceName).PD()
 	podLabels := util.CombineStringMap(stsLabels, basePDSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(2379), basePDSpec.Annotations())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(2379, "/metrics"), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
@@ -733,6 +741,23 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.PD.ResourceRequirements),
 	}
+
+	if tc.Spec.PD.ReadinessProbe != nil {
+		pdContainer.ReadinessProbe = &corev1.Probe{
+			Handler:             buildPDReadinessProbHandler(tc),
+			InitialDelaySeconds: int32(10),
+		}
+	}
+
+	if tc.Spec.PD.ReadinessProbe != nil {
+		if tc.Spec.PD.ReadinessProbe.InitialDelaySeconds != nil {
+			pdContainer.ReadinessProbe.InitialDelaySeconds = *tc.Spec.PD.ReadinessProbe.InitialDelaySeconds
+		}
+		if tc.Spec.PD.ReadinessProbe.PeriodSeconds != nil {
+			pdContainer.ReadinessProbe.PeriodSeconds = *tc.Spec.PD.ReadinessProbe.PeriodSeconds
+		}
+	}
+
 	env := []corev1.EnvVar{
 		{
 			Name: "NAMESPACE",
@@ -917,7 +942,7 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 			if err != nil {
 				return fmt.Errorf("unexpected pod name %q: %v", pod.Name, err)
 			}
-			if strings.EqualFold(PdName(tc.Name, ordinal, tc.Namespace, tc.Spec.ClusterDomain), pdName) {
+			if strings.EqualFold(PdName(tc.Name, ordinal, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s), pdName) {
 				joined = true
 				break
 			}
@@ -941,6 +966,15 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 
 	tc.Status.PD.UnjoinedMembers = unjoined
 	return nil
+}
+
+// TODO: Support check status http request in future.
+func buildPDReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
+	return corev1.Handler{
+		TCPSocket: &corev1.TCPSocketAction{
+			Port: intstr.FromInt(2379),
+		},
+	}
 }
 
 // TODO: seems not used

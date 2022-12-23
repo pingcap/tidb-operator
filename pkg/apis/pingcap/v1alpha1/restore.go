@@ -23,6 +23,9 @@ import (
 
 // GetRestoreJobName return the restore job name
 func (rs *Restore) GetRestoreJobName() string {
+	if IsRestoreVolumeComplete(rs) && !IsRestoreDataComplete(rs) {
+		return fmt.Sprintf("restore-data-%s", rs.GetName())
+	}
 	return fmt.Sprintf("restore-%s", rs.GetName())
 }
 
@@ -63,11 +66,20 @@ func GetRestoreCondition(status *RestoreStatus, conditionType RestoreConditionTy
 // one. Sets LastTransitionTime to now if the status has changed.
 // Returns true if Restore condition has changed or has been added.
 func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) bool {
+	if condition == nil {
+		return false
+	}
 	condition.LastTransitionTime = metav1.Now()
 	// Try to find this Restore condition.
 	conditionIndex, oldCondition := GetRestoreCondition(status, condition.Type)
 
-	status.Phase = condition.Type
+	switch condition.Type {
+	case RestoreVolumeComplete, RestoreDataComplete:
+		// VolumeComplete and DataComplete are intermediately conditions,
+		// they can not represent the current phase of restore.
+	default:
+		status.Phase = condition.Type
+	}
 
 	if oldCondition == nil {
 		// We are adding new Restore condition.
@@ -116,5 +128,17 @@ func IsRestoreRunning(restore *Restore) bool {
 // IsRestoreFailed returns true if a Restore is Failed
 func IsRestoreFailed(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreFailed)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreVolumeComplete returns true if a Restore for volume has successfully completed
+func IsRestoreVolumeComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreVolumeComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreDataComplete returns true if a Restore for data consistency has successfully completed
+func IsRestoreDataComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreDataComplete)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }

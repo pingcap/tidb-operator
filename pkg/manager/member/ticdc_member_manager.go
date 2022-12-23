@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -50,6 +51,7 @@ type ticdcMemberManager struct {
 	scaler                   Scaler
 	ticdcUpgrader            Upgrader
 	suspender                suspender.Suspender
+	podVolumeModifier        volumes.PodVolumeModifier
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
@@ -87,12 +89,13 @@ func getTiCDCConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 // NewTiCDCMemberManager returns a *ticdcMemberManager
-func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader, spder suspender.Suspender) manager.Manager {
+func NewTiCDCMemberManager(deps *controller.Dependencies, scaler Scaler, ticdcUpgrader Upgrader, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	m := &ticdcMemberManager{
-		deps:          deps,
-		scaler:        scaler,
-		ticdcUpgrader: ticdcUpgrader,
-		suspender:     spder,
+		deps:              deps,
+		scaler:            scaler,
+		ticdcUpgrader:     ticdcUpgrader,
+		suspender:         spder,
+		podVolumeModifier: pvm,
 	}
 	m.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	return m
@@ -277,6 +280,11 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 	tc.Status.TiCDC.Synced = len(ticdcCaptures) == int(tc.TiCDCDeployDesiredReplicas()) && allCapturesReady
 	tc.Status.TiCDC.Captures = ticdcCaptures
 
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.TiCDCMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for ticdc: %v", err)
+	}
+
 	return nil
 }
 
@@ -362,7 +370,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 	stsLabels := labelTiCDC(tc)
 	stsName := controller.TiCDCMemberName(tcName)
 	podLabels := util.CombineStringMap(stsLabels, baseTiCDCSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(8301), baseTiCDCSpec.Annotations())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(8301, "/metrics"), baseTiCDCSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
 

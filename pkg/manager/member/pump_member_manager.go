@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -56,16 +57,18 @@ type pumpMemberManager struct {
 	deps   *controller.Dependencies
 	scaler Scaler
 	// only use for test
-	binlogClient binlogClient
-	suspender    suspender.Suspender
+	binlogClient      binlogClient
+	suspender         suspender.Suspender
+	podVolumeModifier volumes.PodVolumeModifier
 }
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
-func NewPumpMemberManager(deps *controller.Dependencies, scaler Scaler, spder suspender.Suspender) manager.Manager {
+func NewPumpMemberManager(deps *controller.Dependencies, scaler Scaler, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	return &pumpMemberManager{
-		deps:      deps,
-		scaler:    scaler,
-		suspender: spder,
+		deps:              deps,
+		scaler:            scaler,
+		suspender:         spder,
+		podVolumeModifier: pvm,
 	}
 }
 
@@ -91,7 +94,7 @@ func (m *pumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	return m.syncPumpStatefulSetForTidbCluster(tc)
 }
 
-//syncPumpStatefulSetForTidbCluster sync statefulset status of pump to tidbcluster
+// syncPumpStatefulSetForTidbCluster sync statefulset status of pump to tidbcluster
 func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
 	oldPumpSetTemp, err := m.deps.StatefulSetLister.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name))
 	if err != nil && !errors.IsNotFound(err) {
@@ -132,6 +135,7 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	}
 
 	// Wait for PD & TiKV upgrading done
+	// NO check for v1alpha1.ScalePhase now, as it shouldn't block when some other components scaling to 0 and deleting Pump
 	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
@@ -213,6 +217,11 @@ func (m *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 
 	tc.Status.Pump.Members = status
+
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.PumpMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for pump: %v", err)
+	}
 
 	return nil
 }
@@ -353,7 +362,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	replicas := tc.Spec.Pump.Replicas
 	storageClass := tc.Spec.Pump.StorageClassName
 	podLabels := util.CombineStringMap(stsLabels.Labels(), spec.Labels())
-	podAnnos := util.CombineStringMap(controller.AnnProm(8250), spec.Annotations())
+	podAnnos := util.CombineStringMap(controller.AnnProm(8250, "/metrics"), spec.Annotations())
 	storageRequest, err := controller.ParseStorageRequest(tc.Spec.Pump.Requests)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)

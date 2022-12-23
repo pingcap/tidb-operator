@@ -1151,7 +1151,9 @@ spec:
               - volume
               - volumeMount
               type: object
-            logBackupStorageProvider:
+            logRestoreStartTs:
+              type: string
+            pitrFullBackupStorageProvider:
               properties:
                 azblob:
                   properties:
@@ -1915,8 +1917,6 @@ spec:
                   - provider
                   type: object
               type: object
-            logRestoreStartTs:
-              type: string
             pitrRestoredTs:
               type: string
             podSecurityContext:
@@ -2110,6 +2110,20 @@ spec:
               type: array
             phase:
               type: string
+            progresses:
+              items:
+                properties:
+                  lastTransitionTime:
+                    format: date-time
+                    nullable: true
+                    type: string
+                  progress:
+                    type: number
+                  step:
+                    type: string
+                type: object
+              nullable: true
+              type: array
             timeCompleted:
               format: date-time
               nullable: true

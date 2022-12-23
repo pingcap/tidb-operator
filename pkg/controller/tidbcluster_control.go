@@ -17,10 +17,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -28,11 +24,17 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 )
 
 // TidbClusterControlInterface manages TidbClusters
 type TidbClusterControlInterface interface {
 	UpdateTidbCluster(*v1alpha1.TidbCluster, *v1alpha1.TidbClusterStatus, *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error)
+	Update(*v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error)
 	Create(*v1alpha1.TidbCluster) error
 	Patch(tc *v1alpha1.TidbCluster, data []byte, subresources ...string) (result *v1alpha1.TidbCluster, err error)
 }
@@ -74,7 +76,40 @@ func (c *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new
 		if updated, err := c.tcLister.TidbClusters(ns).Get(tcName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			tc = updated.DeepCopy()
+			// TiKV.EvictLeader is controlled by pod leader evictor in pkg/controller/tidbcluster/pod_control.go
+			// So don't overwrite it
+			status.TiKV.EvictLeader = tc.Status.TiKV.EvictLeader
 			tc.Status = *status
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated TidbCluster %s/%s from lister: %v", ns, tcName, err))
+		}
+
+		return updateErr
+	})
+	if err != nil {
+		klog.Errorf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, err)
+	}
+	return updateTC, err
+}
+
+func (c *realTidbClusterControl) Update(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error) {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	var updateTC *v1alpha1.TidbCluster
+
+	// don't wait due to limited number of clients, but backoff after the default number of steps
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var updateErr error
+		updateTC, updateErr = c.cli.PingcapV1alpha1().TidbClusters(ns).Update(context.TODO(), tc, metav1.UpdateOptions{})
+		if updateErr == nil {
+			klog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
+			return nil
+		}
+		klog.V(4).Infof("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
+
+		if updated, err := c.tcLister.TidbClusters(ns).Get(tcName); err == nil {
+			tc.ResourceVersion = updated.ResourceVersion
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated TidbCluster %s/%s from lister: %v", ns, tcName, err))
 		}
@@ -128,6 +163,17 @@ func (c *FakeTidbClusterControl) SetUpdateTidbClusterError(err error, after int)
 
 // UpdateTidbCluster updates the TidbCluster
 func (c *FakeTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, _ *v1alpha1.TidbClusterStatus, _ *v1alpha1.TidbClusterStatus) (*v1alpha1.TidbCluster, error) {
+	defer c.updateTidbClusterTracker.Inc()
+	if c.updateTidbClusterTracker.ErrorReady() {
+		defer c.updateTidbClusterTracker.Reset()
+		return tc, c.updateTidbClusterTracker.GetError()
+	}
+
+	return tc, c.TcIndexer.Update(tc)
+}
+
+// Update updates the TidbCluster different from the logic before
+func (c *FakeTidbClusterControl) Update(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbCluster, error) {
 	defer c.updateTidbClusterTracker.Inc()
 	if c.updateTidbClusterTracker.ErrorReady() {
 		defer c.updateTidbClusterTracker.Reset()

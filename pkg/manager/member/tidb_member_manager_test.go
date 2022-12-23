@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -578,6 +579,18 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 }
 
+func TestSyncRecoveryForTidbCluster(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbClusterForTiDB()
+	tmm, _, _, _ := newFakeTiDBMemberManager()
+	err := tmm.syncRecoveryForTidbCluster(tc)
+	g.Expect(err).To(BeNil())
+
+	tc.Spec.RecoveryMode = true
+	err = tmm.syncRecoveryForTidbCluster(tc)
+	g.Expect(err).NotTo(BeNil())
+}
+
 func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
@@ -840,6 +853,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		tidbFailover:                 NewFakeTiDBFailover(),
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 		suspender:                    suspender.NewFakeSuspender(),
+		podVolumeModifier:            &volumes.FakePodVolumeModifier{},
 	}
 	indexers := &fakeIndexers{
 		pod:    fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer(),
@@ -1232,10 +1246,15 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{},
-					TiDB: &v1alpha1.TiDBSpec{ReadinessProbe: &v1alpha1.TiDBProbe{
-						InitialDelaySeconds: pointer.Int32Ptr(5),
-						PeriodSeconds:       pointer.Int32Ptr(2),
-					}},
+
+					TiDB: &v1alpha1.TiDBSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{
+								InitialDelaySeconds: pointer.Int32Ptr(5),
+								PeriodSeconds:       pointer.Int32Ptr(2),
+							},
+						},
+					},
 					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
@@ -2503,7 +2522,7 @@ func TestBuildTiDBProbeHandler(t *testing.T) {
 	g.Expect(get).Should(Equal(defaultHandler))
 
 	// test set command type & not tls
-	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.TiDBProbe{
+	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.Probe{
 		Type: pointer.StringPtr(v1alpha1.CommandProbeType),
 	}
 	get = buildTiDBReadinessProbHandler(tc)
@@ -2517,7 +2536,7 @@ func TestBuildTiDBProbeHandler(t *testing.T) {
 	g.Expect(get).Should(Equal(sslExecHandler))
 
 	// test tcp type
-	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.TiDBProbe{
+	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.Probe{
 		Type: pointer.StringPtr(v1alpha1.TCPProbeType),
 	}
 	get = buildTiDBReadinessProbHandler(tc)
@@ -2768,7 +2787,7 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 		},
 		{
 			name:        "skip old version tidb",
-			tidbVersion: "v6.1.0",
+			tidbVersion: "v6.2.9",
 			members: []Member{
 				{
 					node: "node-1",

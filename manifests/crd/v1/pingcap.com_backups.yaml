@@ -45,7 +45,7 @@ spec:
       name: CommitTS
       type: string
     - description: The log backup truncate until ts
-      jsonPath: .status.logTruncateUntil
+      jsonPath: .status.logSuccessTruncateUntil
       name: LogTruncateUntil
       type: string
     - description: The time at which the backup was started
@@ -1226,6 +1226,8 @@ spec:
                 - volume
                 - volumeMount
                 type: object
+              logStop:
+                type: boolean
               logTruncateUntil:
                 type: string
               podSecurityContext:
@@ -1387,6 +1389,8 @@ spec:
               conditions:
                 items:
                   properties:
+                    command:
+                      type: string
                     lastTransitionTime:
                       format: date-time
                       nullable: true
@@ -1405,10 +1409,68 @@ spec:
                   type: object
                 nullable: true
                 type: array
-              logTruncateUntil:
+              logCheckpointTs:
+                type: string
+              logSubCommandStatuses:
+                additionalProperties:
+                  properties:
+                    command:
+                      type: string
+                    conditions:
+                      items:
+                        properties:
+                          command:
+                            type: string
+                          lastTransitionTime:
+                            format: date-time
+                            nullable: true
+                            type: string
+                          message:
+                            type: string
+                          reason:
+                            type: string
+                          status:
+                            type: string
+                          type:
+                            type: string
+                        required:
+                        - status
+                        - type
+                        type: object
+                      nullable: true
+                      type: array
+                    logTruncatingUntil:
+                      type: string
+                    phase:
+                      type: string
+                    timeCompleted:
+                      format: date-time
+                      nullable: true
+                      type: string
+                    timeStarted:
+                      format: date-time
+                      nullable: true
+                      type: string
+                  type: object
+                type: object
+              logSuccessTruncateUntil:
                 type: string
               phase:
                 type: string
+              progresses:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      nullable: true
+                      type: string
+                    progress:
+                      type: number
+                    step:
+                      type: string
+                  type: object
+                nullable: true
+                type: array
               timeCompleted:
                 format: date-time
                 nullable: true

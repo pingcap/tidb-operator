@@ -38,6 +38,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
 
@@ -931,11 +932,12 @@ func newFakePDMemberManager() (*pdMemberManager, cache.Indexer, cache.Indexer) {
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	pdManager := &pdMemberManager{
-		deps:      fakeDeps,
-		scaler:    NewFakePDScaler(),
-		upgrader:  NewFakePDUpgrader(),
-		failover:  NewFakePDFailover(),
-		suspender: suspender.NewFakeSuspender(),
+		deps:              fakeDeps,
+		scaler:            NewFakePDScaler(),
+		upgrader:          NewFakePDUpgrader(),
+		failover:          NewFakePDFailover(),
+		suspender:         suspender.NewFakeSuspender(),
+		podVolumeModifier: &volumes.FakePodVolumeModifier{},
 	}
 	return pdManager, podIndexer, pvcIndexer
 }
@@ -1949,7 +1951,33 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				}))
 			},
 		},
-		// TODO add more tests
+		{
+			name: "PD spec readiness",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{
+								Type: pointer.StringPtr("tcp"),
+							},
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.Containers[0].ReadinessProbe).To(Equal(&corev1.Probe{
+					Handler:             buildPDReadinessProbHandler(nil),
+					InitialDelaySeconds: int32(10),
+				}))
+			},
+		},
 	}
 
 	for _, tt := range tests {

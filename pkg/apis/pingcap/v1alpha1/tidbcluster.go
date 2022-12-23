@@ -19,12 +19,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 )
 
 const (
@@ -203,6 +204,31 @@ func (tc *TidbCluster) TiCDCImage() string {
 	// base image takes higher priority
 	if baseImage != "" {
 		version := tc.Spec.TiCDC.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
+	}
+	return image
+}
+
+// TiProxyImage return the image used by TiProxy.
+//
+// If TiProxy isn't specified, return empty string.
+func (tc *TidbCluster) TiProxyImage() string {
+	if tc.Spec.TiProxy == nil {
+		return ""
+	}
+
+	image := tc.Spec.TiProxy.Image
+	baseImage := tc.Spec.TiProxy.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := tc.Spec.TiProxy.Version
 		if version == nil {
 			version = &tc.Spec.Version
 		}
@@ -668,6 +694,14 @@ func (tc *TidbCluster) TiCDCAllCapturesReady() bool {
 	return true
 }
 
+func (tc *TidbCluster) TiProxyDeployDesiredReplicas() int32 {
+	if tc.Spec.TiProxy == nil {
+		return 0
+	}
+
+	return tc.Spec.TiProxy.Replicas
+}
+
 func (tc *TidbCluster) TiCDCDeployDesiredReplicas() int32 {
 	if tc.Spec.TiCDC == nil {
 		return 0
@@ -813,6 +847,20 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 	return true
 }
 
+func (tc *TidbCluster) AllTiKVsAreAvailable() bool {
+	if len(tc.Status.TiKV.Stores) != int(tc.Spec.TiKV.Replicas) {
+		return false
+	}
+
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State != TiKVStateUp {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (tc *TidbCluster) PumpIsAvailable() bool {
 	lowerLimit := 1
 	if len(tc.Status.Pump.Members) < lowerLimit {
@@ -839,6 +887,10 @@ func (tc *TidbCluster) GetClusterID() string {
 
 func (tc *TidbCluster) IsTLSClusterEnabled() bool {
 	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
+}
+
+func (tc *TidbCluster) IsRecoveryMode() bool {
+	return tc.Spec.RecoveryMode
 }
 
 func (tc *TidbCluster) NeedToSyncTiDBInitializer() bool {
@@ -1125,6 +1177,15 @@ func (tc *TidbCluster) IsComponentVolumeResizing(compType MemberType) bool {
 	}
 	conds := comp.GetConditions()
 	return meta.IsStatusConditionTrue(conds, ComponentVolumeResizing)
+}
+
+func (tc *TidbCluster) IsComponentLeaderEvicting(compType MemberType) bool {
+	comp := tc.ComponentStatus(compType)
+	if comp == nil {
+		return false
+	}
+	conds := comp.GetConditions()
+	return meta.IsStatusConditionTrue(conds, ConditionTypeLeaderEvicting)
 }
 
 func (tc *TidbCluster) StartScriptVersion() StartScriptVersion {
