@@ -1751,4 +1751,13 @@ func TestSyncRecoveryForTiFlash(t *testing.T) {
 	tc.Spec.RecoveryMode = true
 	err = tmm.syncRecoveryForTiFlash(tc)
 	g.Expect(err).NotTo(BeNil())
+
+	annotations := tc.Annotations
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations[label.AnnTiKVVolumesReadyKey] = "restore"
+	tc.SetAnnotations(annotations)
+	err = tmm.syncRecoveryForTiFlash(tc)
+	g.Expect(err).To(BeNil())
 }
