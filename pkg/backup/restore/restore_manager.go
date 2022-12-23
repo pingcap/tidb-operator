@@ -121,6 +121,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreDataComplete(restore) && !tc.AllTiKVsAreAvailable() {
 			return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 		}
+		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreDataComplete(restore) && tc.TiFlashStsDesiredReplicas() > 0 && !tc.TiFlashAllStoresReady() {
+			return controller.RequeueErrorf("restore %s/%s: waiting for all TiFlashes are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
+		}
 	}
 
 	restoreJobName := restore.GetRestoreJobName()
