@@ -10,7 +10,7 @@ variable "bastion_cpu_core_count" {
 
 variable "operator_version" {
   type    = string
-  default = "v1.4.0-beta.3"
+  default = "v1.4.0-beta.4"
 }
 
 variable "operator_helm_values" {

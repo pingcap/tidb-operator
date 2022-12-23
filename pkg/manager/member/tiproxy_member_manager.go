@@ -295,32 +295,25 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 	}
 
 	replicas := 0
-	sameConfigProxy := true
 	pods := helper.GetPodOrdinals(tc.Status.TiProxy.StatefulSet.Replicas, sts)
 	for id := range pods {
-		podHealthy, err := m.deps.ProxyControl.IsPodHealthy(tc, int32(id))
+		cfg, err := m.deps.ProxyControl.GetConfigProxy(tc, id)
 		if err != nil {
-			return err
+			continue
 		}
-		if podHealthy {
-			replicas++
-		}
-	}
-	if replicas > 0 {
-		cfg, err := m.deps.ProxyControl.GetConfigProxy(tc, pods.UnsortedList()[0])
-		if err != nil {
-			return err
-		}
-		if tc.Spec.TiProxy.Proxy != nil && (tc.Spec.TiProxy.Proxy.MaxConnections != cfg.MaxConnections || tc.Spec.TiProxy.Proxy.TCPKeepAlive != cfg.TCPKeepAlive) {
-			sameConfigProxy = false
-			tc.Status.TiProxy.Proxy = *cfg
-			if err := m.deps.ProxyControl.SetConfigProxy(tc, pods.UnsortedList()[0], tc.Spec.TiProxy.Proxy); err != nil {
-				return err
+		tc.Status.TiProxy.Proxy = *cfg
+		if k := tc.Spec.TiProxy.Proxy; k != nil {
+			if k.MaxConnections != cfg.MaxConnections || k.TCPKeepAlive != cfg.TCPKeepAlive {
+				if err := m.deps.ProxyControl.SetConfigProxy(tc, id, k); err != nil {
+					klog.Infof("failed to set tiproxy[%d] config: %+v", id, k)
+					continue
+				}
 			}
 		}
+		replicas++
 	}
 
-	tc.Status.TiProxy.Synced = replicas == int(tc.TiProxyDeployDesiredReplicas()) && sameConfigProxy
+	tc.Status.TiProxy.Synced = replicas == int(tc.TiProxyDeployDesiredReplicas())
 	return nil
 }
 

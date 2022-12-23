@@ -2302,6 +2302,22 @@ spec:
               type: string
             pvReclaimPolicy:
               type: string
+            readinessProbe:
+              properties:
+                initialDelaySeconds:
+                  format: int32
+                  minimum: 0
+                  type: integer
+                periodSeconds:
+                  format: int32
+                  minimum: 1
+                  type: integer
+                type:
+                  enum:
+                  - tcp
+                  - command
+                  type: string
+              type: object
             requests:
               additionalProperties:
                 anyOf:

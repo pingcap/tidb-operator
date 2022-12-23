@@ -439,9 +439,9 @@ func dashboardStartArgs(
 
 	if mysqlTLSEnable {
 		base = append(base, []string{
-			fmt.Sprintf("--mysql-ca=%s/ca.crt", mysqlTLSMountPath),
-			fmt.Sprintf("--mysql-cert=%s/tls.crt", mysqlTLSMountPath),
-			fmt.Sprintf("--mysql-key=%s/tls.key", mysqlTLSMountPath),
+			fmt.Sprintf("--tidb-ca=%s/ca.crt", mysqlTLSMountPath),
+			fmt.Sprintf("--tidb-cert=%s/tls.crt", mysqlTLSMountPath),
+			fmt.Sprintf("--tidb-key=%s/tls.key", mysqlTLSMountPath),
 		}...)
 	}
 
