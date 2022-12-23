@@ -23,8 +23,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -54,17 +56,19 @@ type tiflashMemberManager struct {
 	scaler                   Scaler
 	upgrader                 Upgrader
 	suspender                suspender.Suspender
+	podVolumeModifier        volumes.PodVolumeModifier
 	statefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiFlashMemberManager returns a *tiflashMemberManager
-func NewTiFlashMemberManager(deps *controller.Dependencies, tiflashFailover Failover, tiflashScaler Scaler, tiflashUpgrader Upgrader, spder suspender.Suspender) manager.Manager {
+func NewTiFlashMemberManager(deps *controller.Dependencies, tiflashFailover Failover, tiflashScaler Scaler, tiflashUpgrader Upgrader, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	m := tiflashMemberManager{
-		deps:      deps,
-		failover:  tiflashFailover,
-		scaler:    tiflashScaler,
-		upgrader:  tiflashUpgrader,
-		suspender: spder,
+		deps:              deps,
+		failover:          tiflashFailover,
+		scaler:            tiflashScaler,
+		upgrader:          tiflashUpgrader,
+		suspender:         spder,
+		podVolumeModifier: pvm,
 	}
 	m.statefulSetIsUpgradingFn = tiflashStatefulSetIsUpgrading
 	return &m
@@ -426,30 +430,11 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			},
 		},
 	}
-	script := "set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml"
 
-	if tc.AcrossK8s() {
-		var pdAddr string
-		if tc.IsTLSClusterEnabled() {
-			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
-		} else {
-			pdAddr = fmt.Sprintf("http://%s-pd:2379", tcName)
-		}
-		str := `pd_url="%s"
-set +e
-encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="%s-discovery.%s:10261"
-until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
-echo "waiting for the verification of PD endpoints ..."
-sleep 2
-done
-
-
-sed -i s/PD_ADDR/${result}/g /data0/config.toml
-sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
-`
-		script += "\n"
-		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace())
+	// NOTE: the config content should respect the init script
+	initScript, err := startscript.RenderTiFlashInitScript(tc)
+	if err != nil {
+		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}
 
 	initializer := corev1.Container{
@@ -458,7 +443,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 		Command: []string{
 			"sh",
 			"-c",
-			script,
+			initScript,
 		},
 		Env:          initEnv,
 		VolumeMounts: initVolMounts,
@@ -471,7 +456,7 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 	stsLabels := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)
 	podLabels := util.CombineStringMap(stsLabels, baseTiFlashSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(8234, "/metrics"), baseTiFlashSpec.Annotations())
 	podAnnotations = util.CombineStringMap(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiFlashLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiFlash.Limits)
@@ -508,11 +493,17 @@ sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 			Value: tc.Timezone(),
 		},
 	}
+
+	startScript, err := startscript.RenderTiFlashStartScript(tc)
+	if err != nil {
+		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
+	}
+
 	tiflashContainer := corev1.Container{
 		Name:            v1alpha1.TiFlashMemberType.String(),
 		Image:           tc.TiFlashImage(),
 		ImagePullPolicy: baseTiFlashSpec.ImagePullPolicy(),
-		Command:         []string{"/bin/sh", "-c", "/tiflash/tiflash server --config-file /data0/config.toml"},
+		Command:         []string{"/bin/sh", "-c", startScript},
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: tc.TiFlashContainerPrivilege(),
 		},
@@ -765,6 +756,12 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	if c != nil {
 		tc.Status.TiFlash.Image = c.Image
 	}
+
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.TiFlashMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for tiflash: %v", err)
+	}
+
 	return nil
 }
 

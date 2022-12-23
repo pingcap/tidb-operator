@@ -18,7 +18,9 @@ import (
 	stdjson "encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/mohae/deepcopy"
@@ -360,4 +362,29 @@ func strKeyMap(val interface{}) interface{} {
 	}
 
 	return val
+}
+
+// ParseTSString supports TSO or datetime, e.g. '400036290571534337', '2006-01-02 15:04:05'
+func ParseTSString(ts string) (uint64, error) {
+	if len(ts) == 0 {
+		return 0, nil
+	}
+	if tso, err := strconv.ParseUint(ts, 10, 64); err == nil {
+		return tso, nil
+	}
+	t, err := time.ParseInLocation("2006-01-02 15:04:05", ts, time.Local)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, ts)
+		if err != nil {
+			return 0, fmt.Errorf("cannot parse ts string %s, err: %v", ts, err)
+		}
+	}
+	return GoTimeToTS(t), nil
+}
+
+// GoTimeToTS converts a Go time to uint64 timestamp.
+// port from tidb.
+func GoTimeToTS(t time.Time) uint64 {
+	ts := (t.UnixNano() / int64(time.Millisecond)) << 18
+	return uint64(ts)
 }

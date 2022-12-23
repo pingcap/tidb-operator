@@ -29,10 +29,6 @@ import (
 	"sync"
 	"time"
 
-	// To register MySQL driver
-	_ "github.com/go-sql-driver/mysql"
-
-	"github.com/ghodss/yaml"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	pingcapErrors "github.com/pingcap/errors"
@@ -42,6 +38,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/manager/tidbdashboard"
 	tngmname "github.com/pingcap/tidb-operator/pkg/manager/tidbngmonitoring"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -54,6 +51,9 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/slack"
+
+	"github.com/ghodss/yaml"
+	_ "github.com/go-sql-driver/mysql"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -349,7 +349,7 @@ func (oa *OperatorActions) crdFiles(info *OperatorConfig) ([]string, error) {
 	files := []string{
 		crdFile,
 	}
-	if info.Enabled("advanced-statefulset") {
+	if info.Enabled(features.AdvancedStatefulSet) {
 		files = append(files, astsCRDFile)
 	}
 
@@ -607,6 +607,7 @@ type memberCheckContext struct {
 	stsName        string
 	expectedImage  string
 	services       []string
+	status         v1alpha1.ComponentStatus
 	checkComponent func(obj metav1.Object, sts *v1.StatefulSet) error
 }
 
@@ -625,6 +626,8 @@ func (oa *OperatorActions) IsMembersReady(obj metav1.Object, component v1alpha1.
 		ctx, err = oa.memberCheckContextForDC(cluster, component)
 	case *v1alpha1.TidbNGMonitoring:
 		ctx, err = oa.memberCheckContextForTNGM(cluster, component)
+	case *v1alpha1.TidbDashboard:
+		ctx, err = oa.memberCheckContextForTidbDashboard(cluster, component)
 	default:
 		err = fmt.Errorf("unsupported object type: %T", obj)
 	}
@@ -736,6 +739,7 @@ func (oa *OperatorActions) memberCheckContextForTC(tc *v1alpha1.TidbCluster, com
 		stsName:       stsName,
 		expectedImage: expectedImage,
 		services:      services,
+		status:        tc.ComponentStatus(component),
 		checkComponent: func(obj metav1.Object, sts *v1.StatefulSet) error {
 			tc := obj.(*v1alpha1.TidbCluster)
 			return checkComponent(tc, sts)
@@ -777,6 +781,7 @@ func (oa *OperatorActions) memberCheckContextForDC(dc *v1alpha1.DMCluster, compo
 		stsName:       stsName,
 		expectedImage: expectedImage,
 		services:      services,
+		status:        dc.ComponentStatus(component),
 		checkComponent: func(obj metav1.Object, sts *v1.StatefulSet) error {
 			dc := obj.(*v1alpha1.DMCluster)
 			return checkComponent(dc, sts)
@@ -812,9 +817,51 @@ func (oa *OperatorActions) memberCheckContextForTNGM(tngm *v1alpha1.TidbNGMonito
 		stsName:       stsName,
 		expectedImage: expectedImage,
 		services:      services,
+		status:        nil,
 		checkComponent: func(obj metav1.Object, sts *v1.StatefulSet) error {
 			tngm := obj.(*v1alpha1.TidbNGMonitoring)
 			return checkComponent(tngm, sts)
+		},
+	}
+
+	return ctx, nil
+}
+
+func (oa *OperatorActions) memberCheckContextForTidbDashboard(td *v1alpha1.TidbDashboard, component v1alpha1.MemberType) (*memberCheckContext, error) {
+	name := td.GetName()
+	stsName := fmt.Sprintf("%s-%s", name, component)
+
+	var (
+		skip           bool
+		expectedImage  string
+		services       []string
+		checkComponent func(td *v1alpha1.TidbDashboard, sts *v1.StatefulSet) error
+	)
+
+	switch component {
+	case v1alpha1.NGMonitoringMemberType:
+		skip = false
+		expectedImage = tidbdashboard.EnsureImage(td)
+		services = []string{tidbdashboard.ServiceName(name)}
+		checkComponent = func(td *v1alpha1.TidbDashboard, sts *v1.StatefulSet) error {
+			if td.Status.StatefulSet == nil {
+				return fmt.Errorf("sts in td status is nil")
+			}
+			return nil
+		}
+	default:
+		return nil, fmt.Errorf("unknown component %s", component)
+	}
+
+	ctx := &memberCheckContext{
+		skip:          skip,
+		stsName:       stsName,
+		expectedImage: expectedImage,
+		services:      services,
+		status:        nil,
+		checkComponent: func(obj metav1.Object, sts *v1.StatefulSet) error {
+			td := obj.(*v1alpha1.TidbDashboard)
+			return checkComponent(td, sts)
 		},
 	}
 
@@ -944,6 +991,10 @@ func (oa *OperatorActions) isTiFlashMembersReady(tc *v1alpha1.TidbCluster, sts *
 func (oa *OperatorActions) isTiCDCMembersReady(tc *v1alpha1.TidbCluster, sts *v1.StatefulSet) error {
 	if tc.Status.TiCDC.StatefulSet == nil {
 		return fmt.Errorf("sts in tc status is nil")
+	}
+
+	if len(tc.Status.TiCDC.Captures) != int(tc.Spec.TiCDC.Replicas) {
+		return fmt.Errorf("tc.status.TiCDC.Captures.count(%d) != %d", len(tc.Status.TiCDC.Captures), tc.Spec.TiCDC.Replicas)
 	}
 
 	return nil
@@ -1425,6 +1476,36 @@ func (oa *OperatorActions) WaitForDmClusterDeleted(ns, dcName string, timeout, p
 	if err == wait.ErrWaitTimeout {
 		return checkErr
 	}
+	return err
+}
+
+func (oa *OperatorActions) WaitForTiDBDashboardReady(td *v1alpha1.TidbDashboard, timeout, pollInterval time.Duration) error {
+	var checkErr error
+
+	err := wait.PollImmediate(pollInterval, timeout, func() (done bool, err error) {
+		ns := td.Namespace
+		name := td.Name
+		locator := fmt.Sprintf("%s/%s", td.Namespace, td.Name)
+
+		local, err := oa.cli.PingcapV1alpha1().TidbDashboards(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			checkErr = fmt.Errorf("get TidbDashboard %q failed: %s", locator, err)
+			return false, nil
+		}
+
+		if err := oa.IsMembersReady(local, v1alpha1.TiDBDashboardMemberType); err != nil {
+			checkErr = fmt.Errorf("%s members for TiDBDashboard %q are not ready: %v", v1alpha1.TiDBDashboardMemberType, locator, err)
+			return false, nil
+		}
+
+		log.Logf("TiDBDashboard %q: all components are ready", locator)
+		return true, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = checkErr
+	}
+
 	return err
 }
 

@@ -58,12 +58,15 @@ func TestSuspendComponent(t *testing.T) {
 				tc.Spec.TiKV = &v1alpha1.TiKVSpec{}
 				tc.Status.TiKV = v1alpha1.TiKVStatus{}
 				tc.Spec.TiKV.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
-				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase // can not suspend
+				// can not suspend
+				tc.Spec.TiDB = &v1alpha1.TiDBSpec{}
+				tc.Spec.TiDB.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
+				tc.Status.TiDB.Phase = v1alpha1.NormalPhase
 			},
 			component: v1alpha1.TiKVMemberType,
 			sts:       nil,
 			expect: func(suspeded bool, err error) {
-				g.Expect(suspeded).To(BeTrue())
+				g.Expect(suspeded).To(BeFalse())
 				g.Expect(err).To(BeNil())
 			},
 			expectResource: func(cluster v1alpha1.Cluster, s *suspender) {},

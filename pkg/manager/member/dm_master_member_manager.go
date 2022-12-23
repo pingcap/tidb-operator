@@ -23,9 +23,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -621,7 +623,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	stsLabels := label.NewDM().Instance(instanceName).DMMaster()
 	podLabels := util.CombineStringMap(stsLabels, baseMasterSpec.Labels())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMMasterLabelVal)
-	podAnnotations := util.CombineStringMap(controller.AnnProm(8261), baseMasterSpec.Annotations())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(8261, "/metrics"), baseMasterSpec.Annotations())
 	failureReplicas := getDMMasterFailureReplicas(dc)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
@@ -768,7 +770,7 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	startScript, err := RenderDMMasterStartScript(&DMMasterStartScriptModel{
+	startScript, err := startscriptv1.RenderDMMasterStartScript(&startscriptv1.DMMasterStartScriptModel{
 		Scheme:  dc.Scheme(),
 		DataDir: filepath.Join(dmMasterDataVolumeMountPath, dc.Spec.Master.DataSubDir),
 	})

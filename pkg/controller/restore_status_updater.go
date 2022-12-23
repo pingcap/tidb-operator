@@ -39,6 +39,12 @@ type RestoreUpdateStatus struct {
 	TimeCompleted *metav1.Time
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
+	// ProgressStep the step name of progress.
+	ProgressStep *string
+	// Progress is the step's progress value.
+	Progress *float64
+	// ProgressUpdateTime is the progress update time.
+	ProgressUpdateTime *metav1.Time
 }
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
@@ -67,24 +73,27 @@ func NewRealRestoreConditionUpdater(
 func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition, newStatus *RestoreUpdateStatus) error {
 	ns := restore.GetNamespace()
 	restoreName := restore.GetName()
-	var isUpdate bool
+	var isStatusUpdate bool
+	var isConditionUpdate bool
 	// try best effort to guarantee restore is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		updateRestoreStatus(&restore.Status, newStatus)
-		isUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
-		if isUpdate {
+		// Always get the latest restore before update.
+		if updated, err := u.restoreLister.Restores(ns).Get(restoreName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			restore = updated.DeepCopy()
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated restore %s/%s from lister: %v", ns, restoreName, err))
+			return err
+		}
+		isStatusUpdate = updateRestoreStatus(&restore.Status, newStatus)
+		isConditionUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
+		if isStatusUpdate || isConditionUpdate {
 			_, updateErr := u.cli.PingcapV1alpha1().Restores(ns).Update(context.TODO(), restore, metav1.UpdateOptions{})
 			if updateErr == nil {
 				klog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
 				return nil
 			}
-			klog.Errorf("Failed to update resotre [%s/%s], error: %v", ns, restoreName, updateErr)
-			if updated, err := u.restoreLister.Restores(ns).Get(restoreName); err == nil {
-				// make a copy so we don't mutate the shared cache
-				restore = updated.DeepCopy()
-			} else {
-				utilruntime.HandleError(fmt.Errorf("error getting updated restore %s/%s from lister: %v", ns, restoreName, err))
-			}
+			klog.Errorf("Failed to update restore [%s/%s], error: %v", ns, restoreName, updateErr)
 			return updateErr
 		}
 		return nil
@@ -94,19 +103,32 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 
 // updateRestoreStatus updates existing Restore status
 // from the fields in RestoreUpdateStatus.
-func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdateStatus) {
+func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdateStatus) bool {
 	if newStatus == nil {
-		return
+		return false
 	}
-	if newStatus.TimeStarted != nil {
+	isUpdate := false
+	if newStatus.TimeStarted != nil && status.TimeStarted != *newStatus.TimeStarted {
 		status.TimeStarted = *newStatus.TimeStarted
+		isUpdate = true
 	}
-	if newStatus.TimeCompleted != nil {
+	if newStatus.TimeCompleted != nil && status.TimeCompleted != *newStatus.TimeCompleted {
 		status.TimeCompleted = *newStatus.TimeCompleted
+		isUpdate = true
 	}
-	if newStatus.CommitTs != nil {
+	if newStatus.CommitTs != nil && status.CommitTs != *newStatus.CommitTs {
 		status.CommitTs = *newStatus.CommitTs
+		isUpdate = true
 	}
+	if newStatus.ProgressStep != nil {
+		progresses, updated := updateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
+		if updated {
+			status.Progresses = progresses
+			isUpdate = true
+		}
+	}
+
+	return isUpdate
 }
 
 var _ RestoreConditionUpdaterInterface = &realRestoreConditionUpdater{}

@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -564,6 +565,70 @@ func TestRetryOnError(t *testing.T) {
 	}
 }
 
+func TestParseRestoreProgress(t *testing.T) {
+	g := NewGomegaWithT(t)
+	cases := []struct {
+		testStr        string
+		expectStep     string
+		expectProgress string
+		expectFloat    float64
+	}{
+		{
+			testStr:        "",
+			expectStep:     "",
+			expectProgress: "",
+			expectFloat:    -1,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Full Restore\"] [progress=10%] abcdefeg",
+			expectStep:     "Full Restore",
+			expectProgress: "10",
+			expectFloat:    10,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Restore Meta Files\"] [progress=10%] abcdefeg",
+			expectStep:     "Restore Meta Files",
+			expectProgress: "10",
+			expectFloat:    10,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Restore KV Files\"] [progress=10.9%] abcdefeg",
+			expectStep:     "Restore KV Files",
+			expectProgress: "10.9",
+			expectFloat:    10.9,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Full Restore\"] [progress=?%] abcdefeg",
+			expectStep:     "Full Restore",
+			expectProgress: "?",
+			expectFloat:    -1,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Full Restore\"] [progress=%] abcdefeg",
+			expectStep:     "Full Restore",
+			expectProgress: "",
+			expectFloat:    -1,
+		},
+		{
+			testStr:        "abcdef, [progress] [step=\"Restore KV Files\"] abcdefeg",
+			expectStep:     "",
+			expectProgress: "",
+			expectFloat:    -1,
+		},
+	}
+	for _, test := range cases {
+		step, progress := ParseRestoreProgress(test.testStr)
+		g.Expect(step).To(Equal(test.expectStep))
+		g.Expect(progress).To(Equal(test.expectProgress))
+		fvalue, err := strconv.ParseFloat(progress, 64)
+		if test.expectFloat == -1 {
+			g.Expect(err).ShouldNot(BeNil())
+		} else {
+			g.Expect(fvalue).To(Equal(test.expectFloat))
+		}
+	}
+}
+
 func newBackup() *v1alpha1.Backup {
 	return &v1alpha1.Backup{
 		TypeMeta: metav1.TypeMeta{
@@ -625,5 +690,50 @@ func newRestore() *v1alpha1.Restore {
 			StorageClassName: pointer.StringPtr("local-storage"),
 			StorageSize:      "1Gi",
 		},
+	}
+}
+
+func TestGetSliceExcludeOneString(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name   string
+		str    string
+		strs   []string
+		expect []string
+	}
+
+	tests := []*testcase{
+		{
+			name:   "test-1",
+			str:    "--skip-aws",
+			strs:   []string{"--skip-aws=true", "--dry-run=true", "--check-requirements=false"},
+			expect: []string{"--dry-run=true", "--check-requirements=false"},
+		},
+		{
+			name:   "test-2",
+			str:    "--skip-aws",
+			strs:   []string{},
+			expect: []string{},
+		},
+		{
+			name:   "test-3",
+			str:    "--skip-aws",
+			strs:   []string{"--dry-run=true", "--skip-aws=false", "--skip-aws=true"},
+			expect: []string{"--dry-run=true", "--skip-aws=true"},
+		},
+		{
+			name:   "test-4",
+			str:    "--skip-aws",
+			strs:   []string{"--dry-run=true", "--check-requirements=false"},
+			expect: []string{"--dry-run=true", "--check-requirements=false"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			strs := GetSliceExcludeOneString(tt.strs, tt.str)
+			g.Expect(strs).To(Equal(tt.expect))
+		})
 	}
 }

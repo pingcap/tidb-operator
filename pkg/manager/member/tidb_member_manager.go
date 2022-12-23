@@ -19,6 +19,7 @@ import (
 	"database/sql"
 	"fmt"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -29,9 +30,13 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -60,26 +65,41 @@ const (
 	// When user use self-signed certificates, the root CA must be provided. We
 	// following the same convention used in Kubernetes service token.
 	tlsSecretRootCAKey = corev1.ServiceAccountRootCAKey
+	// nolint: gosec
+	// tidbAuthTokenPath is where the assets for auth tidb client stored. Such as: tidb auth token JWKS
+	tidbAuthTokenPath = "/var/lib/tidb-auth-token"
+	// nolint: gosec
+	tidbAuthTokenJWKS = "tidb_auth_token_jwks.json"
+
+	// tidb DC label Name
+	tidbDCLabel = "zone"
+)
+
+var (
+	// node labels that can be used as tidb DC label Name
+	topologyZoneLabels = []string{"zone", "topology.kubernetes.io/zone", "failure-domain.beta.kubernetes.io/zone"}
 )
 
 type tidbMemberManager struct {
-	deps         *controller.Dependencies
-	scaler       Scaler
-	tidbUpgrader Upgrader
-	tidbFailover Failover
-	suspender    suspender.Suspender
+	deps              *controller.Dependencies
+	scaler            Scaler
+	tidbUpgrader      Upgrader
+	tidbFailover      Failover
+	suspender         suspender.Suspender
+	podVolumeModifier volumes.PodVolumeModifier
 
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
-func NewTiDBMemberManager(deps *controller.Dependencies, scaler Scaler, tidbUpgrader Upgrader, tidbFailover Failover, spder suspender.Suspender) manager.Manager {
+func NewTiDBMemberManager(deps *controller.Dependencies, scaler Scaler, tidbUpgrader Upgrader, tidbFailover Failover, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	return &tidbMemberManager{
 		deps:                         deps,
 		scaler:                       scaler,
 		tidbUpgrader:                 tidbUpgrader,
 		tidbFailover:                 tidbFailover,
 		suspender:                    spder,
+		podVolumeModifier:            pvm,
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
 	}
 }
@@ -108,6 +128,11 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 
+	// Sync TidbCluster Recovery
+	if err := m.syncRecoveryForTidbCluster(tc); err != nil {
+		return err
+	}
+
 	if tc.Spec.Pump != nil && !tc.PumpIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
 	}
@@ -134,6 +159,18 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	// Sync TiDB StatefulSet
 	return m.syncTiDBStatefulSetForTidbCluster(tc)
+}
+
+func (m *tidbMemberManager) syncRecoveryForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	// Check whether the cluster is in recovery mode
+	// and whether the volumes have been restored for TiKV
+	if !tc.Spec.RecoveryMode {
+		return nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV restore data completed", ns, tcName)
 }
 
 func (m *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error {
@@ -240,6 +277,10 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 		tc.Status.TiDB.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
+	}
+
+	if _, err := m.setServerLabels(tc); err != nil {
+		return err
 	}
 
 	// Scaling takes precedence over upgrading because:
@@ -515,6 +556,10 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 	config := tc.Spec.TiDB.Config.DeepCopy()
 
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		config.Set("security.auth-token-jwks", path.Join(tidbAuthTokenPath, tidbAuthTokenJWKS))
+	}
+
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
 		config.Set("security.cluster-ssl-ca", path.Join(clusterCertPath, tlsSecretRootCAKey))
@@ -534,28 +579,11 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	plugins := tc.Spec.TiDB.Plugins
-	tidbStartScriptModel := &TidbStartScriptModel{
-		CommonModel: CommonModel{
-			AcrossK8s:     tc.AcrossK8s(),
-			ClusterDomain: tc.Spec.ClusterDomain,
-		},
-		EnablePlugin:    len(plugins) > 0,
-		PluginDirectory: "/plugins",
-		PluginList:      strings.Join(plugins, ","),
-	}
-
-	tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379"
-	if tc.AcrossK8s() {
-		tidbStartScriptModel.Path = "${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
-	}
-
-	startScript, err := RenderTiDBStartScript(tidbStartScriptModel)
+	startScript, err := startscript.RenderTiDBStartScript(tc)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}
+
 	data := map[string]string{
 		"config-file":    string(confText),
 		"startup-script": startScript,
@@ -690,6 +718,11 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-auth-token", ReadOnly: true, MountPath: tidbAuthTokenPath,
+		})
+	}
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-tls", ReadOnly: true, MountPath: clusterCertPath,
@@ -719,6 +752,15 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
 			}},
 		},
+	}
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-auth-token", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBAuthTokenJWKSSecretName(tcName),
+				},
+			},
+		})
 	}
 	if tc.IsTLSClusterEnabled() {
 		vols = append(vols, corev1.Volume{
@@ -935,7 +977,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	stsLabels := label.New().Instance(instanceName).TiDB()
 	podLabels := util.CombineStringMap(stsLabels, baseTiDBSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(10080), baseTiDBSpec.Annotations())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(10080, "/metrics"), baseTiDBSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiDBLabelVal)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
@@ -1041,7 +1083,102 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if c != nil {
 		tc.Status.TiDB.Image = c.Image
 	}
+
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.TiDBMemberType)
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for tidb: %v", err)
+	}
+
 	return nil
+}
+
+const tidbSupportLabelsMinVersin = "6.3.0"
+
+func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, error) {
+	tidbVersion := tc.TiDBVersion()
+	isOlder, err := cmpver.Compare(tidbVersion, cmpver.Less, tidbSupportLabelsMinVersin)
+	if err != nil {
+		klog.Warningf("parse tidb verson '%s' failed, err: %v", tidbVersion, err)
+		return 0, err
+	}
+	// meet an old verion tidb, directly return because tidb doesn't support set labels
+	if isOlder {
+		return 0, nil
+	}
+	if m.deps.NodeLister == nil {
+		klog.V(4).Infof("Node lister is unavailable, skip setting store labels for TiKV of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
+		return 0, nil
+	}
+
+	ns := tc.GetNamespace()
+	// for unit test
+	setCount := 0
+
+	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		return setCount, err
+	}
+
+	var zoneLabel string
+outer:
+	for _, label := range topologyZoneLabels {
+		for _, l := range config.Replication.LocationLabels {
+			if l == label {
+				zoneLabel = l
+				break outer
+			}
+		}
+	}
+
+	if zoneLabel == "" {
+		klog.Infof("zone labels not found in pd location-labels %v, skip set labels", config.Replication.LocationLabels)
+		return 0, nil
+	}
+
+	for name, db := range tc.Status.TiDB.Members {
+		if !db.Health {
+			continue
+		}
+		ordinal, err := parserOrdinal(name)
+		if err != nil {
+			return setCount, err
+		}
+
+		labels, err := getNodeLabels(m.deps.NodeLister, db.NodeName, config.Replication.LocationLabels)
+		if err != nil || len(labels) == 0 {
+			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", db.NodeName, ns, name)
+			continue
+		}
+		// add the special `zone` label because tidb depends on this label for follower read.
+		labels[tidbDCLabel] = labels[zoneLabel]
+
+		if err := m.deps.TiDBControl.SetServerLabels(tc, ordinal, labels); err != nil {
+			klog.Warningf("cluster %s/%s set server labels for pod %s failed, error: %v", ns, tc.GetName(), name, err)
+			continue
+		}
+
+		setCount++
+	}
+
+	return setCount, nil
+}
+
+var (
+	podOrdinalPattern = regexp.MustCompile(`^.*-(\d+)$`)
+)
+
+// parserOrdinal extracts the ordinal from pod name
+func parserOrdinal(podName string) (int32, error) {
+	matches := podOrdinalPattern.FindStringSubmatch(podName)
+	if len(matches) != 2 {
+		return 0, fmt.Errorf("parse ordinal from pod name '%s' failed", podName)
+	}
+	ord, err := strconv.ParseInt(matches[1], 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("parse ordinal from pod name '%s' failed, error: %v", podName, err)
+	}
+	return int32(ord), nil
 }
 
 func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {

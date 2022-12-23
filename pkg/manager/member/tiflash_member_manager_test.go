@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -619,7 +620,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
 			Spec: apps.StatefulSetSpec{
-				Replicas: pointer.Int32Ptr(0),
+				Replicas: pointer.Int32Ptr(tc.Spec.TiFlash.Replicas), // default scaled
 			},
 			Status: status,
 		}
@@ -1359,6 +1360,7 @@ func newFakeTiFlashMemberManager(tc *v1alpha1.TidbCluster) (
 		upgrader:                 NewFakeTiFlashUpgrader(),
 		statefulSetIsUpgradingFn: tiflashStatefulSetIsUpgrading,
 		suspender:                suspender.NewFakeSuspender(),
+		podVolumeModifier:        &volumes.FakePodVolumeModifier{},
 	}
 	pdClient := controller.NewFakePDClient(fakeDeps.PDControl.(*pdapi.FakePDControl), tc)
 	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)

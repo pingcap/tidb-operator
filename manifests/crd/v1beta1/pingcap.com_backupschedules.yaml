@@ -329,6 +329,8 @@ spec:
                     secretName:
                       type: string
                   type: object
+                backupMode:
+                  type: string
                 backupType:
                   type: string
                 br:
@@ -386,6 +388,8 @@ spec:
                       type: integer
                   type: object
                 cleanPolicy:
+                  type: string
+                commitTs:
                   type: string
                 dumpling:
                   properties:
@@ -1201,6 +1205,10 @@ spec:
                   - volume
                   - volumeMount
                   type: object
+                logStop:
+                  type: boolean
+                logTruncateUntil:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:

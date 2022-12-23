@@ -354,6 +354,83 @@ func TestPumpIsAvailable(t *testing.T) {
 	}
 }
 
+func TestAllTiKVsAreAvailable(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name     string
+		update   func(*TidbCluster)
+		expectFn func(*GomegaWithT, bool)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbCluster()
+		test.update(tc)
+		test.expectFn(g, tc.AllTiKVsAreAvailable())
+	}
+	tests := []testcase{
+		{
+			name: "tikv stores count is 0",
+			update: func(tc *TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]TiKVStore{}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
+			},
+		},
+		{
+			name: "tikv stores count is 3, but available count is 2",
+			update: func(tc *TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+					"tikv-1": {PodName: "tikv-1", State: TiKVStateUp},
+					"tikv-2": {PodName: "tikv-2", State: TiKVStateDown},
+				}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
+			},
+		},
+		{
+			name: "tikv stores replicas is 1, but read replicas is 0",
+			update: func(tc *TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+				}
+				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{
+					Replicas:      1,
+					ReadyReplicas: 0,
+				}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeFalse())
+			},
+		},
+		{
+			name: "tikv is available",
+			update: func(tc *TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]TiKVStore{
+					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
+					"tikv-1": {PodName: "tikv-1", State: TiKVStateUp},
+					"tikv-2": {PodName: "tikv-2", State: TiKVStateUp},
+				}
+				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{
+					Replicas:      1,
+					ReadyReplicas: 1,
+				}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				g.Expect(b).To(BeTrue())
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
 // TODO: refector test of buildTidbClusterComponentAccessor
 func TestComponentAccessor(t *testing.T) {
 	g := NewGomegaWithT(t)
@@ -664,6 +741,56 @@ func TestPDVersion(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
 				g.Expect(tc.PDVersion()).To(Equal("latest"))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
+func TestTiCDCVersion(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name     string
+		update   func(*TidbCluster)
+		expectFn func(*GomegaWithT, *TidbCluster)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbCluster()
+		test.update(tc)
+		test.expectFn(g, tc)
+	}
+	tests := []testcase{
+		{
+			name: "has tag",
+			update: func(tc *TidbCluster) {
+				tc.Spec.TiCDC.Image = "pingcap/ticdc:v3.1.0"
+			},
+			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
+				g.Expect(tc.TiCDCVersion()).To(Equal("v3.1.0"))
+			},
+		},
+		{
+			name: "don't have tag",
+			update: func(tc *TidbCluster) {
+				tc.Spec.TiCDC.Image = "pingcap/ticdc"
+			},
+			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
+				g.Expect(tc.TiCDCVersion()).To(Equal("latest"))
+			},
+		},
+		{
+			name: "don't have ticdc",
+			update: func(tc *TidbCluster) {
+				tc.Spec.TiCDC = nil
+			},
+			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
+				g.Expect(tc.TiCDCVersion()).To(Equal(""))
 			},
 		},
 	}

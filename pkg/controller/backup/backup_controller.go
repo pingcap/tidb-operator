@@ -171,6 +171,10 @@ func (c *Controller) updateBackup(cur interface{}) {
 
 	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) {
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
+		// TODO: log backup check all subcommand job's pod status
+		if newBackup.Spec.Mode == v1alpha1.BackupModeLog {
+			return
+		}
 		selector, err := label.NewBackup().Instance(newBackup.GetInstanceName()).BackupJob().Backup(name).Selector()
 		if err != nil {
 			klog.Errorf("Fail to generate selector for backup %s/%s, %v", ns, name, err)

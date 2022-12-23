@@ -96,8 +96,8 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 			if !podutil.IsPodReady(pod) {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pd pod: [%s] is not ready", ns, tcName, podName)
 			}
-			if member, exist := tc.Status.PD.Members[PdName(tc.Name, i, tc.Namespace, tc.Spec.ClusterDomain)]; !exist || !member.Health {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not ready", ns, tcName, podName)
+			if member, exist := tc.Status.PD.Members[PdName(tc.Name, i, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)]; !exist || !member.Health {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not health", ns, tcName, podName)
 			}
 			continue
 		}
@@ -111,7 +111,7 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	upgradePdName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain)
+	upgradePdName := PdName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)
 	upgradePodName := PdPodName(tcName, ordinal)
 
 	// If current pd is leader, transfer leader to other pd
@@ -150,14 +150,14 @@ func (u *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName str
 // choosePDToTransferFromMembers choose a pd to transfer leader from members
 //
 // Assume that current leader ordinal is x, and range is [0, n]
-//	1. Find the max suitable ordinal in (x, n], because they have been upgraded
-//	2. If no suitable ordinal, find the min suitable ordinal in [0, x) to reduce the count of transfer
+//  1. Find the max suitable ordinal in (x, n], because they have been upgraded
+//  2. If no suitable ordinal, find the min suitable ordinal in [0, x) to reduce the count of transfer
 func choosePDToTransferFromMembers(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, ordinal int32) string {
 	tcName := tc.GetName()
 	ordinals := helper.GetPodOrdinals(*newSet.Spec.Replicas, newSet)
 
 	genPDName := func(targetOrdinal int32) string {
-		pdName := PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain)
+		pdName := PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)
 		if _, exist := tc.Status.PD.Members[pdName]; !exist {
 			pdName = PdPodName(tcName, targetOrdinal)
 		}

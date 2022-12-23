@@ -11,18 +11,29 @@ jobs:
   pull:
     runs-on: ubuntu-20.04
     steps:
-    - name: Set up Go 1.16
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.16.4
-      id: go
-
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         path: go/src/github.com/${{ github.repository }}
-
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version-file: go/src/github.com/${{ github.repository }}/go.mod
+        check-latest: true
+    - name: Set vars
+      run: |
+        echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_ENV
+        echo "GOMODCACHE=$(go env GOMODCACHE)" >> $GITHUB_ENV
+    - name: Try to use build cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ env.GOCACHE }}
+          ${{ env.GOMODCACHE }}
+        key: ${{ runner.os }}-go-${{ hashFiles(format('go/src/github.com/{0}/**/go.sum', github.repository)) }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - name: Creating kind cluster
       run: |
         SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_DOWN=y SKIP_TEST=y KUBE_WORKERS=0 ./hack/e2e.sh

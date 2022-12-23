@@ -33,15 +33,20 @@ import (
 type GenericOptions struct {
 	Namespace string
 	// ResourceName can be the name of a backup or restore resource
-	ResourceName string
-	TLSClient    bool
-	TLSCluster   bool
-	SkipClientCA bool
-	Host         string
-	Port         int32
-	Password     string
-	User         string
-	TiKVVersion  string
+	ResourceName   string
+	TLSClient      bool
+	TLSCluster     bool
+	SkipClientCA   bool
+	Host           string
+	Port           int32
+	Password       string
+	User           string
+	TiKVVersion    string
+	Mode           string
+	SubCommand     string
+	CommitTS       string
+	TruncateUntil  string
+	PitrRestoredTs string
 }
 
 func (bo *GenericOptions) String() string {

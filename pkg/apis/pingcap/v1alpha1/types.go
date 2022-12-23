@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
@@ -75,6 +76,8 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc member type
 	TiCDCMemberType MemberType = "ticdc"
+	// TiProxyMemberType is ticdc member type
+	TiProxyMemberType MemberType = "tiproxy"
 	// PumpMemberType is pump member type
 	PumpMemberType MemberType = "pump"
 
@@ -90,6 +93,9 @@ const (
 
 	// NGMonitoringMemberType is ng monitoring member type
 	NGMonitoringMemberType MemberType = "ng-monitoring"
+
+	// TiDBDashboardMemberType is tidb-dashboard member type
+	TiDBDashboardMemberType MemberType = "tidb-dashboard"
 
 	// UnknownMemberType is unknown member type
 	UnknownMemberType MemberType = "unknown"
@@ -118,6 +124,13 @@ const (
 	// ConfigUpdateStrategyRollingUpdate generate different configmap on configuration update and
 	// try to rolling-update the pod controller (e.g. statefulset) to apply updates.
 	ConfigUpdateStrategyRollingUpdate ConfigUpdateStrategy = "RollingUpdate"
+)
+
+type StartScriptVersion string
+
+const (
+	StartScriptV1 StartScriptVersion = "v1"
+	StartScriptV2 StartScriptVersion = "v2"
 )
 
 // +genclient
@@ -196,6 +209,10 @@ type TidbClusterSpec struct {
 	// +optional
 	TiCDC *TiCDCSpec `json:"ticdc,omitempty"`
 
+	// TiProxy cluster spec
+	// +optional
+	TiProxy *TiProxySpec `json:"tiproxy,omitempty"`
+
 	// Pump cluster spec
 	// +optional
 	Pump *PumpSpec `json:"pump,omitempty"`
@@ -208,6 +225,11 @@ type TidbClusterSpec struct {
 	// the controller.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
+
+	// Whether RecoveryMode is enabled for TiDB cluster to restore
+	// Optional: Defaults to false
+	// +optional
+	RecoveryMode bool `json:"recoveryMode,omitempty"`
 
 	// TiDB cluster version
 	// +optional
@@ -340,6 +362,13 @@ type TidbClusterSpec struct {
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
+	// StartScriptVersion is the version of start script
+	//
+	// default to "v1"
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1";"v2"
+	StartScriptVersion StartScriptVersion `json:"startScriptVersion,omitempty"`
+
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
@@ -353,6 +382,7 @@ type TidbClusterStatus struct {
 	TiDB       TiDBStatus                `json:"tidb,omitempty"`
 	Pump       PumpStatus                `json:"pump,omitempty"`
 	TiFlash    TiFlashStatus             `json:"tiflash,omitempty"`
+	TiProxy    TiProxyStatus             `json:"tiproxy,omitempty"`
 	TiCDC      TiCDCStatus               `json:"ticdc,omitempty"`
 	AutoScaler *TidbClusterAutoScalerRef `json:"auto-scaler,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
@@ -477,6 +507,7 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
 	// Start up script version
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1"
@@ -585,6 +616,10 @@ type TiKVSpec struct {
 	// EnableNamedStatusPort enables status port(20180) in the Pod spec.
 	// If you set it to `true` for an existing cluster, the TiKV cluster will be rolling updated.
 	EnableNamedStatusPort bool `json:"enableNamedStatusPort,omitempty"`
+
+	// ScalePolicy is the scale configuration for TiKV
+	// +optional
+	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -641,6 +676,10 @@ type TiFlashSpec struct {
 	// Failover is the configurations of failover
 	// +optional
 	Failover *Failover `json:"failover,omitempty"`
+
+	// ScalePolicy is the scale configuration for TiFlash
+	// +optional
+	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
 }
 
 // TiCDCSpec contains details of TiCDC members
@@ -711,6 +750,43 @@ type TiCDCConfig struct {
 	// Optional: Defaults to /dev/stderr
 	// +optional
 	LogFile *string `toml:"log-file,omitempty" json:"logFile,omitempty"`
+}
+
+// TiProxySpec contains details of TiProxy members
+// +k8s:openapi-gen=true
+type TiProxySpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiProxy
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// used by TiProxy to check health status.
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/tiproxy
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// Proxy is the proxy part of config
+	// +optional
+	Proxy *tiproxyConfig.ProxyServerOnline `json:"proxy,omitempty"`
+
+	// StorageVolumes configure additional storage for TiProxy pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiProxy data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
 // LogTailerSpec represents an optional log tailer sidecar container
@@ -791,6 +867,11 @@ type TiDBSpec struct {
 	// +optional
 	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
 
+	// Whether enable `tidb_auth_token` authentication method. The tidb_auth_token authentication method is used only for the internal operation of TiDB Cloud.
+	// Optional: Defaults to false
+	// +optional
+	TokenBasedAuthEnabled *bool `json:"tokenBasedAuthEnabled,omitempty"`
+
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
 	// +optional
 	Plugins []string `json:"plugins,omitempty"`
@@ -817,10 +898,6 @@ type TiDBSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
-	// ReadinessProbe describes actions that probe the tidb's readiness.
-	// the default behavior is like setting type as "tcp"
-	// +optional
-	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
 
 	// Initializer is the init configurations of TiDB
 	//
@@ -839,11 +916,11 @@ const (
 	CommandProbeType string = "command"
 )
 
-// TiDBProbe contains details of probing tidb.
+// Probe contains details of probing tidb.
 // +k8s:openapi-gen=true
-// default probe by TCPPort on 4000.
-type TiDBProbe struct {
-	// "tcp" will use TCP socket to connetct port 4000
+// default probe by TCPPort on tidb 4000 / tikv 20160 / pd 2349.
+type Probe struct {
+	// "tcp" will use TCP socket to connect component port.
 	//
 	// "command" will probe the status api of tidb.
 	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
@@ -1079,6 +1156,11 @@ type ComponentSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// ReadinessProbe describes actions that probe the pd's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // ServiceSpec specifies the service object in k8s
@@ -1294,6 +1376,14 @@ type EvictLeaderStatus struct {
 	Value         string      `json:"value,omitempty"`
 }
 
+const (
+	// It means whether some pods are evicting leader
+	// This condition is used to avoid too many pods evict leader at same time
+	// Normally we only allow one pod evicts leader.
+	// TODO: set this condition before all leader eviction behavior
+	ConditionTypeLeaderEvicting = "LeaderEvicting"
+)
+
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
 	Synced          bool                          `json:"synced,omitempty"`
@@ -1328,6 +1418,19 @@ type TiFlashStatus struct {
 	Image           string                      `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// TiProxyStatus is TiProxy status
+type TiProxyStatus struct {
+	Synced      bool                                       `json:"synced,omitempty"`
+	Phase       MemberPhase                                `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
+	Proxy       tiproxyConfig.ProxyServerOnline            `json:"proxy,omitempty"`
+	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
 	// +optional
 	// +nullable
@@ -1466,10 +1569,13 @@ type TLSCluster struct {
 //
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="bk"
+// +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.backupType`,description="the type of backup, such as full, db, table. Only used when Mode = snapshot."
+// +kubebuilder:printcolumn:name="Mode",type=string,JSONPath=`.spec.backupMode`,description="the mode of backup, such as snapshot, log."
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
-// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of tidb cluster dump"
+// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
+// +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logSuccessTruncateUntil`,description="The log backup truncate until ts"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -1627,6 +1733,19 @@ const (
 	BackupTypeTiFlashReplica BackupType = "tiflash-replica"
 )
 
+// BackupType represents the backup mode, such as snapshot backup or log backup.
+// +k8s:openapi-gen=true
+type BackupMode string
+
+const (
+	// BackupModeSnapshot represents the snapshot backup of tidb cluster.
+	BackupModeSnapshot BackupMode = "snapshot"
+	// BackupModeLog represents the log backup of tidb cluster.
+	BackupModeLog BackupMode = "log"
+	// BackupModeVolumeSnapshot represents volume backup of tidb cluster.
+	BackupModeVolumeSnapshot BackupMode = "volume-snapshot"
+)
+
 // TiDBAccessConfig defines the configuration for access tidb cluster
 // +k8s:openapi-gen=true
 type TiDBAccessConfig struct {
@@ -1689,6 +1808,16 @@ type CleanOption struct {
 	BatchDeleteOption `json:",inline"`
 }
 
+type Progress struct {
+	// Step is the step name of progress
+	Step string `json:"step,omitempty"`
+	// Progress is the backup progress value
+	Progress float64 `json:"progress,omitempty"`
+	// LastTransitionTime is the update time
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
 // BackupSpec contains the backup specification for a tidb cluster.
 // +k8s:openapi-gen=true
 type BackupSpec struct {
@@ -1714,8 +1843,11 @@ type BackupSpec struct {
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// From is the tidb cluster that needs to backup.
 	From *TiDBAccessConfig `json:"from,omitempty"`
-	// Type is the backup type for tidb cluster.
+	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
 	Type BackupType `json:"backupType,omitempty"`
+	// Mode is the backup mode, such as snapshot backup or log backup.
+	// +kubebuilder:default=snapshot
+	Mode BackupMode `json:"backupMode,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for backup.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
@@ -1730,6 +1862,18 @@ type BackupSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
+	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// Default is current timestamp.
+	// +optional
+	CommitTs string `json:"commitTs,omitempty"`
+	// LogTruncateUntil is log backup truncate until timestamp.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// +optional
+	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
+	// LogStop indicates that will stop the log backup.
+	// +optional
+	LogStop bool `json:"logStop,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1832,12 +1976,45 @@ const (
 
 // BackupCondition describes the observed state of a Backup at a certain point.
 type BackupCondition struct {
-	Type   BackupConditionType    `json:"type"`
-	Status corev1.ConditionStatus `json:"status"`
+	Command LogSubCommandType      `json:"command,omitempty"`
+	Type    BackupConditionType    `json:"type"`
+	Status  corev1.ConditionStatus `json:"status"`
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	Reason             string      `json:"reason,omitempty"`
 	Message            string      `json:"message,omitempty"`
+}
+
+// LogSubCommandType is the log backup subcommand type.
+type LogSubCommandType string
+
+const (
+	// LogStartCommand is the start command of log backup.
+	LogStartCommand LogSubCommandType = "log-start"
+	// LogTruncateCommand is the truncate command of log backup.
+	LogTruncateCommand LogSubCommandType = "log-truncate"
+	// LogStopCommand is the stop command of log backup.
+	LogStopCommand LogSubCommandType = "log-stop"
+)
+
+// LogSubCommandStatus is the log backup subcommand's status.
+type LogSubCommandStatus struct {
+	// Command is the log backup subcommand.
+	Command LogSubCommandType `json:"command,omitempty"`
+	// TimeStarted is the time at which the command was started.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
+	// TimeCompleted is the time at which the command was completed.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+	// LogTruncatingUntil is log backup truncate until timestamp which is used to mark the truncate command.
+	LogTruncatingUntil string `json:"logTruncatingUntil,omitempty"`
+	// Phase is the command current phase.
+	Phase BackupConditionType `json:"phase,omitempty"`
+	// +nullable
+	Conditions []BackupCondition `json:"conditions,omitempty"`
 }
 
 // BackupStatus represents the current status of a backup.
@@ -1857,12 +2034,21 @@ type BackupStatus struct {
 	BackupSizeReadable string `json:"backupSizeReadable,omitempty"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize,omitempty"`
-	// CommitTs is the snapshot time point of tidb cluster.
+	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	CommitTs string `json:"commitTs,omitempty"`
+	// LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.
+	LogSuccessTruncateUntil string `json:"logSuccessTruncateUntil,omitempty"`
+	// LogCheckpointTs is the ts of log backup process.
+	LogCheckpointTs string `json:"logCheckpointTs,omitempty"`
 	// Phase is a user readable state inferred from the underlying Backup conditions
 	Phase BackupConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []BackupCondition `json:"conditions,omitempty"`
+	// LogSubCommandStatuses is the detail status of log backup subcommands, record each command separately, but only record the last command.
+	LogSubCommandStatuses map[LogSubCommandType]LogSubCommandStatus `json:"logSubCommandStatuses,omitempty"`
+	// Progresses is the progress of backup.
+	// +nullable
+	Progresses []Progress `json:"progresses,omitempty"`
 }
 
 // +genclient
@@ -1969,6 +2155,19 @@ type RestoreList struct {
 	Items []Restore `json:"items"`
 }
 
+// RestoreMode represents the restore mode, such as snapshot or pitr.
+// +k8s:openapi-gen=true
+type RestoreMode string
+
+const (
+	// RestoreModeSnapshot represents restore from a snapshot backup.
+	RestoreModeSnapshot RestoreMode = "snapshot"
+	// RestoreModePiTR represents PiTR restore which is from a snapshot backup and log backup.
+	RestoreModePiTR RestoreMode = "pitr"
+	// RestoreModeVolumeSnapshot represents restore from a volume snapshot backup.
+	RestoreModeVolumeSnapshot RestoreMode = "volume-snapshot"
+)
+
 // RestoreConditionType represents a valid condition of a Restore.
 type RestoreConditionType string
 
@@ -1977,6 +2176,12 @@ const (
 	RestoreScheduled RestoreConditionType = "Scheduled"
 	// RestoreRunning means the Restore is currently being executed.
 	RestoreRunning RestoreConditionType = "Running"
+	// RestoreVolumeComplete means the Restore has successfully executed part-1 and the
+	// backup volumes have been rebuilded from the corresponding snapshot
+	RestoreVolumeComplete RestoreConditionType = "VolumeComplete"
+	// RestoreDataComplete means the Restore has successfully executed part-2 and the
+	// data in restore volumes has been deal with consistency based on min_resolved_ts
+	RestoreDataComplete RestoreConditionType = "DataComplete"
 	// RestoreComplete means the Restore has successfully executed and the
 	// backup data has been loaded into tidb cluster.
 	RestoreComplete RestoreConditionType = "Complete"
@@ -2024,14 +2229,23 @@ type RestoreSpec struct {
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// To is the tidb cluster that needs to restore.
 	To *TiDBAccessConfig `json:"to,omitempty"`
-	// Type is the backup type for tidb cluster.
+	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
 	Type BackupType `json:"backupType,omitempty"`
+	// Mode is the restore mode. such as snapshot or pitr.
+	// +kubebuilder:default=snapshot
+	Mode RestoreMode `json:"restoreMode,omitempty"`
+	// PitrRestoredTs is the pitr restored ts.
+	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
+	// LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.
+	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
+	// PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.
+	PitrFullBackupStorageProvider StorageProvider `json:"pitrFullBackupStorageProvider,omitempty"`
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -2083,6 +2297,9 @@ type RestoreStatus struct {
 	Phase RestoreConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []RestoreCondition `json:"conditions,omitempty"`
+	// Progresses is the progress of restore.
+	// +nullable
+	Progresses []Progress `json:"progresses,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -2551,15 +2768,30 @@ type ObservedStorageVolumeStatus struct {
 	// CurrentCount is the count of volumes whose capacity is equal to `currentCapacity`.
 	// +optional
 	CurrentCount int `json:"currentCount"`
-	// ResizedCount is the count of volumes whose capacity is equal to `resizedCapacity`.
+	// ModifiedCount is the count of modified volumes.
 	// +optional
-	ResizedCount int `json:"resizedCount"`
+	ModifiedCount int `json:"modifiedCount"`
 	// CurrentCapacity is the current capacity of the volume.
 	// If any volume is resizing, it is the capacity before resizing.
 	// If all volumes are resized, it is the resized capacity and same as desired capacity.
+	// +optional
 	CurrentCapacity resource.Quantity `json:"currentCapacity"`
-	// ResizedCapacity is the desired capacity of the volume.
+	// ModifiedCapacity is the modified capacity of the volume.
+	// +optional
+	ModifiedCapacity resource.Quantity `json:"modifiedCapacity"`
+	// CurrentStorageClass is the modified capacity of the volume.
+	// +optional
+	CurrentStorageClass string `json:"currentStorageClass"`
+	// ModifiedStorageClass is the modified storage calss of the volume.
+	// +optional
+	ModifiedStorageClass string `json:"modifiedStorageClass"`
+
+	// (Deprecated) ResizedCapacity is the desired capacity of the volume.
+	// +optional
 	ResizedCapacity resource.Quantity `json:"resizedCapacity"`
+	// (Deprecated) ResizedCount is the count of volumes whose capacity is equal to `resizedCapacity`.
+	// +optional
+	ResizedCount int `json:"resizedCount"`
 }
 
 // StorageVolumeName is the volume name which is same as `volumes.name` in Pod spec.
@@ -2594,4 +2826,16 @@ type Failover struct {
 	// it takes effect only when set `spec.recoverFailover=false`
 	// +optional
 	RecoverByUID types.UID `json:"recoverByUID,omitempty"`
+}
+
+type ScalePolicy struct {
+	// ScaleInParallelism configures max scale in replicas for TiKV stores.
+	// +kubebuilder:default=1
+	// +optional
+	ScaleInParallelism *int32 `json:"scaleInParallelism,omitempty"`
+
+	// ScaleOutParallelism configures max scale out replicas for TiKV stores.
+	// +kubebuilder:default=1
+	// +optional
+	ScaleOutParallelism *int32 `json:"scaleOutParallelism,omitempty"`
 }

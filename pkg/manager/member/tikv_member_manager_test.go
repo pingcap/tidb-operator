@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -968,6 +969,28 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			},
 		},
 		{
+			name: "statefulset is upgrading but someone is evicting leader",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.SetCondition(metav1.Condition{
+					Type:   v1alpha1.ConditionTypeLeaderEvicting,
+					Status: metav1.ConditionTrue,
+				})
+			},
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return true, nil
+			},
+			errWhenGetStores:          false,
+			storeInfo:                 nil,
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo:        nil,
+			errExpectFn:               nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiKV.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.NormalPhase))
+			},
+		},
+		{
 			name: "statefulset is scaling out",
 			updateTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiKV.Replicas = 4
@@ -1598,6 +1621,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 		upgrader:                 NewFakeTiKVUpgrader(),
 		statefulSetIsUpgradingFn: tikvStatefulSetIsUpgrading,
 		suspender:                suspender.NewFakeSuspender(),
+		podVolumeModifier:        &volumes.FakePodVolumeModifier{},
 	}
 	setControl := fakeDeps.StatefulSetControl.(*controller.FakeStatefulSetControl)
 	svcControl := fakeDeps.ServiceControl.(*controller.FakeServiceControl)
@@ -2068,7 +2092,33 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.Containers[1].Command[2]).To(ContainSubstring("raftdb.info"))
 			},
 		},
-		// TODO add more tests
+		{
+			name: "TiKV spec readiness",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{
+								Type: pointer.StringPtr("tcp"),
+							},
+						},
+					},
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.Containers[0].ReadinessProbe).To(Equal(&corev1.Probe{
+					Handler:             buildTiKVReadinessProbHandler(nil),
+					InitialDelaySeconds: int32(10),
+				}))
+			},
+		},
 	}
 
 	for _, tt := range tests {

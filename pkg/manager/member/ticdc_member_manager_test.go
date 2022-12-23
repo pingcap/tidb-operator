@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -441,9 +442,9 @@ func TestTiCDCMemberManagerSyncTidbClusterStatus(t *testing.T) {
 
 				// mock status of captures
 				cdcControl := m.deps.CDCControl.(*controller.FakeTiCDCControl)
-				cdcControl.MockGetStatus(func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+				cdcControl.GetStatusFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
 					return &controller.CaptureStatus{}, nil
-				})
+				}
 			},
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				// check status of statefulset
@@ -480,13 +481,13 @@ func TestTiCDCMemberManagerSyncTidbClusterStatus(t *testing.T) {
 
 				// mock status of captures
 				cdcControl := m.deps.CDCControl.(*controller.FakeTiCDCControl)
-				cdcControl.MockGetStatus(func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
+				cdcControl.GetStatusFn = func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
 					if ordinal == 1 {
 						return nil, fmt.Errorf("mock err")
 					}
 
 					return &controller.CaptureStatus{}, nil
-				})
+				}
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -593,9 +594,10 @@ func TestGetNewTiCDCStatefulSet(t *testing.T) {
 func newFakeTiCDCMemberManager() (*ticdcMemberManager, *controller.FakeStatefulSetControl, *controller.FakeTiDBControl, *fakeIndexers) {
 	fakeDeps := controller.NewFakeDependencies()
 	tmm := &ticdcMemberManager{
-		deps:      fakeDeps,
-		scaler:    NewTiCDCScaler(fakeDeps),
-		suspender: suspender.NewFakeSuspender(),
+		deps:              fakeDeps,
+		scaler:            NewTiCDCScaler(fakeDeps),
+		suspender:         suspender.NewFakeSuspender(),
+		podVolumeModifier: &volumes.FakePodVolumeModifier{},
 	}
 	tmm.statefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
 	indexers := &fakeIndexers{

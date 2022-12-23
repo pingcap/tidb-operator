@@ -1,7 +1,8 @@
 apiVersion: v1
-description: A Helm chart for TiDB Cluster
+description: DEPRECATED(refer new instructions at https://docs.pingcap.com/tidb-in-kubernetes for tidb-operator v1.1 and above) - A Helm chart for TiDB Cluster
 name: tidb-cluster
-version: dev
+deprecated: true
+version: v1-canary
 home: https://github.com/pingcap/tidb-operator
 sources:
   - https://github.com/pingcap/tidb-operator

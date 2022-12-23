@@ -268,43 +268,6 @@ function e2e::image_build() {
     DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make e2e-docker
 }
 
-function e2e::__restart_docker() {
-    echo "info: restarting docker"
-    service docker restart
-    # the service can be started but the docker socket not ready, wait for ready
-    local WAIT_N=0
-    local MAX_WAIT=5
-    while true; do
-        # docker ps -q should only work if the daemon is ready
-        docker ps -q > /dev/null 2>&1 && break
-        if [[ ${WAIT_N} -lt ${MAX_WAIT} ]]; then
-            WAIT_N=$((WAIT_N+1))
-            echo "info; Waiting for docker to be ready, sleeping for ${WAIT_N} seconds."
-            sleep ${WAIT_N}
-        else
-            echo "info: Reached maximum attempts, not waiting any longer..."
-            break
-        fi
-    done
-    echo "info: done restarting docker"
-}
-
-function e2e::__configure_docker_mirror_for_dind() {
-    echo "info: configure docker.io mirror '$DOCKER_IO_MIRROR' for DinD"
-cat <<EOF > /etc/docker/daemon.json.tmp
-{
-    "registry-mirrors": ["$DOCKER_IO_MIRROR"]
-}
-EOF
-    if diff /etc/docker/daemon.json.tmp /etc/docker/daemon.json 1>/dev/null 2>&1; then
-        echo "info: already configured"
-        rm /etc/docker/daemon.json.tmp
-    else
-        mv /etc/docker/daemon.json.tmp /etc/docker/daemon.json
-        e2e::__restart_docker
-    fi
-}
-
 # TODO: review this
 function e2e::create_kindconfig() {
     local tmpfile=${1}
@@ -429,10 +392,6 @@ EOF
 hack::ensure_kind
 hack::ensure_kubectl
 hack::ensure_helm
-
-if [ -n "$DOCKER_IO_MIRROR" -a -n "${DOCKER_IN_DOCKER_ENABLED:-}" ]; then
-    e2e::__configure_docker_mirror_for_dind
-fi
 
 e2e::image_build
 

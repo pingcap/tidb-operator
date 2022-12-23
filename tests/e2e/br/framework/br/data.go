@@ -28,6 +28,7 @@ const (
 	BRType          = "br"
 	DumperType      = "dumper"
 	TiDBServicePort = int32(4000)
+	PDServicePort   = int32(2379)
 )
 
 // GetRole returns a role for br test.

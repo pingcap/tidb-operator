@@ -147,7 +147,20 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupMode</code></br>
+<em>
+<a href="#backupmode">
+BackupMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
 </td>
 </tr>
 <tr>
@@ -214,6 +227,45 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogTruncateUntil is log backup truncate until timestamp.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logStop</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogStop indicates that will stop the log backup.</p>
 </td>
 </tr>
 <tr>
@@ -1134,7 +1186,42 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restoreMode</code></br>
+<em>
+<a href="#restoremode">
+RestoreMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the restore mode. such as snapshot or pitr.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pitrRestoredTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logRestoreStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
 <tr>
@@ -1164,6 +1251,19 @@ StorageProvider
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
 <p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pitrFullBackupStorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -1487,6 +1587,20 @@ TiCDCSpec
 </tr>
 <tr>
 <td>
+<code>tiproxy</code></br>
+<em>
+<a href="#tiproxyspec">
+TiProxySpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiProxy cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pump</code></br>
 <em>
 <a href="#pumpspec">
@@ -1524,6 +1638,19 @@ bool
 <em>(Optional)</em>
 <p>Indicates that the tidb cluster is paused and will not be processed by
 the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recoveryMode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether RecoveryMode is enabled for TiDB cluster to restore
+Optional: Defaults to false</p>
 </td>
 </tr>
 <tr>
@@ -1901,6 +2028,21 @@ Kubernetes core/v1.PodSecurityContext
 domains. Scheduler will schedule pods in a way which abides by the constraints.
 This field is is only honored by clusters that enables the EvenPodsSpread feature.
 All topologySpreadConstraints are ANDed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startScriptVersion</code></br>
+<em>
+<a href="#startscriptversion">
+StartScriptVersion
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartScriptVersion is the version of start script</p>
+<p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>
 <tr>
@@ -3125,7 +3267,8 @@ bool
 <h3 id="backupcondition">BackupCondition</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupstatus">BackupStatus</a>)
+<a href="#backupstatus">BackupStatus</a>, 
+<a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>
 <p>BackupCondition describes the observed state of a Backup at a certain point.</p>
@@ -3138,6 +3281,18 @@ bool
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>command</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 <tr>
 <td>
 <code>type</code></br>
@@ -3200,10 +3355,19 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#backupcondition">BackupCondition</a>, 
-<a href="#backupstatus">BackupStatus</a>)
+<a href="#backupstatus">BackupStatus</a>, 
+<a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
+</p>
+<h3 id="backupmode">BackupMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>BackupType represents the backup mode, such as snapshot backup or log backup.</p>
 </p>
 <h3 id="backupschedulespec">BackupScheduleSpec</h3>
 <p>
@@ -3458,7 +3622,20 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupMode</code></br>
+<em>
+<a href="#backupmode">
+BackupMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
 </td>
 </tr>
 <tr>
@@ -3525,6 +3702,45 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogTruncateUntil is log backup truncate until timestamp.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logStop</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogStop indicates that will stop the log backup.</p>
 </td>
 </tr>
 <tr>
@@ -3768,7 +3984,29 @@ string
 </em>
 </td>
 <td>
-<p>CommitTs is the snapshot time point of tidb cluster.</p>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logSuccessTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logCheckpointTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogCheckpointTs is the ts of log backup process.</p>
 </td>
 </tr>
 <tr>
@@ -3794,6 +4032,32 @@ BackupConditionType
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>logSubCommandStatuses</code></br>
+<em>
+<a href="#logsubcommandstatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandStatus
+</a>
+</em>
+</td>
+<td>
+<p>LogSubCommandStatuses is the detail status of log backup subcommands, record each command separately, but only record the last command.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>progresses</code></br>
+<em>
+<a href="#progress">
+[]Progress
+</a>
+</em>
+</td>
+<td>
+<p>Progresses is the progress of backup.</p>
 </td>
 </tr>
 </tbody>
@@ -4248,7 +4512,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Namespace is the namespace that TidbCluster object locates,
-default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring</p>
+default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring/TidbDashboard</p>
 </td>
 </tr>
 <tr>
@@ -4399,6 +4663,8 @@ and component-level overrides</p>
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>, 
+<a href="#tiproxyspec">TiProxySpec</a>, 
+<a href="#tidbdashboardspec">TidbDashboardSpec</a>, 
 <a href="#tidbngmonitoringspec">TidbNGMonitoringSpec</a>, 
 <a href="#workerspec">WorkerSpec</a>)
 </p>
@@ -4810,6 +5076,21 @@ SuspendAction
 <td>
 <em>(Optional)</em>
 <p>SuspendAction defines the suspend actions for all component.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>readinessProbe</code></br>
+<em>
+<a href="#probe">
+Probe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReadinessProbe describes actions that probe the pd&rsquo;s readiness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
 </tbody>
@@ -6132,6 +6413,10 @@ Kubernetes core/v1.ResourceRequirements
 Only named struct is allowed by controller-gen</p>
 </p>
 <h3 id="evictleaderstatus">EvictLeaderStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvstatus">TiKVStatus</a>)
+</p>
 <p>
 </p>
 <table>
@@ -7666,6 +7951,110 @@ uint32
 </tr>
 </tbody>
 </table>
+<h3 id="logsubcommandstatus">LogSubCommandStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupstatus">BackupStatus</a>)
+</p>
+<p>
+<p>LogSubCommandStatus is the log backup subcommand&rsquo;s status.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>command</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+<p>Command is the log backup subcommand.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeStarted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeStarted is the time at which the command was started.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeCompleted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeCompleted is the time at which the command was completed.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncatingUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogTruncatingUntil is log backup truncate until timestamp which is used to mark the truncate command.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#backupconditiontype">
+BackupConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Phase is the command current phase.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="#backupcondition">
+[]BackupCondition
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="logsubcommandtype">LogSubCommandType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupcondition">BackupCondition</a>, 
+<a href="#logsubcommandstatus">LogSubCommandStatus</a>)
+</p>
+<p>
+<p>LogSubCommandType is the log backup subcommand type.</p>
+</p>
 <h3 id="logtailerspec">LogTailerSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -8447,7 +8836,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -8482,6 +8871,8 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <a href="#ticdcstatus">TiCDCStatus</a>, 
 <a href="#tidbstatus">TiDBStatus</a>, 
 <a href="#tikvstatus">TiKVStatus</a>, 
+<a href="#tiproxystatus">TiProxyStatus</a>, 
+<a href="#tidbdashboardstatus">TidbDashboardStatus</a>, 
 <a href="#workerstatus">WorkerStatus</a>)
 </p>
 <p>
@@ -8822,14 +9213,14 @@ int
 </tr>
 <tr>
 <td>
-<code>resizedCount</code></br>
+<code>modifiedCount</code></br>
 <em>
 int
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ResizedCount is the count of volumes whose capacity is equal to <code>resizedCapacity</code>.</p>
+<p>ModifiedCount is the count of modified volumes.</p>
 </td>
 </tr>
 <tr>
@@ -8840,9 +9231,46 @@ k8s.io/apimachinery/pkg/api/resource.Quantity
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>CurrentCapacity is the current capacity of the volume.
 If any volume is resizing, it is the capacity before resizing.
 If all volumes are resized, it is the resized capacity and same as desired capacity.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>modifiedCapacity</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ModifiedCapacity is the modified capacity of the volume.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentStorageClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CurrentStorageClass is the modified capacity of the volume.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>modifiedStorageClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ModifiedStorageClass is the modified storage calss of the volume.</p>
 </td>
 </tr>
 <tr>
@@ -8853,7 +9281,20 @@ k8s.io/apimachinery/pkg/api/resource.Quantity
 </em>
 </td>
 <td>
-<p>ResizedCapacity is the desired capacity of the volume.</p>
+<em>(Optional)</em>
+<p>(Deprecated) ResizedCapacity is the desired capacity of the volume.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resizedCount</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>(Deprecated) ResizedCount is the count of volumes whose capacity is equal to <code>resizedCapacity</code>.</p>
 </td>
 </tr>
 </tbody>
@@ -10835,7 +11276,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -11303,6 +11744,66 @@ float64
 </tr>
 </tbody>
 </table>
+<h3 id="probe">Probe</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#componentspec">ComponentSpec</a>)
+</p>
+<p>
+<p>Probe contains details of probing tidb.
+default probe by TCPPort on tidb 4000 / tikv 20160 / pd 2349.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>&ldquo;tcp&rdquo; will use TCP socket to connect component port.</p>
+<p>&ldquo;command&rdquo; will probe the status api of tidb.
+This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
+So do not use this before v4.0.9.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initialDelaySeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Number of seconds after the container has started before liveness probes are initiated.
+Default to 10 seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>periodSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>How often (in seconds) to perform the probe.
+Default to Kubernetes default (10 seconds). Minimum value is 1.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="profile">Profile</h3>
 <p>
 <p>Profile is the configuration profiles.</p>
@@ -11357,6 +11858,59 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="progress">Progress</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupstatus">BackupStatus</a>, 
+<a href="#restorestatus">RestoreStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>step</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Step is the step name of progress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>progress</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<p>Progress is the backup progress value</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LastTransitionTime is the update time</p>
 </td>
 </tr>
 </tbody>
@@ -11574,8 +12128,8 @@ Defaults to false.</p>
 <td>
 <code>remoteWrite</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.remotewritespec">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RemoteWriteSpec
+<a href="#remotewritespec">
+[]RemoteWriteSpec
 </a>
 </em>
 </td>
@@ -11852,6 +12406,10 @@ uint
 </table>
 <h3 id="pumpnodestatus">PumpNodeStatus</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#pumpstatus">PumpStatus</a>)
+</p>
+<p>
 <p>PumpNodeStatus represents the status saved in etcd.</p>
 </p>
 <table>
@@ -12056,8 +12614,8 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>members</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.pumpnodestatus">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpNodeStatus
+<a href="#pumpnodestatus">
+[]PumpNodeStatus
 </a>
 </em>
 </td>
@@ -12068,7 +12626,7 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -12373,6 +12931,10 @@ ServiceSpec
 </table>
 <h3 id="remotewritespec">RemoteWriteSpec</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#prometheusspec">PrometheusSpec</a>)
+</p>
+<p>
 <p>RemoteWriteSpec defines the remote_write configuration for prometheus.</p>
 </p>
 <table>
@@ -12623,6 +13185,14 @@ string
 <p>
 <p>RestoreConditionType represents a valid condition of a Restore.</p>
 </p>
+<h3 id="restoremode">RestoreMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>RestoreMode represents the restore mode, such as snapshot or pitr.</p>
+</p>
 <h3 id="restorespec">RestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -12704,7 +13274,42 @@ BackupType
 </em>
 </td>
 <td>
-<p>Type is the backup type for tidb cluster.</p>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restoreMode</code></br>
+<em>
+<a href="#restoremode">
+RestoreMode
+</a>
+</em>
+</td>
+<td>
+<p>Mode is the restore mode. such as snapshot or pitr.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pitrRestoredTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logRestoreStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
 <tr>
@@ -12734,6 +13339,19 @@ StorageProvider
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
 <p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pitrFullBackupStorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -12967,6 +13585,19 @@ RestoreConditionType
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>progresses</code></br>
+<em>
+<a href="#progress">
+[]Progress
+</a>
+</em>
+</td>
+<td>
+<p>Progresses is the progress of restore.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="s3storageprovider">S3StorageProvider</h3>
@@ -13195,6 +13826,48 @@ bool
 </td>
 <td>
 <p>Disable target certificate validation.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scalepolicy">ScalePolicy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>, 
+<a href="#tikvspec">TiKVSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>scaleInParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleInParallelism configures max scale in replicas for TiKV stores.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scaleOutParallelism</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScaleOutParallelism configures max scale out replicas for TiKV stores.</p>
 </td>
 </tr>
 </tbody>
@@ -13434,7 +14107,8 @@ string
 <a href="#pdspec">PDSpec</a>, 
 <a href="#prometheusspec">PrometheusSpec</a>, 
 <a href="#reloaderspec">ReloaderSpec</a>, 
-<a href="#tidbservicespec">TiDBServiceSpec</a>)
+<a href="#tidbservicespec">TiDBServiceSpec</a>, 
+<a href="#tidbdashboardspec">TidbDashboardSpec</a>)
 </p>
 <p>
 <p>ServiceSpec specifies the service object in k8s</p>
@@ -13553,6 +14227,13 @@ Optional: Defaults to omitted</p>
 </tr>
 </tbody>
 </table>
+<h3 id="startscriptversion">StartScriptVersion</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+</p>
 <h3 id="status">Status</h3>
 <p>
 (<em>Appears on:</em>
@@ -13830,7 +14511,9 @@ LocalStorageProvider
 <a href="#pdspec">PDSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
-<a href="#tikvspec">TiKVSpec</a>)
+<a href="#tikvspec">TiKVSpec</a>, 
+<a href="#tiproxyspec">TiProxySpec</a>, 
+<a href="#tidbdashboardspec">TidbDashboardSpec</a>)
 </p>
 <p>
 <p>StorageVolume configures additional PVC template for StatefulSets and volumeMount for pods that mount this PVC.
@@ -13898,6 +14581,17 @@ string
 <p>StorageVolumeName is the volume name which is same as <code>volumes.name</code> in Pod spec.</p>
 </p>
 <h3 id="storagevolumestatus">StorageVolumeStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>, 
+<a href="#pdstatus">PDStatus</a>, 
+<a href="#pumpstatus">PumpStatus</a>, 
+<a href="#ticdcstatus">TiCDCStatus</a>, 
+<a href="#tidbstatus">TiDBStatus</a>, 
+<a href="#tikvstatus">TiKVStatus</a>, 
+<a href="#tiproxystatus">TiProxyStatus</a>, 
+<a href="#workerstatus">WorkerStatus</a>)
+</p>
 <p>
 <p>StorageVolumeStatus is the actual status for a storage</p>
 </p>
@@ -14605,7 +15299,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCaptu
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -15439,66 +16133,6 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tidbprobe">TiDBProbe</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbspec">TiDBSpec</a>)
-</p>
-<p>
-<p>TiDBProbe contains details of probing tidb.
-default probe by TCPPort on 4000.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>type</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>&ldquo;tcp&rdquo; will use TCP socket to connetct port 4000</p>
-<p>&ldquo;command&rdquo; will probe the status api of tidb.
-This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
-So do not use this before v4.0.9.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>initialDelaySeconds</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Number of seconds after the container has started before liveness probes are initiated.
-Default to 10 seconds.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>periodSeconds</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>How often (in seconds) to perform the probe.
-Default to Kubernetes default (10 seconds). Minimum value is 1.</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tidbservicespec">TiDBServiceSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -15837,6 +16471,19 @@ Optional: Defaults to nil</p>
 </tr>
 <tr>
 <td>
+<code>tokenBasedAuthEnabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable <code>tidb_auth_token</code> authentication method. The tidb_auth_token authentication method is used only for the internal operation of TiDB Cloud.
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>plugins</code></br>
 <em>
 []string
@@ -15902,21 +16549,6 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for TiDB data storage.
 Defaults to Kubernetes default storage class.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>readinessProbe</code></br>
-<em>
-<a href="#tidbprobe">
-TiDBProbe
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ReadinessProbe describes actions that probe the tidb&rsquo;s readiness.
-the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
 <tr>
@@ -16033,7 +16665,7 @@ bool
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -16457,6 +17089,20 @@ Failover
 <td>
 <em>(Optional)</em>
 <p>Failover is the configurations of failover</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scalePolicy</code></br>
+<em>
+<a href="#scalepolicy">
+ScalePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScalePolicy is the scale configuration for TiFlash</p>
 </td>
 </tr>
 </tbody>
@@ -20534,6 +21180,20 @@ bool
 If you set it to <code>true</code> for an existing cluster, the TiKV cluster will be rolling updated.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>scalePolicy</code></br>
+<em>
+<a href="#scalepolicy">
+ScalePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScalePolicy is the scale configuration for TiKV</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>
@@ -20668,7 +21328,7 @@ string
 <td>
 <code>evictLeader</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.evictleaderstatus">
+<a href="#evictleaderstatus">
 map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLeaderStatus
 </a>
 </em>
@@ -20680,7 +21340,7 @@ map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLead
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -21283,6 +21943,228 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="tiproxyspec">TiProxySpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>TiProxySpec contains details of TiProxy members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for TiProxy</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsClientSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
+used by TiProxy to check health status.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>proxy</code></br>
+<em>
+github.com/pingcap/TiProxy/lib/config.ProxyServerOnline
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Proxy is the proxy part of config</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes configure additional storage for TiProxy pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for TiProxy data storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tiproxystatus">TiProxyStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TiProxyStatus is TiProxy status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>proxy</code></br>
+<em>
+github.com/pingcap/TiProxy/lib/config.ProxyServerOnline
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tidbautoscalerspec">TidbAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -21600,6 +22482,7 @@ string
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>, 
+<a href="#tidbdashboardspec">TidbDashboardSpec</a>, 
 <a href="#tidbinitializerspec">TidbInitializerSpec</a>, 
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>, 
 <a href="#tidbngmonitoringspec">TidbNGMonitoringSpec</a>)
@@ -21625,7 +22508,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Namespace is the namespace that TidbCluster object locates,
-default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring</p>
+default to the same namespace as TidbMonitor/TidbCluster/TidbNGMonitoring/TidbDashboard</p>
 </td>
 </tr>
 <tr>
@@ -21765,6 +22648,20 @@ TiCDCSpec
 </tr>
 <tr>
 <td>
+<code>tiproxy</code></br>
+<em>
+<a href="#tiproxyspec">
+TiProxySpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiProxy cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pump</code></br>
 <em>
 <a href="#pumpspec">
@@ -21802,6 +22699,19 @@ bool
 <em>(Optional)</em>
 <p>Indicates that the tidb cluster is paused and will not be processed by
 the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recoveryMode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether RecoveryMode is enabled for TiDB cluster to restore
+Optional: Defaults to false</p>
 </td>
 </tr>
 <tr>
@@ -22183,6 +23093,21 @@ All topologySpreadConstraints are ANDed.</p>
 </tr>
 <tr>
 <td>
+<code>startScriptVersion</code></br>
+<em>
+<a href="#startscriptversion">
+StartScriptVersion
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartScriptVersion is the version of start script</p>
+<p>default to &ldquo;v1&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>suspendAction</code></br>
 <em>
 <a href="#suspendaction">
@@ -22285,6 +23210,18 @@ TiFlashStatus
 </tr>
 <tr>
 <td>
+<code>tiproxy</code></br>
+<em>
+<a href="#tiproxystatus">
+TiProxyStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>ticdc</code></br>
 <em>
 <a href="#ticdcstatus">
@@ -22319,6 +23256,428 @@ TidbClusterAutoScalerRef
 <td>
 <em>(Optional)</em>
 <p>Represents the latest available observations of a tidb cluster&rsquo;s state.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbdashboard">TidbDashboard</h3>
+<p>
+<p>TidbDashboard contains the spec and status of tidb dashboard.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#tidbdashboardspec">
+TidbDashboardSpec
+</a>
+</em>
+</td>
+<td>
+<p>Spec contains all spec about tidb dashboard.</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+<p>ComponentSpec is common spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#tidbclusterref">
+[]TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+<p>Clusters reference TiDB cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by tidb dashboard.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Base image of the component (image tag is now allowed during validation).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageClassName is the default PVC storage class for tidb dashboard.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<p>StorageVolumes configures additional PVC for tidb dashboard.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pathPrefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PathPrefix is public URL path prefix for reverse proxies.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>service</code></br>
+<em>
+<a href="#servicespec">
+ServiceSpec
+</a>
+</em>
+</td>
+<td>
+<p>Service defines a Kubernetes service of tidb dashboard web access.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>telemetry</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Telemetry is whether to enable telemetry.
+When enabled, usage data will be sent to PingCAP for improving user experience.
+Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>experimental</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Experimental is whether to enable experimental features.
+When enabled, experimental TiDB Dashboard features will be available.
+These features are incomplete or not well tested. Suggest not to enable in
+production.
+Optional: Defaults to false</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#tidbdashboardstatus">
+TidbDashboardStatus
+</a>
+</em>
+</td>
+<td>
+<p>Status is most recently observed status of tidb dashboard.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbdashboardspec">TidbDashboardSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbdashboard">TidbDashboard</a>)
+</p>
+<p>
+<p>TidbDashboardSpec is spec of tidb dashboard.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+<p>ComponentSpec is common spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#tidbclusterref">
+[]TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+<p>Clusters reference TiDB cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by tidb dashboard.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Base image of the component (image tag is now allowed during validation).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageClassName is the default PVC storage class for tidb dashboard.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<p>StorageVolumes configures additional PVC for tidb dashboard.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pathPrefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PathPrefix is public URL path prefix for reverse proxies.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>service</code></br>
+<em>
+<a href="#servicespec">
+ServiceSpec
+</a>
+</em>
+</td>
+<td>
+<p>Service defines a Kubernetes service of tidb dashboard web access.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>telemetry</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Telemetry is whether to enable telemetry.
+When enabled, usage data will be sent to PingCAP for improving user experience.
+Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>experimental</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Experimental is whether to enable experimental features.
+When enabled, experimental TiDB Dashboard features will be available.
+These features are incomplete or not well tested. Suggest not to enable in
+production.
+Optional: Defaults to false</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbdashboardstatus">TidbDashboardStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbdashboard">TidbDashboard</a>)
+</p>
+<p>
+<p>TidbDashboardStatus is status of tidb dashboard.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -24067,7 +25426,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>

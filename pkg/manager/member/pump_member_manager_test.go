@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
@@ -456,10 +457,11 @@ type pumpFakeControls struct {
 func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFakeIndexers) {
 	fakeDeps := controller.NewFakeDependencies()
 	pmm := &pumpMemberManager{
-		deps:         fakeDeps,
-		scaler:       NewFakePumpScaler(),
-		binlogClient: &fakeBinlogClient{},
-		suspender:    suspender.NewFakeSuspender(),
+		deps:              fakeDeps,
+		scaler:            NewFakePumpScaler(),
+		binlogClient:      &fakeBinlogClient{},
+		suspender:         suspender.NewFakeSuspender(),
+		podVolumeModifier: &volumes.FakePodVolumeModifier{},
 	}
 	controls := &pumpFakeControls{
 		svc:     fakeDeps.ServiceControl.(*controller.FakeServiceControl),
