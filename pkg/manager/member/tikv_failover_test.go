@@ -548,9 +548,9 @@ func newTidbClusterWithTiKVFailureMember(hasFailureStore, hostDown, storeDeleted
 	tc.Status = v1alpha1.TidbClusterStatus{
 		TiKV: v1alpha1.TiKVStatus{
 			Stores: map[string]v1alpha1.TiKVStore{
-				"0": {ID: "0", State: v1alpha1.TiKVStateUp},
+				"0": {ID: "0", State: v1alpha1.TiKVStateUp, LastTransitionTime: metav1.Now()},
 				"1": {ID: "1", State: v1alpha1.TiKVStateDown, LastTransitionTime: metav1.NewTime(time10mAgo)},
-				"2": {ID: "2", State: v1alpha1.TiKVStateUp},
+				"2": {ID: "2", State: v1alpha1.TiKVStateUp, LastTransitionTime: metav1.Now()},
 			},
 		},
 		TiFlash: v1alpha1.TiFlashStatus{},

@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -91,7 +92,7 @@ func TestRestartPodOnHostDown(t *testing.T) {
 			detectNodeFailure:  true,
 			podCreatedAt:       time1hAgo,
 			hasPvcUIDSet:       true,
-			lastTransitionTime: time.Now().Add(-2*time.Hour - time.Minute),
+			lastTransitionTime: time.Now().Add(-2*time.Hour - time.Minute), // before PodHardRecoveryPeriod
 			errExpectFn:        getErrContainsSubstring("Host down reason: " + hdReasonStoreDownTimeExceeded),
 			expectFn: func(tc *v1alpha1.TidbCluster, podIndexer cache.Indexer) {
 				g.Expect(podIndexer.ListKeys()).To(ContainElement("default/test-pd-1"))
@@ -108,7 +109,6 @@ func TestRestartPodOnHostDown(t *testing.T) {
 			autoFailureRecovery: true,
 			podCreatedAt:        time1hAgo,
 			hasPvcUIDSet:        true,
-			lastTransitionTime:  time.Now().Add(-30 * time.Minute),
 			errExpectFn:         errExpectIgnoreError,
 			expectFn: func(tc *v1alpha1.TidbCluster, podIndexer cache.Indexer) {
 				g.Expect(podIndexer.ListKeys()).NotTo(ContainElement("default/test-pd-1"))
@@ -121,7 +121,6 @@ func TestRestartPodOnHostDown(t *testing.T) {
 			autoFailureRecovery: true,
 			podCreatedAt:        timeNow.Add(-time.Minute),
 			hasPvcUIDSet:        true,
-			lastTransitionTime:  time.Now().Add(-30 * time.Minute),
 			errExpectFn:         errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster, podIndexer cache.Indexer) {
 				g.Expect(podIndexer.ListKeys()).To(ContainElement("default/test-pd-1"))
@@ -133,6 +132,12 @@ func TestRestartPodOnHostDown(t *testing.T) {
 			tc := newTidbClusterWithPDFailureMember(test.hasPvcUIDSet, test.hostDown)
 			if test.autoFailureRecovery {
 				tc.Annotations = map[string]string{annAutoFailureRecovery: "true"}
+			}
+			if !test.lastTransitionTime.IsZero() {
+				pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+				pdMem1 := tc.Status.PD.Members[pd1]
+				pdMem1.LastTransitionTime = metav1.NewTime(test.lastTransitionTime)
+				tc.Status.PD.Members[pd1] = pdMem1
 			}
 			deps, pvcIndexer, podIndexer, _ := newFakeDependenciesForFailover(test.detectNodeFailure)
 

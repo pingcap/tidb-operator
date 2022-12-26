@@ -1009,14 +1009,20 @@ func newTidbClusterWithPDFailureMember(hasPvcUIDSet, hostDown bool) *v1alpha1.Ti
 			types.UID("pvc-1-uid-1"): {},
 		}
 	}
+	pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
+	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
+	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
+	pd1LastTransitionTime := metav1.NewTime(time.Now().Add(-20 * time.Minute))
+	pd1CreatedAt := metav1.NewTime(time.Now().Add(-15 * time.Minute))
 	tc.Status = v1alpha1.TidbClusterStatus{
 		PD: v1alpha1.PDStatus{
+			Members: map[string]v1alpha1.PDMember{
+				pd0: {Name: pd0, ID: "0", Health: true, LastTransitionTime: metav1.Now()},
+				pd1: {Name: pd1, ID: "12891273174085095651", Health: false, LastTransitionTime: pd1LastTransitionTime},
+				pd2: {Name: pd2, ID: "2", Health: true, LastTransitionTime: metav1.Now()},
+			},
 			FailureMembers: map[string]v1alpha1.PDFailureMember{
-				ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1): {
-					CreatedAt: metav1.NewTime(time.Now().Add(-20 * time.Minute)),
-					PVCUIDSet: pvcUIDSet,
-					HostDown:  hostDown,
-				},
+				pd1: {MemberID: "12891273174085095651", CreatedAt: pd1CreatedAt, PVCUIDSet: pvcUIDSet, HostDown: hostDown},
 			},
 		},
 	}
