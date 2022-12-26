@@ -77,6 +77,7 @@ type CLIConfig struct {
 	RenewDeadline         time.Duration
 	RetryPeriod           time.Duration
 	WaitDuration          time.Duration
+	CacheSyncDuration     time.Duration
 	// ResyncDuration is the resync time of informer
 	ResyncDuration time.Duration
 	// Defines whether tidb operator run in test mode, test mode is
@@ -106,6 +107,7 @@ func DefaultCLIConfig() *CLIConfig {
 		RetryPeriod:            2 * time.Second,
 		WaitDuration:           5 * time.Second,
 		ResyncDuration:         30 * time.Second,
+		CacheSyncDuration:      30 * time.Second,
 		TiDBBackupManagerImage: "pingcap/tidb-backup-manager:latest",
 		TiDBDiscoveryImage:     "pingcap/tidb-operator:latest",
 		Selector:               "",
@@ -129,6 +131,7 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.DurationVar(&c.MasterFailoverPeriod, "dm-master-failover-period", c.MasterFailoverPeriod, "dm-master failover period")
 	flag.DurationVar(&c.WorkerFailoverPeriod, "dm-worker-failover-period", c.WorkerFailoverPeriod, "dm-worker failover period")
 	flag.DurationVar(&c.ResyncDuration, "resync-duration", c.ResyncDuration, "Resync time of informer")
+	flag.DurationVar(&c.CacheSyncDuration, "cache-sync-duration", c.CacheSyncDuration, "Timeout of the cache sync")
 	flag.BoolVar(&c.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
 	flag.StringVar(&c.TiDBBackupManagerImage, "tidb-backup-manager-image", c.TiDBBackupManagerImage, "The image of backup manager tool")
 	// TODO: actually we just want to use the same image with tidb-controller-manager, but DownwardAPI cannot get image ID, see if there is any better solution

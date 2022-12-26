@@ -180,9 +180,11 @@ func main() {
 			deps.KubeInformerFactory,
 			deps.LabelFilterKubeInformerFactory,
 		}
+		waitCtx, cancel := context.WithTimeout(context.Background(), cliCfg.CacheSyncDuration)
+		defer cancel()
 		for _, f := range informerFactories {
 			f.Start(ctx.Done())
-			for v, synced := range f.WaitForCacheSync(wait.NeverStop) {
+			for v, synced := range f.WaitForCacheSync(waitCtx.Done()) {
 				if !synced {
 					klog.Fatalf("error syncing informer for %v", v)
 				}
