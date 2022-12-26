@@ -601,7 +601,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 		},
 		{
-			name:                     "has one not ready member, and HostDown is true, pod is force restarted",
+			name:                     "hostDown is true, and pod not restarted, pod is force restarted",
 			update:                   getOneNotReadyMemberAndAFailureMemberCreatedAt(timeNow.Add(-10 * time.Minute)),
 			maxFailoverCount:         3,
 			hasPVC:                   true,
@@ -634,7 +634,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 		},
 		{
-			name:                     "has one not ready member, HostDown is true, and pod is force restarted, not restartToDeleteStoreGap ago",
+			name:                     "hostDown is true, and pod was force restarted within restartToDeleteStoreGap, no action",
 			update:                   getOneNotReadyMemberAndAFailureMemberCreatedAt(timeNow.Add(-restartToDeleteStoreGap)),
 			maxFailoverCount:         3,
 			hasPVC:                   true,

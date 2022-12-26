@@ -74,7 +74,7 @@ func TestRestartPodOnHostDown(t *testing.T) {
 			},
 		},
 		{
-			name:              "hostDown is not set, and hasPvcUIDSet is not set, no action",
+			name:              "hostDown is not set, and pvcUIDSet is not set, no action",
 			detectNodeFailure: true,
 			podCreatedAt:      time1hAgo,
 			errExpectFn:       errExpectNil,
@@ -295,7 +295,7 @@ func TestDeletePodAndPvcs(t *testing.T) {
 	}
 	tests := []testcase{
 		{
-			name:        "pod has no deletion ts, and pvc has not deletion ts, pod and pvc is deleted",
+			name:        "pod has no deletion ts, and pvc has no deletion ts, both pod and pvc is deleted",
 			errExpectFn: errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster, podIndexer cache.Indexer, pvcIndexer cache.Indexer) {
 				g.Expect(podIndexer.ListKeys()).NotTo(ContainElement("default/test-pd-1"))
@@ -312,7 +312,7 @@ func TestDeletePodAndPvcs(t *testing.T) {
 			},
 		},
 		{
-			name:                     "pod has deletion ts, and pvc has not deletion ts, pvc is deleted",
+			name:                     "pod has deletion ts, and pvc has no deletion ts, pvc is deleted",
 			podWithDeletionTimestamp: true,
 			errExpectFn:              errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster, podIndexer cache.Indexer, pvcIndexer cache.Indexer) {
@@ -331,7 +331,7 @@ func TestDeletePodAndPvcs(t *testing.T) {
 			},
 		},
 		{
-			name:         "pod has no deletion ts, pvc has not deletion ts, and PVCUIDSet has old pvcUID, pod is deleted",
+			name:         "pod has no deletion ts, pvc has no deletion ts, and PVCUIDSet has old pvcUID, only pod is deleted",
 			oldPvcUIDSet: true,
 			errExpectFn:  errExpectNil,
 			expectFn: func(tc *v1alpha1.TidbCluster, podIndexer cache.Indexer, pvcIndexer cache.Indexer) {
