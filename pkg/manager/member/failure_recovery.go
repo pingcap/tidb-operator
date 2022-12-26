@@ -32,16 +32,20 @@ import (
 
 const (
 	// annAutoFailureRecovery in TidbCluster indicates whether auto failure recovery is enabled for the components
-	annAutoFailureRecovery = "kubernetes.io/auto-failure-recovery"
+	annAutoFailureRecovery = "app.kubernetes.io/auto-failure-recovery"
 
-	podPhaseRunning = "Running"
-	podPhaseUnknown = "Unknown"
+	// Node condition type for RODiskFound
+	nodeCondRODiskFound = "RODiskFound"
 
 	// Reason for host down being true
 	hdReasonNodeFailure           = "NodeFailure"
 	hdReasonRODiskFound           = "RODiskFound"
 	hdReasonStoreDownTimeExceeded = "StoreDownTimeExceeded"
 
+	// The 10 minutes is a fixed time limit on top of the failover-period to wait before deleting the store or member
+	// (which will then allow faster region balancing to happen in case of Tikv/Tiflash) after k8s node failure is detected
+	// and pod has been force restarted. The 10 minutes value is based on the pod-eviction-timeout in K8s which is 5
+	// minutes, with 5 more minutes added to that.
 	restartToDeleteStoreGap = 10 * time.Minute
 )
 
@@ -76,17 +80,11 @@ func (fr *commonStatefulFailureRecovery) RestartPodOnHostDown(tc *v1alpha1.TidbC
 		if fr.failureObjectAccess.IsHostDownForFailedPod(tc) {
 			if canAutoFailureRecovery(tc) {
 				if err := fr.restartPodForHostDown(tc); err != nil {
-					if controller.IsIgnoreError(err) {
-						return nil
-					}
 					return err
 				}
 			}
 		} else {
 			if err := fr.checkAndMarkHostDown(tc); err != nil {
-				if controller.IsIgnoreError(err) {
-					return nil
-				}
 				return err
 			}
 		}
@@ -149,9 +147,9 @@ func (fr *commonStatefulFailureRecovery) getNodeAvailabilityStatus(pod *corev1.P
 	// 1. Check the pod Status, if the pod has Unknown status phase, then it means node is not available
 	// 2. Check the node Status, if the Ready condition of node is False or Unknown, then it means node is not available
 	// 3. Check the node Status, if the RODiskFound condition of node is True, then it means disk has become read only
-	nodeUnavailable := pod.Status.Phase == podPhaseUnknown
+	nodeUnavailable := pod.Status.Phase == corev1.PodUnknown
 	var roDiskFound bool
-	if pod.Status.Phase == podPhaseRunning {
+	if pod.Status.Phase == corev1.PodRunning {
 		// If the Ready condition of pod is False, then detect whether the K8s node hosting the pod is no more available
 		podReadyCond := getPodConditionFromList(pod.Status.Conditions, corev1.PodReady)
 		klog.Infof("failover[getNodeAvailabilityStatus]: pod ready condition of node %s of failure pod %s/%s = %v", pod.Spec.NodeName, ns, pod.Name, podReadyCond)
@@ -257,15 +255,15 @@ func (fr *commonStatefulFailureRecovery) deletePodAndPvcs(tc *v1alpha1.TidbClust
 	}
 
 	pvcUIDSet := fr.failureObjectAccess.GetPVCUIDSet(tc, objectId)
-	pvcUids := make([]types.UID, 0, len(pvcs))
+	pvcUIDs := make([]types.UID, 0, len(pvcs))
 	for p := range pvcs {
-		pvcUids = append(pvcUids, pvcs[p].ObjectMeta.UID)
+		pvcUIDs = append(pvcUIDs, pvcs[p].ObjectMeta.UID)
 	}
-	klog.Infof("%s failover[deletePodAndPvcs]: PVCs used in cluster %s/%s: %s", memberType, ns, tcName, pvcUids)
+	klog.Infof("%s failover[deletePodAndPvcs]: PVCs used in cluster %s/%s: %s", memberType, ns, tcName, pvcUIDs)
 	for p := range pvcs {
 		pvc := pvcs[p]
 		if _, pvcUIDExist := pvcUIDSet[pvc.ObjectMeta.UID]; pvcUIDExist {
-			if pvc.DeletionTimestamp == nil /*&& pvcUIDExist*/ {
+			if pvc.DeletionTimestamp == nil {
 				if deleteErr := fr.deps.PVCControl.DeletePVC(tc, pvc); deleteErr != nil {
 					klog.Errorf("%s failover[deletePodAndPvcs]: failed to delete PVC: %s/%s, error: %s", memberType, ns, pvc.Name, deleteErr)
 					return deleteErr

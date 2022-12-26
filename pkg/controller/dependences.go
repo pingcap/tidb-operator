@@ -134,7 +134,7 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.DurationVar(&c.TiDBFailoverPeriod, "tidb-failover-period", c.TiDBFailoverPeriod, "TiDB failover period")
 	flag.DurationVar(&c.MasterFailoverPeriod, "dm-master-failover-period", c.MasterFailoverPeriod, "dm-master failover period")
 	flag.DurationVar(&c.WorkerFailoverPeriod, "dm-worker-failover-period", c.WorkerFailoverPeriod, "dm-worker failover period")
-	flag.DurationVar(&c.PodHardRecoveryPeriod, "pod-hard-recovery-period", c.PodHardRecoveryPeriod, "Hard recovery period for a failure pod")
+	flag.DurationVar(&c.PodHardRecoveryPeriod, "pod-hard-recovery-period", c.PodHardRecoveryPeriod, "Hard recovery period for a failure pod default(24h)")
 	flag.BoolVar(&c.DetectNodeFailure, "detect-node-failure", c.DetectNodeFailure, "Automatically detect node failures")
 	flag.DurationVar(&c.ResyncDuration, "resync-duration", c.ResyncDuration, "Resync time of informer")
 	flag.BoolVar(&c.TestMode, "test-mode", false, "whether tidb-operator run in test mode")

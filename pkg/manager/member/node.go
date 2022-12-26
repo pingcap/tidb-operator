@@ -18,10 +18,6 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
-const (
-	nodeCondRODiskFound = "RODiskFound"
-)
-
 // a pre-defined mapping that mapping some short label name to k8s well-known labels.
 // PD depend on short label name to gain better performance.
 // See: https://github.com/pingcap/tidb-operator/issues/4678 for more details.
