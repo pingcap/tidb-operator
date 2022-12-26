@@ -431,7 +431,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.LogStop = true
 			})
 			framework.ExpectNoError(err)
-			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupComplete)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupStopped)
 
 			ginkgo.By("Truncate log backup after stop")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
