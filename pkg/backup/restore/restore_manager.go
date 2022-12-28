@@ -104,8 +104,18 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	if restore.Spec.BR != nil && restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot {
+		err = rm.validateRestore(restore, tc)
+
+		if err != nil {
+			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreInvalid,
+				Status:  corev1.ConditionTrue,
+				Reason:  "InvalidSpec",
+				Message: err.Error(),
+			}, nil)
+		}
 		// restore based snapshot for cloud provider
-		reason, err := rm.tryRestoreIfCanSnapshot(restore, tc)
+		reason, err := rm.volumeSnapshotRestore(restore, tc)
 		if err != nil {
 			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestoreRetryFailed,
@@ -206,7 +216,7 @@ func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
 	defer cancel()
 
-	// write a file into external storage
+	// read restore meta from output of BR 1st restore
 	klog.Infof("read the restore meta from external storage")
 	cred := backuputil.GetStorageCredential(r.Namespace, r.Spec.StorageProvider, rm.deps.SecretLister)
 	externalStorage, err := backuputil.NewStorageBackend(r.Spec.StorageProvider, cred)
@@ -236,8 +246,58 @@ func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore
 
 	return csb, "", nil
 }
+func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
+	// check tiflash replicas
+	replicas, reason, err := rm.readTiFlashReplicasFromBackupMeta(r)
+	if err != nil {
+		klog.Errorf("read tiflash replica failure with reason %s", reason)
+		return err
+	}
 
-func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
+	if tc.Spec.TiFlash.Replicas != replicas {
+		klog.Errorf("cluster has %d tiflash configured, backupmeta has %d tiflash", tc.Spec.TiFlash.Replicas, replicas)
+		return fmt.Errorf("tiflash replica missmatched")
+	}
+
+	return nil
+}
+
+func (rm *restoreManager) readTiFlashReplicasFromBackupMeta(r *v1alpha1.Restore) (int32, string, error) {
+	// since the restore meta is small (~5M), assume 1 minutes is enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
+	defer cancel()
+
+	klog.Infof("read the backup meta from external storage")
+	cred := backuputil.GetStorageCredential(r.Namespace, r.Spec.StorageProvider, rm.deps.SecretLister)
+	externalStorage, err := backuputil.NewStorageBackend(r.Spec.StorageProvider, cred)
+	if err != nil {
+		return 0, "NewStorageBackendFailed", err
+	}
+
+	// if file doesn't exist, br create volume has problem
+	exist, err := externalStorage.Exists(ctx, constants.MetaFile)
+	if err != nil {
+		return 0, "FileExistedInExternalStorageFailed", err
+	}
+	if !exist {
+		return 0, "FileNotExists", fmt.Errorf("%s does not exist", constants.MetaFile)
+	}
+
+	restoreMeta, err := externalStorage.ReadAll(ctx, constants.MetaFile)
+	if err != nil {
+		return 0, "ReadAllOnExternalStorageFailed", err
+	}
+
+	metaInfo := &backuputil.EBSBasedBRMeta{}
+	err = json.Unmarshal(restoreMeta, metaInfo)
+	if err != nil {
+		return 0, "ParseCloudSnapBackupFailed", err
+	}
+
+	return metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas, "", nil
+}
+
+func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
 	if v1alpha1.IsRestoreComplete(r) {
 		return "", nil
 	}

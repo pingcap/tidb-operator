@@ -97,4 +97,5 @@ const (
 	LocalTmp           = "/tmp"
 	ClusterBackupMeta  = "clustermeta"
 	ClusterRestoreMeta = "restoremeta"
+	MetaFile           = "backupmeta"
 )
