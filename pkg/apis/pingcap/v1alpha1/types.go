@@ -1305,6 +1305,7 @@ type PDFailureMember struct {
 	PVCUID        types.UID                 `json:"pvcUID,omitempty"`
 	PVCUIDSet     map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
 	MemberDeleted bool                      `json:"memberDeleted,omitempty"`
+	HostDown      bool                      `json:"hostDown,omitempty"`
 	// +nullable
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
@@ -1479,8 +1480,11 @@ type TiKVStore struct {
 
 // TiKVFailureStore is the tikv failure store information
 type TiKVFailureStore struct {
-	PodName string `json:"podName,omitempty"`
-	StoreID string `json:"storeID,omitempty"`
+	PodName      string                    `json:"podName,omitempty"`
+	StoreID      string                    `json:"storeID,omitempty"`
+	PVCUIDSet    map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
+	StoreDeleted bool                      `json:"storeDeleted,omitempty"`
+	HostDown     bool                      `json:"hostDown,omitempty"`
 	// +nullable
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
