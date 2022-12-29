@@ -2059,6 +2059,17 @@ SuspendAction
 <p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -23118,6 +23129,17 @@ SuspendAction
 <td>
 <em>(Optional)</em>
 <p>SuspendAction defines the suspend actions for all component.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
 </tbody>
