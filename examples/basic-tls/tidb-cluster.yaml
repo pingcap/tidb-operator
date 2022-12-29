@@ -8,7 +8,7 @@ metadata:
 spec:
   tlsCluster:
     enabled: true
-  version: v6.1.0
+  version: v6.5.0
   timezone: UTC
   pvReclaimPolicy: Delete
   enableDynamicConfiguration: true
