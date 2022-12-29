@@ -71,6 +71,14 @@ type TidbClusterAutoScalerListerExpansion interface{}
 // TidbClusterAutoScalerNamespaceLister.
 type TidbClusterAutoScalerNamespaceListerExpansion interface{}
 
+// TidbDashboardListerExpansion allows custom methods to be added to
+// TidbDashboardLister.
+type TidbDashboardListerExpansion interface{}
+
+// TidbDashboardNamespaceListerExpansion allows custom methods to be added to
+// TidbDashboardNamespaceLister.
+type TidbDashboardNamespaceListerExpansion interface{}
+
 // TidbInitializerListerExpansion allows custom methods to be added to
 // TidbInitializerLister.
 type TidbInitializerListerExpansion interface{}

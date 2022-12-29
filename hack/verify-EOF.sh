@@ -30,6 +30,7 @@ FILELIST=($(find . -type f -not \( -path './output/*' \
     -o -path '*.png' \
     -o -path './tkctl' \
     -o -path './.idea/*' \
+    -o -path '*.iml' \
     -o -path './.DS_Store' \
     -o -path './*/.DS_Store' \
     -o -path './data' \

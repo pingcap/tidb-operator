@@ -30,14 +30,14 @@ func (s *NoneSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, erro
 	return "", nil
 }
 
-func (s *NoneSnapshotter) PrepareBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
-	return "", nil
+func (s *NoneSnapshotter) GenerateBackupMetadata(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (*CloudSnapBackup, string, error) {
+	return nil, "", nil
 }
 
 func (s *NoneSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error {
 	return nil
 }
 
-func (s *NoneSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore) (string, error) {
+func (s *NoneSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error) {
 	return "", nil
 }

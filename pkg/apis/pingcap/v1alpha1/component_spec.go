@@ -578,6 +578,37 @@ func buildTiDBNGMonitoringComponentAccessor(c MemberType, tngm *TidbNGMonitoring
 	return impl
 }
 
+func buildTiDBDashboardComponentAccessor(c MemberType, td *TidbDashboard, componentSpec *ComponentSpec) ComponentAccessor {
+	commonSpec := td.Spec.ComponentSpec
+	impl := &componentAccessorImpl{
+		name:                      td.GetName(),
+		kind:                      TiDBDashboardKind,
+		component:                 c,
+		imagePullSecrets:          commonSpec.ImagePullSecrets,
+		hostNetwork:               commonSpec.HostNetwork,
+		affinity:                  commonSpec.Affinity,
+		priorityClassName:         commonSpec.PriorityClassName,
+		clusterNodeSelector:       commonSpec.NodeSelector,
+		clusterLabels:             commonSpec.Labels,
+		clusterAnnotations:        commonSpec.Annotations,
+		tolerations:               commonSpec.Tolerations,
+		configUpdateStrategy:      ConfigUpdateStrategyRollingUpdate,
+		podSecurityContext:        commonSpec.PodSecurityContext,
+		topologySpreadConstraints: commonSpec.TopologySpreadConstraints,
+		dnsConfig:                 commonSpec.DNSConfig,
+		dnsPolicy:                 commonSpec.DNSPolicy,
+
+		ComponentSpec: componentSpec,
+	}
+	if commonSpec.ImagePullPolicy != nil {
+		impl.imagePullPolicy = *commonSpec.ImagePullPolicy
+	}
+	if commonSpec.SchedulerName != nil {
+		impl.schedulerName = *commonSpec.SchedulerName
+	}
+	return impl
+}
+
 // BaseDiscoverySpec returns the base spec of discovery component
 func (tc *TidbCluster) BaseDiscoverySpec() ComponentAccessor {
 	return buildTidbClusterComponentAccessor(DiscoveryMemberType, tc, tc.Spec.Discovery.ComponentSpec)
@@ -672,4 +703,8 @@ func (dc *DMCluster) BaseWorkerSpec() ComponentAccessor {
 
 func (tngm *TidbNGMonitoring) BaseNGMonitoringSpec() ComponentAccessor {
 	return buildTiDBNGMonitoringComponentAccessor(NGMonitoringMemberType, tngm, &tngm.Spec.NGMonitoring.ComponentSpec)
+}
+
+func (td *TidbDashboard) BaseTidbDashboardSpec() ComponentAccessor {
+	return buildTiDBDashboardComponentAccessor(TiDBDashboardMemberType, td, &td.Spec.ComponentSpec)
 }

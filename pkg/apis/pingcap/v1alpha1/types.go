@@ -94,6 +94,9 @@ const (
 	// NGMonitoringMemberType is ng monitoring member type
 	NGMonitoringMemberType MemberType = "ng-monitoring"
 
+	// TiDBDashboardMemberType is tidb-dashboard member type
+	TiDBDashboardMemberType MemberType = "tidb-dashboard"
+
 	// UnknownMemberType is unknown member type
 	UnknownMemberType MemberType = "unknown"
 )
@@ -504,6 +507,7 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
 	// Start up script version
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1"
@@ -863,6 +867,11 @@ type TiDBSpec struct {
 	// +optional
 	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
 
+	// Whether enable `tidb_auth_token` authentication method. The tidb_auth_token authentication method is used only for the internal operation of TiDB Cloud.
+	// Optional: Defaults to false
+	// +optional
+	TokenBasedAuthEnabled *bool `json:"tokenBasedAuthEnabled,omitempty"`
+
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
 	// +optional
 	Plugins []string `json:"plugins,omitempty"`
@@ -889,10 +898,6 @@ type TiDBSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
-	// ReadinessProbe describes actions that probe the tidb's readiness.
-	// the default behavior is like setting type as "tcp"
-	// +optional
-	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
 
 	// Initializer is the init configurations of TiDB
 	//
@@ -911,11 +916,11 @@ const (
 	CommandProbeType string = "command"
 )
 
-// TiDBProbe contains details of probing tidb.
+// Probe contains details of probing tidb.
 // +k8s:openapi-gen=true
-// default probe by TCPPort on 4000.
-type TiDBProbe struct {
-	// "tcp" will use TCP socket to connetct port 4000
+// default probe by TCPPort on tidb 4000 / tikv 20160 / pd 2349.
+type Probe struct {
+	// "tcp" will use TCP socket to connect component port.
 	//
 	// "command" will probe the status api of tidb.
 	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
@@ -1151,6 +1156,11 @@ type ComponentSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// ReadinessProbe describes actions that probe the pd's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // ServiceSpec specifies the service object in k8s
@@ -1962,6 +1972,8 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// BackupStopped means the backup was stopped, just log backup has this condition
+	BackupStopped BackupConditionType = "Stopped"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
