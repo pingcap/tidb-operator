@@ -47,6 +47,13 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		model.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
 	}
 
+	listenHost := "0.0.0.0"
+	if tc.Spec.PreferIPv6 {
+		listenHost = "[::]"
+	}
+	model.Addr = fmt.Sprintf("%s:20160", listenHost)
+	model.StatusAddr = fmt.Sprintf("%s:20180", listenHost)
+
 	return renderTemplateFunc(tikvStartScriptTpl, model)
 }
 
