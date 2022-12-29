@@ -21,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
@@ -778,9 +777,11 @@ type TiProxySpec struct {
 	// +optional
 	BaseImage string `json:"baseImage"`
 
-	// Proxy is the proxy part of config
+	// Config is the Configuration of tiproxy-servers
 	// +optional
-	Proxy *tiproxyConfig.ProxyServerOnline `json:"proxy,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Config *TiProxyConfigWraper `json:"config,omitempty"`
 
 	// StorageVolumes configure additional storage for TiProxy pods.
 	// +optional
@@ -1433,7 +1434,6 @@ type TiProxyStatus struct {
 	Synced      bool                                       `json:"synced,omitempty"`
 	Phase       MemberPhase                                `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
-	Proxy       tiproxyConfig.ProxyServerOnline            `json:"proxy,omitempty"`
 	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
 	// +optional

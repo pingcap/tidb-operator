@@ -14,6 +14,7 @@
 package volumes
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -21,6 +22,10 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	klog "k8s.io/klog/v2"
+)
+
+var (
+	ErrChangeDefaultStorageClass = errors.New("can't change storage class to the default one")
 )
 
 type VolumePhase int
@@ -66,7 +71,9 @@ func (p VolumePhase) String() string {
 
 func (p *podVolModifier) getVolumePhase(vol *ActualVolume) VolumePhase {
 	if err := p.validate(vol); err != nil {
-		klog.Warningf("volume %s/%s modification is not allowed: %v", vol.PVC.Namespace, vol.PVC.Name, err)
+		if !errors.Is(err, ErrChangeDefaultStorageClass) {
+			klog.Warningf("volume %s/%s modification is not allowed: %v", vol.PVC.Namespace, vol.PVC.Name, err)
+		}
 		return VolumePhaseCannotModify
 	}
 	if isPVCRevisionChanged(vol.PVC) {
@@ -94,7 +101,7 @@ func isVolumeExpansionSupported(sc *storagev1.StorageClass) bool {
 func (p *podVolModifier) validate(vol *ActualVolume) error {
 	if vol.Desired.StorageClass == nil {
 		// TODO: support default storage class
-		return fmt.Errorf("can't change storage class to the default one")
+		return ErrChangeDefaultStorageClass
 	}
 	desired := vol.Desired.Size
 	actual := getStorageSize(vol.PVC.Spec.Resources.Requests)
