@@ -979,7 +979,7 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 		nodeName := pod.Spec.NodeName
 		ls, err := getNodeLabels(m.deps.NodeLister, nodeName, storeLabels)
 		if err != nil || len(ls) == 0 {
-			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
+			klog.Warningf("node: [%s] has no node labels %v, skipping set store labels for Pod: [%s/%s]", nodeName, storeLabels, ns, podName)
 			continue
 		}
 

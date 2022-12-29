@@ -19821,6 +19821,8 @@ spec:
                           format: date-time
                           nullable: true
                           type: string
+                        hostDown:
+                          type: boolean
                         memberDeleted:
                           type: boolean
                         memberID:
@@ -20505,8 +20507,16 @@ spec:
                           format: date-time
                           nullable: true
                           type: string
+                        hostDown:
+                          type: boolean
                         podName:
                           type: string
+                        pvcUIDSet:
+                          additionalProperties:
+                            type: object
+                          type: object
+                        storeDeleted:
+                          type: boolean
                         storeID:
                           type: string
                       type: object
@@ -20744,8 +20754,16 @@ spec:
                           format: date-time
                           nullable: true
                           type: string
+                        hostDown:
+                          type: boolean
                         podName:
                           type: string
+                        pvcUIDSet:
+                          additionalProperties:
+                            type: object
+                          type: object
+                        storeDeleted:
+                          type: boolean
                         storeID:
                           type: string
                       type: object

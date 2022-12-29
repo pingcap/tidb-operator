@@ -13,7 +13,9 @@
 
 package member
 
-import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+import (
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+)
 
 // TODO: move this to a centralized place
 // Since the "Unhealthy" is a very universal event reason string, which could apply to all the TiDB/DM cluster components,
@@ -22,6 +24,7 @@ const (
 	unHealthEventReason     = "Unhealthy"
 	unHealthEventMsgPattern = "%s pod[%s] is unhealthy, msg:%s"
 	FailedSetStoreLabels    = "FailedSetStoreLabels"
+	recoveryEventReason     = "Recovery"
 )
 
 // Failover implements the logic for pd/tikv/tidb's failover and recovery.
