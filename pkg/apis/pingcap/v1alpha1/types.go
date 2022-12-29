@@ -372,6 +372,9 @@ type TidbClusterSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -1972,6 +1975,8 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// BackupStopped means the backup was stopped, just log backup has this condition
+	BackupStopped BackupConditionType = "Stopped"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
