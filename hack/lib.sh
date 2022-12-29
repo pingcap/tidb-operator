@@ -152,7 +152,8 @@ function hack::ensure_helm() {
     fi
     echo "Installing helm ${HELM_VERSION}..."
     local HELM_URL=https://get.helm.sh/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
-    curl --retry 3 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
+    echo "Installing helm from tarball: ${HELM_URL} ..."
+    curl --fail --retry 3 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
 }
 
 function hack::verify_kind() {
