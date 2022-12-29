@@ -2059,6 +2059,17 @@ SuspendAction
 <p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -6406,6 +6417,7 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (<em>Appears on:</em>
 <a href="#pdfailuremember">PDFailureMember</a>, 
+<a href="#tikvfailurestore">TiKVFailureStore</a>, 
 <a href="#unjoinedmember">UnjoinedMember</a>)
 </p>
 <p>
@@ -9923,6 +9935,16 @@ map[k8s.io/apimachinery/pkg/types.UID]github.com/pingcap/tidb-operator/pkg/apis/
 <tr>
 <td>
 <code>memberDeleted</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>hostDown</code></br>
 <em>
 bool
 </em>
@@ -18804,6 +18826,38 @@ string
 </tr>
 <tr>
 <td>
+<code>pvcUIDSet</code></br>
+<em>
+<a href="#emptystruct">
+map[k8s.io/apimachinery/pkg/types.UID]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EmptyStruct
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>storeDeleted</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>hostDown</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>createdAt</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
@@ -23118,6 +23172,17 @@ SuspendAction
 <td>
 <em>(Optional)</em>
 <p>SuspendAction defines the suspend actions for all component.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
 </tbody>

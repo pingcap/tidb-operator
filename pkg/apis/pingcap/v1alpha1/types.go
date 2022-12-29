@@ -372,6 +372,9 @@ type TidbClusterSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -1302,6 +1305,7 @@ type PDFailureMember struct {
 	PVCUID        types.UID                 `json:"pvcUID,omitempty"`
 	PVCUIDSet     map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
 	MemberDeleted bool                      `json:"memberDeleted,omitempty"`
+	HostDown      bool                      `json:"hostDown,omitempty"`
 	// +nullable
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
@@ -1476,8 +1480,11 @@ type TiKVStore struct {
 
 // TiKVFailureStore is the tikv failure store information
 type TiKVFailureStore struct {
-	PodName string `json:"podName,omitempty"`
-	StoreID string `json:"storeID,omitempty"`
+	PodName      string                    `json:"podName,omitempty"`
+	StoreID      string                    `json:"storeID,omitempty"`
+	PVCUIDSet    map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
+	StoreDeleted bool                      `json:"storeDeleted,omitempty"`
+	HostDown     bool                      `json:"hostDown,omitempty"`
 	// +nullable
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
@@ -1972,6 +1979,8 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// BackupStopped means the backup was stopped, just log backup has this condition
+	BackupStopped BackupConditionType = "Stopped"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
