@@ -25,13 +25,15 @@ import (
 
 // NewTiKVFailover returns a tikv Failover
 func NewTiKVFailover(deps *controller.Dependencies) Failover {
-	return &commonStoreFailover{deps: deps, storeAccess: &tikvStoreAccess{}}
+	storeAccess := &tikvStoreAccess{}
+	failureRecovery := commonStatefulFailureRecovery{deps: deps, failureObjectAccess: &failureStoreAccess{storeAccess: storeAccess}}
+	return &commonStoreFailover{deps: deps, storeAccess: storeAccess, failureRecovery: failureRecovery}
 }
 
 // tikvStoreAccess is a folder of access functions for TiKV store and implements StoreAccess
 type tikvStoreAccess struct{}
 
-var _ StoreAccess = (*tiflashStoreAccess)(nil)
+var _ StoreAccess = (*tikvStoreAccess)(nil)
 
 func (tsa *tikvStoreAccess) GetFailoverPeriod(cliConfig *controller.CLIConfig) time.Duration {
 	return cliConfig.TiKVFailoverPeriod
@@ -47,6 +49,11 @@ func (tsa *tikvStoreAccess) GetMaxFailoverCount(tc *v1alpha1.TidbCluster) *int32
 
 func (tsa *tikvStoreAccess) GetStores(tc *v1alpha1.TidbCluster) map[string]v1alpha1.TiKVStore {
 	return tc.Status.TiKV.Stores
+}
+
+func (tsa *tikvStoreAccess) GetStore(tc *v1alpha1.TidbCluster, storeID string) (v1alpha1.TiKVStore, bool) {
+	store, exists := tc.Status.TiKV.Stores[storeID]
+	return store, exists
 }
 
 func (tsa *tikvStoreAccess) SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster) {
@@ -65,6 +72,11 @@ func (tsa *tikvStoreAccess) GetFailureStores(tc *v1alpha1.TidbCluster) map[strin
 	return tc.Status.TiKV.FailureStores
 }
 
+func (tsa *tikvStoreAccess) GetFailureStore(tc *v1alpha1.TidbCluster, storeID string) (v1alpha1.TiKVFailureStore, bool) {
+	failureStore, exists := tc.Status.TiKV.FailureStores[storeID]
+	return failureStore, exists
+}
+
 func (tsa *tikvStoreAccess) SetFailureStore(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore) {
 	tc.Status.TiKV.FailureStores[storeID] = failureStore
 }
@@ -76,6 +88,17 @@ func (tsa *tikvStoreAccess) GetStsDesiredOrdinals(tc *v1alpha1.TidbCluster, excl
 func (tsa *tikvStoreAccess) ClearFailStatus(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiKV.FailureStores = nil
 	tc.Status.TiKV.FailoverUID = ""
+}
+
+// IsHostDownForFailurePod checks if HostDown is set for any tikv failure store
+func (tsa *tikvStoreAccess) IsHostDownForFailurePod(tc *v1alpha1.TidbCluster) bool {
+	for storeID := range tc.Status.TiKV.FailureStores {
+		failureStore := tc.Status.TiKV.FailureStores[storeID]
+		if failureStore.HostDown {
+			return true
+		}
+	}
+	return false
 }
 
 // NewFakeTiKVFailover returns a fake Failover
