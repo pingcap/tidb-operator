@@ -254,9 +254,17 @@ func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.Tidb
 		return err
 	}
 
-	if tc.Spec.TiFlash.Replicas != replicas {
-		klog.Errorf("cluster has %d tiflash configured, backupmeta has %d tiflash", tc.Spec.TiFlash.Replicas, replicas)
-		return fmt.Errorf("tiflash replica missmatched")
+	if tc.Spec.TiFlash == nil {
+		if replicas != 0 {
+			klog.Errorf("tiflash is not configured, backupmeta has %d tiflash", replicas)
+			return fmt.Errorf("tiflash replica missmatched")
+		}
+
+	} else {
+		if tc.Spec.TiFlash.Replicas != replicas {
+			klog.Errorf("cluster has %d tiflash configured, backupmeta has %d tiflash", tc.Spec.TiFlash.Replicas, replicas)
+			return fmt.Errorf("tiflash replica missmatched")
+		}
 	}
 
 	return nil
@@ -292,6 +300,10 @@ func (rm *restoreManager) readTiFlashReplicasFromBackupMeta(r *v1alpha1.Restore)
 	err = json.Unmarshal(restoreMeta, metaInfo)
 	if err != nil {
 		return 0, "ParseCloudSnapBackupFailed", err
+	}
+
+	if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash == nil {
+		return 0, "", nil
 	}
 
 	return metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas, "", nil
