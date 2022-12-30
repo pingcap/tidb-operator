@@ -113,6 +113,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 				Reason:  "InvalidSpec",
 				Message: err.Error(),
 			}, nil)
+			return err
 		}
 		// restore based snapshot for cloud provider
 		reason, err := rm.volumeSnapshotRestore(restore, tc)
