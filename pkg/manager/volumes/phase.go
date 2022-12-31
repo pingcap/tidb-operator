@@ -92,6 +92,9 @@ func isVolumeExpansionSupported(sc *storagev1.StorageClass) bool {
 }
 
 func (p *podVolModifier) validate(vol *ActualVolume) error {
+	if vol.Desired == nil {
+		return fmt.Errorf("can't match desired volume")
+	}
 	if vol.Desired.StorageClass == nil {
 		// TODO: support default storage class
 		return fmt.Errorf("can't change storage class to the default one")
