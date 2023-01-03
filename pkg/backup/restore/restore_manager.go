@@ -115,8 +115,8 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}, nil)
 			return err
 		}
-		// restore based snapshot for cloud provider
-		reason, err := rm.volumeSnapshotRestore(restore, tc)
+		// restore based volume snapshot for cloud provider
+		reason, err := rm.volSnapshotRestore(restore, tc)
 		if err != nil {
 			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestoreRetryFailed,
@@ -272,35 +272,9 @@ func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.Tidb
 }
 
 func (rm *restoreManager) readTiFlashReplicasFromBackupMeta(r *v1alpha1.Restore) (int32, string, error) {
-	// since the restore meta is small (~5M), assume 1 minutes is enough
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
-	defer cancel()
-
-	klog.Infof("read the backup meta from external storage")
-	cred := backuputil.GetStorageCredential(r.Namespace, r.Spec.StorageProvider, rm.deps.SecretLister)
-	externalStorage, err := backuputil.NewStorageBackend(r.Spec.StorageProvider, cred)
+	metaInfo, err := backuputil.GetVolSnapBackupMetaData(r, rm.deps.SecretLister)
 	if err != nil {
-		return 0, "NewStorageBackendFailed", err
-	}
-
-	// if file doesn't exist, br create volume has problem
-	exist, err := externalStorage.Exists(ctx, constants.MetaFile)
-	if err != nil {
-		return 0, "FileExistedInExternalStorageFailed", err
-	}
-	if !exist {
-		return 0, "FileNotExists", fmt.Errorf("%s does not exist", constants.MetaFile)
-	}
-
-	restoreMeta, err := externalStorage.ReadAll(ctx, constants.MetaFile)
-	if err != nil {
-		return 0, "ReadAllOnExternalStorageFailed", err
-	}
-
-	metaInfo := &backuputil.EBSBasedBRMeta{}
-	err = json.Unmarshal(restoreMeta, metaInfo)
-	if err != nil {
-		return 0, "ParseCloudSnapBackupFailed", err
+		return 0, "GetVolSnapBackupMetaData failed", err
 	}
 
 	if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash == nil {
@@ -310,7 +284,7 @@ func (rm *restoreManager) readTiFlashReplicasFromBackupMeta(r *v1alpha1.Restore)
 	return metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas, "", nil
 }
 
-func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
+func (rm *restoreManager) volSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
 	if v1alpha1.IsRestoreComplete(r) {
 		return "", nil
 	}

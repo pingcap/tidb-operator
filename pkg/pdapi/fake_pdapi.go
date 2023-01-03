@@ -274,9 +274,9 @@ func (c *FakePDClient) GetAutoscalingPlans(strategy Strategy) ([]Plan, error) {
 
 func (c *FakePDClient) GetRecoveringMark() (bool, error) {
 	action := &Action{}
-	result, err := c.fakeAPI(GetRecoveringMarkActionType, action)
+	_, err := c.fakeAPI(GetRecoveringMarkActionType, action)
 	if err != nil {
-		return result.(bool), err
+		return false, err
 	}
 
 	return true, nil
