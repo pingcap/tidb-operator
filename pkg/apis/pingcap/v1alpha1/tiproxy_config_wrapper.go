@@ -16,6 +16,7 @@ package v1alpha1
 import (
 	stdjson "encoding/json"
 
+	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
@@ -51,7 +52,7 @@ func (c *TiProxyConfigWraper) GetPartTOML(key string) ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler interface.
 func (c *TiProxyConfigWraper) UnmarshalJSON(data []byte) error {
-	deprecated := new(TiFlashProxyConfigWraper)
+	deprecated := new(tiproxyConfig.Config)
 	var err error
 	c.GenericConfig, err = unmarshalJSON(data, deprecated)
 	return err
