@@ -15,6 +15,7 @@ package util
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,11 +23,15 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/ebs"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pingcap/errors"
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
@@ -393,6 +398,272 @@ func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvb
 		return nil, errors.Annotatef(err, "unmarshal backup meta from bucket %s and prefix %s", s.GetBucket(), s.GetPrefix())
 	}
 	return backupMeta, nil
+}
+
+// CalcBackupSizeFromBackupmeta get backup size from backup meta
+func CalcBackupSizeFromBackupmeta(ctx context.Context, provider v1alpha1.StorageProvider) (int64, error) {
+	// read all snapshots from backup meta file
+	volSnapshots, err := getSnapshotsFromBackupmeta(ctx, provider)
+	if err != nil {
+		return 0, err
+	}
+	// get all snapshots per backup volume from aws
+	snapshots, err := getBackupVolSnapshots(volSnapshots)
+
+	if err != nil {
+		return 0, err
+	}
+
+	backupSize, err := calcBackupVolSnapshotSize(volSnapshots, snapshots)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return int64(backupSize), nil
+}
+
+// getSnapshotsFromBackupmeta read all snapshots from backupmeta
+// return volume - snapshot map
+func getSnapshotsFromBackupmeta(ctx context.Context, provider v1alpha1.StorageProvider) (map[string]string, error) {
+	newVolumeIDMap := make(map[string]string)
+
+	// read backup meta
+	s, err := util.NewStorageBackend(provider, &util.StorageCredential{})
+	if err != nil {
+		return newVolumeIDMap, err
+	}
+	defer s.Close()
+
+	var contents []byte
+	// use exponential backoff, every retry duration is duration * factor ^ (used_step - 1)
+	backoff := wait.Backoff{
+		Duration: time.Second,
+		Steps:    6,
+		Factor:   2.0,
+		Cap:      time.Minute,
+	}
+	readBackupMeta := func() error {
+		exist, err := s.Exists(ctx, constants.MetaFile)
+		if err != nil {
+			return err
+		}
+		if !exist {
+			return fmt.Errorf("%s not exist", constants.MetaFile)
+		}
+		contents, err = s.ReadAll(ctx, constants.MetaFile)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	isRetry := func(err error) bool {
+		return !strings.Contains(err.Error(), "not exist")
+	}
+	err = retry.OnError(backoff, isRetry, readBackupMeta)
+	if err != nil {
+		return nil, errors.Annotatef(err, "read backup meta from bucket %s and prefix %s", s.GetBucket(), s.GetPrefix())
+	}
+
+	metaInfo := &EBSBasedBRMeta{}
+	if err = json.Unmarshal(contents, metaInfo); err != nil {
+		return newVolumeIDMap, errors.Annotatef(err, "read backup meta from bucket %s and prefix %s", s.GetBucket(), s.GetPrefix())
+	}
+
+	// get volume-snapshot map
+	for i := range metaInfo.TiKVComponent.Stores {
+		store := metaInfo.TiKVComponent.Stores[i]
+		for j := range store.Volumes {
+			vol := store.Volumes[j]
+			newVolumeIDMap[vol.ID] = vol.SnapshotID
+		}
+	}
+
+	return newVolumeIDMap, nil
+}
+
+// getBackupVolSnapshots get a volue-snapshots map contains map[volumeId]{snapshot1, snapshot2, snapshot3}
+func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapshot, error) {
+	volWithTheirSnapshots := make(map[string][]*ec2.Snapshot)
+
+	// read all snapshots from aws
+	ec2Session, err := NewEC2Session(CloudAPIConcurrency)
+	if err != nil {
+		klog.Errorf("new a ec2 session failure.")
+		return nil, err
+	}
+
+	// init search filter.Values
+	// init volWithTheirSnapshots
+	volValues := make([]*string, 0)
+	for volumeId, _ := range volumes {
+		volValues = append(volValues, aws.String(volumeId))
+		if volWithTheirSnapshots[volumeId] == nil {
+			volWithTheirSnapshots[volumeId] = make([]*ec2.Snapshot, 0)
+		}
+	}
+
+	filters := []*ec2.Filter{&ec2.Filter{Name: aws.String("volume-id"), Values: volValues}}
+	token := aws.String("")
+	for {
+		// describe snapshot is heavy operator, try to call only once
+		// api has limit with max 1000 snapshots
+		// search with filter volume id the backupmeta contains
+		resp, err := ec2Session.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+			OwnerIds:   aws.StringSlice([]string{"self"}),
+			MaxResults: aws.Int64(1000),
+			Filters:    filters,
+			NextToken:  token,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+		for _, s := range resp.Snapshots {
+			if *s.State == ec2.SnapshotStateCompleted {
+				if volWithTheirSnapshots[*s.VolumeId] == nil {
+					klog.Errorf("search with filter[volume-id] received unexpected result, volumeId:%s, snapshotId:%s", *s.VolumeId, *s.SnapshotId)
+					break
+				}
+				volWithTheirSnapshots[*s.VolumeId] = append(volWithTheirSnapshots[*s.VolumeId], s)
+			} else { // skip ongoing snapshots
+				klog.Infof("the snapshot %s creating... skip it", *s.SnapshotId)
+				continue
+			}
+		}
+
+		// check if there's more to retrieve
+		if resp.NextToken == nil {
+			break
+		}
+
+		token = resp.NextToken
+	}
+
+	return volWithTheirSnapshots, nil
+}
+
+// CalcBackupVolSnapshotSize get a volue-snapshots map contains map[volumeId]{snapshot1, snapshot2, snapshot3}
+func calcBackupVolSnapshotSize(volumes map[string]string, snapshots map[string][]*ec2.Snapshot) (uint64, error) {
+	var backupSize uint64
+
+	for volumeId, snapshotId := range volumes {
+		volSnapshots := snapshots[volumeId]
+		// full snapshot backup
+		if len(volSnapshots) == 1 {
+			snapSize, err := initialSnapshotSize(snapshotId)
+			if err != nil {
+				return 0, err
+			}
+
+			backupSize += snapSize
+		}
+
+		// incremental snapshot backup
+		prevSnapshot, err := getPrevSnapshotId(snapshotId, volSnapshots)
+		if err != nil {
+			return 0, err
+		}
+
+		snapSize, err := changedBlocksSize(prevSnapshot, snapshotId)
+		if err != nil {
+			return 0, err
+		}
+		backupSize += snapSize
+	}
+
+	return backupSize, nil
+}
+
+// initialSnapshotSize calculate size of an initial snapshot in GiB by listing its blocks.
+func initialSnapshotSize(snapshotId string) (uint64, error) {
+	var numBlocks uint64
+	ebsSession, err := NewEBSSession(CloudAPIConcurrency)
+	if err != nil {
+		klog.Errorf("new a ebs session failure.")
+		return 0, err
+	}
+	resp, err := ebsSession.ebs.ListSnapshotBlocks(&ebs.ListSnapshotBlocksInput{
+		SnapshotId: aws.String(snapshotId),
+		MaxResults: aws.Int64(10000),
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	blockSizeInKb := uint64(*resp.BlockSize) / 1024
+	for {
+		numBlocks += uint64(len(resp.Blocks))
+
+		// check if there is more to retrieve
+		if resp.NextToken == nil {
+			break
+		}
+		resp, err = ebsSession.ebs.ListSnapshotBlocks(&ebs.ListSnapshotBlocksInput{
+			SnapshotId: aws.String(snapshotId),
+			MaxResults: aws.Int64(10000),
+			NextToken:  resp.NextToken,
+		})
+	}
+	return numBlocks * blockSizeInKb / (1024 * 1024), nil
+}
+
+func getPrevSnapshotId(snapshotId string, volSnapshots []*ec2.Snapshot) (string, error) {
+	// sort snapshots by timestamp
+	sort.Slice(volSnapshots, func(i, j int) bool {
+		if volSnapshots[i].StartTime.After(*volSnapshots[j].StartTime) {
+			return true
+		}
+		return false
+	})
+	var prevSnapshotId string
+	for i, snapshot := range volSnapshots {
+		if snapshotId == *snapshot.SnapshotId {
+			prevSnapshotId = *volSnapshots[i-1].SnapshotId
+		}
+	}
+	if len(prevSnapshotId) == 0 {
+		return "", fmt.Errorf("Could not find the prevousely snapshot id, current snapshotId: %s.", snapshotId)
+	}
+	return prevSnapshotId, nil
+}
+
+// changedBlocksSize calculates changed blocks total size in GiB between two snapshots with common ancestry.
+func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, error) {
+	var numBlocks uint64
+	ebsSession, err := NewEBSSession(CloudAPIConcurrency)
+	if err != nil {
+		klog.Errorf("new a ebs session failure.")
+		return 0, err
+	}
+	resp, err := ebsSession.ebs.ListChangedBlocks(&ebs.ListChangedBlocksInput{
+		FirstSnapshotId:  aws.String(preSnapshotId),
+		MaxResults:       aws.Int64(10000),
+		SecondSnapshotId: aws.String(snapshotId),
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	blockSizeInKb := uint64(*resp.BlockSize) / 1024
+
+	for {
+		numBlocks += uint64(len(resp.ChangedBlocks))
+
+		// check if there is more to retrieve
+		if resp.NextToken == nil {
+			break
+		}
+		resp, err = ebsSession.ebs.ListChangedBlocks(&ebs.ListChangedBlocksInput{
+			FirstSnapshotId:  aws.String(preSnapshotId),
+			MaxResults:       aws.Int64(10000),
+			SecondSnapshotId: aws.String(snapshotId),
+			NextToken:        resp.NextToken,
+		})
+	}
+	return numBlocks * blockSizeInKb / (1024 * 1024), nil
 }
 
 // GetCommitTsFromBRMetaData get backup position from `EndVersion` in BR backup meta

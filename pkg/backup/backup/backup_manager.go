@@ -105,7 +105,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	// make bakcup job
+	// make backup job
 	var job *batchv1.Job
 	var reason string
 	var updateStatus *controller.BackupUpdateStatus

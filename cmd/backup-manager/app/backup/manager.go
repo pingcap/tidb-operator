@@ -323,9 +323,20 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	case string(v1alpha1.BackupModeVolumeSnapshot):
 		// In volume snapshot mode, commitTS and size have been updated according to the
 		// br command output, so we don't need to update them here.
+		backupSize, err := util.CalcBackupSizeFromBackupmeta(ctx, backup.Spec.StorageProvider)
+
+		if err != nil {
+			klog.Warningf("Failed to parse BackupSize %s GB, %v", backupSize, err)
+		}
+
+		backupSize = backupSize * 1024 * 1024 * 1024 // Convert GiB to bytes.
+		backupSizeReadable := humanize.Bytes(uint64(backupSize))
+
 		updateStatus = &controller.BackupUpdateStatus{
-			TimeStarted:   &metav1.Time{Time: started},
-			TimeCompleted: &metav1.Time{Time: time.Now()},
+			TimeStarted:        &metav1.Time{Time: started},
+			TimeCompleted:      &metav1.Time{Time: time.Now()},
+			BackupSize:         &backupSize,
+			BackupSizeReadable: &backupSizeReadable,
 		}
 	default:
 		backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)

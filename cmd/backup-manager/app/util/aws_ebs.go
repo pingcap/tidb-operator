@@ -16,6 +16,8 @@ package util
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ebs"
+	"github.com/aws/aws-sdk-go/service/ebs/ebsiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/pingcap/errors"
@@ -28,9 +30,10 @@ import (
 type EBSVolumeType string
 
 const (
-	GP3Volume EBSVolumeType = "gp3"
-	IO1Volume EBSVolumeType = "io1"
-	IO2Volume EBSVolumeType = "io2"
+	GP3Volume           EBSVolumeType = "gp3"
+	IO1Volume           EBSVolumeType = "io1"
+	IO2Volume           EBSVolumeType = "io2"
+	CloudAPIConcurrency               = 3
 )
 
 func (t EBSVolumeType) Valid() bool {
@@ -143,4 +146,22 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 		return err
 	}
 	return nil
+}
+
+type EBSSession struct {
+	ebs ebsiface.EBSAPI
+	// aws operation concurrency
+	concurrency uint
+}
+
+func NewEBSSession(concurrency uint) (*EBSSession, error) {
+	awsConfig := aws.NewConfig().WithMaxRetries(9)
+	// TiDB Operator need make sure we have the correct permission to call aws api(through aws env variables)
+	sessionOptions := session.Options{Config: *awsConfig}
+	sess, err := session.NewSessionWithOptions(sessionOptions)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	ebsSession := ebs.New(sess)
+	return &EBSSession{ebs: ebsSession, concurrency: concurrency}, nil
 }
