@@ -323,7 +323,7 @@ function hack::ensure_go117() {
   patch -d $ROOT -NRp1 -i $ROOT/hack/go117_1.patch -r .rej --no-backup-if-mismatch || true
   patch -d $ROOT -NRp1 -i $ROOT/hack/go117_2.patch -r .rej --no-backup-if-mismatch || true
   patch -d $ROOT -NRp1 -i $ROOT/hack/go117_3.patch -r .rej --no-backup-if-mismatch || true
-  rm -rf .rej
+  rm -rf .rej .rej.orig
 }
 
 function version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }

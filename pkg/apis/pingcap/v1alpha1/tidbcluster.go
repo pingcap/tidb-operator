@@ -694,12 +694,20 @@ func (tc *TidbCluster) TiCDCAllCapturesReady() bool {
 	return true
 }
 
-func (tc *TidbCluster) TiProxyDeployDesiredReplicas() int32 {
+func (tc *TidbCluster) TiProxyStsDesiredReplicas() int32 {
 	if tc.Spec.TiProxy == nil {
 		return 0
 	}
 
 	return tc.Spec.TiProxy.Replicas
+}
+
+func (tc *TidbCluster) TiProxyStsActualReplicas() int32 {
+	stsStatus := tc.Status.TiProxy.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
 }
 
 func (tc *TidbCluster) TiCDCDeployDesiredReplicas() int32 {

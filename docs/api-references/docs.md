@@ -21997,6 +21997,36 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="tiproxyconfigwraper">TiProxyConfigWraper</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiproxyspec">TiProxySpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericConfig</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tiproxyspec">TiProxySpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -22092,14 +22122,16 @@ string
 </tr>
 <tr>
 <td>
-<code>proxy</code></br>
+<code>config</code></br>
 <em>
-github.com/pingcap/TiProxy/lib/config.ProxyServerOnline
+<a href="#tiproxyconfigwraper">
+TiProxyConfigWraper
+</a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Proxy is the proxy part of config</p>
+<p>Config is the Configuration of tiproxy-servers</p>
 </td>
 </tr>
 <tr>
@@ -22171,11 +22203,9 @@ MemberPhase
 </tr>
 <tr>
 <td>
-<code>statefulSet</code></br>
+<code>members</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
-Kubernetes apps/v1.StatefulSetStatus
-</a>
+map[string]bool
 </em>
 </td>
 <td>
@@ -22183,9 +22213,11 @@ Kubernetes apps/v1.StatefulSetStatus
 </tr>
 <tr>
 <td>
-<code>proxy</code></br>
+<code>statefulSet</code></br>
 <em>
-github.com/pingcap/TiProxy/lib/config.ProxyServerOnline
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
 </em>
 </td>
 <td>

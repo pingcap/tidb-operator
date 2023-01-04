@@ -18849,6 +18849,8 @@ spec:
                   baseImage:
                     default: pingcap/tiproxy
                     type: string
+                  config:
+                    x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     type: string
                   dnsConfig:
@@ -19595,16 +19597,6 @@ spec:
                     type: object
                   priorityClassName:
                     type: string
-                  proxy:
-                    properties:
-                      max-connections:
-                        format: int64
-                        type: integer
-                      proxy-protocol:
-                        type: string
-                      tcp-keep-alive:
-                        type: boolean
-                    type: object
                   readinessProbe:
                     properties:
                       initialDelaySeconds:
@@ -20977,18 +20969,12 @@ spec:
                       type: object
                     nullable: true
                     type: array
+                  members:
+                    additionalProperties:
+                      type: boolean
+                    type: object
                   phase:
                     type: string
-                  proxy:
-                    properties:
-                      max-connections:
-                        format: int64
-                        type: integer
-                      proxy-protocol:
-                        type: string
-                      tcp-keep-alive:
-                        type: boolean
-                    type: object
                   statefulSet:
                     properties:
                       collisionCount:
