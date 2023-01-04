@@ -496,35 +496,36 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 	// init search filter.Values
 	// init volWithTheirSnapshots
 	volValues := make([]*string, 0)
-	for volumeId, _ := range volumes {
+	for volumeId := range volumes {
 		volValues = append(volValues, aws.String(volumeId))
 		if volWithTheirSnapshots[volumeId] == nil {
 			volWithTheirSnapshots[volumeId] = make([]*ec2.Snapshot, 0)
 		}
 	}
 
-	filters := []*ec2.Filter{&ec2.Filter{Name: aws.String("volume-id"), Values: volValues}}
-	token := aws.String("")
-	for {
-		// describe snapshot is heavy operator, try to call only once
-		// api has limit with max 1000 snapshots
-		// search with filter volume id the backupmeta contains
-		resp, err := ec2Session.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
-			OwnerIds:   aws.StringSlice([]string{"self"}),
-			MaxResults: aws.Int64(1000),
-			Filters:    filters,
-			NextToken:  token,
-		})
+	filters := []*ec2.Filter{{Name: aws.String("volume-id"), Values: volValues}}
+	// describe snapshot is heavy operator, try to call only once
+	// api has limit with max 1000 snapshots
+	// search with filter volume id the backupmeta contains
+	resp, err := ec2Session.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+		OwnerIds:   aws.StringSlice([]string{"self"}),
+		MaxResults: aws.Int64(1000),
+		Filters:    filters,
+	})
 
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+
 		for _, s := range resp.Snapshots {
 			if *s.State == ec2.SnapshotStateCompleted {
 				if volWithTheirSnapshots[*s.VolumeId] == nil {
 					klog.Errorf("search with filter[volume-id] received unexpected result, volumeId:%s, snapshotId:%s", *s.VolumeId, *s.SnapshotId)
 					break
 				}
+				klog.Infof("the snapshot %s created for volume %s", *s.SnapshotId, *s.VolumeId)
 				volWithTheirSnapshots[*s.VolumeId] = append(volWithTheirSnapshots[*s.VolumeId], s)
 			} else { // skip ongoing snapshots
 				klog.Infof("the snapshot %s creating... skip it", *s.SnapshotId)
@@ -532,12 +533,22 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 			}
 		}
 
+		klog.Infof("the next token is %s", resp.NextToken)
 		// check if there's more to retrieve
 		if resp.NextToken == nil {
 			break
 		}
 
-		token = resp.NextToken
+		resp, err = ec2Session.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+			OwnerIds:   aws.StringSlice([]string{"self"}),
+			MaxResults: aws.Int64(1000),
+			Filters:    filters,
+			NextToken:  resp.NextToken,
+		})
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return volWithTheirSnapshots, nil
@@ -569,13 +580,15 @@ func calcBackupVolSnapshotSize(volumes map[string]string, snapshots map[string][
 		if err != nil {
 			return 0, err
 		}
+
 		backupSize += snapSize
 	}
 
+	klog.Infof("backup size %d bytes", backupSize)
 	return backupSize, nil
 }
 
-// initialSnapshotSize calculate size of an initial snapshot in GiB by listing its blocks.
+// initialSnapshotSize calculate size of an initial snapshot in bytes by listing its blocks.
 func initialSnapshotSize(snapshotId string) (uint64, error) {
 	var numBlocks uint64
 	ebsSession, err := NewEBSSession(CloudAPIConcurrency)
@@ -592,7 +605,7 @@ func initialSnapshotSize(snapshotId string) (uint64, error) {
 		return 0, err
 	}
 
-	blockSizeInKb := uint64(*resp.BlockSize) / 1024
+	blockSize := uint64(*resp.BlockSize)
 	for {
 		numBlocks += uint64(len(resp.Blocks))
 
@@ -605,20 +618,22 @@ func initialSnapshotSize(snapshotId string) (uint64, error) {
 			MaxResults: aws.Int64(10000),
 			NextToken:  resp.NextToken,
 		})
+
+		if err != nil {
+			return 0, err
+		}
 	}
-	return numBlocks * blockSizeInKb / (1024 * 1024), nil
+	return numBlocks * blockSize, nil
 }
 
 func getPrevSnapshotId(snapshotId string, volSnapshots []*ec2.Snapshot) (string, error) {
 	// sort snapshots by timestamp
 	sort.Slice(volSnapshots, func(i, j int) bool {
-		if volSnapshots[i].StartTime.After(*volSnapshots[j].StartTime) {
-			return true
-		}
-		return false
+		return volSnapshots[i].StartTime.Before(*volSnapshots[j].StartTime)
 	})
 	var prevSnapshotId string
 	for i, snapshot := range volSnapshots {
+		klog.Infof("the snapshot %s", *snapshot.SnapshotId)
 		if snapshotId == *snapshot.SnapshotId {
 			prevSnapshotId = *volSnapshots[i-1].SnapshotId
 		}
@@ -629,7 +644,7 @@ func getPrevSnapshotId(snapshotId string, volSnapshots []*ec2.Snapshot) (string,
 	return prevSnapshotId, nil
 }
 
-// changedBlocksSize calculates changed blocks total size in GiB between two snapshots with common ancestry.
+// changedBlocksSize calculates changed blocks total size in bytes between two snapshots with common ancestry.
 func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, error) {
 	var numBlocks uint64
 	ebsSession, err := NewEBSSession(CloudAPIConcurrency)
@@ -647,23 +662,30 @@ func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, error) 
 		return 0, err
 	}
 
-	blockSizeInKb := uint64(*resp.BlockSize) / 1024
-
+	blockSize := uint64(*resp.BlockSize)
+	klog.Infof("the preSnapshotId %s, the current snapshotId %s", preSnapshotId, snapshotId)
 	for {
 		numBlocks += uint64(len(resp.ChangedBlocks))
-
+		klog.Infof("the current num blocks %d, next token %s", numBlocks, resp.NextToken)
 		// check if there is more to retrieve
-		if resp.NextToken == nil {
+		if resp.NextToken == nil || len(aws.StringValue(resp.NextToken)) == 0 {
 			break
 		}
+
+		klog.Infof("next token value %s", aws.StringValue(resp.NextToken))
 		resp, err = ebsSession.ebs.ListChangedBlocks(&ebs.ListChangedBlocksInput{
 			FirstSnapshotId:  aws.String(preSnapshotId),
 			MaxResults:       aws.Int64(10000),
 			SecondSnapshotId: aws.String(snapshotId),
 			NextToken:        resp.NextToken,
 		})
+
+		if err != nil {
+			return 0, err
+		}
 	}
-	return numBlocks * blockSizeInKb / (1024 * 1024), nil
+	klog.Infof("the total num blocks %d", numBlocks)
+	return numBlocks * blockSize, nil
 }
 
 // GetCommitTsFromBRMetaData get backup position from `EndVersion` in BR backup meta

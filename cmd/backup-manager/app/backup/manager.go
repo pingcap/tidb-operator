@@ -326,10 +326,9 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		backupSize, err := util.CalcBackupSizeFromBackupmeta(ctx, backup.Spec.StorageProvider)
 
 		if err != nil {
-			klog.Warningf("Failed to parse BackupSize %s GB, %v", backupSize, err)
+			klog.Warningf("Failed to parse BackupSize %d KB, %v", backupSize, err)
 		}
 
-		backupSize = backupSize * 1024 * 1024 * 1024 // Convert GiB to bytes.
 		backupSizeReadable := humanize.Bytes(uint64(backupSize))
 
 		updateStatus = &controller.BackupUpdateStatus{
