@@ -32,11 +32,11 @@ import (
 
 // TiProxyControlInterface is the interface that knows how to control tiproxy clusters
 type TiProxyControlInterface interface {
-	// SetConfigProxy set the proxy part in config
-	SetConfigProxy(tc *v1alpha1.TidbCluster, ordinal int32, cfg *config.ProxyServerOnline) error
 	// GetConfigProxy get the proxy part in config
 	GetConfigProxy(tc *v1alpha1.TidbCluster, ordinal int32) (*config.ProxyServerOnline, error)
 }
+
+var _ TiProxyControlInterface = &defaultTiProxyControl{}
 
 // defaultTiProxyControl is default implementation of TiProxyControlInterface.
 type defaultTiProxyControl struct {
@@ -116,14 +116,4 @@ func (c *defaultTiProxyControl) GetConfigProxy(tc *v1alpha1.TidbCluster, ordinal
 		return nil, err
 	}
 	return ret, nil
-}
-
-func (c *defaultTiProxyControl) SetConfigProxy(tc *v1alpha1.TidbCluster, ordinal int32, cfg *config.ProxyServerOnline) error {
-	be, err := json.Marshal(cfg)
-	if err != nil {
-		return err
-	}
-
-	_, err = c.getCli(tc, ordinal)(bytes.NewReader(be), "config", "proxy", "set")
-	return err
 }

@@ -1132,7 +1132,7 @@ outer:
 	}
 
 	if zoneLabel == "" {
-		klog.Infof("zone labels not found in pd location-labels %v, skip set labels", config.Replication.LocationLabels)
+		klog.V(4).Infof("zone labels not found in pd location-labels %v, skip set labels", config.Replication.LocationLabels)
 		return 0, nil
 	}
 
