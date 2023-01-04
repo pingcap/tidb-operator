@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -258,17 +259,18 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 		tc.Status.TiProxy.Phase = v1alpha1.NormalPhase
 	}
 
-	replicas := 0
 	pods := helper.GetPodOrdinals(tc.Status.TiProxy.StatefulSet.Replicas, sts)
+	members := make(map[string]bool)
 	for id := range pods {
 		if _, err := m.deps.ProxyControl.GetConfigProxy(tc, id); err != nil {
 			klog.Infof("failed to get tiproxy[%d] config: %+v", id, err)
 			continue
 		}
-		replicas++
+		members[strconv.Itoa(int(id))] = true
 	}
 
-	tc.Status.TiProxy.Synced = replicas == int(tc.TiProxyDeployDesiredReplicas())
+	tc.Status.TiProxy.Members = members
+	tc.Status.TiProxy.Synced = true
 	return nil
 }
 
@@ -511,7 +513,7 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
 		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.TiProxyDeployDesiredReplicas()),
+			Partition: pointer.Int32Ptr(tc.TiProxyStsDesiredReplicas()),
 		}
 	}
 
@@ -524,7 +526,7 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(tc.TiProxyDeployDesiredReplicas()),
+			Replicas: pointer.Int32Ptr(tc.TiProxyStsDesiredReplicas()),
 			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{

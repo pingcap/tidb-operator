@@ -1433,6 +1433,7 @@ type TiFlashStatus struct {
 type TiProxyStatus struct {
 	Synced      bool                                       `json:"synced,omitempty"`
 	Phase       MemberPhase                                `json:"phase,omitempty"`
+	Members     map[string]bool                            `json:"members,omitempty"`
 	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
 	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.

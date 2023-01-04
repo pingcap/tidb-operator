@@ -20969,6 +20969,10 @@ spec:
                       type: object
                     nullable: true
                     type: array
+                  members:
+                    additionalProperties:
+                      type: boolean
+                    type: object
                   phase:
                     type: string
                   statefulSet:
