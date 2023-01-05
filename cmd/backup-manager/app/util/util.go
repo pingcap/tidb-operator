@@ -518,7 +518,6 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 	}
 
 	for {
-
 		for _, s := range resp.Snapshots {
 			if *s.State == ec2.SnapshotStateCompleted {
 				if volWithTheirSnapshots[*s.VolumeId] == nil {
@@ -568,6 +567,7 @@ func calcBackupVolSnapshotSize(volumes map[string]string, snapshots map[string][
 			}
 
 			backupSize += snapSize
+			continue
 		}
 
 		// incremental snapshot backup
@@ -608,7 +608,6 @@ func initialSnapshotSize(snapshotId string) (uint64, error) {
 	blockSize := uint64(*resp.BlockSize)
 	for {
 		numBlocks += uint64(len(resp.Blocks))
-
 		// check if there is more to retrieve
 		if resp.NextToken == nil {
 			break
@@ -623,6 +622,7 @@ func initialSnapshotSize(snapshotId string) (uint64, error) {
 			return 0, err
 		}
 	}
+	klog.Infof("full backup snapshot num block %d, block size %d", numBlocks, blockSize)
 	return numBlocks * blockSize, nil
 }
 
@@ -665,14 +665,19 @@ func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, error) 
 	blockSize := uint64(*resp.BlockSize)
 	klog.Infof("the preSnapshotId %s, the current snapshotId %s", preSnapshotId, snapshotId)
 	for {
-		numBlocks += uint64(len(resp.ChangedBlocks))
-		klog.Infof("the current num blocks %d, next token %s", numBlocks, resp.NextToken)
+		// retrieve only changed block and blocks only existed in current snapshot (new add blocks)
+		for _, block := range resp.ChangedBlocks {
+			if block.SecondBlockToken != nil && len(aws.StringValue(block.SecondBlockToken)) != 0 {
+				numBlocks += 1
+			}
+		}
+
+		klog.Infof("the current num blocks %d", numBlocks)
 		// check if there is more to retrieve
 		if resp.NextToken == nil || len(aws.StringValue(resp.NextToken)) == 0 {
 			break
 		}
 
-		klog.Infof("next token value %s", aws.StringValue(resp.NextToken))
 		resp, err = ebsSession.ebs.ListChangedBlocks(&ebs.ListChangedBlocksInput{
 			FirstSnapshotId:  aws.String(preSnapshotId),
 			MaxResults:       aws.Int64(10000),
@@ -684,7 +689,7 @@ func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, error) 
 			return 0, err
 		}
 	}
-	klog.Infof("the total num blocks %d", numBlocks)
+	klog.Infof("the total num of blocks %d", numBlocks)
 	return numBlocks * blockSize, nil
 }
 
