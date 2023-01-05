@@ -138,7 +138,7 @@ func (p *pvcResizer) Sync(tc *v1alpha1.TidbCluster) error {
 
 		ctx, err := p.buildContextForTC(tc, comp)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("build ctx used by resize for %s failed: %w", ctx.ComponentID(), err))
+			errs = append(errs, fmt.Errorf("build ctx used by resize for %s/%s:%s failed: %w", tc.GetNamespace(), tc.GetName(), comp.MemberType(), err))
 			continue
 		}
 
