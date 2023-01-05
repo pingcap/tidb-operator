@@ -19,6 +19,7 @@ GO_SUBMODULE_DIRS = pkg/apis pkg/client
 
 DOCKER_REGISTRY ?= localhost:5000
 DOCKER_REPO ?= ${DOCKER_REGISTRY}/pingcap
+DOCKER_BUILD ?= docker build --platform $(GOOS)/$(GOARCH)
 IMAGE_TAG ?= latest
 TEST_COVER_PACKAGES := go list ./cmd/... ./pkg/... $(foreach mod, $(GO_SUBMODULES), $(mod)/...) | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis/pingcap" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
 
@@ -41,9 +42,9 @@ else
 operator-docker: build
 endif
 ifeq ($(E2E),y)
-	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" -f images/tidb-operator/Dockerfile.e2e images/tidb-operator
+	$(DOCKER_BUILD) --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" -f images/tidb-operator/Dockerfile.e2e images/tidb-operator
 else
-	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-operator
+	$(DOCKER_BUILD) --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-operator
 endif
 
 build: controller-manager scheduler discovery admission-webhook backup-manager
@@ -90,9 +91,9 @@ else
 backup-docker: backup-manager
 endif
 ifeq ($(E2E),y)
-	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" -f images/tidb-backup-manager/Dockerfile.e2e images/tidb-backup-manager
+	$(DOCKER_BUILD) --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" -f images/tidb-backup-manager/Dockerfile.e2e images/tidb-backup-manager
 else
-	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-backup-manager
+	$(DOCKER_BUILD) --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-backup-manager
 endif
 
 e2e-docker-push: e2e-docker
@@ -113,7 +114,7 @@ endif
 	cp -r charts/tidb-backup tests/images/e2e
 	cp -r charts/tidb-drainer tests/images/e2e
 	cp -r manifests tests/images/e2e
-	docker build -t "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
+	$(DOCKER_BUILD) -t "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 
 e2e-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/ginkgo github.com/onsi/ginkgo/ginkgo
@@ -183,9 +184,9 @@ debug-docker-push: debug-build-docker
 	docker push "${DOCKER_REPO}/tidb-debug:latest"
 
 debug-build-docker: debug-build
-	docker build -t "${DOCKER_REPO}/debug-launcher:latest" misc/images/debug-launcher
-	docker build -t "${DOCKER_REPO}/tidb-control:latest" misc/images/tidb-control
-	docker build -t "${DOCKER_REPO}/tidb-debug:latest" misc/images/tidb-debug
+	$(DOCKER_BUILD) -t "${DOCKER_REPO}/debug-launcher:latest" misc/images/debug-launcher
+	$(DOCKER_BUILD) -t "${DOCKER_REPO}/tidb-control:latest" misc/images/tidb-control
+	$(DOCKER_BUILD) -t "${DOCKER_REPO}/tidb-debug:latest" misc/images/tidb-debug
 
 debug-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
