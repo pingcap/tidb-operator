@@ -576,6 +576,16 @@ func calcBackupVolSnapshotSize(volumes map[string]string, snapshots map[string][
 			return 0, err
 		}
 
+		// snapshot is full snapshot / first snapshot
+		if prevSnapshot == "" {
+			snapSize, err := initialSnapshotSize(snapshotId)
+			if err != nil {
+				return 0, err
+			}
+
+			backupSize += snapSize
+			continue
+		}
 		snapSize, err := changedBlocksSize(prevSnapshot, snapshotId)
 		if err != nil {
 			return 0, err
@@ -635,7 +645,12 @@ func getPrevSnapshotId(snapshotId string, volSnapshots []*ec2.Snapshot) (string,
 	for i, snapshot := range volSnapshots {
 		klog.Infof("the snapshot %s", *snapshot.SnapshotId)
 		if snapshotId == *snapshot.SnapshotId {
+			// first snapshot
+			if i == 0 {
+				return "", nil
+			}
 			prevSnapshotId = *volSnapshots[i-1].SnapshotId
+			break
 		}
 	}
 	if len(prevSnapshotId) == 0 {
