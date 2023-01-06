@@ -20941,7 +20941,19 @@ spec:
                   type: array
                 members:
                   additionalProperties:
-                    type: boolean
+                    properties:
+                      health:
+                        type: boolean
+                      lastTransitionTime:
+                        format: date-time
+                        nullable: true
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - health
+                    - name
+                    type: object
                   type: object
                 phase:
                   type: string

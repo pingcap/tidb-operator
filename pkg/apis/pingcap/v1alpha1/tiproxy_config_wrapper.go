@@ -19,7 +19,6 @@ import (
 	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
-	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
@@ -44,10 +43,6 @@ func (c *TiProxyConfigWraper) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(string(toml))
-}
-
-func (c *TiProxyConfigWraper) GetPartTOML(key string) ([]byte, error) {
-	return toml.Marshal(c.Get(key))
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler interface.

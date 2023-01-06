@@ -1429,11 +1429,20 @@ type TiFlashStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
+// TiProxyMember is TiProxy member
+type TiProxyMember struct {
+	Name   string `json:"name"`
+	Health bool   `json:"health"`
+	// Health check time.
+	// +nullable
+	HealthCheckTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
 // TiProxyStatus is TiProxy status
 type TiProxyStatus struct {
 	Synced      bool                                       `json:"synced,omitempty"`
 	Phase       MemberPhase                                `json:"phase,omitempty"`
-	Members     map[string]bool                            `json:"members,omitempty"`
+	Members     map[string]TiProxyMember                   `json:"members,omitempty"`
 	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
 	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.

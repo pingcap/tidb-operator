@@ -34,6 +34,9 @@ spec:
     config: {}
   tiproxy:
     baseImage: xhebox/tiproxy
-    version: test
+    version: latest
     imagePullPolicy: Always
     replicas: 1
+    config: |
+      [proxy]
+      require-backend-tls = false

@@ -22027,6 +22027,57 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 </tr>
 </tbody>
 </table>
+<h3 id="tiproxymember">TiProxyMember</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiproxystatus">TiProxyStatus</a>)
+</p>
+<p>
+<p>TiProxyMember is TiProxy member</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>health</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>Health check time.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tiproxyspec">TiProxySpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -22205,7 +22256,9 @@ MemberPhase
 <td>
 <code>members</code></br>
 <em>
-map[string]bool
+<a href="#tiproxymember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiProxyMember
+</a>
 </em>
 </td>
 <td>
