@@ -1146,7 +1146,8 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					"test/label": "retained",
 				},
 				Annotations: map[string]string{
-					"test/annotation": "retained",
+					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+					"test/annotation":                       "retained",
 				},
 			},
 			Spec: corev1.PersistentVolumeSpec{
@@ -1169,7 +1170,8 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					"test/label": "retained",
 				},
 				Annotations: map[string]string{
-					"test/annotation": "retained",
+					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+					"test/annotation":                       "retained",
 				},
 			},
 			Spec: corev1.PersistentVolumeSpec{
@@ -1192,7 +1194,8 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					"test/label": "retained",
 				},
 				Annotations: map[string]string{
-					"test/annotation": "retained",
+					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+					"test/annotation":                       "retained",
 				},
 			},
 			Spec: corev1.PersistentVolumeSpec{
