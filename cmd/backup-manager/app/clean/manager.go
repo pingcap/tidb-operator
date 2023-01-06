@@ -80,9 +80,14 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 		if err != nil {
 			klog.Errorf("get next backup for cluster %s backup failure", bm)
 		}
-		err = bm.cleanBackupMetaWithVolSnapshots(ctx, backup)
 
-		//update the next backup size
+		// clean backup will delete all vol snapshots
+		err = bm.cleanBackupMetaWithVolSnapshots(ctx, backup)
+		if err != nil {
+			klog.Errorf("delete backup %s for cluster %s backup failure", backup.Name, bm)
+		}
+
+		// update the next backup size
 		if nextNackup != nil {
 			bm.updateBackupSize(ctx, nextNackup)
 		}

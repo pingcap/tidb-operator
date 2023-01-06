@@ -532,7 +532,6 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 			}
 		}
 
-		klog.Infof("the next token is %s", resp.NextToken)
 		// check if there's more to retrieve
 		if resp.NextToken == nil {
 			break
