@@ -83,9 +83,6 @@ spec:
           - -detect-node-failure=true
           - -pod-hard-recovery-period={{ .Values.controllerManager.podHardRecoveryPeriod | default "24h" }}
          {{- end }}
-         {{- if eq .Values.controllerManager.detectNodeFailure false }}
-          - -detect-node-failure=false
-         {{- end }}
           - -v={{ .Values.controllerManager.logLevel }}
           {{- if .Values.testMode }}
           - -test-mode={{ .Values.testMode }}
