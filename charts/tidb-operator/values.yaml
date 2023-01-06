@@ -92,7 +92,7 @@ controllerManager:
   dmMasterFailoverPeriod: 5m
   # dm-worker failover period default(5m)
   dmWorkerFailoverPeriod: 5m
-  # detectNodeFailure tells whether tidb-operator should auto detect k8s node failures for recovery for failure pods. Currently it is experimental
+  # detectNodeFailure tells whether tidb-operator should auto detect k8s node failures for recovery of failure pods. Currently it is experimental
   detectNodeFailure: false
   # podHardRecoveryPeriod is the period after which a failure pod is forcefully marked as k8s node failure. To be set if detectNodeFailure is true default (24h)
   # podHardRecoveryPeriod: 24h
