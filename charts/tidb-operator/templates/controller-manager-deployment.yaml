@@ -79,6 +79,13 @@ spec:
           - -tidb-failover-period={{ .Values.controllerManager.tidbFailoverPeriod | default "5m" }}
           - -dm-master-failover-period={{ .Values.controllerManager.dmMasterFailoverPeriod | default "5m" }}
           - -dm-worker-failover-period={{ .Values.controllerManager.dmWorkerFailoverPeriod | default "5m" }}
+         {{- if eq .Values.controllerManager.detectNodeFailure true }}
+          - -detect-node-failure=true
+          - -pod-hard-recovery-period={{ .Values.controllerManager.podHardRecoveryPeriod | default "24h" }}
+         {{- end }}
+         {{- if eq .Values.controllerManager.detectNodeFailure false }}
+          - -detect-node-failure=false
+         {{- end }}
           - -v={{ .Values.controllerManager.logLevel }}
           {{- if .Values.testMode }}
           - -test-mode={{ .Values.testMode }}
