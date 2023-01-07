@@ -22,21 +22,28 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
+
 	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 )
 
+// pdFailover has the Failover logic for PD members
+// It uses the commonStatefulFailureRecovery to handle the failure recovery of PD failed pods
 type pdFailover struct {
-	deps *controller.Dependencies
+	deps            *controller.Dependencies
+	failureRecovery commonStatefulFailureRecovery
 }
 
 // NewPDFailover returns a pd Failover
 func NewPDFailover(deps *controller.Dependencies) Failover {
 	return &pdFailover{
 		deps: deps,
+		failureRecovery: commonStatefulFailureRecovery{
+			deps:                deps,
+			failureObjectAccess: &pdFailureMemberAccess{},
+		},
 	}
 }
 
@@ -76,6 +83,13 @@ func (f *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	// we can only failover one at a time
 	if notDeletedFailureReplicas == 0 {
 		return f.tryToMarkAPeerAsFailure(tc)
+	}
+
+	if err := f.failureRecovery.RestartPodOnHostDown(tc); err != nil {
+		if controller.IsIgnoreError(err) {
+			return nil
+		}
+		return err
 	}
 
 	return f.tryToDeleteAFailureMember(tc)
@@ -141,7 +155,8 @@ func (f *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 
 // tryToDeleteAFailureMember tries to delete a PD member and associated Pod & PVC.
 // On success, new Pod & PVC will be created.
-// Note that this will fail if the kubelet on the node on which failed Pod was running is not responding.
+// Note that in case auto failure recovery is not enabled, this will fail if the kubelet on the node on which failed Pod
+// was running is not responding.
 func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -152,6 +167,11 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	for pdName := range tc.Status.PD.FailureMembers {
 		pdMember := tc.Status.PD.FailureMembers[pdName]
 		if !pdMember.MemberDeleted {
+			// If the PD failure member becomes healthy again (for ex. after pod restart), then do not delete the PD member
+			if pdMem, exists := tc.Status.PD.Members[pdName]; exists && pdMem.Health {
+				klog.Infof("PD FailureMember %s of tc %s/%s is healthy again", pdName, ns, tcName)
+				continue
+			}
 			failureMember = &pdMember
 			failurePodName = strings.Split(pdName, ".")[0]
 			failurePDName = pdName
@@ -163,6 +183,9 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	if !f.failureRecovery.canDoCleanUpNow(tc, failurePDName) {
+		return nil
+	}
 	memberID, err := strconv.ParseUint(failureMember.MemberID, 10, 64)
 	if err != nil {
 		return err
@@ -175,55 +198,9 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	klog.Infof("pd failover[tryToDeleteAFailureMember]: delete member %s/%s(%d) successfully", ns, failurePodName, memberID)
 	f.deps.Recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberDeleted", "failure member %s/%s(%d) deleted from PD cluster", ns, failurePodName, memberID)
 
-	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
-	// If new Pod is created before old PVCs are deleted, the Statefulset will try to use the old PVCs and skip creating new PVCs.
-	// This could result in 2 possible cases:
-	// 1. If the old PVCs are first mounted successfully by the new Pod, the following pvc deletion will fail and return error.
-	//    We will try to delete the Pod and PVCs again in the next requeued run.
-	// 2. If the old PVCs are first deleted successfully here, the new Pods will try to mount non-existing PVCs, which will pend forever.
-	//    This is where OrphanPodsCleaner kicks in, which will delete the pending Pods in this situation.
-	//    Please refer to orphan_pods_cleaner.go for details.
-	pod, err := f.deps.PodLister.Pods(ns).Get(failurePodName)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to get pod %s/%s for tc %s/%s, error: %s", ns, failurePodName, ns, tcName, err)
-	}
-	if pod != nil {
-		if pod.DeletionTimestamp == nil {
-			if err := f.deps.PodControl.DeletePod(tc, pod); err != nil {
-				return err
-			}
-		}
-	} else {
-		klog.Infof("pd failover[tryToDeleteAFailureMember]: failure pod %s/%s not found, skip", ns, failurePodName)
-	}
-
-	ordinal, err := util.GetOrdinalFromPodName(failurePodName)
+	err = f.failureRecovery.deletePodAndPvcs(tc, failurePDName)
 	if err != nil {
-		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to parse ordinal from Pod name for %s/%s, error: %s", ns, failurePodName, err)
-	}
-	pvcSelector, err := GetPVCSelectorForPod(tc, v1alpha1.PDMemberType, ordinal)
-	if err != nil {
-		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to get PVC selector for Pod %s/%s, error: %s", ns, failurePodName, err)
-	}
-	pvcs, err := f.deps.PVCLister.PersistentVolumeClaims(ns).List(pvcSelector)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("pd failover[tryToDeleteAFailureMember]: failed to get PVCs for pod %s/%s, error: %s", ns, failurePodName, err)
-	}
-
-	for _, pvc := range pvcs {
-		_, pvcUIDExist := failureMember.PVCUIDSet[pvc.GetUID()]
-		// for backward compatibility, if there exists failureMembers and user upgrades operator to newer version
-		// there will be failure member structures with PVCUID set from api server, we should handle this as pvcUIDExist == true
-		if pvc.GetUID() == failureMember.PVCUID {
-			pvcUIDExist = true
-		}
-		if pvc.DeletionTimestamp == nil && pvcUIDExist {
-			if err := f.deps.PVCControl.DeletePVC(tc, pvc); err != nil {
-				klog.Errorf("pd failover[tryToDeleteAFailureMember]: failed to delete PVC: %s/%s, error: %s", ns, pvc.Name, err)
-				return err
-			}
-			klog.Infof("pd failover[tryToDeleteAFailureMember]: delete PVC %s/%s successfully", ns, pvc.Name)
-		}
+		return err
 	}
 
 	setMemberDeleted(tc, failurePDName)
@@ -269,6 +246,80 @@ func (f *pdFailover) isPDInQuorum(tc *v1alpha1.TidbCluster) (bool, int) {
 		}
 	}
 	return healthCount > (len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers))/2, healthCount
+}
+
+// pdFailureMemberAccess implements the FailureObjectAccess interface for PD member
+type pdFailureMemberAccess struct{}
+
+var _ FailureObjectAccess = (*pdFailureMemberAccess)(nil)
+
+func (fma *pdFailureMemberAccess) GetMemberType() v1alpha1.MemberType {
+	return v1alpha1.PDMemberType
+}
+
+// GetFailureObjects returns the set of failure pd names
+func (fma *pdFailureMemberAccess) GetFailureObjects(tc *v1alpha1.TidbCluster) map[string]v1alpha1.EmptyStruct {
+	failurePdMembers := make(map[string]v1alpha1.EmptyStruct, len(tc.Status.PD.FailureMembers))
+	for pdName := range tc.Status.PD.FailureMembers {
+		failurePdMembers[pdName] = v1alpha1.EmptyStruct{}
+	}
+	return failurePdMembers
+}
+
+// IsFailing returns if the particular member is in unhealthy state
+func (fma *pdFailureMemberAccess) IsFailing(tc *v1alpha1.TidbCluster, pdName string) bool {
+	return !tc.Status.PD.Members[pdName].Health
+}
+
+// GetPodName returns the pod name of the given failure member
+func (fma *pdFailureMemberAccess) GetPodName(_ *v1alpha1.TidbCluster, pdName string) string {
+	return strings.Split(pdName, ".")[0]
+}
+
+// IsHostDownForFailedPod checks if HostDown is set for any pd failure member
+func (fma *pdFailureMemberAccess) IsHostDownForFailedPod(tc *v1alpha1.TidbCluster) bool {
+	for pdName := range tc.Status.PD.FailureMembers {
+		pdMember := tc.Status.PD.FailureMembers[pdName]
+		if pdMember.HostDown {
+			return true
+		}
+	}
+	return false
+}
+
+// IsHostDown returns true if HostDown is set for the given failure member
+func (fma *pdFailureMemberAccess) IsHostDown(tc *v1alpha1.TidbCluster, pdName string) bool {
+	return tc.Status.PD.FailureMembers[pdName].HostDown
+}
+
+// SetHostDown sets the HostDown property in the given failure member
+func (fma *pdFailureMemberAccess) SetHostDown(tc *v1alpha1.TidbCluster, pdName string, hostDown bool) {
+	failureMember := tc.Status.PD.FailureMembers[pdName]
+	failureMember.HostDown = hostDown
+	tc.Status.PD.FailureMembers[pdName] = failureMember
+}
+
+// GetCreatedAt returns the CreatedAt timestamp of the given failure member
+func (fma *pdFailureMemberAccess) GetCreatedAt(tc *v1alpha1.TidbCluster, pdName string) metav1.Time {
+	return tc.Status.PD.FailureMembers[pdName].CreatedAt
+}
+
+// GetLastTransitionTime returns the LastTransitionTime timestamp of the given failure member
+func (fma *pdFailureMemberAccess) GetLastTransitionTime(tc *v1alpha1.TidbCluster, pdName string) metav1.Time {
+	return tc.Status.PD.Members[pdName].LastTransitionTime
+}
+
+// GetPVCUIDSet returns the PVC UID set of the given failure member
+func (fma *pdFailureMemberAccess) GetPVCUIDSet(tc *v1alpha1.TidbCluster, pdName string) map[types.UID]v1alpha1.EmptyStruct {
+	// for backward compatibility, if there exists failureMembers and user upgrades operator to newer version
+	// there will be failure member structures with PVCUID set from api server, we should handle this and return it in PVCUIDSet
+	failureMember := tc.Status.PD.FailureMembers[pdName]
+	if len(failureMember.PVCUID) > 0 {
+		return map[types.UID]v1alpha1.EmptyStruct{
+			failureMember.PVCUID: {},
+		}
+	}
+	return tc.Status.PD.FailureMembers[pdName].PVCUIDSet
 }
 
 type fakePDFailover struct{}
