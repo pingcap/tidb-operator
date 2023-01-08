@@ -27,6 +27,8 @@ import (
 // TiKVStartScriptModel contain fields for rendering TiKV start script
 type TiKVStartScriptModel struct {
 	PDAddr        string
+	Addr          string
+	StatusAddr    string
 	AdvertiseAddr string
 	DataDir       string
 	Capacity      string
@@ -52,6 +54,13 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
 		m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
 	}
+
+	listenHost := "0.0.0.0"
+	if tc.Spec.PreferIPv6 {
+		listenHost = "[::]"
+	}
+	m.Addr = fmt.Sprintf("%s:20160", listenHost)
+	m.StatusAddr = fmt.Sprintf("%s:20180", listenHost)
 
 	advertiseAddr := fmt.Sprintf("${TIKV_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
@@ -99,8 +108,8 @@ TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
 
 ARGS="--pd={{ .PDAddr }} \
 --advertise-addr={{ .AdvertiseAddr }} \
---addr=0.0.0.0:20160 \
---status-addr=0.0.0.0:20180 \
+--addr={{ .Addr }} \
+--status-addr={{ .StatusAddr }} \
 --data-dir={{ .DataDir }} \
 --capacity={{ .Capacity }} \
 --config=/etc/tikv/tikv.toml"

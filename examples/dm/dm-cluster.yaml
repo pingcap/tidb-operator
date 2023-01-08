@@ -3,7 +3,7 @@ kind: DMCluster
 metadata:
   name: basic
 spec:
-  version: v6.1.0
+  version: v6.5.0
   pvReclaimPolicy: Retain
   discovery: {}
   master:

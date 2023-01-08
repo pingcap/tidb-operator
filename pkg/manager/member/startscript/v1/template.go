@@ -274,8 +274,8 @@ ARGS="--pd=${result} \
 {{ else }}
 ARGS="--pd={{ .PDAddress }} \{{ end }}
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}:20160 \
---addr=0.0.0.0:20160 \
---status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
+--addr={{ .Addr }} \
+--status-addr={{ .StatusAddr }} \{{if .EnableAdvertiseStatusAddr }}
 --advertise-status-addr={{ .AdvertiseStatusAddr }}:20180 \{{end}}
 --data-dir={{ .DataDir }} \
 --capacity=${CAPACITY} \
@@ -299,6 +299,8 @@ type TiKVStartScriptModel struct {
 	AdvertiseStatusAddr       string
 	DataDir                   string
 	PDAddress                 string
+	Addr                      string
+	StatusAddr                string
 }
 
 // pumpStartScriptTpl is the template string of pump start script

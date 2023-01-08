@@ -21,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
@@ -372,6 +371,9 @@ type TidbClusterSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -775,9 +777,11 @@ type TiProxySpec struct {
 	// +optional
 	BaseImage string `json:"baseImage"`
 
-	// Proxy is the proxy part of config
+	// Config is the Configuration of tiproxy-servers
 	// +optional
-	Proxy *tiproxyConfig.ProxyServerOnline `json:"proxy,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Config *TiProxyConfigWraper `json:"config,omitempty"`
 
 	// StorageVolumes configure additional storage for TiProxy pods.
 	// +optional
@@ -1302,6 +1306,7 @@ type PDFailureMember struct {
 	PVCUID        types.UID                 `json:"pvcUID,omitempty"`
 	PVCUIDSet     map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
 	MemberDeleted bool                      `json:"memberDeleted,omitempty"`
+	HostDown      bool                      `json:"hostDown,omitempty"`
 	// +nullable
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
@@ -1428,8 +1433,8 @@ type TiFlashStatus struct {
 type TiProxyStatus struct {
 	Synced      bool                                       `json:"synced,omitempty"`
 	Phase       MemberPhase                                `json:"phase,omitempty"`
+	Members     map[string]bool                            `json:"members,omitempty"`
 	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
-	Proxy       tiproxyConfig.ProxyServerOnline            `json:"proxy,omitempty"`
 	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
 	// +optional
@@ -1476,8 +1481,11 @@ type TiKVStore struct {
 
 // TiKVFailureStore is the tikv failure store information
 type TiKVFailureStore struct {
-	PodName string `json:"podName,omitempty"`
-	StoreID string `json:"storeID,omitempty"`
+	PodName      string                    `json:"podName,omitempty"`
+	StoreID      string                    `json:"storeID,omitempty"`
+	PVCUIDSet    map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
+	StoreDeleted bool                      `json:"storeDeleted,omitempty"`
+	HostDown     bool                      `json:"hostDown,omitempty"`
 	// +nullable
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
