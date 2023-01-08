@@ -92,7 +92,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 		return err
 	}
 
-	metaInfo := &util.EBSBasedBRMeta{}
+	metaInfo := &bkutil.EBSBasedBRMeta{}
 	if err = json.Unmarshal(contents, metaInfo); err != nil {
 		klog.Errorf("rclone copy remote backupmeta to local failure.")
 		return err
@@ -112,7 +112,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	return nil
 }
 
-func (bo *Options) deleteVolumeSnapshots(meta *util.EBSBasedBRMeta) error {
+func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta) error {
 	newVolumeIDMap := make(map[string]string)
 	for i := range meta.TiKVComponent.Stores {
 		store := meta.TiKVComponent.Stores[i]
@@ -122,7 +122,7 @@ func (bo *Options) deleteVolumeSnapshots(meta *util.EBSBasedBRMeta) error {
 		}
 	}
 
-	ec2Session, err := util.NewEC2Session(CloudAPIConcurrency)
+	ec2Session, err := bkutil.NewEC2Session(CloudAPIConcurrency)
 	if err != nil {
 		klog.Errorf("new a ec2 session failure.")
 		return err

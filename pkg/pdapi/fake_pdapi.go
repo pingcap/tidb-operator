@@ -43,6 +43,7 @@ const (
 	GetPDLeaderActionType                       ActionType = "GetPDLeader"
 	TransferPDLeaderActionType                  ActionType = "TransferPDLeader"
 	GetAutoscalingPlansActionType               ActionType = "GetAutoscalingPlans"
+	GetRecoveringMarkActionType                 ActionType = "GetRecoveringMark"
 )
 
 type NotFoundReaction struct {
@@ -269,4 +270,14 @@ func (c *FakePDClient) GetAutoscalingPlans(strategy Strategy) ([]Plan, error) {
 		return result.([]Plan), err
 	}
 	return nil, nil
+}
+
+func (c *FakePDClient) GetRecoveringMark() (bool, error) {
+	action := &Action{}
+	_, err := c.fakeAPI(GetRecoveringMarkActionType, action)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
