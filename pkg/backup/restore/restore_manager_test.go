@@ -424,8 +424,15 @@ func TestBRRestoreByEBS(t *testing.T) {
 	//generate the restore meta in local nfs
 	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:gosec
 	g.Expect(err).To(Succeed())
+
+	//generate the backup meta in local nfs, tiflash check need backupmeta to validation
+	err = os.WriteFile("/tmp/backupmeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:gosec
+	g.Expect(err).To(Succeed())
 	defer func() {
 		err = os.Remove("/tmp/restoremeta")
+		g.Expect(err).To(Succeed())
+
+		err = os.Remove("/tmp/backupmeta")
 		g.Expect(err).To(Succeed())
 	}()
 
