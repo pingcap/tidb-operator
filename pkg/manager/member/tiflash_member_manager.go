@@ -91,6 +91,11 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	if err := m.syncRecoveryForTiFlash(tc); err != nil {
+		klog.Info("sync recovery for TiFlash", err.Error())
+		return nil
+	}
+
 	err = m.enablePlacementRules(tc)
 	if err != nil {
 		klog.Errorf("Enable placement rules failed, error: %v", err)
@@ -102,6 +107,40 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	return m.syncStatefulSet(tc)
+}
+
+func (m *tiflashMemberManager) syncRecoveryForTiFlash(tc *v1alpha1.TidbCluster) error {
+	// Check whether the cluster is in recovery mode
+	// and whether the volumes have been restored for TiKV
+	if !tc.Spec.RecoveryMode {
+		return nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	anns := tc.GetAnnotations()
+	if _, ok := anns[label.AnnTiKVVolumesReadyKey]; !ok {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiFlash is waiting for TiKV volumes ready", ns, tcName)
+	}
+
+	if mark, _ := m.checkRecoveringMark(tc); mark {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiFlash is waiting for recovery mode unmask", ns, tcName)
+	}
+
+	return nil
+}
+
+// check the recovering mark from pd
+// volume-snapshot restore requires pd allocate id set done and then start tiflash. the purpose is to solve tiflash store id conflict with tikvs'
+// pd recovering mark indicates the pd allcate id had been set properly.
+func (m *tiflashMemberManager) checkRecoveringMark(tc *v1alpha1.TidbCluster) (bool, error) {
+	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
+	mark, err := pdCli.GetRecoveringMark()
+	if err != nil {
+		return false, err
+	}
+
+	return mark, nil
 }
 
 func (m *tiflashMemberManager) enablePlacementRules(tc *v1alpha1.TidbCluster) error {

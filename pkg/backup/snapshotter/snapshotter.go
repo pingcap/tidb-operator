@@ -536,10 +536,6 @@ func resetVolumeBindingInfo(pvc *corev1.PersistentVolumeClaim, pv *corev1.Persis
 		pv.Spec.ClaimRef.ResourceVersion = ""
 		pv.Spec.ClaimRef.UID = ""
 	}
-
-	// Remove the provisioned-by annotation which signals that the persistent
-	// volume was dynamically provisioned; it is now statically provisioned.
-	delete(pv.Annotations, constants.KubeAnnDynamicallyProvisioned)
 }
 
 func resetMetadataAndStatus(
