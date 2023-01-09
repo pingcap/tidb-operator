@@ -59,9 +59,9 @@ type TidbNGMonitoringList struct {
 //
 // +k8s:openapi-gen=true
 type TidbNGMonitoringSpec struct {
-	// ComponentSpec is common spec.
+	// CommonComponentSpec is common spec.
 	// NOTE: the same field will be overridden by component's spec.
-	ComponentSpec `json:",inline"`
+	CommonComponentSpec `json:",inline"`
 
 	// Clusters reference TiDB cluster
 	//
@@ -94,7 +94,7 @@ type TidbNGMonitoringStatus struct {
 //
 // +k8s:openapi-gen=true
 type NGMonitoringSpec struct {
-	ComponentSpec               `json:",inline"`
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Base image of the component, image tag is now allowed during validation

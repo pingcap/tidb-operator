@@ -105,7 +105,7 @@ func TestDMComponentAccessor(t *testing.T) {
 	type testcase struct {
 		name      string
 		cluster   *DMClusterSpec
-		component *ComponentSpec
+		component *CommonComponentSpec
 		expectFn  func(*GomegaWithT, ComponentAccessor)
 	}
 	testFn := func(test *testcase, t *testing.T) {
@@ -145,7 +145,7 @@ func TestDMComponentAccessor(t *testing.T) {
 				PriorityClassName: pointer.StringPtr("test"),
 				SchedulerName:     "test",
 			},
-			component: &ComponentSpec{},
+			component: &CommonComponentSpec{},
 			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
 				g.Expect(a.ImagePullPolicy()).Should(Equal(corev1.PullNever))
 				g.Expect(a.ImagePullSecrets()).Should(Equal([]corev1.LocalObjectReference{{Name: "image-pull-secret"}}))
@@ -165,7 +165,7 @@ func TestDMComponentAccessor(t *testing.T) {
 				PriorityClassName: pointer.StringPtr("test"),
 				SchedulerName:     "test",
 			},
-			component: &ComponentSpec{
+			component: &CommonComponentSpec{
 				ImagePullSecrets:  []corev1.LocalObjectReference{{Name: "component-level-secret"}},
 				ImagePullPolicy:   func() *corev1.PullPolicy { a := corev1.PullAlways; return &a }(),
 				HostNetwork:       func() *bool { a := false; return &a }(),
@@ -189,7 +189,7 @@ func TestDMComponentAccessor(t *testing.T) {
 					"k1": "v1",
 				},
 			},
-			component: &ComponentSpec{
+			component: &CommonComponentSpec{
 				NodeSelector: map[string]string{
 					"k1": "v2",
 					"k3": "v3",
@@ -209,7 +209,7 @@ func TestDMComponentAccessor(t *testing.T) {
 					"k1": "v1",
 				},
 			},
-			component: &ComponentSpec{
+			component: &CommonComponentSpec{
 				Annotations: map[string]string{
 					"k1": "v2",
 					"k3": "v3",
@@ -229,7 +229,7 @@ func TestDMComponentAccessor(t *testing.T) {
 					"k1": "v1",
 				},
 			},
-			component: &ComponentSpec{
+			component: &CommonComponentSpec{
 				Annotations: map[string]string{
 					"k1": "v2",
 					"k3": "v3",
@@ -247,7 +247,7 @@ func TestDMComponentAccessor(t *testing.T) {
 			cluster: &DMClusterSpec{
 				Tolerations: []corev1.Toleration{toleration1},
 			},
-			component: &ComponentSpec{
+			component: &CommonComponentSpec{
 				Tolerations: []corev1.Toleration{toleration2},
 			},
 			expectFn: func(g *GomegaWithT, a ComponentAccessor) {

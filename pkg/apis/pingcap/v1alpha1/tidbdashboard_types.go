@@ -58,8 +58,8 @@ type TidbDashboardList struct {
 //
 // +k8s:openapi-gen=true
 type TidbDashboardSpec struct {
-	// ComponentSpec is common spec.
-	ComponentSpec               `json:",inline"`
+	// CommonComponentSpec is common spec.
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Clusters reference TiDB cluster.

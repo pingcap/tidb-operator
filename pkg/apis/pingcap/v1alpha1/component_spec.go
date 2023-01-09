@@ -176,8 +176,8 @@ type componentAccessorImpl struct {
 	topologySpreadConstraints []TopologySpreadConstraint
 	suspendAction             *SuspendAction
 
-	// ComponentSpec is the Component Spec
-	ComponentSpec *ComponentSpec
+	// CommonComponentSpec is the Component Spec
+	CommonComponentSpec *CommonComponentSpec
 }
 
 func (a *componentAccessorImpl) MemberType() MemberType {
@@ -185,19 +185,19 @@ func (a *componentAccessorImpl) MemberType() MemberType {
 }
 
 func (a *componentAccessorImpl) StatefulSetUpdateStrategy() apps.StatefulSetUpdateStrategyType {
-	if a.ComponentSpec == nil || len(a.ComponentSpec.StatefulSetUpdateStrategy) == 0 {
+	if a.CommonComponentSpec == nil || len(a.CommonComponentSpec.StatefulSetUpdateStrategy) == 0 {
 		if len(a.statefulSetUpdateStrategy) == 0 {
 			return apps.RollingUpdateStatefulSetStrategyType
 		}
 		return a.statefulSetUpdateStrategy
 	}
-	return a.ComponentSpec.StatefulSetUpdateStrategy
+	return a.CommonComponentSpec.StatefulSetUpdateStrategy
 }
 
 func (a *componentAccessorImpl) PodManagementPolicy() apps.PodManagementPolicyType {
 	policy := apps.ParallelPodManagement
-	if a.ComponentSpec != nil && len(a.ComponentSpec.PodManagementPolicy) != 0 {
-		policy = a.ComponentSpec.PodManagementPolicy
+	if a.CommonComponentSpec != nil && len(a.CommonComponentSpec.PodManagementPolicy) != 0 {
+		policy = a.CommonComponentSpec.PodManagementPolicy
 	} else if len(a.podManagementPolicy) != 0 {
 		policy = a.podManagementPolicy
 	}
@@ -210,55 +210,55 @@ func (a *componentAccessorImpl) PodManagementPolicy() apps.PodManagementPolicyTy
 }
 
 func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
-	if a.ComponentSpec == nil || a.ComponentSpec.PodSecurityContext == nil {
+	if a.CommonComponentSpec == nil || a.CommonComponentSpec.PodSecurityContext == nil {
 		return a.podSecurityContext
 	}
-	return a.ComponentSpec.PodSecurityContext
+	return a.CommonComponentSpec.PodSecurityContext
 }
 
 func (a *componentAccessorImpl) ImagePullPolicy() corev1.PullPolicy {
-	if a.ComponentSpec == nil || a.ComponentSpec.ImagePullPolicy == nil {
+	if a.CommonComponentSpec == nil || a.CommonComponentSpec.ImagePullPolicy == nil {
 		return a.imagePullPolicy
 	}
-	return *a.ComponentSpec.ImagePullPolicy
+	return *a.CommonComponentSpec.ImagePullPolicy
 }
 
 func (a *componentAccessorImpl) ImagePullSecrets() []corev1.LocalObjectReference {
-	if a.ComponentSpec == nil || len(a.ComponentSpec.ImagePullSecrets) == 0 {
+	if a.CommonComponentSpec == nil || len(a.CommonComponentSpec.ImagePullSecrets) == 0 {
 		return a.imagePullSecrets
 	}
-	return a.ComponentSpec.ImagePullSecrets
+	return a.CommonComponentSpec.ImagePullSecrets
 }
 
 func (a *componentAccessorImpl) HostNetwork() bool {
-	if a.ComponentSpec == nil || a.ComponentSpec.HostNetwork == nil {
+	if a.CommonComponentSpec == nil || a.CommonComponentSpec.HostNetwork == nil {
 		if a.hostNetwork == nil {
 			return defaultHostNetwork
 		}
 		return *a.hostNetwork
 	}
-	return *a.ComponentSpec.HostNetwork
+	return *a.CommonComponentSpec.HostNetwork
 }
 
 func (a *componentAccessorImpl) Affinity() *corev1.Affinity {
-	if a.ComponentSpec == nil || a.ComponentSpec.Affinity == nil {
+	if a.CommonComponentSpec == nil || a.CommonComponentSpec.Affinity == nil {
 		return a.affinity
 	}
-	return a.ComponentSpec.Affinity
+	return a.CommonComponentSpec.Affinity
 }
 
 func (a *componentAccessorImpl) PriorityClassName() *string {
-	if a.ComponentSpec == nil || a.ComponentSpec.PriorityClassName == nil {
+	if a.CommonComponentSpec == nil || a.CommonComponentSpec.PriorityClassName == nil {
 		return a.priorityClassName
 	}
-	return a.ComponentSpec.PriorityClassName
+	return a.CommonComponentSpec.PriorityClassName
 }
 
 func (a *componentAccessorImpl) SchedulerName() string {
-	if a.ComponentSpec == nil || a.ComponentSpec.SchedulerName == nil {
+	if a.CommonComponentSpec == nil || a.CommonComponentSpec.SchedulerName == nil {
 		return a.schedulerName
 	}
-	return *a.ComponentSpec.SchedulerName
+	return *a.CommonComponentSpec.SchedulerName
 }
 
 func (a *componentAccessorImpl) NodeSelector() map[string]string {
@@ -266,8 +266,8 @@ func (a *componentAccessorImpl) NodeSelector() map[string]string {
 	for k, v := range a.clusterNodeSelector {
 		sel[k] = v
 	}
-	if a.ComponentSpec != nil {
-		for k, v := range a.ComponentSpec.NodeSelector {
+	if a.CommonComponentSpec != nil {
+		for k, v := range a.CommonComponentSpec.NodeSelector {
 			sel[k] = v
 		}
 	}
@@ -279,8 +279,8 @@ func (a *componentAccessorImpl) Labels() map[string]string {
 	for k, v := range a.clusterLabels {
 		l[k] = v
 	}
-	if a.ComponentSpec != nil {
-		for k, v := range a.ComponentSpec.Labels {
+	if a.CommonComponentSpec != nil {
+		for k, v := range a.CommonComponentSpec.Labels {
 			l[k] = v
 		}
 	}
@@ -292,8 +292,8 @@ func (a *componentAccessorImpl) Annotations() map[string]string {
 	for k, v := range a.clusterAnnotations {
 		anno[k] = v
 	}
-	if a.ComponentSpec != nil {
-		for k, v := range a.ComponentSpec.Annotations {
+	if a.CommonComponentSpec != nil {
+		for k, v := range a.CommonComponentSpec.Annotations {
 			anno[k] = v
 		}
 	}
@@ -301,15 +301,15 @@ func (a *componentAccessorImpl) Annotations() map[string]string {
 }
 
 func (a *componentAccessorImpl) Tolerations() []corev1.Toleration {
-	if a.ComponentSpec == nil || len(a.ComponentSpec.Tolerations) == 0 {
+	if a.CommonComponentSpec == nil || len(a.CommonComponentSpec.Tolerations) == 0 {
 		return a.tolerations
 	}
-	return a.ComponentSpec.Tolerations
+	return a.CommonComponentSpec.Tolerations
 }
 
 func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
-	if a.ComponentSpec != nil && a.ComponentSpec.DNSPolicy != "" {
-		return a.ComponentSpec.DNSPolicy
+	if a.CommonComponentSpec != nil && a.CommonComponentSpec.DNSPolicy != "" {
+		return a.CommonComponentSpec.DNSPolicy
 	}
 
 	if a.dnsPolicy != "" {
@@ -323,25 +323,25 @@ func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
 }
 
 func (a *componentAccessorImpl) DNSConfig() *corev1.PodDNSConfig {
-	if a.ComponentSpec == nil || a.ComponentSpec.DNSConfig == nil {
+	if a.CommonComponentSpec == nil || a.CommonComponentSpec.DNSConfig == nil {
 		return a.dnsConfig
 	}
-	return a.ComponentSpec.DNSConfig
+	return a.CommonComponentSpec.DNSConfig
 }
 
 func (a *componentAccessorImpl) ConfigUpdateStrategy() ConfigUpdateStrategy {
 	// defaulting logic will set a default value for configUpdateStrategy field, but if the
 	// object is created in early version without this field being set, we should set a safe default
-	if a.ComponentSpec == nil || a.ComponentSpec.ConfigUpdateStrategy == nil {
+	if a.CommonComponentSpec == nil || a.CommonComponentSpec.ConfigUpdateStrategy == nil {
 		if a.configUpdateStrategy != "" {
 			return a.configUpdateStrategy
 		}
 		return ConfigUpdateStrategyInPlace
 	}
-	if *a.ComponentSpec.ConfigUpdateStrategy == "" {
+	if *a.CommonComponentSpec.ConfigUpdateStrategy == "" {
 		return ConfigUpdateStrategyInPlace
 	}
-	return *a.ComponentSpec.ConfigUpdateStrategy
+	return *a.CommonComponentSpec.ConfigUpdateStrategy
 }
 
 func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
@@ -370,58 +370,58 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 }
 
 func (a *componentAccessorImpl) Env() []corev1.EnvVar {
-	if a.ComponentSpec == nil {
+	if a.CommonComponentSpec == nil {
 		return nil
 	}
-	return a.ComponentSpec.Env
+	return a.CommonComponentSpec.Env
 }
 
 func (a *componentAccessorImpl) EnvFrom() []corev1.EnvFromSource {
-	if a.ComponentSpec == nil {
+	if a.CommonComponentSpec == nil {
 		return nil
 	}
-	return a.ComponentSpec.EnvFrom
+	return a.CommonComponentSpec.EnvFrom
 }
 
 func (a *componentAccessorImpl) InitContainers() []corev1.Container {
-	if a.ComponentSpec == nil {
+	if a.CommonComponentSpec == nil {
 		return nil
 	}
-	return a.ComponentSpec.InitContainers
+	return a.CommonComponentSpec.InitContainers
 }
 
 func (a *componentAccessorImpl) AdditionalContainers() []corev1.Container {
-	if a.ComponentSpec == nil {
+	if a.CommonComponentSpec == nil {
 		return nil
 	}
-	return a.ComponentSpec.AdditionalContainers
+	return a.CommonComponentSpec.AdditionalContainers
 }
 
 func (a *componentAccessorImpl) AdditionalVolumes() []corev1.Volume {
-	if a.ComponentSpec == nil {
+	if a.CommonComponentSpec == nil {
 		return nil
 	}
-	return a.ComponentSpec.AdditionalVolumes
+	return a.CommonComponentSpec.AdditionalVolumes
 }
 
 func (a *componentAccessorImpl) AdditionalVolumeMounts() []corev1.VolumeMount {
-	if a.ComponentSpec == nil {
+	if a.CommonComponentSpec == nil {
 		return nil
 	}
-	return a.ComponentSpec.AdditionalVolumeMounts
+	return a.CommonComponentSpec.AdditionalVolumeMounts
 }
 
 func (a *componentAccessorImpl) TerminationGracePeriodSeconds() *int64 {
-	if a.ComponentSpec == nil {
+	if a.CommonComponentSpec == nil {
 		return nil
 	}
-	return a.ComponentSpec.TerminationGracePeriodSeconds
+	return a.CommonComponentSpec.TerminationGracePeriodSeconds
 }
 
 func (a *componentAccessorImpl) TopologySpreadConstraints() []corev1.TopologySpreadConstraint {
 	tscs := a.topologySpreadConstraints
-	if a.ComponentSpec != nil && len(a.ComponentSpec.TopologySpreadConstraints) > 0 {
-		tscs = a.ComponentSpec.TopologySpreadConstraints
+	if a.CommonComponentSpec != nil && len(a.CommonComponentSpec.TopologySpreadConstraints) > 0 {
+		tscs = a.CommonComponentSpec.TopologySpreadConstraints
 	}
 
 	if len(tscs) == 0 {
@@ -455,8 +455,8 @@ func (a *componentAccessorImpl) TopologySpreadConstraints() []corev1.TopologySpr
 
 func (a *componentAccessorImpl) SuspendAction() *SuspendAction {
 	action := a.suspendAction
-	if a.ComponentSpec != nil && a.ComponentSpec.SuspendAction != nil {
-		action = a.ComponentSpec.SuspendAction
+	if a.CommonComponentSpec != nil && a.CommonComponentSpec.SuspendAction != nil {
+		action = a.CommonComponentSpec.SuspendAction
 	}
 	return action
 }
@@ -489,7 +489,7 @@ func getComponentLabelValue(c MemberType) string {
 	return ""
 }
 
-func buildTidbClusterComponentAccessor(c MemberType, tc *TidbCluster, componentSpec *ComponentSpec) ComponentAccessor {
+func buildTidbClusterComponentAccessor(c MemberType, tc *TidbCluster, componentSpec *CommonComponentSpec) ComponentAccessor {
 	spec := &tc.Spec
 	return &componentAccessorImpl{
 		name:                      tc.Name,
@@ -514,11 +514,11 @@ func buildTidbClusterComponentAccessor(c MemberType, tc *TidbCluster, componentS
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
 		suspendAction:             spec.SuspendAction,
 
-		ComponentSpec: componentSpec,
+		CommonComponentSpec: componentSpec,
 	}
 }
 
-func buildDMClusterComponentAccessor(c MemberType, dc *DMCluster, componentSpec *ComponentSpec) ComponentAccessor {
+func buildDMClusterComponentAccessor(c MemberType, dc *DMCluster, componentSpec *CommonComponentSpec) ComponentAccessor {
 	spec := &dc.Spec
 	return &componentAccessorImpl{
 		name:                      dc.Name,
@@ -543,12 +543,12 @@ func buildDMClusterComponentAccessor(c MemberType, dc *DMCluster, componentSpec 
 		topologySpreadConstraints: spec.TopologySpreadConstraints,
 		suspendAction:             spec.SuspendAction,
 
-		ComponentSpec: componentSpec,
+		CommonComponentSpec: componentSpec,
 	}
 }
 
-func buildTiDBNGMonitoringComponentAccessor(c MemberType, tngm *TidbNGMonitoring, componentSpec *ComponentSpec) ComponentAccessor {
-	commonSpec := tngm.Spec.ComponentSpec
+func buildTiDBNGMonitoringComponentAccessor(c MemberType, tngm *TidbNGMonitoring, componentSpec *CommonComponentSpec) ComponentAccessor {
+	commonSpec := tngm.Spec.CommonComponentSpec
 	impl := &componentAccessorImpl{
 		name:                      tngm.GetName(),
 		kind:                      TiDBNGMonitoringKind,
@@ -567,7 +567,7 @@ func buildTiDBNGMonitoringComponentAccessor(c MemberType, tngm *TidbNGMonitoring
 		dnsConfig:                 commonSpec.DNSConfig,
 		dnsPolicy:                 commonSpec.DNSPolicy,
 
-		ComponentSpec: componentSpec,
+		CommonComponentSpec: componentSpec,
 	}
 	if commonSpec.ImagePullPolicy != nil {
 		impl.imagePullPolicy = *commonSpec.ImagePullPolicy
@@ -578,8 +578,8 @@ func buildTiDBNGMonitoringComponentAccessor(c MemberType, tngm *TidbNGMonitoring
 	return impl
 }
 
-func buildTiDBDashboardComponentAccessor(c MemberType, td *TidbDashboard, componentSpec *ComponentSpec) ComponentAccessor {
-	commonSpec := td.Spec.ComponentSpec
+func buildTiDBDashboardComponentAccessor(c MemberType, td *TidbDashboard, componentSpec *CommonComponentSpec) ComponentAccessor {
+	commonSpec := td.Spec.CommonComponentSpec
 	impl := &componentAccessorImpl{
 		name:                      td.GetName(),
 		kind:                      TiDBDashboardKind,
@@ -598,7 +598,7 @@ func buildTiDBDashboardComponentAccessor(c MemberType, td *TidbDashboard, compon
 		dnsConfig:                 commonSpec.DNSConfig,
 		dnsPolicy:                 commonSpec.DNSPolicy,
 
-		ComponentSpec: componentSpec,
+		CommonComponentSpec: componentSpec,
 	}
 	if commonSpec.ImagePullPolicy != nil {
 		impl.imagePullPolicy = *commonSpec.ImagePullPolicy
@@ -611,14 +611,14 @@ func buildTiDBDashboardComponentAccessor(c MemberType, td *TidbDashboard, compon
 
 // BaseDiscoverySpec returns the base spec of discovery component
 func (tc *TidbCluster) BaseDiscoverySpec() ComponentAccessor {
-	return buildTidbClusterComponentAccessor(DiscoveryMemberType, tc, tc.Spec.Discovery.ComponentSpec)
+	return buildTidbClusterComponentAccessor(DiscoveryMemberType, tc, tc.Spec.Discovery.CommonComponentSpec)
 }
 
 // BaseTiDBSpec returns the base spec of TiDB servers
 func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
-	var spec *ComponentSpec
+	var spec *CommonComponentSpec
 	if tc.Spec.TiDB != nil {
-		spec = &tc.Spec.TiDB.ComponentSpec
+		spec = &tc.Spec.TiDB.CommonComponentSpec
 	}
 
 	return buildTidbClusterComponentAccessor(TiDBMemberType, tc, spec)
@@ -626,9 +626,9 @@ func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
 
 // BaseTiKVSpec returns the base spec of TiKV servers
 func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
-	var spec *ComponentSpec
+	var spec *CommonComponentSpec
 	if tc.Spec.TiKV != nil {
-		spec = &tc.Spec.TiKV.ComponentSpec
+		spec = &tc.Spec.TiKV.CommonComponentSpec
 	}
 
 	return buildTidbClusterComponentAccessor(TiKVMemberType, tc, spec)
@@ -636,9 +636,9 @@ func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
 
 // BaseTiFlashSpec returns the base spec of TiFlash servers
 func (tc *TidbCluster) BaseTiFlashSpec() ComponentAccessor {
-	var spec *ComponentSpec
+	var spec *CommonComponentSpec
 	if tc.Spec.TiFlash != nil {
-		spec = &tc.Spec.TiFlash.ComponentSpec
+		spec = &tc.Spec.TiFlash.CommonComponentSpec
 	}
 
 	return buildTidbClusterComponentAccessor(TiFlashMemberType, tc, spec)
@@ -646,9 +646,9 @@ func (tc *TidbCluster) BaseTiFlashSpec() ComponentAccessor {
 
 // BaseTiProxySpec returns the base spec of TiProxy servers
 func (tc *TidbCluster) BaseTiProxySpec() ComponentAccessor {
-	var spec *ComponentSpec
+	var spec *CommonComponentSpec
 	if tc.Spec.TiProxy != nil {
-		spec = &tc.Spec.TiProxy.ComponentSpec
+		spec = &tc.Spec.TiProxy.CommonComponentSpec
 	}
 
 	return buildTidbClusterComponentAccessor(TiProxyMemberType, tc, spec)
@@ -656,9 +656,9 @@ func (tc *TidbCluster) BaseTiProxySpec() ComponentAccessor {
 
 // BaseTiCDCSpec returns the base spec of TiCDC servers
 func (tc *TidbCluster) BaseTiCDCSpec() ComponentAccessor {
-	var spec *ComponentSpec
+	var spec *CommonComponentSpec
 	if tc.Spec.TiCDC != nil {
-		spec = &tc.Spec.TiCDC.ComponentSpec
+		spec = &tc.Spec.TiCDC.CommonComponentSpec
 	}
 
 	return buildTidbClusterComponentAccessor(TiCDCMemberType, tc, spec)
@@ -666,9 +666,9 @@ func (tc *TidbCluster) BaseTiCDCSpec() ComponentAccessor {
 
 // BasePDSpec returns the base spec of PD servers
 func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
-	var spec *ComponentSpec
+	var spec *CommonComponentSpec
 	if tc.Spec.PD != nil {
-		spec = &tc.Spec.PD.ComponentSpec
+		spec = &tc.Spec.PD.CommonComponentSpec
 	}
 
 	return buildTidbClusterComponentAccessor(PDMemberType, tc, spec)
@@ -676,35 +676,35 @@ func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
 
 // BasePumpSpec returns the base spec of Pump:
 func (tc *TidbCluster) BasePumpSpec() ComponentAccessor {
-	var spec *ComponentSpec
+	var spec *CommonComponentSpec
 	if tc.Spec.Pump != nil {
-		spec = &tc.Spec.Pump.ComponentSpec
+		spec = &tc.Spec.Pump.CommonComponentSpec
 	}
 
 	return buildTidbClusterComponentAccessor(PumpMemberType, tc, spec)
 }
 
 func (dc *DMCluster) BaseDiscoverySpec() ComponentAccessor {
-	return buildDMClusterComponentAccessor(DMDiscoveryMemberType, dc, dc.Spec.Discovery.ComponentSpec)
+	return buildDMClusterComponentAccessor(DMDiscoveryMemberType, dc, dc.Spec.Discovery.CommonComponentSpec)
 }
 
 func (dc *DMCluster) BaseMasterSpec() ComponentAccessor {
-	return buildDMClusterComponentAccessor(DMMasterMemberType, dc, &dc.Spec.Master.ComponentSpec)
+	return buildDMClusterComponentAccessor(DMMasterMemberType, dc, &dc.Spec.Master.CommonComponentSpec)
 }
 
 func (dc *DMCluster) BaseWorkerSpec() ComponentAccessor {
-	var spec *ComponentSpec
+	var spec *CommonComponentSpec
 	if dc.Spec.Worker != nil {
-		spec = &dc.Spec.Worker.ComponentSpec
+		spec = &dc.Spec.Worker.CommonComponentSpec
 	}
 
 	return buildDMClusterComponentAccessor(DMWorkerMemberType, dc, spec)
 }
 
 func (tngm *TidbNGMonitoring) BaseNGMonitoringSpec() ComponentAccessor {
-	return buildTiDBNGMonitoringComponentAccessor(NGMonitoringMemberType, tngm, &tngm.Spec.NGMonitoring.ComponentSpec)
+	return buildTiDBNGMonitoringComponentAccessor(NGMonitoringMemberType, tngm, &tngm.Spec.NGMonitoring.CommonComponentSpec)
 }
 
 func (td *TidbDashboard) BaseTidbDashboardSpec() ComponentAccessor {
-	return buildTiDBDashboardComponentAccessor(TiDBDashboardMemberType, td, &td.Spec.ComponentSpec)
+	return buildTiDBDashboardComponentAccessor(TiDBDashboardMemberType, td, &td.Spec.CommonComponentSpec)
 }

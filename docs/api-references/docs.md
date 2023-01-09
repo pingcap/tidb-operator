@@ -4551,117 +4551,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="commonconfig">CommonConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tiflashconfig">TiFlashConfig</a>)
-</p>
-<p>
-<p>CommonConfig is the configuration of TiFlash process.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>tmp_path</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to &ldquo;/data0/tmp&rdquo;</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>path_realtime_mode</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to false</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>mark_cache_size</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 5368709120</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>minmax_index_cache_size</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 5368709120</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>flash</code></br>
-<em>
-<a href="#flash">
-Flash
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>logger</code></br>
-<em>
-<a href="#flashlogger">
-FlashLogger
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>security</code></br>
-<em>
-<a href="#flashsecurity">
-FlashSecurity
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="componentaccessor">ComponentAccessor</h3>
-<p>
-<p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
-and component-level overrides</p>
-</p>
-<h3 id="componentspec">ComponentSpec</h3>
+<h3 id="commoncomponentspec">CommonComponentSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#dmdiscoveryspec">DMDiscoverySpec</a>, 
@@ -4680,7 +4570,7 @@ and component-level overrides</p>
 <a href="#workerspec">WorkerSpec</a>)
 </p>
 <p>
-<p>ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties</p>
+<p>CommonComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties</p>
 </p>
 <table>
 <thead>
@@ -5106,6 +4996,116 @@ the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </tr>
 </tbody>
 </table>
+<h3 id="commonconfig">CommonConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashconfig">TiFlashConfig</a>)
+</p>
+<p>
+<p>CommonConfig is the configuration of TiFlash process.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>tmp_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to &ldquo;/data0/tmp&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path_realtime_mode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>mark_cache_size</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 5368709120</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>minmax_index_cache_size</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 5368709120</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>flash</code></br>
+<em>
+<a href="#flash">
+Flash
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>logger</code></br>
+<em>
+<a href="#flashlogger">
+FlashLogger
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>security</code></br>
+<em>
+<a href="#flashsecurity">
+FlashSecurity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="componentaccessor">ComponentAccessor</h3>
+<p>
+<p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
+and component-level overrides</p>
+</p>
 <h3 id="componentstatus">ComponentStatus</h3>
 <p>
 </p>
@@ -5152,7 +5152,7 @@ string
 <h3 id="configupdatestrategy">ConfigUpdateStrategy</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#componentspec">ComponentSpec</a>, 
+<a href="#commoncomponentspec">CommonComponentSpec</a>, 
 <a href="#dmclusterspec">DMClusterSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
@@ -6003,16 +6003,16 @@ WorkerStatus
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -6343,16 +6343,16 @@ string
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -8596,16 +8596,16 @@ int
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -9026,16 +9026,16 @@ Kubernetes core/v1.PullPolicy
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -10969,16 +10969,16 @@ Imported from v3.1.0</p>
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -11769,7 +11769,7 @@ float64
 <h3 id="probe">Probe</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#componentspec">ComponentSpec</a>)
+<a href="#commoncomponentspec">CommonComponentSpec</a>)
 </p>
 <p>
 <p>Probe contains details of probing tidb.
@@ -12492,16 +12492,16 @@ string
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -14658,7 +14658,7 @@ StorageVolumeName
 <h3 id="suspendaction">SuspendAction</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#componentspec">ComponentSpec</a>, 
+<a href="#commoncomponentspec">CommonComponentSpec</a>, 
 <a href="#dmclusterspec">DMClusterSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
@@ -15121,16 +15121,16 @@ Optional: Defaults to /dev/stderr</p>
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -16334,16 +16334,16 @@ Use <code>spec.helper.imagePullPolicy</code> instead</p>
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -16942,16 +16942,16 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -20946,16 +20946,16 @@ string
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -22015,16 +22015,16 @@ int32
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -23367,18 +23367,18 @@ TidbDashboardSpec
 <table>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
-<p>ComponentSpec is common spec.</p>
+<p>CommonComponentSpec is common spec.</p>
 </td>
 </tr>
 <tr>
@@ -23548,18 +23548,18 @@ TidbDashboardStatus
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
-<p>ComponentSpec is common spec.</p>
+<p>CommonComponentSpec is common spec.</p>
 </td>
 </tr>
 <tr>
@@ -24522,18 +24522,18 @@ TidbNGMonitoringSpec
 <table>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
-<p>ComponentSpec is common spec.
+<p>CommonComponentSpec is common spec.
 NOTE: the same field will be overridden by component&rsquo;s spec.</p>
 </td>
 </tr>
@@ -24634,18 +24634,18 @@ TidbNGMonitoringStatus
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
-<p>ComponentSpec is common spec.
+<p>CommonComponentSpec is common spec.
 NOTE: the same field will be overridden by component&rsquo;s spec.</p>
 </td>
 </tr>
@@ -24812,7 +24812,7 @@ BasicAutoScalerStatus
 <h3 id="topologyspreadconstraint">TopologySpreadConstraint</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#componentspec">ComponentSpec</a>, 
+<a href="#commoncomponentspec">CommonComponentSpec</a>, 
 <a href="#dmclusterspec">DMClusterSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
@@ -25242,16 +25242,16 @@ Kubernetes meta/v1.Time
 <tbody>
 <tr>
 <td>
-<code>ComponentSpec</code></br>
+<code>CommonComponentSpec</code></br>
 <em>
-<a href="#componentspec">
-ComponentSpec
+<a href="#commoncomponentspec">
+CommonComponentSpec
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ComponentSpec</code> are embedded into this type.)
+(Members of <code>CommonComponentSpec</code> are embedded into this type.)
 </p>
 </td>
 </tr>

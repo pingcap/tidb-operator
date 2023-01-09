@@ -44,8 +44,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog":                        schema_pkg_apis_pingcap_v1alpha1_Binlog(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption":                   schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ClusterRef":                    schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonComponentSpec":           schema_pkg_apis_pingcap_v1alpha1_CommonComponentSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig":                  schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ComponentSpec":                 schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ConfigMapRef":                  schema_pkg_apis_pingcap_v1alpha1_ConfigMapRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMCluster":                     schema_pkg_apis_pingcap_v1alpha1_DMCluster(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMClusterList":                 schema_pkg_apis_pingcap_v1alpha1_DMClusterList(ref),
@@ -1433,64 +1433,11 @@ func schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref common.ReferenceCallback) c
 	}
 }
 
-func schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_pingcap_v1alpha1_CommonComponentSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "CommonConfig is the configuration of TiFlash process.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"tmp_path": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to \"/data0/tmp\"",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"path_realtime_mode": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to false",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"mark_cache_size": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to 5368709120",
-							Type:        []string{"integer"},
-							Format:      "int64",
-						},
-					},
-					"minmax_index_cache_size": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to 5368709120",
-							Type:        []string{"integer"},
-							Format:      "int64",
-						},
-					},
-					"flash": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Flash"),
-						},
-					},
-					"logger": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashLogger"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Flash", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashLogger"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties",
+				Description: "CommonComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"version": {
@@ -1768,6 +1715,59 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CommonConfig is the configuration of TiFlash process.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"tmp_path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to \"/data0/tmp\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"path_realtime_mode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"mark_cache_size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 5368709120",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"minmax_index_cache_size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 5368709120",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"flash": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Flash"),
+						},
+					},
+					"logger": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashLogger"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Flash", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashLogger"},
 	}
 }
 

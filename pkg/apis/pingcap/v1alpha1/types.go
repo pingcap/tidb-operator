@@ -438,14 +438,14 @@ const (
 // +k8s:openapi-gen=true
 // DiscoverySpec contains details of Discovery members
 type DiscoverySpec struct {
-	*ComponentSpec              `json:",inline"`
+	*CommonComponentSpec        `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 }
 
 // +k8s:openapi-gen=true
 // PDSpec contains details of PD members
 type PDSpec struct {
-	ComponentSpec               `json:",inline"`
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Specify a Service Account for pd
@@ -520,7 +520,7 @@ type PDSpec struct {
 // TiKVSpec contains details of TiKV members
 // +k8s:openapi-gen=true
 type TiKVSpec struct {
-	ComponentSpec               `json:",inline"`
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Specify a Service Account for tikv
@@ -628,7 +628,7 @@ type TiKVSpec struct {
 // TiFlashSpec contains details of TiFlash members
 // +k8s:openapi-gen=true
 type TiFlashSpec struct {
-	ComponentSpec               `json:",inline"`
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Specify a Service Account for TiFlash
@@ -688,7 +688,7 @@ type TiFlashSpec struct {
 // TiCDCSpec contains details of TiCDC members
 // +k8s:openapi-gen=true
 type TiCDCSpec struct {
-	ComponentSpec               `json:",inline"`
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Specify a Service Account for TiCDC
@@ -758,7 +758,7 @@ type TiCDCConfig struct {
 // TiProxySpec contains details of TiProxy members
 // +k8s:openapi-gen=true
 type TiProxySpec struct {
-	ComponentSpec               `json:",inline"`
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Specify a Service Account for TiProxy
@@ -821,7 +821,7 @@ type StorageClaim struct {
 // TiDBSpec contains details of TiDB members
 // +k8s:openapi-gen=true
 type TiDBSpec struct {
-	ComponentSpec               `json:",inline"`
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Specify a Service Account for tidb
@@ -946,7 +946,7 @@ type Probe struct {
 // PumpSpec contains details of Pump members
 // +k8s:openapi-gen=true
 type PumpSpec struct {
-	ComponentSpec               `json:",inline"`
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Specify a Service Account for pump
@@ -1007,9 +1007,9 @@ type TiDBSlowLogTailerSpec struct {
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 }
 
-// ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
+// CommonComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
 // +k8s:openapi-gen=true
-type ComponentSpec struct {
+type CommonComponentSpec struct {
 	// (Deprecated) Image of the component
 	// Use `baseImage` and `version` instead
 	// +k8s:openapi-gen=false
@@ -2375,7 +2375,7 @@ type DMClusterList struct {
 // +k8s:openapi-gen=true
 // DMDiscoverySpec contains details of Discovery members for dm
 type DMDiscoverySpec struct {
-	*ComponentSpec              `json:",inline"`
+	*CommonComponentSpec        `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// (Deprecated) Address indicates the existed TiDB discovery address
@@ -2529,7 +2529,7 @@ type DMClusterStatus struct {
 // +k8s:openapi-gen=true
 // MasterSpec contains details of dm-master members
 type MasterSpec struct {
-	ComponentSpec               `json:",inline"`
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// The desired ready replicas
@@ -2596,7 +2596,7 @@ type MasterServiceSpec struct {
 // +k8s:openapi-gen=true
 // WorkerSpec contains details of dm-worker members
 type WorkerSpec struct {
-	ComponentSpec               `json:",inline"`
+	CommonComponentSpec         `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
 	// The desired ready replicas

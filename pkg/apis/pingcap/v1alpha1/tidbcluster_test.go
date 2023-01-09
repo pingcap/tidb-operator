@@ -438,7 +438,7 @@ func TestComponentAccessor(t *testing.T) {
 	type testcase struct {
 		name      string
 		cluster   *TidbClusterSpec
-		component *ComponentSpec
+		component *CommonComponentSpec
 		expectFn  func(*GomegaWithT, ComponentAccessor)
 	}
 	testFn := func(test *testcase, t *testing.T) {
@@ -477,7 +477,7 @@ func TestComponentAccessor(t *testing.T) {
 				PriorityClassName: pointer.StringPtr("test"),
 				SchedulerName:     "test",
 			},
-			component: &ComponentSpec{},
+			component: &CommonComponentSpec{},
 			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
 				g.Expect(a.ImagePullPolicy()).Should(Equal(corev1.PullNever))
 				g.Expect(a.HostNetwork()).Should(Equal(true))
@@ -495,7 +495,7 @@ func TestComponentAccessor(t *testing.T) {
 				PriorityClassName: pointer.StringPtr("test"),
 				SchedulerName:     "test",
 			},
-			component: &ComponentSpec{
+			component: &CommonComponentSpec{
 				ImagePullPolicy:   func() *corev1.PullPolicy { a := corev1.PullAlways; return &a }(),
 				HostNetwork:       func() *bool { a := false; return &a }(),
 				Affinity:          affinity,
@@ -517,7 +517,7 @@ func TestComponentAccessor(t *testing.T) {
 					"k1": "v1",
 				},
 			},
-			component: &ComponentSpec{
+			component: &CommonComponentSpec{
 				NodeSelector: map[string]string{
 					"k1": "v2",
 					"k3": "v3",
@@ -537,7 +537,7 @@ func TestComponentAccessor(t *testing.T) {
 					"k1": "v1",
 				},
 			},
-			component: &ComponentSpec{
+			component: &CommonComponentSpec{
 				Annotations: map[string]string{
 					"k1": "v2",
 					"k3": "v3",
@@ -557,7 +557,7 @@ func TestComponentAccessor(t *testing.T) {
 					"k1": "v1",
 				},
 			},
-			component: &ComponentSpec{
+			component: &CommonComponentSpec{
 				Annotations: map[string]string{
 					"k1": "v2",
 					"k3": "v3",
@@ -575,7 +575,7 @@ func TestComponentAccessor(t *testing.T) {
 			cluster: &TidbClusterSpec{
 				Tolerations: []corev1.Toleration{toleration1},
 			},
-			component: &ComponentSpec{
+			component: &CommonComponentSpec{
 				Tolerations: []corev1.Toleration{toleration2},
 			},
 			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
