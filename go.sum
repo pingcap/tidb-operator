@@ -627,8 +627,8 @@ github.com/peterbourgon/diskv v2.0.1+incompatible h1:UBdAOUP5p4RWqPBg048CAvpKN+v
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
 github.com/pierrec/lz4 v2.0.5+incompatible h1:2xWsjqPFWcplujydGg4WmhC/6fZqK42wMM8aXeqhl0I=
 github.com/pierrec/lz4 v2.0.5+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
-github.com/pingcap/TiProxy/lib v0.0.0-20221215061730-32b4c29b9388 h1:+cFsEgvHvamerJZ38XvekRc/Jm+P12+pKYFvdrxm3uQ=
-github.com/pingcap/TiProxy/lib v0.0.0-20221215061730-32b4c29b9388/go.mod h1:4wyWYXOrf3ApAXjtz2RlM4HWZVzeXwVqh7XOlurT+jI=
+github.com/pingcap/TiProxy/lib v0.0.0-20230103134416-da56a2cf1ed9 h1:GYT3IH1RFbg1B7mR1UVT8Hmbgu5x1y46RhQZE6lRglA=
+github.com/pingcap/TiProxy/lib v0.0.0-20230103134416-da56a2cf1ed9/go.mod h1:0vthA3rLPfn1tdT0i/Y1jBb51dLmA+UEgGKkL9Fwd4I=
 github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b2938 h1:VnViTohM8PPnacFPPYjzLSUKVmKcmtiF7VUMSScm8vM=
 github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b2938/go.mod h1:pPv7hNjiBHrhnaept9u1Hd2G6fN0TOn+3uDi0/PdOk4=
 github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 h1:USx2/E1bX46VG32FIw034Au6seQ2fY9NEILmNh/UlQg=
