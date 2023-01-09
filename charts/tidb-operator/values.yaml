@@ -92,6 +92,10 @@ controllerManager:
   dmMasterFailoverPeriod: 5m
   # dm-worker failover period default(5m)
   dmWorkerFailoverPeriod: 5m
+  # detectNodeFailure tells whether tidb-operator should auto detect k8s node failures for recovery of failure pods. Currently it is experimental
+  detectNodeFailure: false
+  # podHardRecoveryPeriod is the time limit after which a failure pod is forcefully marked as k8s node failure. To be set if detectNodeFailure is true default (24h)
+  # podHardRecoveryPeriod: 24h
   ## affinity defines pod scheduling rules,affinity default settings is empty.
   ## please read the affinity document before set your scheduling rule:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
