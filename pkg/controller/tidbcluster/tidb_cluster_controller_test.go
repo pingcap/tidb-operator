@@ -297,7 +297,7 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 				},
 			},
 			TiDB: &v1alpha1.TiDBSpec{
-				CommonComponentSpec: v1alpha1.CommonComponentSpecntSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "tidb-test-image",
 				},
 			},
