@@ -661,7 +661,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	// handle StorageVolumes and AdditionalVolumeMounts in CommonComponentSpec
 	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.PD.StorageVolumes, tc.Spec.PD.StorageClassName, v1alpha1.PDMemberType)
 	volMounts = append(volMounts, storageVolMounts...)
 	volMounts = append(volMounts, tc.Spec.PD.AdditionalVolumeMounts...)

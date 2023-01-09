@@ -277,7 +277,7 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: &v1alpha1.PDSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "pd-test-image",
 				},
 				ResourceRequirements: corev1.ResourceRequirements{
@@ -287,7 +287,7 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 				},
 			},
 			TiKV: &v1alpha1.TiKVSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "tikv-test-image",
 				},
 				ResourceRequirements: corev1.ResourceRequirements{
@@ -297,7 +297,7 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 				},
 			},
 			TiDB: &v1alpha1.TiDBSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpecntSpec{
 					Image: "tidb-test-image",
 				},
 			},

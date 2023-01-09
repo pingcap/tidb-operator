@@ -471,7 +471,7 @@ func newTidbClusterForPDUpgrader() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: &v1alpha1.PDSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "pd-test-image",
 				},
 				Replicas:         3,

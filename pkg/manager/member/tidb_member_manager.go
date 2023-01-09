@@ -821,7 +821,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		podSecurityContext.Sysctls = []corev1.Sysctl{}
 	}
 
-	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	// handle StorageVolumes and AdditionalVolumeMounts in CommonComponentSpec
 	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiDB.StorageVolumes, tc.Spec.TiDB.StorageClassName, v1alpha1.TiDBMemberType)
 	volMounts = append(volMounts, storageVolMounts...)
 	volMounts = append(volMounts, tc.Spec.TiDB.AdditionalVolumeMounts...)

@@ -935,7 +935,7 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -953,7 +953,7 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Worker: &v1alpha1.WorkerSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -1021,7 +1021,7 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Env: []corev1.EnvVar{
 								{
 									Name:  "SOURCE1",
@@ -1161,7 +1161,7 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							AdditionalContainers: []corev1.Container{customSideCarContainers[0]},
 						},
 					},
@@ -1179,7 +1179,7 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							AdditionalVolumes: []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
 						},
 					},
@@ -1197,7 +1197,7 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							InitContainers: []corev1.Container{{Name: "init-container"}},
 						},
 					},
@@ -1219,7 +1219,7 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							AdditionalVolumeMounts: []corev1.VolumeMount{{Name: "additional-volume-mount"}},
 						},
 					},
@@ -1246,7 +1246,7 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							TerminationGracePeriodSeconds: pointer.Int64Ptr(123),
 						},
 					},
@@ -1329,7 +1329,7 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 					StatefulSetUpdateStrategy: apps.OnDeleteStatefulSetStrategyType,
 					PodManagementPolicy:       apps.OrderedReadyPodManagement,
 					Master: v1alpha1.MasterSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ImagePullSecrets:          []corev1.LocalObjectReference{{Name: "component-level-secret"}},
 							HostNetwork:               pointer.BoolPtr(true),
 							Affinity:                  &corev1.Affinity{PodAffinity: &corev1.PodAffinity{}},

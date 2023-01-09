@@ -1744,7 +1744,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -1763,7 +1763,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -1782,7 +1782,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -1881,7 +1881,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							EnvFrom: []corev1.EnvFromSource{
 								{
 									SecretRef: &corev1.SecretEnvSource{
@@ -1916,7 +1916,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							AdditionalContainers: []corev1.Container{customSideCarContainers[0]},
 						},
 					},
@@ -1935,7 +1935,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							AdditionalVolumes: []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
 						},
 					},
@@ -2101,7 +2101,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ReadinessProbe: &v1alpha1.Probe{
 								Type: pointer.StringPtr("tcp"),
 							},
@@ -2151,7 +2151,7 @@ func TestTiKVInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							PodSecurityContext: &corev1.PodSecurityContext{
 								RunAsNonRoot: &asRoot,
 								Sysctls: []corev1.Sysctl{
@@ -2211,7 +2211,7 @@ func TestTiKVInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -2270,7 +2270,7 @@ func TestTiKVInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -2297,7 +2297,7 @@ func TestTiKVInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -2320,7 +2320,7 @@ func TestTiKVInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "false",
 							},
@@ -2410,7 +2410,7 @@ func TestTiKVInitContainers(t *testing.T) {
 								corev1.ResourceMemory: resource.MustParse("200Mi"),
 							},
 						},
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -2514,7 +2514,7 @@ func TestGetTiKVConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						Config: mustTiKVConfig(&v1alpha1.TiKVConfig{
@@ -2671,7 +2671,7 @@ func newTidbClusterForTiKV() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			TiKV: &v1alpha1.TiKVSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "tikv-test-image",
 				},
 				ResourceRequirements: corev1.ResourceRequirements{

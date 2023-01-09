@@ -955,7 +955,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: &v1alpha1.PDSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "pd-test-image",
 				},
 				ResourceRequirements: corev1.ResourceRequirements{
@@ -969,7 +969,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiKV: &v1alpha1.TiKVSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "tikv-test-image",
 				},
 				ResourceRequirements: corev1.ResourceRequirements{
@@ -984,7 +984,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 			},
 			TiDB: &v1alpha1.TiDBSpec{},
 			TiFlash: &v1alpha1.TiFlashSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "tiflash-test-image",
 				},
 				ResourceRequirements: corev1.ResourceRequirements{
@@ -1185,7 +1185,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -1204,7 +1204,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -1223,7 +1223,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -1292,7 +1292,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Env: []corev1.EnvVar{
 								{
 									Name: "DASHBOARD_SESSION_SECRET",
@@ -1364,7 +1364,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: "pingcap/pd:v3.1.0",
 						},
 					},
@@ -1391,7 +1391,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: "pingcap/pd:v4.0.0-rc.1",
 						},
 					},
@@ -1418,7 +1418,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
 					},
@@ -1445,7 +1445,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
 						Replicas: 3,
@@ -1477,7 +1477,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
 						Replicas: 3,
@@ -1509,7 +1509,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							AdditionalContainers: []corev1.Container{customSideCarContainers[0]},
 						},
 					},
@@ -1528,7 +1528,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							AdditionalVolumes: []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
 						},
 					},
@@ -1547,7 +1547,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							PodSecurityContext: &corev1.PodSecurityContext{
 								RunAsNonRoot: &asNonRoot,
 								Sysctls: []corev1.Sysctl{
@@ -1610,7 +1610,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1640,7 +1640,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1666,7 +1666,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1739,7 +1739,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 								corev1.ResourceMemory: resource.MustParse("200Mi"),
 							},
 						},
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1811,7 +1811,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "false",
 							},
@@ -1960,7 +1960,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ReadinessProbe: &v1alpha1.Probe{
 								Type: pointer.StringPtr("tcp"),
 							},
@@ -2023,7 +2023,7 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						Config: mustPDConfig(&v1alpha1.PDConfig{
@@ -2088,7 +2088,7 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: "pingcap/pd:v3.1.0",
 						},
 						Config: v1alpha1.NewPDConfig(),
@@ -2141,7 +2141,7 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: "pingcap/pd:v4.0.0-rc.1",
 						},
 						Config: v1alpha1.NewPDConfig(),
@@ -2198,7 +2198,7 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
 						Config: v1alpha1.NewPDConfig(),
@@ -2255,7 +2255,7 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
 						Config: v1alpha1.NewPDConfig(),

@@ -267,13 +267,13 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBLatestPrev),
 						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 1,
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBLatestPrev),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
@@ -284,7 +284,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					},
 					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBLatestPrev),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
@@ -338,12 +338,12 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBLatest),
 						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBLatest),
 						},
 						ResourceRequirements: v1.ResourceRequirements{
@@ -353,7 +353,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 						},
 					},
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBLatest),
 						},
 						ResourceRequirements: v1.ResourceRequirements{

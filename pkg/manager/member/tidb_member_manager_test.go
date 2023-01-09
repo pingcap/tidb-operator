@@ -980,7 +980,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -999,7 +999,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -1018,7 +1018,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -1037,7 +1037,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						Config: v1alpha1.NewTiDBConfig(),
@@ -1111,7 +1111,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							AdditionalContainers: []corev1.Container{customSideCarContainers[0]},
 						},
 					},
@@ -1130,7 +1130,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							AdditionalVolumes: []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
 						},
 					},
@@ -1248,7 +1248,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 					PD: &v1alpha1.PDSpec{},
 
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ReadinessProbe: &v1alpha1.Probe{
 								InitialDelaySeconds: pointer.Int32Ptr(5),
 								PeriodSeconds:       pointer.Int32Ptr(2),
@@ -1293,7 +1293,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							PodSecurityContext: &corev1.PodSecurityContext{
 								RunAsNonRoot: &asRoot,
 								Sysctls: []corev1.Sysctl{
@@ -1353,7 +1353,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1412,7 +1412,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1439,7 +1439,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1462,7 +1462,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "false",
 							},
@@ -1551,7 +1551,7 @@ func TestTiDBInitContainers(t *testing.T) {
 								corev1.ResourceMemory: resource.MustParse("200Mi"),
 							},
 						},
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							Annotations: map[string]string{
 								"tidb.pingcap.com/sysctl-init": "true",
 							},
@@ -1977,7 +1977,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						Config: mustTiDBConfig(&v1alpha1.TiDBConfig{
@@ -2030,7 +2030,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
@@ -2088,7 +2088,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -2556,7 +2556,7 @@ func newTidbClusterForTiDB() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			TiDB: &v1alpha1.TiDBSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: v1alpha1.TiDBMemberType.String(),
 				},
 				ResourceRequirements: corev1.ResourceRequirements{

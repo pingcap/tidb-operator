@@ -490,27 +490,27 @@ func newTidbClusterForPump() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: &v1alpha1.PDSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "pd-test-image",
 				},
 				Replicas:         1,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiKV: &v1alpha1.TiKVSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "tikv-test-image",
 				},
 				Replicas:         1,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiDB: &v1alpha1.TiDBSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "tidb-test-image",
 				},
 				Replicas: 1,
 			},
 			Pump: &v1alpha1.PumpSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image:                "pump-test-image",
 					ConfigUpdateStrategy: &updateStrategy,
 				},
@@ -623,7 +623,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Pump: &v1alpha1.PumpSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						Config: nil,
@@ -669,7 +669,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Pump: &v1alpha1.PumpSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
 						Config: config.New(map[string]interface{}{

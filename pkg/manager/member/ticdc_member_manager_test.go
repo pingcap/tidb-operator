@@ -573,7 +573,7 @@ func TestGetNewTiCDCStatefulSet(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiCDC: &v1alpha1.TiCDCSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							AdditionalVolumes: []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
 						},
 					},
@@ -626,7 +626,7 @@ func newTidbClusterForCDC() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			TiCDC: &v1alpha1.TiCDCSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: v1alpha1.TiCDCMemberType.String(),
 				},
 				ResourceRequirements: corev1.ResourceRequirements{

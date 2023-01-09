@@ -1330,7 +1330,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 func newTidbClusterForTiflash() *v1alpha1.TidbCluster {
 	tc := newTidbClusterForPD()
 	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
-		ComponentSpec: v1alpha1.ComponentSpec{
+		CommonComponentSpec: v1alpha1.CommonComponentSpec{
 			Image: "tiflash-test-image",
 		},
 		ResourceRequirements: corev1.ResourceRequirements{
@@ -1494,7 +1494,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiFlash: &v1alpha1.TiFlashSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 						StorageClaims: []v1alpha1.StorageClaim{
@@ -1523,7 +1523,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
@@ -1553,7 +1553,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
+						CommonComponentSpec: v1alpha1.CommonComponentSpec{
 							HostNetwork: &enable,
 						},
 					},

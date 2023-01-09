@@ -317,7 +317,7 @@ func MustNewRequirement(key string, op selection.Operator, vals []string) *label
 	return r
 }
 
-// BuildStorageVolumeAndVolumeMount builds VolumeMounts and PVCs for volumes declaired in spec.storageVolumes of ComponentSpec
+// BuildStorageVolumeAndVolumeMount builds VolumeMounts and PVCs for volumes declaired in spec.storageVolumes of CommonComponentSpec
 func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, defaultStorageClassName *string, memberType v1alpha1.MemberType) ([]corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
 	var volMounts []corev1.VolumeMount
 	var volumeClaims []corev1.PersistentVolumeClaim

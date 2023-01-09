@@ -626,14 +626,14 @@ func newTidbClusterForTiFlashUpgrader() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: &v1alpha1.PDSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "pd-test-image",
 				},
 				Replicas:         3,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiFlash: &v1alpha1.TiFlashSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "tiflash-test-image",
 				},
 				Replicas: 3,

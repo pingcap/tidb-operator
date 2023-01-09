@@ -476,21 +476,21 @@ func newTidbClusterForTiCDCUpgrader() *v1alpha1.TidbCluster {
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: &v1alpha1.PDSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "pd-test-image",
 				},
 				Replicas:         3,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiKV: &v1alpha1.TiKVSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "tikv-test-image",
 				},
 				Replicas:         3,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiCDC: &v1alpha1.TiCDCSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Image: "ticdc-test-image",
 				},
 				BaseImage: "ticdc-test-image",

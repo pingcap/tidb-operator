@@ -437,7 +437,7 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 		})
 	}
 
-	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	// handle StorageVolumes and AdditionalVolumeMounts in CommonComponentSpec
 	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiProxy.StorageVolumes, tc.Spec.TiProxy.StorageClassName, v1alpha1.TiProxyMemberType)
 	volMounts = append(volMounts, storageVolMounts...)
 	volMounts = append(volMounts, tc.Spec.TiProxy.AdditionalVolumeMounts...)

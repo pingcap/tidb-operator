@@ -417,7 +417,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			})
 		}
 	}
-	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	// handle StorageVolumes and AdditionalVolumeMounts in CommonComponentSpec
 	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiKV.StorageVolumes, tc.Spec.TiKV.StorageClassName, v1alpha1.TiKVMemberType)
 	volMounts = append(volMounts, storageVolMounts...)
 

@@ -130,7 +130,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 					c.Set("schedule.max-store-down-time", "5m")
 					return c
 				}(),
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.PDMemberType),
 					Labels: map[string]string{
 						ComponentCustomKey: "value",
@@ -147,7 +147,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ResourceRequirements: WithStorage(BurstableMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				Config:               tikvConfig,
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 					Labels: map[string]string{
 						ComponentCustomKey: "value",
@@ -178,7 +178,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				SeparateSlowLog:  pointer.BoolPtr(true),
 				MaxFailoverCount: pointer.Int32Ptr(3),
 				Config:           tidbConfig,
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiDBMemberType),
 					Labels: map[string]string{
 						ComponentCustomKey: "value",
@@ -230,7 +230,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 						},
 					},
 				},
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.DMMasterMemberType),
 					Labels: map[string]string{
 						ComponentCustomKey: "value",
@@ -246,7 +246,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				ResourceRequirements: WithStorage(BurstableSmall, "1Gi"),
 				Config:               v1alpha1.NewWorkerConfig(),
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.DMWorkerMemberType),
 					Labels: map[string]string{
 						ComponentCustomKey: "value",
@@ -644,7 +644,7 @@ func GetTidbDashboard(ns, name string, tc *v1alpha1.TidbCluster) *v1alpha1.TidbD
 					Namespace: tc.Namespace,
 				},
 			},
-			ComponentSpec: v1alpha1.ComponentSpec{
+			CommonComponentSpec: v1alpha1.CommonComponentSpec{
 				Version: &version,
 			},
 			// FIXME(@sabaping): use pingcap/tidb-dashboard after dashboard cicd ready.
@@ -675,12 +675,12 @@ func GetTidbNGMonitoring(ns, name string, tc *v1alpha1.TidbCluster) *v1alpha1.Ti
 				},
 			},
 
-			ComponentSpec: v1alpha1.ComponentSpec{
+			CommonComponentSpec: v1alpha1.CommonComponentSpec{
 				ConfigUpdateStrategy: &cfgUpdateStrategy,
 			},
 			PVReclaimPolicy: &deletePVP,
 			NGMonitoring: v1alpha1.NGMonitoringSpec{
-				ComponentSpec: v1alpha1.ComponentSpec{
+				CommonComponentSpec: v1alpha1.CommonComponentSpec{
 					Version: &version,
 				},
 
@@ -733,7 +733,7 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	policy := corev1.PullIfNotPresent
 	tc.Spec.Pump = &v1alpha1.PumpSpec{
 		BaseImage: "pingcap/tidb-binlog",
-		ComponentSpec: v1alpha1.ComponentSpec{
+		CommonComponentSpec: v1alpha1.CommonComponentSpec{
 			Version:         &tc.Spec.Version,
 			ImagePullPolicy: &policy,
 			Affinity: &corev1.Affinity{
