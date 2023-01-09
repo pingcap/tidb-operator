@@ -106,6 +106,12 @@ spec:
          {{- if .Values.controllerManager.leaderRetryPeriod }}
           - -leader-retry-period={{ .Values.controllerManager.leaderRetryPeriod }}
          {{- end }}
+         {{- if .Values.controllerManager.kubeClientQPS }}
+          - -kube-client-qps={{ .Values.controllerManager.kubeClientQPS }}
+         {{- end }}
+         {{- if .Values.controllerManager.kubeClientBurst }}
+          - -kube-client-burst={{ .Values.controllerManager.kubeClientBurst }}
+         {{- end }}
         env:
           - name: NAMESPACE
             valueFrom:
