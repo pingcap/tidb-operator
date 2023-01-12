@@ -133,6 +133,10 @@ controllerManager:
   # PodAnnotations will set template.metadata.annotations
   # Refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
   podAnnotations: {}
+  ## KubeClientQPS indicates the maximum QPS to the kubenetes API server from client.
+  # kubeClientQPS: 5
+  ## Maximum burst for throttle.
+  # kubeClientBurst: 10
 
 scheduler:
   create: true

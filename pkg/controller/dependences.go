@@ -91,6 +91,10 @@ type CLIConfig struct {
 	// Selector is used to filter CR labels to decide
 	// what resources should be watched and synced by controller
 	Selector string
+
+	// KubeClientQPS indicates the maximum QPS to the kubenetes API server from client.
+	KubeClientQPS   float64
+	KubeClientBurst int
 }
 
 // DefaultCLIConfig returns the default command line configuration
@@ -147,6 +151,8 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.DurationVar(&c.LeaseDuration, "leader-lease-duration", c.LeaseDuration, "leader-lease-duration is the duration that non-leader candidates will wait to force acquire leadership")
 	flag.DurationVar(&c.RenewDeadline, "leader-renew-deadline", c.RenewDeadline, "leader-renew-deadline is the duration that the acting master will retry refreshing leadership before giving up")
 	flag.DurationVar(&c.RetryPeriod, "leader-retry-period", c.RetryPeriod, "leader-retry-period is the duration the LeaderElector clients should wait between tries of actions")
+	flag.Float64Var(&c.KubeClientQPS, "kube-client-qps", c.KubeClientQPS, "The maximum QPS to the kubenetes API server from client")
+	flag.IntVar(&c.KubeClientBurst, "kube-client-burst", c.KubeClientBurst, "The maximum burst for throttle to the kubenetes API server from client")
 }
 
 // HasNodePermission returns whether the user has permission for node operations.
