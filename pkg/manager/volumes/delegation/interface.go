@@ -23,7 +23,8 @@ import (
 
 type VolumeModifier interface {
 	MinWaitDuration() time.Duration
-	// ModifyVolume modifies the underlay volume of pvc to match the args of storageclass
+	// ModifyVolume modifies the underlay volume of pvc to match the args of storageclass.
+	// If no PV permission (e.g `-cluster-permission-pv=false`), the `pv` may be nil and will return `false, nil`.
 	ModifyVolume(ctx context.Context, pvc *corev1.PersistentVolumeClaim, pv *corev1.PersistentVolume, sc *storagev1.StorageClass) (bool, error)
 
 	Validate(spvc, dpvc *corev1.PersistentVolumeClaim, ssc, dsc *storagev1.StorageClass) error
