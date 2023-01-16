@@ -40,3 +40,4 @@ spec:
     config: |
       [proxy]
       require-backend-tls = false
+      max-connections = 30
