@@ -71,7 +71,7 @@ func (bo *Options) backupData(
 		)
 		localCSBFile := path.Join(util.BRBinPath, "csb_backup.json")
 		// read cluster meta from external storage and pass it to BR
-		klog.Infof("read the restore meta from external storage")
+		klog.Infof("read the cluster meta from external storage")
 		externalStorage, err := pkgutil.NewStorageBackend(backup.Spec.StorageProvider, &pkgutil.StorageCredential{})
 		if err != nil {
 			return err

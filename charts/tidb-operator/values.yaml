@@ -12,12 +12,12 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.4.0
+operatorImage: pingcap/tidb-operator:v1.4.1
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.4.0
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.4.1
 
 #
 # Enable or disable tidb-operator features:
@@ -92,6 +92,10 @@ controllerManager:
   dmMasterFailoverPeriod: 5m
   # dm-worker failover period default(5m)
   dmWorkerFailoverPeriod: 5m
+  # detectNodeFailure tells whether tidb-operator should auto detect k8s node failures for recovery of failure pods. Currently it is experimental
+  detectNodeFailure: false
+  # podHardRecoveryPeriod is the time limit after which a failure pod is forcefully marked as k8s node failure. To be set if detectNodeFailure is true default (24h)
+  # podHardRecoveryPeriod: 24h
   ## affinity defines pod scheduling rules,affinity default settings is empty.
   ## please read the affinity document before set your scheduling rule:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
@@ -129,6 +133,10 @@ controllerManager:
   # PodAnnotations will set template.metadata.annotations
   # Refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
   podAnnotations: {}
+  ## KubeClientQPS indicates the maximum QPS to the kubenetes API server from client.
+  # kubeClientQPS: 5
+  ## Maximum burst for throttle.
+  # kubeClientBurst: 10
 
 scheduler:
   create: true

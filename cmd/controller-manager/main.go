@@ -103,6 +103,10 @@ func main() {
 		klog.Fatalf("failed to get config: %v", err)
 	}
 
+	// If they are zero, the created client will use the default values: 5, 10.
+	cfg.QPS = float32(cliCfg.KubeClientQPS)
+	cfg.Burst = cliCfg.KubeClientBurst
+
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
 		klog.Fatalf("failed to create Clientset: %v", err)

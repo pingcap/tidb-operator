@@ -298,6 +298,11 @@ func getDesiredVolumeByName(vs []DesiredVolume, name v1alpha1.StorageVolumeName)
 }
 
 func (p *podVolModifier) getBoundPVFromPVC(pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolume, error) {
+	if p.deps.PVLister == nil {
+		klog.V(4).Infof("Persistent volumes lister is unavailable, skip getting PV for %s. This may be caused by no relevant permissions", pvc.Spec.VolumeName)
+		return nil, nil
+	}
+
 	name := pvc.Spec.VolumeName
 
 	return p.deps.PVLister.Get(name)
