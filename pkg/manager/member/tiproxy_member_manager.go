@@ -269,15 +269,14 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 			health = false
 		}
 		memberStatus := v1alpha1.TiProxyMember{
-			Name:            name,
-			Health:          health,
-			HealthCheckTime: metav1.Now(),
+			Name:               name,
+			Health:             health,
+			LastTransitionTime: metav1.Now(),
 		}
 		oldMemberStatus, exist := oldMembers[name]
 		if exist && memberStatus.Health == oldMemberStatus.Health {
-			memberStatus.HealthCheckTime = oldMemberStatus.HealthCheckTime
+			memberStatus.LastTransitionTime = oldMemberStatus.LastTransitionTime
 		}
-
 		members[name] = memberStatus
 	}
 

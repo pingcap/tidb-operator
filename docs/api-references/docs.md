@@ -22073,7 +22073,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>Health check time.</p>
+<p>Last time the health transitioned from one to another.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 </tbody>

@@ -1433,9 +1433,10 @@ type TiFlashStatus struct {
 type TiProxyMember struct {
 	Name   string `json:"name"`
 	Health bool   `json:"health"`
-	// Health check time.
+	// Last time the health transitioned from one to another.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
 	// +nullable
-	HealthCheckTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 // TiProxyStatus is TiProxy status
