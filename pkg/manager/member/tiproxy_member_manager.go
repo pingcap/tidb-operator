@@ -268,14 +268,17 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 			klog.V(4).Infof("tiproxy[%d] is not health: %+v", id, err)
 			health = false
 		}
-		oldm, ok := oldMembers[name]
-		if ok && oldm.Health != health || !ok {
-			members[name] = v1alpha1.TiProxyMember{
-				Name:            name,
-				Health:          health,
-				HealthCheckTime: metav1.Now(),
-			}
+		memberStatus := v1alpha1.TiProxyMember{
+			Name:            name,
+			Health:          health,
+			HealthCheckTime: metav1.Now(),
 		}
+		oldMemberStatus, exist := oldMembers[name]
+		if exist && memberStatus.Health == oldMemberStatus.Health {
+			memberStatus.HealthCheckTime = oldMemberStatus.HealthCheckTime
+		}
+
+		members[name] = memberStatus
 	}
 
 	tc.Status.TiProxy.Members = members
