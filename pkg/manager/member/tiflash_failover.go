@@ -25,7 +25,9 @@ import (
 
 // NewTiFlashFailover returns a tiflash Failover
 func NewTiFlashFailover(deps *controller.Dependencies) Failover {
-	return &commonStoreFailover{deps: deps, storeAccess: &tiflashStoreAccess{}}
+	storeAccess := &tiflashStoreAccess{}
+	failureRecovery := commonStatefulFailureRecovery{deps: deps, failureObjectAccess: &failureStoreAccess{storeAccess: storeAccess}}
+	return &commonStoreFailover{deps: deps, storeAccess: storeAccess, failureRecovery: failureRecovery}
 }
 
 // tiflashStoreAccess is a folder of access functions for TiFlash store and implements StoreAccess
@@ -49,6 +51,11 @@ func (tsa *tiflashStoreAccess) GetStores(tc *v1alpha1.TidbCluster) map[string]v1
 	return tc.Status.TiFlash.Stores
 }
 
+func (tsa *tiflashStoreAccess) GetStore(tc *v1alpha1.TidbCluster, storeID string) (v1alpha1.TiKVStore, bool) {
+	store, exists := tc.Status.TiFlash.Stores[storeID]
+	return store, exists
+}
+
 func (tsa *tiflashStoreAccess) SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster) {
 	if tc.Status.TiFlash.FailoverUID == "" {
 		tc.Status.TiFlash.FailoverUID = uuid.NewUUID()
@@ -65,6 +72,11 @@ func (tsa *tiflashStoreAccess) GetFailureStores(tc *v1alpha1.TidbCluster) map[st
 	return tc.Status.TiFlash.FailureStores
 }
 
+func (tsa *tiflashStoreAccess) GetFailureStore(tc *v1alpha1.TidbCluster, storeID string) (v1alpha1.TiKVFailureStore, bool) {
+	failureStore, exists := tc.Status.TiFlash.FailureStores[storeID]
+	return failureStore, exists
+}
+
 func (tsa *tiflashStoreAccess) SetFailureStore(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore) {
 	tc.Status.TiFlash.FailureStores[storeID] = failureStore
 }
@@ -76,6 +88,17 @@ func (tsa *tiflashStoreAccess) GetStsDesiredOrdinals(tc *v1alpha1.TidbCluster, e
 func (tsa *tiflashStoreAccess) ClearFailStatus(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiFlash.FailureStores = nil
 	tc.Status.TiFlash.FailoverUID = ""
+}
+
+// IsHostDownForFailurePod checks if HostDown is set for any tiflash failure store
+func (tsa *tiflashStoreAccess) IsHostDownForFailurePod(tc *v1alpha1.TidbCluster) bool {
+	for storeID := range tc.Status.TiFlash.FailureStores {
+		failureStore := tc.Status.TiFlash.FailureStores[storeID]
+		if failureStore.HostDown {
+			return true
+		}
+	}
+	return false
 }
 
 // NewFakeTiFlashFailover returns a fake Failover

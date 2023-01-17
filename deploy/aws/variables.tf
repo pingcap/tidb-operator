@@ -19,7 +19,7 @@ variable "eks_version" {
 
 variable "operator_version" {
   description = "TiDB operator version"
-  default     = "v1.4.0-beta.4"
+  default     = "v1.4.1"
 }
 
 variable "operator_values" {
@@ -80,7 +80,7 @@ variable "bastion_instance_type" {
 
 # For aws tutorials compatiablity
 variable "default_cluster_version" {
-  default = "v6.1.0"
+  default = "v6.5.0"
 }
 
 variable "default_cluster_pd_count" {

@@ -21,8 +21,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
 )
 
@@ -66,11 +69,11 @@ type ClusterInfo struct {
 	Replicas       map[string]uint64 `json:"replicas" toml:"replicas"`
 }
 
-type Kubernetes struct {
-	PVs     []interface{}          `json:"pvs" toml:"pvs"`
-	PVCs    []interface{}          `json:"pvcs" toml:"pvcs"`
-	CRD     interface{}            `json:"crd_tidb_cluster" toml:"crd_tidb_cluster"`
-	Options map[string]interface{} `json:"options" toml:"options"`
+type KubernetesBackup struct {
+	PVCs         []*corev1.PersistentVolumeClaim `json:"pvcs"`
+	PVs          []*corev1.PersistentVolume      `json:"pvs"`
+	TiDBCluster  *v1alpha1.TidbCluster           `json:"crd_tidb_cluster"`
+	Unstructured *unstructured.Unstructured      `json:"options"`
 }
 
 type TiKVComponent struct {
@@ -91,7 +94,7 @@ type EBSBasedBRMeta struct {
 	TiKVComponent  *TiKVComponent         `json:"tikv" toml:"tikv"`
 	TiDBComponent  *TiDBComponent         `json:"tidb" toml:"tidb"`
 	PDComponent    *PDComponent           `json:"pd" toml:"pd"`
-	KubernetesMeta *Kubernetes            `json:"kubernetes" toml:"kubernetes"`
+	KubernetesMeta *KubernetesBackup      `json:"kubernetes" toml:"kubernetes"`
 	Options        map[string]interface{} `json:"options" toml:"options"`
 	Region         string                 `json:"region" toml:"region"`
 }

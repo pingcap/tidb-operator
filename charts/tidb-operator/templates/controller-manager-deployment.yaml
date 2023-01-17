@@ -79,6 +79,10 @@ spec:
           - -tidb-failover-period={{ .Values.controllerManager.tidbFailoverPeriod | default "5m" }}
           - -dm-master-failover-period={{ .Values.controllerManager.dmMasterFailoverPeriod | default "5m" }}
           - -dm-worker-failover-period={{ .Values.controllerManager.dmWorkerFailoverPeriod | default "5m" }}
+         {{- if eq .Values.controllerManager.detectNodeFailure true }}
+          - -detect-node-failure=true
+          - -pod-hard-recovery-period={{ .Values.controllerManager.podHardRecoveryPeriod | default "24h" }}
+         {{- end }}
           - -v={{ .Values.controllerManager.logLevel }}
           {{- if .Values.testMode }}
           - -test-mode={{ .Values.testMode }}
@@ -101,6 +105,12 @@ spec:
          {{- end }}
          {{- if .Values.controllerManager.leaderRetryPeriod }}
           - -leader-retry-period={{ .Values.controllerManager.leaderRetryPeriod }}
+         {{- end }}
+         {{- if .Values.controllerManager.kubeClientQPS }}
+          - -kube-client-qps={{ .Values.controllerManager.kubeClientQPS }}
+         {{- end }}
+         {{- if .Values.controllerManager.kubeClientBurst }}
+          - -kube-client-burst={{ .Values.controllerManager.kubeClientBurst }}
          {{- end }}
         env:
           - name: NAMESPACE

@@ -36,5 +36,5 @@ if [ -n "$ENABLE_SSL" ]; then
 	kubectl create secret generic ${cluster}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
 fi
 
-helm install operator $BASE/../../charts/tidb-operator/ --namespace testing --set "operatorImage=xx/tidb-operator:latest"
+helm install operator $BASE/../../charts/tidb-operator/ --namespace testing --set "operatorImage=xx/tidb-operator:latest,imagePullPolicy=Always"
 kubectl apply -f $BASE/cluster.yaml --namespace testing

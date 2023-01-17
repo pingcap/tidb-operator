@@ -5199,6 +5199,8 @@ spec:
                       type: string
                   type: object
               type: object
+            preferIPv6:
+              type: boolean
             priorityClassName:
               type: string
             pump:
@@ -18818,6 +18820,8 @@ spec:
                   type: object
                 baseImage:
                   type: string
+                config:
+                  x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
                   type: string
                 dnsConfig:
@@ -19563,16 +19567,6 @@ spec:
                   type: object
                 priorityClassName:
                   type: string
-                proxy:
-                  properties:
-                    max-connections:
-                      format: int64
-                      type: integer
-                    proxy-protocol:
-                      type: string
-                    tcp-keep-alive:
-                      type: boolean
-                  type: object
                 readinessProbe:
                   properties:
                     initialDelaySeconds:
@@ -19789,6 +19783,8 @@ spec:
                         format: date-time
                         nullable: true
                         type: string
+                      hostDown:
+                        type: boolean
                       memberDeleted:
                         type: boolean
                       memberID:
@@ -20473,8 +20469,16 @@ spec:
                         format: date-time
                         nullable: true
                         type: string
+                      hostDown:
+                        type: boolean
                       podName:
                         type: string
+                      pvcUIDSet:
+                        additionalProperties:
+                          type: object
+                        type: object
+                      storeDeleted:
+                        type: boolean
                       storeID:
                         type: string
                     type: object
@@ -20712,8 +20716,16 @@ spec:
                         format: date-time
                         nullable: true
                         type: string
+                      hostDown:
+                        type: boolean
                       podName:
                         type: string
+                      pvcUIDSet:
+                        additionalProperties:
+                          type: object
+                        type: object
+                      storeDeleted:
+                        type: boolean
                       storeID:
                         type: string
                     type: object
@@ -20927,18 +20939,12 @@ spec:
                     type: object
                   nullable: true
                   type: array
+                members:
+                  additionalProperties:
+                    type: boolean
+                  type: object
                 phase:
                   type: string
-                proxy:
-                  properties:
-                    max-connections:
-                      format: int64
-                      type: integer
-                    proxy-protocol:
-                      type: string
-                    tcp-keep-alive:
-                      type: boolean
-                  type: object
                 statefulSet:
                   properties:
                     collisionCount:

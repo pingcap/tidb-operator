@@ -14,10 +14,10 @@
 package member
 
 import (
-	"bytes"
 	"fmt"
-	"html/template"
+	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -113,72 +113,37 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 		PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
 	}
 
-	state := map[string]interface{}{
-		"WorkDir": filepath.Join(tiproxyVolumeMountPath, "work"),
-		"PDAddr":  PDAddr,
-	}
-	if tc.IsTLSClusterEnabled() {
-		state["PeerTLS"] = tiproxyCertVolumeMountPath
-		state["ClusterClientTLS"] = util.ClusterClientTLSPath
-	}
-	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
-		state["SQLClientTLS"] = tidbClientCertPath
+	var cfgWrapper *v1alpha1.TiProxyConfigWraper
+	if tc.Spec.TiProxy.Config != nil {
+		cfgWrapper = tc.Spec.TiProxy.Config.DeepCopy()
+	} else {
+		cfgWrapper = v1alpha1.NewTiProxyConfig()
 	}
 
-	confBuf := &bytes.Buffer{}
-	if err := template.Must(template.New("config").Parse(`
-workdir: {{ .WorkDir }}
-proxy:
-  addr: "0.0.0.0:6000"
-  tcp-keep-alive: true
-  max-connections: 1000
-  require-backend-tls: false
-  pd-addrs: {{ .PDAddr }}
-  # proxy-protocol: "v2"
-metrics:
-api:
-  addr: "0.0.0.0:3080"
-  enable-basic-auth: false
-  user: ""
-  password: ""
-log:
-  level: "info"
-  encoder: "tidb"
-  log-file:
-    filename: ""
-    max-size: 300
-    max-days: 1
-    max-backups: 1
-security:
-  rsa-key-size: 4096
-  sql-tls:
-    {{if .SQLClientTLS}}
-    ca: {{ .SQLClientTLS }}/ca.crt
-    cert: {{ .SQLClientTLS }}/tls.crt
-    key: {{ .SQLClientTLS }}/tls.key
-    {{else}}
-    skip-ca: true
-    {{end}}
-  cluster-tls:
-    {{if .ClusterClientTLS}}
-    ca: {{ .ClusterClientTLS }}/ca.crt
-    cert: {{ .ClusterClientTLS }}/tls.crt
-    key: {{ .ClusterClientTLS }}/tls.key
-    {{end}}
-  server-tls:
-    {{if .ServerTLS}}
-    ca: {{ .ServerTLS }}/ca.crt
-    cert: {{ .ServerTLS }}/tls.crt
-    key: {{ .ServerTLS }}/tls.key
-    {{end}}
-  peer-tls:
-    {{if .PeerTLS}}
-    ca: {{ .PeerTLS }}/ca.crt
-    cert: {{ .PeerTLS }}/tls.crt
-    key: {{ .PeerTLS }}/tls.key
-    {{end}}
-`)).Execute(confBuf, state); err != nil {
-		return nil, err
+	cfgWrapper.Set("workdir", filepath.Join(tiproxyVolumeMountPath, "work"))
+	cfgWrapper.Set("proxy.pd-addrs", PDAddr)
+	cfgWrapper.Set("proxy.require-backend-tls", false)
+
+	if tc.IsTLSClusterEnabled() {
+		cfgWrapper.Set("security.peer-tls.ca", path.Join(tiproxyCertVolumeMountPath, "ca.crt"))
+		cfgWrapper.Set("security.peer-tls.key", path.Join(tiproxyCertVolumeMountPath, "tls.key"))
+		cfgWrapper.Set("security.peer-tls.cert", path.Join(tiproxyCertVolumeMountPath, "tls.crt"))
+
+		cfgWrapper.Set("security.cluster-tls.ca", path.Join(util.ClusterClientTLSPath, "ca.crt"))
+		cfgWrapper.Set("security.cluster-tls.key", path.Join(util.ClusterClientTLSPath, "tls.key"))
+		cfgWrapper.Set("security.cluster-tls.cert", path.Join(util.ClusterClientTLSPath, "tls.crt"))
+	}
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+		cfgWrapper.Set("security.sql-tls.ca", path.Join(tidbClientCertPath, "ca.crt"))
+		cfgWrapper.Set("security.sql-tls.key", path.Join(tidbClientCertPath, "tls.key"))
+		cfgWrapper.Set("security.sql-tls.cert", path.Join(tidbClientCertPath, "tls.crt"))
+	} else {
+		cfgWrapper.Set("security.sql-tls.skip-ca", true)
+	}
+
+	cfgBytes, err := cfgWrapper.MarshalTOML()
+	if err != nil {
+		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}
 
 	startScript, err := startscript.RenderTiProxyStartScript(tc)
@@ -194,7 +159,7 @@ security:
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Data: map[string]string{
-			"config-file":    confBuf.String(),
+			"config-file":    string(cfgBytes),
 			"startup-script": startScript,
 		},
 	}
@@ -206,7 +171,7 @@ security:
 		})
 	}
 
-	klog.Info("get tiproxy in use config map name: ", inUseName)
+	klog.V(4).Info("get tiproxy in use config map name: ", inUseName)
 
 	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, v1alpha1.ConfigUpdateStrategyInPlace, inUseName, newCm)
 	if err != nil {
@@ -294,26 +259,18 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 		tc.Status.TiProxy.Phase = v1alpha1.NormalPhase
 	}
 
-	replicas := 0
 	pods := helper.GetPodOrdinals(tc.Status.TiProxy.StatefulSet.Replicas, sts)
+	members := make(map[string]bool)
 	for id := range pods {
-		cfg, err := m.deps.ProxyControl.GetConfigProxy(tc, id)
-		if err != nil {
+		if _, err := m.deps.ProxyControl.GetConfigProxy(tc, id); err != nil {
+			klog.Infof("failed to get tiproxy[%d] config: %+v", id, err)
 			continue
 		}
-		tc.Status.TiProxy.Proxy = *cfg
-		if k := tc.Spec.TiProxy.Proxy; k != nil {
-			if k.MaxConnections != cfg.MaxConnections || k.TCPKeepAlive != cfg.TCPKeepAlive {
-				if err := m.deps.ProxyControl.SetConfigProxy(tc, id, k); err != nil {
-					klog.Infof("failed to set tiproxy[%d] config: %+v", id, k)
-					continue
-				}
-			}
-		}
-		replicas++
+		members[strconv.Itoa(int(id))] = true
 	}
 
-	tc.Status.TiProxy.Synced = replicas == int(tc.TiProxyDeployDesiredReplicas())
+	tc.Status.TiProxy.Members = members
+	tc.Status.TiProxy.Synced = true
 	return nil
 }
 
@@ -415,7 +372,6 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiProxyLabelVal)
 	headlessSvcName := controller.TiProxyPeerMemberName(tcName)
 
-	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.TiProxyMemberType))
 	annMount, annVolume := annotationsMountVolume()
 	vols := []corev1.Volume{
 		{Name: "config",
@@ -435,10 +391,6 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 	}
 	volMounts := []corev1.VolumeMount{
 		{Name: "config", ReadOnly: true, MountPath: "/etc/proxy"},
-		{
-			Name:      dataVolumeName,
-			MountPath: tiproxyVolumeMountPath,
-		},
 		annMount,
 	}
 
@@ -541,11 +493,6 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 		EnvFrom:      baseTiProxySpec.EnvFrom(),
 	}
 
-	storageRequest, err := controller.ParseStorageRequest(tc.Spec.TiProxy.Requests)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse storage request for TiProxy, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
-	}
-
 	podSpec := baseTiProxySpec.BuildPodSpec()
 
 	podSpec.Containers, err = MergePatchContainers([]corev1.Container{tiproxyContainer}, baseTiProxySpec.AdditionalContainers())
@@ -566,7 +513,7 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
 		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.TiProxyDeployDesiredReplicas()),
+			Partition: pointer.Int32Ptr(tc.TiProxyStsDesiredReplicas()),
 		}
 	}
 
@@ -579,7 +526,7 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(tc.TiProxyDeployDesiredReplicas()),
+			Replicas: pointer.Int32Ptr(tc.TiProxyStsDesiredReplicas()),
 			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -587,9 +534,6 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 					Annotations: podAnnotations,
 				},
 				Spec: podSpec,
-			},
-			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				util.VolumeClaimTemplate(storageRequest, dataVolumeName, tc.Spec.TiProxy.StorageClassName),
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: baseTiProxySpec.PodManagementPolicy(),
