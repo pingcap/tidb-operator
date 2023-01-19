@@ -19813,15 +19813,12 @@ spec:
                       format: date-time
                       nullable: true
                       type: string
-                    message:
-                      type: string
                     name:
                       type: string
                   required:
                   - clientURL
                   - health
                   - id
-                  - message
                   - name
                   type: object
                 members:
@@ -19837,15 +19834,12 @@ spec:
                         format: date-time
                         nullable: true
                         type: string
-                      message:
-                        type: string
                       name:
                         type: string
                     required:
                     - clientURL
                     - health
                     - id
-                    - message
                     - name
                     type: object
                   type: object
@@ -19862,15 +19856,12 @@ spec:
                         format: date-time
                         nullable: true
                         type: string
-                      message:
-                        type: string
                       name:
                         type: string
                     required:
                     - clientURL
                     - health
                     - id
-                    - message
                     - name
                     type: object
                   type: object
@@ -20511,8 +20502,6 @@ spec:
                       leaderCount:
                         format: int32
                         type: integer
-                      message:
-                        type: string
                       podName:
                         type: string
                       state:
@@ -20521,7 +20510,6 @@ spec:
                     - id
                     - ip
                     - leaderCount
-                    - message
                     - podName
                     - state
                     type: object
@@ -20588,8 +20576,6 @@ spec:
                       leaderCount:
                         format: int32
                         type: integer
-                      message:
-                        type: string
                       podName:
                         type: string
                       state:
@@ -20598,7 +20584,6 @@ spec:
                     - id
                     - ip
                     - leaderCount
-                    - message
                     - podName
                     - state
                     type: object
@@ -20619,8 +20604,6 @@ spec:
                       leaderCount:
                         format: int32
                         type: integer
-                      message:
-                        type: string
                       podName:
                         type: string
                       state:
@@ -20629,7 +20612,6 @@ spec:
                     - id
                     - ip
                     - leaderCount
-                    - message
                     - podName
                     - state
                     type: object
@@ -20767,8 +20749,6 @@ spec:
                       leaderCount:
                         format: int32
                         type: integer
-                      message:
-                        type: string
                       podName:
                         type: string
                       state:
@@ -20777,7 +20757,6 @@ spec:
                     - id
                     - ip
                     - leaderCount
-                    - message
                     - podName
                     - state
                     type: object
@@ -20844,8 +20823,6 @@ spec:
                       leaderCount:
                         format: int32
                         type: integer
-                      message:
-                        type: string
                       podName:
                         type: string
                       state:
@@ -20854,7 +20831,6 @@ spec:
                     - id
                     - ip
                     - leaderCount
-                    - message
                     - podName
                     - state
                     type: object
@@ -20875,8 +20851,6 @@ spec:
                       leaderCount:
                         format: int32
                         type: integer
-                      message:
-                        type: string
                       podName:
                         type: string
                       state:
@@ -20885,7 +20859,6 @@ spec:
                     - id
                     - ip
                     - leaderCount
-                    - message
                     - podName
                     - state
                     type: object
