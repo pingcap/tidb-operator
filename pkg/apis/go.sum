@@ -297,10 +297,8 @@ github.com/onsi/gomega v1.10.2/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
-github.com/pingcap/TiProxy/lib v0.0.0-20230118070318-ae713b29bdec h1:i3VXfrIhFW0c6Aru7QLFgWI/MGIaPdS0b6gZS0uSGyU=
-github.com/pingcap/TiProxy/lib v0.0.0-20230118070318-ae713b29bdec/go.mod h1:AR0IJ6SdStz1dkxG0gi47RxzQWxbPKACQ7JG1VY6Dnc=
-github.com/pingcap/TiProxy/lib v0.0.0-20230119075937-38eb82af4cd0 h1:DFnpWSh3fZAcxAFGEQQCLDzE46VtuFgA9OPSvpVXH2w=
-github.com/pingcap/TiProxy/lib v0.0.0-20230119075937-38eb82af4cd0/go.mod h1:AR0IJ6SdStz1dkxG0gi47RxzQWxbPKACQ7JG1VY6Dnc=
+github.com/pingcap/TiProxy/lib v0.0.0-20230119083121-a15dd3e8f104 h1:G+VPB2nuXNGzU0LtigISBPqzRF1qUsu8YP1r2fu+p/I=
+github.com/pingcap/TiProxy/lib v0.0.0-20230119083121-a15dd3e8f104/go.mod h1:AR0IJ6SdStz1dkxG0gi47RxzQWxbPKACQ7JG1VY6Dnc=
 github.com/pingcap/errors v0.11.4 h1:lFuQV/oaUMGcD2tqt+01ROSmJs75VG1ToEOkZIZ4nE4=
 github.com/pingcap/errors v0.11.4/go.mod h1:Oi8TUi2kEtXXLMJk9l1cGmz20kV3TaQ0usTwv5KuLY8=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
