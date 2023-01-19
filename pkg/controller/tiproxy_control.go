@@ -17,12 +17,12 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/pingcap/TiProxy/lib/cli"
+	"github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/spf13/cobra"
@@ -32,8 +32,8 @@ import (
 
 // TiProxyControlInterface is the interface that knows how to control tiproxy clusters
 type TiProxyControlInterface interface {
-	// IsHealth set config
-	IsHealth(tc *v1alpha1.TidbCluster, ordinal int32) error
+	// IsHealth check if node is healthy.
+	IsHealth(tc *v1alpha1.TidbCluster, ordinal int32) (*config.HealthInfo, error)
 }
 
 var _ TiProxyControlInterface = &defaultTiProxyControl{}
@@ -105,13 +105,11 @@ func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) 
 	}
 }
 
-func (c *defaultTiProxyControl) IsHealth(tc *v1alpha1.TidbCluster, ordinal int32) error {
+func (c *defaultTiProxyControl) IsHealth(tc *v1alpha1.TidbCluster, ordinal int32) (*config.HealthInfo, error) {
 	v, err := c.getCli(tc, ordinal)(nil, "health")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if !strings.HasPrefix(v.String(), `""`) {
-		return errors.New(v.String())
-	}
-	return nil
+	var g config.HealthInfo
+	return &g, json.Unmarshal(v.Bytes(), &g)
 }

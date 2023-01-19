@@ -263,15 +263,17 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 	members := make(map[string]v1alpha1.TiProxyMember)
 	for id := range pods {
 		name := fmt.Sprintf("%s-%d", controller.TiProxyMemberName(tc.GetName()), id)
-		health := true
-		if err := m.deps.ProxyControl.IsHealth(tc, id); err != nil {
-			klog.V(4).Infof("tiproxy[%d] is not health: %+v", id, err)
-			health = false
-		}
 		memberStatus := v1alpha1.TiProxyMember{
 			Name:               name,
-			Health:             health,
 			LastTransitionTime: metav1.Now(),
+		}
+		healthInfo, err := m.deps.ProxyControl.IsHealth(tc, id)
+		if err != nil {
+			klog.V(4).Infof("tiproxy[%d] is not health: %+v", id, err)
+			memberStatus.Health = false
+		} else {
+			memberStatus.Health = true
+			memberStatus.Info = healthInfo
 		}
 		oldMemberStatus, exist := oldMembers[name]
 		if exist && memberStatus.Health == oldMemberStatus.Health {

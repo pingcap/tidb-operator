@@ -22065,6 +22065,18 @@ bool
 </tr>
 <tr>
 <td>
+<code>info</code></br>
+<em>
+github.com/pingcap/TiProxy/lib/config.HealthInfo
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional healthinfo if it is healthy.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>lastTransitionTime</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">

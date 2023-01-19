@@ -34194,6 +34194,14 @@ spec:
                     properties:
                       health:
                         type: boolean
+                      info:
+                        properties:
+                          config_version:
+                            format: int32
+                            type: integer
+                        required:
+                        - config_version
+                        type: object
                       lastTransitionTime:
                         format: date-time
                         nullable: true
