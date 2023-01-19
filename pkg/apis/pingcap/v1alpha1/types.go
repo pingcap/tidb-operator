@@ -1286,6 +1286,7 @@ type TiDBMember struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	// Node hosting pod of this TiDB member.
 	NodeName string `json:"node,omitempty"`
+	Message  string `json:"message"`
 }
 
 // TiDBFailureMember is the tidb failure member information
