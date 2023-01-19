@@ -212,6 +212,15 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	}
 	setNotExist := errors.IsNotFound(err)
 
+	// if TiFlash is scale from 0 and with previous StatefulSet, we delete the previous StatefulSet first
+	// to avoid some fileds (e.g storage request) reused and cause unexpected behavior (e.g scale down).
+	if oldSetTmp != nil && *oldSetTmp.Spec.Replicas == 0 && oldSetTmp.Status.UpdatedReplicas == 0 && tc.Spec.TiFlash.Replicas > 0 {
+		if err := m.deps.StatefulSetControl.DeleteStatefulSet(tc, oldSetTmp); err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("syncStatefulSet: fail to delete sts %s for cluster %s/%s, error: %s", controller.TiFlashMemberName(tcName), ns, tcName, err)
+		}
+		return controller.RequeueErrorf("wait for previous sts %s for cluster %s/%s to be deleted", controller.TiFlashMemberName(tcName), ns, tcName)
+	}
+
 	oldSet := oldSetTmp.DeepCopy()
 
 	if err := m.syncTidbClusterStatus(tc, oldSet); err != nil {
