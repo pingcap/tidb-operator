@@ -468,7 +468,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	stsLabels := labelTiKV(tc)
 	podLabels := util.CombineStringMap(stsLabels.Labels(), baseTiKVSpec.Labels())
 	setName := controller.TiKVMemberName(tcName)
-	podAnnotations := util.CombineStringMap(controller.AnnProm(20180), baseTiKVSpec.Annotations())
+	podAnnotations := util.CombineStringMap(controller.AnnProm(20180, "/metrics"), baseTiKVSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiKVLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
@@ -621,6 +621,22 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
+	}
+
+	if tc.Spec.TiKV.ReadinessProbe != nil {
+		tikvContainer.ReadinessProbe = &corev1.Probe{
+			Handler:             buildTiKVReadinessProbHandler(tc),
+			InitialDelaySeconds: int32(10),
+		}
+	}
+
+	if tc.Spec.TiKV.ReadinessProbe != nil {
+		if tc.Spec.TiKV.ReadinessProbe.InitialDelaySeconds != nil {
+			tikvContainer.ReadinessProbe.InitialDelaySeconds = *tc.Spec.TiKV.ReadinessProbe.InitialDelaySeconds
+		}
+		if tc.Spec.TiKV.ReadinessProbe.PeriodSeconds != nil {
+			tikvContainer.ReadinessProbe.PeriodSeconds = *tc.Spec.TiKV.ReadinessProbe.PeriodSeconds
+		}
 	}
 
 	if tc.Spec.TiKV.EnableNamedStatusPort {
@@ -963,7 +979,7 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 		nodeName := pod.Spec.NodeName
 		ls, err := getNodeLabels(m.deps.NodeLister, nodeName, storeLabels)
 		if err != nil || len(ls) == 0 {
-			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
+			klog.Warningf("node: [%s] has no node labels %v, skipping set store labels for Pod: [%s/%s]", nodeName, storeLabels, ns, podName)
 			continue
 		}
 
@@ -1023,6 +1039,15 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 	}
 
 	return false, nil
+}
+
+// TODO: Support check tikv status http request in future.
+func buildTiKVReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
+	return corev1.Handler{
+		TCPSocket: &corev1.TCPSocketAction{
+			Port: intstr.FromInt(20160),
+		},
+	}
 }
 
 type FakeTiKVMemberManager struct {

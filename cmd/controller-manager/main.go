@@ -33,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/dmcluster"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
+	"github.com/pingcap/tidb-operator/pkg/controller/tidbdashboard"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbngmonitoring"
@@ -102,6 +103,10 @@ func main() {
 		klog.Fatalf("failed to get config: %v", err)
 	}
 
+	// If they are zero, the created client will use the default values: 5, 10.
+	cfg.QPS = float32(cliCfg.KubeClientQPS)
+	cfg.Burst = cliCfg.KubeClientBurst
+
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
 		klog.Fatalf("failed to create Clientset: %v", err)
@@ -167,6 +172,7 @@ func main() {
 			tidbinitializer.NewController(deps),
 			tidbmonitor.NewController(deps),
 			tidbngmonitoring.NewController(deps),
+			tidbdashboard.NewController(deps),
 		}
 		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 			controllers = append(controllers, autoscaler.NewController(deps))

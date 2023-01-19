@@ -46,6 +46,7 @@ func NewDefaultTidbClusterControl(
 	pdMemberManager manager.Manager,
 	tikvMemberManager manager.Manager,
 	tidbMemberManager manager.Manager,
+	tiproxyMemberManager manager.Manager,
 	reclaimPolicyManager manager.Manager,
 	metaManager manager.Manager,
 	orphanPodsCleaner member.OrphanPodsCleaner,
@@ -64,6 +65,7 @@ func NewDefaultTidbClusterControl(
 		pdMemberManager:          pdMemberManager,
 		tikvMemberManager:        tikvMemberManager,
 		tidbMemberManager:        tidbMemberManager,
+		tiproxyMemberManager:     tiproxyMemberManager,
 		reclaimPolicyManager:     reclaimPolicyManager,
 		metaManager:              metaManager,
 		orphanPodsCleaner:        orphanPodsCleaner,
@@ -84,6 +86,7 @@ type defaultTidbClusterControl struct {
 	pdMemberManager          manager.Manager
 	tikvMemberManager        manager.Manager
 	tidbMemberManager        manager.Manager
+	tiproxyMemberManager     manager.Manager
 	reclaimPolicyManager     manager.Manager
 	metaManager              manager.Manager
 	orphanPodsCleaner        member.OrphanPodsCleaner
@@ -177,6 +180,18 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - scale out/in the pd cluster
 	//   - failover the pd cluster
 	if err := c.pdMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
+	// works that should be done to make the tiproxy cluster current state match the desired state:
+	//   - create or update the tiproxy service
+	//   - create or update the tiproxy headless service
+	//   - create the tiproxy statefulset
+	//   - sync tiproxy cluster status from tiproxy to TidbCluster object
+	//   - upgrade the tiproxy cluster
+	//   - scale out/in the tiproxy cluster
+	//   - failover the tiproxy cluster
+	if err := c.tiproxyMemberManager.Sync(tc); err != nil {
 		return err
 	}
 

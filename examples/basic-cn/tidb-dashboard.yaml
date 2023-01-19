@@ -1,0 +1,22 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbDashboard
+metadata:
+  name: basic
+spec:
+  baseImage: pingcap/tidb-dashboard
+  version: latest
+
+  ## tidb cluster to be monitored
+  ## ** now only support monitoring one tidb cluster **
+  clusters:
+    - name: basic
+
+  ## describes the compute resource requirements and limits.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+  requests:
+    #   cpu: 1000m
+    #   memory: 1Gi
+    storage: 10Gi
+  # limits:
+  #   cpu: 2000m
+  #   memory: 2Gi

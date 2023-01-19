@@ -79,6 +79,10 @@ type CLIConfig struct {
 	WaitDuration          time.Duration
 	// ResyncDuration is the resync time of informer
 	ResyncDuration time.Duration
+	// DetectNodeFailure enables detection of node failures for stateful failure pods for recovery
+	DetectNodeFailure bool
+	// PodHardRecoveryPeriod is the hard recovery period for a failure pod
+	PodHardRecoveryPeriod time.Duration
 	// Defines whether tidb operator run in test mode, test mode is
 	// only open when test
 	TestMode               bool
@@ -87,6 +91,10 @@ type CLIConfig struct {
 	// Selector is used to filter CR labels to decide
 	// what resources should be watched and synced by controller
 	Selector string
+
+	// KubeClientQPS indicates the maximum QPS to the kubenetes API server from client.
+	KubeClientQPS   float64
+	KubeClientBurst int
 }
 
 // DefaultCLIConfig returns the default command line configuration
@@ -106,6 +114,8 @@ func DefaultCLIConfig() *CLIConfig {
 		RetryPeriod:            2 * time.Second,
 		WaitDuration:           5 * time.Second,
 		ResyncDuration:         30 * time.Second,
+		PodHardRecoveryPeriod:  24 * time.Hour,
+		DetectNodeFailure:      false,
 		TiDBBackupManagerImage: "pingcap/tidb-backup-manager:latest",
 		TiDBDiscoveryImage:     "pingcap/tidb-operator:latest",
 		Selector:               "",
@@ -128,6 +138,8 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.DurationVar(&c.TiDBFailoverPeriod, "tidb-failover-period", c.TiDBFailoverPeriod, "TiDB failover period")
 	flag.DurationVar(&c.MasterFailoverPeriod, "dm-master-failover-period", c.MasterFailoverPeriod, "dm-master failover period")
 	flag.DurationVar(&c.WorkerFailoverPeriod, "dm-worker-failover-period", c.WorkerFailoverPeriod, "dm-worker failover period")
+	flag.DurationVar(&c.PodHardRecoveryPeriod, "pod-hard-recovery-period", c.PodHardRecoveryPeriod, "Hard recovery period for a failure pod default(24h)")
+	flag.BoolVar(&c.DetectNodeFailure, "detect-node-failure", c.DetectNodeFailure, "Automatically detect node failures")
 	flag.DurationVar(&c.ResyncDuration, "resync-duration", c.ResyncDuration, "Resync time of informer")
 	flag.BoolVar(&c.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
 	flag.StringVar(&c.TiDBBackupManagerImage, "tidb-backup-manager-image", c.TiDBBackupManagerImage, "The image of backup manager tool")
@@ -139,6 +151,8 @@ func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.DurationVar(&c.LeaseDuration, "leader-lease-duration", c.LeaseDuration, "leader-lease-duration is the duration that non-leader candidates will wait to force acquire leadership")
 	flag.DurationVar(&c.RenewDeadline, "leader-renew-deadline", c.RenewDeadline, "leader-renew-deadline is the duration that the acting master will retry refreshing leadership before giving up")
 	flag.DurationVar(&c.RetryPeriod, "leader-retry-period", c.RetryPeriod, "leader-retry-period is the duration the LeaderElector clients should wait between tries of actions")
+	flag.Float64Var(&c.KubeClientQPS, "kube-client-qps", c.KubeClientQPS, "The maximum QPS to the kubenetes API server from client")
+	flag.IntVar(&c.KubeClientBurst, "kube-client-burst", c.KubeClientBurst, "The maximum burst for throttle to the kubenetes API server from client")
 }
 
 // HasNodePermission returns whether the user has permission for node operations.
@@ -174,6 +188,7 @@ type Controls struct {
 	TiDBClusterControl TidbClusterControlInterface
 	DMClusterControl   DMClusterControlInterface
 	CDCControl         TiCDCControlInterface
+	ProxyControl       TiProxyControlInterface
 	TiDBControl        TiDBControlInterface
 	BackupControl      BackupControlInterface
 	RestoreControl     RestoreControlInterface
@@ -219,6 +234,7 @@ type Dependencies struct {
 	TiDBInitializerLister       listers.TidbInitializerLister
 	TiDBMonitorLister           listers.TidbMonitorLister
 	TiDBNGMonitoringLister      listers.TidbNGMonitoringLister
+	TiDBDashboardLister         listers.TidbDashboardLister
 
 	// Controls
 	Controls
@@ -273,6 +289,7 @@ func newRealControls(
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
 		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
 		CDCControl:         NewDefaultTiCDCControl(secretLister),
+		ProxyControl:       NewDefaultTiProxyControl(secretLister),
 		TiDBControl:        NewDefaultTiDBControl(secretLister),
 		BackupControl:      NewRealBackupControl(clientset, recorder),
 		RestoreControl:     NewRealRestoreControl(clientset, restoreLister, recorder),
@@ -362,6 +379,7 @@ func newDependencies(
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
 		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
 		TiDBNGMonitoringLister:      informerFactory.Pingcap().V1alpha1().TidbNGMonitorings().Lister(),
+		TiDBDashboardLister:         informerFactory.Pingcap().V1alpha1().TidbDashboards().Lister(),
 
 		AWSConfig: cfg,
 	}, nil

@@ -26,3 +26,5 @@ hack::ensure_openapi
 $OUTPUT_BIN/openapi-gen --go-header-file=./hack/boilerplate/boilerplate.generatego.txt \
     -i github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
     -p apis/pingcap/v1alpha1 -O openapi_generated -o ./pkg
+
+hack::ensure_go117

@@ -14,119 +14,94 @@
 package member
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/klog/v2"
-)
 
-// TODO reuse tikvFailover since we share the same logic
-type tiflashFailover struct {
-	deps *controller.Dependencies
-}
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/uuid"
+)
 
 // NewTiFlashFailover returns a tiflash Failover
 func NewTiFlashFailover(deps *controller.Dependencies) Failover {
-	return &tiflashFailover{deps: deps}
+	storeAccess := &tiflashStoreAccess{}
+	failureRecovery := commonStatefulFailureRecovery{deps: deps, failureObjectAccess: &failureStoreAccess{storeAccess: storeAccess}}
+	return &commonStoreFailover{deps: deps, storeAccess: storeAccess, failureRecovery: failureRecovery}
 }
 
-func (f *tiflashFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
-	ordinals := tc.TiFlashStsDesiredOrdinals(true)
-	ordinal, err := util.GetOrdinalFromPodName(podName)
-	if err != nil {
-		klog.Errorf("unexpected pod name %q: %v", podName, err)
-		return false
-	}
-	return ordinals.Has(ordinal)
+// tiflashStoreAccess is a folder of access functions for TiFlash store and implements StoreAccess
+type tiflashStoreAccess struct{}
+
+var _ StoreAccess = (*tiflashStoreAccess)(nil)
+
+func (tsa *tiflashStoreAccess) GetFailoverPeriod(cliConfig *controller.CLIConfig) time.Duration {
+	return cliConfig.TiFlashFailoverPeriod
 }
 
-func (f *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-
-	for storeID, store := range tc.Status.TiFlash.Stores {
-		podName := store.PodName
-		if store.LastTransitionTime.IsZero() {
-			continue
-		}
-		if !f.isPodDesired(tc, podName) {
-			// we should ignore the store record of deleted pod, otherwise the
-			// record of deleted pod may be added back to failure stores
-			// (before it enters into Offline/Tombstone state)
-			continue
-		}
-		deadline := store.LastTransitionTime.Add(f.deps.CLIConfig.TiFlashFailoverPeriod)
-		exist := false
-		for _, failureStore := range tc.Status.TiFlash.FailureStores {
-			if failureStore.PodName == podName {
-				exist = true
-				break
-			}
-		}
-		if store.State == v1alpha1.TiKVStateDown && time.Now().After(deadline) {
-			if tc.Spec.TiFlash.MaxFailoverCount != nil && *tc.Spec.TiFlash.MaxFailoverCount > 0 {
-				if tc.Status.TiFlash.FailoverUID == "" {
-					tc.Status.TiFlash.FailoverUID = uuid.NewUUID()
-				}
-				if !exist {
-					if tc.Status.TiFlash.FailureStores == nil {
-						tc.Status.TiFlash.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
-					}
-					maxFailoverCount := *tc.Spec.TiFlash.MaxFailoverCount
-					if len(tc.Status.TiFlash.FailureStores) >= int(maxFailoverCount) {
-						klog.Warningf("%s/%s TiFlash failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiFlash.MaxFailoverCount)
-						return nil
-					}
-					tc.Status.TiFlash.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
-						PodName:   podName,
-						StoreID:   store.ID,
-						CreatedAt: metav1.Now(),
-					}
-					msg := fmt.Sprintf("store [%s] is Down", store.ID)
-					f.deps.Recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tiflash", podName, msg))
-				}
-			}
-		}
-	}
-	return nil
+func (tsa *tiflashStoreAccess) GetMemberType() v1alpha1.MemberType {
+	return v1alpha1.TiFlashMemberType
 }
 
-func (f *tiflashFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
-	for key, failureStore := range tc.Status.TiFlash.FailureStores {
-		if !f.isPodDesired(tc, failureStore.PodName) {
-			// If we delete the pods, e.g. by using advanced statefulset delete
-			// slots feature. We should remove the record of undesired pods,
-			// otherwise an extra replacement pod will be created.
-			delete(tc.Status.TiFlash.FailureStores, key)
-		}
+func (tsa *tiflashStoreAccess) GetMaxFailoverCount(tc *v1alpha1.TidbCluster) *int32 {
+	return tc.Spec.TiFlash.MaxFailoverCount
+}
+
+func (tsa *tiflashStoreAccess) GetStores(tc *v1alpha1.TidbCluster) map[string]v1alpha1.TiKVStore {
+	return tc.Status.TiFlash.Stores
+}
+
+func (tsa *tiflashStoreAccess) GetStore(tc *v1alpha1.TidbCluster, storeID string) (v1alpha1.TiKVStore, bool) {
+	store, exists := tc.Status.TiFlash.Stores[storeID]
+	return store, exists
+}
+
+func (tsa *tiflashStoreAccess) SetFailoverUIDIfAbsent(tc *v1alpha1.TidbCluster) {
+	if tc.Status.TiFlash.FailoverUID == "" {
+		tc.Status.TiFlash.FailoverUID = uuid.NewUUID()
 	}
 }
 
-func (f *tiflashFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (tsa *tiflashStoreAccess) CreateFailureStoresIfAbsent(tc *v1alpha1.TidbCluster) {
+	if tc.Status.TiFlash.FailureStores == nil {
+		tc.Status.TiFlash.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
+	}
+}
+
+func (tsa *tiflashStoreAccess) GetFailureStores(tc *v1alpha1.TidbCluster) map[string]v1alpha1.TiKVFailureStore {
+	return tc.Status.TiFlash.FailureStores
+}
+
+func (tsa *tiflashStoreAccess) GetFailureStore(tc *v1alpha1.TidbCluster, storeID string) (v1alpha1.TiKVFailureStore, bool) {
+	failureStore, exists := tc.Status.TiFlash.FailureStores[storeID]
+	return failureStore, exists
+}
+
+func (tsa *tiflashStoreAccess) SetFailureStore(tc *v1alpha1.TidbCluster, storeID string, failureStore v1alpha1.TiKVFailureStore) {
+	tc.Status.TiFlash.FailureStores[storeID] = failureStore
+}
+
+func (tsa *tiflashStoreAccess) GetStsDesiredOrdinals(tc *v1alpha1.TidbCluster, excludeFailover bool) sets.Int32 {
+	return tc.TiFlashStsDesiredOrdinals(excludeFailover)
+}
+
+func (tsa *tiflashStoreAccess) ClearFailStatus(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiFlash.FailureStores = nil
 	tc.Status.TiFlash.FailoverUID = ""
-	klog.Infof("TiFlash recover: clear FailureStores, %s/%s", tc.GetNamespace(), tc.GetName())
 }
 
-type fakeTiFlashFailover struct{}
+// IsHostDownForFailurePod checks if HostDown is set for any tiflash failure store
+func (tsa *tiflashStoreAccess) IsHostDownForFailurePod(tc *v1alpha1.TidbCluster) bool {
+	for storeID := range tc.Status.TiFlash.FailureStores {
+		failureStore := tc.Status.TiFlash.FailureStores[storeID]
+		if failureStore.HostDown {
+			return true
+		}
+	}
+	return false
+}
 
 // NewFakeTiFlashFailover returns a fake Failover
 func NewFakeTiFlashFailover() Failover {
-	return &fakeTiFlashFailover{}
-}
-
-func (_ *fakeTiFlashFailover) Failover(_ *v1alpha1.TidbCluster) error {
-	return nil
-}
-
-func (_ *fakeTiFlashFailover) Recover(_ *v1alpha1.TidbCluster) {
-}
-
-func (_ *fakeTiFlashFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
+	return &fakeStoreFailover{}
 }

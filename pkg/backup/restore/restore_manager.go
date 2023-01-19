@@ -14,8 +14,11 @@
 package restore
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -101,8 +104,19 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	if restore.Spec.BR != nil && restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot {
-		// restore based snapshot for cloud provider
-		reason, err := rm.tryRestoreIfCanSnapshot(restore, tc)
+		err = rm.validateRestore(restore, tc)
+
+		if err != nil {
+			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreInvalid,
+				Status:  corev1.ConditionTrue,
+				Reason:  "InvalidSpec",
+				Message: err.Error(),
+			}, nil)
+			return err
+		}
+		// restore based volume snapshot for cloud provider
+		reason, err := rm.volSnapshotRestore(restore, tc)
 		if err != nil {
 			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestoreRetryFailed,
@@ -195,7 +209,82 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	return nil
 }
 
-func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
+// read cluster meta from external storage since k8s size limitation on annotation/configMap
+// after volume retore job complete, br output a meta file for controller to reconfig the tikvs
+// since the meta file may big, so we use remote storage as bridge to pass it from restore manager to controller
+func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore) (*snapshotter.CloudSnapBackup, string, error) {
+	// since the restore meta is small (~5M), assume 1 minutes is enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
+	defer cancel()
+
+	// read restore meta from output of BR 1st restore
+	klog.Infof("read the restore meta from external storage")
+	cred := backuputil.GetStorageCredential(r.Namespace, r.Spec.StorageProvider, rm.deps.SecretLister)
+	externalStorage, err := backuputil.NewStorageBackend(r.Spec.StorageProvider, cred)
+	if err != nil {
+		return nil, "NewStorageBackendFailed", err
+	}
+
+	// if file doesn't exist, br create volume has problem
+	exist, err := externalStorage.Exists(ctx, constants.ClusterRestoreMeta)
+	if err != nil {
+		return nil, "FileExistedInExternalStorageFailed", err
+	}
+	if !exist {
+		return nil, "FileNotExists", fmt.Errorf("%s does not exist", constants.ClusterRestoreMeta)
+	}
+
+	restoreMeta, err := externalStorage.ReadAll(ctx, constants.ClusterRestoreMeta)
+	if err != nil {
+		return nil, "ReadAllOnExternalStorageFailed", err
+	}
+
+	csb := &snapshotter.CloudSnapBackup{}
+	err = json.Unmarshal(restoreMeta, csb)
+	if err != nil {
+		return nil, "ParseCloudSnapBackupFailed", err
+	}
+
+	return csb, "", nil
+}
+func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
+	// check tiflash replicas
+	replicas, reason, err := rm.readTiFlashReplicasFromBackupMeta(r)
+	if err != nil {
+		klog.Errorf("read tiflash replica failure with reason %s", reason)
+		return err
+	}
+
+	if tc.Spec.TiFlash == nil {
+		if replicas != 0 {
+			klog.Errorf("tiflash is not configured, backupmeta has %d tiflash", replicas)
+			return fmt.Errorf("tiflash replica missmatched")
+		}
+
+	} else {
+		if tc.Spec.TiFlash.Replicas != replicas {
+			klog.Errorf("cluster has %d tiflash configured, backupmeta has %d tiflash", tc.Spec.TiFlash.Replicas, replicas)
+			return fmt.Errorf("tiflash replica missmatched")
+		}
+	}
+
+	return nil
+}
+
+func (rm *restoreManager) readTiFlashReplicasFromBackupMeta(r *v1alpha1.Restore) (int32, string, error) {
+	metaInfo, err := backuputil.GetVolSnapBackupMetaData(r, rm.deps.SecretLister)
+	if err != nil {
+		return 0, "GetVolSnapBackupMetaData failed", err
+	}
+
+	if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash == nil {
+		return 0, "", nil
+	}
+
+	return metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas, "", nil
+}
+
+func (rm *restoreManager) volSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
 	if v1alpha1.IsRestoreComplete(r) {
 		return "", nil
 	}
@@ -252,7 +341,12 @@ func (rm *restoreManager) tryRestoreIfCanSnapshot(r *v1alpha1.Restore, tc *v1alp
 		}
 		// setRestoreVolumeID for all PVs, and reset PVC/PVs,
 		// then commit all PVC/PVs for TiKV restore volumes
-		if reason, err := s.PrepareRestoreMetadata(r); err != nil {
+		csb, reason, err := rm.readRestoreMetaFromExternalStorage(r)
+		if err != nil {
+			return reason, err
+		}
+
+		if reason, err := s.PrepareRestoreMetadata(r, csb); err != nil {
 			return reason, err
 		}
 

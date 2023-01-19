@@ -5,7 +5,7 @@
 # timezone is the default system timzone
 timezone: UTC
 
-image: pingcap/tidb-lightning:v6.1.0
+image: pingcap/tidb-lightning:v6.5.0
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
@@ -28,7 +28,7 @@ dataSource:
     # pvcName: tidb-cluster-scheduled-backup
     # backupName: scheduled-backup-20190822-041004
   remote:
-    rcloneImage: rclone/rclone:1.55.1
+    rcloneImage: rclone/rclone:1.57.0
     storageClassName: local-storage
     storage: 100Gi
     secretName: cloud-storage-secret

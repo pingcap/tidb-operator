@@ -88,6 +88,11 @@ func (m *EBSModifier) Validate(spvc, dpvc *corev1.PersistentVolumeClaim, ssc, ds
 }
 
 func (m *EBSModifier) ModifyVolume(ctx context.Context, pvc *corev1.PersistentVolumeClaim, pv *corev1.PersistentVolume, sc *storagev1.StorageClass) ( /*wait*/ bool, error) {
+	if pv == nil {
+		klog.V(4).Infof("Persistent volume is nil, skip modifying PV for %s. This may be caused by no relevant permissions", pvc.Spec.VolumeName)
+		return false, nil
+	}
+
 	desired, err := m.getExpectedVolume(pvc, pv, sc)
 	if err != nil {
 		return false, err

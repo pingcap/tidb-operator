@@ -284,9 +284,10 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 			}
 			return &newCondition
 		case v1alpha1.LogStopCommand:
-			// stop command, complete condition, should update condition
+			// stop command, complete condition, should be updated as stopped
 			// other conditions, no need to be used to update whole condition
 			if condition.Type == v1alpha1.BackupComplete {
+				newCondition.Type = v1alpha1.BackupStopped
 				return &newCondition
 			}
 			return nil

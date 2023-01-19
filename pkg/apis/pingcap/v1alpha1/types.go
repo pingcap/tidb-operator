@@ -75,6 +75,8 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc member type
 	TiCDCMemberType MemberType = "ticdc"
+	// TiProxyMemberType is ticdc member type
+	TiProxyMemberType MemberType = "tiproxy"
 	// PumpMemberType is pump member type
 	PumpMemberType MemberType = "pump"
 
@@ -90,6 +92,9 @@ const (
 
 	// NGMonitoringMemberType is ng monitoring member type
 	NGMonitoringMemberType MemberType = "ng-monitoring"
+
+	// TiDBDashboardMemberType is tidb-dashboard member type
+	TiDBDashboardMemberType MemberType = "tidb-dashboard"
 
 	// UnknownMemberType is unknown member type
 	UnknownMemberType MemberType = "unknown"
@@ -202,6 +207,10 @@ type TidbClusterSpec struct {
 	// TiCDC cluster spec
 	// +optional
 	TiCDC *TiCDCSpec `json:"ticdc,omitempty"`
+
+	// TiProxy cluster spec
+	// +optional
+	TiProxy *TiProxySpec `json:"tiproxy,omitempty"`
 
 	// Pump cluster spec
 	// +optional
@@ -362,6 +371,9 @@ type TidbClusterSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -372,6 +384,7 @@ type TidbClusterStatus struct {
 	TiDB       TiDBStatus                `json:"tidb,omitempty"`
 	Pump       PumpStatus                `json:"pump,omitempty"`
 	TiFlash    TiFlashStatus             `json:"tiflash,omitempty"`
+	TiProxy    TiProxyStatus             `json:"tiproxy,omitempty"`
 	TiCDC      TiCDCStatus               `json:"ticdc,omitempty"`
 	AutoScaler *TidbClusterAutoScalerRef `json:"auto-scaler,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
@@ -496,6 +509,7 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
 	// Start up script version
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1"
@@ -740,6 +754,45 @@ type TiCDCConfig struct {
 	LogFile *string `toml:"log-file,omitempty" json:"logFile,omitempty"`
 }
 
+// TiProxySpec contains details of TiProxy members
+// +k8s:openapi-gen=true
+type TiProxySpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiProxy
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// used by TiProxy to check health status.
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/tiproxy
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// Config is the Configuration of tiproxy-servers
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Config *TiProxyConfigWraper `json:"config,omitempty"`
+
+	// StorageVolumes configure additional storage for TiProxy pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiProxy data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+}
+
 // LogTailerSpec represents an optional log tailer sidecar container
 // +k8s:openapi-gen=true
 type LogTailerSpec struct {
@@ -818,6 +871,11 @@ type TiDBSpec struct {
 	// +optional
 	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
 
+	// Whether enable `tidb_auth_token` authentication method. The tidb_auth_token authentication method is used only for the internal operation of TiDB Cloud.
+	// Optional: Defaults to false
+	// +optional
+	TokenBasedAuthEnabled *bool `json:"tokenBasedAuthEnabled,omitempty"`
+
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
 	// +optional
 	Plugins []string `json:"plugins,omitempty"`
@@ -844,10 +902,6 @@ type TiDBSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
-	// ReadinessProbe describes actions that probe the tidb's readiness.
-	// the default behavior is like setting type as "tcp"
-	// +optional
-	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
 
 	// Initializer is the init configurations of TiDB
 	//
@@ -866,11 +920,11 @@ const (
 	CommandProbeType string = "command"
 )
 
-// TiDBProbe contains details of probing tidb.
+// Probe contains details of probing tidb.
 // +k8s:openapi-gen=true
-// default probe by TCPPort on 4000.
-type TiDBProbe struct {
-	// "tcp" will use TCP socket to connetct port 4000
+// default probe by TCPPort on tidb 4000 / tikv 20160 / pd 2349.
+type Probe struct {
+	// "tcp" will use TCP socket to connect component port.
 	//
 	// "command" will probe the status api of tidb.
 	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
@@ -1106,6 +1160,11 @@ type ComponentSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// ReadinessProbe describes actions that probe the pd's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // ServiceSpec specifies the service object in k8s
@@ -1247,6 +1306,7 @@ type PDFailureMember struct {
 	PVCUID        types.UID                 `json:"pvcUID,omitempty"`
 	PVCUIDSet     map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
 	MemberDeleted bool                      `json:"memberDeleted,omitempty"`
+	HostDown      bool                      `json:"hostDown,omitempty"`
 	// +nullable
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
@@ -1370,6 +1430,19 @@ type TiFlashStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
+// TiProxyStatus is TiProxy status
+type TiProxyStatus struct {
+	Synced      bool                                       `json:"synced,omitempty"`
+	Phase       MemberPhase                                `json:"phase,omitempty"`
+	Members     map[string]bool                            `json:"members,omitempty"`
+	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
+	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
 // TiCDCStatus is TiCDC status
 type TiCDCStatus struct {
 	Synced      bool                    `json:"synced,omitempty"`
@@ -1409,8 +1482,11 @@ type TiKVStore struct {
 
 // TiKVFailureStore is the tikv failure store information
 type TiKVFailureStore struct {
-	PodName string `json:"podName,omitempty"`
-	StoreID string `json:"storeID,omitempty"`
+	PodName      string                    `json:"podName,omitempty"`
+	StoreID      string                    `json:"storeID,omitempty"`
+	PVCUIDSet    map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
+	StoreDeleted bool                      `json:"storeDeleted,omitempty"`
+	HostDown     bool                      `json:"hostDown,omitempty"`
 	// +nullable
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
@@ -1905,6 +1981,8 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// BackupStopped means the backup was stopped, just log backup has this condition
+	BackupStopped BackupConditionType = "Stopped"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
