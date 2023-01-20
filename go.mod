@@ -48,7 +48,7 @@ require (
 	github.com/openshift/generic-admission-server v1.14.1-0.20210422140326-da96454c926d
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
-	github.com/pingcap/TiProxy/lib v0.0.0-20230103134416-da56a2cf1ed9
+	github.com/pingcap/TiProxy/lib v0.0.0-20230119083121-a15dd3e8f104
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b2938
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/errors v0.11.4
@@ -66,7 +66,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/tikv/pd v2.1.17+incompatible
 	github.com/uber-go/atomic v0.0.0-00010101000000-000000000000 // indirect
 	github.com/uber/jaeger-client-go v2.19.0+incompatible // indirect
