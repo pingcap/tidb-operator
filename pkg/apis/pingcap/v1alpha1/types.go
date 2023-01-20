@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
@@ -1429,11 +1430,24 @@ type TiFlashStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
+// TiProxyMember is TiProxy member
+type TiProxyMember struct {
+	Name   string `json:"name"`
+	Health bool   `json:"health"`
+	// Additional healthinfo if it is healthy.
+	// +optional
+	Info *tiproxyConfig.HealthInfo `json:"info"`
+	// Last time the health transitioned from one to another.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
 // TiProxyStatus is TiProxy status
 type TiProxyStatus struct {
 	Synced      bool                                       `json:"synced,omitempty"`
 	Phase       MemberPhase                                `json:"phase,omitempty"`
-	Members     map[string]bool                            `json:"members,omitempty"`
+	Members     map[string]TiProxyMember                   `json:"members,omitempty"`
 	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
 	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
