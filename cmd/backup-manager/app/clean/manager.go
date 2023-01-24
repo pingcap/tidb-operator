@@ -76,9 +76,9 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 	var err error
 	// volume-snapshot backup requires to delete the snapshot firstly, then delete the backup meta file
 	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-		nextNackup, err := bm.getNextBackup(ctx, backup)
-		if err != nil {
-			klog.Errorf("get next backup for cluster %s backup failure", bm)
+		nextNackup := bm.getNextBackup(ctx, backup)
+		if nextNackup == nil {
+			klog.Errorf("get next backup for cluster %s backup is nil", bm)
 		}
 
 		// clean backup will delete all vol snapshots
@@ -89,7 +89,7 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 
 		// update the next backup size
 		if nextNackup != nil {
-			bm.updateBackupSize(ctx, nextNackup)
+			bm.updateVolumeSnapshotBackupSize(ctx, nextNackup)
 		}
 
 	} else {
@@ -122,11 +122,11 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 }
 
 // getNextBackup to get next backup sorted by start time
-func (bm *Manager) getNextBackup(ctx context.Context, backup *v1alpha1.Backup) (*v1alpha1.Backup, error) {
+func (bm *Manager) getNextBackup(ctx context.Context, backup *v1alpha1.Backup) *v1alpha1.Backup {
 	var err error
 	bks, err := bm.backupLister.Backups(backup.Namespace).List(labels.Everything())
 	if err != nil {
-		return nil, fmt.Errorf("get namespace %s backups list failure", backup.Namespace)
+		return nil
 	}
 
 	sort.Slice(bks, func(i, j int) bool {
@@ -135,19 +135,32 @@ func (bm *Manager) getNextBackup(ctx context.Context, backup *v1alpha1.Backup) (
 
 	for i, bk := range bks {
 		if backup.Name == bk.Name {
-			// only one backup or it is the last one in slice
-			if i >= len(bks)-1 {
-				return nil, nil
-			}
-			return bks[i+1], nil
+			return bm.getFirstVolumeSnapshotBackup(bks[i:])
 		}
 	}
 
-	return nil, fmt.Errorf("get next backup within namespace %s failure", backup.Namespace)
+	return nil
 }
 
-// updateBackupSize update a volume-snapshot backup size
-func (bm *Manager) updateBackupSize(ctx context.Context, backup *v1alpha1.Backup) error {
+// getFirstVolumeSnapshotBackup get the first volume-snapshot backup from backup list
+func (bm *Manager) getFirstVolumeSnapshotBackup(backups []*v1alpha1.Backup) *v1alpha1.Backup {
+	// only one backup or it is the last one in slice
+	if len(backups) == 1 {
+		return nil
+	}
+
+	for _, bk := range backups[1:] {
+		if bk.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+			return bk
+		}
+	}
+
+	// reach end of backup list, there is no volume snapshot backups
+	return nil
+}
+
+// updateVolumeSnapshotBackupSize update a volume-snapshot backup size
+func (bm *Manager) updateVolumeSnapshotBackupSize(ctx context.Context, backup *v1alpha1.Backup) error {
 	var updateStatus *controller.BackupUpdateStatus
 
 	backupSize, err := util.CalcBackupSizeFromBackupmeta(ctx, backup.Spec.StorageProvider)

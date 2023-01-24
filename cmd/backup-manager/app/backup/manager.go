@@ -321,8 +321,8 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	var updateStatus *controller.BackupUpdateStatus
 	switch bm.Mode {
 	case string(v1alpha1.BackupModeVolumeSnapshot):
-		// In volume snapshot mode, commitTS and size have been updated according to the
-		// br command output, so we don't need to update them here.
+		// In volume snapshot mode, commitTS have been updated according to the
+		// br command output, so we don't need to update it here.
 		backupSize, err := util.CalcBackupSizeFromBackupmeta(ctx, backup.Spec.StorageProvider)
 
 		if err != nil {

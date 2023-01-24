@@ -100,7 +100,7 @@ type EBSBasedBRMeta struct {
 }
 
 type EC2Session struct {
-	ec2 ec2iface.EC2API
+	EC2 ec2iface.EC2API
 	// aws operation concurrency
 	concurrency uint
 }
@@ -120,7 +120,7 @@ func NewEC2Session(concurrency uint) (*EC2Session, error) {
 		return nil, errors.Trace(err)
 	}
 	ec2Session := ec2.New(sess)
-	return &EC2Session{ec2: ec2Session, concurrency: concurrency}, nil
+	return &EC2Session{EC2: ec2Session, concurrency: concurrency}, nil
 }
 
 func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
@@ -130,7 +130,7 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 	for volID := range snapIDMap {
 		snapID := snapIDMap[volID]
 		eg.Go(func() error {
-			_, err := e.ec2.DeleteSnapshot(&ec2.DeleteSnapshotInput{
+			_, err := e.EC2.DeleteSnapshot(&ec2.DeleteSnapshotInput{
 				SnapshotId: &snapID,
 			})
 			if err != nil {
@@ -152,7 +152,7 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 }
 
 type EBSSession struct {
-	ebs ebsiface.EBSAPI
+	EBS ebsiface.EBSAPI
 	// aws operation concurrency
 	concurrency uint
 }
@@ -166,5 +166,5 @@ func NewEBSSession(concurrency uint) (*EBSSession, error) {
 		return nil, errors.Trace(err)
 	}
 	ebsSession := ebs.New(sess)
-	return &EBSSession{ebs: ebsSession, concurrency: concurrency}, nil
+	return &EBSSession{EBS: ebsSession, concurrency: concurrency}, nil
 }
