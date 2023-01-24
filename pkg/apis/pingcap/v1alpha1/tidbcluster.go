@@ -409,6 +409,14 @@ func (tc *TidbCluster) TiFlashScaling() bool {
 	return tc.Status.TiFlash.Phase == ScalePhase
 }
 
+func (tc *TidbCluster) TiProxyUpgrading() bool {
+	return tc.Status.TiProxy.Phase == UpgradePhase
+}
+
+func (tc *TidbCluster) TiProxyScaling() bool {
+	return tc.Status.TiProxy.Phase == ScalePhase
+}
+
 func (tc *TidbCluster) ComponentIsNormal(typ MemberType) bool {
 	status := tc.ComponentStatus(typ)
 	if status == nil {

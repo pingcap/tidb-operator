@@ -32,8 +32,8 @@ import (
 
 // TiProxyControlInterface is the interface that knows how to control tiproxy clusters
 type TiProxyControlInterface interface {
-	// GetConfigProxy get the proxy part in config
-	GetConfigProxy(tc *v1alpha1.TidbCluster, ordinal int32) (*config.ProxyServerOnline, error)
+	// IsHealth check if node is healthy.
+	IsHealth(tc *v1alpha1.TidbCluster, ordinal int32) (*config.HealthInfo, error)
 }
 
 var _ TiProxyControlInterface = &defaultTiProxyControl{}
@@ -105,15 +105,11 @@ func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) 
 	}
 }
 
-func (c *defaultTiProxyControl) GetConfigProxy(tc *v1alpha1.TidbCluster, ordinal int32) (*config.ProxyServerOnline, error) {
-	out, err := c.getCli(tc, ordinal)(nil, "config", "proxy", "get")
+func (c *defaultTiProxyControl) IsHealth(tc *v1alpha1.TidbCluster, ordinal int32) (*config.HealthInfo, error) {
+	v, err := c.getCli(tc, ordinal)(nil, "health")
 	if err != nil {
 		return nil, err
 	}
-
-	ret := &config.ProxyServerOnline{}
-	if err := json.Unmarshal(out.Bytes(), ret); err != nil {
-		return nil, err
-	}
-	return ret, nil
+	var g config.HealthInfo
+	return &g, json.Unmarshal(v.Bytes(), &g)
 }

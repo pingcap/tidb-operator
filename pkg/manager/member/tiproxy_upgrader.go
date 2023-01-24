@@ -67,7 +67,7 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
-		podName := PdPodName(tcName, i)
+		podName := fmt.Sprintf("%s-%d", controller.TiProxyMemberName(tcName), i)
 		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("gracefulUpgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
