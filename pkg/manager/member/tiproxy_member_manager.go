@@ -381,7 +381,7 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 	stsLabels := labelTiProxy(tc)
 	stsName := controller.TiProxyMemberName(tcName)
 	podLabels := util.CombineStringMap(stsLabels, baseTiProxySpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(3080, "/api/metrics"), baseTiProxySpec.Annotations())
+	podAnnotations := util.CombineStringMap(baseTiProxySpec.Annotations(), controller.AnnProm(3080, "/api/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiProxyLabelVal)
 	headlessSvcName := controller.TiProxyPeerMemberName(tcName)
 

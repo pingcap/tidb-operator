@@ -713,7 +713,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	stsLabels := label.New().Instance(instanceName).PD()
 	podLabels := util.CombineStringMap(stsLabels, basePDSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(2379, "/metrics"), basePDSpec.Annotations())
+	podAnnotations := util.CombineStringMap(basePDSpec.Annotations(), controller.AnnProm(2379, "/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
