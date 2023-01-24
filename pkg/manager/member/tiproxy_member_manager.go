@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -260,13 +259,27 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 	}
 
 	pods := helper.GetPodOrdinals(tc.Status.TiProxy.StatefulSet.Replicas, sts)
-	members := make(map[string]bool)
+	oldMembers := tc.Status.TiProxy.Members
+	members := make(map[string]v1alpha1.TiProxyMember)
 	for id := range pods {
-		if _, err := m.deps.ProxyControl.GetConfigProxy(tc, id); err != nil {
-			klog.Infof("failed to get tiproxy[%d] config: %+v", id, err)
-			continue
+		name := fmt.Sprintf("%s-%d", controller.TiProxyMemberName(tc.GetName()), id)
+		memberStatus := v1alpha1.TiProxyMember{
+			Name:               name,
+			LastTransitionTime: metav1.Now(),
 		}
-		members[strconv.Itoa(int(id))] = true
+		healthInfo, err := m.deps.ProxyControl.IsHealth(tc, id)
+		if err != nil {
+			klog.V(4).Infof("tiproxy[%d] is not health: %+v", id, err)
+			memberStatus.Health = false
+		} else {
+			memberStatus.Health = true
+			memberStatus.Info = healthInfo
+		}
+		oldMemberStatus, exist := oldMembers[name]
+		if exist && memberStatus.Health == oldMemberStatus.Health {
+			memberStatus.LastTransitionTime = oldMemberStatus.LastTransitionTime
+		}
+		members[name] = memberStatus
 	}
 
 	tc.Status.TiProxy.Members = members
