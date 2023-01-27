@@ -71,7 +71,7 @@ func (c *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) 
 	baseURL := c.getBaseURL(tc, ordinal)
 	url := fmt.Sprintf("%s/status", baseURL)
 	_, err = getBodyOK(httpClient, url)
-	return err == nil, nil
+	return err == nil, err
 }
 
 func (c *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error) {
