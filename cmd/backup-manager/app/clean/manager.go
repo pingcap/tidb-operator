@@ -163,7 +163,7 @@ func (bm *Manager) getFirstVolumeSnapshotBackup(backups []*v1alpha1.Backup) *v1a
 func (bm *Manager) updateVolumeSnapshotBackupSize(ctx context.Context, backup *v1alpha1.Backup) error {
 	var updateStatus *controller.BackupUpdateStatus
 
-	backupSize, err := util.CalcBackupSizeFromBackupmeta(ctx, backup.Spec.StorageProvider)
+	backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
 
 	if err != nil {
 		klog.Warningf("Failed to parse BackupSize %d KB, %v", backupSize, err)

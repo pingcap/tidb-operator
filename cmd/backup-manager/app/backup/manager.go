@@ -323,7 +323,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	case string(v1alpha1.BackupModeVolumeSnapshot):
 		// In volume snapshot mode, commitTS have been updated according to the
 		// br command output, so we don't need to update it here.
-		backupSize, err := util.CalcBackupSizeFromBackupmeta(ctx, backup.Spec.StorageProvider)
+		backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
 
 		if err != nil {
 			klog.Warningf("Failed to parse BackupSize %d KB, %v", backupSize, err)
