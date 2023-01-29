@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -28,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
@@ -47,20 +49,25 @@ const (
 	// This value can be between 5 and 1,000; if MaxResults is given a value larger than 1,000, only 1,000 results are returned.
 	DescribeSnapMaxReturnResult = 1000
 
-	// This value can be between 100 and 1,0000, and charged ~0.6$/1 million request
+	// This value can be between 100 and 1,0000, and charge ~0.6$/1 million request
 	ListSnapMaxReturnResult = 10000
 
-	// This value can be between 100 and 1,0000, and charged ~0.6$/1 million request
+	// This value can be between 100 and 1,0000, and charge ~0.6$/1 million request
 	ListBlocksMaxReturnResult = 10000
+
+	// This value can be between 1 and 50 due to aws service quota
+	EbsApiConcurrency = 40
 )
 
 // CalcVolSnapBackupSize get snapshots from backup meta and then calc the backup size of snapshots.
 func CalcVolSnapBackupSize(ctx context.Context, provider v1alpha1.StorageProvider) (int64, error) {
+	start := time.Now()
 	// retrieves all snapshots from backup meta file
 	volSnapshots, err := getSnapshotsFromBackupmeta(ctx, provider)
 	if err != nil {
 		return 0, err
 	}
+
 	// get all snapshots per backup volume from aws
 	snapshots, err := getBackupVolSnapshots(volSnapshots)
 
@@ -68,12 +75,13 @@ func CalcVolSnapBackupSize(ctx context.Context, provider v1alpha1.StorageProvide
 		return 0, err
 	}
 
-	backupSize, err := calcBackupSize(volSnapshots, snapshots)
+	backupSize, err := calcBackupSize(ctx, volSnapshots, snapshots)
 
 	if err != nil {
 		return 0, err
 	}
-
+	elapsed := time.Since(start)
+	klog.Infof("calculate volume-snapshot backup size takes %v", elapsed)
 	return int64(backupSize), nil
 }
 
@@ -207,48 +215,54 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 }
 
 // calcBackupSize get a volue-snapshots backup size
-func calcBackupSize(volumes map[string]string, snapshots map[string][]*ec2.Snapshot) (uint64, error) {
+func calcBackupSize(ctx context.Context, volumes map[string]string, snapshots map[string][]*ec2.Snapshot) (uint64, error) {
 	var backupSize uint64
 	var apiReqCount uint64
 
-	for volumeId, snapshotId := range volumes {
+	workerPool := util.NewWorkerPool(EbsApiConcurrency, "list snapshot size")
+	eg, _ := errgroup.WithContext(ctx)
+
+	for volumeId, id := range volumes {
 		volSnapshots := snapshots[volumeId]
-		// full snapshot backup
-		if len(volSnapshots) == 1 {
-			snapSize, apiReq, err := initialSnapshotSize(snapshotId)
-			if err != nil {
-				return 0, err
+		snapshotId := id
+		// sort snapshots by timestamp
+		sort.Slice(volSnapshots, func(i, j int) bool {
+			return volSnapshots[i].StartTime.Before(*volSnapshots[j].StartTime)
+		})
+
+		workerPool.ApplyOnErrorGroup(eg, func() error {
+			// full/initial snapshot backup
+			if len(volSnapshots) == 1 || *volSnapshots[0].SnapshotId == snapshotId {
+				snapSize, apiReq, err := initialSnapshotSize(snapshotId)
+				if err != nil {
+					return err
+				}
+
+				atomic.AddUint64(&backupSize, snapSize)
+				atomic.AddUint64(&apiReqCount, apiReq)
+				return nil
 			}
 
-			backupSize += snapSize
-			apiReqCount += apiReq
-			continue
-		}
-
-		// incremental snapshot backup
-		prevSnapshot, err := getPrevSnapshotId(snapshotId, volSnapshots)
-		if err != nil {
-			return 0, err
-		}
-
-		// snapshot is full snapshot / first snapshot
-		if prevSnapshot == "" {
-			snapSize, apiReq, err := initialSnapshotSize(snapshotId)
+			// incremental snapshot backup
+			prevSnapshot, err := getPrevSnapshotId(snapshotId, volSnapshots)
 			if err != nil {
-				return 0, err
+				return err
 			}
 
-			backupSize += snapSize
-			apiReqCount += apiReq
-			continue
-		}
-		snapSize, apiReq, err := changedBlocksSize(prevSnapshot, snapshotId)
-		if err != nil {
-			return 0, err
-		}
+			snapSize, apiReq, err := changedBlocksSize(prevSnapshot, snapshotId)
+			if err != nil {
+				return err
+			}
 
-		backupSize += snapSize
-		apiReqCount += apiReq
+			atomic.AddUint64(&backupSize, snapSize)
+			atomic.AddUint64(&apiReqCount, apiReq)
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		klog.Errorf("failed to get snapshots size %d, number of api request %d", backupSize, apiReqCount)
+		return 0, err
 	}
 
 	// currently, we do not count api fees, since it is very few of cost, however, we print it in log in case "very few" is not correct
@@ -298,10 +312,7 @@ func initialSnapshotSize(snapshotId string) (uint64, uint64, error) {
 }
 
 func getPrevSnapshotId(snapshotId string, volSnapshots []*ec2.Snapshot) (string, error) {
-	// sort snapshots by timestamp
-	sort.Slice(volSnapshots, func(i, j int) bool {
-		return volSnapshots[i].StartTime.Before(*volSnapshots[j].StartTime)
-	})
+	// volSnapshots already sorted by time
 	var prevSnapshotId string
 	for i, snapshot := range volSnapshots {
 		if snapshotId == *snapshot.SnapshotId {
