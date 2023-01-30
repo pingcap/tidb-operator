@@ -161,6 +161,9 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		// port
 		common.SetIfNil("tcp_port", int64(9000))
 		common.SetIfNil("http_port", int64(8123))
+		if tc.Spec.PreferIPv6 {
+			common.SetIfNil("listen_host", "[::]")
+		}
 
 		// flash
 		tidbStatusAddr := fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(name), ns)
