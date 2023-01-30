@@ -38,8 +38,6 @@ import (
 // TODO#1: there shall be a abstract interface for diff cloud platform. e.g. GetBackupSize
 // it may better to do this work after gcp support volume-snapshot
 
-// TODO#2: there shall be a concurrent way to list/get blocks/snapshot size, this need a performance verification and evaluation due to service quota.
-
 // for EBS Direct API permissions, refer to https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebsapi-permissions.html
 // for EBS Direct API, refer to https://docs.aws.amazon.com/sdk-for-go/api/service/ebs/
 
@@ -169,17 +167,26 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 	// describe snapshot is heavy operator, try to call only once
 	// api has limit with max 1000 snapshots
 	// search with filter volume id the backupmeta contains
-	resp, err := ec2Session.EC2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
-		OwnerIds:   aws.StringSlice([]string{"self"}),
-		MaxResults: aws.Int64(DescribeSnapMaxReturnResult),
-		Filters:    filters,
-	})
 
-	if err != nil {
-		return nil, err
-	}
-
+	var nextToken *string
 	for {
+		resp, err := ec2Session.EC2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+			OwnerIds:   aws.StringSlice([]string{"self"}),
+			MaxResults: aws.Int64(DescribeSnapMaxReturnResult),
+			Filters:    filters,
+			NextToken:  nextToken,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		// check if there's more to retrieve
+		if resp.NextToken == nil {
+			break
+		}
+
+		nextToken = resp.NextToken
 		for i, s := range resp.Snapshots {
 			if *s.State == ec2.SnapshotStateCompleted {
 				if volWithTheirSnapshots[*s.VolumeId] == nil {
@@ -192,22 +199,6 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 				klog.Infof("the snapshot#%d %s creating... skip it", i, *s.SnapshotId)
 				continue
 			}
-		}
-
-		// check if there's more to retrieve
-		if resp.NextToken == nil {
-			break
-		}
-
-		resp, err = ec2Session.EC2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
-			OwnerIds:   aws.StringSlice([]string{"self"}),
-			MaxResults: aws.Int64(DescribeSnapMaxReturnResult),
-			Filters:    filters,
-			NextToken:  resp.NextToken,
-		})
-
-		if err != nil {
-			return nil, err
 		}
 	}
 
@@ -265,7 +256,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string, snapshots ma
 		return 0, err
 	}
 
-	// currently, we do not count api fees, since it is very few of cost, however, we print it in log in case "very few" is not correct
+	// currently, we do not count api request fees, since it is very few of cost, however, we print it in log in case "very few" is not correct
 	klog.Infof("backup size %d bytes, number of api request %d", backupSize, apiReqCount)
 	return backupSize, nil
 }
@@ -280,32 +271,27 @@ func initialSnapshotSize(snapshotId string) (uint64, uint64, error) {
 		klog.Errorf("new a ebs session failure.")
 		return 0, numApiReq, err
 	}
-	resp, err := ebsSession.EBS.ListSnapshotBlocks(&ebs.ListSnapshotBlocksInput{
-		SnapshotId: aws.String(snapshotId),
-		MaxResults: aws.Int64(ListSnapMaxReturnResult),
-	})
 
-	numApiReq += 1
-	if err != nil {
-		return 0, numApiReq, err
-	}
-
-	blockSize := uint64(*resp.BlockSize)
+	var nextToken *string
+	var blockSize uint64
 	for {
-		numBlocks += uint64(len(resp.Blocks))
-		// check if there is more to retrieve
-		if resp.NextToken == nil {
-			break
-		}
-		resp, err = ebsSession.EBS.ListSnapshotBlocks(&ebs.ListSnapshotBlocksInput{
+
+		resp, err := ebsSession.EBS.ListSnapshotBlocks(&ebs.ListSnapshotBlocksInput{
 			SnapshotId: aws.String(snapshotId),
 			MaxResults: aws.Int64(ListSnapMaxReturnResult),
-			NextToken:  resp.NextToken,
+			NextToken:  nextToken,
 		})
 		numApiReq += 1
 		if err != nil {
 			return 0, numApiReq, err
 		}
+		blockSize = uint64(*resp.BlockSize)
+		numBlocks += uint64(len(resp.Blocks))
+		// check if there is more to retrieve
+		if resp.NextToken == nil {
+			break
+		}
+		nextToken = resp.NextToken
 	}
 	klog.Infof("full backup snapshot num block %d, block size %d, num of ListSnapshotBlocks request %d", numBlocks, blockSize, numApiReq)
 	return numBlocks * blockSize, numApiReq, nil
@@ -316,10 +302,6 @@ func getPrevSnapshotId(snapshotId string, volSnapshots []*ec2.Snapshot) (string,
 	var prevSnapshotId string
 	for i, snapshot := range volSnapshots {
 		if snapshotId == *snapshot.SnapshotId {
-			// first snapshot
-			if i == 0 {
-				return "", nil
-			}
 			prevSnapshotId = *volSnapshots[i-1].SnapshotId
 			klog.Infof("the prevSnapshot index is %d, ID is %s", i, *snapshot.SnapshotId)
 			break
@@ -333,7 +315,8 @@ func getPrevSnapshotId(snapshotId string, volSnapshots []*ec2.Snapshot) (string,
 
 // changedBlocksSize calculates changed blocks total size in bytes between two snapshots with common ancestry.
 func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, uint64, error) {
-	var numBlocks uint64
+	var numBlocks int
+	var numChangedBlocks uint64
 	var numApiReq uint64
 
 	klog.Infof("the calc snapshot size for %s, base on prev snapshot %s", snapshotId, preSnapshotId)
@@ -342,44 +325,37 @@ func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, uint64,
 		klog.Errorf("new a ebs session failure.")
 		return 0, numApiReq, err
 	}
-	resp, err := ebsSession.EBS.ListChangedBlocks(&ebs.ListChangedBlocksInput{
-		FirstSnapshotId:  aws.String(preSnapshotId),
-		MaxResults:       aws.Int64(ListBlocksMaxReturnResult),
-		SecondSnapshotId: aws.String(snapshotId),
-	})
 
-	numApiReq += 1
-	if err != nil {
-		return 0, numApiReq, err
-	}
-
-	blockSize := uint64(*resp.BlockSize)
+	var nextToken *string
+	var blockSize uint64
 
 	for {
-		// retrieve only changed block and blocks only existed in current snapshot (new add blocks)
-		for _, block := range resp.ChangedBlocks {
-			if block.SecondBlockToken != nil && len(aws.StringValue(block.SecondBlockToken)) != 0 {
-				numBlocks += 1
-			}
-		}
 
-		klog.Infof("the current num blocks %d, block size is %d", numBlocks, blockSize)
-		// check if there is more to retrieve
-		if resp.NextToken == nil {
-			break
-		}
-
-		resp, err = ebsSession.EBS.ListChangedBlocks(&ebs.ListChangedBlocksInput{
+		resp, err := ebsSession.EBS.ListChangedBlocks(&ebs.ListChangedBlocksInput{
 			FirstSnapshotId:  aws.String(preSnapshotId),
 			MaxResults:       aws.Int64(ListBlocksMaxReturnResult),
 			SecondSnapshotId: aws.String(snapshotId),
-			NextToken:        resp.NextToken,
+			NextToken:        nextToken,
 		})
 		numApiReq += 1
 		if err != nil {
 			return 0, numApiReq, err
 		}
+		numBlocks += len(resp.ChangedBlocks)
+		// retrieve only changed block and blocks only existed in current snapshot (new add blocks)
+		for _, block := range resp.ChangedBlocks {
+			if block.SecondBlockToken != nil && len(aws.StringValue(block.SecondBlockToken)) != 0 {
+				numChangedBlocks += 1
+			}
+		}
+
+		klog.Infof("the current num blocks %d, block size is %d", numChangedBlocks, blockSize)
+		// check if there is more to retrieve
+		if resp.NextToken == nil {
+			break
+		}
+		nextToken = resp.NextToken
 	}
-	klog.Infof("the total size of snapshot %d, num of api ListChangedBlocks request %d", numBlocks*blockSize, numApiReq)
-	return numBlocks * blockSize, numApiReq, nil
+	klog.Infof("the total size of snapshot %d, num of api ListChangedBlocks request %d, snapshot %s, data change rate %.4f", numChangedBlocks*blockSize, numApiReq, snapshotId, float64(numChangedBlocks)/float64(numBlocks))
+	return numChangedBlocks * blockSize, numApiReq, nil
 }

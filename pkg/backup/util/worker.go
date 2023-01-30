@@ -32,8 +32,6 @@ type Worker struct {
 
 type taskFunc func()
 
-type identifiedTaskFunc func(uint64)
-
 // NewWorkerPool returns a WorkPool.
 func NewWorkerPool(limit uint, name string) *WorkerPool {
 	workers := make(chan *Worker, limit)
