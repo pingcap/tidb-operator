@@ -167,7 +167,6 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 	// describe snapshot is heavy operator, try to call only once
 	// api has limit with max 1000 snapshots
 	// search with filter volume id the backupmeta contains
-
 	var nextToken *string
 	for {
 		resp, err := ec2Session.EC2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
@@ -181,12 +180,6 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 			return nil, err
 		}
 
-		// check if there's more to retrieve
-		if resp.NextToken == nil {
-			break
-		}
-
-		nextToken = resp.NextToken
 		for i, s := range resp.Snapshots {
 			if *s.State == ec2.SnapshotStateCompleted {
 				if volWithTheirSnapshots[*s.VolumeId] == nil {
@@ -200,6 +193,13 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 				continue
 			}
 		}
+
+		// check if there's more to retrieve
+		if resp.NextToken == nil {
+			break
+		}
+		klog.Infof("the total number of snapshot is %d", len(resp.Snapshots))
+		nextToken = resp.NextToken
 	}
 
 	return volWithTheirSnapshots, nil
@@ -217,13 +217,15 @@ func calcBackupSize(ctx context.Context, volumes map[string]string, snapshots ma
 		volSnapshots := snapshots[volumeId]
 		snapshotId := id
 		// sort snapshots by timestamp
-		sort.Slice(volSnapshots, func(i, j int) bool {
-			return volSnapshots[i].StartTime.Before(*volSnapshots[j].StartTime)
-		})
-
 		workerPool.ApplyOnErrorGroup(eg, func() error {
+			// get prev snapshot backup
+			prevSnapshot, err := getPrevSnapshotId(snapshotId, volSnapshots)
+			if err != nil {
+				return err
+			}
+
 			// full/initial snapshot backup
-			if len(volSnapshots) == 1 || *volSnapshots[0].SnapshotId == snapshotId {
+			if prevSnapshot == "" {
 				snapSize, apiReq, err := initialSnapshotSize(snapshotId)
 				if err != nil {
 					return err
@@ -232,12 +234,6 @@ func calcBackupSize(ctx context.Context, volumes map[string]string, snapshots ma
 				atomic.AddUint64(&backupSize, snapSize)
 				atomic.AddUint64(&apiReqCount, apiReq)
 				return nil
-			}
-
-			// incremental snapshot backup
-			prevSnapshot, err := getPrevSnapshotId(snapshotId, volSnapshots)
-			if err != nil {
-				return err
 			}
 
 			snapSize, apiReq, err := changedBlocksSize(prevSnapshot, snapshotId)
@@ -264,7 +260,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string, snapshots ma
 // initialSnapshotSize calculate size of an initial snapshot in bytes by listing its blocks.
 // initial snapshot always a ful backup of volume
 func initialSnapshotSize(snapshotId string) (uint64, uint64, error) {
-	var numBlocks uint64
+	var snapshotSize uint64
 	var numApiReq uint64
 	ebsSession, err := util.NewEBSSession(util.CloudAPIConcurrency)
 	if err != nil {
@@ -273,7 +269,6 @@ func initialSnapshotSize(snapshotId string) (uint64, uint64, error) {
 	}
 
 	var nextToken *string
-	var blockSize uint64
 	for {
 
 		resp, err := ebsSession.EBS.ListSnapshotBlocks(&ebs.ListSnapshotBlocksInput{
@@ -285,23 +280,33 @@ func initialSnapshotSize(snapshotId string) (uint64, uint64, error) {
 		if err != nil {
 			return 0, numApiReq, err
 		}
-		blockSize = uint64(*resp.BlockSize)
-		numBlocks += uint64(len(resp.Blocks))
+		if resp.BlockSize != nil {
+			snapshotSize += uint64(len(resp.Blocks)) * uint64(*resp.BlockSize)
+		}
+
 		// check if there is more to retrieve
 		if resp.NextToken == nil {
 			break
 		}
 		nextToken = resp.NextToken
 	}
-	klog.Infof("full backup snapshot num block %d, block size %d, num of ListSnapshotBlocks request %d", numBlocks, blockSize, numApiReq)
-	return numBlocks * blockSize, numApiReq, nil
+	klog.Infof("full backup snapshot size %d bytes, num of ListSnapshotBlocks request %d", snapshotSize, numApiReq)
+	return snapshotSize, numApiReq, nil
 }
 
 func getPrevSnapshotId(snapshotId string, volSnapshots []*ec2.Snapshot) (string, error) {
-	// volSnapshots already sorted by time
 	var prevSnapshotId string
+
+	sort.Slice(volSnapshots, func(i, j int) bool {
+		return volSnapshots[i].StartTime.Before(*volSnapshots[j].StartTime)
+	})
+
 	for i, snapshot := range volSnapshots {
 		if snapshotId == *snapshot.SnapshotId {
+			// the first snapshot for the volume
+			if i == 0 {
+				return "", nil
+			}
 			prevSnapshotId = *volSnapshots[i-1].SnapshotId
 			klog.Infof("the prevSnapshot index is %d, ID is %s", i, *snapshot.SnapshotId)
 			break
@@ -316,7 +321,7 @@ func getPrevSnapshotId(snapshotId string, volSnapshots []*ec2.Snapshot) (string,
 // changedBlocksSize calculates changed blocks total size in bytes between two snapshots with common ancestry.
 func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, uint64, error) {
 	var numBlocks int
-	var numChangedBlocks uint64
+	var snapshotSize uint64
 	var numApiReq uint64
 
 	klog.Infof("the calc snapshot size for %s, base on prev snapshot %s", snapshotId, preSnapshotId)
@@ -330,7 +335,6 @@ func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, uint64,
 	var blockSize uint64
 
 	for {
-
 		resp, err := ebsSession.EBS.ListChangedBlocks(&ebs.ListChangedBlocksInput{
 			FirstSnapshotId:  aws.String(preSnapshotId),
 			MaxResults:       aws.Int64(ListBlocksMaxReturnResult),
@@ -342,20 +346,21 @@ func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, uint64,
 			return 0, numApiReq, err
 		}
 		numBlocks += len(resp.ChangedBlocks)
+
 		// retrieve only changed block and blocks only existed in current snapshot (new add blocks)
 		for _, block := range resp.ChangedBlocks {
-			if block.SecondBlockToken != nil && len(aws.StringValue(block.SecondBlockToken)) != 0 {
-				numChangedBlocks += 1
+			if block.SecondBlockToken != nil && resp.BlockSize != nil {
+				blockSize = uint64(*resp.BlockSize)
+				snapshotSize += 1 * blockSize
 			}
 		}
 
-		klog.Infof("the current num blocks %d, block size is %d", numChangedBlocks, blockSize)
 		// check if there is more to retrieve
 		if resp.NextToken == nil {
 			break
 		}
 		nextToken = resp.NextToken
 	}
-	klog.Infof("the total size of snapshot %d, num of api ListChangedBlocks request %d, snapshot %s, data change rate %.4f", numChangedBlocks*blockSize, numApiReq, snapshotId, float64(numChangedBlocks)/float64(numBlocks))
-	return numChangedBlocks * blockSize, numApiReq, nil
+	klog.Infof("the total size of snapshot %d, num of api ListChangedBlocks request %d, snapshot id %s, data change rate %.4f", snapshotSize, numApiReq, snapshotId, float64(snapshotSize/blockSize)/float64(numBlocks))
+	return snapshotSize, numApiReq, nil
 }
