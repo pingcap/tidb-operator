@@ -30,6 +30,8 @@ const (
 	defaultClusterLog = "/data0/logs/flash_cluster_manager.log"
 	defaultErrorLog   = "/data0/logs/error.log"
 	defaultServerLog  = "/data0/logs/server.log"
+	listenHostForIPv4 = "0.0.0.0"
+	listenHostForIPv6 = "[::]"
 )
 
 var (
@@ -132,9 +134,9 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 	ns := tc.Namespace
 	clusterDomain := tc.Spec.ClusterDomain
 	ref := tc.Spec.Cluster.DeepCopy()
-	listenHost := "0.0.0.0"
+	listenHost := listenHostForIPv4
 	if tc.Spec.PreferIPv6 {
-		listenHost = "[::]"
+		listenHost = listenHostForIPv6
 	}
 
 	// common
@@ -161,9 +163,6 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		// port
 		common.SetIfNil("tcp_port", int64(9000))
 		common.SetIfNil("http_port", int64(8123))
-		if tc.Spec.PreferIPv6 {
-			common.SetIfNil("listen_host", "[::]")
-		}
 
 		// flash
 		tidbStatusAddr := fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(name), ns)
@@ -202,6 +201,12 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 			pdAddr = fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain)) // use pd of reference cluster
 		}
 		common.SetIfNil("raft.pd_addr", pdAddr)
+
+		if listenHost == listenHostForIPv6 {
+			// In IPv4/IPv6 dual-stack, the default listen host is 0.0.0.0, so we need to set it to [::]
+			common.SetIfNil("listen_host", listenHost)
+			common.SetIfNil("status.metrics_port", listenHost+":8234")
+		}
 	}
 
 	// proxy
@@ -259,9 +264,9 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
 	noLocalPD := tc.WithoutLocalPD()
 	acrossK8s := tc.AcrossK8s()
 	noLocalTiDB := tc.WithoutLocalTiDB()
-	listenHost := "0.0.0.0"
+	listenHost := listenHostForIPv4
 	if tc.Spec.PreferIPv6 {
-		listenHost = "[::]"
+		listenHost = listenHostForIPv6
 	}
 
 	setTiFlashConfigDefault(config, ref, tc.Name, tc.Namespace, tc.Spec.ClusterDomain, listenHost, noLocalPD, noLocalTiDB, acrossK8s)
@@ -343,7 +348,14 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 
 	setTiFlashRaftConfigDefault(config, ref, clusterName, ns, clusterDomain, noLocalPD, acrossK8s)
 
-	config.SetIfNil("status.metrics_port", int64(8234))
+	if listenHost == listenHostForIPv6 {
+		// In IPv4/IPv6 dual-stack, the default host that metrics server used is 0.0.0.0, so we need to set it to [::]
+		config.SetIfNil("status.metrics_port", listenHost+":8234")
+	} else {
+		config.SetIfNil("status.metrics_port", int64(8234))
+
+	}
+
 	config.SetIfNil("quotas.default.interval.duration", int64(3600))
 	config.SetIfNil("quotas.default.interval.queries", int64(0))
 	config.SetIfNil("quotas.default.interval.errors", int64(0))
