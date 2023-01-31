@@ -204,7 +204,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 
 		if listenHost == listenHostForIPv6 {
 			// In IPv4/IPv6 dual-stack, the default listen host is 0.0.0.0, so we need to set it to [::]
-			common.SetIfNil("listen_host", listenHost)
+			common.SetIfNil("listen_host", "::") // listen_host must be set to "::"
 			common.SetIfNil("status.metrics_port", listenHost+":8234")
 		}
 	}
@@ -336,7 +336,6 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	config.SetIfNil("path_realtime_mode", false)
 	config.SetIfNil("mark_cache_size", int64(5368709120))
 	config.SetIfNil("minmax_index_cache_size", int64(5368709120))
-	config.SetIfNil("listen_host", listenHost)
 	config.SetIfNil("tcp_port", int64(9000))
 	config.SetIfNil("tcp_port_secure", int64(9000))
 	config.SetIfNil("https_port", int64(8123))
@@ -349,11 +348,12 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	setTiFlashRaftConfigDefault(config, ref, clusterName, ns, clusterDomain, noLocalPD, acrossK8s)
 
 	if listenHost == listenHostForIPv6 {
-		// In IPv4/IPv6 dual-stack, the default host that metrics server used is 0.0.0.0, so we need to set it to [::]
+		// In IPv4/IPv6 dual-stack, the default host is 0.0.0.0, so we need to set it to ::
+		config.SetIfNil("listen_host", "::") // listen host must be ::
 		config.SetIfNil("status.metrics_port", listenHost+":8234")
 	} else {
+		config.SetIfNil("listen_host", listenHost)
 		config.SetIfNil("status.metrics_port", int64(8234))
-
 	}
 
 	config.SetIfNil("quotas.default.interval.duration", int64(3600))
