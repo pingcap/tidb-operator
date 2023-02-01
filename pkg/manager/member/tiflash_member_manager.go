@@ -735,6 +735,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 
 	previousStores := tc.Status.TiFlash.Stores
 	previousPeerStores := tc.Status.TiFlash.PeerStores
+	previousTombstoneStores := tc.Status.TiFlash.TombstoneStores
 	stores := map[string]v1alpha1.TiKVStore{}
 	peerStores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
@@ -791,6 +792,12 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		status := m.getTiFlashStore(store)
 		if status == nil {
 			continue
+		}
+
+		oldStore, exist := previousTombstoneStores[status.ID]
+		status.LastTransitionTime = metav1.Now()
+		if exist && status.State == oldStore.State {
+			status.LastTransitionTime = oldStore.LastTransitionTime
 		}
 		tombstoneStores[status.ID] = *status
 	}
