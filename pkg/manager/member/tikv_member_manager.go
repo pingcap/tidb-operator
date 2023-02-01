@@ -822,6 +822,7 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 	previousStores := tc.Status.TiKV.Stores
 	previousPeerStores := tc.Status.TiKV.PeerStores
+	previousTombstoneStores := tc.Status.TiKV.TombstoneStores
 	stores := map[string]v1alpha1.TiKVStore{}
 	peerStores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
@@ -884,6 +885,12 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 		status := getTiKVStore(store)
 		if status == nil {
 			continue
+		}
+
+		oldStore, exist := previousTombstoneStores[status.ID]
+		status.LastTransitionTime = metav1.Now()
+		if exist && status.State == oldStore.State {
+			status.LastTransitionTime = oldStore.LastTransitionTime
 		}
 		tombstoneStores[status.ID] = *status
 	}
