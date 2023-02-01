@@ -75,6 +75,8 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 	var errs []error
 	var err error
 	// volume-snapshot backup requires to delete the snapshot firstly, then delete the backup meta file
+	// volume-snapshot is incremental snapshot per volume. Any backup deletion will take effects on next volume-snapshot backup
+	// we need update backup size of the impacted the volume-snapshot backup.
 	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 		nextNackup := bm.getNextBackup(ctx, backup)
 		if nextNackup == nil {
@@ -129,27 +131,23 @@ func (bm *Manager) getNextBackup(ctx context.Context, backup *v1alpha1.Backup) *
 		return nil
 	}
 
+	// sort the backup list by TimeStarted, since volume snapshot is point-in-time (start time) backup
 	sort.Slice(bks, func(i, j int) bool {
 		return bks[i].Status.TimeStarted.Before(&bks[j].Status.TimeStarted)
 	})
 
 	for i, bk := range bks {
 		if backup.Name == bk.Name {
-			return bm.getFirstVolumeSnapshotBackup(bks[i:])
+			return bm.getVolumeSnapshotBackup(bks[i+1:])
 		}
 	}
 
 	return nil
 }
 
-// getFirstVolumeSnapshotBackup get the first volume-snapshot backup from backup list
-func (bm *Manager) getFirstVolumeSnapshotBackup(backups []*v1alpha1.Backup) *v1alpha1.Backup {
-	// only one backup or it is the last one in slice
-	if len(backups) == 1 {
-		return nil
-	}
-
-	for _, bk := range backups[1:] {
+// getVolumeSnapshotBackup get the first volume-snapshot backup from backup list, which may contain non-volume snapshot
+func (bm *Manager) getVolumeSnapshotBackup(backups []*v1alpha1.Backup) *v1alpha1.Backup {
+	for _, bk := range backups {
 		if bk.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 			return bk
 		}
