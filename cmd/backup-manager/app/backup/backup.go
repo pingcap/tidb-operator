@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dustin/go-humanize"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -92,23 +91,13 @@ func (bo *Options) backupData(
 		logCallback = func(line string) {
 			if strings.Contains(line, successTag) {
 				extract := strings.Split(line, successTag)[1]
-				sizeStr := regexp.MustCompile(`size=(\d+)`).FindString(extract)
-				size := strings.ReplaceAll(sizeStr, "size=", "")
 				tsStr := regexp.MustCompile(`resolved_ts=(\d+)`).FindString(extract)
 				ts := strings.ReplaceAll(tsStr, "resolved_ts=", "")
-				klog.Infof("%s size: %s, resolved_ts: %s", successTag, size, ts)
+				klog.Infof("%s resolved_ts: %s", successTag, ts)
 
-				backupSize, err := strconv.ParseInt(size, 10, 64)
-				if err != nil {
-					klog.Warningf("Failed to parse BackupSize %s, %v", size, err)
-				}
-				backupSize = backupSize << 30 // Convert GiB to bytes.
-				backupSizeReadable := humanize.Bytes(uint64(backupSize))
 				progress := 100.0
 				if err := statusUpdater.Update(backup, nil, &controller.BackupUpdateStatus{
 					CommitTs:           &ts,
-					BackupSize:         &backupSize,
-					BackupSizeReadable: &backupSizeReadable,
 					ProgressStep:       &progressStep,
 					Progress:           &progress,
 					ProgressUpdateTime: &metav1.Time{Time: time.Now()},
