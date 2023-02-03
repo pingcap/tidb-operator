@@ -116,7 +116,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			return err
 		}
 		// restore based volume snapshot for cloud provider
-		reason, err := rm.volSnapshotRestore(restore, tc)
+		reason, err := rm.volumeSnapshotRestore(restore, tc)
 		if err != nil {
 			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestoreRetryFailed,
@@ -284,7 +284,7 @@ func (rm *restoreManager) readTiFlashReplicasFromBackupMeta(r *v1alpha1.Restore)
 	return metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas, "", nil
 }
 
-func (rm *restoreManager) volSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
+func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
 	if v1alpha1.IsRestoreComplete(r) {
 		return "", nil
 	}
