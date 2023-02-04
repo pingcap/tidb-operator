@@ -273,7 +273,7 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 			memberStatus.Health = false
 		} else {
 			memberStatus.Health = true
-			memberStatus.Info = healthInfo
+			memberStatus.Info = healthInfo.String()
 		}
 		oldMemberStatus, exist := oldMembers[name]
 		if exist && memberStatus.Health == oldMemberStatus.Health {
