@@ -22077,7 +22077,7 @@ bool
 <td>
 <code>info</code></br>
 <em>
-github.com/pingcap/TiProxy/lib/config.HealthInfo
+string
 </em>
 </td>
 <td>

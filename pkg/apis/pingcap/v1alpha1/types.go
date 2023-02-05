@@ -21,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
@@ -1437,7 +1436,7 @@ type TiProxyMember struct {
 	Health bool   `json:"health"`
 	// Additional healthinfo if it is healthy.
 	// +optional
-	Info *tiproxyConfig.HealthInfo `json:"info"`
+	Info string `json:"info"`
 	// Last time the health transitioned from one to another.
 	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
 	// +nullable
