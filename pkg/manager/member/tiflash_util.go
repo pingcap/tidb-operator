@@ -203,9 +203,8 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		common.SetIfNil("raft.pd_addr", pdAddr)
 
 		if listenHost == listenHostForIPv6 {
-			// In IPv4/IPv6 dual-stack, the default listen host is 0.0.0.0, so we need to set it to [::]
-			common.SetIfNil("listen_host", "::") // listen_host must be set to "::"
-			common.SetIfNil("status.metrics_port", listenHost+":8234")
+			common.SetIfNil("listen_host", "::") // listen host must be "::" not "[::]"
+			common.SetIfNil("status.metrics_port", int64(8234))
 		}
 	}
 
@@ -348,13 +347,11 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	setTiFlashRaftConfigDefault(config, ref, clusterName, ns, clusterDomain, noLocalPD, acrossK8s)
 
 	if listenHost == listenHostForIPv6 {
-		// In IPv4/IPv6 dual-stack, the default host is 0.0.0.0, so we need to set it to ::
-		config.SetIfNil("listen_host", "::") // listen host must be ::
-		config.SetIfNil("status.metrics_port", listenHost+":8234")
+		config.SetIfNil("listen_host", "::") // listen host must be "::" not "[::]"
 	} else {
 		config.SetIfNil("listen_host", listenHost)
-		config.SetIfNil("status.metrics_port", int64(8234))
 	}
+	config.SetIfNil("status.metrics_port", int64(8234))
 
 	config.SetIfNil("quotas.default.interval.duration", int64(3600))
 	config.SetIfNil("quotas.default.interval.queries", int64(0))
