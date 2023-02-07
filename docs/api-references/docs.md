@@ -21193,7 +21193,23 @@ string
 <td>
 <em>(Optional)</em>
 <p>EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
-Defaults to 10m</p>
+Defaults to 1500min</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>waitLeaderTransferBackTimeout</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back after
+upgarde for a tikv.</p>
+<p>Defaults to 400s</p>
 </td>
 </tr>
 <tr>

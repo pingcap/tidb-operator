@@ -17308,6 +17308,8 @@ spec:
                   x-kubernetes-list-type: map
                 version:
                   type: string
+                waitLeaderTransferBackTimeout:
+                  type: string
               required:
               - replicas
               type: object

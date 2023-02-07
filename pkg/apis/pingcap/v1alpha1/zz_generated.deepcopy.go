@@ -8052,6 +8052,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.WaitLeaderTransferBackTimeout != nil {
+		in, out := &in.WaitLeaderTransferBackTimeout, &out.WaitLeaderTransferBackTimeout
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	if in.StorageVolumes != nil {
 		in, out := &in.StorageVolumes, &out.StorageVolumes
 		*out = make([]StorageVolume, len(*in))
