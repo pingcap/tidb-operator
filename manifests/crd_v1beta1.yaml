@@ -24678,6 +24678,8 @@ spec:
                   type: string
                 binlogEnabled:
                   type: boolean
+                bootstrapSQLFile:
+                  type: string
                 config:
                   x-kubernetes-preserve-unknown-fields: true
                 configUpdateStrategy:
