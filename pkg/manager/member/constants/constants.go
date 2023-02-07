@@ -25,4 +25,7 @@ const (
 
 	// TiCDCCertPath is the path for ticdc cert in container
 	TiCDCCertPath = "/var/lib/ticdc-tls"
+
+	// BootstrapSQLFile is the path for bootstrap sql file.
+	BootstrapSQLFile = "/etc/tidb-bootstrap/bootstrap.sql"
 )

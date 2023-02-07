@@ -762,6 +762,22 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		})
 	}
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsBootstrapSQLEnabled() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-bootstrap-sql", ReadOnly: true, MountPath: "/etc/tidb-bootstrap",
+		})
+
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-bootstrap-sql", VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: *tc.Spec.TiDB.BootstrapSQLConfigMapName,
+					},
+					Items: []corev1.KeyToPath{{Key: "bootstrap-sql", Path: "bootstrap.sql"}},
+				},
+			},
+		})
+	}
 	if tc.IsTLSClusterEnabled() {
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{

@@ -97,6 +97,10 @@ fi
 ARGS="${ARGS}  --plugin-dir  {{ .PluginDirectory  }} --plugin-load {{ .PluginList }}  "
 {{- end }}
 
+{{- if .EnableBootstrapSQL }}
+ARGS="${ARGS}  --initialize-sql-file={{ .BootstrapSQLFile }}"
+{{- end }}
+
 echo "start tidb-server ..."
 echo "/tidb-server ${ARGS}"
 exec /tidb-server ${ARGS}
@@ -105,10 +109,12 @@ exec /tidb-server ${ARGS}
 type TidbStartScriptModel struct {
 	CommonModel
 
-	EnablePlugin    bool
-	PluginDirectory string
-	PluginList      string
-	Path            string
+	EnablePlugin       bool
+	PluginDirectory    string
+	PluginList         string
+	Path               string
+	EnableBootstrapSQL bool
+	BootstrapSQLFile   string
 }
 
 // pdStartScriptTpl is the pd start script
