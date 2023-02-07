@@ -38,7 +38,8 @@ const (
 	defaultSeparateRaftLog    = false
 	defaultEnablePVReclaim    = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
-	defaultEvictLeaderTimeout = 1500 * time.Minute
+	defaultEvictLeaderTimeout            = 1500 * time.Minute
+	defaultWaitLeaderTransferBackTimeout = 4 * time.Minute
 	// defaultTiCDCGracefulShutdownTimeout is the timeout limit of graceful
 	// shutdown a TiCDC pod.
 	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
@@ -143,6 +144,13 @@ func (tc *TidbCluster) TiKVEvictLeaderTimeout() time.Duration {
 		if err == nil {
 			return d
 		}
+	}
+	return defaultEvictLeaderTimeout
+}
+
+func (tc *TidbCluster) TiKVWaitLeaderTransferBackTimeout() time.Duration {
+	if tc.Spec.TiKV != nil && tc.Spec.TiKV.WaitLeaderTransferBackTimeout != nil {
+		return tc.Spec.TiKV.WaitLeaderTransferBackTimeout.Duration
 	}
 	return defaultEvictLeaderTimeout
 }

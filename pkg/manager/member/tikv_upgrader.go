@@ -316,7 +316,7 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 	//
 	//  3. Time out waiting for leaders to transfer back
 
-	timeout := time.Minute * 5
+	timeout := tc.TiKVWaitLeaderTransferBackTimeout()
 	leaderCountBeforeStr, exist := pod.Annotations[annoKeyTiKVLeaderCountBeforeUpgrade]
 	if !exist {
 		return true, nil

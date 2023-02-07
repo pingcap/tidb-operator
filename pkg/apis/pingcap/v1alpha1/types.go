@@ -603,9 +603,16 @@ type TiKVSpec struct {
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 
 	// EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
-	// Defaults to 10m
+	// Defaults to 1500min
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
+
+	// WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back after
+	// upgarde for a tikv.
+	//
+	// Defaults to 400s
+	// +optional
+	WaitLeaderTransferBackTimeout *metav1.Duration `json:"waitLeaderTransferBackTimeout,omitempty"`
 
 	// StorageVolumes configure additional storage for TiKV pods.
 	// +optional
