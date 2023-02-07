@@ -212,7 +212,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 2) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-1 * time.Minute).Format(time.RFC3339)}
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Now().Add(-1 * time.Minute).Format(time.RFC3339)}
 					}
 				}
 			},
@@ -249,7 +249,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-1 * time.Minute).Format(time.RFC3339)}
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Now().Add(-1 * time.Minute).Format(time.RFC3339)}
 					}
 				}
 			},
@@ -420,7 +420,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
-				_, exist := pods[TikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
+				_, exist := pods[TikvPodName(upgradeTcName, 1)].Annotations[annoKeyEvictLeaderBeginTime]
 				g.Expect(exist).To(BeTrue())
 			},
 		},
@@ -442,7 +442,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
 			},
@@ -478,7 +478,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
 			},
@@ -520,7 +520,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
-				_, exist := pods[TikvPodName(upgradeTcName, 1)].Annotations[EvictLeaderBeginTime]
+				_, exist := pods[TikvPodName(upgradeTcName, 1)].Annotations[annoKeyEvictLeaderBeginTime]
 				g.Expect(exist).To(BeFalse())
 			},
 		},
@@ -542,7 +542,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Add(-2000 * time.Minute).Format(time.RFC3339)}
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Now().Add(-2000 * time.Minute).Format(time.RFC3339)}
 					}
 				}
 			},
@@ -578,7 +578,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 0) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
 			},
@@ -615,7 +615,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 0) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
 			},
@@ -649,7 +649,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
 			},
@@ -707,7 +707,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 2) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 					}
 				}
 			},
@@ -743,7 +743,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Now().Format(time.RFC3339)}
 						pod.Status.Conditions[0].LastTransitionTime = metav1.Now()
 					}
 				}
@@ -777,7 +777,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Time{}.Format(time.RFC3339)} // skip evict leader
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Time{}.Format(time.RFC3339)} // skip evict leader
 					}
 				}
 			},
@@ -814,7 +814,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
 					if pod.GetName() == TikvPodName(upgradeTcName, 1) {
-						pod.Annotations = map[string]string{EvictLeaderBeginTime: time.Time{}.Format(time.RFC3339)} // skip evict leader
+						pod.Annotations = map[string]string{annoKeyEvictLeaderBeginTime: time.Time{}.Format(time.RFC3339)} // skip evict leader
 					}
 				}
 			},
