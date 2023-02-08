@@ -4,8 +4,8 @@
 cleanup_dind() {
     if [[ "${DOCKER_IN_DOCKER_ENABLED:-false}" == "true" ]]; then
         echo "Cleaning up after docker"
+        docker ps -q | xargs -r docker kill || true
         docker ps -aq | xargs -r docker rm -f || true
-        docker kill `docker ps -q` || true
         docker system prune -af || true
         service docker stop || true
     fi

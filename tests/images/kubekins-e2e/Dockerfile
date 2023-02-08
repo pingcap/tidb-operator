@@ -4,7 +4,7 @@ ARG GO_VERSION=1.16.7
 
 # common util tools
 RUN apt-get update && \
-    apt-get install -y ca-certificates curl git openssl default-mysql-client unzip wget && \
+    apt-get install -y build-essential ca-certificates curl git openssl default-mysql-client unzip wget && \
     apt-get install -y python && \
     apt-get autoremove -y && \
     apt-get clean -y
@@ -64,6 +64,11 @@ RUN echo "DOCKER_OPTS=\"\${DOCKER_OPTS} --registry-mirror=${DOCKER_REGISTRY_MIRR
 #
 # BEGIN: Install GO
 #
+
+ENV GOPATH /go
+ENV PATH /usr/local/go/bin:$PATH
+RUN mkdir -p /go/bin
+ENV PATH $GOPATH/bin:$PATH
 
 ARG GO_TARBALL="go${GO_VERSION}.linux-amd64.tar.gz"
 RUN wget -q "https://storage.googleapis.com/golang/${GO_TARBALL}" && \
