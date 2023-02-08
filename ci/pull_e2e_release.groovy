@@ -37,26 +37,13 @@ metadata:
 spec:
   containers:
   - name: main
-    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v20210808-1eaeec7-master
+    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v3
     command:
     - runner.sh
-    # Clean containers on TERM signal in root process to avoid cgroup leaking.
-    # https://github.com/pingcap/tidb-operator/issues/1603#issuecomment-582402196
     - exec
     - bash
     - -c
     - |
-      function clean() {
-        echo "info: clean all containers to avoid cgroup leaking"
-        docker kill `docker ps -q` || true
-        docker system prune -af || true
-      }
-      function setup_docker_mirror() {
-        sed -i "s/mirror.gcr.io/registry-mirror.pingcap.net/g" /etc/default/docker
-        service docker restart
-      }
-      setup_docker_mirror
-      trap clean TERM
       sleep 1d & wait
     # we need privileged mode in order to do docker in docker
     securityContext:
@@ -170,8 +157,8 @@ def build(String name, String code, Map resources = e2ePodResources) {
                     dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
                         unstash 'tidb-operator'
                         stage("Debug Info") {
-                            println "debug host: 172.16.5.15"
-                            println "debug command: kubectl -n jenkins-tidb exec -ti ${NODE_NAME} bash"
+                            println "debug host: 172.16.5.21"
+                            println "debug command: kubectl -n jenkins-tidb-operator exec -ti ${NODE_NAME} bash"
                             sh """
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
@@ -264,6 +251,7 @@ try {
                         # we run as root in our pods, this is required
                         # otherwise jenkins agent will fail because of the lack of permission
                         chown -R 1000:1000 .
+                        git config --global --add safe.directory '*'
                         """
 
                         // clean stale files because we may reuse previous created nodes
