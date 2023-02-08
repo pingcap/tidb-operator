@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/semver"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
@@ -56,10 +55,6 @@ var (
 		ResourceRequirements: corev1.ResourceRequirements{},
 	}
 	defaultHelperSpec = HelperSpec{}
-
-	// The first version that supports `-initialize-sql-file` option for first bootstrap is v6.6.0
-	// https://github.com/pingcap/tidb/pull/35625
-	tidbEqualOrGreaterThanV660, _ = semver.NewConstraint(">= v6.6.0-0")
 )
 
 // PDImage return the image used by PD.
@@ -955,19 +950,12 @@ func (tc *TidbCluster) IsTiDBBinlogEnabled() bool {
 }
 
 func (tidb *TiDBSpec) IsBootstrapSQLEnabled() bool {
-	if tidb.Version == nil || tidb.BootstrapSQLConfigMapName == nil {
-		return false
+	if tidb.BootstrapSQLConfigMapName != nil && *tidb.BootstrapSQLConfigMapName != "" {
+		klog.Info("tidb bootstrap sql is enabled")
+		return true
 	}
 
-	v, err := semver.NewVersion(*tidb.Version)
-	if err != nil {
-		klog.Errorf("parse tidb version %s failed, err: %v", *tidb.Version, err)
-		return false
-	}
-
-	ret := tidbEqualOrGreaterThanV660.Check(v) && *tidb.BootstrapSQLConfigMapName != ""
-	klog.Info("tidb bootstrap sql enabled: ", ret)
-	return ret
+	return false
 }
 
 func (tidb *TiDBSpec) IsTLSClientEnabled() bool {
