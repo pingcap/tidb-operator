@@ -11428,7 +11428,7 @@ spec:
                   type: string
                 binlogEnabled:
                   type: boolean
-                bootstrapSQLFile:
+                bootstrapSQLConfigMapName:
                   type: string
                 config:
                   x-kubernetes-preserve-unknown-fields: true

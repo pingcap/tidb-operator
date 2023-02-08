@@ -955,7 +955,7 @@ func (tc *TidbCluster) IsTiDBBinlogEnabled() bool {
 }
 
 func (tidb *TiDBSpec) IsBootstrapSQLEnabled() bool {
-	if tidb.Version == nil {
+	if tidb.Version == nil || tidb.BootstrapSQLConfigMapName == nil {
 		return false
 	}
 
@@ -965,7 +965,9 @@ func (tidb *TiDBSpec) IsBootstrapSQLEnabled() bool {
 		return false
 	}
 
-	return tidbEqualOrGreaterThanV660.Check(v) && tidb.BootstrapSQLConfigMapName != nil && *tidb.BootstrapSQLConfigMapName != ""
+	ret := tidbEqualOrGreaterThanV660.Check(v) && *tidb.BootstrapSQLConfigMapName != ""
+	klog.Info("tidb bootstrap sql enabled: ", ret)
+	return ret
 }
 
 func (tidb *TiDBSpec) IsTLSClientEnabled() bool {
