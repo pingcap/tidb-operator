@@ -32,6 +32,7 @@ import (
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -39,8 +40,6 @@ const (
 	annoKeyEvictLeaderBeginTime = "evictLeaderBeginTime"
 	// annoKeyEvictLeaderEndTime is the annotation key in a pod to record the time to end leader eviction
 	annoKeyEvictLeaderEndTime = "tidb.pingcap.com/tikv-evict-leader-end-at"
-	// EvictLeaderTimeout is the annotation key in a pod to record the leader count before upgrade
-	annoKeyTiKVLeaderCountBeforeUpgrade = "tidb.pingcap.com/tikv-leader-count-before-upgrade"
 	// TODO: change to use minReadySeconds in sts spec
 	// See https://kubernetes.io/blog/2021/08/27/minreadyseconds-statefulsets/
 	annoKeyTiKVMinReadySeconds = "tidb.pingcap.com/tikv-min-ready-seconds"
@@ -277,7 +276,11 @@ func (u *tikvUpgrader) modifyVolumesBeforeUpgrade(tc *v1alpha1.TidbCluster, upgr
 func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod *corev1.Pod) (bool /*done*/, error) {
 	logPrefix := fmt.Sprintf("endEvictLeaderAfterUpgrade: for tikv pod %s/%s", pod.Namespace, pod.Name)
 
-	storeID, err := TiKVStoreIDFromStatus(tc, pod.Name)
+	store, err := TiKVStoreFromStatus(tc, pod.Name)
+	if err != nil {
+		return false, err
+	}
+	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
 		return false, err
 	}
@@ -316,16 +319,11 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 	//
 	//  3. Time out waiting for leaders to transfer back
 
-	timeout := tc.TiKVWaitLeaderTransferBackTimeout()
-	leaderCountBeforeStr, exist := pod.Annotations[annoKeyTiKVLeaderCountBeforeUpgrade]
-	if !exist {
+	if store.LastLeaderCountBeforeUpgrade == nil {
+		klog.Infof("%s: miss leader count before upgrade, so skip waiting leaders for transfer back", logPrefix)
 		return true, nil
 	}
-	leaderCountBefore, err := strconv.Atoi(leaderCountBeforeStr)
-	if err != nil {
-		klog.Errorf("%s: parse annotation %q to int failed", logPrefix, annoKeyTiKVLeaderCountBeforeUpgrade)
-		return true, nil
-	}
+	leaderCountBefore := int(*store.LastLeaderCountBeforeUpgrade)
 	evictLeaderEndTime, err := time.Parse(time.RFC3339, evictLeaderEndTimeStr)
 	if err != nil {
 		klog.Errorf("%s: parse annotation %q to time failed", logPrefix, annoKeyEvictLeaderBeginTime)
@@ -333,21 +331,19 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 	}
 
 	if leaderCountBefore < 200 {
+		klog.V(4).Infof("%s: leader count is %d and less than 200, so skip waiting leaders for transfer back", logPrefix, leaderCountBefore)
 		return true, nil
 	}
 
+	timeout := tc.TiKVWaitLeaderTransferBackTimeout()
 	if time.Now().After(evictLeaderEndTime.Add(timeout)) {
-		klog.Infof("%s: time out for leaders transfer back threshold %v, so skip waiting", logPrefix, timeout)
+		klog.V(4).Infof("%s: time out with threshold %v, so skip waiting leaders for transfer back", logPrefix, timeout)
 		return true, nil
 	}
 
-	leaderCountNow, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, tc.IsTLSClusterEnabled()).GetLeaderCount()
-	if err != nil {
-		klog.Warningf("%s: failed to get leader count, error: %v", logPrefix, err)
-		return false, nil
-	}
+	leaderCountNow := int(store.LeaderCount)
 	if leaderCountNow >= leaderCountBefore*2/3 {
-		klog.Infof("%s: leader count is %d and greater than 2/3 of original count %d, so ready to upgrade next store",
+		klog.V(4).Infof("%s: leader count is %d and greater than 2/3 of original count %d, so ready to upgrade next store",
 			logPrefix, leaderCountNow, leaderCountBefore)
 		return true, nil
 	}
@@ -362,12 +358,12 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 	podName := pod.GetName()
 	annosToRecordInfo := map[string]string{}
 
-	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, tc.IsTLSClusterEnabled()).GetLeaderCount()
-	if err == nil {
-		annosToRecordInfo[annoKeyTiKVLeaderCountBeforeUpgrade] = strconv.Itoa(leaderCount)
+	if status, exist := tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))]; exist {
+		status.LastLeaderCountBeforeUpgrade = pointer.Int32Ptr(int32(status.LeaderCount))
+		tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))] = status
 	}
 
-	err = controller.GetPDClient(u.deps.PDControl, tc).BeginEvictLeader(storeID)
+	err := controller.GetPDClient(u.deps.PDControl, tc).BeginEvictLeader(storeID)
 	if err != nil {
 		klog.Errorf("beginEvictLeader: failed to begin evict leader: %d, %s/%s, %v",
 			storeID, ns, podName, err)

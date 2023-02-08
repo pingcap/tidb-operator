@@ -20524,6 +20524,9 @@ spec:
                           type: string
                         ip:
                           type: string
+                        lastLeaderCountBeforeUpgrade:
+                          format: int32
+                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
@@ -20598,6 +20601,9 @@ spec:
                           type: string
                         ip:
                           type: string
+                        lastLeaderCountBeforeUpgrade:
+                          format: int32
+                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
@@ -20626,6 +20632,9 @@ spec:
                           type: string
                         ip:
                           type: string
+                        lastLeaderCountBeforeUpgrade:
+                          format: int32
+                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
@@ -20771,6 +20780,9 @@ spec:
                           type: string
                         ip:
                           type: string
+                        lastLeaderCountBeforeUpgrade:
+                          format: int32
+                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
@@ -20845,6 +20857,9 @@ spec:
                           type: string
                         ip:
                           type: string
+                        lastLeaderCountBeforeUpgrade:
+                          format: int32
+                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
@@ -20873,6 +20888,9 @@ spec:
                           type: string
                         ip:
                           type: string
+                        lastLeaderCountBeforeUpgrade:
+                          format: int32
+                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true

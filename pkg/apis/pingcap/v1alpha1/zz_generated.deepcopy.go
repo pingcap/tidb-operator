@@ -8280,6 +8280,11 @@ func (in *TiKVStorageReadPoolConfig) DeepCopy() *TiKVStorageReadPoolConfig {
 func (in *TiKVStore) DeepCopyInto(out *TiKVStore) {
 	*out = *in
 	in.LastTransitionTime.DeepCopyInto(&out.LastTransitionTime)
+	if in.LastLeaderCountBeforeUpgrade != nil {
+		in, out := &in.LastLeaderCountBeforeUpgrade, &out.LastLeaderCountBeforeUpgrade
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 

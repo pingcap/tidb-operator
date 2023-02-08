@@ -21348,6 +21348,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
 </em>
 </td>
 <td>
+<p>key: store id</p>
 </td>
 </tr>
 <tr>
@@ -21734,6 +21735,16 @@ Kubernetes meta/v1.Time
 <td>
 <p>Last time the health transitioned from one to another.
 TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastLeaderCountBeforeUpgrade</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>

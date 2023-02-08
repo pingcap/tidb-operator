@@ -1402,7 +1402,7 @@ type TiKVStatus struct {
 	Phase           MemberPhase                   `json:"phase,omitempty"`
 	BootStrapped    bool                          `json:"bootStrapped,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus       `json:"statefulSet,omitempty"`
-	Stores          map[string]TiKVStore          `json:"stores,omitempty"`
+	Stores          map[string]TiKVStore          `json:"stores,omitempty"` // key: store id
 	PeerStores      map[string]TiKVStore          `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore          `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore   `json:"failureStores,omitempty"`
@@ -1497,6 +1497,9 @@ type TiKVStore struct {
 	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// LastLeaderCountBeforeUpgrade records the leader count before upgrade
+	// It is set when evicting leader and used to wait for most leaders to transfer back after upgrade
+	LastLeaderCountBeforeUpgrade *int32 `json:"lastLeaderCountBeforeUpgrade,omitempty"`
 }
 
 // TiKVFailureStore is the tikv failure store information

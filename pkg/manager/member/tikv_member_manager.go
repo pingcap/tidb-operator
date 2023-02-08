@@ -861,6 +861,10 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 			status.LastTransitionTime = oldStore.LastTransitionTime
 		}
 
+		if oldStore.LastLeaderCountBeforeUpgrade != nil {
+			status.LastLeaderCountBeforeUpgrade = oldStore.LastLeaderCountBeforeUpgrade
+		}
+
 		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
 		// So we check the store owner to make sure it.
 		if store.Store != nil {
