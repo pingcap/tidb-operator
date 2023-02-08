@@ -72,10 +72,6 @@ set +o errexit
 export PATH="${GOPATH}/bin:${PATH}"
 mkdir -p "${GOPATH}/bin"
 
-# Use a reproducible build date based on the most recent git commit timestamp.
-SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct || true)
-export SOURCE_DATE_EPOCH
-
 # actually start bootstrap and the job
 set -o xtrace
 "$@" &
