@@ -16,7 +16,7 @@ kind: Pod
 spec:
   containers:
   - name: main
-    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:test-0208-1
+    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v3
     command:
     - runner.sh
     - sleep
