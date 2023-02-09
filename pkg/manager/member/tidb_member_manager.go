@@ -565,7 +565,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Set("security.cluster-ssl-ca", path.Join(clusterCertPath, tlsSecretRootCAKey))
 		config.Set("security.cluster-ssl-cert", path.Join(clusterCertPath, corev1.TLSCertKey))
 		config.Set("security.cluster-ssl-key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
-		// set session token certs automatically if tiproxy is avaiable
+		// set session token certs automatically if tiproxy is available
 		if tc.Spec.TiProxy != nil && tc.Spec.TiProxy.Replicas != 0 {
 			config.Set("security.session-token-signing-key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
 			config.Set("security.session-token-signing-cert", path.Join(clusterCertPath, corev1.TLSCertKey))
