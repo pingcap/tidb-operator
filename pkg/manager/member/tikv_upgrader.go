@@ -285,26 +285,31 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 		return false, err
 	}
 
-	// evict leader if needed
-
-	evictLeaderEndTimeStr, ended := pod.Annotations[annoKeyEvictLeaderEndTime]
-	if !ended {
-		return false, u.endEvictLeader(tc, storeID, pod)
+	// evict leader
+	err = u.endEvictLeader(tc, storeID, pod)
+	if err != nil {
+		return false, err
 	}
 
 	// wait for leaders to transfer back or timeout
 	// refer to https://github.com/pingcap/tiup/pull/2051
 
 	isLeaderTransferBackOrTimeout := func() bool {
-		leaderCountBefore := int(*store.LeaderCountBeforeUpgrade)
-		evictLeaderEndTime, err := time.Parse(time.RFC3339, evictLeaderEndTimeStr)
-		if err != nil {
-			klog.Errorf("%s: parse annotation %q to time failed", logPrefix, annoKeyEvictLeaderBeginTime)
+		evictLeaderEndTimeStr, exist := pod.Annotations[annoKeyEvictLeaderEndTime]
+		if !exist {
+			klog.Errorf("%s: miss annotation %q, so skip waiting leaders for transfer back", logPrefix, annoKeyEvictLeaderEndTime)
 			return true
 		}
 
+		evictLeaderEndTime, err := time.Parse(time.RFC3339, evictLeaderEndTimeStr)
+		if err != nil {
+			klog.Errorf("%s: parse annotation %q to time failed, so skip waiting leaders for transfer back", logPrefix, annoKeyEvictLeaderEndTime)
+			return true
+		}
+
+		leaderCountBefore := int(*store.LeaderCountBeforeUpgrade)
 		if leaderCountBefore < 200 {
-			klog.V(4).Infof("%s: leader count is %d and less than 200, so skip waiting leaders for transfer back", logPrefix, leaderCountBefore)
+			klog.Infof("%s: leader count is %d and less than 200, so skip waiting leaders for transfer back", logPrefix, leaderCountBefore)
 			return true
 		}
 
@@ -381,32 +386,28 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 func (u *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
 	ns := tc.GetNamespace()
 	podName := pod.GetName()
-	annosToRecordInfo := map[string]string{}
 
 	// call pd to end evict leader
 	if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
 		return fmt.Errorf("end evict leader for store %d failed: %v", storeID, err)
 	}
 	klog.Infof("endEvictLeader: end evict leader: %d, %s/%s successfully", storeID, ns, podName)
-	annosToRecordInfo[annoKeyEvictLeaderEndTime] = time.Now().Format(time.RFC3339)
 
-	if pod.Annotations == nil {
-		pod.Annotations = map[string]string{}
-	}
-	for k, v := range annosToRecordInfo {
-		pod.Annotations[k] = v
-	}
-	_, err := u.deps.PodControl.UpdatePod(tc, pod)
-	if err != nil {
-		klog.Errorf("endEvictLeader: failed to set pod %s/%s annotation to record info, annos:%v err:%v",
-			ns, podName, annosToRecordInfo, err)
-		return fmt.Errorf("end evict leader for store %d failed: %v", storeID, err)
+	// record evict leader end time which is used to wait for leaders to transfer back
+	if _, exist := pod.Annotations[annoKeyEvictLeaderEndTime]; !exist {
+		if pod.Annotations == nil {
+			pod.Annotations = map[string]string{}
+		}
+		pod.Annotations[annoKeyEvictLeaderEndTime] = time.Now().Format(time.RFC3339)
+		_, err := u.deps.PodControl.UpdatePod(tc, pod)
+		if err != nil {
+			klog.Errorf("endEvictLeader: failed to set pod %s/%s annotation %s, err:%v",
+				ns, podName, annoKeyEvictLeaderEndTime, err)
+			return fmt.Errorf("end evict leader for store %d failed: %v", storeID, err)
+		}
 	}
 
-	klog.Infof("endEvictLeader: set pod %s/%s annotation to record info successfully, annos:%v",
-		ns, podName, annosToRecordInfo)
 	return nil
-
 }
 
 // endEvictLeaderForAllStore end evict leader for all stores of a tc
