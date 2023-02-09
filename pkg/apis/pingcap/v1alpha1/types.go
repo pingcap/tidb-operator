@@ -1497,9 +1497,11 @@ type TiKVStore struct {
 	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-	// LastLeaderCountBeforeUpgrade records the leader count before upgrade
-	// It is set when evicting leader and used to wait for most leaders to transfer back after upgrade
-	LastLeaderCountBeforeUpgrade *int32 `json:"lastLeaderCountBeforeUpgrade,omitempty"`
+	// LeaderCountBeforeUpgrade records the leader count before upgrade.
+	//
+	// It is set when evicting leader and used to wait for most leaders to transfer back after upgrade.
+	// It is unset after leader transfer is completed.
+	LeaderCountBeforeUpgrade *int32 `json:"lastLeaderCountBeforeUpgrade,omitempty"`
 }
 
 // TiKVFailureStore is the tikv failure store information

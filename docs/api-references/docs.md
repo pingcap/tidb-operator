@@ -21745,6 +21745,9 @@ int32
 </em>
 </td>
 <td>
+<p>LeaderCountBeforeUpgrade records the leader count before upgrade.</p>
+<p>It is set when evicting leader and used to wait for most leaders to transfer back after upgrade.
+It is unset after leader transfer is completed.</p>
 </td>
 </tr>
 </tbody>

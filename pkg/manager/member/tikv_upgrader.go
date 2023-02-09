@@ -293,64 +293,52 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 	}
 
 	// wait for leaders to transfer back or timeout
-	//
-	//  1. 2/3 of leaders are already transferred back.
-	//
-	//  2. Original leader count is less than 200.
-	//     Though the accurate threshold is 57, it can be set to a larger value, for example 200.
-	//     Moreover, clusters which have small number of leaders are supposed to has low pressure,
-	//     and this recovering strategy may be unnecessary for them. Clusters in production env
-	//     usually has thousands of leaders.
-	//
-	//     Since PD considers it as balance when the leader count delta is less than 10, so
-	//     these two conditions should be taken into consideration
-	//
-	//     - When the original leader count is less than 20, there is possibility that
-	//     no leader will transfer back.
-	//     For example: The target store's leader count is 19. Other stores' leader count are 9.
-	//     There are 20 stores in total. In this case, there may be no leader to transfer back.
-	//
-	//     - When the leader count is less than 57, there is possibility that only less than 2/3
-	//     leaders are transfered back. `(N-10-9 >= 2/3*N) -> (N>=57)`.
-	//     For example: The target store's leader count is 56. Other stores' leader count are 46.
-	//     There are 57 stores in total. In this case, there may be only 37 leaders to transfer back,
-	//     and 37/56 < 2/3. Accordingly, if the target store's leader count is 57, then there may be
-	//     38 leaders to transfer back, and 38/57 == 2/3.
-	//
-	//  3. Time out waiting for leaders to transfer back
+	// refer to https://github.com/pingcap/tiup/pull/2051
 
-	if store.LastLeaderCountBeforeUpgrade == nil {
-		klog.Infof("%s: miss leader count before upgrade, so skip waiting leaders for transfer back", logPrefix)
-		return true, nil
-	}
-	leaderCountBefore := int(*store.LastLeaderCountBeforeUpgrade)
-	evictLeaderEndTime, err := time.Parse(time.RFC3339, evictLeaderEndTimeStr)
-	if err != nil {
-		klog.Errorf("%s: parse annotation %q to time failed", logPrefix, annoKeyEvictLeaderBeginTime)
-		return true, nil
-	}
+	isLeaderTransferBackOrTimeout := func() bool {
+		leaderCountBefore := int(*store.LeaderCountBeforeUpgrade)
+		evictLeaderEndTime, err := time.Parse(time.RFC3339, evictLeaderEndTimeStr)
+		if err != nil {
+			klog.Errorf("%s: parse annotation %q to time failed", logPrefix, annoKeyEvictLeaderBeginTime)
+			return true
+		}
 
-	if leaderCountBefore < 200 {
-		klog.V(4).Infof("%s: leader count is %d and less than 200, so skip waiting leaders for transfer back", logPrefix, leaderCountBefore)
-		return true, nil
-	}
+		if leaderCountBefore < 200 {
+			klog.V(4).Infof("%s: leader count is %d and less than 200, so skip waiting leaders for transfer back", logPrefix, leaderCountBefore)
+			return true
+		}
 
-	timeout := tc.TiKVWaitLeaderTransferBackTimeout()
-	if time.Now().After(evictLeaderEndTime.Add(timeout)) {
-		klog.V(4).Infof("%s: time out with threshold %v, so skip waiting leaders for transfer back", logPrefix, timeout)
-		return true, nil
-	}
+		timeout := tc.TiKVWaitLeaderTransferBackTimeout()
+		if time.Now().After(evictLeaderEndTime.Add(timeout)) {
+			klog.Infof("%s: time out with threshold %v, so skip waiting leaders for transfer back", logPrefix, timeout)
+			return true
+		}
 
-	leaderCountNow := int(store.LeaderCount)
-	if leaderCountNow >= leaderCountBefore*2/3 {
-		klog.V(4).Infof("%s: leader count is %d and greater than 2/3 of original count %d, so ready to upgrade next store",
+		leaderCountNow := int(store.LeaderCount)
+		if leaderCountNow >= leaderCountBefore*2/3 {
+			klog.Infof("%s: leader count is %d and greater than 2/3 of original count %d, so ready to upgrade next store",
+				logPrefix, leaderCountNow, leaderCountBefore)
+			return true
+		}
+
+		klog.Infof("%s: leader count is %d and less than 2/3 of original count %d, and wait for leaders to transfer back",
 			logPrefix, leaderCountNow, leaderCountBefore)
-		return true, nil
+		return false
 	}
 
-	klog.Infof("%s: leader count is %d and less than 2/3 of original count %d, and wait for leaders to transfer back",
-		logPrefix, leaderCountNow, leaderCountBefore)
-	return false, nil
+	if store.LeaderCountBeforeUpgrade != nil {
+		done := isLeaderTransferBackOrTimeout()
+		if done {
+			store.LeaderCountBeforeUpgrade = nil
+			tc.Status.TiKV.Stores[store.ID] = store
+		}
+		return done, nil
+	} else {
+		klog.V(4).Infof("%s: miss leader count before upgrade, so skip waiting leaders for transfer back", logPrefix)
+	}
+
+	return true, nil
+
 }
 
 func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
@@ -359,7 +347,7 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 	annosToRecordInfo := map[string]string{}
 
 	if status, exist := tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))]; exist {
-		status.LastLeaderCountBeforeUpgrade = pointer.Int32Ptr(int32(status.LeaderCount))
+		status.LeaderCountBeforeUpgrade = pointer.Int32Ptr(int32(status.LeaderCount))
 		tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))] = status
 	}
 
