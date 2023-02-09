@@ -43,6 +43,7 @@ var (
 	allMatchPattern  = "(.+)"
 	portPattern      = "([^:]+)(?::\\d+)?;(\\d+)"
 	tikvPattern      = "tikv"
+	tiproxyPattern   = "tiproxy"
 	pdPattern        = "pd"
 	tidbPattern      = "tidb"
 	addressPattern   = "(.+);(.+);(.+);(.+)"
@@ -94,6 +95,7 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
 	scrapeJobs = append(scrapeJobs, scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfigByComponent("pd"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfigByComponent("tikv"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tiproxy", tiproxyPattern, cmodel, buildAddressRelabelConfigByComponent("tiproxy"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash-proxy"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfigByComponent("pump"))...)
@@ -140,6 +142,8 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 	case "tidb":
 		return f()
 	case "tikv":
+		return f()
+	case "tiproxy":
 		return f()
 	case "tiflash":
 		return f()
