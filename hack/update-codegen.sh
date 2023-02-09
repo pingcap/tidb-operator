@@ -33,4 +33,3 @@ GOBIN=$OUTPUT_BIN bash $ROOT/hack/generate-groups.sh "deepcopy,client,informer,l
 
 # then we merge generated code with our code base and clean up
 cp -r github.com/pingcap/tidb-operator/pkg $ROOT && rm -rf github.com
-hack::ensure_go117

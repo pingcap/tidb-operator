@@ -314,10 +314,4 @@ function hack::ensure_openapi() {
     GOBIN=$OUTPUT_BIN go install k8s.io/code-generator/cmd/openapi-gen@v$K8S_VERSION
 }
 
-function hack::ensure_go117() {
-  echo "## Adjust go117+ generated code (indent and '//go:build' comments) to go116 ..."
-  echo "## Since CI pipeline depends on go116 while developers could have go117+ development environment, we need to patch go117+ generated code to conform with go116. So that CI pipeline won't fail."
-  echo "## FIXME: Remove this after upgrading project's go version to g118+."
-}
-
 function version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }
