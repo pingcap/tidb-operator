@@ -16,11 +16,9 @@ metadata:
 spec:
   containers:
   - name: main
-    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v3
+    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v4-go1.18
     command:
     - runner.sh
-    # Clean containers on TERM signal in root process to avoid cgroup leaking.
-    # https://github.com/pingcap/tidb-operator/issues/1603#issuecomment-582402196
     - exec
     - bash
     - -c
