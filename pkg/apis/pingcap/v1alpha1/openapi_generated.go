@@ -11522,7 +11522,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"waitLeaderTransferBackTimeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back after upgarde for a tikv.\n\nDefaults to 400s",
+							Description: "WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back before the next tikv upgrade.\n\nDefaults to 400s",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},

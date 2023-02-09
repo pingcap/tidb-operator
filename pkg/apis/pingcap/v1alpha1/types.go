@@ -607,8 +607,8 @@ type TiKVSpec struct {
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
 
-	// WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back after
-	// upgarde for a tikv.
+	// WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back before
+	// the next tikv upgrade.
 	//
 	// Defaults to 400s
 	// +optional

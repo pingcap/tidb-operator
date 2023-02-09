@@ -21207,8 +21207,8 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back after
-upgarde for a tikv.</p>
+<p>WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back before
+the next tikv upgrade.</p>
 <p>Defaults to 400s</p>
 </td>
 </tr>
