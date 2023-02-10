@@ -295,21 +295,20 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 	// refer to https://github.com/pingcap/tiup/pull/2051
 
 	isLeaderTransferBackOrTimeout := func() bool {
+		leaderCountBefore := int(*store.LeaderCountBeforeUpgrade)
+		if leaderCountBefore < 200 {
+			klog.Infof("%s: leader count is %d and less than 200, so skip waiting leaders for transfer back", logPrefix, leaderCountBefore)
+			return true
+		}
+
 		evictLeaderEndTimeStr, exist := pod.Annotations[annoKeyEvictLeaderEndTime]
 		if !exist {
 			klog.Errorf("%s: miss annotation %q, so skip waiting leaders for transfer back", logPrefix, annoKeyEvictLeaderEndTime)
 			return true
 		}
-
 		evictLeaderEndTime, err := time.Parse(time.RFC3339, evictLeaderEndTimeStr)
 		if err != nil {
 			klog.Errorf("%s: parse annotation %q to time failed, so skip waiting leaders for transfer back", logPrefix, annoKeyEvictLeaderEndTime)
-			return true
-		}
-
-		leaderCountBefore := int(*store.LeaderCountBeforeUpgrade)
-		if leaderCountBefore < 200 {
-			klog.Infof("%s: leader count is %d and less than 200, so skip waiting leaders for transfer back", logPrefix, leaderCountBefore)
 			return true
 		}
 
