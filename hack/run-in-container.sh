@@ -144,5 +144,5 @@ docker run ${docker_args[@]} \
     -v $ROOT:/go/src/github.com/pingcap/tidb-operator \
     -w /go/src/github.com/pingcap/tidb-operator \
     --entrypoint /usr/local/bin/runner.sh \
-    hub-new.pingcap.net/tidb-operator/kubekins-e2e:v3 \
+    "hub-new.pingcap.net/tidb-operator/kubekins-e2e:v4-go1.18" \
     "${args[@]}"
