@@ -710,6 +710,24 @@ func (tc *TidbCluster) TiCDCAllCapturesReady() bool {
 	return true
 }
 
+func (tc *TidbCluster) TiProxyAllMembersReady() bool {
+	if tc.Spec.TiProxy == nil {
+		return false
+	}
+
+	if int(tc.TiProxyStsDesiredReplicas()) != len(tc.Status.TiProxy.Members) {
+		return false
+	}
+
+	for _, member := range tc.Status.TiProxy.Members {
+		if !member.Health {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (tc *TidbCluster) TiProxyStsDesiredReplicas() int32 {
 	if tc.Spec.TiProxy == nil {
 		return 0
