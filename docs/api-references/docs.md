@@ -21739,7 +21739,7 @@ TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/
 </tr>
 <tr>
 <td>
-<code>lastLeaderCountBeforeUpgrade</code></br>
+<code>leaderCountBeforeUpgrade</code></br>
 <em>
 int32
 </em>

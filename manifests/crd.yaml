@@ -33779,14 +33779,14 @@ spec:
                           type: string
                         ip:
                           type: string
-                        lastLeaderCountBeforeUpgrade:
-                          format: int32
-                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
                           type: string
                         leaderCount:
+                          format: int32
+                          type: integer
+                        leaderCountBeforeUpgrade:
                           format: int32
                           type: integer
                         podName:
@@ -33856,14 +33856,14 @@ spec:
                           type: string
                         ip:
                           type: string
-                        lastLeaderCountBeforeUpgrade:
-                          format: int32
-                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
                           type: string
                         leaderCount:
+                          format: int32
+                          type: integer
+                        leaderCountBeforeUpgrade:
                           format: int32
                           type: integer
                         podName:
@@ -33887,14 +33887,14 @@ spec:
                           type: string
                         ip:
                           type: string
-                        lastLeaderCountBeforeUpgrade:
-                          format: int32
-                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
                           type: string
                         leaderCount:
+                          format: int32
+                          type: integer
+                        leaderCountBeforeUpgrade:
                           format: int32
                           type: integer
                         podName:
@@ -34035,14 +34035,14 @@ spec:
                           type: string
                         ip:
                           type: string
-                        lastLeaderCountBeforeUpgrade:
-                          format: int32
-                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
                           type: string
                         leaderCount:
+                          format: int32
+                          type: integer
+                        leaderCountBeforeUpgrade:
                           format: int32
                           type: integer
                         podName:
@@ -34112,14 +34112,14 @@ spec:
                           type: string
                         ip:
                           type: string
-                        lastLeaderCountBeforeUpgrade:
-                          format: int32
-                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
                           type: string
                         leaderCount:
+                          format: int32
+                          type: integer
+                        leaderCountBeforeUpgrade:
                           format: int32
                           type: integer
                         podName:
@@ -34143,14 +34143,14 @@ spec:
                           type: string
                         ip:
                           type: string
-                        lastLeaderCountBeforeUpgrade:
-                          format: int32
-                          type: integer
                         lastTransitionTime:
                           format: date-time
                           nullable: true
                           type: string
                         leaderCount:
+                          format: int32
+                          type: integer
+                        leaderCountBeforeUpgrade:
                           format: int32
                           type: integer
                         podName:

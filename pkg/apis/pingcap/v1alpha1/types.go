@@ -1501,7 +1501,7 @@ type TiKVStore struct {
 	//
 	// It is set when evicting leader and used to wait for most leaders to transfer back after upgrade.
 	// It is unset after leader transfer is completed.
-	LeaderCountBeforeUpgrade *int32 `json:"lastLeaderCountBeforeUpgrade,omitempty"`
+	LeaderCountBeforeUpgrade *int32 `json:"leaderCountBeforeUpgrade,omitempty"`
 }
 
 // TiKVFailureStore is the tikv failure store information
