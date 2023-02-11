@@ -565,6 +565,11 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Set("security.cluster-ssl-ca", path.Join(clusterCertPath, tlsSecretRootCAKey))
 		config.Set("security.cluster-ssl-cert", path.Join(clusterCertPath, corev1.TLSCertKey))
 		config.Set("security.cluster-ssl-key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
+		// set session token certs automatically if tiproxy is available
+		if tc.Spec.TiProxy != nil && tc.Spec.TiProxy.Replicas != 0 {
+			config.Set("security.session-token-signing-key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
+			config.Set("security.session-token-signing-cert", path.Join(clusterCertPath, corev1.TLSCertKey))
+		}
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
 		// No need to configure the ssl-ca parameter when client authentication is disabled.
@@ -977,7 +982,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	stsLabels := label.New().Instance(instanceName).TiDB()
 	podLabels := util.CombineStringMap(stsLabels, baseTiDBSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(10080, "/metrics"), baseTiDBSpec.Annotations())
+	podAnnotations := util.CombineStringMap(baseTiDBSpec.Annotations(), controller.AnnProm(10080, "/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiDBLabelVal)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
