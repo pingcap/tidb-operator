@@ -2920,7 +2920,7 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
-q  name: dmclusters.pingcap.com
+  name: dmclusters.pingcap.com
 spec:
   group: pingcap.com
   names:
