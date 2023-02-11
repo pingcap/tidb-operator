@@ -1232,6 +1232,19 @@ spec:
                 type: string
               podSecurityContext:
                 properties:
+                  allowPrivilegeEscalation:
+                    type: boolean
+                  capabilities:
+                    properties:
+                      add:
+                        items:
+                          type: string
+                        type: array
+                      drop:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   fsGroup:
                     format: int64
                     type: integer
@@ -2708,6 +2721,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -5434,6 +5460,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -7804,6 +7843,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -7985,6 +8037,19 @@ spec:
                 type: string
               podSecurityContext:
                 properties:
+                  allowPrivilegeEscalation:
+                    type: boolean
+                  capabilities:
+                    properties:
+                      add:
+                        items:
+                          type: string
+                        type: array
+                      drop:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   fsGroup:
                     format: int64
                     type: integer
@@ -10306,6 +10371,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -12780,6 +12858,19 @@ spec:
                 type: string
               podSecurityContext:
                 properties:
+                  allowPrivilegeEscalation:
+                    type: boolean
+                  capabilities:
+                    properties:
+                      add:
+                        items:
+                          type: string
+                        type: array
+                      drop:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   fsGroup:
                     format: int64
                     type: integer
@@ -15813,6 +15904,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -18202,6 +18306,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -18400,6 +18517,19 @@ spec:
                 type: string
               podSecurityContext:
                 properties:
+                  allowPrivilegeEscalation:
+                    type: boolean
+                  capabilities:
+                    properties:
+                      add:
+                        items:
+                          type: string
+                        type: array
+                      drop:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   fsGroup:
                     format: int64
                     type: integer
@@ -20659,6 +20789,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -23028,6 +23171,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -25500,6 +25656,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -28001,6 +28170,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -30411,6 +30593,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -32790,6 +32985,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -36588,6 +36796,19 @@ spec:
                 type: string
               podSecurityContext:
                 properties:
+                  allowPrivilegeEscalation:
+                    type: boolean
+                  capabilities:
+                    properties:
+                      add:
+                        items:
+                          type: string
+                        type: array
+                      drop:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   fsGroup:
                     format: int64
                     type: integer
@@ -36901,6 +37122,19 @@ spec:
                 type: string
               podSecurityContext:
                 properties:
+                  allowPrivilegeEscalation:
+                    type: boolean
+                  capabilities:
+                    properties:
+                      add:
+                        items:
+                          type: string
+                        type: array
+                      drop:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   fsGroup:
                     format: int64
                     type: integer
@@ -38551,6 +38785,19 @@ spec:
                 type: boolean
               podSecurityContext:
                 properties:
+                  allowPrivilegeEscalation:
+                    type: boolean
+                  capabilities:
+                    properties:
+                      add:
+                        items:
+                          type: string
+                        type: array
+                      drop:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   fsGroup:
                     format: int64
                     type: integer
@@ -43665,6 +43912,19 @@ spec:
                     type: string
                   podSecurityContext:
                     properties:
+                      allowPrivilegeEscalation:
+                        type: boolean
+                      capabilities:
+                        properties:
+                          add:
+                            items:
+                              type: string
+                            type: array
+                          drop:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       fsGroup:
                         format: int64
                         type: integer
@@ -43822,6 +44082,19 @@ spec:
                 type: string
               podSecurityContext:
                 properties:
+                  allowPrivilegeEscalation:
+                    type: boolean
+                  capabilities:
+                    properties:
+                      add:
+                        items:
+                          type: string
+                        type: array
+                      drop:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   fsGroup:
                     format: int64
                     type: integer
