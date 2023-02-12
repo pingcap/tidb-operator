@@ -603,9 +603,16 @@ type TiKVSpec struct {
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 
 	// EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
-	// Defaults to 10m
+	// Defaults to 1500min
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
+
+	// WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back before
+	// the next tikv upgrade.
+	//
+	// Defaults to 400s
+	// +optional
+	WaitLeaderTransferBackTimeout *metav1.Duration `json:"waitLeaderTransferBackTimeout,omitempty"`
 
 	// StorageVolumes configure additional storage for TiKV pods.
 	// +optional
@@ -1395,7 +1402,7 @@ type TiKVStatus struct {
 	Phase           MemberPhase                   `json:"phase,omitempty"`
 	BootStrapped    bool                          `json:"bootStrapped,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus       `json:"statefulSet,omitempty"`
-	Stores          map[string]TiKVStore          `json:"stores,omitempty"`
+	Stores          map[string]TiKVStore          `json:"stores,omitempty"` // key: store id
 	PeerStores      map[string]TiKVStore          `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore          `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore   `json:"failureStores,omitempty"`
@@ -1490,6 +1497,11 @@ type TiKVStore struct {
 	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// LeaderCountBeforeUpgrade records the leader count before upgrade.
+	//
+	// It is set when evicting leader and used to wait for most leaders to transfer back after upgrade.
+	// It is unset after leader transfer is completed.
+	LeaderCountBeforeUpgrade *int32 `json:"leaderCountBeforeUpgrade,omitempty"`
 }
 
 // TiKVFailureStore is the tikv failure store information
