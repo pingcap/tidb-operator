@@ -30558,6 +30558,8 @@ spec:
                   x-kubernetes-list-type: map
                 version:
                   type: string
+                waitLeaderTransferBackTimeout:
+                  type: string
               required:
               - replicas
               type: object
@@ -33749,6 +33751,9 @@ spec:
                       leaderCount:
                         format: int32
                         type: integer
+                      leaderCountBeforeUpgrade:
+                        format: int32
+                        type: integer
                       podName:
                         type: string
                       state:
@@ -33823,6 +33828,9 @@ spec:
                       leaderCount:
                         format: int32
                         type: integer
+                      leaderCountBeforeUpgrade:
+                        format: int32
+                        type: integer
                       podName:
                         type: string
                       state:
@@ -33849,6 +33857,9 @@ spec:
                         nullable: true
                         type: string
                       leaderCount:
+                        format: int32
+                        type: integer
+                      leaderCountBeforeUpgrade:
                         format: int32
                         type: integer
                       podName:
@@ -33996,6 +34007,9 @@ spec:
                       leaderCount:
                         format: int32
                         type: integer
+                      leaderCountBeforeUpgrade:
+                        format: int32
+                        type: integer
                       podName:
                         type: string
                       state:
@@ -34070,6 +34084,9 @@ spec:
                       leaderCount:
                         format: int32
                         type: integer
+                      leaderCountBeforeUpgrade:
+                        format: int32
+                        type: integer
                       podName:
                         type: string
                       state:
@@ -34096,6 +34113,9 @@ spec:
                         nullable: true
                         type: string
                       leaderCount:
+                        format: int32
+                        type: integer
+                      leaderCountBeforeUpgrade:
                         format: int32
                         type: integer
                       podName:
