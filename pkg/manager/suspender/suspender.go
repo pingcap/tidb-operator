@@ -95,7 +95,7 @@ func (s *suspender) SuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.Mem
 			return true, err
 		}
 
-		klog.V(4).Infof("component %s is not needed to be suspended", ctx.ComponentID())
+		klog.V(10).Infof("component %s is not needed to be suspended", ctx.ComponentID())
 		return false, nil
 	}
 

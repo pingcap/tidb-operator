@@ -8053,6 +8053,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.WaitLeaderTransferBackTimeout != nil {
+		in, out := &in.WaitLeaderTransferBackTimeout, &out.WaitLeaderTransferBackTimeout
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	if in.StorageVolumes != nil {
 		in, out := &in.StorageVolumes, &out.StorageVolumes
 		*out = make([]StorageVolume, len(*in))
@@ -8276,6 +8281,11 @@ func (in *TiKVStorageReadPoolConfig) DeepCopy() *TiKVStorageReadPoolConfig {
 func (in *TiKVStore) DeepCopyInto(out *TiKVStore) {
 	*out = *in
 	in.LastTransitionTime.DeepCopyInto(&out.LastTransitionTime)
+	if in.LeaderCountBeforeUpgrade != nil {
+		in, out := &in.LeaderCountBeforeUpgrade, &out.LeaderCountBeforeUpgrade
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 

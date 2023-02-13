@@ -483,20 +483,27 @@ func parseImage(image string) (string, string) {
 	return name, tag
 }
 
-var ErrNotFoundStoreID = fmt.Errorf("not found")
-
-func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, error) {
+func TiKVStoreFromStatus(tc *v1alpha1.TidbCluster, podName string) (v1alpha1.TiKVStore, error) {
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
-			storeID, err := strconv.ParseUint(store.ID, 10, 64)
-			if err != nil {
-				return 0, err
-			}
-
-			return storeID, nil
+			return store, nil
 		}
 	}
-	return 0, ErrNotFoundStoreID
+	return v1alpha1.TiKVStore{}, fmt.Errorf("store is not found in tikv status")
+}
+
+func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, error) {
+	store, err := TiKVStoreFromStatus(tc, podName)
+	if err != nil {
+		return 0, err
+	}
+
+	storeID, err := strconv.ParseUint(store.ID, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return storeID, nil
 }
 
 // MergePatchContainers adds patches to base using a strategic merge patch and
