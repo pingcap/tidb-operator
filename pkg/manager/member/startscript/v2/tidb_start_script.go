@@ -18,8 +18,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 )
@@ -59,9 +57,6 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	extraArgs := []string{}
 	if tc.IsTiDBBinlogEnabled() {
 		extraArgs = append(extraArgs, "--enable-binlog=true")
-	}
-	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsBootstrapSQLEnabled() {
-		extraArgs = append(extraArgs, fmt.Sprintf("--initialize-sql-file=%s", constants.BootstrapSQLFile))
 	}
 	if plugins := tc.Spec.TiDB.Plugins; len(plugins) > 0 {
 		extraArgs = append(extraArgs, "--plugin-dir=/plugins")

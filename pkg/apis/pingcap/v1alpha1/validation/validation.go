@@ -644,6 +644,8 @@ func validateUpdatePDConfig(oldPdSpec, pdSpec *v1alpha1.PDSpec, path *field.Path
 	return allErrs
 }
 
+// disallowMutateBootstrapSQLConfigMapName checks if user mutate the bootstrapSQLConfigMapName field.
+// Only allow to update bootstrapSQLConfigMapName from non-nil to nil.
 func disallowMutateBootstrapSQLConfigMapName(old, new *v1alpha1.TiDBSpec, p *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if old == nil || new == nil {
@@ -652,7 +654,7 @@ func disallowMutateBootstrapSQLConfigMapName(old, new *v1alpha1.TiDBSpec, p *fie
 
 	bootstrapSQLSpecified := old.BootstrapSQLConfigMapName != nil && new.BootstrapSQLConfigMapName != nil
 	if (bootstrapSQLSpecified && *old.BootstrapSQLConfigMapName != *new.BootstrapSQLConfigMapName) ||
-		!bootstrapSQLSpecified && old.BootstrapSQLConfigMapName != new.BootstrapSQLConfigMapName {
+		(!bootstrapSQLSpecified && new.BootstrapSQLConfigMapName != nil) {
 		return append(allErrs, field.Invalid(p, new.BootstrapSQLConfigMapName, "bootstrapSQLConfigMapName is immutable"))
 	}
 

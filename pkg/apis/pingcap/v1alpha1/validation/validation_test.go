@@ -786,7 +786,7 @@ func Test_disallowMutateBootstrapSQLConfigMapName(t *testing.T) {
 			new: &v1alpha1.TiDBSpec{
 				BootstrapSQLConfigMapName: nil,
 			},
-			wantError: true,
+			wantError: false,
 		},
 		{
 			name: "mutate from nil to non-nil",

@@ -73,6 +73,9 @@ const (
 
 	// tidb DC label Name
 	tidbDCLabel = "zone"
+
+	bootstrapSQLFilePath = "/etc/tidb-bootstrap"
+	bootstrapSQLFileName = "bootstrap.sql"
 )
 
 var (
@@ -574,6 +577,9 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Set("security.ssl-cert", path.Join(serverCertPath, corev1.TLSCertKey))
 		config.Set("security.ssl-key", path.Join(serverCertPath, corev1.TLSPrivateKeyKey))
 	}
+	if tc.Spec.TiDB.IsBootstrapSQLEnabled() {
+		config.Set("initialize-sql-file", path.Join(bootstrapSQLFilePath, bootstrapSQLFileName))
+	}
 	confText, err := config.MarshalTOML()
 	if err != nil {
 		return nil, err
@@ -764,7 +770,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsBootstrapSQLEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "tidb-bootstrap-sql", ReadOnly: true, MountPath: "/etc/tidb-bootstrap",
+			Name: "tidb-bootstrap-sql", ReadOnly: true, MountPath: bootstrapSQLFilePath,
 		})
 
 		vols = append(vols, corev1.Volume{
@@ -773,7 +779,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: *tc.Spec.TiDB.BootstrapSQLConfigMapName,
 					},
-					Items: []corev1.KeyToPath{{Key: "bootstrap-sql", Path: "bootstrap.sql"}},
+					Items: []corev1.KeyToPath{{Key: "bootstrap-sql", Path: bootstrapSQLFileName}},
 				},
 			},
 		})

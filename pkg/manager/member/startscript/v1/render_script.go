@@ -79,14 +79,9 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
-		EnablePlugin:       len(plugins) > 0,
-		PluginDirectory:    "/plugins",
-		PluginList:         strings.Join(plugins, ","),
-		EnableBootstrapSQL: false,
-	}
-	if tc.Spec.TiDB != nil {
-		model.EnableBootstrapSQL = tc.Spec.TiDB.IsBootstrapSQLEnabled()
-		model.BootstrapSQLFile = constants.BootstrapSQLFile
+		EnablePlugin:    len(plugins) > 0,
+		PluginDirectory: "/plugins",
+		PluginList:      strings.Join(plugins, ","),
 	}
 	model.Path = "${CLUSTER_NAME}-pd:2379"
 	if tc.AcrossK8s() {

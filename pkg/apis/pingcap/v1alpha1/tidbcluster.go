@@ -951,7 +951,6 @@ func (tc *TidbCluster) IsTiDBBinlogEnabled() bool {
 
 func (tidb *TiDBSpec) IsBootstrapSQLEnabled() bool {
 	if tidb.BootstrapSQLConfigMapName != nil && *tidb.BootstrapSQLConfigMapName != "" {
-		klog.Info("tidb bootstrap sql is enabled")
 		return true
 	}
 
