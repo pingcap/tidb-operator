@@ -370,7 +370,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 	stsLabels := labelTiCDC(tc)
 	stsName := controller.TiCDCMemberName(tcName)
 	podLabels := util.CombineStringMap(stsLabels, baseTiCDCSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(8301, "/metrics"), baseTiCDCSpec.Annotations())
+	podAnnotations := util.CombineStringMap(baseTiCDCSpec.Annotations(), controller.AnnProm(8301, "/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
 

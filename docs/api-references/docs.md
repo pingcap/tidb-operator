@@ -21208,7 +21208,23 @@ string
 <td>
 <em>(Optional)</em>
 <p>EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
-Defaults to 10m</p>
+Defaults to 1500min</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>waitLeaderTransferBackTimeout</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back before
+the next tikv upgrade.</p>
+<p>Defaults to 400s</p>
 </td>
 </tr>
 <tr>
@@ -21347,6 +21363,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
 </em>
 </td>
 <td>
+<p>key: store id</p>
 </td>
 </tr>
 <tr>
@@ -21733,6 +21750,19 @@ Kubernetes meta/v1.Time
 <td>
 <p>Last time the health transitioned from one to another.
 TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>leaderCountBeforeUpgrade</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>LeaderCountBeforeUpgrade records the leader count before upgrade.</p>
+<p>It is set when evicting leader and used to wait for most leaders to transfer back after upgrade.
+It is unset after leader transfer is completed.</p>
 </td>
 </tr>
 </tbody>

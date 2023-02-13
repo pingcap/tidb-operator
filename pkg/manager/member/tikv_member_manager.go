@@ -468,7 +468,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	stsLabels := labelTiKV(tc)
 	podLabels := util.CombineStringMap(stsLabels.Labels(), baseTiKVSpec.Labels())
 	setName := controller.TiKVMemberName(tcName)
-	podAnnotations := util.CombineStringMap(controller.AnnProm(20180, "/metrics"), baseTiKVSpec.Annotations())
+	podAnnotations := util.CombineStringMap(baseTiKVSpec.Annotations(), controller.AnnProm(20180, "/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiKVLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
@@ -859,6 +859,10 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 		status.LastTransitionTime = metav1.Now()
 		if exist && status.State == oldStore.State {
 			status.LastTransitionTime = oldStore.LastTransitionTime
+		}
+
+		if oldStore.LeaderCountBeforeUpgrade != nil {
+			status.LeaderCountBeforeUpgrade = oldStore.LeaderCountBeforeUpgrade
 		}
 
 		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
