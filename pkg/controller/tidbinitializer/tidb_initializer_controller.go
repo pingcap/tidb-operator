@@ -61,6 +61,11 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return c
 }
 
+// Name returns the name of the tidbinitializer controller
+func (c *Controller) Name() string {
+	return "tidbinitializer"
+}
+
 // Run run workers
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
