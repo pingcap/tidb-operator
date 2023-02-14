@@ -105,6 +105,11 @@ func (c *PodController) enqueuePod(obj interface{}) {
 	c.queue.Add(key)
 }
 
+// Name returns the name of the PodController.
+func (c *PodController) Name() string {
+	return "tidbcluster-pod"
+}
+
 // Run the controller.
 func (c *PodController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()

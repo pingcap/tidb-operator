@@ -63,6 +63,11 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return c
 }
 
+// Name returns the name of the restore controller
+func (c *Controller) Name() string {
+	return "restore"
+}
+
 // Run runs the restore controller.
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()

@@ -86,6 +86,11 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return c
 }
 
+// Name returns the dmcluster controller name
+func (c *Controller) Name() string {
+	return "dmcluster"
+}
+
 // Run runs the dmcluster controller.
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()

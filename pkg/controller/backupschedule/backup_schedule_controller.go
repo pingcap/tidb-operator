@@ -62,6 +62,11 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return c
 }
 
+// Name returns backup controller name.
+func (c *Controller) Name() string {
+	return "backup"
+}
+
 // Run runs the backup schedule controller.
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()

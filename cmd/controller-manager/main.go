@@ -155,6 +155,7 @@ func main() {
 		// Define some nested types to simplify the codebase
 		type Controller interface {
 			Run(int, <-chan struct{})
+			Name() string
 		}
 		type InformerFactory interface {
 			Start(stopCh <-chan struct{})
