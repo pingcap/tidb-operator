@@ -141,7 +141,9 @@ func (c *Controller) processNextWorkItem() bool {
 func (c *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished syncing DMCluster %q (%v)", key, time.Since(startTime))
+		duration := time.Since(startTime)
+		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+		klog.V(4).Infof("Finished syncing DMCluster %q (%v)", key, duration)
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
