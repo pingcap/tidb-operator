@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 )
 
 // Controller syncs TidbInitializer
@@ -90,6 +91,9 @@ func (c *Controller) worker() {
 // It enforces that the syncHandler is never
 // invoked concurrently with the same key.
 func (c *Controller) processNextWorkItem() bool {
+	metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(1)
+	defer metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(-1)
+
 	key, quit := c.queue.Get()
 	if quit {
 		return false

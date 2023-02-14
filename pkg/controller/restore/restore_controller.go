@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -92,6 +93,9 @@ func (c *Controller) worker() {
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
 func (c *Controller) processNextWorkItem() bool {
+	metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(1)
+	defer metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(-1)
+
 	key, quit := c.queue.Get()
 	if quit {
 		return false
