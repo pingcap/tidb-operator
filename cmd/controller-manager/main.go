@@ -162,6 +162,10 @@ func main() {
 			WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 		}
 
+		initMetrics := func(c Controller) {
+			metrics.ActiveWorkers.WithLabelValues(c.Name()).Set(0)
+		}
+
 		// Initialize all controllers
 		controllers := []Controller{
 			tidbcluster.NewController(deps),
@@ -198,6 +202,7 @@ func main() {
 		// Start syncLoop for all controllers
 		for _, controller := range controllers {
 			c := controller
+			initMetrics(c)
 			go wait.Forever(func() { c.Run(cliCfg.Workers, ctx.Done()) }, cliCfg.WaitDuration)
 		}
 	}
