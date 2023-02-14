@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/manager/tidbngmonitoring"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 
 	perrors "github.com/pingcap/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -96,6 +97,9 @@ func (c *Controller) worker() {
 }
 
 func (c *Controller) processNextWorkItem() bool {
+	metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(1)
+	defer metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(-1)
+
 	keyIface, quit := c.queue.Get()
 	if quit {
 		return false
