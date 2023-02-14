@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build tools
 // +build tools
 
 // Tool dependencies are tracked here to make go module happy
@@ -25,4 +26,7 @@ import (
 	// TODO remove this if we 1) avoid the issue in a better way or 2) go both
 	// in local development and ci have the bug fixed
 	_ "github.com/fatih/color"
+
+	// in order to import the pkg in vendor
+	_ "github.com/zhouqiang-cl/gocovmerge"
 )
