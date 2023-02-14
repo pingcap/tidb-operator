@@ -200,7 +200,9 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished syncing TidbCluster pod %q (%v)", key, time.Since(startTime))
+		duration := time.Since(startTime)
+		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+		klog.V(4).Infof("Finished syncing TidbCluster pod %q (%v)", key, duration)
 	}()
 
 	component := pod.Labels[label.ComponentLabelKey]
