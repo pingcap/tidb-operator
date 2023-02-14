@@ -15,7 +15,6 @@ package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
 // RegisterMetrics registers all metrics of tidb-operator.
@@ -78,9 +77,5 @@ func init() {
 		ReconcileTime,
 		WorkerCount,
 		ActiveWorkers,
-		// expose process metrics like CPU, Memory, file descriptor usage etc.
-		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-		// expose Go runtime metrics like GC stats, memory stats etc.
-		collectors.NewGoCollector(),
 	)
 }
