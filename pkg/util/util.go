@@ -193,7 +193,10 @@ func ClusterTLSSecretName(tcName, component string) string {
 	return fmt.Sprintf("%s-%s-cluster-secret", tcName, component)
 }
 
-func TiDBClientTLSSecretName(tcName string) string {
+func TiDBClientTLSSecretName(tcName string, secretName *string) string {
+	if secretName != nil {
+		tcName = *secretName
+	}
 	return fmt.Sprintf("%s-tidb-client-secret", tcName)
 }
 

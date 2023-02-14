@@ -40,8 +40,8 @@ import (
 )
 
 const tiproxyVolumeMountPath = "/var/lib/tiproxy"
-const tiproxyCertVolume = "tiproxy-tls"
-const tiproxyCertVolumeMountPath = "/var/lib/tiproxy-tls"
+const tiproxySQLPath = "/var/lib/tiproxy-sql-tls"
+const tiproxyServerPath = "/var/lib/tiproxy-server-tls"
 
 func labelTiProxy(tc *v1alpha1.TidbCluster) label.Label {
 	instanceName := tc.GetInstanceName()
@@ -124,20 +124,27 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 	cfgWrapper.Set("proxy.require-backend-tls", false)
 
 	if tc.IsTLSClusterEnabled() {
-		cfgWrapper.Set("security.peer-tls.ca", path.Join(tiproxyCertVolumeMountPath, "ca.crt"))
-		cfgWrapper.Set("security.peer-tls.key", path.Join(tiproxyCertVolumeMountPath, "tls.key"))
-		cfgWrapper.Set("security.peer-tls.cert", path.Join(tiproxyCertVolumeMountPath, "tls.crt"))
-
 		cfgWrapper.Set("security.cluster-tls.ca", path.Join(util.ClusterClientTLSPath, "ca.crt"))
 		cfgWrapper.Set("security.cluster-tls.key", path.Join(util.ClusterClientTLSPath, "tls.key"))
 		cfgWrapper.Set("security.cluster-tls.cert", path.Join(util.ClusterClientTLSPath, "tls.crt"))
 	}
-	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
-		cfgWrapper.Set("security.sql-tls.ca", path.Join(tidbClientCertPath, "ca.crt"))
-		cfgWrapper.Set("security.sql-tls.key", path.Join(tidbClientCertPath, "tls.key"))
-		cfgWrapper.Set("security.sql-tls.cert", path.Join(tidbClientCertPath, "tls.crt"))
-	} else {
-		cfgWrapper.Set("security.sql-tls.skip-ca", true)
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() {
+		cfgWrapper.Set("security.server-tls.ca", path.Join(tiproxyServerPath, "ca.crt"))
+		cfgWrapper.Set("security.server-tls.key", path.Join(tiproxyServerPath, "tls.key"))
+		cfgWrapper.Set("security.server-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
+		cfgWrapper.Set("security.server-tls.skip-ca", true)
+
+		if !tc.SkipTLSWhenConnectTiDB() {
+			if tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
+				cfgWrapper.Set("security.sql-tls.skip-ca", true)
+			} else {
+				cfgWrapper.Set("security.sql-tls.ca", path.Join(tiproxySQLPath, "ca.crt"))
+			}
+			if !tc.Spec.TiDB.TLSClient.DisableClientAuthn {
+				cfgWrapper.Set("security.sql-tls.key", path.Join(tiproxySQLPath, "tls.key"))
+				cfgWrapper.Set("security.sql-tls.cert", path.Join(tiproxySQLPath, "tls.crt"))
+			}
+		}
 	}
 
 	cfgBytes, err := cfgWrapper.MarshalTOML()
@@ -409,22 +416,12 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
-			Name:      tiproxyCertVolume,
-			ReadOnly:  true,
-			MountPath: tiproxyCertVolumeMountPath,
-		}, corev1.VolumeMount{
 			Name:      util.ClusterClientVolName,
 			ReadOnly:  true,
 			MountPath: util.ClusterClientTLSPath,
 		})
 
 		vols = append(vols, corev1.Volume{
-			Name: tiproxyCertVolume, VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiProxyLabelVal),
-				},
-			},
-		}, corev1.Volume{
 			Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: util.ClusterClientTLSSecretName(tc.Name),
@@ -432,22 +429,32 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 			},
 		})
 	}
-	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
-		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
-		})
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() {
+		volMounts = append(volMounts,
+			corev1.VolumeMount{
+				Name: "tidb-server-tls", ReadOnly: true, MountPath: tiproxyServerPath,
+			},
+			corev1.VolumeMount{
+				Name: "tidb-client-tls", ReadOnly: true, MountPath: tiproxySQLPath,
+			},
+		)
 
-		clientSecretName := util.TiDBClientTLSSecretName(tc.Name)
-		if tc.Spec.TiProxy.TLSClientSecretName != nil {
-			clientSecretName = *tc.Spec.TiProxy.TLSClientSecretName
-		}
-		vols = append(vols, corev1.Volume{
-			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: clientSecretName,
+		vols = append(vols,
+			corev1.Volume{
+				Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.TiDBClientTLSSecretName(tc.Name, tc.Spec.TiProxy.TLSClientSecretName),
+					},
 				},
 			},
-		})
+			corev1.Volume{
+				Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.TiDBServerTLSSecretName(tc.Name),
+					},
+				},
+			},
+		)
 	}
 
 	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec

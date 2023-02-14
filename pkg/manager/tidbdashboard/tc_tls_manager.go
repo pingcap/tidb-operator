@@ -73,8 +73,7 @@ func (m *TcTlsManager) synTLSSecret(td *v1alpha1.TidbDashboard, tc *v1alpha1.Tid
 
 	// Sync mysql client tls secret.
 	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
-		mysqlClientSecretName := util.TiDBClientTLSSecretName(tcName)
-		tcSecret, err := m.deps.SecretLister.Secrets(tcNS).Get(mysqlClientSecretName)
+		tcSecret, err := m.deps.SecretLister.Secrets(tcNS).Get(util.TiDBClientTLSSecretName(tcName, nil))
 		if err != nil {
 			return err
 		}

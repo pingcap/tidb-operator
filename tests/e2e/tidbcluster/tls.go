@@ -750,7 +750,7 @@ func connectToTiDBWithTLSSupport(fw portforward.PortForward, c clientset.Interfa
 
 	if tlsEnabled {
 		tlsKey := "tidb-server-tls"
-		secretName := util.TiDBClientTLSSecretName(tcName)
+		secretName := util.TiDBClientTLSSecretName(tcName, nil)
 		secret, err := c.CoreV1().Secrets(ns).Get(context.TODO(), secretName, metav1.GetOptions{})
 		if err != nil {
 			return nil, nil, err
