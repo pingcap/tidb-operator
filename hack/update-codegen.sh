@@ -17,21 +17,19 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-cd $SCRIPT_ROOT
+ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
+cd $ROOT
 
-export GO111MODULE=on
+source hack/lib.sh
+hack::ensure_codegen
 
-go mod vendor
-
-CODEGEN_PKG=${CODEGEN_PKG:-$(ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
-
-# `--output-base $SCRIPT_ROOT` will output generated code to current dir
-bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
+# `--output-base $ROOT` will output generated code to current dir
+GOBIN=$OUTPUT_BIN bash $ROOT/hack/generate-groups.sh "deepcopy,client,informer,lister" \
     github.com/pingcap/tidb-operator/pkg/client \
     github.com/pingcap/tidb-operator/pkg/apis \
     pingcap:v1alpha1 \
-    --output-base $SCRIPT_ROOT \
+    --output-base $ROOT \
     --go-header-file ./hack/boilerplate/boilerplate.generatego.txt
+
 # then we merge generated code with our code base and clean up
-cp -r github.com/pingcap/tidb-operator/pkg $SCRIPT_ROOT && rm -rf github.com
+cp -r github.com/pingcap/tidb-operator/pkg $ROOT && rm -rf github.com

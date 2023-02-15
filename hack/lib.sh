@@ -32,10 +32,10 @@ CFSSL_BIN=$OUTPUT_BIN/cfssl
 CFSSLJSON_BIN=$OUTPUT_BIN/cfssljson
 JQ_BIN=$OUTPUT_BIN/jq
 CFSSL_VERSION=${CFSSL_VERSION:-1.2}
+K8S_VERSION=${K8S_VERSION:-0.19.16}
 JQ_VERSION=${JQ_VERSION:-1.6}
 HELM_VERSION=${HELM_VERSION:-3.5.0}
 KIND_VERSION=${KIND_VERSION:-0.11.1}
-DOCS_VERSION=${DOCS_VERSION:-0.2.1}
 KIND_BIN=$OUTPUT_BIN/kind
 KUBETEST2_VERSION=v0.1.0
 KUBETEST2_BIN=$OUTPUT_BIN/kubetest2
@@ -263,28 +263,10 @@ function hack::ensure_aws_k8s_tester() {
 	chmod +x $AWS_K8S_TESTER_BIN
 }
 
-function hack::verify_gen_crd_api_references_docs() {
-    if test -x "$DOCS_BIN"; then
-        # TODO check version when the binary version is available.
-        return
-    fi
-    return 1
-}
-
 function hack::ensure_gen_crd_api_references_docs() {
-    if hack::verify_gen_crd_api_references_docs; then
-        return 0
-    fi
-    echo "Installing gen_crd_api_references_docs v$DOCS_VERSION..."
-    tmpdir=$(mktemp -d)
-    trap "test -d $tmpdir && rm -r $tmpdir" RETURN
-    curl --retry 10 -L -o ${tmpdir}/docs-bin.tar.gz https://github.com/Yisaer/gen-crd-api-reference-docs/releases/download/v${DOCS_VERSION}/gen-crd-api-reference-docs_${OS}_${ARCH}.tar.gz
-    tar -zvxf ${tmpdir}/docs-bin.tar.gz -C ${tmpdir}
-    mv ${tmpdir}/gen-crd-api-reference-docs ${DOCS_BIN}
-    chmod +x ${DOCS_BIN}
+    echo "Installing gen_crd_api_references_docs..."
+    GOBIN=$OUTPUT_BIN go install github.com/xhebox/gen-crd-api-reference-docs@e46d84594a6d158ec7123ff05acd57acf62e140f
 }
-<<<<<<< HEAD
-=======
 
 function hack::ensure_misspell() {
     echo "Installing misspell..."
@@ -292,8 +274,8 @@ function hack::ensure_misspell() {
 }
 
 function hack::ensure_golangci_lint() {
-  echo "Installing golangci_lint..."
-  GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
+    echo "Installing golangci_lint..."
+    GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.41.1
 }
 
 function hack::ensure_controller_gen() {
@@ -315,6 +297,3 @@ function hack::ensure_openapi() {
     echo "Installing openpi_gen..."
     GOBIN=$OUTPUT_BIN go install k8s.io/code-generator/cmd/openapi-gen@v$K8S_VERSION
 }
-
-function version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }
->>>>>>> 36d1278c5 (Upgrade go version to 1.19 (#4871))

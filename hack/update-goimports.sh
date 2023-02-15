@@ -21,11 +21,6 @@ ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
 source hack/lib.sh
+hack::ensure_goimports
 
-pushd "${ROOT}/hack/tools" >/dev/null
-    make goimports OUTPUT_DIR=${OUTPUT_BIN}
-popd >/dev/null
-
-find . -type f -name '*.go' -not \( \
-    -path '*/vendor/*' \
-    \) | xargs ${OUTPUT_BIN}/goimports -w
+find . -type f -name '*.go' | xargs ${OUTPUT_BIN}/goimports -w
