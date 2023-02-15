@@ -221,7 +221,7 @@ try {
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
-        def buildPodLabel = "tidb-operator-build-v2-pingcap-docker-mirror"
+        def buildPodLabel = "tidb-operator-build-v5-pingcap-docker-mirror"
         def resources = [
             requests: [
                 cpu: "6",
