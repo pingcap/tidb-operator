@@ -203,4 +203,7 @@ debug-build-docker: debug-build
 debug-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
 
+kubekins-e2e-docker:
+	docker build -t "${DOCKER_REPO}/kubekins-e2e:latest" tests/images/kubekins-e2e
+
 .PHONY: check check-setup build e2e-build debug-build cli e2e gocovmerge test docker e2e-docker debug-build-docker
