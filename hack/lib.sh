@@ -276,22 +276,7 @@ function hack::ensure_misspell() {
 
 function hack::ensure_golangci_lint() {
   echo "Installing golangci_lint..."
-  echo "## Since v1.45.0+ version of golangci-lint has bare '//go:build' comments (without additional '// +build') in its source code,"
-  echo "## and go116 does not support '//go:build' without '// +build',"
-  echo "## golangci-lint@v1.45.0+ cannot be go-installed on go116 or older go versions."
-  echo "## FIXME: Upgrade golangci-lint after upgrading project's go version to g118+."
-
-  v=$(go version | {
-    read _ _ v _
-    echo ${v#go}
-  })
-  if [ $(version $v) -ge $(version "1.18.0") ]; then
-    ## Local dev env. Developers can use go118+ to dev.
-    GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
-  else
-    ## Old CI env.
-    GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.2
-  fi
+  GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
 }
 
 function hack::ensure_controller_gen() {
@@ -314,16 +299,5 @@ function hack::ensure_openapi() {
     GOBIN=$OUTPUT_BIN go install k8s.io/code-generator/cmd/openapi-gen@v$K8S_VERSION
 }
 
-function hack::ensure_go117() {
-  echo "## Adjust go117+ generated code (indent and '//go:build' comments) to go116 ..."
-  echo "## Since CI pipeline depends on go116 while developers could have go117+ development environment, we need to patch go117+ generated code to conform with go116. So that CI pipeline won't fail."
-  echo "## FIXME: Remove this after upgrading project's go version to g118+."
-
-  patch -d $ROOT -NRp1 -i $ROOT/hack/go117_0.patch -r .rej --no-backup-if-mismatch || true
-  patch -d $ROOT -NRp1 -i $ROOT/hack/go117_1.patch -r .rej --no-backup-if-mismatch || true
-  patch -d $ROOT -NRp1 -i $ROOT/hack/go117_2.patch -r .rej --no-backup-if-mismatch || true
-  patch -d $ROOT -NRp1 -i $ROOT/hack/go117_3.patch -r .rej --no-backup-if-mismatch || true
-  rm -rf .rej
-}
 
 function version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }
