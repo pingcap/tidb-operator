@@ -16,7 +16,6 @@ require (
 	github.com/docker/docker v1.4.2-0.20200309214505-aa6a9891b09c
 	github.com/dustin/go-humanize v1.0.0
 	github.com/emicklei/go-restful v2.16.0+incompatible
-	github.com/fatih/color v1.7.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gogo/protobuf v1.3.2
@@ -46,7 +45,6 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/tikv/pd v2.1.17+incompatible
 	github.com/yisaer/crd-validation v0.0.3
-	github.com/zhouqiang-cl/gocovmerge v0.0.0-20190125174600-5256314471af
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
@@ -60,7 +58,6 @@ require (
 	k8s.io/apiserver v0.19.16
 	k8s.io/cli-runtime v0.19.16
 	k8s.io/client-go v0.19.16
-	k8s.io/code-generator v0.19.16
 	k8s.io/component-base v0.19.16
 	k8s.io/klog/v2 v2.3.0
 	k8s.io/kube-aggregator v0.19.16
@@ -68,8 +65,12 @@ require (
 	k8s.io/kubectl v0.19.16
 	k8s.io/kubernetes v1.19.16
 	k8s.io/utils v0.0.0-20200912215256-4140de9c8800
-	sigs.k8s.io/apiserver-builder-alpha/cmd v0.0.0-20191113095113-4493943d2568
 	sigs.k8s.io/controller-runtime v0.7.2
+)
+
+require (
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
@@ -142,9 +143,7 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
-	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-ieproxy v0.0.0-20190610004146-91bb50d98149 // indirect
-	github.com/mattn/go-isatty v0.0.8 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/minio/sha256-simd v0.1.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -202,7 +201,6 @@ require (
 	k8s.io/cloud-provider v0.19.16 // indirect
 	k8s.io/cluster-bootstrap v0.0.0 // indirect
 	k8s.io/csi-translation-lib v0.19.16 // indirect
-	k8s.io/gengo v0.0.0-20200428234225-8167cfdcfc14 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6 // indirect
 	k8s.io/legacy-cloud-providers v0.0.0 // indirect
