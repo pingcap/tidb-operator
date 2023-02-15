@@ -276,22 +276,7 @@ function hack::ensure_misspell() {
 
 function hack::ensure_golangci_lint() {
   echo "Installing golangci_lint..."
-  echo "## Since v1.45.0+ version of golangci-lint has bare '//go:build' comments (without additional '// +build') in its source code,"
-  echo "## and go116 does not support '//go:build' without '// +build',"
-  echo "## golangci-lint@v1.45.0+ cannot be go-installed on go116 or older go versions."
-  echo "## FIXME: Upgrade golangci-lint after upgrading project's go version to g118+."
-
-  v=$(go version | {
-    read _ _ v _
-    echo ${v#go}
-  })
-  if [ $(version $v) -ge $(version "1.18.0") ]; then
-    ## Local dev env. Developers can use go118+ to dev.
-    GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
-  else
-    ## Old CI env.
-    GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.2
-  fi
+  GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
 }
 
 function hack::ensure_controller_gen() {
