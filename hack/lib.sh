@@ -283,3 +283,38 @@ function hack::ensure_gen_crd_api_references_docs() {
     mv ${tmpdir}/gen-crd-api-reference-docs ${DOCS_BIN}
     chmod +x ${DOCS_BIN}
 }
+<<<<<<< HEAD
+=======
+
+function hack::ensure_misspell() {
+    echo "Installing misspell..."
+    GOBIN=$OUTPUT_BIN go install github.com/client9/misspell/cmd/misspell@v0.3.4
+}
+
+function hack::ensure_golangci_lint() {
+  echo "Installing golangci_lint..."
+  GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
+}
+
+function hack::ensure_controller_gen() {
+    echo "Installing controller_gen..."
+    GOBIN=$OUTPUT_BIN go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.2
+}
+
+function hack::ensure_goimports() {
+    echo "Installing goimports..."
+    GOBIN=$OUTPUT_BIN go install golang.org/x/tools/cmd/goimports@v0.1.12
+}
+
+function hack::ensure_codegen() {
+    echo "Installing codegen..."
+    GOBIN=$OUTPUT_BIN go install k8s.io/code-generator/cmd/{defaulter-gen,client-gen,lister-gen,informer-gen,deepcopy-gen}@v$K8S_VERSION
+}
+
+function hack::ensure_openapi() {
+    echo "Installing openpi_gen..."
+    GOBIN=$OUTPUT_BIN go install k8s.io/code-generator/cmd/openapi-gen@v$K8S_VERSION
+}
+
+function version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }
+>>>>>>> 36d1278c5 (Upgrade go version to 1.19 (#4871))

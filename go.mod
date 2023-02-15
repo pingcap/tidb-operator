@@ -4,7 +4,11 @@
 
 module github.com/pingcap/tidb-operator
 
+<<<<<<< HEAD
 go 1.16
+=======
+go 1.19
+>>>>>>> 36d1278c5 (Upgrade go version to 1.19 (#4871))
 
 require (
 	cloud.google.com/go/storage v1.0.0
@@ -21,9 +25,13 @@ require (
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/dustin/go-humanize v1.0.0
+<<<<<<< HEAD
 	github.com/elazarl/goproxy v0.0.0-20190421051319-9d40249d3c2f // indirect; indirectload
 	github.com/emicklei/go-restful v2.9.5+incompatible
 	github.com/fatih/color v1.7.0
+=======
+	github.com/emicklei/go-restful v2.16.0+incompatible
+>>>>>>> 36d1278c5 (Upgrade go version to 1.19 (#4871))
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gogo/protobuf v1.3.2
