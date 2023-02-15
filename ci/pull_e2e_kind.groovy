@@ -37,7 +37,7 @@ metadata:
 spec:
   containers:
   - name: main
-    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v4-go1.18
+    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v5-go1.19
     command:
     - runner.sh
     - exec
@@ -258,7 +258,7 @@ try {
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
-        def buildPodLabel = "tidb-operator-build-v4-pingcap-docker-mirror"
+        def buildPodLabel = "tidb-operator-build-v5-pingcap-docker-mirror"
         def resources = [
             requests: [
                 cpu: "4",
