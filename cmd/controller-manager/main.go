@@ -257,6 +257,8 @@ func main() {
 
 func createHTTPServer() *http.Server {
 	serverMux := http.NewServeMux()
+	// HTTP path for pprof
+	serverMux.Handle("/", http.DefaultServeMux)
 	// HTTP path for prometheus.
 	serverMux.Handle("/metrics", promhttp.Handler())
 
