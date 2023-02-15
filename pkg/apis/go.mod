@@ -1,15 +1,11 @@
 module github.com/pingcap/tidb-operator/pkg/apis
 
-<<<<<<< HEAD
-go 1.16
-=======
 go 1.19
->>>>>>> 36d1278c5 (Upgrade go version to 1.19 (#4871))
 
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/semver v1.4.2
-	github.com/aws/aws-sdk-go v1.30.9 // indirect
+	github.com/aws/aws-sdk-go v1.44.72 // indirect
 	github.com/go-openapi/spec v0.19.3
 	github.com/google/go-cmp v0.5.5
 	github.com/google/gofuzz v1.1.0
@@ -26,13 +22,10 @@ require (
 	k8s.io/utils v0.0.0-20200912215256-4140de9c8800
 	sigs.k8s.io/yaml v1.2.0
 )
-<<<<<<< HEAD
-=======
 
 require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
-	github.com/aws/aws-sdk-go v1.44.72 // indirect
 	github.com/emicklei/go-restful v2.16.0+incompatible // indirect
 	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.3 // indirect
@@ -51,4 +44,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 )
->>>>>>> 36d1278c5 (Upgrade go version to 1.19 (#4871))
