@@ -9,9 +9,9 @@ endif
 
 # Enable GO111MODULE=on explicitly, disable it with GO111MODULE=off when necessary.
 export GO111MODULE := on
-GOOS := $(if $(GOOS),$(GOOS),linux)
-GOARCH := $(if $(GOARCH),$(GOARCH),amd64)
-GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
+GOOS ?= linux
+GOARCH ?= $(shell go env GOARCH)
+GOENV  := CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go
 GO_BUILD := $(GO) build -trimpath
 GO_SUBMODULES = github.com/pingcap/tidb-operator/pkg/apis github.com/pingcap/tidb-operator/pkg/client
@@ -28,22 +28,22 @@ GO_TEST := $(GO) test -cover -covermode=atomic -coverpkg=$$($(TEST_COVER_PACKAGE
 
 default: build
 
-docker-push: docker backup-docker
+docker-push: docker
 	docker push "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}"
 	docker push "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}"
 
+docker: operator-docker backup-docker
+
 ifeq ($(NO_BUILD),y)
-docker:
+operator-docker:
 	@echo "NO_BUILD=y, skip build for $@"
 else
-docker: build
+operator-docker: build
 endif
 ifeq ($(E2E),y)
 	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" -f images/tidb-operator/Dockerfile.e2e images/tidb-operator
-	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" -f images/tidb-backup-manager/Dockerfile.e2e images/tidb-backup-manager
 else
 	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-operator
-	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-backup-manager
 endif
 
 build: controller-manager scheduler discovery admission-webhook backup-manager
@@ -129,17 +129,7 @@ e2e-examples:
 	./hack/e2e-examples.sh
 
 gocovmerge:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o bin/gocovmerge github.com/zhouqiang-cl/gocovmerge
-
-stability-test-build:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/blockwriter ./tests/cmd/blockwriter
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test ./tests/cmd/stability
-
-stability-test-docker: stability-test-build
-	docker build -t "${DOCKER_REPO}/tidb-operator-stability-test:${IMAGE_TAG}" tests/images/stability-test
-
-stability-test-push: stability-test-docker
-	docker push "${DOCKER_REPO}/tidb-operator-stability-test:${IMAGE_TAG}"
+	GOBIN=$(shell pwd)/bin/ $(GO) install github.com/zhouqiang-cl/gocovmerge@latest
 
 fault-trigger:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
@@ -166,14 +156,11 @@ else
 endif
 	@echo -e "\nUnit tests run successfully!"
 
-ALL_CHECKS = EOF codegen crd boilerplate openapi-spec api-references spelling modules
-check: $(addprefix check-,$(ALL_CHECKS)) lint tidy
+ALL_CHECKS = EOF codegen crd boilerplate openapi-spec api-references spelling modules lint
+check: $(addprefix check-,$(ALL_CHECKS)) tidy
 
 check-%:
 	./hack/verify-$*.sh
-
-lint:
-	./hack/verify-lint.sh
 
 crd:
 	./hack/update-crd.sh
@@ -202,5 +189,8 @@ debug-build-docker: debug-build
 
 debug-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
+
+kubekins-e2e-docker:
+	docker build -t "${DOCKER_REPO}/kubekins-e2e:latest" tests/images/kubekins-e2e
 
 .PHONY: check check-setup build e2e-build debug-build cli e2e gocovmerge test docker e2e-docker debug-build-docker

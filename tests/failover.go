@@ -609,8 +609,9 @@ func (oa *OperatorActions) pdFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster)
 }
 
 // TODO we should confirm the tombstone exists, important!!!!!!
-// 		for example: offline the same pod again and again, and see it in the tombstone stores
-// 					 offline two pods, and see them in the tombstone stores
+//
+//	for example: offline the same pod again and again, and see it in the tombstone stores
+//				 offline two pods, and see them in the tombstone stores
 func (oa *OperatorActions) tikvFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster) bool {
 	failure := false
 	for _, failureStore := range tc.Status.TiKV.FailureStores {

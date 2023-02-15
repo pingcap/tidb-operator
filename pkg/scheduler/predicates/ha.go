@@ -72,15 +72,15 @@ func (h *ha) Name() string {
 	return "HAScheduling"
 }
 
-// 1. return the node to kube-scheduler if there is only one feasible node and the pod's pvc is bound
-// 2. if there are more than two feasible nodes, we are trying to distribute TiKV/PD pods across the nodes for the best HA
-//  a) for PD (one raft group, copies of data equals to replicas), no more than majority of replicas pods on one node, otherwise majority of replicas may lose when a node is lost.
+//  1. return the node to kube-scheduler if there is only one feasible node and the pod's pvc is bound
+//  2. if there are more than two feasible nodes, we are trying to distribute TiKV/PD pods across the nodes for the best HA
+//     a) for PD (one raft group, copies of data equals to replicas), no more than majority of replicas pods on one node, otherwise majority of replicas may lose when a node is lost.
 //     e.g. when replicas is 3, we requires no more than 1 pods per node.
-//  b) for TiKV (multiple raft groups, in each raft group, copies of data is hard-coded to 3)
+//     b) for TiKV (multiple raft groups, in each raft group, copies of data is hard-coded to 3)
 //     when replicas is less than 3, no HA is forced because HA is impossible
 //     when replicas is equal or greater than 3, we require TiKV pods are running on more than 3 nodes and no more than ceil(replicas / 3) per node
-//  for PD/TiKV, we both try to balance the number of pods across the nodes
-// 3. let kube-scheduler to make the final decision
+//     for PD/TiKV, we both try to balance the number of pods across the nodes
+//  3. let kube-scheduler to make the final decision
 func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
 	h.lock.Lock()
 	defer h.lock.Unlock()

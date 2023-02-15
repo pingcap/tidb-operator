@@ -176,6 +176,7 @@ func ordinalPodName(memberType v1alpha1.MemberType, tcName string, ordinal int32
 //   - 0: no scaling required
 //   - 1: scaling out
 //   - -1: scaling in
+//
 // - ordinal: pod ordinal to create or delete
 // - replicas/deleteSlots: desired replicas and deleteSlots by allowing only one pod to be deleted or created
 func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int, ordinal int32, replicas int32, deleteSlots sets.Int32) {

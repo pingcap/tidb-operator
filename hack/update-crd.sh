@@ -26,14 +26,11 @@ cd ${ROOT}
 source hack/lib.sh
 
 CONTROLLER_GEN=${OUTPUT_BIN}/controller-gen
+hack::ensure_controller_gen
+
 API_PACKAGES="github.com/pingcap/tidb-operator/pkg/apis/..."
 CRD_OUTPUT_DIR=${ROOT}/manifests/crd
 CRD_OPTIONS="preserveUnknownFields=false,allowDangerousTypes=true,maxDescLen=0"
-
-# build controller-gen
-pushd "${ROOT}/hack/tools" >/dev/null
-    make controller-gen OUTPUT_DIR=${OUTPUT_BIN}
-popd >/dev/null
 
 # generate CRDs
 ${CONTROLLER_GEN} \
@@ -51,5 +48,5 @@ for file in ${SKIP_CRD_FILES[@]}; do
 done
 
 # merge all CRDs
-cat ${CRD_OUTPUT_DIR}/v1/*.yaml > ${ROOT}/manifests/crd.yaml
-cat ${CRD_OUTPUT_DIR}/v1beta1/*.yaml > ${ROOT}/manifests/crd_v1beta1.yaml
+find ${CRD_OUTPUT_DIR}/v1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/crd.yaml
+find ${CRD_OUTPUT_DIR}/v1beta1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/crd_v1beta1.yaml

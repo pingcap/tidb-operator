@@ -150,8 +150,8 @@ func (u *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName str
 // choosePDToTransferFromMembers choose a pd to transfer leader from members
 //
 // Assume that current leader ordinal is x, and range is [0, n]
-//	1. Find the max suitable ordinal in (x, n], because they have been upgraded
-//	2. If no suitable ordinal, find the min suitable ordinal in [0, x) to reduce the count of transfer
+//  1. Find the max suitable ordinal in (x, n], because they have been upgraded
+//  2. If no suitable ordinal, find the min suitable ordinal in [0, x) to reduce the count of transfer
 func choosePDToTransferFromMembers(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, ordinal int32) string {
 	tcName := tc.GetName()
 	ordinals := helper.GetPodOrdinals(*newSet.Spec.Replicas, newSet)
