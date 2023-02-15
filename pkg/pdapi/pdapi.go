@@ -183,7 +183,7 @@ type StoresInfo struct {
 }
 
 // MembersInfo is PD members info returned from PD RESTful interface
-//type Members map[string][]*pdpb.Member
+// type Members map[string][]*pdpb.Member
 type MembersInfo struct {
 	Header     *pdpb.ResponseHeader `json:"header,omitempty"`
 	Members    []*pdpb.Member       `json:"members,omitempty"`

@@ -242,7 +242,7 @@ type FileLogConfig struct {
 	MaxBackups int `toml:"max-backups,omitempty" json:"max-backups,omitempty"`
 }
 
-//StringSlice is more friendly to json encode/decode
+// StringSlice is more friendly to json encode/decode
 type StringSlice []string
 
 // MarshalJSON returns the size as a JSON string.

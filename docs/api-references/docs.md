@@ -6116,6 +6116,10 @@ Only named struct is allowed by controller-gen</p>
 </p>
 <h3 id="evictleaderstatus">EvictLeaderStatus</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#tikvstatus">TiKVStatus</a>)
+</p>
+<p>
 </p>
 <table>
 <thead>
@@ -8430,7 +8434,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -10778,7 +10782,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -11517,8 +11521,8 @@ Defaults to false.</p>
 <td>
 <code>remoteWrite</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.remotewritespec">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RemoteWriteSpec
+<a href="#remotewritespec">
+[]RemoteWriteSpec
 </a>
 </em>
 </td>
@@ -11795,6 +11799,10 @@ uint
 </table>
 <h3 id="pumpnodestatus">PumpNodeStatus</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#pumpstatus">PumpStatus</a>)
+</p>
+<p>
 <p>PumpNodeStatus represents the status saved in etcd.</p>
 </p>
 <table>
@@ -11999,8 +12007,8 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>members</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.pumpnodestatus">
-[]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpNodeStatus
+<a href="#pumpnodestatus">
+[]PumpNodeStatus
 </a>
 </em>
 </td>
@@ -12011,7 +12019,7 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -12303,6 +12311,10 @@ ServiceSpec
 </tbody>
 </table>
 <h3 id="remotewritespec">RemoteWriteSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#prometheusspec">PrometheusSpec</a>)
+</p>
 <p>
 <p>RemoteWriteSpec defines the remote_write configuration for prometheus.</p>
 </p>
@@ -13788,6 +13800,16 @@ string
 </p>
 <h3 id="storagevolumestatus">StorageVolumeStatus</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>, 
+<a href="#pdstatus">PDStatus</a>, 
+<a href="#pumpstatus">PumpStatus</a>, 
+<a href="#ticdcstatus">TiCDCStatus</a>, 
+<a href="#tidbstatus">TiDBStatus</a>, 
+<a href="#tikvstatus">TiKVStatus</a>, 
+<a href="#workerstatus">WorkerStatus</a>)
+</p>
+<p>
 <p>StorageVolumeStatus is the actual status for a storage</p>
 </p>
 <table>
@@ -14494,7 +14516,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCaptu
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -15922,7 +15944,7 @@ bool
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -20557,7 +20579,7 @@ string
 <td>
 <code>evictLeader</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.evictleaderstatus">
+<a href="#evictleaderstatus">
 map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLeaderStatus
 </a>
 </em>
@@ -20569,7 +20591,7 @@ map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.EvictLead
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
@@ -23956,7 +23978,7 @@ string
 <td>
 <code>volumes</code></br>
 <em>
-<a href="#*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.storagevolumestatus">
+<a href="#storagevolumestatus">
 map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
 </a>
 </em>
