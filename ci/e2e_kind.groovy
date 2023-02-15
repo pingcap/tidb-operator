@@ -16,21 +16,13 @@ metadata:
 spec:
   containers:
   - name: main
-    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v20210808-1eaeec7-master
+    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v5-go1.19
     command:
     - runner.sh
-    # Clean containers on TERM signal in root process to avoid cgroup leaking.
-    # https://github.com/pingcap/tidb-operator/issues/1603#issuecomment-582402196
     - exec
     - bash
     - -c
     - |
-      function clean() {
-        echo "info: clean all containers to avoid cgroup leaking"
-        docker kill $(docker ps -q) || true
-        docker system prune -af || true
-      }
-      trap clean TERM
       sleep 1d & wait
     # we need privileged mode in order to do docker in docker
     securityContext:
