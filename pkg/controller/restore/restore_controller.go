@@ -123,7 +123,7 @@ func (c *Controller) sync(key string) error {
 	defer func() {
 		duration := time.Since(startTime)
 		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
-		klog.V(4).Infof("Finished syncing Restore %q (%v)", key)
+		klog.V(4).Infof("Finished syncing Restore %q (%v)", key, duration)
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
