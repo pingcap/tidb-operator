@@ -83,7 +83,6 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		PluginDirectory: "/plugins",
 		PluginList:      strings.Join(plugins, ","),
 	}
-
 	model.Path = "${CLUSTER_NAME}-pd:2379"
 	if tc.AcrossK8s() {
 		model.Path = "${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
