@@ -8675,6 +8675,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBInitializer"),
 						},
 					},
+					"bootstrapSQLConfigMapName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BootstrapSQLConfigMapName is the name of the ConfigMap which contains the bootstrap SQL file with the key `bootstrap-sql`, which will only be executed when a TiDB cluster bootstrap on the first time. The field should be set ONLY when create a TC, since it only take effect on the first time bootstrap. Only v6.6.0+ supports this feature.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
