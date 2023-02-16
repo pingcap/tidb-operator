@@ -1,4 +1,4 @@
-LDFLAGS = $(shell ./hack/version.sh)
+LDFLAGS ?= $(shell ./hack/version.sh)
 
 GOVER_MAJOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\1/")
 GOVER_MINOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\2/")

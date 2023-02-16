@@ -430,31 +430,30 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 		})
 	}
 	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() {
-		volMounts = append(volMounts,
-			corev1.VolumeMount{
-				Name: "tidb-server-tls", ReadOnly: true, MountPath: tiproxyServerPath,
-			},
-			corev1.VolumeMount{
-				Name: "tidb-client-tls", ReadOnly: true, MountPath: tiproxySQLPath,
-			},
-		)
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-server-tls", ReadOnly: true, MountPath: tiproxyServerPath,
+		})
 
-		vols = append(vols,
-			corev1.Volume{
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBServerTLSSecretName(tc.Name),
+				},
+			},
+		})
+
+		if !tc.SkipTLSWhenConnectTiDB() {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: "tidb-client-tls", ReadOnly: true, MountPath: tiproxySQLPath,
+			})
+			vols = append(vols, corev1.Volume{
 				Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
 						SecretName: util.TiDBClientTLSSecretName(tc.Name, tc.Spec.TiProxy.TLSClientSecretName),
 					},
 				},
-			},
-			corev1.Volume{
-				Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: util.TiDBServerTLSSecretName(tc.Name),
-					},
-				},
-			},
-		)
+			})
+		}
 	}
 
 	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
