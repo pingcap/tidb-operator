@@ -975,6 +975,14 @@ func (tc *TidbCluster) IsTiDBBinlogEnabled() bool {
 	return *binlogEnabled
 }
 
+func (tidb *TiDBSpec) IsBootstrapSQLEnabled() bool {
+	if tidb.BootstrapSQLConfigMapName != nil && *tidb.BootstrapSQLConfigMapName != "" {
+		return true
+	}
+
+	return false
+}
+
 func (tidb *TiDBSpec) IsTLSClientEnabled() bool {
 	return tidb.TLSClient != nil && tidb.TLSClient.Enabled
 }
