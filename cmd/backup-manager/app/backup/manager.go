@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -97,11 +96,6 @@ func (bm *Manager) ProcessBackup() error {
 		return fmt.Errorf("no br config in %s", bm)
 	}
 
-	// only snapshot backup support reentrant now
-	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot {
-		return bm.reconcileSnapshotBackup(ctx, backup)
-	}
-
 	if bm.Mode == string(v1alpha1.BackupModeLog) {
 		return bm.performLogBackup(ctx, backup.DeepCopy())
 	}
@@ -120,95 +114,6 @@ func (bm *Manager) ProcessBackup() error {
 
 	defer db.Close()
 	return bm.performBackup(ctx, backup.DeepCopy(), db)
-}
-
-// ProcessBackup used to process the backup logic
-func (bm *Manager) reconcileSnapshotBackup(ctx context.Context, backup *v1alpha1.Backup) error {
-	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
-		return nil
-	}
-
-	if isSnapshotBackupAlreadyDone(backup) {
-		klog.Infof("skip rerun cluster %s snapshot backup %s, status is %s", bm.String(), bm.ResourceName, backup.Status.Phase)
-		return nil
-	}
-
-	var err error
-	if backup.Status.Phase == v1alpha1.BackupPrepare {
-		if err = bm.resetSnapshotBackupToSchedule(backup); err != nil {
-			return err
-		}
-	}
-
-	if backup.Status.Phase == v1alpha1.BackupRunning {
-		if err = bm.cleanSnapshotBackupEnv(ctx, backup); err != nil {
-			return err
-		}
-		if err = bm.resetSnapshotBackupToSchedule(backup); err != nil {
-			return err
-		}
-	}
-
-	// port from old code to normally run backup
-	if backup.Spec.From == nil {
-		// skip the DB initialization if spec.from is not specified
-		return bm.performBackup(ctx, backup.DeepCopy(), nil)
-	}
-
-	// validate and create from db
-	var db *sql.DB
-	db, err = bm.validateAndCreateFromDB(ctx, backup.DeepCopy())
-	if err != nil {
-		return err
-	}
-
-	defer db.Close()
-	return bm.performBackup(ctx, backup.DeepCopy(), db)
-}
-
-func isSnapshotBackupAlreadyDone(backup *v1alpha1.Backup) bool {
-	return backup.Status.Phase != v1alpha1.BackupScheduled && backup.Status.Phase != v1alpha1.BackupPrepare && backup.Status.Phase != v1alpha1.BackupRunning
-}
-
-// validateAndCreateFromDB validate and create from db.
-func (bm *Manager) cleanSnapshotBackupEnv(ctx context.Context, backup *v1alpha1.Backup) error {
-	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
-		return nil
-	}
-
-	var errs []error
-
-	cleanManager := clean.NewManager(bm.backupLister, bm.StatusUpdater, clean.Options{Namespace: bm.Namespace, BackupName: bm.ResourceName})
-	err := cleanManager.CleanBRRemoteBackupData(ctx, backup)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("clean cluster %s snapshot backup %s cluster failed, err: %s", bm, bm.ResourceName, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "CleanBackupDataFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-	}
-
-	return errorutils.NewAggregate(errs)
-}
-
-// validateAndCreateFromDB validate and create from db.
-func (bm *Manager) resetSnapshotBackupToSchedule(backup *v1alpha1.Backup) error {
-	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
-		return nil
-	}
-
-	if backup.Status.Phase == v1alpha1.BackupScheduled {
-		return nil
-	}
-
-	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupScheduled,
-		Status: corev1.ConditionTrue,
-	}, nil)
 }
 
 // validateAndCreateFromDB validate and create from db.

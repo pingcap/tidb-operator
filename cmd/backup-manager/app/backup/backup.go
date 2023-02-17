@@ -27,6 +27,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/juju/errors"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -112,11 +114,27 @@ func (bo *Options) backupData(
 		go bo.updateProgressFromFile(progressCtx.Done(), backup, progressFile, progressStep, statusUpdater)
 	}
 
+	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot {
+		err := bo.cleanSnapshotBackupEnv(ctx, backup)
+		if err != nil {
+			return errors.Annotatef(err, "clean snapshot backup %s failed", bo)
+		}
+	}
+
 	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs)
 	if err != nil {
 		return err
 	}
 	return bo.brCommandRunWithLogCallback(ctx, fullArgs, logCallback)
+}
+
+func (bo *Options) cleanSnapshotBackupEnv(ctx context.Context, backup *v1alpha1.Backup) error {
+	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+		return nil
+	}
+
+	cleanOpt := clean.Options{Namespace: bo.Namespace, BackupName: bo.ResourceName}
+	return cleanOpt.CleanBRRemoteBackupData(ctx, backup)
 }
 
 // constructOptions constructs options for BR
