@@ -460,10 +460,9 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnap
 	volID2PV := make(map[string]*corev1.PersistentVolume)
 	for _, pv := range csb.Kubernetes.PVs {
 		volID, ok := pv.Annotations[constants.AnnTemporaryVolumeID]
-		if !ok {
-			return "GetVolumeIDFailed", fmt.Errorf("%s pv.annotations[%s] not found", pv.GetName(), constants.AnnTemporaryVolumeID)
+		if ok {
+			volID2PV[volID] = pv
 		}
-		volID2PV[volID] = pv
 	}
 
 	pvs, pvcs := make([]*corev1.PersistentVolume, 0, len(m.rsVolIDMap)), make([]*corev1.PersistentVolumeClaim, 0, len(m.rsVolIDMap))
