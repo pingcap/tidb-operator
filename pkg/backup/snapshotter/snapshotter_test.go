@@ -942,7 +942,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 							},
 						},
 						ClaimRef: &corev1.ObjectReference{
-							Name:            "pvc-1",
+							Name:            "test-tikv-1",
 							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
 							ResourceVersion: "1957",
 						},
@@ -977,7 +977,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 							},
 						},
 						ClaimRef: &corev1.ObjectReference{
-							Name:            "pvc-2",
+							Name:            "test-tikv-2",
 							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
 							ResourceVersion: "1959",
 						},
@@ -1012,8 +1012,43 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 							},
 						},
 						ClaimRef: &corev1.ObjectReference{
-							Name:            "pvc-3",
+							Name:            "test-tikv-3",
 							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
+							ResourceVersion: "1961",
+						},
+					},
+					Status: corev1.PersistentVolumeStatus{
+						Phase: corev1.VolumeBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-4",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+							constants.AnnTemporaryVolumeID:          "vol-0e65f40961a9fcd23",
+							"test/annotation":                       "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9acd23",
+						ResourceVersion: "1962",
+						Finalizers: []string{
+							"kubernetes.io/pv-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeSource: corev1.PersistentVolumeSource{
+							CSI: &corev1.CSIPersistentVolumeSource{
+								Driver:       "ebs.csi.aws.com",
+								VolumeHandle: "vol-0e65f40961a9fcd23",
+								FSType:       "ext4",
+							},
+						},
+						ClaimRef: &corev1.ObjectReference{
+							Name:            "test-tikv-4",
+							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9acd23",
 							ResourceVersion: "1961",
 						},
 					},
@@ -1025,7 +1060,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 			PVCs: []*corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "pvc-1",
+						Name:      "test-tikv-1",
 						Namespace: "default",
 						Labels: map[string]string{
 							"test/label": "retained",
@@ -1050,7 +1085,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "pvc-2",
+						Name:      "test-tikv-2",
 						Namespace: "default",
 						Labels: map[string]string{
 							"test/label": "retained",
@@ -1075,7 +1110,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "pvc-3",
+						Name:      "test-tikv-3",
 						Namespace: "default",
 						Labels: map[string]string{
 							"test/label": "retained",
@@ -1093,6 +1128,31 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						VolumeName: "pv-3",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-tikv-4",
+						Namespace: "default",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnBindCompleted:     "yes",
+							constants.KubeAnnBoundByController: "yes",
+							"test/annotation":                  "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9acd23",
+						ResourceVersion: "1961",
+						Finalizers: []string{
+							"kubernetes.io/pvc-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-4",
 					},
 					Status: corev1.PersistentVolumeClaimStatus{
 						Phase: corev1.ClaimBound,
@@ -1159,7 +1219,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					},
 				},
 				ClaimRef: &corev1.ObjectReference{
-					Name: "pvc-1",
+					Name: "test-tikv-0",
 				},
 			},
 		},
@@ -1183,7 +1243,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					},
 				},
 				ClaimRef: &corev1.ObjectReference{
-					Name: "pvc-2",
+					Name: "test-tikv-1",
 				},
 			},
 		},
@@ -1207,7 +1267,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					},
 				},
 				ClaimRef: &corev1.ObjectReference{
-					Name: "pvc-3",
+					Name: "test-tikv-2",
 				},
 			},
 		},
@@ -1218,7 +1278,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 	pvcsWanted := []*corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pvc-1",
+				Name:      "test-tikv-0",
 				Namespace: "default",
 				Labels: map[string]string{
 					"test/label": "retained",
@@ -1233,7 +1293,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pvc-2",
+				Name:      "test-tikv-1",
 				Namespace: "default",
 				Labels: map[string]string{
 					"test/label": "retained",
@@ -1248,7 +1308,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pvc-3",
+				Name:      "test-tikv-2",
 				Namespace: "default",
 				Labels: map[string]string{
 					"test/label": "retained",
@@ -1269,109 +1329,299 @@ func TestResetPVCSequence(t *testing.T) {
 	type testcase struct {
 		stsName      string
 		backupPVCs   []*corev1.PersistentVolumeClaim
+		backupPVs    []*corev1.PersistentVolume
 		expectedPVCs []*corev1.PersistentVolumeClaim
+		expectedPVs  []*corev1.PersistentVolume
 	}
 	testcases := []*testcase{
 		{
-			stsName: "pvc",
+			stsName: "test-tikv",
 			backupPVCs: []*corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-0",
+						Name: "tikv-test-tikv-0",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-1",
+						Name: "tikv-test-tikv-1",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-2",
+						Name: "tikv-test-tikv-2",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-6",
+						Name: "tikv-test-tikv-6",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-7",
+						Name: "tikv-test-tikv-7",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-8",
+						Name: "tikv-test-tikv-8",
 					},
 				},
 			},
 			expectedPVCs: []*corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-0",
+						Name: "tikv-test-tikv-0",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-1",
+						Name: "tikv-test-tikv-1",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-2",
+						Name: "tikv-test-tikv-2",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-3",
+						Name: "tikv-test-tikv-3",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-4",
+						Name: "tikv-test-tikv-4",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-5",
+						Name: "tikv-test-tikv-5",
+					},
+				},
+			},
+			backupPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-0",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-0",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-1",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-1",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-2",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-2",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-6",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-6",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-7",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-7",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-8",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-8",
+						},
+					},
+				},
+			},
+			expectedPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-0",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-0",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-1",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-1",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-2",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-2",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-6",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-3",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-7",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-4",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-8",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-5",
+						},
 					},
 				},
 			},
 		},
 		{
-			stsName: "pvc",
+			stsName: "test-tikv",
 			backupPVCs: []*corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-0",
+						Name: "tikv-test-tikv-0",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-1",
+						Name: "tikv-test-tikv-1",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-2",
+						Name: "tikv-test-tikv-2",
 					},
 				},
 			},
 			expectedPVCs: []*corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-0",
+						Name: "tikv-test-tikv-0",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-1",
+						Name: "tikv-test-tikv-1",
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-2",
+						Name: "tikv-test-tikv-2",
+					},
+				},
+			},
+			backupPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-0",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-0",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-1",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-1",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-2",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-2",
+						},
+					},
+				},
+			},
+			expectedPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-0",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-0",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-1",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-1",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-2",
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Name: "tikv-test-tikv-2",
+						},
 					},
 				},
 			},
@@ -1379,11 +1629,10 @@ func TestResetPVCSequence(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		restorePVCs, err := resetPVCSequence(tc.stsName, tc.backupPVCs)
+		restorePVCs, restorePVs, err := resetPVCSequence(tc.stsName, tc.backupPVCs, tc.backupPVs)
 		require.NoError(t, err)
-		for i := range restorePVCs {
-			require.Equal(t, tc.expectedPVCs[i], restorePVCs[i])
-		}
+		assert.Equal(t, tc.expectedPVCs, restorePVCs)
+		assert.Equal(t, tc.expectedPVs, restorePVs)
 	}
 
 }

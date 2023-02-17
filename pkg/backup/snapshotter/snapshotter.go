@@ -450,21 +450,30 @@ func (m *StoresMixture) PrepareCSBStoresMeta(csb *CloudSnapBackup, pods []*corev
 }
 
 func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error) {
-	pvcs := csb.Kubernetes.PVCs
-	pvs := csb.Kubernetes.PVs
-
 	m.generateRestoreVolumeIDMap(csb.TiKV.Stores)
 
 	backupClusterName := csb.Kubernetes.TiDBCluster.Name
-
 	pvcMap := make(map[string]*corev1.PersistentVolumeClaim)
-	for _, pvc := range pvcs {
+	for _, pvc := range csb.Kubernetes.PVCs {
 		pvcMap[pvc.Name] = pvc
 	}
+	volID2PV := make(map[string]*corev1.PersistentVolume)
+	for _, pv := range csb.Kubernetes.PVs {
+		volID, ok := pv.Annotations[constants.AnnTemporaryVolumeID]
+		if !ok {
+			return "GetVolumeIDFailed", fmt.Errorf("%s pv.annotations[%s] not found", pv.GetName(), constants.AnnTemporaryVolumeID)
+		}
+		volID2PV[volID] = pv
+	}
 
-	for _, pv := range pvs {
+	pvs, pvcs := make([]*corev1.PersistentVolume, 0, len(m.rsVolIDMap)), make([]*corev1.PersistentVolumeClaim, 0, len(m.rsVolIDMap))
+	for backupVolID, restoreVolID := range m.rsVolIDMap {
+		pv, ok := volID2PV[backupVolID]
+		if !ok {
+			return "GetPVFailed", fmt.Errorf("pv with volume id %s not found", backupVolID)
+		}
+
 		klog.Infof("snapshotter-pv: %v", pv)
-
 		if pv.Spec.ClaimRef == nil {
 			return "PVClaimRefNil", fmt.Errorf("pv %s claimRef is nil", pv.Name)
 		}
@@ -476,47 +485,49 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnap
 		// Reset the PV's binding status so that Kubernetes can properly
 		// associate it with the restored PVC.
 		resetVolumeBindingInfo(pvc, pv)
-
 		// Reset the PV's volumeID for restore from snapshot
-		// Note: This function has to precede the following `resetMetadataAndStatus`
-		if reason, err := m.resetRestoreVolumeID(pv); err != nil {
-			return reason, err
+		if err := m.snapshotter.SetVolumeID(pv, restoreVolID); err != nil {
+			return "ResetRestoreVolumeIDFailed", fmt.Errorf("failed to set pv-%s, %s", pv.Name, err.Error())
 		}
-
 		// Clear out non-core metadata fields and status
 		resetMetadataAndStatus(r, backupClusterName, pvc, pv)
+
+		pvs = append(pvs, pv)
+		pvcs = append(pvcs, pvc)
 	}
 
 	restoreSTSName := controller.TiKVMemberName(r.Spec.BR.Cluster)
-	sequentialPVCs, err := resetPVCSequence(restoreSTSName, pvcs)
+	sequentialPVCs, sequentialPVs, err := resetPVCSequence(restoreSTSName, pvcs, pvs)
 	if err != nil {
 		klog.Errorf("reset pvcs to sequential error: %s", err.Error())
 		return "InvalidPVCName", err
 	}
 
 	csb.Kubernetes.PVCs = sequentialPVCs
+	csb.Kubernetes.PVs = sequentialPVs
 	return "", nil
 }
 
 // If a backup cluster has scaled in and the tidb-operator enabled advanced-statefulset(ref: https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/advanced-statefulset)
 // the name of pvc can be not sequential, eg: [pvc-0, pvc-1, pvc-2, pvc-6, pvc-7, pvc-8]
 // When create cluster, we should ensure pvc name sequential, so we should reset it to [pvc-0, pvc-1, pvc-2, pvc-3, pvc-4, pvc-5]
-func resetPVCSequence(stsName string, backupPVCs []*corev1.PersistentVolumeClaim) ([]*corev1.PersistentVolumeClaim, error) {
+func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs []*corev1.PersistentVolume) (
+	[]*corev1.PersistentVolumeClaim, []*corev1.PersistentVolume, error) {
 	type indexedPVC struct {
 		index int
 		pvc   *corev1.PersistentVolumeClaim
 	}
-	indexedPVCs := make([]*indexedPVC, 0, len(backupPVCs))
+	indexedPVCs := make([]*indexedPVC, 0, len(pvcs))
 	reStr := fmt.Sprintf(`%s-(\d+)$`, stsName)
 	re := regexp.MustCompile(reStr)
-	for _, pvc := range backupPVCs {
+	for _, pvc := range pvcs {
 		subMatches := re.FindStringSubmatch(pvc.Name)
 		if len(subMatches) != 2 {
-			return nil, fmt.Errorf("pvc name %s doesn't match regex %s", pvc.Name, reStr)
+			return nil, nil, fmt.Errorf("pvc name %s doesn't match regex %s", pvc.Name, reStr)
 		}
 		index, err := strconv.Atoi(subMatches[1])
 		if err != nil {
-			return nil, fmt.Errorf("parse index %s of pvc %s to int: %s", subMatches[1], pvc.Name, err.Error())
+			return nil, nil, fmt.Errorf("parse index %s of pvc %s to int: %s", subMatches[1], pvc.Name, err.Error())
 		}
 		indexedPVCs = append(indexedPVCs, &indexedPVC{
 			index: index,
@@ -527,17 +538,30 @@ func resetPVCSequence(stsName string, backupPVCs []*corev1.PersistentVolumeClaim
 	sort.Slice(indexedPVCs, func(i, j int) bool {
 		return indexedPVCs[i].index < indexedPVCs[j].index
 	})
-
-	results := make([]*corev1.PersistentVolumeClaim, 0, len(backupPVCs))
-	for i, iPVC := range indexedPVCs {
-		restorePVCName := fmt.Sprintf("%s-%d", stsName, i)
-		if i != iPVC.index {
-			klog.Infof("reset pvc name %s to %s", iPVC.pvc.Name, restorePVCName)
-		}
-		iPVC.pvc.Name = restorePVCName
-		results = append(results, iPVC.pvc)
+	pvc2pv := make(map[string]*corev1.PersistentVolume, len(pvs))
+	for _, pv := range pvs {
+		pvc2pv[pv.Spec.ClaimRef.Name] = pv
 	}
-	return results, nil
+
+	sequentialPVCs := make([]*corev1.PersistentVolumeClaim, 0, len(pvcs))
+	sequentialPVs := make([]*corev1.PersistentVolume, 0, len(pvs))
+	for i, iPVC := range indexedPVCs {
+		pv, ok := pvc2pv[iPVC.pvc.Name]
+		if !ok {
+			return nil, nil, fmt.Errorf("pv with claim %s not found", iPVC.pvc.Name)
+		}
+		if i != iPVC.index {
+			names := strings.Split(iPVC.pvc.Name, "-")
+			restorePVCName := fmt.Sprintf("%s-%d", strings.Join(names[:len(names)-1], "-"), i)
+
+			klog.Infof("reset pvc name %s to %s", iPVC.pvc.Name, restorePVCName)
+			iPVC.pvc.Name = restorePVCName
+			pv.Spec.ClaimRef.Name = restorePVCName
+		}
+		sequentialPVCs = append(sequentialPVCs, iPVC.pvc)
+		sequentialPVs = append(sequentialPVs, pv)
+	}
+	return sequentialPVCs, sequentialPVs, nil
 }
 
 func (m *StoresMixture) generateRestoreVolumeIDMap(stores []*StoresBackup) {
@@ -548,26 +572,6 @@ func (m *StoresMixture) generateRestoreVolumeIDMap(stores []*StoresBackup) {
 	for _, vol := range vols {
 		m.rsVolIDMap[vol.VolumeID] = vol.RestoreVolumeID
 	}
-}
-
-func (m *StoresMixture) resetRestoreVolumeID(pv *corev1.PersistentVolume) (string, error) {
-	// the reason for not using `snapshotter.GetVolumeID` directly here is to consider using
-	// a different driver or provisioner for backup and restore to extend conveniently later
-	volID, ok := pv.Annotations[constants.AnnTemporaryVolumeID]
-	if !ok {
-		return "GetVolumeIDFailed", fmt.Errorf("%s pv.annotations[%s] not found", pv.GetName(), constants.AnnTemporaryVolumeID)
-	}
-
-	var rsVolID string
-	if rsVolID, ok = m.rsVolIDMap[volID]; !ok {
-		return "GetRestoreVolumeIDFailed", fmt.Errorf("%s volumeID-%s mapping restoreVolumeID not found", pv.GetName(), volID)
-	}
-
-	if err := m.snapshotter.SetVolumeID(pv, rsVolID); err != nil {
-		return "ResetRestoreVolumeIDFailed", fmt.Errorf("failed to set pv-%s, %s", pv.Name, err.Error())
-	}
-
-	return "", nil
 }
 
 // resetVolumeBindingInfo clears any necessary metadata out of a PersistentVolume
