@@ -16,15 +16,12 @@ package controller
 import (
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"io"
 
 	"github.com/pingcap/TiProxy/lib/cli"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/spf13/cobra"
-	v1 "k8s.io/api/core/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
@@ -66,31 +63,9 @@ func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) 
 		if !tc.IsTLSClusterEnabled() {
 			cmd = cli.GetRootCmd(nil)
 		} else {
-
-			ns := tc.Namespace
-			secretName := util.ClusterClientTLSSecretName(name)
-			secret, err := c.secretLister.Secrets(ns).Get(secretName)
-			if err != nil {
-				return nil, err
-			}
-
-			clientCert, certExists := secret.Data[v1.TLSCertKey]
-			clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
-			if !certExists || !keyExists {
-				return nil, fmt.Errorf("cert or key does not exist in secret %s/%s", ns, secretName)
-			}
-
-			tlsCert, err := tls.X509KeyPair(clientCert, clientKey)
-			if err != nil {
-				return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
-			}
-
-			rootCAs := x509.NewCertPool()
-			rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
-
+			// using certs of TiDB with tiproxy name, we don't have a correct CA
 			cmd = cli.GetRootCmd(&tls.Config{
-				RootCAs:      rootCAs,
-				Certificates: []tls.Certificate{tlsCert},
+				InsecureSkipVerify: true,
 			})
 		}
 
