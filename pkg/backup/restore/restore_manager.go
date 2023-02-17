@@ -599,10 +599,6 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			args = append(args, "--skipClientCA=true")
 		}
 
-		clientSecretName := util.TiDBClientTLSSecretName(restore.Spec.BR.Cluster)
-		if restore.Spec.To.TLSClientSecretName != nil {
-			clientSecretName = *restore.Spec.To.TLSClientSecretName
-		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "tidb-client-tls",
 			ReadOnly:  true,
@@ -612,7 +608,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			Name: "tidb-client-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: clientSecretName,
+					SecretName: util.TiDBClientTLSSecretName(restore.Spec.BR.Cluster, restore.Spec.To.TLSClientSecretName),
 				},
 			},
 		})

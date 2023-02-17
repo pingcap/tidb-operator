@@ -151,7 +151,7 @@ func (m *manager) CreateTLSForTidbCluster(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 		if tidbSpec.TLSClient.SkipInternalClientCA {
-			if err := m.removeCACertFromSecret(tc.Namespace, util.TiDBClientTLSSecretName(tc.Name)); err != nil {
+			if err := m.removeCACertFromSecret(tc.Namespace, util.TiDBClientTLSSecretName(tc.Name, nil)); err != nil {
 				return err
 			}
 		}
@@ -243,8 +243,7 @@ func (m *manager) removeCACertFromSecret(namespace, name string) error {
 }
 
 func tidbClientCert(tc *v1alpha1.TidbCluster) *TLSCert {
-	secretName := util.TiDBClientTLSSecretName(tc.Name)
-
+	secretName := util.TiDBClientTLSSecretName(tc.Name, nil)
 	return &TLSCert{
 		Meta: Meta{
 			Name:      secretName,
