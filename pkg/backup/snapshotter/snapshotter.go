@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -486,7 +487,57 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnap
 		resetMetadataAndStatus(r, backupClusterName, pvc, pv)
 	}
 
+	restoreSTSName := controller.TiKVMemberName(r.Spec.BR.Cluster)
+	sequentialPVCs, err := resetPVCSequence(restoreSTSName, pvcs)
+	if err != nil {
+		klog.Errorf("reset pvcs to sequential error: %s", err.Error())
+		return "InvalidPVCName", err
+	}
+
+	csb.Kubernetes.PVCs = sequentialPVCs
 	return "", nil
+}
+
+// If a backup cluster has scaled in and the tidb-operator enabled advanced-statefulset(ref: https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/advanced-statefulset)
+// the name of pvc can be not sequential, eg: [pvc-0, pvc-1, pvc-2, pvc-6, pvc-7, pvc-8]
+// When create cluster, we should ensure pvc name sequential, so we should reset it to [pvc-0, pvc-1, pvc-2, pvc-3, pvc-4, pvc-5]
+func resetPVCSequence(stsName string, backupPVCs []*corev1.PersistentVolumeClaim) ([]*corev1.PersistentVolumeClaim, error) {
+	type indexedPVC struct {
+		index int
+		pvc   *corev1.PersistentVolumeClaim
+	}
+	indexedPVCs := make([]*indexedPVC, 0, len(backupPVCs))
+	reStr := fmt.Sprintf(`%s-(\d+)$`, stsName)
+	re := regexp.MustCompile(reStr)
+	for _, pvc := range backupPVCs {
+		subMatches := re.FindStringSubmatch(pvc.Name)
+		if len(subMatches) != 2 {
+			return nil, fmt.Errorf("pvc name %s doesn't match regex %s", pvc.Name, reStr)
+		}
+		index, err := strconv.Atoi(subMatches[1])
+		if err != nil {
+			return nil, fmt.Errorf("parse index %s of pvc %s to int: %s", subMatches[1], pvc.Name, err.Error())
+		}
+		indexedPVCs = append(indexedPVCs, &indexedPVC{
+			index: index,
+			pvc:   pvc,
+		})
+	}
+
+	sort.Slice(indexedPVCs, func(i, j int) bool {
+		return indexedPVCs[i].index < indexedPVCs[j].index
+	})
+
+	results := make([]*corev1.PersistentVolumeClaim, 0, len(backupPVCs))
+	for i, iPVC := range indexedPVCs {
+		restorePVCName := fmt.Sprintf("%s-%d", stsName, i)
+		if i != iPVC.index {
+			klog.Infof("reset pvc name %s to %s", iPVC.pvc.Name, restorePVCName)
+		}
+		iPVC.pvc.Name = restorePVCName
+		results = append(results, iPVC.pvc)
+	}
+	return results, nil
 }
 
 func (m *StoresMixture) generateRestoreVolumeIDMap(stores []*StoresBackup) {

@@ -1264,3 +1264,126 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 	}
 	assert.Equal(t, pvcsWanted, csb.Kubernetes.PVCs)
 }
+
+func TestResetPVCSequence(t *testing.T) {
+	type testcase struct {
+		stsName      string
+		backupPVCs   []*corev1.PersistentVolumeClaim
+		expectedPVCs []*corev1.PersistentVolumeClaim
+	}
+	testcases := []*testcase{
+		{
+			stsName: "pvc",
+			backupPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-0",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-1",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-2",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-6",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-7",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-8",
+					},
+				},
+			},
+			expectedPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-0",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-1",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-2",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-3",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-4",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-5",
+					},
+				},
+			},
+		},
+		{
+			stsName: "pvc",
+			backupPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-0",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-1",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-2",
+					},
+				},
+			},
+			expectedPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-0",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-1",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc-2",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		restorePVCs, err := resetPVCSequence(tc.stsName, tc.backupPVCs)
+		require.NoError(t, err)
+		for i := range restorePVCs {
+			require.Equal(t, tc.expectedPVCs[i], restorePVCs[i])
+		}
+	}
+
+}
