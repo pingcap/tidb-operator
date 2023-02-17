@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/juju/errors"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -290,6 +290,11 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	err = cmd.Wait()
 	if err != nil {
 		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+	}
+
+	for i := 0; i < 5*60; i++ {
+		klog.Infof("simulate stuck br commond %v for cluster %s", fullArgs, bo)
+		time.Sleep(time.Second * 1)
 	}
 
 	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
