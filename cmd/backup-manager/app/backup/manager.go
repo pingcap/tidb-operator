@@ -81,7 +81,7 @@ func (bm *Manager) ProcessBackup() error {
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.ResourceName)
 	if err != nil {
 		errs = append(errs, err)
-		klog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm.String(), bm.ResourceName, err)
+		klog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.ResourceName, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
