@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -114,7 +115,7 @@ func (bo *Options) backupData(
 		go bo.updateProgressFromFile(progressCtx.Done(), backup, progressFile, progressStep, statusUpdater)
 	}
 
-	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot {
+	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && !bo.isBRCanContinueRunByCheckpoint() {
 		err := bo.cleanSnapshotBackupEnv(ctx, backup)
 		if err != nil {
 			return errors.Annotatef(err, "clean snapshot backup %s failed", bo)
@@ -135,6 +136,16 @@ func (bo *Options) cleanSnapshotBackupEnv(ctx context.Context, backup *v1alpha1.
 
 	cleanOpt := clean.Options{Namespace: bo.Namespace, BackupName: bo.ResourceName}
 	return cleanOpt.CleanBRRemoteBackupData(ctx, backup)
+}
+
+func (bo *Options) isBRCanContinueRunByCheckpoint() bool {
+	v, err := semver.NewVersion(bo.TiKVVersion)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", bo.TiKVVersion, err)
+		return false
+	}
+	lessThanV651, _ := semver.NewConstraint("<v6.5.1-0")
+	return !lessThanV651.Check(v)
 }
 
 // constructOptions constructs options for BR
