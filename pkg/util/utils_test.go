@@ -189,7 +189,7 @@ func TestName(t *testing.T) {
 	name = ClusterTLSSecretName(tcName, com)
 	g.Expect(name).Should(Equal(tcName + "-" + com + "-cluster-secret"))
 
-	name = TiDBClientTLSSecretName(tcName)
+	name = TiDBClientTLSSecretName(tcName, nil)
 	g.Expect(name).Should(Equal(tcName + "-tidb-client-secret"))
 
 	name = DMClientTLSSecretName(tcName)

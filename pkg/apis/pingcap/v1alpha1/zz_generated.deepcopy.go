@@ -5954,6 +5954,11 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(TiDBInitializer)
 		**out = **in
 	}
+	if in.BootstrapSQLConfigMapName != nil {
+		in, out := &in.BootstrapSQLConfigMapName, &out.BootstrapSQLConfigMapName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
