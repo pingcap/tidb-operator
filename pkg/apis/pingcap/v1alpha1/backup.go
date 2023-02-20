@@ -193,6 +193,12 @@ func IsBackupRunning(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsBackupEverRun returns true if a Backup has been run.
+func IsBackupBeenRun(backup *Backup) bool {
+	_, running := GetBackupCondition(&backup.Status, BackupRunning)
+	return running != nil
+}
+
 // IsBackupPrepared returns true if a Backup is Prepare.
 func IsBackupPrepared(backup *Backup) bool {
 	if backup.Spec.Mode == BackupModeLog {

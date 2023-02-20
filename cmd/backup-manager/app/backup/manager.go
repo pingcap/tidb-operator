@@ -20,7 +20,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/dustin/go-humanize"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -266,6 +269,14 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 				return errorutils.NewAggregate(errs)
 			}
 			klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, tikvGCLifeTime)
+		}
+	}
+
+	// clean snapshot backup data if it was run again
+	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupBeenRun(backup) && !bm.isBRCanContinueRunByCheckpoint() {
+		err := bm.cleanSnapshotBackupEnv(ctx, backup)
+		if err != nil {
+			return errors.Annotatef(err, "clean snapshot backup %s failed", bm)
 		}
 	}
 
@@ -536,4 +547,23 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 		LogSuccessTruncateUntil: &bm.TruncateUntil,
 	}
 	return updateStatus, "", nil
+}
+
+func (bm *Manager) cleanSnapshotBackupEnv(ctx context.Context, backup *v1alpha1.Backup) error {
+	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+		return nil
+	}
+
+	cleanOpt := clean.Options{Namespace: bm.Namespace, BackupName: bm.ResourceName}
+	return cleanOpt.CleanBRRemoteBackupData(ctx, backup)
+}
+
+func (bm *Manager) isBRCanContinueRunByCheckpoint() bool {
+	v, err := semver.NewVersion(bm.TiKVVersion)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", bm.TiKVVersion, err)
+		return false
+	}
+	lessThanV651, _ := semver.NewConstraint("<v6.5.1-0")
+	return !lessThanV651.Check(v)
 }
