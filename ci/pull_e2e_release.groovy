@@ -251,6 +251,7 @@ try {
                         # we run as root in our pods, this is required
                         # otherwise jenkins agent will fail because of the lack of permission
                         chown -R 1000:1000 .
+                        git config --global --add safe.directory '*'
                         """
 
                         // clean stale files because we may reuse previous created nodes
@@ -319,7 +320,6 @@ try {
                             # we run as root in our pods, this is required
                             # otherwise jenkins agent will fail because of the lack of permission
                             chown -R 1000:1000 .
-                            git config --global --add safe.directory '*'
                             """
                         }
                         stash excludes: "vendor/**,deploy/**,tests/**", name: "tidb-operator"
