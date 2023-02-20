@@ -193,10 +193,10 @@ func IsBackupRunning(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
-// IsBackupEverRun returns true if a Backup has been run.
-func IsBackupBeenRun(backup *Backup) bool {
-	_, running := GetBackupCondition(&backup.Status, BackupRunning)
-	return running != nil
+// IsBackupRestart returns true if a Backup was restarted.
+func IsBackupRestart(backup *Backup) bool {
+	_, hasRestartCondition := GetBackupCondition(&backup.Status, BackupRestart)
+	return hasRestartCondition != nil
 }
 
 // IsBackupPrepared returns true if a Backup is Prepare.

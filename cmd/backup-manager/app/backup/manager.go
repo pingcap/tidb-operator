@@ -95,6 +95,20 @@ func (bm *Manager) ProcessBackup() error {
 		return errorutils.NewAggregate(errs)
 	}
 
+	// we treat snapshot backup as restarted if its status is not scheduled when backup pod just start to run
+	// we will clean backup data before run br command
+	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && backup.Status.Phase != v1alpha1.BackupScheduled {
+		klog.Infof("snapshot backup %s was restarted, status is %s", bm, backup.Status.Phase)
+		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:   v1alpha1.BackupRestart,
+			Status: corev1.ConditionTrue,
+		}, nil)
+		if uerr != nil {
+			errs = append(errs, uerr)
+			return errorutils.NewAggregate(errs)
+		}
+	}
+
 	if backup.Spec.BR == nil {
 		return fmt.Errorf("no br config in %s", bm)
 	}
@@ -272,8 +286,9 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		}
 	}
 
-	// clean snapshot backup data if it was run again
-	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupBeenRun(backup) && !bm.isBRCanContinueRunByCheckpoint() {
+	// clean snapshot backup data if it was restarted
+	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupRestart(backup) && !bm.isBRCanContinueRunByCheckpoint() {
+		klog.Infof("clean snapshot backup %s data before run br command, backup path is %s", bm, backup.Status.BackupPath)
 		err := bm.cleanSnapshotBackupEnv(ctx, backup)
 		if err != nil {
 			return errors.Annotatef(err, "clean snapshot backup %s failed", bm)
