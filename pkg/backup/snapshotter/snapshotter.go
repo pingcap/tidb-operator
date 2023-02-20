@@ -508,8 +508,9 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnap
 }
 
 // If a backup cluster has scaled in and the tidb-operator enabled advanced-statefulset(ref: https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/advanced-statefulset)
-// the name of pvc can be not sequential, eg: [pvc-0, pvc-1, pvc-2, pvc-6, pvc-7, pvc-8]
-// When create cluster, we should ensure pvc name sequential, so we should reset it to [pvc-0, pvc-1, pvc-2, pvc-3, pvc-4, pvc-5]
+// the name of pvc can be not sequential, eg: [tikv-db-tikv-0, tikv-db-tikv-1, tikv-db-tikv-2, tikv-db-tikv-6, tikv-db-tikv-7, tikv-db-tikv-8]
+// When create cluster, we should ensure pvc name sequential, so we should reset it to
+// [tikv-db-tikv-0, tikv-db-tikv-1, tikv-db-tikv-2, tikv-db-tikv-3, tikv-db-tikv-4, tikv-db-tikv-5]
 func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs []*corev1.PersistentVolume) (
 	[]*corev1.PersistentVolumeClaim, []*corev1.PersistentVolume, error) {
 	type indexedPVC struct {
@@ -521,9 +522,12 @@ func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs 
 	re := regexp.MustCompile(reStr)
 	for _, pvc := range pvcs {
 		subMatches := re.FindStringSubmatch(pvc.Name)
+		// subMatches contains full text that matches regex and the matches in brackets.
+		// so if the pvc matches regex, it should contain 2 items.
 		if len(subMatches) != 2 {
 			return nil, nil, fmt.Errorf("pvc name %s doesn't match regex %s", pvc.Name, reStr)
 		}
+		// get the number of pvc, for example, there is a pvc "tikv-db-tikv-0", try to get the number "0"
 		index, err := strconv.Atoi(subMatches[1])
 		if err != nil {
 			return nil, nil, fmt.Errorf("parse index %s of pvc %s to int: %s", subMatches[1], pvc.Name, err.Error())
@@ -549,6 +553,9 @@ func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs 
 		if !ok {
 			return nil, nil, fmt.Errorf("pv with claim %s not found", iPVC.pvc.Name)
 		}
+		// when create cluster, tidb-operator will create tikv instances from 0 to n-1, and pvcs are also [0, n-1]
+		// for backup cluster, advanced statefulset allows scaling in at arbitrary position
+		// so pvcs of backup might not be [0, n-1], we should reset it to [0, n-1]
 		if i != iPVC.index {
 			names := strings.Split(iPVC.pvc.Name, "-")
 			restorePVCName := fmt.Sprintf("%s-%d", strings.Join(names[:len(names)-1], "-"), i)
