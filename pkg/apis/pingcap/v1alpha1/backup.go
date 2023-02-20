@@ -126,13 +126,25 @@ func UpdateBackupCondition(status *BackupStatus, condition *BackupCondition) boo
 	// Try to find this Backup condition.
 	conditionIndex, oldCondition := GetBackupCondition(status, condition.Type)
 
-	status.Phase = condition.Type
+	isDiffPhase := status.Phase != condition.Type
+
+	// restart condition no need to update to phase
+	if isDiffPhase && condition.Type != BackupRestart {
+		status.Phase = condition.Type
+	}
 
 	if oldCondition == nil {
 		// We are adding new Backup condition.
 		status.Conditions = append(status.Conditions, *condition)
 		return true
 	}
+
+	// if phase is diff, we need update condition
+	if isDiffPhase {
+		status.Conditions[conditionIndex] = *condition
+		return true
+	}
+
 	// We are updating an existing condition, so we need to check if it has changed.
 	if condition.Status == oldCondition.Status {
 		condition.LastTransitionTime = oldCondition.LastTransitionTime
