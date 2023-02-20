@@ -257,11 +257,6 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 	var vs []corev1.Volume
 
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
-		secretName := util.TiDBClientTLSSecretName(tcName)
-		if ti.Spec.TLSClientSecretName != nil {
-			secretName = *ti.Spec.TLSClientSecretName
-		}
-
 		vms = append(vms, corev1.VolumeMount{
 			Name:      "tidb-client-tls",
 			ReadOnly:  true,
@@ -271,7 +266,7 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 			Name: "tidb-client-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: secretName,
+					SecretName: util.TiDBClientTLSSecretName(tcName, ti.Spec.TLSClientSecretName),
 				},
 			},
 		})

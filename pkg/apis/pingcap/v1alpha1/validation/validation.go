@@ -536,6 +536,7 @@ func ValidateUpdateTidbCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
 			"The instance must not be mutate or set value other than the cluster name"))
 	}
 	allErrs = append(allErrs, validateUpdatePDConfig(old.Spec.PD, tc.Spec.PD, field.NewPath("spec.pd.config"))...)
+	allErrs = append(allErrs, disallowMutateBootstrapSQLConfigMapName(old.Spec.TiDB, tc.Spec.TiDB, field.NewPath("spec.tidb.bootstrapSQLConfigMapName"))...)
 	allErrs = append(allErrs, disallowUsingLegacyAPIInNewCluster(old, tc)...)
 
 	return allErrs
@@ -640,6 +641,23 @@ func validateUpdatePDConfig(oldPdSpec, pdSpec *v1alpha1.PDSpec, path *field.Path
 		allErrs = append(allErrs, field.Invalid(path.Child("replication"), newRepl.Interface(),
 			"PD Replication Config is immutable through CRD, please modify with pd-ctl instead."))
 	}
+	return allErrs
+}
+
+// disallowMutateBootstrapSQLConfigMapName checks if user mutate the bootstrapSQLConfigMapName field.
+// Only allow to update bootstrapSQLConfigMapName from non-nil to nil.
+func disallowMutateBootstrapSQLConfigMapName(old, new *v1alpha1.TiDBSpec, p *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if old == nil || new == nil {
+		return allErrs
+	}
+
+	bootstrapSQLSpecified := old.BootstrapSQLConfigMapName != nil && new.BootstrapSQLConfigMapName != nil
+	if (bootstrapSQLSpecified && *old.BootstrapSQLConfigMapName != *new.BootstrapSQLConfigMapName) ||
+		(!bootstrapSQLSpecified && new.BootstrapSQLConfigMapName != nil) {
+		return append(allErrs, field.Invalid(p, new.BootstrapSQLConfigMapName, "bootstrapSQLConfigMapName is immutable"))
+	}
+
 	return allErrs
 }
 

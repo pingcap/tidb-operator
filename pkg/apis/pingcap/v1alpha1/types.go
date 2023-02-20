@@ -914,6 +914,13 @@ type TiDBSpec struct {
 	//
 	// +optional
 	Initializer *TiDBInitializer `json:"initializer,omitempty"`
+
+	// BootstrapSQLConfigMapName is the name of the ConfigMap which contains the bootstrap SQL file with the key `bootstrap-sql`,
+	// which will only be executed when a TiDB cluster bootstrap on the first time.
+	// The field should be set ONLY when create a TC, since it only take effect on the first time bootstrap.
+	// Only v6.6.0+ supports this feature.
+	// +optional
+	BootstrapSQLConfigMapName *string `json:"bootstrapSQLConfigMapName,omitempty"`
 }
 
 type TiDBInitializer struct {
