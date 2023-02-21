@@ -131,6 +131,7 @@ func (m *EBSModifier) ModifyVolume(ctx context.Context, pvc *corev1.PersistentVo
 	return true, nil
 }
 
+// If some params are not set, assume they are equal.
 func (m *EBSModifier) diffVolume(actual, desired *Volume) bool {
 	if diffInt32(actual.IOPS, desired.IOPS) {
 		return true
@@ -141,6 +142,9 @@ func (m *EBSModifier) diffVolume(actual, desired *Volume) bool {
 	if diffInt32(actual.Size, desired.Size) {
 		return true
 	}
+	if actual.Type == "" || desired.Type == "" {
+		return false
+	}
 	if actual.Type != desired.Type {
 		return true
 	}
@@ -149,12 +153,8 @@ func (m *EBSModifier) diffVolume(actual, desired *Volume) bool {
 }
 
 func diffInt32(a, b *int32) bool {
-	if a == nil && b == nil {
-		return false
-	}
-
 	if a == nil || b == nil {
-		return true
+		return false
 	}
 
 	if *a == *b {
