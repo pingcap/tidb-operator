@@ -307,21 +307,20 @@ func (c *Controller) isBackupPodOrJobFailed(backup *v1alpha1.Backup) (bool, stri
 
 func (c *Controller) tryToRestartSnapshotBackup(backup *v1alpha1.Backup, reason string) error {
 	var (
-		ns                 = backup.GetNamespace()
-		name               = backup.GetName()
-		isExceedRetryLimit = backup.Status.ExponentialBackoffRetry.Count > 2
-		isTimeToRetry      bool
-		err                error
+		ns            = backup.GetNamespace()
+		name          = backup.GetName()
+		isTimeToRetry bool
+		err           error
 	)
 	klog.V(4).Infof("try to restart backup %s/%s, failed reason %s", ns, name, reason)
 
-	if isExceedRetryLimit {
-		klog.Errorf("backup %s/%s exceed retry limit, current %d, max %d, failed reason %s", ns, name, backup.Status.ExponentialBackoffRetry.Count, 2, reason)
+	if c.isExceedRetryLimit(backup) {
+		klog.Errorf("backup %s/%s exceed retry limit, failed reason %s", ns, name, reason)
 		err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "AlreadyFailed",
-			Message: fmt.Sprintf("exceed retry limit, current %d, max %d, failed reason %s", backup.Status.ExponentialBackoffRetry.Count, 2, reason),
+			Message: fmt.Sprintf("exceed retry limit, failed reason %s", reason),
 		})
 		if err != nil {
 			klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
@@ -380,6 +379,11 @@ func (c *Controller) tryToRestartSnapshotBackup(backup *v1alpha1.Backup, reason 
 	return nil
 }
 
+func (c *Controller) isExceedRetryLimit(backup *v1alpha1.Backup) bool {
+	count := backup.Status.ExponentialBackoffRetry.Count
+	return count > v1alpha1.MaxRetryTimes || v1alpha1.MinRetryDuration<<count > v1alpha1.MaxRetryDuration
+}
+
 func (c *Controller) isTimeToRetry(backup *v1alpha1.Backup) (bool, error) {
 	var (
 		ns             = backup.GetNamespace()
@@ -390,12 +394,13 @@ func (c *Controller) isTimeToRetry(backup *v1alpha1.Backup) (bool, error) {
 		nextRetryAt    = backup.Status.ExponentialBackoffRetry.NextRetryAt
 	)
 
-	if count > v1alpha1.MaxRetryTimes {
+	if c.isExceedRetryLimit(backup) {
 		return false, nil
 	}
 
 	if count == 0 || (currentRetryAt != nil && nextRetryAt != nil && currentRetryAt.After(nextRetryAt.Time)) {
-		next := metav1.NewTime(now.Add(v1alpha1.RetryDurationMap[count]))
+		duration := time.Duration((v1alpha1.MinRetryDuration << count) * int(time.Second))
+		next := metav1.NewTime(now.Add(duration))
 		nextCount := count + 1
 		newStatus := &controller.BackupUpdateStatus{
 			RetryCount:  &nextCount,
