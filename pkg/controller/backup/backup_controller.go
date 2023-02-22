@@ -396,9 +396,12 @@ func (c *Controller) isTimeToRetry(backup *v1alpha1.Backup) (bool, error) {
 
 	if count == 0 || (currentRetryAt != nil && nextRetryAt != nil && currentRetryAt.After(nextRetryAt.Time)) {
 		next := metav1.NewTime(now.Add(v1alpha1.RetryDurationMap[count]))
+		nextCount := count + 1
 		newStatus := &controller.BackupUpdateStatus{
+			RetryCount:  &nextCount,
 			NextRetryAt: &next,
 		}
+		nextRetryAt = &next
 		if err := c.control.UpdateBackupStatus(backup, nil, newStatus); err != nil {
 			klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
 			return false, err
@@ -416,10 +419,8 @@ func (c *Controller) resetRetryRecordToNext(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	now := metav1.Now()
-	count := backup.Status.ExponentialBackoffRetry.Count + 1
 
 	newStatus := &controller.BackupUpdateStatus{
-		RetryCount:     &count,
 		CurrentRetryAt: &now,
 	}
 	if err := c.control.UpdateBackupStatus(backup, nil, newStatus); err != nil {

@@ -78,7 +78,7 @@ func (c *defaultBackupControl) UpdateCondition(backup *v1alpha1.Backup, conditio
 
 // UpdateBackupStatus updates the status for a Backup.
 func (c *defaultBackupControl) UpdateBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
-	return c.backupManager.UpdateCondition(backup, condition)
+	return c.backupManager.UpdateBackupStatus(backup, condition, newStatus)
 }
 
 func (c *defaultBackupControl) updateBackup(backup *v1alpha1.Backup) error {
