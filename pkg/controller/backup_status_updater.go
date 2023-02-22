@@ -92,7 +92,7 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		// Always get the latest backup before update.
 		if updated, err := u.backupLister.Backups(ns).Get(backupName); err == nil {
 			// make a copy so we don't mutate the shared cache
-			backup = updated.DeepCopy()
+			*backup = *(updated.DeepCopy())
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
 			return err
