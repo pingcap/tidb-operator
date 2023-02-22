@@ -2815,6 +2815,17 @@ spec:
                   type: object
                 nullable: true
                 type: array
+              exponentialBackoffRetry:
+                properties:
+                  count:
+                    type: integer
+                  currentRetryAt:
+                    format: date-time
+                    type: string
+                  nextRetryAt:
+                    format: date-time
+                    type: string
+                type: object
               logCheckpointTs:
                 type: string
               logSubCommandStatuses:

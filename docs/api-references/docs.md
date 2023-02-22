@@ -4071,6 +4071,19 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType
 <p>Progresses is the progress of backup.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>exponentialBackoffRetry</code></br>
+<em>
+<a href="#exponentialbackoffretry">
+ExponentialBackoffRetry
+</a>
+</em>
+</td>
+<td>
+<p>ExponentialBackoffRetry is the retry backup mark, it will be used when backup pod exited unexpectedly</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="backupstoragetype">BackupStorageType</h3>
@@ -6516,6 +6529,62 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable creating expression index.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="exponentialbackoffretry">ExponentialBackoffRetry</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupstatus">BackupStatus</a>)
+</p>
+<p>
+<p>ExponentialBackoffRetry will retry backup when backup pod exited unexpectedly
+1, retry immediatly
+2, retry after 5 minute
+3, retry after 10 minute
+the max retry time is 3</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>count</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentRetryAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>nextRetryAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>

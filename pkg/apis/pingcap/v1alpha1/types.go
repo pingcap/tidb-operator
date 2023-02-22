@@ -1997,7 +1997,7 @@ type BRConfig struct {
 // 3, retry after 10 minute
 // the max retry time is 3
 type ExponentialBackoffRetry struct {
-	Count          int          `json:"timeStarted,omitempty"`
+	Count          int          `json:"count,omitempty"`
 	CurrentRetryAt *metav1.Time `json:"currentRetryAt,omitempty"`
 	NextRetryAt    *metav1.Time `json:"nextRetryAt,omitempty"`
 }
@@ -2104,7 +2104,7 @@ type BackupStatus struct {
 	// Progresses is the progress of backup.
 	// +nullable
 	Progresses []Progress `json:"progresses,omitempty"`
-
+	// ExponentialBackoffRetry is the retry backup mark, it will be used when backup pod exited unexpectedly
 	ExponentialBackoffRetry ExponentialBackoffRetry `json:"exponentialBackoffRetry,omitempty"`
 }
 
