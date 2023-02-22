@@ -13,7 +13,10 @@
 
 package backup
 
-import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+import (
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+)
 
 // BackupManager implements the logic for manage backup.
 type BackupManager interface {
@@ -21,6 +24,8 @@ type BackupManager interface {
 	Sync(backup *v1alpha1.Backup) error
 	// UpdateCondition updates the condition for a Backup.
 	UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error
+	// UpdateBackupStatus updates the status for a Backup.
+	UpdateBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error
 }
 
 // RestoreManager implements the logic for manage restore.

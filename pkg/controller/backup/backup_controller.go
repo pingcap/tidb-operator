@@ -175,30 +175,42 @@ func (c *Controller) updateBackup(cur interface{}) {
 		if newBackup.Spec.Mode == v1alpha1.BackupModeLog {
 			return
 		}
-		selector, err := label.NewBackup().Instance(newBackup.GetInstanceName()).BackupJob().Backup(name).Selector()
-		if err != nil {
-			klog.Errorf("Fail to generate selector for backup %s/%s, %v", ns, name, err)
+
+		// backup retry after it has been scheduled, and scheduled means already create k8s job
+		if newBackup.Status.Phase == v1alpha1.BackupRetryFailed {
+			klog.V(4).Infof("backup %s/%s is retrying after it has been scheduled", ns, name)
+			c.enqueueBackup(newBackup)
 			return
 		}
-		pods, err := c.deps.PodLister.Pods(ns).List(selector)
+
+		// check whether backup pod and job failed
+		isPodOrJobFailed, reason, err := c.isBackupPodOrJobFailed(newBackup)
 		if err != nil {
-			klog.Errorf("Fail to list pod for backup %s/%s with selector %s, %v", ns, name, selector, err)
+			klog.Errorf("Fail to check backup %s/%s pod or job status, %v", ns, name, err)
+		}
+
+		if !isPodOrJobFailed {
 			return
 		}
-		for _, pod := range pods {
-			if pod.Status.Phase == corev1.PodFailed {
-				klog.Infof("backup %s/%s has failed pod %s.", ns, name, pod.Name)
-				err = c.control.UpdateCondition(newBackup, &v1alpha1.BackupCondition{
-					Type:    v1alpha1.BackupFailed,
-					Status:  corev1.ConditionTrue,
-					Reason:  "AlreadyFailed",
-					Message: fmt.Sprintf("Pod %s has failed", pod.Name),
-				})
-				if err != nil {
-					klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
-				}
-				break
+
+		// not snapshot backup, just mark as failed
+		if newBackup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+			err = c.control.UpdateCondition(newBackup, &v1alpha1.BackupCondition{
+				Type:    v1alpha1.BackupFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "AlreadyFailed",
+				Message: reason,
+			})
+			if err != nil {
+				klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
 			}
+			return
+		}
+
+		// restart snapshot backup after pod or job failed
+		err = c.tryToRestartSnapshotBackup(newBackup, reason)
+		if err != nil {
+			klog.Errorf("Fail to restart snapshot backup %s/%s, %v", ns, name, err)
 		}
 		return
 	}
@@ -251,4 +263,186 @@ func (c *Controller) enqueueBackup(obj interface{}) {
 		return
 	}
 	c.queue.Add(key)
+}
+
+func (c *Controller) isBackupPodOrJobFailed(backup *v1alpha1.Backup) (bool, string, error) {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	jobName := backup.GetBackupJobName()
+
+	// check pod status
+	selector, err := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name).Selector()
+	if err != nil {
+		klog.Errorf("Fail to generate selector for backup %s/%s, error %v", ns, name, err)
+		return false, "", err
+	}
+	pods, err := c.deps.PodLister.Pods(ns).List(selector)
+	if err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Fail to list pod for backup %s/%s with selector %s, error %v", ns, name, selector, err)
+		return false, "", err
+	}
+	for _, pod := range pods {
+		if pod.Status.Phase == corev1.PodFailed {
+			klog.Infof("backup %s/%s has failed pod %s.", ns, name, pod.Name)
+			return true, fmt.Sprintf("Pod %s has failed", pod.Name), nil
+		}
+	}
+
+	// to avoid missing pod failed events, double check job status
+	job, err := c.deps.JobLister.Jobs(ns).Get(jobName)
+	if err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Fail to get job %s for backup %s/%s, error %v ", jobName, ns, name, err)
+		return false, "", err
+	}
+	if job != nil {
+		for _, condition := range job.Status.Conditions {
+			if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
+				klog.Infof("backup %s/%s has failed job %s", ns, name, jobName)
+				return true, fmt.Sprintf("Job %s has failed", jobName), nil
+			}
+		}
+	}
+	return false, "", nil
+}
+
+func (c *Controller) tryToRestartSnapshotBackup(backup *v1alpha1.Backup, reason string) error {
+	var (
+		ns                 = backup.GetNamespace()
+		name               = backup.GetName()
+		isExceedRetryLimit = backup.Status.ExponentialBackoffRetry.Count > 2
+		isTimeToRetry      bool
+		err                error
+	)
+	klog.V(4).Infof("try to restart backup %s/%s, failed reason %s", ns, name, reason)
+
+	if isExceedRetryLimit {
+		klog.Errorf("backup %s/%s exceed retry limit, current %d, max %d, failed reason %s", ns, name, backup.Status.ExponentialBackoffRetry.Count, 2, reason)
+		err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "AlreadyFailed",
+			Message: fmt.Sprintf("exceed retry limit, current %d, max %d, failed reason %s", backup.Status.ExponentialBackoffRetry.Count, 2, reason),
+		})
+		if err != nil {
+			klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
+			return err
+		}
+		return nil
+	}
+
+	isTimeToRetry, err = c.isTimeToRetry(backup)
+	if err != nil {
+		klog.Errorf("Fail to check whether is the time to retry of backup %s/%s", ns, name)
+		return err
+	}
+
+	if !isTimeToRetry {
+		klog.V(4).Infof("backup %s/%s is not the time to retry, next retry time is %s", ns, name, backup.Status.ExponentialBackoffRetry.NextRetryAt)
+		return nil
+	}
+
+	err = c.cleanBackupOldJob(backup)
+	if err != nil {
+		klog.Errorf("Fail to clean job of backup %s/%s, error is %v", ns, name, err)
+		return err
+	}
+
+	err = c.resetRetryRecordToNext(backup)
+	if err != nil {
+		klog.Errorf("Fail to refresh retry record of backup %s/%s, error is %v", ns, name, err)
+		return err
+	}
+
+	// retry
+	err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
+		Type:    v1alpha1.BackupRetryFailed,
+		Status:  corev1.ConditionTrue,
+		Reason:  "RetryFailedBackup",
+		Message: reason,
+	})
+
+	if err != nil {
+		klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
+		return err
+	}
+
+	// add restart contidion to clean data before run br command
+	err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupRestart,
+		Status: corev1.ConditionTrue,
+	})
+	if err != nil {
+		klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
+		return err
+	}
+
+	c.enqueueBackup(backup)
+	return nil
+}
+
+func (c *Controller) isTimeToRetry(backup *v1alpha1.Backup) (bool, error) {
+	var (
+		ns             = backup.GetNamespace()
+		name           = backup.GetName()
+		now            = metav1.Now()
+		count          = backup.Status.ExponentialBackoffRetry.Count
+		currentRetryAt = backup.Status.ExponentialBackoffRetry.CurrentRetryAt
+		nextRetryAt    = backup.Status.ExponentialBackoffRetry.NextRetryAt
+	)
+
+	if count > v1alpha1.MaxRetryTimes {
+		return false, nil
+	}
+
+	if count == 0 || (currentRetryAt != nil && nextRetryAt != nil && currentRetryAt.After(nextRetryAt.Time)) {
+		next := metav1.NewTime(now.Add(v1alpha1.RetryDurationMap[count]))
+		newStatus := &controller.BackupUpdateStatus{
+			NextRetryAt: &next,
+		}
+		if err := c.control.UpdateBackupStatus(backup, nil, newStatus); err != nil {
+			klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
+			return false, err
+		}
+	}
+
+	if now.After(nextRetryAt.Time) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (c *Controller) resetRetryRecordToNext(backup *v1alpha1.Backup) error {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	now := metav1.Now()
+	count := backup.Status.ExponentialBackoffRetry.Count + 1
+
+	newStatus := &controller.BackupUpdateStatus{
+		RetryCount:     &count,
+		CurrentRetryAt: &now,
+	}
+	if err := c.control.UpdateBackupStatus(backup, nil, newStatus); err != nil {
+		klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) cleanBackupOldJob(backup *v1alpha1.Backup) error {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	jobName := backup.GetBackupJobName()
+	oldJob, err := c.deps.JobLister.Jobs(ns).Get(jobName)
+	if err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Fail to get job %s  for backup %s/%s, error %v ", jobName, ns, name, err)
+		return nil
+	}
+	if oldJob != nil {
+		if err := c.deps.JobControl.DeleteJob(backup, oldJob); err != nil {
+			klog.Errorf("backup %s/%s delete job %s failed, err: %v", ns, name, jobName, err)
+			return nil
+		}
+	}
+	return nil
 }

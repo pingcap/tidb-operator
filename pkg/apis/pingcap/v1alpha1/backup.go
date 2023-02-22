@@ -15,6 +15,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
@@ -35,6 +36,9 @@ var (
 		RetryCount:        5,
 		BatchDeleteOption: DefaultBatchDeleteOption,
 	}
+
+	MaxRetryTimes    = 3
+	RetryDurationMap = map[int]time.Duration{0: 0 * time.Minute, 1: 5 * time.Minute, 2: 10 * time.Minute}
 )
 
 // GetCleanJobName return the clean job name

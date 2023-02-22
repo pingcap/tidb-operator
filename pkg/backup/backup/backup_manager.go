@@ -75,6 +75,10 @@ func (bm *backupManager) UpdateCondition(backup *v1alpha1.Backup, condition *v1a
 	return bm.statusUpdater.Update(backup, condition, nil)
 }
 
+func (bm *backupManager) UpdateBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
+	return bm.statusUpdater.Update(backup, condition, newStatus)
+}
+
 func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
@@ -873,6 +877,10 @@ func (m *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
 }
 
 func (m *FakeBackupManager) UpdateCondition(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
+	return nil
+}
+
+func (m *FakeBackupManager) UpdateBackupStatus(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition, _ *controller.BackupUpdateStatus) error {
 	return nil
 }
 

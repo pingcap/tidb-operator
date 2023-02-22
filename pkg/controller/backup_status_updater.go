@@ -59,6 +59,9 @@ type BackupUpdateStatus struct {
 	Progress *float64
 	// ProgressUpdateTime is the progress update time.
 	ProgressUpdateTime *metav1.Time
+	RetryCount         *int
+	CurrentRetryAt     *metav1.Time
+	NextRetryAt        *metav1.Time
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -164,6 +167,20 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 			isUpdate = true
 		}
 	}
+
+	if newStatus.RetryCount != nil && status.ExponentialBackoffRetry.Count != *newStatus.RetryCount {
+		status.ExponentialBackoffRetry.Count = *newStatus.RetryCount
+		isUpdate = true
+	}
+	if newStatus.CurrentRetryAt != nil && (status.ExponentialBackoffRetry.CurrentRetryAt == nil || *status.ExponentialBackoffRetry.CurrentRetryAt != *newStatus.CurrentRetryAt) {
+		status.ExponentialBackoffRetry.CurrentRetryAt = newStatus.CurrentRetryAt
+		isUpdate = true
+	}
+	if newStatus.NextRetryAt != nil && (status.ExponentialBackoffRetry.NextRetryAt == nil || *status.ExponentialBackoffRetry.NextRetryAt != *newStatus.NextRetryAt) {
+		status.ExponentialBackoffRetry.NextRetryAt = newStatus.NextRetryAt
+		isUpdate = true
+	}
+
 	return isUpdate
 }
 
