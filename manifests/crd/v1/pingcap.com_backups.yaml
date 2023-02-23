@@ -483,6 +483,18 @@ spec:
                   - name
                   type: object
                 type: array
+              exponentialBackoffRetryPolicy:
+                properties:
+                  maxRetryTimes:
+                    default: 2
+                    type: integer
+                  minRetryDuration:
+                    default: 300
+                    type: integer
+                  retryTimeout:
+                    default: 30
+                    type: integer
+                type: object
               from:
                 properties:
                   host:
@@ -1409,17 +1421,24 @@ spec:
                   type: object
                 nullable: true
                 type: array
-              exponentialBackoffRetry:
-                properties:
-                  count:
-                    type: integer
-                  currentRetryAt:
-                    format: date-time
-                    type: string
-                  nextRetryAt:
-                    format: date-time
-                    type: string
-                type: object
+              exponentialBackoffRetryStatus:
+                items:
+                  properties:
+                    detectFailedAt:
+                      format: date-time
+                      type: string
+                    expectedRetryAt:
+                      format: date-time
+                      type: string
+                    realRetryAt:
+                      format: date-time
+                      type: string
+                    retryNum:
+                      type: integer
+                    retryReason:
+                      type: string
+                  type: object
+                type: array
               logCheckpointTs:
                 type: string
               logSubCommandStatuses:

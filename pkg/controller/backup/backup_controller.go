@@ -179,39 +179,59 @@ func (c *Controller) updateBackup(cur interface{}) {
 		// backup retry after it has been scheduled, and scheduled means already create k8s job
 		if newBackup.Status.Phase == v1alpha1.BackupRetryFailed {
 			klog.V(4).Infof("backup %s/%s is retrying after it has been scheduled", ns, name)
+
+			// clean job
+			err := c.cleanBackupOldJob(newBackup)
+			if err != nil {
+				klog.Errorf("Fail to clean job of backup %s/%s, error is %v", ns, name, err)
+				return
+			}
+
+			// add restart contidion to clean data before run br command
+			err = c.control.UpdateCondition(newBackup, &v1alpha1.BackupCondition{
+				Type:   v1alpha1.BackupRestart,
+				Status: corev1.ConditionTrue,
+			})
+			if err != nil {
+				klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
+				return
+			}
+
 			c.enqueueBackup(newBackup)
 			return
 		}
 
-		// check whether backup pod and job failed
-		isPodOrJobFailed, reason, err := c.isBackupPodOrJobFailed(newBackup)
-		if err != nil {
-			klog.Errorf("Fail to check backup %s/%s pod or job status, %v", ns, name, err)
-		}
+		var (
+			isPodOrJobFailed bool
+			reason           string
+			err              error
+		)
 
-		if !isPodOrJobFailed {
-			return
-		}
-
-		// not snapshot backup, just mark as failed
-		if newBackup.Spec.Mode != v1alpha1.BackupModeSnapshot {
-			err = c.control.UpdateCondition(newBackup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "AlreadyFailed",
-				Message: reason,
-			})
+		if c.isNeedCheck(newBackup) {
+			// check whether backup pod and job failed
+			isPodOrJobFailed, reason, err = c.isBackupPodOrJobFailed(newBackup)
 			if err != nil {
-				klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
+				klog.Errorf("Fail to check backup %s/%s pod or job status, %v", ns, name, err)
 			}
-			return
+			if !isPodOrJobFailed {
+				return
+			}
+			klog.Errorf("Detect backup %s/%s pod or job failed, will retry, reason %s", ns, name, reason)
+
+			// record failed
+			err = c.recordDetectedFailed(newBackup, reason)
+			if err != nil {
+				klog.Errorf("failed to record detected failed %s for backup %s/%s", reason, ns, name)
+				return
+			}
 		}
 
-		// restart snapshot backup after pod or job failed
-		err = c.tryToRestartSnapshotBackup(newBackup, reason)
+		// retry backup after detected failed
+		err = c.retryBackupWhenJoborPodFailed(newBackup, reason)
 		if err != nil {
 			klog.Errorf("Fail to restart snapshot backup %s/%s, %v", ns, name, err)
 		}
+
 		return
 	}
 
@@ -265,6 +285,99 @@ func (c *Controller) enqueueBackup(obj interface{}) {
 	c.queue.Add(key)
 }
 
+// func (c *Controller) isAlreadyDetectFailed(backup *v1alpha1.Backup) bool {
+// 	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+// 		return false
+// 	}
+// 	if len(backup.Status.ExponentialBackoffRetryStatus) == 0 {
+// 		return false
+// 	}
+// 	latestRetryRecord := backup.Status.ExponentialBackoffRetryStatus[len(backup.Status.ExponentialBackoffRetryStatus)-1]
+
+// 	klog.Infof("isAlreadyDetectFailed %v", latestRetryRecord)
+
+// 	return latestRetryRecord.DetectFailedAt != nil && latestRetryRecord.RealRetryAt == nil
+// }
+
+func (c *Controller) isNeedCheck(backup *v1alpha1.Backup) bool {
+	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+		return true
+	}
+	if len(backup.Status.ExponentialBackoffRetryStatus) == 0 {
+		return true
+	}
+	latestRetryRecord := backup.Status.ExponentialBackoffRetryStatus[len(backup.Status.ExponentialBackoffRetryStatus)-1]
+
+	// last time already retry, this time should record again
+	if latestRetryRecord.RealRetryAt != nil {
+		return true
+	}
+
+	return latestRetryRecord.DetectFailedAt == nil
+}
+
+func (c *Controller) recordDetectedFailed(backup *v1alpha1.Backup, reason string) error {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+
+	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+		return nil
+	}
+
+	retryNum := len(backup.Status.ExponentialBackoffRetryStatus) + 1
+	detectFailedAt := metav1.Now()
+	duration := time.Duration((backup.Spec.ExponentialBackoffRetryPolicy.MinRetryDuration << (retryNum - 1)) * int(time.Second))
+	expectedRetryAt := metav1.NewTime(detectFailedAt.Add(duration))
+
+	// update
+	newStatus := &controller.BackupUpdateStatus{
+		RetryNum:        &retryNum,
+		DetectFailedAt:  &detectFailedAt,
+		ExpectedRetryAt: &expectedRetryAt,
+		RetryReason:     &reason,
+	}
+
+	klog.Errorf("Record backup %s/%s retry status, %v", ns, name, newStatus)
+	if err := c.control.UpdateBackupStatus(backup, nil, newStatus); err != nil {
+		klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *Controller) retryBackupWhenJoborPodFailed(backup *v1alpha1.Backup, reason string) error {
+	var (
+		ns   = backup.GetNamespace()
+		name = backup.GetName()
+		err  error
+	)
+
+	// not snapshot backup, just mark as failed
+	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+		err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "AlreadyFailed",
+			Message: reason,
+		})
+		if err != nil {
+			klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
+			return err
+		}
+		return nil
+	}
+
+	// restart snapshot backup after pod or job failed
+	err = c.tryToRestartSnapshotBackup(backup)
+	if err != nil {
+		klog.Errorf("Fail to restart snapshot backup %s/%s, %v", ns, name, err)
+		return err
+	}
+
+	return nil
+}
+
 func (c *Controller) isBackupPodOrJobFailed(backup *v1alpha1.Backup) (bool, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
@@ -305,22 +418,32 @@ func (c *Controller) isBackupPodOrJobFailed(backup *v1alpha1.Backup) (bool, stri
 	return false, "", nil
 }
 
-func (c *Controller) tryToRestartSnapshotBackup(backup *v1alpha1.Backup, reason string) error {
+func (c *Controller) tryToRestartSnapshotBackup(backup *v1alpha1.Backup) error {
+	if len(backup.Status.ExponentialBackoffRetryStatus) == 0 {
+		return nil
+	}
 	var (
-		ns            = backup.GetNamespace()
-		name          = backup.GetName()
-		isTimeToRetry bool
-		err           error
+		ns          = backup.GetNamespace()
+		name        = backup.GetName()
+		retryRecord = backup.Status.ExponentialBackoffRetryStatus[len(backup.Status.ExponentialBackoffRetryStatus)-1]
+		now         = time.Now()
+		err         error
 	)
-	klog.V(4).Infof("try to restart backup %s/%s, failed reason %s", ns, name, reason)
 
-	if c.isExceedRetryLimit(backup) {
-		klog.Errorf("backup %s/%s exceed retry limit, failed reason %s", ns, name, reason)
+	// this time already retry
+	if retryRecord.RealRetryAt != nil {
+		return nil
+	}
+
+	klog.V(4).Infof("try to restart backup %s/%s, failed reason %s", ns, name, retryRecord.RetryReason)
+
+	if c.isExceedRetryLimit(backup, &now) {
+		klog.Errorf("backup %s/%s exceed retry limit, failed reason %s", ns, name, retryRecord.RetryReason)
 		err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "AlreadyFailed",
-			Message: fmt.Sprintf("exceed retry limit, failed reason %s", reason),
+			Message: fmt.Sprintf("exceed retry limit, failed reason %s", retryRecord.RetryReason),
 		})
 		if err != nil {
 			klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
@@ -329,111 +452,122 @@ func (c *Controller) tryToRestartSnapshotBackup(backup *v1alpha1.Backup, reason 
 		return nil
 	}
 
-	isTimeToRetry, err = c.isTimeToRetry(backup)
-	if err != nil {
-		klog.Errorf("Fail to check whether is the time to retry of backup %s/%s", ns, name)
-		return err
-	}
-
-	if !isTimeToRetry {
-		klog.V(4).Infof("backup %s/%s is not the time to retry, next retry time is %s", ns, name, backup.Status.ExponentialBackoffRetry.NextRetryAt)
+	if !c.isTimeToRetry(backup, &now) {
+		klog.V(4).Infof("backup %s/%s is not the time to retry, expected retry time is %s, now is %s", ns, name, retryRecord.ExpectedRetryAt, now)
 		return nil
 	}
 
-	err = c.cleanBackupOldJob(backup)
-	if err != nil {
-		klog.Errorf("Fail to clean job of backup %s/%s, error is %v", ns, name, err)
-		return err
-	}
+	klog.V(4).Infof("backup %s/%s is the time to retry, expected retry time is %s, now is %s", ns, name, retryRecord.ExpectedRetryAt, now)
 
-	err = c.resetRetryRecordToNext(backup)
-	if err != nil {
-		klog.Errorf("Fail to refresh retry record of backup %s/%s, error is %v", ns, name, err)
-		return err
+	// start retry, reconcile will create new job again after the old job is deleted
+	RealRetryStatus := &controller.BackupUpdateStatus{
+		RealRetryAt: &metav1.Time{Time: now},
 	}
-
-	// retry
-	err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
+	err = c.control.UpdateBackupStatus(backup, &v1alpha1.BackupCondition{
 		Type:    v1alpha1.BackupRetryFailed,
 		Status:  corev1.ConditionTrue,
 		Reason:  "RetryFailedBackup",
-		Message: reason,
-	})
-
+		Message: retryRecord.RetryReason,
+	}, RealRetryStatus)
 	if err != nil {
-		klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
-		return err
-	}
-
-	// add restart contidion to clean data before run br command
-	err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupRestart,
-		Status: corev1.ConditionTrue,
-	})
-	if err != nil {
-		klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
-		return err
-	}
-
-	c.enqueueBackup(backup)
-	return nil
-}
-
-func (c *Controller) isExceedRetryLimit(backup *v1alpha1.Backup) bool {
-	count := backup.Status.ExponentialBackoffRetry.Count
-	return count > v1alpha1.MaxRetryTimes || v1alpha1.MinRetryDuration<<count > v1alpha1.MaxRetryDuration
-}
-
-func (c *Controller) isTimeToRetry(backup *v1alpha1.Backup) (bool, error) {
-	var (
-		ns             = backup.GetNamespace()
-		name           = backup.GetName()
-		now            = metav1.Now()
-		count          = backup.Status.ExponentialBackoffRetry.Count
-		currentRetryAt = backup.Status.ExponentialBackoffRetry.CurrentRetryAt
-		nextRetryAt    = backup.Status.ExponentialBackoffRetry.NextRetryAt
-	)
-
-	if c.isExceedRetryLimit(backup) {
-		return false, nil
-	}
-
-	if count == 0 || (currentRetryAt != nil && nextRetryAt != nil && currentRetryAt.After(nextRetryAt.Time)) {
-		duration := time.Duration((v1alpha1.MinRetryDuration << count) * int(time.Second))
-		next := metav1.NewTime(now.Add(duration))
-		nextCount := count + 1
-		newStatus := &controller.BackupUpdateStatus{
-			RetryCount:  &nextCount,
-			NextRetryAt: &next,
-		}
-		nextRetryAt = &next
-		if err := c.control.UpdateBackupStatus(backup, nil, newStatus); err != nil {
-			klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
-			return false, err
-		}
-	}
-
-	if now.After(nextRetryAt.Time) {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-func (c *Controller) resetRetryRecordToNext(backup *v1alpha1.Backup) error {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-	now := metav1.Now()
-
-	newStatus := &controller.BackupUpdateStatus{
-		CurrentRetryAt: &now,
-	}
-	if err := c.control.UpdateBackupStatus(backup, nil, newStatus); err != nil {
 		klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
 		return err
 	}
+
 	return nil
 }
+
+func (c *Controller) isExceedRetryLimit(backup *v1alpha1.Backup, now *time.Time) bool {
+	records := backup.Status.ExponentialBackoffRetryStatus
+	if len(records) == 0 {
+		return false
+	}
+	firstDetectAt := records[0].DetectFailedAt
+	currentRetryNum := records[len(records)-1].RetryNum
+
+	if currentRetryNum > backup.Spec.ExponentialBackoffRetryPolicy.MaxRetryTimes {
+		return true
+	}
+
+	klog.Infof("check now.Unix() == %d, firstDetectAt.Unix() == %d, timeout == %d", now.Unix(), firstDetectAt.Unix(), int64(backup.Spec.ExponentialBackoffRetryPolicy.RetryTimeout)*int64(time.Minute)/int64(time.Second))
+	isTimeout := now.Unix()-firstDetectAt.Unix() > int64(backup.Spec.ExponentialBackoffRetryPolicy.RetryTimeout)*int64(time.Minute)/int64(time.Second)
+	return isTimeout
+}
+
+// TODO check whether the reason need to retry
+func (c *Controller) isCanRetryFailed(reason string) bool {
+	return true
+}
+
+func (c *Controller) isTimeToRetry(backup *v1alpha1.Backup, now *time.Time) bool {
+	if len(backup.Status.ExponentialBackoffRetryStatus) == 0 {
+		return false
+	}
+	retryRecord := backup.Status.ExponentialBackoffRetryStatus[len(backup.Status.ExponentialBackoffRetryStatus)-1]
+	return time.Now().Unix() > retryRecord.ExpectedRetryAt.Unix()
+
+}
+
+// func (c *Controller) isTimeToRetry(backup *v1alpha1.Backup) (bool, error) {
+// 	var (
+// 		ns             = backup.GetNamespace()
+// 		name           = backup.GetName()
+// 		now            = metav1.Now()
+// 		count          = backup.Status.ExponentialBackoffRetry.Count
+// 		detectFailedAt = backup.Status.ExponentialBackoffRetry.DetectFailedAt
+// 		nextRetryAt    = backup.Status.ExponentialBackoffRetry.NextRetryAt
+// 	)
+
+// 	if c.isExceedRetryLimit(backup) {
+// 		return false, nil
+// 	}
+
+// 	if currentRetryAt != nil && nextRetryAt != nil {
+// 		klog.Infof("currentRetryAt %v, nextRetryAt %v, count %d, after %v, currentUnix %d, nextUnix %d, currentNao %d, nextNao %d", currentRetryAt, nextRetryAt, count, currentRetryAt.After(nextRetryAt.Time),
+// 			currentRetryAt.Time.Unix(), nextRetryAt.Time.Unix(), currentRetryAt.Nanosecond(), nextRetryAt.Nanosecond())
+// 	}
+
+// 	isNeedCaculateNextRetryTime := count == 0 || (currentRetryAt != nil && nextRetryAt != nil && currentRetryAt.Time.Unix() > nextRetryAt.Time.Unix())
+// 	if isNeedCaculateNextRetryTime {
+// 		klog.Infof("Recaculate nextRetry time of backup %s/%s, currentRetryAt %v, nextRetryAt %v, count %d", ns, name, currentRetryAt, nextRetryAt, count)
+// 		duration := time.Duration((v1alpha1.MinRetryDuration << count) * int(time.Second))
+// 		next := metav1.NewTime(now.Add(duration))
+// 		nextCount := count + 1
+// 		newStatus := &controller.BackupUpdateStatus{
+// 			RetryCount:  &nextCount,
+// 			NextRetryAt: &next,
+// 		}
+
+// 		klog.Infof("newStatus %v, newStatusNao %d, newStatusUnix %d", newStatus.NextRetryAt, newStatus.NextRetryAt.Nanosecond(), newStatus.NextRetryAt.Unix())
+// 		nextRetryAt = &next
+// 		if err := c.control.UpdateBackupStatus(backup, nil, newStatus); err != nil {
+// 			klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
+// 			return false, err
+// 		}
+// 		return false, nil
+// 	}
+
+// 	if now.Time.Unix() > nextRetryAt.Time.Unix() {
+// 		return true, nil
+// 	}
+
+// 	return false, nil
+// }
+
+// func (c *Controller) resetRetryRecordToNext(backup *v1alpha1.Backup) error {
+// 	ns := backup.GetNamespace()
+// 	name := backup.GetName()
+// 	now := metav1.Now()
+
+// 	newStatus := &controller.BackupUpdateStatus{
+// 		CurrentRetryAt: &now,
+// 	}
+// 	if err := c.control.UpdateBackupStatus(backup, nil, newStatus); err != nil {
+// 		klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
+// 		return err
+// 	}
+// 	return nil
+// }
 
 func (c *Controller) cleanBackupOldJob(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()

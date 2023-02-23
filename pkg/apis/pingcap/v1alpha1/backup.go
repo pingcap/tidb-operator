@@ -35,10 +35,6 @@ var (
 		RetryCount:        5,
 		BatchDeleteOption: DefaultBatchDeleteOption,
 	}
-
-	MaxRetryTimes    = 3
-	MinRetryDuration = 60
-	MaxRetryDuration = 500
 )
 
 // GetCleanJobName return the clean job name

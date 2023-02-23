@@ -59,9 +59,12 @@ type BackupUpdateStatus struct {
 	Progress *float64
 	// ProgressUpdateTime is the progress update time.
 	ProgressUpdateTime *metav1.Time
-	RetryCount         *int
-	CurrentRetryAt     *metav1.Time
-	NextRetryAt        *metav1.Time
+
+	RetryNum        *int
+	DetectFailedAt  *metav1.Time
+	ExpectedRetryAt *metav1.Time
+	RealRetryAt     *metav1.Time
+	RetryReason     *string
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -168,17 +171,8 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		}
 	}
 
-	if newStatus.RetryCount != nil && status.ExponentialBackoffRetry.Count != *newStatus.RetryCount {
-		status.ExponentialBackoffRetry.Count = *newStatus.RetryCount
-		isUpdate = true
-	}
-	if newStatus.CurrentRetryAt != nil && (status.ExponentialBackoffRetry.CurrentRetryAt == nil || *status.ExponentialBackoffRetry.CurrentRetryAt != *newStatus.CurrentRetryAt) {
-		status.ExponentialBackoffRetry.CurrentRetryAt = newStatus.CurrentRetryAt
-		isUpdate = true
-	}
-	if newStatus.NextRetryAt != nil && (status.ExponentialBackoffRetry.NextRetryAt == nil || *status.ExponentialBackoffRetry.NextRetryAt != *newStatus.NextRetryAt) {
-		status.ExponentialBackoffRetry.NextRetryAt = newStatus.NextRetryAt
-		isUpdate = true
+	if newStatus.RetryNum != nil || newStatus.RealRetryAt != nil {
+		isUpdate = updateExponentialBackoffRetryStatus(status, newStatus)
 	}
 
 	return isUpdate
@@ -451,6 +445,62 @@ func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *fl
 	}
 
 	return progresses, isUpdate
+}
+
+func updateExponentialBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
+
+	var currentRecord *v1alpha1.ExponentialBackoffRetryRecord
+	isUpdate := false
+
+	if len(status.ExponentialBackoffRetryStatus) == 0 {
+		status.ExponentialBackoffRetryStatus = make([]v1alpha1.ExponentialBackoffRetryRecord, 0)
+		status.ExponentialBackoffRetryStatus = append(status.ExponentialBackoffRetryStatus, v1alpha1.ExponentialBackoffRetryRecord{})
+		currentRecord = &status.ExponentialBackoffRetryStatus[0]
+		isUpdate = true
+	} else {
+		if newStatus.RetryNum == nil {
+			currentRecord = &status.ExponentialBackoffRetryStatus[len(status.ExponentialBackoffRetryStatus)-1]
+		} else {
+			if *newStatus.RetryNum > len(status.ExponentialBackoffRetryStatus) {
+				status.ExponentialBackoffRetryStatus = append(status.ExponentialBackoffRetryStatus, v1alpha1.ExponentialBackoffRetryRecord{})
+				currentRecord = &status.ExponentialBackoffRetryStatus[len(status.ExponentialBackoffRetryStatus)-1]
+				isUpdate = true
+			} else {
+				currentRecord = &status.ExponentialBackoffRetryStatus[*newStatus.RetryNum-1]
+			}
+		}
+	}
+
+	if newStatus.RetryNum != nil && *newStatus.RetryNum != currentRecord.RetryNum {
+		currentRecord.RetryNum = *newStatus.RetryNum
+		isUpdate = true
+	}
+
+	if newStatus.DetectFailedAt != nil && (currentRecord.DetectFailedAt == nil || *newStatus.DetectFailedAt != *currentRecord.DetectFailedAt) {
+		currentRecord.DetectFailedAt = newStatus.DetectFailedAt
+		isUpdate = true
+	}
+
+	if newStatus.ExpectedRetryAt != nil && (currentRecord.ExpectedRetryAt == nil || *newStatus.ExpectedRetryAt != *currentRecord.ExpectedRetryAt) {
+		currentRecord.ExpectedRetryAt = newStatus.ExpectedRetryAt
+		isUpdate = true
+	}
+
+	if newStatus.RealRetryAt != nil && (currentRecord.RealRetryAt == nil || *newStatus.RealRetryAt != *currentRecord.RealRetryAt) {
+		currentRecord.RealRetryAt = newStatus.RealRetryAt
+		isUpdate = true
+	}
+
+	if newStatus.RetryReason != nil && *newStatus.RetryReason != currentRecord.RetryReason {
+		currentRecord.RetryReason = *newStatus.RetryReason
+		isUpdate = true
+	}
+
+	klog.Infof("is update is %v ", isUpdate)
+	klog.Infof("current record is %v ", currentRecord)
+	klog.Infof("current status is %v ", status.ExponentialBackoffRetryStatus)
+
+	return isUpdate
 }
 
 var _ BackupConditionUpdaterInterface = &realBackupConditionUpdater{}

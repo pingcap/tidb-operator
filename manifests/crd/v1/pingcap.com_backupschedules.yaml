@@ -464,6 +464,18 @@ spec:
                       - name
                       type: object
                     type: array
+                  exponentialBackoffRetryPolicy:
+                    properties:
+                      maxRetryTimes:
+                        default: 2
+                        type: integer
+                      minRetryDuration:
+                        default: 300
+                        type: integer
+                      retryTimeout:
+                        default: 30
+                        type: integer
+                    type: object
                   from:
                     properties:
                       host:

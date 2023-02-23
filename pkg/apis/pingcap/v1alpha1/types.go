@@ -1947,6 +1947,9 @@ type BackupSpec struct {
 
 	// PriorityClassName of Backup Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// ExponentialBackoffRetryPolicy the exponential backoff retry policy, currently only valid for snapshot backup
+	ExponentialBackoffRetryPolicy ExponentialBackoffRetryPolicy `json:"exponentialBackoffRetryPolicy,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1991,16 +1994,42 @@ type BRConfig struct {
 	Options []string `json:"options,omitempty"`
 }
 
-// ExponentialBackoffRetry will retry backup when backup pod exited unexpectedly
-// 1, retry immediatly
-// 2, retry after 5 minute
-// 3, retry after 10 minute
-// the max retry time is 3
-type ExponentialBackoffRetry struct {
-	Count          int          `json:"count,omitempty"`
-	CurrentRetryAt *metav1.Time `json:"currentRetryAt,omitempty"`
-	NextRetryAt    *metav1.Time `json:"nextRetryAt,omitempty"`
+// ExponentialBackoffRetryPolicy is the exponential backoff retry policy, currently only valid for snapshot backup
+type ExponentialBackoffRetryPolicy struct {
+	// MaxRetryTimes is the max retry times
+	// +kubebuilder:default=2
+	MaxRetryTimes int `json:"maxRetryTimes,omitempty"`
+	// MinRetryDuration is the seconds of min retry duration, the retry duration will be MinRetryDuration << retry num
+	// +kubebuilder:default=300
+	MinRetryDuration int `json:"minRetryDuration,omitempty"`
+	// RetryTimeout is the minutes of retry timeout
+	// +kubebuilder:default=30
+	RetryTimeout int `json:"retryTimeout,omitempty"`
 }
+
+// ExponentialBackoffRetryRecord is the record of exponential backoff retry
+type ExponentialBackoffRetryRecord struct {
+	// RetryNum is the number of retry
+	RetryNum int `json:"retryNum,omitempty"`
+	// DetectFailedAt is the time when detect failure
+	DetectFailedAt *metav1.Time `json:"detectFailedAt,omitempty"`
+	// ExpectedRetryAt is the time we calculate and expect retry after it
+	ExpectedRetryAt *metav1.Time `json:"expectedRetryAt,omitempty"`
+	// RealRetryAt is the time when the retry was actually initiated
+	RealRetryAt *metav1.Time `json:"realRetryAt,omitempty"`
+	// Reason is the reason of retry
+	RetryReason string `json:"retryReason,omitempty"`
+	// // CleanStatusBeforeRetry is the clean status before retry, if it failed, we should clean again
+	// CleanStatusBeforeRetry *CleanStatusBeforeRetry `json:"cleanStatusBeforeRetry,omitempty"`
+}
+
+// type CleanStatusBeforeRetry string
+
+// const (
+// 	Cleaning     CleanStatusBeforeRetry = "cleaning"
+// 	CleanFailed  CleanStatusBeforeRetry = "failed"
+// 	CleanSuccess CleanStatusBeforeRetry = "success"
+// )
 
 // BackupConditionType represents a valid condition of a Backup.
 type BackupConditionType string
@@ -2104,8 +2133,8 @@ type BackupStatus struct {
 	// Progresses is the progress of backup.
 	// +nullable
 	Progresses []Progress `json:"progresses,omitempty"`
-	// ExponentialBackoffRetry is the retry backup mark, it will be used when backup pod exited unexpectedly
-	ExponentialBackoffRetry ExponentialBackoffRetry `json:"exponentialBackoffRetry,omitempty"`
+	// ExponentialBackoffRetryStatus is status of the exponential backoff retry, it will be used when backup pod or job exited unexpectedly
+	ExponentialBackoffRetryStatus []ExponentialBackoffRetryRecord `json:"exponentialBackoffRetryStatus,omitempty"`
 }
 
 // +genclient
