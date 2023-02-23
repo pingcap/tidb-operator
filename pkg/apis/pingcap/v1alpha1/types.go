@@ -1999,7 +1999,7 @@ type ExponentialBackoffRetryPolicy struct {
 	// MaxRetryTimes is the max retry times
 	// +kubebuilder:default=2
 	MaxRetryTimes int `json:"maxRetryTimes,omitempty"`
-	// MinRetryDuration is the seconds of min retry duration, the retry duration will be MinRetryDuration << retry num
+	// MinRetryDuration is the seconds of min retry duration, the retry duration will be MinRetryDuration << (retry num -1)
 	// +kubebuilder:default=300
 	MinRetryDuration int `json:"minRetryDuration,omitempty"`
 	// RetryTimeout is the minutes of retry timeout
@@ -2019,17 +2019,7 @@ type ExponentialBackoffRetryRecord struct {
 	RealRetryAt *metav1.Time `json:"realRetryAt,omitempty"`
 	// Reason is the reason of retry
 	RetryReason string `json:"retryReason,omitempty"`
-	// // CleanStatusBeforeRetry is the clean status before retry, if it failed, we should clean again
-	// CleanStatusBeforeRetry *CleanStatusBeforeRetry `json:"cleanStatusBeforeRetry,omitempty"`
 }
-
-// type CleanStatusBeforeRetry string
-
-// const (
-// 	Cleaning     CleanStatusBeforeRetry = "cleaning"
-// 	CleanFailed  CleanStatusBeforeRetry = "failed"
-// 	CleanSuccess CleanStatusBeforeRetry = "success"
-// )
 
 // BackupConditionType represents a valid condition of a Backup.
 type BackupConditionType string

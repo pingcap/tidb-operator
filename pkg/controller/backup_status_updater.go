@@ -60,11 +60,16 @@ type BackupUpdateStatus struct {
 	// ProgressUpdateTime is the progress update time.
 	ProgressUpdateTime *metav1.Time
 
-	RetryNum        *int
-	DetectFailedAt  *metav1.Time
+	// RetryNum is the number of retry
+	RetryNum *int
+	// DetectFailedAt is the time when detect failure
+	DetectFailedAt *metav1.Time
+	// ExpectedRetryAt is the time we calculate and expect retry after it
 	ExpectedRetryAt *metav1.Time
-	RealRetryAt     *metav1.Time
-	RetryReason     *string
+	// RealRetryAt is the time when the retry was actually initiated
+	RealRetryAt *metav1.Time
+	// Reason is the reason of retry
+	RetryReason *string
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -448,7 +453,6 @@ func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *fl
 }
 
 func updateExponentialBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
-
 	var currentRecord *v1alpha1.ExponentialBackoffRetryRecord
 	isUpdate := false
 
@@ -495,10 +499,6 @@ func updateExponentialBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatu
 		currentRecord.RetryReason = *newStatus.RetryReason
 		isUpdate = true
 	}
-
-	klog.Infof("is update is %v ", isUpdate)
-	klog.Infof("current record is %v ", currentRecord)
-	klog.Infof("current status is %v ", status.ExponentialBackoffRetryStatus)
 
 	return isUpdate
 }
