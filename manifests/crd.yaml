@@ -329,6 +329,18 @@ spec:
                       secretName:
                         type: string
                     type: object
+                  backoffRetryPolicy:
+                    properties:
+                      maxRetryTimes:
+                        default: 2
+                        type: integer
+                      minRetryDuration:
+                        default: 300
+                        type: integer
+                      retryTimeout:
+                        default: 30
+                        type: integer
+                    type: object
                   backupMode:
                     default: snapshot
                     type: string
@@ -464,18 +476,6 @@ spec:
                       - name
                       type: object
                     type: array
-                  exponentialBackoffRetryPolicy:
-                    properties:
-                      maxRetryTimes:
-                        default: 2
-                        type: integer
-                      minRetryDuration:
-                        default: 300
-                        type: integer
-                      retryTimeout:
-                        default: 30
-                        type: integer
-                    type: object
                   from:
                     properties:
                       host:
@@ -1766,6 +1766,18 @@ spec:
                   secretName:
                     type: string
                 type: object
+              backoffRetryPolicy:
+                properties:
+                  maxRetryTimes:
+                    default: 2
+                    type: integer
+                  minRetryDuration:
+                    default: 300
+                    type: integer
+                  retryTimeout:
+                    default: 30
+                    type: integer
+                type: object
               backupMode:
                 default: snapshot
                 type: string
@@ -1901,18 +1913,6 @@ spec:
                   - name
                   type: object
                 type: array
-              exponentialBackoffRetryPolicy:
-                properties:
-                  maxRetryTimes:
-                    default: 2
-                    type: integer
-                  minRetryDuration:
-                    default: 300
-                    type: integer
-                  retryTimeout:
-                    default: 30
-                    type: integer
-                type: object
               from:
                 properties:
                   host:
@@ -2807,6 +2807,24 @@ spec:
             type: object
           status:
             properties:
+              backoffRetryStatus:
+                items:
+                  properties:
+                    detectFailedAt:
+                      format: date-time
+                      type: string
+                    expectedRetryAt:
+                      format: date-time
+                      type: string
+                    realRetryAt:
+                      format: date-time
+                      type: string
+                    retryNum:
+                      type: integer
+                    retryReason:
+                      type: string
+                  type: object
+                type: array
               backupPath:
                 type: string
               backupSize:
@@ -2838,24 +2856,6 @@ spec:
                   - type
                   type: object
                 nullable: true
-                type: array
-              exponentialBackoffRetryStatus:
-                items:
-                  properties:
-                    detectFailedAt:
-                      format: date-time
-                      type: string
-                    expectedRetryAt:
-                      format: date-time
-                      type: string
-                    realRetryAt:
-                      format: date-time
-                      type: string
-                    retryNum:
-                      type: integer
-                    retryReason:
-                      type: string
-                  type: object
                 type: array
               logCheckpointTs:
                 type: string

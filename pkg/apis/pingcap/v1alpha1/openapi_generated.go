@@ -1143,17 +1143,17 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
-					"exponentialBackoffRetryPolicy": {
+					"backoffRetryPolicy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExponentialBackoffRetryPolicy the exponential backoff retry policy, currently only valid for snapshot backup",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExponentialBackoffRetryPolicy"),
+							Description: "BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackoffRetryPolicy"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExponentialBackoffRetryPolicy", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackoffRetryPolicy", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 

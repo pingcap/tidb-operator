@@ -1948,8 +1948,8 @@ type BackupSpec struct {
 	// PriorityClassName of Backup Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 
-	// ExponentialBackoffRetryPolicy the exponential backoff retry policy, currently only valid for snapshot backup
-	ExponentialBackoffRetryPolicy ExponentialBackoffRetryPolicy `json:"exponentialBackoffRetryPolicy,omitempty"`
+	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
+	BackoffRetryPolicy BackoffRetryPolicy `json:"backoffRetryPolicy,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1994,8 +1994,8 @@ type BRConfig struct {
 	Options []string `json:"options,omitempty"`
 }
 
-// ExponentialBackoffRetryPolicy is the exponential backoff retry policy, currently only valid for snapshot backup
-type ExponentialBackoffRetryPolicy struct {
+// BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup
+type BackoffRetryPolicy struct {
 	// MaxRetryTimes is the max retry times
 	// +kubebuilder:default=2
 	MaxRetryTimes int `json:"maxRetryTimes,omitempty"`
@@ -2007,8 +2007,8 @@ type ExponentialBackoffRetryPolicy struct {
 	RetryTimeout int `json:"retryTimeout,omitempty"`
 }
 
-// ExponentialBackoffRetryRecord is the record of exponential backoff retry
-type ExponentialBackoffRetryRecord struct {
+// BackoffRetryRecord is the record of backoff retry
+type BackoffRetryRecord struct {
 	// RetryNum is the number of retry
 	RetryNum int `json:"retryNum,omitempty"`
 	// DetectFailedAt is the time when detect failure
@@ -2123,8 +2123,8 @@ type BackupStatus struct {
 	// Progresses is the progress of backup.
 	// +nullable
 	Progresses []Progress `json:"progresses,omitempty"`
-	// ExponentialBackoffRetryStatus is status of the exponential backoff retry, it will be used when backup pod or job exited unexpectedly
-	ExponentialBackoffRetryStatus []ExponentialBackoffRetryRecord `json:"exponentialBackoffRetryStatus,omitempty"`
+	// BackoffRetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
+	BackoffRetryStatus []BackoffRetryRecord `json:"backoffRetryStatus,omitempty"`
 }
 
 // +genclient

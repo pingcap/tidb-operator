@@ -348,6 +348,15 @@ spec:
                 secretName:
                   type: string
               type: object
+            backoffRetryPolicy:
+              properties:
+                maxRetryTimes:
+                  type: integer
+                minRetryDuration:
+                  type: integer
+                retryTimeout:
+                  type: integer
+              type: object
             backupMode:
               type: string
             backupType:
@@ -481,15 +490,6 @@ spec:
                 - name
                 type: object
               type: array
-            exponentialBackoffRetryPolicy:
-              properties:
-                maxRetryTimes:
-                  type: integer
-                minRetryDuration:
-                  type: integer
-                retryTimeout:
-                  type: integer
-              type: object
             from:
               properties:
                 host:
@@ -1384,6 +1384,24 @@ spec:
           type: object
         status:
           properties:
+            backoffRetryStatus:
+              items:
+                properties:
+                  detectFailedAt:
+                    format: date-time
+                    type: string
+                  expectedRetryAt:
+                    format: date-time
+                    type: string
+                  realRetryAt:
+                    format: date-time
+                    type: string
+                  retryNum:
+                    type: integer
+                  retryReason:
+                    type: string
+                type: object
+              type: array
             backupPath:
               type: string
             backupSize:
@@ -1415,24 +1433,6 @@ spec:
                 - type
                 type: object
               nullable: true
-              type: array
-            exponentialBackoffRetryStatus:
-              items:
-                properties:
-                  detectFailedAt:
-                    format: date-time
-                    type: string
-                  expectedRetryAt:
-                    format: date-time
-                    type: string
-                  realRetryAt:
-                    format: date-time
-                    type: string
-                  retryNum:
-                    type: integer
-                  retryReason:
-                    type: string
-                type: object
               type: array
             logCheckpointTs:
               type: string

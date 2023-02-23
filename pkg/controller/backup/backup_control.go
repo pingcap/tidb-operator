@@ -36,9 +36,7 @@ type ControlInterface interface {
 	// UpdateBackup implements the control logic for backup job and backup clean job's creation, deletion
 	UpdateBackup(backup *v1alpha1.Backup) error
 	// UpdateCondition updates the condition for a Backup.
-	UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error
-	// UpdateBackupStatus updates the status for a Backup.
-	UpdateBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error
+	UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error
 }
 
 // NewDefaultBackupControl returns a new instance of the default implementation BackupControlInterface that
@@ -72,13 +70,8 @@ func (c *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 }
 
 // UpdateCondition updates the condition for a Backup.
-func (c *defaultBackupControl) UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
-	return c.backupManager.UpdateCondition(backup, condition)
-}
-
-// UpdateBackupStatus updates the status for a Backup.
-func (c *defaultBackupControl) UpdateBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
-	return c.backupManager.UpdateBackupStatus(backup, condition, newStatus)
+func (c *defaultBackupControl) UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
+	return c.backupManager.UpdateCondition(backup, condition, newStatus)
 }
 
 func (c *defaultBackupControl) updateBackup(backup *v1alpha1.Backup) error {
@@ -164,13 +157,7 @@ func (c *FakeBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 }
 
 // UpdateCondition updates the condition for a Backup.
-func (c *FakeBackupControl) UpdateCondition(_ *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
-	c.condition = condition
-	return nil
-}
-
-// UpdateBackupStatus updates the status for a Backup.
-func (c *FakeBackupControl) UpdateBackupStatus(_ *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
+func (c *FakeBackupControl) UpdateCondition(_ *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
 	c.condition = condition
 	return nil
 }

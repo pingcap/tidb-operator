@@ -177,7 +177,7 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	}
 
 	if newStatus.RetryNum != nil || newStatus.RealRetryAt != nil {
-		isUpdate = updateExponentialBackoffRetryStatus(status, newStatus)
+		isUpdate = updateBackoffRetryStatus(status, newStatus)
 	}
 
 	return isUpdate
@@ -452,25 +452,25 @@ func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *fl
 	return progresses, isUpdate
 }
 
-func updateExponentialBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
-	var currentRecord *v1alpha1.ExponentialBackoffRetryRecord
+func updateBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
+	var currentRecord *v1alpha1.BackoffRetryRecord
 	isUpdate := false
 
-	if len(status.ExponentialBackoffRetryStatus) == 0 {
-		status.ExponentialBackoffRetryStatus = make([]v1alpha1.ExponentialBackoffRetryRecord, 0)
-		status.ExponentialBackoffRetryStatus = append(status.ExponentialBackoffRetryStatus, v1alpha1.ExponentialBackoffRetryRecord{})
-		currentRecord = &status.ExponentialBackoffRetryStatus[0]
+	if len(status.BackoffRetryStatus) == 0 {
+		status.BackoffRetryStatus = make([]v1alpha1.BackoffRetryRecord, 0)
+		status.BackoffRetryStatus = append(status.BackoffRetryStatus, v1alpha1.BackoffRetryRecord{})
+		currentRecord = &status.BackoffRetryStatus[0]
 		isUpdate = true
 	} else {
 		if newStatus.RetryNum == nil {
-			currentRecord = &status.ExponentialBackoffRetryStatus[len(status.ExponentialBackoffRetryStatus)-1]
+			currentRecord = &status.BackoffRetryStatus[len(status.BackoffRetryStatus)-1]
 		} else {
-			if *newStatus.RetryNum > len(status.ExponentialBackoffRetryStatus) {
-				status.ExponentialBackoffRetryStatus = append(status.ExponentialBackoffRetryStatus, v1alpha1.ExponentialBackoffRetryRecord{})
-				currentRecord = &status.ExponentialBackoffRetryStatus[len(status.ExponentialBackoffRetryStatus)-1]
+			if *newStatus.RetryNum > len(status.BackoffRetryStatus) {
+				status.BackoffRetryStatus = append(status.BackoffRetryStatus, v1alpha1.BackoffRetryRecord{})
+				currentRecord = &status.BackoffRetryStatus[len(status.BackoffRetryStatus)-1]
 				isUpdate = true
 			} else {
-				currentRecord = &status.ExponentialBackoffRetryStatus[*newStatus.RetryNum-1]
+				currentRecord = &status.BackoffRetryStatus[*newStatus.RetryNum-1]
 			}
 		}
 	}
