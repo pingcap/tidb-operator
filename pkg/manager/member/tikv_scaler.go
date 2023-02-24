@@ -18,10 +18,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,6 +26,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/util"
 )
 
 type tikvScaler struct {
@@ -57,6 +58,31 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	if !ok {
 		klog.Errorf("tikvScaler.ScaleOut: failed to convert cluster %s/%s, scale out will do nothing", meta.GetNamespace(), meta.GetName())
 		return nil
+	}
+
+	ls, err := label.New().Instance(tc.Name).Component(label.TiKVLabelVal).Selector()
+	if err != nil {
+		return fmt.Errorf("invalid label selector: %w", err)
+	}
+
+	pods, err := s.deps.PodLister.Pods(tc.Namespace).List(ls)
+	if err != nil {
+		return fmt.Errorf("can't list pods with label selector %s: %w", ls, err)
+	}
+
+	if len(pods) < int(*oldSet.Spec.Replicas) {
+		return fmt.Errorf("wait until tikv pods are created, expected in sts %v, current pods num %v", *oldSet.Spec.Replicas, len(pods))
+	}
+
+	unscheduledPods := sets.NewString()
+	for _, pod := range pods {
+		if pod.Spec.NodeName == "" {
+			unscheduledPods.Insert(pod.Name)
+		}
+	}
+
+	if unscheduledPods.Len() > 0 {
+		return fmt.Errorf("wait until tikv pods are scheduled, unscheduled pods: %v", unscheduledPods)
 	}
 
 	scaleOutParallelism := tc.Spec.TiKV.GetScaleOutParallelism()
