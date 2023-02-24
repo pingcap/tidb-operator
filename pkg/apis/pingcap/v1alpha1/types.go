@@ -2014,6 +2014,8 @@ const (
 	BackupPrepare BackupConditionType = "Prepare"
 	// BackupStopped means the backup was stopped, just log backup has this condition
 	BackupStopped BackupConditionType = "Stopped"
+	// BackupRestart means the backup was restarted, now just support snapshot backup
+	BackupRestart BackupConditionType = "Restart"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
