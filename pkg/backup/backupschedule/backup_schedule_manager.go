@@ -56,6 +56,10 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 		return controller.IgnoreErrorf("backupSchedule %s/%s has been paused", bs.GetNamespace(), bs.GetName())
 	}
 
+	if err := bm.performLogBackupIfNeeded(bs); err != nil {
+		return err
+	}
+
 	if err := bm.canPerformNextBackup(bs); err != nil {
 		return err
 	}
@@ -124,6 +128,26 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 	// If the last backup is in a failed state, but it is not scheduled yet,
 	// skip this sync round of the backup schedule and waiting the last backup.
 	return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
+}
+
+func (bm *backupScheduleManager) performLogBackupIfNeeded(bs *v1alpha1.BackupSchedule) error {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
+	// log backup already run
+	if bs.Spec.LogBackupTemplate == nil || bs.Status.LogBackup != nil {
+		return nil
+	}
+
+	// create log backup
+	logBackup := buildLogBackup(bs, time.Now())
+	_, err := bm.deps.BackupControl.CreateBackup(logBackup)
+	if err != nil {
+		return fmt.Errorf("backup schedule %s/%s, create log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
+	}
+
+	bs.Status.LogBackup = &logBackup.Name
+	return nil
 }
 
 // getLastScheduledTime return the newest time need to be scheduled according last backup time.
@@ -249,6 +273,49 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 	}
 
 	return backup
+}
+
+func buildLogBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Backup {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
+	logBackupSpec := *bs.Spec.LogBackupTemplate.DeepCopy()
+
+	clusterNamespace := logBackupSpec.BR.ClusterNamespace
+	if clusterNamespace == "" {
+		clusterNamespace = ns
+	}
+
+	logBackupPrefix := "log" + "-" + timestamp.UTC().Format(v1alpha1.BackupNameTimeFormat)
+	if logBackupSpec.S3 != nil {
+		logBackupSpec.S3.Prefix = path.Join(logBackupSpec.S3.Prefix, logBackupPrefix)
+	} else if logBackupSpec.Gcs != nil {
+		logBackupSpec.Gcs.Prefix = path.Join(logBackupSpec.Gcs.Prefix, logBackupPrefix)
+	} else if logBackupSpec.Azblob != nil {
+		logBackupSpec.Azblob.Prefix = path.Join(logBackupSpec.Azblob.Prefix, logBackupPrefix)
+	} else if logBackupSpec.Local != nil {
+		logBackupSpec.Local.Prefix = path.Join(logBackupSpec.Local.Prefix, logBackupPrefix)
+	}
+
+	if bs.Spec.ImagePullSecrets != nil {
+		logBackupSpec.ImagePullSecrets = bs.Spec.ImagePullSecrets
+	}
+
+	bsLabel := util.CombineStringMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), bs.Labels)
+	logBackup := &v1alpha1.Backup{
+		Spec: logBackupSpec,
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   ns,
+			Name:        bs.GetLogBackupCRDName(timestamp),
+			Labels:      bsLabel,
+			Annotations: bs.Annotations,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetBackupScheduleOwnerRef(bs),
+			},
+		},
+	}
+
+	return logBackup
 }
 
 func createBackup(bkController controller.BackupControlInterface, bs *v1alpha1.BackupSchedule, timestamp time.Time) (*v1alpha1.Backup, error) {
