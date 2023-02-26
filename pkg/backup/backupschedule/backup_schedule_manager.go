@@ -306,7 +306,7 @@ func buildLogBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.
 		Spec: logBackupSpec,
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   ns,
-			Name:        bs.GetLogBackupCRDName(timestamp),
+			Name:        bs.GetLogBackupCRDName(),
 			Labels:      bsLabel,
 			Annotations: bs.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
@@ -413,7 +413,7 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 	)
 
 	for _, backup := range backupsList {
-		if backup.Spec.Mode == logBackup.Spec.Mode {
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
 			logBackup = backup
 			continue
 		}
