@@ -514,13 +514,23 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		})
 	}
 
+	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"get delete slots number of statefulset %s/%s failed, err:%v",
+			ns, stsName, err,
+		)
+	}
+
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
 	if baseTiCDCSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
 		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.TiCDCDeployDesiredReplicas()),
+			Partition: pointer.Int32Ptr(
+				tc.TiCDCDeployDesiredReplicas() + deleteSlotsNumber,
+			),
 		}
 	}
 
