@@ -3557,7 +3557,7 @@ string
 </em>
 </td>
 <td>
-<p>logBackup represents the log backup.</p>
+<p>logBackup represents the name of log backup.</p>
 </td>
 </tr>
 <tr>
