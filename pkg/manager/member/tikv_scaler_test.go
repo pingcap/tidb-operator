@@ -23,11 +23,6 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -36,6 +31,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
 
 func TestTiKVScalerScaleOut(t *testing.T) {
@@ -46,6 +47,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		hasPVC        bool
 		hasDeferAnn   bool
 		pvcDeleteErr  bool
+		hasScheduled  bool
 		annoIsNil     bool
 		errExpectFn   func(*GomegaWithT, error)
 		changed       bool
@@ -64,7 +66,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = pointer.Int32Ptr(7)
 
-		scaler, _, pvcIndexer, _, pvcControl := newFakeTiKVScaler()
+		scaler, _, pvcIndexer, podIndexer, pvcControl := newFakeTiKVScaler()
 
 		pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
 		if !test.annoIsNil {
@@ -83,12 +85,20 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
+		for i := int32(0); i < *oldSet.Spec.Replicas-1; i++ {
+			podIndexer.Add(newTiKVPod(tc, i, true))
+		}
+
+		if test.hasScheduled {
+			podIndexer.Add(newTiKVPod(tc, *oldSet.Spec.Replicas-1, true))
+		} else {
+			podIndexer.Add(newTiKVPod(tc, *oldSet.Spec.Replicas-1, false))
+		}
+
 		err := scaler.ScaleOut(tc, oldSet, newSet)
 		test.errExpectFn(g, err)
-		if test.changed {
+		if err == nil {
 			g.Expect(int(*newSet.Spec.Replicas)).To(Equal(6))
-		} else {
-			g.Expect(int(*newSet.Spec.Replicas)).To(Equal(5))
 		}
 	}
 
@@ -98,58 +108,68 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			tikvUpgrading: false,
 			hasPVC:        true,
 			hasDeferAnn:   false,
+			hasScheduled:  true,
 			annoIsNil:     true,
 			pvcDeleteErr:  false,
 			errExpectFn:   errExpectRequeue,
-			changed:       false,
 		},
 		{
 			name:          "tikv is upgrading",
 			tikvUpgrading: true,
 			hasPVC:        true,
 			hasDeferAnn:   false,
+			hasScheduled:  true,
 			annoIsNil:     true,
 			pvcDeleteErr:  false,
 			errExpectFn:   errExpectNotNil,
-			changed:       false,
 		},
 		{
 			name:          "cache don't have pvc",
 			tikvUpgrading: false,
 			hasPVC:        false,
 			hasDeferAnn:   false,
+			hasScheduled:  true,
 			annoIsNil:     true,
 			pvcDeleteErr:  false,
 			errExpectFn:   errExpectNil,
-			changed:       true,
 		},
 		{
 			name:          "pvc annotation is not nil but doesn't contain defer deletion annotation",
 			tikvUpgrading: false,
 			hasPVC:        true,
 			hasDeferAnn:   false,
+			hasScheduled:  true,
 			annoIsNil:     false,
 			pvcDeleteErr:  false,
 			errExpectFn:   errExpectNotNil,
-			changed:       false,
 		},
 		{
 			name:          "pvc annotations defer deletion is not nil, pvc delete failed",
 			tikvUpgrading: false,
 			hasPVC:        true,
 			hasDeferAnn:   true,
+			hasScheduled:  true,
 			pvcDeleteErr:  true,
 			errExpectFn:   errExpectNotNil,
-			changed:       false,
 		},
 		{
 			name:          "pvc annotations defer deletion is not nil, pvc delete successfully",
 			tikvUpgrading: false,
 			hasPVC:        true,
+			hasScheduled:  true,
 			hasDeferAnn:   true,
 			pvcDeleteErr:  false,
 			errExpectFn:   errExpectNotNil, // tikv will wait a round more.
-			changed:       false,
+		},
+		{
+			name:          "pods are not all scheduled",
+			tikvUpgrading: false,
+			hasPVC:        false,
+			hasDeferAnn:   false,
+			hasScheduled:  false,
+			annoIsNil:     true,
+			pvcDeleteErr:  false,
+			errExpectFn:   errExpectNotNil,
 		},
 	}
 
@@ -190,7 +210,7 @@ func TestTiKVScalerScaleOutSimultaneously(t *testing.T) {
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = pointer.Int32Ptr(7)
 
-		scaler, _, pvcIndexer, _, pvcControl := newFakeTiKVScaler()
+		scaler, _, pvcIndexer, podIndexer, pvcControl := newFakeTiKVScaler()
 
 		pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
 		if !test.annoIsNil {
@@ -209,9 +229,15 @@ func TestTiKVScalerScaleOutSimultaneously(t *testing.T) {
 			pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
 
+		for i := int32(0); i < *oldSet.Spec.Replicas; i++ {
+			podIndexer.Add(newTiKVPod(tc, i, true))
+		}
+
 		err := scaler.ScaleOut(tc, oldSet, newSet)
 		test.errExpectFn(g, err)
-		g.Expect(int(*newSet.Spec.Replicas)).To(Equal(test.newReplicas))
+		if err == nil {
+			g.Expect(int(*newSet.Spec.Replicas)).To(Equal(test.newReplicas))
+		}
 	}
 
 	tests := []testcase{
@@ -224,7 +250,6 @@ func TestTiKVScalerScaleOutSimultaneously(t *testing.T) {
 			pvcDeleteErr:        false,
 			scaleOutParallelism: 1,
 			errExpectFn:         errExpectRequeue,
-			newReplicas:         5,
 		},
 		{
 			name:                "tikv is upgrading",
@@ -235,7 +260,6 @@ func TestTiKVScalerScaleOutSimultaneously(t *testing.T) {
 			pvcDeleteErr:        false,
 			scaleOutParallelism: 1,
 			errExpectFn:         errExpectNotNil,
-			newReplicas:         5,
 		},
 		{
 			name:                "cache don't have pvc",
@@ -257,7 +281,6 @@ func TestTiKVScalerScaleOutSimultaneously(t *testing.T) {
 			pvcDeleteErr:        false,
 			scaleOutParallelism: 1,
 			errExpectFn:         errExpectNotNil,
-			newReplicas:         5,
 		},
 		{
 			name:                "pvc annotations defer deletion is not nil, pvc delete failed",
@@ -267,7 +290,6 @@ func TestTiKVScalerScaleOutSimultaneously(t *testing.T) {
 			pvcDeleteErr:        true,
 			scaleOutParallelism: 1,
 			errExpectFn:         errExpectNotNil,
-			newReplicas:         5,
 		},
 		{
 			name:                "pvc annotations defer deletion is not nil, pvc delete successfully",
@@ -277,7 +299,6 @@ func TestTiKVScalerScaleOutSimultaneously(t *testing.T) {
 			pvcDeleteErr:        false,
 			scaleOutParallelism: 1,
 			errExpectFn:         errExpectNotNil, // tikv will wait a round more.
-			newReplicas:         5,
 		},
 		{
 			name:                "scaleOutParallelism 2 cache don't have pvc",
@@ -312,7 +333,8 @@ func TestTiKVScalerScaleOutSimultaneously(t *testing.T) {
 
 func TestTiKVScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 	type scaleOp struct {
-		preHandler  func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl)
+		preHandler  func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl)
+		hasErr      bool
 		replicas    int32
 		deleteSlots sets.Int32
 	}
@@ -339,21 +361,30 @@ func TestTiKVScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 		newSet.Spec.Replicas = pointer.Int32Ptr(7)
 		helper.SetDeleteSlots(newSet, test.newDeleteSlots)
 
-		scaler, _, pvcIndexer, _, pvcControl := newFakeTiKVScaler()
+		scaler, _, pvcIndexer, podIndexer, pvcControl := newFakeTiKVScaler()
+
+		for i := int32(0); i < *oldSet.Spec.Replicas; i++ {
+			podIndexer.Add(newTiKVPod(tc, i, true))
+		}
 
 		features.DefaultFeatureGate.Set(fmt.Sprintf("AdvancedStatefulSet=%v", test.enableAsts))
 		actualSet := oldSet.DeepCopy()
 		for _, op := range test.ops {
 			if op.preHandler != nil {
-				op.preHandler(oldSet, tc, pvcIndexer, pvcControl)
+				op.preHandler(oldSet, tc, pvcIndexer, podIndexer, pvcControl)
 			}
 			desiredSet := newSet.DeepCopy()
-			_ = scaler.ScaleOut(tc, actualSet, desiredSet)
+			if err := scaler.ScaleOut(tc, actualSet, desiredSet); err != nil {
+				if !op.hasErr {
+					t.Errorf("scale out with err: %v", err)
+				}
+				continue
+			}
 			if diff := cmp.Diff(op.replicas, *desiredSet.Spec.Replicas); diff != "" {
-				t.Errorf("unexpected (-want, +got): %s", diff)
+				t.Errorf("unexpected replicas (-want, +got): %s", diff)
 			}
 			if diff := cmp.Diff(op.deleteSlots, helper.GetDeleteSlots(desiredSet)); diff != "" {
-				t.Errorf("unexpected (-want, +got): %s", diff)
+				t.Errorf("unexpected slots (-want, +got): %s", diff)
 			}
 			actualSet = desiredSet.DeepCopy()
 		}
@@ -398,14 +429,13 @@ func TestTiKVScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 			newDeleteSlots: sets.NewInt32(),
 			ops: []scaleOp{
 				{
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Add(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 6))
 						pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 					},
-					replicas:    6,
-					deleteSlots: sets.NewInt32(),
+					hasErr: true,
 				}, {
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Delete(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 6))
 						pvcControl.SetDeletePVCError(nil, 0)
 					},
@@ -420,14 +450,13 @@ func TestTiKVScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 			newDeleteSlots: sets.NewInt32(),
 			ops: []scaleOp{
 				{
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Add(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 5))
 						pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 					},
-					replicas:    5,
-					deleteSlots: sets.NewInt32(),
+					hasErr: true,
 				}, {
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Delete(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 5))
 						pvcControl.SetDeletePVCError(nil, 0)
 					},
@@ -442,14 +471,13 @@ func TestTiKVScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 			newDeleteSlots: sets.NewInt32(),
 			ops: []scaleOp{
 				{
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Add(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 6))
 						pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 					},
-					replicas:    6,
-					deleteSlots: sets.NewInt32(),
+					hasErr: true,
 				}, {
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Delete(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 6))
 						pvcControl.SetDeletePVCError(nil, 0)
 					},
@@ -464,14 +492,13 @@ func TestTiKVScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 			newDeleteSlots: sets.NewInt32(),
 			ops: []scaleOp{
 				{
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Add(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 5))
 						pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 					},
-					replicas:    5,
-					deleteSlots: sets.NewInt32(),
+					hasErr: true,
 				}, {
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Delete(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 5))
 						pvcControl.SetDeletePVCError(nil, 0)
 					},
@@ -486,14 +513,13 @@ func TestTiKVScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 			newDeleteSlots: sets.NewInt32(5, 6),
 			ops: []scaleOp{
 				{
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Add(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 8))
 						pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 					},
-					replicas:    6,
-					deleteSlots: sets.NewInt32(5, 6),
+					hasErr: true,
 				}, {
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Delete(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 8))
 						pvcControl.SetDeletePVCError(nil, 0)
 					},
@@ -508,14 +534,13 @@ func TestTiKVScalerScaleOutSimultaneouslyExtra(t *testing.T) {
 			newDeleteSlots: sets.NewInt32(5, 6),
 			ops: []scaleOp{
 				{
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Add(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 7))
 						pvcControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 					},
-					replicas:    5,
-					deleteSlots: sets.NewInt32(),
+					hasErr: true,
 				}, {
-					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
+					preHandler: func(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, pvcIndexer, podIndexer cache.Indexer, pvcControl *controller.FakePVCControl) {
 						pvcIndexer.Delete(newPVCWithDeleteAnnotaion(set, v1alpha1.TiKVMemberType, tc.GetName(), 7))
 						pvcControl.SetDeletePVCError(nil, 0)
 					},
@@ -2161,6 +2186,25 @@ func allTombstonesStoreFun(tc *v1alpha1.TidbCluster) {
 			ID:      "13",
 			PodName: ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), 3),
 			State:   v1alpha1.TiKVStateTombstone,
+		},
+	}
+}
+
+func newTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, isScheduled bool) *corev1.Pod {
+	nodeName := ""
+	if isScheduled {
+		nodeName = "fake-node"
+	}
+	podName := ordinalPodName(v1alpha1.TiKVMemberType, tc.GetName(), ordinal)
+	l := label.New().Instance(tc.GetName()).Component(label.TiKVLabelVal)
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: tc.Namespace,
+			Labels:    l,
+		},
+		Spec: corev1.PodSpec{
+			NodeName: nodeName,
 		},
 	}
 }

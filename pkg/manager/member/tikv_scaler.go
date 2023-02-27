@@ -91,9 +91,8 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 		oldSet.Namespace, oldSet.Name, ordinals, replicas, scaleOutParallelism, deleteSlots.List())
 
 	var (
-		errs                         []error
-		finishedOrdinals             = sets.NewInt32()
-		updateReplicasAndDeleteSlots bool
+		errs             []error
+		finishedOrdinals = sets.NewInt32()
 	)
 	for _, ordinal := range ordinals {
 		err := s.scaleOutOne(tc, ordinal)
@@ -101,15 +100,15 @@ func (s *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 			errs = append(errs, err)
 		} else {
 			finishedOrdinals.Insert(ordinal)
-			updateReplicasAndDeleteSlots = true
 		}
 	}
-	if updateReplicasAndDeleteSlots {
-		setReplicasAndDeleteSlotsByFinished(scalingOutFlag, newSet, oldSet, ordinals, finishedOrdinals)
-	} else {
-		resetReplicas(newSet, oldSet)
+	if err := errorutils.NewAggregate(errs); err != nil {
+		return err
 	}
-	return errorutils.NewAggregate(errs)
+
+	setReplicasAndDeleteSlotsByFinished(scalingOutFlag, newSet, oldSet, ordinals, finishedOrdinals)
+
+	return nil
 }
 
 func (s *tikvScaler) scaleOutOne(tc *v1alpha1.TidbCluster, ordinal int32) error {
@@ -192,6 +191,11 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		}
 	}
 
+	// If len(errs) != 0, resetReplicas is not useful.
+	// But only when len(ordinals) == 0, resetReplicas and len(errs) == 0 will both be true.
+	// However, len(ordinals) != 0 because scaleMulti has been called before this function.
+	// And only when scaling != 0 this function will be called.
+	// TODO: resetReplicas is not needed
 	if updateReplicasAndDeleteSlots {
 		setReplicasAndDeleteSlotsByFinished(scalingInFlag, newSet, oldSet, ordinals, finishedOrdinals)
 	} else {
