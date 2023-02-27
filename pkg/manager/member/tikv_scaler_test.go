@@ -50,7 +50,6 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		hasScheduled  bool
 		annoIsNil     bool
 		errExpectFn   func(*GomegaWithT, error)
-		changed       bool
 	}
 
 	testFn := func(test testcase, t *testing.T) {
