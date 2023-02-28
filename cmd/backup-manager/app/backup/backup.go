@@ -275,7 +275,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	}
 
 	for i := 0; i < 5*60; i++ {
-		klog.Infof("simulate stuck br commond %v for cluster %s", fullArgs, bo)
+		klog.Infof("simulate br running %v for cluster %s", fullArgs, bo)
 		time.Sleep(time.Second * 1)
 	}
 

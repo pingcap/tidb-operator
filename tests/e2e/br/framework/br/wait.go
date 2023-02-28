@@ -92,6 +92,64 @@ func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.
 	return nil
 }
 
+// WaitForBackupRunning will poll and wait until timeout or backup running condition is true
+func WaitForBackupRunning(c versioned.Interface, ns, name string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		b, err := c.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		for _, cond := range b.Status.Conditions {
+			switch cond.Type {
+			case v1alpha1.BackupRunning:
+				if cond.Status == corev1.ConditionTrue {
+					if cond.Status == corev1.ConditionTrue {
+						return true, nil
+					}
+				}
+			case v1alpha1.BackupFailed, v1alpha1.BackupInvalid:
+				if cond.Status == corev1.ConditionTrue {
+					return false, fmt.Errorf("backup is failed, reason: %s, message: %s", cond.Reason, cond.Message)
+				}
+			default: // do nothing
+			}
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for backup running: %v", err)
+	}
+	return nil
+}
+
+// WaitForBackupFailed will poll and wait until timeout or backup failed condition is true
+func WaitForBackupFailed(c versioned.Interface, ns, name string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		b, err := c.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		for _, cond := range b.Status.Conditions {
+			switch cond.Type {
+			case v1alpha1.BackupFailed:
+				if cond.Status == corev1.ConditionTrue {
+					if cond.Status == corev1.ConditionTrue {
+						return true, nil
+					}
+				}
+			case v1alpha1.BackupInvalid:
+				if cond.Status == corev1.ConditionTrue {
+					return false, fmt.Errorf("backup is invalid, reason: %s, message: %s", cond.Reason, cond.Message)
+				}
+			default: // do nothing
+			}
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for backup failed: %v", err)
+	}
+	return nil
+}
+
 // WaitForRestoreComplete will poll and wait until timeout or restore complete condition is true
 func WaitForRestoreComplete(c versioned.Interface, ns, name string, timeout time.Duration) error {
 	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
