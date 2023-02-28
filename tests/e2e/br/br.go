@@ -590,7 +590,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Start backup and wait to running")
-			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, nil)
+			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+			})
 			framework.ExpectNoError(err)
 
 			ginkgo.By("kill backup pod")
@@ -647,6 +649,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					MaxRetryTimes:    2,
 					RetryTimeout:     30,
 				}
+				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}
 			})
 			framework.ExpectNoError(err)
 
@@ -725,6 +728,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					MaxRetryTimes:    2,
 					RetryTimeout:     1,
 				}
+				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}
 			})
 			framework.ExpectNoError(err)
 
