@@ -45,6 +45,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -58,6 +59,9 @@ var (
 const (
 	typeBR     string = "BR"
 	typeDumper string = "Dumper"
+	// TODO use https://github.com/pingcap/failpoint instead e2e test env
+	e2eBackupEnv        string = "E2E_TEST_ENV"
+	e2eExtendBackupTime string = "Extend_BACKUP_TIME"
 )
 
 type option func(t *testcase)
@@ -531,7 +535,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Start backup and wait to running")
-			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, nil)
+			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+			})
 			framework.ExpectNoError(err)
 
 			ginkgo.By("delete backup pod")
@@ -1223,6 +1229,8 @@ func killBackupPod(f *e2eframework.Framework, backup *v1alpha1.Backup) error {
 				Stderr: &stderr,
 				Tty:    false,
 			})
+			klog.Infof("kill pod stdout %s", stdout.String())
+			klog.Infof("kill pod stderr %s", stderr.String())
 			if err != nil {
 				return errors.Annotatef(err, "Failed to kill pod %s for backup %s/%s", pod.Name, ns, name)
 			}
