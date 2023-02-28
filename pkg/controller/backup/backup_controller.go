@@ -584,5 +584,5 @@ func isCurrentBackoffRetryDone(backup *v1alpha1.Backup) bool {
 	if len(backup.Status.BackoffRetryStatus) == 0 {
 		return false
 	}
-	return backup.Status.BackoffRetryStatus[len(backup.Status.BackoffRetryStatus)-1].RealRetryAt == nil
+	return backup.Status.BackoffRetryStatus[len(backup.Status.BackoffRetryStatus)-1].RealRetryAt != nil
 }

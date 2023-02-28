@@ -1203,7 +1203,8 @@ func killBackupPod(f *e2eframework.Framework, backup *v1alpha1.Backup) error {
 	killCmds := []string{
 		"sh",
 		"-c",
-		"ps -ef | grep tidb-backup-manager | grep -v grep | awk '{print $1}' | xargs kill -9",
+		// "ps -ef | grep tidb-backup-manager | grep -v grep | awk '{print $1}' | xargs kill -9",
+		"pkill -9 tidb-backup-manager",
 	}
 
 	for _, pod := range pods.Items {
