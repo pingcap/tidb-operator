@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/manager/tidbngmonitoring"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 
 	perrors "github.com/pingcap/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -71,6 +72,11 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return c
 }
 
+// Name returns the name of the controller
+func (c *Controller) Name() string {
+	return "tidb-ng-monitoring"
+}
+
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
@@ -91,6 +97,9 @@ func (c *Controller) worker() {
 }
 
 func (c *Controller) processNextWorkItem() bool {
+	metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(1)
+	defer metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(-1)
+
 	keyIface, quit := c.queue.Get()
 	if quit {
 		return false
@@ -116,7 +125,9 @@ func (c *Controller) processNextWorkItem() bool {
 func (c *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished syncing TidbNGMonitoring %s (%v)", key, time.Since(startTime))
+		duration := time.Since(startTime)
+		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+		klog.V(4).Infof("Finished syncing TidbNGMonitoring %s (%v)", key, duration)
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
