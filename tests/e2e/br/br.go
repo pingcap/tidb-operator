@@ -649,7 +649,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					MaxRetryTimes:    2,
 					RetryTimeout:     30,
 				}
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}
+				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
 			framework.ExpectNoError(err)
 
@@ -728,7 +728,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					MaxRetryTimes:    2,
 					RetryTimeout:     1,
 				}
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}
+				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
 			framework.ExpectNoError(err)
 
