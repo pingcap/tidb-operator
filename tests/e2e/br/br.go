@@ -618,150 +618,150 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 
-		// ginkgo.It("kill backup pod and exceed maxRetryTimes", func() {
-		// 	backupClusterName := "kill-backup-pod-test"
-		// 	backupVersion := utilimage.TiDBLatest
-		// 	enableTLS := false
-		// 	skipCA := false
-		// 	backupName := backupClusterName
-		// 	typ := strings.ToLower(typeBR)
+		ginkgo.It("kill backup pod and exceed maxRetryTimes", func() {
+			backupClusterName := "kill-backup-pod-test"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
 
-		// 	ns := f.Namespace.Name
-		// 	ctx, cancel := context.WithCancel(context.Background())
-		// 	defer cancel()
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-		// 	ginkgo.By("Create TiDB cluster")
-		// 	err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("Create TiDB cluster")
+			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("Wait for TiDB cluster ready")
-		// 	err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("Wait for TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("Create RBAC for backup")
-		// 	err = createRBAC(f)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("Create RBAC for backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("Start backup and wait to running")
-		// 	backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-		// 		backup.Spec.BackoffRetryPolicy = v1alpha1.BackoffRetryPolicy{
-		// 			MinRetryDuration: 60,
-		// 			MaxRetryTimes:    2,
-		// 			RetryTimeout:     30,
-		// 		}
-		// 		backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
-		// 	})
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("Start backup and wait to running")
+			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.BackoffRetryPolicy = v1alpha1.BackoffRetryPolicy{
+					MinRetryDuration: 60,
+					MaxRetryTimes:    2,
+					RetryTimeout:     30,
+				}
+				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+			})
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("kill backup pod")
-		// 	err = killBackupPod(f, backup)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("kill backup pod")
+			err = killBackupPod(f, backup)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("wait auto restart backup pod until backup running")
-		// 	err = brutil.WaitForBackupRunning(f.ExtClient, ns, backupName, backupCompleteTimeout)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("wait auto restart backup pod until backup running")
+			err = brutil.WaitForBackupOnRunning(f.ExtClient, ns, backupName, backupCompleteTimeout)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("make sure it's restarted by backoff retry policy")
-		// 	num, err := getBackoffRetryNum(f, backup)
-		// 	framework.ExpectNoError(err)
-		// 	framework.ExpectEqual(num, 1)
+			ginkgo.By("make sure it's restarted by backoff retry policy")
+			num, err := getBackoffRetryNum(f, backup)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(num, 1)
 
-		// 	ginkgo.By("kill backup pod")
-		// 	err = killBackupPod(f, backup)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("kill backup pod")
+			err = killBackupPod(f, backup)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("wait auto restart backup pod until backup running")
-		// 	err = brutil.WaitForBackupRunning(f.ExtClient, ns, backupName, backupCompleteTimeout)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("wait auto restart backup pod until backup running")
+			err = brutil.WaitForBackupOnRunning(f.ExtClient, ns, backupName, backupCompleteTimeout)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("make sure it's restarted by backoff retry policy")
-		// 	num, err = getBackoffRetryNum(f, backup)
-		// 	framework.ExpectNoError(err)
-		// 	framework.ExpectEqual(num, 2)
+			ginkgo.By("make sure it's restarted by backoff retry policy")
+			num, err = getBackoffRetryNum(f, backup)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(num, 2)
 
-		// 	ginkgo.By("kill backup pod")
-		// 	err = killBackupPod(f, backup)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("kill backup pod")
+			err = killBackupPod(f, backup)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("wait auto restart backup pod until backup failed")
-		// 	err = brutil.WaitForBackupFailed(f.ExtClient, ns, backupName, backupCompleteTimeout)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("wait auto restart backup pod until backup failed")
+			err = brutil.WaitForBackupFailed(f.ExtClient, ns, backupName, backupCompleteTimeout)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("Delete backup")
-		// 	err = deleteBackup(f, backupName)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("Check if all backup files in storage is deleted")
-		// 	cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
-		// 	framework.ExpectNoError(err)
-		// 	framework.ExpectEqual(cleaned, true, "storage should be cleaned")
-		// })
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
 
-		// ginkgo.It("kill backup pod and exceed retryTimeout", func() {
-		// 	backupClusterName := "kill-backup-pod-test"
-		// 	backupVersion := utilimage.TiDBLatest
-		// 	enableTLS := false
-		// 	skipCA := false
-		// 	backupName := backupClusterName
-		// 	typ := strings.ToLower(typeBR)
+		ginkgo.It("kill backup pod and exceed retryTimeout", func() {
+			backupClusterName := "kill-backup-pod-test"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
 
-		// 	ns := f.Namespace.Name
-		// 	ctx, cancel := context.WithCancel(context.Background())
-		// 	defer cancel()
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-		// 	ginkgo.By("Create TiDB cluster")
-		// 	err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("Create TiDB cluster")
+			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("Wait for TiDB cluster ready")
-		// 	err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("Wait for TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("Create RBAC for backup")
-		// 	err = createRBAC(f)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("Create RBAC for backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("Start backup and wait to running")
-		// 	backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-		// 		backup.Spec.BackoffRetryPolicy = v1alpha1.BackoffRetryPolicy{
-		// 			MinRetryDuration: 60,
-		// 			MaxRetryTimes:    2,
-		// 			RetryTimeout:     1,
-		// 		}
-		// 		backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
-		// 	})
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("Start backup and wait to running")
+			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.BackoffRetryPolicy = v1alpha1.BackoffRetryPolicy{
+					MinRetryDuration: 60,
+					MaxRetryTimes:    2,
+					RetryTimeout:     1,
+				}
+				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+			})
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("kill backup pod")
-		// 	err = killBackupPod(f, backup)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("kill backup pod")
+			err = killBackupPod(f, backup)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("wait auto restart backup pod until backup running")
-		// 	err = brutil.WaitForBackupRunning(f.ExtClient, ns, backupName, backupCompleteTimeout)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("wait auto restart backup pod until backup running")
+			err = brutil.WaitForBackupOnRunning(f.ExtClient, ns, backupName, backupCompleteTimeout)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("make sure it's restarted by backoff retry policy")
-		// 	num, err := getBackoffRetryNum(f, backup)
-		// 	framework.ExpectNoError(err)
-		// 	framework.ExpectEqual(num, 1)
+			ginkgo.By("make sure it's restarted by backoff retry policy")
+			num, err := getBackoffRetryNum(f, backup)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(num, 1)
 
-		// 	ginkgo.By("kill backup pod")
-		// 	err = killBackupPod(f, backup)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("kill backup pod")
+			err = killBackupPod(f, backup)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("wait auto restart backup pod until backup failed")
-		// 	err = brutil.WaitForBackupFailed(f.ExtClient, ns, backupName, backupCompleteTimeout)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("wait auto restart backup pod until backup failed")
+			err = brutil.WaitForBackupFailed(f.ExtClient, ns, backupName, backupCompleteTimeout)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("Delete backup")
-		// 	err = deleteBackup(f, backupName)
-		// 	framework.ExpectNoError(err)
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
 
-		// 	ginkgo.By("Check if all backup files in storage is deleted")
-		// 	cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
-		// 	framework.ExpectNoError(err)
-		// 	framework.ExpectEqual(cleaned, true, "storage should be cleaned")
-		// })
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
 	})
 
 	ginkgo.Context("PiTR Restore Test", func() {
@@ -1138,7 +1138,7 @@ func createBackupAndWaitForRunning(f *e2eframework.Framework, name, tcName, typ 
 		return nil, err
 	}
 
-	if err := brutil.WaitForBackupRunning(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
+	if err := brutil.WaitForBackupOnRunning(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
 		return backup, err
 	}
 	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})

@@ -92,21 +92,19 @@ func WaitForBackupComplete(c versioned.Interface, ns, name string, timeout time.
 	return nil
 }
 
-// WaitForBackupRunning will poll and wait until timeout or backup running condition is true
-func WaitForBackupRunning(c versioned.Interface, ns, name string, timeout time.Duration) error {
+// WaitForBackupOnRunning will poll and wait until timeout or backup phause is running
+func WaitForBackupOnRunning(c versioned.Interface, ns, name string, timeout time.Duration) error {
 	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
 		b, err := c.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
+		if b.Status.Phase == v1alpha1.BackupRunning {
+			return true, nil
+		}
+
 		for _, cond := range b.Status.Conditions {
 			switch cond.Type {
-			case v1alpha1.BackupRunning:
-				if cond.Status == corev1.ConditionTrue {
-					if cond.Status == corev1.ConditionTrue {
-						return true, nil
-					}
-				}
 			case v1alpha1.BackupFailed, v1alpha1.BackupInvalid:
 				if cond.Status == corev1.ConditionTrue {
 					return false, fmt.Errorf("backup is failed, reason: %s, message: %s", cond.Reason, cond.Message)

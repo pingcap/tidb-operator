@@ -430,14 +430,14 @@ func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(backup *v1alpha
 	)
 	klog.V(4).Infof("retry backup %s/%s, retry reason %s", ns, name, retryRecord.RetryReason)
 
-	// retry done
-	if isCurrentBackoffRetryDone(backup) {
-		return nil
-	}
-
 	// retrying
 	if isBackoffRetrying(backup) {
 		return c.doRetryFailedBackup(backup)
+	}
+
+	// retry done
+	if isCurrentBackoffRetryDone(backup) {
+		return nil
 	}
 
 	// check is exceed retry limit
@@ -543,6 +543,14 @@ func (c *Controller) doRetryFailedBackup(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	klog.V(4).Infof("backup %s/%s is retrying after it has been scheduled", ns, name)
+
+	// retry done
+	if isCurrentBackoffRetryDone(backup) {
+		// clean job is asynchronous, we need enqueue again,
+		// the backup status will be scheduled after create new job, and then this reconcile is really done.
+		c.enqueueBackup(backup)
+		return nil
+	}
 
 	// clean job
 	err := c.cleanBackupOldJobIfExist(backup)
