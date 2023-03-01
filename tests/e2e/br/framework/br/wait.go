@@ -261,6 +261,40 @@ func WaitForLogBackupProgressReachTS(c versioned.Interface, ns, name, expect str
 	return nil
 }
 
+func WaitAndDeleteRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup, timeout time.Duration) error {
+	ns := f.Namespace.Name
+	name := backup.Name
+
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		selector, err := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name).Selector()
+		if err != nil {
+			return false, fmt.Errorf("fail to generate selector for backup %s/%s, error is %v", ns, name, err)
+		}
+
+		pods, err := f.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})
+		if err != nil {
+			return false, fmt.Errorf("fail to list pods for backup %s/%s, error is %v", ns, name, err)
+		}
+
+		for _, pod := range pods.Items {
+			klog.Infof("delete backup %s/%s pod %s phase %s", ns, name, pod.Name, pod.Status.Phase)
+			if pod.Status.Phase != corev1.PodRunning {
+				klog.Infof("skip delete not running pod %s, phase is %s", pod.Name, pod.Status.Phase)
+				continue
+			}
+			err = f.ClientSet.CoreV1().Pods(ns).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+			if err != nil {
+				return false, fmt.Errorf("fail to delete pod %s for backup %s/%s, error is %v", pod.Name, ns, name, err)
+			}
+			return true, nil
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for delete running backup pod: %v", err)
+	}
+	return nil
+}
+
 func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup, timeout time.Duration) error {
 	ns := f.Namespace.Name
 	name := backup.Name
@@ -285,7 +319,7 @@ func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup
 		for _, pod := range pods.Items {
 			klog.Infof("kill backup %s/%s pod %s phase %s", ns, name, pod.Name, pod.Status.Phase)
 			if pod.Status.Phase != corev1.PodRunning {
-				klog.Infof("skip not running pod %s, phase is %s", pod.Name, pod.Status.Phase)
+				klog.Infof("skip kill not running pod %s, phase is %s", pod.Name, pod.Status.Phase)
 				continue
 			}
 			req := f.ClientSet.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(ns).SubResource("exec")
@@ -322,7 +356,43 @@ func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup
 		}
 		return false, nil
 	}); err != nil {
-		return fmt.Errorf("can't wait for kill running backup pod: %v", err)
+		return fmt.Errorf("can't wait for kill running backup %s/%s pod: %v", ns, name, err)
+	}
+
+	if err := WaitBackupPodOnPhase(f, backup, corev1.PodFailed, timeout); err != nil {
+		return fmt.Errorf("can't wait for backup %s/%s pod failed after kill it: %v", ns, name, err)
+	}
+
+	return nil
+}
+
+func WaitBackupPodOnPhase(f *framework.Framework, backup *v1alpha1.Backup, phase corev1.PodPhase, timeout time.Duration) error {
+	ns := f.Namespace.Name
+	name := backup.Name
+
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		selector, err := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name).Selector()
+		if err != nil {
+			return false, fmt.Errorf("fail to generate selector for backup %s/%s, error is %v", ns, name, err)
+		}
+
+		pods, err := f.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})
+		if err != nil {
+			return false, fmt.Errorf("fail to list pods for backup %s/%s, error is %v", ns, name, err)
+		}
+
+		for _, pod := range pods.Items {
+			klog.Infof("wait backup %s/%s pod %s on %s, current phase %s", ns, name, pod.Name, phase, pod.Status.Phase)
+			if pod.Status.Phase == phase {
+				return true, nil
+			}
+			if phase != corev1.PodFailed && pod.Status.Phase == corev1.PodFailed {
+				return false, fmt.Errorf("can't wait for backup %s/%s pod %s on %s, it already failed", ns, name, pod.Name, phase)
+			}
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for backup %s/%s pod on %s: %v", ns, name, phase, err)
 	}
 	return nil
 }

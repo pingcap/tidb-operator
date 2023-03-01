@@ -23,8 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
@@ -537,7 +535,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 	// 		framework.ExpectNoError(err)
 
 	// 		ginkgo.By("delete backup pod")
-	// 		err = deleteBackupPod(f, backup)
+	// 		err = brutil.WaitAndDeleteRunningBackupPod(f, backup, backupCompleteTimeout)
 	// 		framework.ExpectNoError(err)
 
 	// 		ginkgo.By("wait auto restart backup pod until backup complete")
@@ -595,14 +593,18 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			err = brutil.WaitAndKillRunningBackupPod(f, backup, backupCompleteTimeout)
 			framework.ExpectNoError(err)
 
-			ginkgo.By("wait auto restart backup pod until backup complete")
-			err = brutil.WaitForBackupComplete(f.ExtClient, ns, backupName, backupCompleteTimeout)
+			ginkgo.By("wait auto restart backup pod until running again")
+			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodRunning, backupCompleteTimeout)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("make sure it's restarted by backoff retry policy")
 			num, err := getBackoffRetryNum(f, backup)
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(num, 1)
+
+			ginkgo.By("wait auto restart backup pod until backup complete")
+			err = brutil.WaitForBackupComplete(f.ExtClient, ns, backupName, backupCompleteTimeout)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)
@@ -650,11 +652,11 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	framework.ExpectNoError(err)
 
 		// 	ginkgo.By("kill backup pod")
-		// 	err = killBackupPod(f, backup)
+		// 	err = brutil.WaitAndKillRunningBackupPod(f, backup, backupCompleteTimeout)
 		// 	framework.ExpectNoError(err)
 
-		// 	ginkgo.By("wait auto restart backup pod until backup running")
-		// 	err = brutil.WaitForBackupOnRunning(f.ExtClient, ns, backupName, backupCompleteTimeout)
+		// 	ginkgo.By("wait auto restart backup pod until running again")
+		// 	err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodRunning, backupCompleteTimeout)
 		// 	framework.ExpectNoError(err)
 
 		// 	ginkgo.By("make sure it's restarted by backoff retry policy")
@@ -663,11 +665,11 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	framework.ExpectEqual(num, 1)
 
 		// 	ginkgo.By("kill backup pod")
-		// 	err = killBackupPod(f, backup)
+		// 	err = brutil.WaitAndKillRunningBackupPod(f, backup, backupCompleteTimeout)
 		// 	framework.ExpectNoError(err)
 
-		// 	ginkgo.By("wait auto restart backup pod until backup running")
-		// 	err = brutil.WaitForBackupOnRunning(f.ExtClient, ns, backupName, backupCompleteTimeout)
+		// 	ginkgo.By("wait auto restart backup pod until running again")
+		// 	err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodRunning, backupCompleteTimeout)
 		// 	framework.ExpectNoError(err)
 
 		// 	ginkgo.By("make sure it's restarted by backoff retry policy")
@@ -676,7 +678,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	framework.ExpectEqual(num, 2)
 
 		// 	ginkgo.By("kill backup pod")
-		// 	err = killBackupPod(f, backup)
+		// 	err = brutil.WaitAndKillRunningBackupPod(f, backup, backupCompleteTimeout)
 		// 	framework.ExpectNoError(err)
 
 		// 	ginkgo.By("wait auto restart backup pod until backup failed")
@@ -729,11 +731,11 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	framework.ExpectNoError(err)
 
 		// 	ginkgo.By("kill backup pod")
-		// 	err = killBackupPod(f, backup)
+		// 	err = brutil.WaitAndKillRunningBackupPod(f, backup, backupCompleteTimeout)
 		// 	framework.ExpectNoError(err)
 
-		// 	ginkgo.By("wait auto restart backup pod until backup running")
-		// 	err = brutil.WaitForBackupOnRunning(f.ExtClient, ns, backupName, backupCompleteTimeout)
+		// 	ginkgo.By("wait auto restart backup pod until running again")
+		// 	err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodRunning, backupCompleteTimeout)
 		// 	framework.ExpectNoError(err)
 
 		// 	ginkgo.By("make sure it's restarted by backoff retry policy")
@@ -742,7 +744,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	framework.ExpectEqual(num, 1)
 
 		// 	ginkgo.By("kill backup pod")
-		// 	err = killBackupPod(f, backup)
+		// 	err = brutil.WaitAndKillRunningBackupPod(f, backup, backupCompleteTimeout)
 		// 	framework.ExpectNoError(err)
 
 		// 	ginkgo.By("wait auto restart backup pod until backup failed")
@@ -1138,31 +1140,6 @@ func createBackupAndWaitForRunning(f *e2eframework.Framework, name, tcName, typ 
 		return backup, err
 	}
 	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
-}
-
-func deleteBackupPod(f *e2eframework.Framework, backup *v1alpha1.Backup) error {
-	ns := f.Namespace.Name
-	name := backup.Name
-
-	selector, err := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name).Selector()
-	if err != nil {
-		return errors.Annotatef(err, "Fail to generate selector for backup %s/%s", ns, name)
-	}
-
-	pods, err := f.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return errors.Annotatef(err, "Fail to list pods for backup %s/%s", ns, name)
-	}
-
-	for _, pod := range pods.Items {
-		err = f.ClientSet.CoreV1().Pods(ns).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
-		if err != nil {
-			return errors.Annotatef(err, "Fail to delete pod %s for backup %s/%s", pod.Name, ns, name)
-		}
-		return nil
-	}
-
-	return errors.Errorf("Fail to delete pod for backup %s/%s", ns, name)
 }
 
 func getBackoffRetryNum(f *e2eframework.Framework, backup *v1alpha1.Backup) (int, error) {
