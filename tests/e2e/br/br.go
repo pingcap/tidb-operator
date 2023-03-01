@@ -1206,6 +1206,7 @@ func killBackupPod(f *e2eframework.Framework, backup *v1alpha1.Backup) error {
 	}
 
 	for _, pod := range pods.Items {
+		klog.Infof("kill pod %s phase %s", pod.Name, pod.Status.Phase)
 		// if pod.Status.Phase == v1.PodRunning {
 		req := f.ClientSet.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(ns).SubResource("exec")
 		scheme := runtime.NewScheme()
