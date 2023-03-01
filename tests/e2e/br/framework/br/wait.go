@@ -302,7 +302,8 @@ func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup
 		"/bin/sh",
 		"-c",
 		// "ps -ef | grep tidb-backup-manager | grep -v grep | awk '{print $1}' | xargs kill -9",
-		"whoami; ps -ef|grep backup; pkill -9 backup",
+		// "whoami; ps -ef|grep backup; pkill -9 backup",
+		"pkill -15 backup",
 	}
 
 	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
