@@ -257,8 +257,8 @@ func (c *Controller) enqueueBackup(obj interface{}) {
 	c.queue.Add(key)
 }
 
-// detectBackupJobOrPodFailure detect backup job or pod failure
-// it will record failure info to backup status, it is to realize reentrant logic
+// detectBackupJobOrPodFailure detect backup job or pod failure.
+// it will record failure info to backup status, it is to realize reentrant logic for spec.backoffRetryPolicy. so it only record snapshot backup failed now.
 func (c *Controller) detectBackupJobOrPodFailure(backup *v1alpha1.Backup) (bool, string, error) {
 	var (
 		ns               = backup.GetNamespace()
@@ -336,7 +336,7 @@ func (c *Controller) recordDetectedFailure(backup *v1alpha1.Backup, reason strin
 	}
 
 	klog.Errorf("Record backup %s/%s retry status, %v", ns, name, newStatus)
-	if err := c.control.UpdateCondition(backup, nil, newStatus); err != nil {
+	if err := c.control.UpdateStatus(backup, nil, newStatus); err != nil {
 		klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
 		return err
 	}
@@ -344,6 +344,8 @@ func (c *Controller) recordDetectedFailure(backup *v1alpha1.Backup, reason strin
 	return nil
 }
 
+// retryAfterDetectFailure retry detect failure according to spec.backoffRetryPolicy.
+// it only retry snapshot backup now. for others, it will marking failed directly.
 func (c *Controller) retryAfterDetectFailure(backup *v1alpha1.Backup, reason string) error {
 	var (
 		ns   = backup.GetNamespace()
@@ -353,7 +355,7 @@ func (c *Controller) retryAfterDetectFailure(backup *v1alpha1.Backup, reason str
 
 	// not snapshot backup, just mark as failed
 	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
-		err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
+		err = c.control.UpdateStatus(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "AlreadyFailed",
@@ -416,6 +418,16 @@ func (c *Controller) isBackupPodOrJobFailed(backup *v1alpha1.Backup) (bool, stri
 	return false, "", nil
 }
 
+// retrySnapshotBackupAccordingToBackoffPolicy retry snapshot backup according to spec.backoffRetryPolicy.
+// the main logic is reentrant:
+//  1. check whether is retrying which is marked as BackupRetryFailed,
+//     if true, clean job and mark RealRetryAt which means current retry is done.
+//  2. check whethe is retry done, skip.
+//  3. check whether exceed retry limit, if true, mark as failed.
+//  4. check whether exceed the retry interval which is recorded as ExpectedRetryAt,
+//     the value is the time detect failure + MinRetryDuration << (retry num -1),
+//     if true, mark as BackupRetryFailed, if not, wait to next loop.
+//  5. after mark as BackupRetryFailed, the logic will back to 1 in next loop.
 func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(backup *v1alpha1.Backup) error {
 	if len(backup.Status.BackoffRetryStatus) == 0 {
 		return nil
@@ -452,7 +464,7 @@ func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(backup *v1alpha
 
 	if isExceedRetryTimes || isRetryTimeout {
 		klog.Errorf("backup %s/%s exceed retry limit, failed reason %s", ns, name, failedReason)
-		err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
+		err = c.control.UpdateStatus(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "AlreadyFailed",
@@ -474,7 +486,7 @@ func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(backup *v1alpha
 	klog.V(4).Infof("backup %s/%s is the time to retry, expected retry time is %s, now is %s", ns, name, retryRecord.ExpectedRetryAt, now)
 
 	// start to retry
-	err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
+	err = c.control.UpdateStatus(backup, &v1alpha1.BackupCondition{
 		Type:    v1alpha1.BackupRetryFailed,
 		Status:  corev1.ConditionTrue,
 		Reason:  "RetryFailedBackup",
@@ -565,7 +577,7 @@ func (c *Controller) doRetryFailedBackup(backup *v1alpha1.Backup) error {
 	}
 
 	// add restart contidion to clean data before run br command
-	err = c.control.UpdateCondition(backup, &v1alpha1.BackupCondition{
+	err = c.control.UpdateStatus(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupRestart,
 		Status: corev1.ConditionTrue,
 	}, RealRetryStatus)

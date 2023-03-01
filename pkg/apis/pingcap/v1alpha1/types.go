@@ -1994,14 +1994,22 @@ type BRConfig struct {
 	Options []string `json:"options,omitempty"`
 }
 
-// BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup
+// BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup.
+// When backup job or pod failed, it will retry in the following way:
+// first time: retry after MinRetryDuration
+// second time: retry after MinRetryDuration * 2
+// third time: retry after MinRetryDuration * 2 * 2
+// ...
+// as the limit:
+// 1. the number of retries can not exceed MaxRetryTimes
+// 2. the time from discovery failure can not exceed RetryTimeout
 type BackoffRetryPolicy struct {
-	// MaxRetryTimes is the max retry times
-	// +kubebuilder:default=2
-	MaxRetryTimes int `json:"maxRetryTimes,omitempty"`
 	// MinRetryDuration is the seconds of min retry duration, the retry duration will be MinRetryDuration << (retry num -1)
 	// +kubebuilder:default=300
 	MinRetryDuration int `json:"minRetryDuration,omitempty"`
+	// MaxRetryTimes is the max retry times
+	// +kubebuilder:default=2
+	MaxRetryTimes int `json:"maxRetryTimes,omitempty"`
 	// RetryTimeout is the minutes of retry timeout
 	// +kubebuilder:default=30
 	RetryTimeout int `json:"retryTimeout,omitempty"`

@@ -22,8 +22,8 @@ import (
 type BackupManager interface {
 	// Sync	implements the logic for syncing Backup.
 	Sync(backup *v1alpha1.Backup) error
-	// UpdateCondition updates the condition for a Backup.
-	UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error
+	// UpdateStatus updates the status for a Backup, include condition and status info.
+	UpdateStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error
 }
 
 // RestoreManager implements the logic for manage restore.

@@ -3294,7 +3294,15 @@ bool
 <a href="#backupspec">BackupSpec</a>)
 </p>
 <p>
-<p>BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup</p>
+<p>BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup.
+When backup job or pod failed, it will retry in the following way:
+first time: retry after MinRetryDuration
+second time: retry after MinRetryDuration * 2
+third time: retry after MinRetryDuration * 2 * 2
+&hellip;
+as the limit:
+1. the number of retries can not exceed MaxRetryTimes
+2. the time from discovery failure can not exceed RetryTimeout</p>
 </p>
 <table>
 <thead>
@@ -3306,17 +3314,6 @@ bool
 <tbody>
 <tr>
 <td>
-<code>maxRetryTimes</code></br>
-<em>
-int
-</em>
-</td>
-<td>
-<p>MaxRetryTimes is the max retry times</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>minRetryDuration</code></br>
 <em>
 int
@@ -3324,6 +3321,17 @@ int
 </td>
 <td>
 <p>MinRetryDuration is the seconds of min retry duration, the retry duration will be MinRetryDuration &lt;&lt; (retry num -1)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxRetryTimes</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>MaxRetryTimes is the max retry times</p>
 </td>
 </tr>
 <tr>

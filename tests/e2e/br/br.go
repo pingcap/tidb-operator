@@ -14,7 +14,6 @@
 package backup
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -42,10 +41,7 @@ import (
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/tools/remotecommand"
-	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -596,7 +592,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("kill backup pod")
-			err = killBackupPod(f, backup)
+			err = brutil.WaitAndKillRunningBackupPod(f, backup, backupCompleteTimeout)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("wait auto restart backup pod until backup complete")
@@ -1182,67 +1178,6 @@ func getBackoffRetryNum(f *e2eframework.Framework, backup *v1alpha1.Backup) (int
 		return 0, nil
 	}
 	return newBackup.Status.BackoffRetryStatus[len(newBackup.Status.BackoffRetryStatus)-1].RetryNum, nil
-}
-
-func killBackupPod(f *e2eframework.Framework, backup *v1alpha1.Backup) error {
-	ns := f.Namespace.Name
-	name := backup.Name
-
-	selector, err := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name).Selector()
-	if err != nil {
-		return errors.Annotatef(err, "Fail to generate selector for backup %s/%s", ns, name)
-	}
-
-	pods, err := f.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return errors.Annotatef(err, "Fail to list pods for backup %s/%s", ns, name)
-	}
-
-	killCmds := []string{
-		"sh",
-		"-c",
-		// "ps -ef | grep tidb-backup-manager | grep -v grep | awk '{print $1}' | xargs kill -9",
-		"pkill -9 tidb-backup-manager",
-	}
-
-	for _, pod := range pods.Items {
-		klog.Infof("kill pod %s phase %s", pod.Name, pod.Status.Phase)
-		// if pod.Status.Phase == v1.PodRunning {
-		req := f.ClientSet.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(ns).SubResource("exec")
-		scheme := runtime.NewScheme()
-		if err := v1.AddToScheme(scheme); err != nil {
-			return err
-		}
-		parameterCodec := runtime.NewParameterCodec(scheme)
-		req.VersionedParams(&v1.PodExecOptions{
-			Stdin:     false,
-			Stdout:    true,
-			Stderr:    true,
-			TTY:       false,
-			Container: "backup",
-			Command:   killCmds,
-		}, parameterCodec)
-		exec, err := remotecommand.NewSPDYExecutor(f.ClientConfig(), "POST", req.URL())
-		if err != nil {
-			return err
-		}
-		var stdout, stderr bytes.Buffer
-		err = exec.Stream(remotecommand.StreamOptions{
-			Stdin:  nil,
-			Stdout: &stdout,
-			Stderr: &stderr,
-			Tty:    false,
-		})
-		klog.Infof("kill pod %s stdout %s", pod.Name, stdout.String())
-		klog.Infof("kill pod %s stderr %s", pod.Name, stderr.String())
-		if err != nil {
-			return errors.Annotatef(err, "Failed to kill pod for backup %s/%s, pod is %s", ns, name, pod.Name)
-		}
-		return nil
-		// }
-	}
-
-	return errors.Errorf("Failed to kill pod for backup %s/%s", ns, name)
 }
 
 // continueLogBackupAndWaitForComplete update backup cr to continue run log backup subcommand

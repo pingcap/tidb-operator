@@ -71,7 +71,8 @@ func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
 	return bm.syncBackupJob(backup)
 }
 
-func (bm *backupManager) UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
+// UpdateStatus updates the status for a Backup, include condition and status info.
+func (bm *backupManager) UpdateStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
 	return bm.statusUpdater.Update(backup, condition, newStatus)
 }
 
@@ -872,7 +873,8 @@ func (m *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
 	return m.err
 }
 
-func (m *FakeBackupManager) UpdateCondition(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
+// UpdateStatus updates the status for a Backup, include condition and status info.
+func (m *FakeBackupManager) UpdateStatus(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
 	return nil
 }
 

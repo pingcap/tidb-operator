@@ -14,20 +14,26 @@
 package backup
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
 	"path"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/klog"
 )
 
 var (
@@ -251,6 +257,72 @@ func WaitForLogBackupProgressReachTS(c versioned.Interface, ns, name, expect str
 		return false, nil
 	}); err != nil {
 		return fmt.Errorf("can't wait for log backup tracker reach ts complete: %v", err)
+	}
+	return nil
+}
+
+func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup, timeout time.Duration) error {
+	ns := f.Namespace.Name
+	name := backup.Name
+	killCmds := []string{
+		"sh",
+		"-c",
+		// "ps -ef | grep tidb-backup-manager | grep -v grep | awk '{print $1}' | xargs kill -9",
+		"pkill -9 tidb-backup-manager",
+	}
+
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		selector, err := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name).Selector()
+		if err != nil {
+			return false, fmt.Errorf("fail to generate selector for backup %s/%s, error is %v", ns, name, err)
+		}
+
+		pods, err := f.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})
+		if err != nil {
+			return false, fmt.Errorf("fail to list pods for backup %s/%s, error is %v", ns, name, err)
+		}
+
+		for _, pod := range pods.Items {
+			klog.Infof("kill backup %s/%s pod %s phase %s", ns, name, pod.Name, pod.Status.Phase)
+			if pod.Status.Phase != corev1.PodRunning {
+				klog.Infof("skip not running pod %s, phase is %s", pod.Name, pod.Status.Phase)
+				continue
+			}
+			req := f.ClientSet.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(ns).SubResource("exec")
+			scheme := runtime.NewScheme()
+			if err := corev1.AddToScheme(scheme); err != nil {
+				return false, err
+			}
+			parameterCodec := runtime.NewParameterCodec(scheme)
+			req.VersionedParams(&corev1.PodExecOptions{
+				Stdin:     false,
+				Stdout:    true,
+				Stderr:    true,
+				TTY:       false,
+				Container: "backup",
+				Command:   killCmds,
+			}, parameterCodec)
+			exec, err := remotecommand.NewSPDYExecutor(f.ClientConfig(), "POST", req.URL())
+			if err != nil {
+				return false, err
+			}
+			var stdout, stderr bytes.Buffer
+			err = exec.Stream(remotecommand.StreamOptions{
+				Stdin:  nil,
+				Stdout: &stdout,
+				Stderr: &stderr,
+				Tty:    false,
+			})
+			klog.Infof("kill pod %s stdout %s", pod.Name, stdout.String())
+			klog.Infof("kill pod %s stderr %s", pod.Name, stderr.String())
+			if err != nil {
+				return false, fmt.Errorf("failed to kill pod for backup %s/%s, pod is %s, error is %v", ns, name, pod.Name, err)
+			}
+			return true, nil
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for kill running backup pod: %v", err)
 	}
 	return nil
 }
