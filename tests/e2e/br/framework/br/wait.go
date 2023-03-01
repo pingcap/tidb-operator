@@ -299,10 +299,10 @@ func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup
 	ns := f.Namespace.Name
 	name := backup.Name
 	killCmds := []string{
-		"sh",
+		"/bin/sh",
 		"-c",
 		// "ps -ef | grep tidb-backup-manager | grep -v grep | awk '{print $1}' | xargs kill -9",
-		"pkill -9 tidb-backup-manager",
+		"killall -9 backup",
 	}
 
 	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
@@ -332,7 +332,7 @@ func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup
 				Stdin:     false,
 				Stdout:    true,
 				Stderr:    true,
-				TTY:       false,
+				TTY:       true,
 				Container: "backup",
 				Command:   killCmds,
 			}, parameterCodec)
@@ -342,10 +342,8 @@ func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup
 			}
 			var stdout, stderr bytes.Buffer
 			err = exec.Stream(remotecommand.StreamOptions{
-				Stdin:  nil,
 				Stdout: &stdout,
 				Stderr: &stderr,
-				Tty:    false,
 			})
 			klog.Infof("kill pod %s stdout %s", pod.Name, stdout.String())
 			klog.Infof("kill pod %s stderr %s", pod.Name, stderr.String())

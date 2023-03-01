@@ -189,7 +189,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 
 		// we will create backup job when we mark backup as scheduled status,
 		// but the backup job or its pod may failed due to insufficient resources or other reasons in k8s,
-		// we should detect this kind of failure and try to restart backup accroding to spec.backoffRetryPolicy.
+		// we should detect this kind of failure and try to restart backup according to spec.backoffRetryPolicy.
 		isPodOrJobFailed, reason, err := c.detectBackupJobOrPodFailure(newBackup)
 		if err != nil {
 			klog.Errorf("Fail to detect backup %s/%s failure, error %v", ns, name, err)

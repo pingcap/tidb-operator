@@ -453,26 +453,19 @@ func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *fl
 }
 
 func updateBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
-	var currentRecord *v1alpha1.BackoffRetryRecord
 	isUpdate := false
+	currentRecord := getCurrentBackoffRetryRecord(status, newStatus)
 
-	if len(status.BackoffRetryStatus) == 0 {
-		status.BackoffRetryStatus = make([]v1alpha1.BackoffRetryRecord, 0)
-		status.BackoffRetryStatus = append(status.BackoffRetryStatus, v1alpha1.BackoffRetryRecord{})
-		currentRecord = &status.BackoffRetryStatus[0]
-		isUpdate = true
-	} else {
-		if newStatus.RetryNum == nil {
-			currentRecord = &status.BackoffRetryStatus[len(status.BackoffRetryStatus)-1]
-		} else {
-			if *newStatus.RetryNum > len(status.BackoffRetryStatus) {
-				status.BackoffRetryStatus = append(status.BackoffRetryStatus, v1alpha1.BackoffRetryRecord{})
-				currentRecord = &status.BackoffRetryStatus[len(status.BackoffRetryStatus)-1]
-				isUpdate = true
-			} else {
-				currentRecord = &status.BackoffRetryStatus[*newStatus.RetryNum-1]
-			}
+	// no record which is newStatus want to modify in current backup status, we need create a new record
+	if currentRecord == nil {
+		// no records in BackoffRetryStatus, make record array first
+		if len(status.BackoffRetryStatus) == 0 {
+			status.BackoffRetryStatus = make([]v1alpha1.BackoffRetryRecord, 0)
 		}
+		// create a new record
+		status.BackoffRetryStatus = append(status.BackoffRetryStatus, v1alpha1.BackoffRetryRecord{})
+		currentRecord = &status.BackoffRetryStatus[len(status.BackoffRetryStatus)-1]
+		isUpdate = true
 	}
 
 	if newStatus.RetryNum != nil && *newStatus.RetryNum != currentRecord.RetryNum {
@@ -501,6 +494,22 @@ func updateBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatus *BackupUp
 	}
 
 	return isUpdate
+}
+
+func getCurrentBackoffRetryRecord(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) *v1alpha1.BackoffRetryRecord {
+	// no record
+	if len(status.BackoffRetryStatus) == 0 {
+		return nil
+	}
+	// no RetryNum, means modify latest record
+	if newStatus.RetryNum == nil {
+		return &status.BackoffRetryStatus[len(status.BackoffRetryStatus)-1]
+	}
+
+	if *newStatus.RetryNum <= len(status.BackoffRetryStatus) {
+		return &status.BackoffRetryStatus[*newStatus.RetryNum-1]
+	}
+	return nil
 }
 
 var _ BackupConditionUpdaterInterface = &realBackupConditionUpdater{}
