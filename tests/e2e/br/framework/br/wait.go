@@ -318,22 +318,20 @@ func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup
 
 		for _, pod := range pods.Items {
 			klog.Infof("kill backup %s/%s pod %s phase %s", ns, name, pod.Name, pod.Status.Phase)
+			if pod.Status.Phase == corev1.PodFailed {
+				klog.Infof("backup %s/%s pod %s failed, successfully kill it", ns, name, pod.Name)
+				return true, nil
+			}
 			if pod.Status.Phase != corev1.PodRunning {
 				klog.Infof("skip kill not running pod %s, phase is %s", pod.Name, pod.Status.Phase)
 				continue
 			}
 			req := f.ClientSet.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(ns).SubResource("exec")
-			// scheme := runtime.NewScheme()
-			// if err := corev1.AddToScheme(scheme); err != nil {
-			// 	return false, err
-			// }
-			// parameterCodec := runtime.NewParameterCodec(scheme)
 			req.VersionedParams(&corev1.PodExecOptions{
-				Stdin:  false,
-				Stdout: true,
-				Stderr: true,
-				TTY:    true,
-				// Container: "backup",
+				Stdin:   false,
+				Stdout:  true,
+				Stderr:  true,
+				TTY:     true,
 				Command: killCmds,
 			}, scheme.ParameterCodec)
 			exec, err := remotecommand.NewSPDYExecutor(f.ClientConfig(), "POST", req.URL())
@@ -350,15 +348,12 @@ func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup
 			if err != nil {
 				return false, fmt.Errorf("failed to kill pod for backup %s/%s, pod is %s, error is %v", ns, name, pod.Name, err)
 			}
-			return true, nil
+			// we need check whether pod is failed after kill it
+			return false, nil
 		}
 		return false, nil
 	}); err != nil {
 		return fmt.Errorf("can't wait for kill running backup %s/%s pod: %v", ns, name, err)
-	}
-
-	if err := WaitBackupPodOnPhase(f, backup, corev1.PodFailed, timeout); err != nil {
-		return fmt.Errorf("can't wait for backup %s/%s pod failed after kill it: %v", ns, name, err)
 	}
 
 	return nil
