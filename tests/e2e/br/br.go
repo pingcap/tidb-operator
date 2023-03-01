@@ -1238,7 +1238,7 @@ func killBackupPod(f *e2eframework.Framework, backup *v1alpha1.Backup) error {
 		if err != nil {
 			return errors.Annotatef(err, "Failed to kill pod for backup %s/%s, pod is %s", ns, name, pod.Name)
 		}
-		// return nil
+		return nil
 		// }
 	}
 
