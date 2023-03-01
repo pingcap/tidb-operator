@@ -1159,13 +1159,11 @@ func deleteBackupPod(f *e2eframework.Framework, backup *v1alpha1.Backup) error {
 	}
 
 	for _, pod := range pods.Items {
-		if pod.Status.Phase == v1.PodRunning {
-			err = f.ClientSet.CoreV1().Pods(ns).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
-			if err != nil {
-				return errors.Annotatef(err, "Fail to delete pod %s for backup %s/%s", pod.Name, ns, name)
-			}
-			return nil
+		err = f.ClientSet.CoreV1().Pods(ns).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+		if err != nil {
+			return errors.Annotatef(err, "Fail to delete pod %s for backup %s/%s", pod.Name, ns, name)
 		}
+		return nil
 	}
 
 	return errors.Errorf("Fail to delete pod for backup %s/%s", ns, name)
@@ -1208,39 +1206,39 @@ func killBackupPod(f *e2eframework.Framework, backup *v1alpha1.Backup) error {
 	}
 
 	for _, pod := range pods.Items {
-		if pod.Status.Phase == v1.PodRunning {
-			req := f.ClientSet.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(ns).SubResource("exec")
-			scheme := runtime.NewScheme()
-			if err := v1.AddToScheme(scheme); err != nil {
-				return err
-			}
-			parameterCodec := runtime.NewParameterCodec(scheme)
-			req.VersionedParams(&v1.PodExecOptions{
-				Stdin:     false,
-				Stdout:    true,
-				Stderr:    true,
-				TTY:       false,
-				Container: "backup",
-				Command:   killCmds,
-			}, parameterCodec)
-			exec, err := remotecommand.NewSPDYExecutor(f.ClientConfig(), "POST", req.URL())
-			if err != nil {
-				return err
-			}
-			var stdout, stderr bytes.Buffer
-			err = exec.Stream(remotecommand.StreamOptions{
-				Stdin:  nil,
-				Stdout: &stdout,
-				Stderr: &stderr,
-				Tty:    false,
-			})
-			klog.Infof("kill pod %s stdout %s", pod.Name, stdout.String())
-			klog.Infof("kill pod %s stderr %s", pod.Name, stderr.String())
-			if err != nil {
-				return errors.Annotatef(err, "Failed to kill pod %s for backup %s/%s", pod.Name, ns, name)
-			}
-			return nil
+		// if pod.Status.Phase == v1.PodRunning {
+		req := f.ClientSet.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(ns).SubResource("exec")
+		scheme := runtime.NewScheme()
+		if err := v1.AddToScheme(scheme); err != nil {
+			return err
 		}
+		parameterCodec := runtime.NewParameterCodec(scheme)
+		req.VersionedParams(&v1.PodExecOptions{
+			Stdin:     false,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       false,
+			Container: "backup",
+			Command:   killCmds,
+		}, parameterCodec)
+		exec, err := remotecommand.NewSPDYExecutor(f.ClientConfig(), "POST", req.URL())
+		if err != nil {
+			return err
+		}
+		var stdout, stderr bytes.Buffer
+		err = exec.Stream(remotecommand.StreamOptions{
+			Stdin:  nil,
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Tty:    false,
+		})
+		klog.Infof("kill pod %s stdout %s", pod.Name, stdout.String())
+		klog.Infof("kill pod %s stderr %s", pod.Name, stderr.String())
+		if err != nil {
+			return errors.Annotatef(err, "Failed to kill pod for backup %s/%s, pod is %s", ns, name, pod.Name)
+		}
+		// return nil
+		// }
 	}
 
 	return errors.Errorf("Failed to kill pod for backup %s/%s", ns, name)
