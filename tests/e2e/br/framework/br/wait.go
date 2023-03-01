@@ -30,8 +30,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/klog"
 )
@@ -302,7 +302,7 @@ func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup
 		"/bin/sh",
 		"-c",
 		// "ps -ef | grep tidb-backup-manager | grep -v grep | awk '{print $1}' | xargs kill -9",
-		"killall -9 backup",
+		"pkill -9 backup",
 	}
 
 	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
@@ -323,19 +323,19 @@ func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup
 				continue
 			}
 			req := f.ClientSet.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(ns).SubResource("exec")
-			scheme := runtime.NewScheme()
-			if err := corev1.AddToScheme(scheme); err != nil {
-				return false, err
-			}
-			parameterCodec := runtime.NewParameterCodec(scheme)
+			// scheme := runtime.NewScheme()
+			// if err := corev1.AddToScheme(scheme); err != nil {
+			// 	return false, err
+			// }
+			// parameterCodec := runtime.NewParameterCodec(scheme)
 			req.VersionedParams(&corev1.PodExecOptions{
-				Stdin:     false,
-				Stdout:    true,
-				Stderr:    true,
-				TTY:       true,
-				Container: "backup",
-				Command:   killCmds,
-			}, parameterCodec)
+				Stdin:  false,
+				Stdout: true,
+				Stderr: true,
+				TTY:    true,
+				// Container: "backup",
+				Command: killCmds,
+			}, scheme.ParameterCodec)
 			exec, err := remotecommand.NewSPDYExecutor(f.ClientConfig(), "POST", req.URL())
 			if err != nil {
 				return false, err

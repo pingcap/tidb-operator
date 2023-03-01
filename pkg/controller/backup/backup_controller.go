@@ -519,11 +519,6 @@ func isRetryTimeout(backup *v1alpha1.Backup, now *time.Time) bool {
 	return now.Unix()-firstDetectAt.Unix() > int64(backup.Spec.BackoffRetryPolicy.RetryTimeout)*int64(time.Minute)/int64(time.Second)
 }
 
-// TODO check whether the reason need to retry
-func isCanRetryFailed(reason string) bool {
-	return true
-}
-
 func isTimeToRetry(backup *v1alpha1.Backup, now *time.Time) bool {
 	if len(backup.Status.BackoffRetryStatus) == 0 {
 		return false
