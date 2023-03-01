@@ -386,9 +386,6 @@ func WaitBackupPodOnPhase(f *framework.Framework, backup *v1alpha1.Backup, phase
 			if pod.Status.Phase == phase {
 				return true, nil
 			}
-			if phase != corev1.PodFailed && pod.Status.Phase == corev1.PodFailed {
-				return false, fmt.Errorf("can't wait for backup %s/%s pod %s on %s, it already failed", ns, name, pod.Name, phase)
-			}
 		}
 		return false, nil
 	}); err != nil {
