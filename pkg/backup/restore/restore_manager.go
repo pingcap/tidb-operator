@@ -37,6 +37,11 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+const (
+	TiKVConfigEncryptionMethod      = "security.encryption.data-encryption-method"
+	TiKVConfigEncryptionMasterKeyId = "security.encryption.master-key.key-id"
+)
+
 type restoreManager struct {
 	deps          *controller.Dependencies
 	statusUpdater controller.RestoreConditionUpdaterInterface
@@ -290,33 +295,34 @@ func (rm *restoreManager) checkTiKVEncryption(r *v1alpha1.Restore, tc *v1alpha1.
 		return err
 	}
 
-	// check encryption is enabled
-	if v := backupConfig.Get("security.encryption.data-encryption-method"); v != nil {
-		config := tc.Spec.TiKV.Config
-		if config == nil {
-			return fmt.Errorf("TiKV encryption config missmatched, backup configured TiKV encription, however, restore tc.spec.tikv.config doesn't contains encryption, please check TiKV encryption config. e.g. download s3 backupmeta, check kubernetes.crd_tidb_cluster.spec, and then edit restore tc.")
-		}
+	// nothing configured in crd during the backup
+	if backupConfig == nil {
+		return nil
+	}
 
-		encryptMethod := v.Interface()
-		if encryptMethod != "plaintext" {
-			// restore crd must contains data-encryption
-			rv := config.Get("security.encryption.data-encryption-method")
-			if rv == nil || rv.Interface() == "plaintext" {
-				return fmt.Errorf("TiKV encryption config missmatched, backup data enabled TiKV encription, restore crd does not enabled TiKV encription")
-			}
-		}
+	// check if encryption is enabled in backup tikv config
+	backupEncryptMethod := backupConfig.Get(TiKVConfigEncryptionMethod)
+	if backupEncryptMethod == nil || backupEncryptMethod.Interface() == "plaintext" {
+		return nil //encryption is disabled
+	}
+
+	// tikv backup encryption is enabled
+	config := tc.Spec.TiKV.Config
+	if config == nil {
+		return fmt.Errorf("TiKV encryption config missmatched, backup configured TiKV encryption, however, restore tc.spec.tikv.config doesn't contains encryption, please check TiKV encryption config. e.g. download s3 backupmeta, check kubernetes.crd_tidb_cluster.spec, and then edit restore tc.")
+	}
+
+	restoreEncryptMethod := config.Get(TiKVConfigEncryptionMethod)
+	if backupEncryptMethod.Interface() != restoreEncryptMethod.Interface() {
+		// restore crd must contains data-encryption
+		return fmt.Errorf("TiKV encryption config missmatched, backup data enabled TiKV encryption, restore crd does not enabled TiKV encryption")
 	}
 
 	// if backup tikv configured encryption, restore require tc to have the same encryption configured.
 	// since master key is is unique, only check master key id is enough. e.g. https://docs.aws.amazon.com/kms/latest/cryptographic-details/basic-concepts.html
-	backupMasterKey := backupConfig.Get("security.encryption.master-key.key-id")
+	backupMasterKey := backupConfig.Get(TiKVConfigEncryptionMasterKeyId)
 	if backupMasterKey != nil {
-		config := tc.Spec.TiKV.Config
-		if config == nil {
-			return fmt.Errorf("TiKV encryption config missmatched, backup configured TiKV encription, however, restore tc.spec.tikv.config doesn't contains encryption, please check TiKV encryption config. e.g. download s3 backupmeta, check kubernetes.crd_tidb_cluster.spec, and then edit restore tc.")
-		}
-
-		restoreMasterKey := config.Get("security.encryption.master-key.key-id")
+		restoreMasterKey := config.Get(TiKVConfigEncryptionMasterKeyId)
 		if restoreMasterKey == nil {
 			return fmt.Errorf("TiKV encryption config missmatched, backup data has master key, restore crd have not one")
 		}
