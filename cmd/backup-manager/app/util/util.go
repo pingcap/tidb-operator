@@ -506,7 +506,6 @@ func ParseRestoreProgress(line string) (step, progress string) {
 	return
 }
 
-// TODO use https://github.com/pingcap/failpoint instead e2e test env
 const (
 	e2eBackupEnv                string = "E2E_TEST_ENV"
 	e2eExtendBackupTime         string = "Extend_BACKUP_TIME"

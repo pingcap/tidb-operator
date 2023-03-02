@@ -14,7 +14,6 @@
 package backup
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -31,8 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/klog"
 )
 
@@ -277,7 +274,6 @@ func WaitAndDeleteRunningBackupPod(f *framework.Framework, backup *v1alpha1.Back
 		}
 
 		for _, pod := range pods.Items {
-			klog.Infof("delete backup %s/%s pod %s phase %s", ns, name, pod.Name, pod.Status.Phase)
 			if pod.Status.Phase != corev1.PodRunning {
 				klog.Infof("skip delete not running pod %s, phase is %s", pod.Name, pod.Status.Phase)
 				continue
@@ -292,71 +288,6 @@ func WaitAndDeleteRunningBackupPod(f *framework.Framework, backup *v1alpha1.Back
 	}); err != nil {
 		return fmt.Errorf("can't wait for delete running backup pod: %v", err)
 	}
-	return nil
-}
-
-func WaitAndKillRunningBackupPod(f *framework.Framework, backup *v1alpha1.Backup, timeout time.Duration) error {
-	ns := f.Namespace.Name
-	name := backup.Name
-	killCmds := []string{
-		"/bin/sh",
-		"-c",
-		// "ps -ef | grep tidb-backup-manager | grep -v grep | awk '{print $1}' | xargs kill -9",
-		// "whoami; ps -ef|grep backup; pkill -9 backup",
-		"pkill -15 backup",
-	}
-
-	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
-		selector, err := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name).Selector()
-		if err != nil {
-			return false, fmt.Errorf("fail to generate selector for backup %s/%s, error is %v", ns, name, err)
-		}
-
-		pods, err := f.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})
-		if err != nil {
-			return false, fmt.Errorf("fail to list pods for backup %s/%s, error is %v", ns, name, err)
-		}
-
-		for _, pod := range pods.Items {
-			klog.Infof("kill backup %s/%s pod %s phase %s", ns, name, pod.Name, pod.Status.Phase)
-			if pod.Status.Phase == corev1.PodFailed {
-				klog.Infof("backup %s/%s pod %s failed, successfully kill it", ns, name, pod.Name)
-				return true, nil
-			}
-			if pod.Status.Phase != corev1.PodRunning {
-				klog.Infof("skip kill not running pod %s, phase is %s", pod.Name, pod.Status.Phase)
-				continue
-			}
-			req := f.ClientSet.CoreV1().RESTClient().Post().Resource("pods").Name(pod.Name).Namespace(ns).SubResource("exec")
-			req.VersionedParams(&corev1.PodExecOptions{
-				Stdin:   false,
-				Stdout:  true,
-				Stderr:  true,
-				TTY:     true,
-				Command: killCmds,
-			}, scheme.ParameterCodec)
-			exec, err := remotecommand.NewSPDYExecutor(f.ClientConfig(), "POST", req.URL())
-			if err != nil {
-				return false, err
-			}
-			var stdout, stderr bytes.Buffer
-			err = exec.Stream(remotecommand.StreamOptions{
-				Stdout: &stdout,
-				Stderr: &stderr,
-			})
-			klog.Infof("kill pod %s stdout %s", pod.Name, stdout.String())
-			klog.Infof("kill pod %s stderr %s", pod.Name, stderr.String())
-			if err != nil {
-				return false, fmt.Errorf("failed to kill pod for backup %s/%s, pod is %s, error is %v", ns, name, pod.Name, err)
-			}
-			// we need check whether pod is failed after kill it
-			return false, nil
-		}
-		return false, nil
-	}); err != nil {
-		return fmt.Errorf("can't wait for kill running backup %s/%s pod: %v", ns, name, err)
-	}
-
 	return nil
 }
 
@@ -376,7 +307,6 @@ func WaitBackupPodOnPhase(f *framework.Framework, backup *v1alpha1.Backup, phase
 		}
 
 		for _, pod := range pods.Items {
-			klog.Infof("wait backup %s/%s pod %s on %s, current phase %s", ns, name, pod.Name, phase, pod.Status.Phase)
 			if pod.Status.Phase == phase {
 				return true, nil
 			}

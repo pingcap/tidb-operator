@@ -323,8 +323,8 @@ func (bo *Options) updateProgressFromFile(
 	}
 }
 
+// TODO use https://github.com/pingcap/failpoint instead e2e test env
 func e2eTestSimulate(bo *Options) {
-	// TODO use https://github.com/pingcap/failpoint instead e2e test env
 	if backupUtil.IsE2EExtendBackupTime() {
 		for i := 0; i < 5*60; i++ {
 			klog.Infof("simulate br running for backup %s", bo)
