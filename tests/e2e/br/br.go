@@ -54,8 +54,9 @@ const (
 	typeBR     string = "BR"
 	typeDumper string = "Dumper"
 	// TODO use https://github.com/pingcap/failpoint instead e2e test env
-	e2eBackupEnv        string = "E2E_TEST_ENV"
-	e2eExtendBackupTime string = "Extend_BACKUP_TIME"
+	e2eBackupEnv                string = "E2E_TEST_ENV"
+	e2eExtendBackupTime         string = "Extend_BACKUP_TIME"
+	e2eExtendBackupTimeAndPanic string = "Extend_BACKUP_TIME_AND_PANIC"
 )
 
 type option func(t *testcase)
@@ -585,12 +586,18 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
 			framework.ExpectNoError(err)
 
-			ginkgo.By("kill backup pod")
-			err = brutil.WaitAndKillRunningBackupPod(f, backup, backupCompleteTimeout)
+			ginkgo.By("wait backup pod failed by simulate panic")
+			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodFailed, backupCompleteTimeout)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("update backup evn, remove simulate panic")
+			backup, err = updateBackup(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+			})
 			framework.ExpectNoError(err)
 
 			ginkgo.By("wait auto restart backup pod until running again")
@@ -1175,6 +1182,21 @@ func continueLogBackupAndWaitForComplete(f *e2eframework.Framework, backup *v1al
 	}
 
 	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+}
+
+// updateBackup update backup cr
+func updateBackup(f *e2eframework.Framework, backup *v1alpha1.Backup, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
+	ns := f.Namespace.Name
+
+	if configure != nil {
+		configure(backup)
+	}
+
+	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{}); err != nil {
+		return nil, err
+	}
+
+	return backup, nil
 }
 
 func deleteBackup(f *e2eframework.Framework, name string) error {
