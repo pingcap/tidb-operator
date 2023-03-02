@@ -281,11 +281,6 @@ func buildLogBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.
 
 	logBackupSpec := *bs.Spec.LogBackupTemplate.DeepCopy()
 
-	clusterNamespace := logBackupSpec.BR.ClusterNamespace
-	if clusterNamespace == "" {
-		clusterNamespace = ns
-	}
-
 	logBackupPrefix := "log" + "-" + timestamp.UTC().Format(v1alpha1.BackupNameTimeFormat)
 	if logBackupSpec.S3 != nil {
 		logBackupSpec.S3.Prefix = path.Join(logBackupSpec.S3.Prefix, logBackupPrefix)
