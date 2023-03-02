@@ -729,9 +729,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
 				backup.Spec.BackoffRetryPolicy = v1alpha1.BackoffRetryPolicy{
-					MinRetryDuration: 60,
+					MinRetryDuration: 70,
 					MaxRetryTimes:    2,
-					RetryTimeout:     1,
+					RetryTimeout:     2,
 				}
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})

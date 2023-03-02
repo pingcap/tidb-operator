@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog"
 )
 
 var (
@@ -275,7 +274,6 @@ func WaitAndDeleteRunningBackupPod(f *framework.Framework, backup *v1alpha1.Back
 
 		for _, pod := range pods.Items {
 			if pod.Status.Phase != corev1.PodRunning {
-				klog.Infof("skip delete not running pod %s, phase is %s", pod.Name, pod.Status.Phase)
 				continue
 			}
 			err = f.ClientSet.CoreV1().Pods(ns).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
