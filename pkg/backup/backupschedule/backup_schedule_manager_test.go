@@ -94,7 +94,7 @@ func TestManager(t *testing.T) {
 		m.now = func() time.Time { return now.AddDate(0, 0, i) }
 		err = m.Sync(bs)
 		g.Expect(err).Should(BeNil())
-		bks := helper.checkBacklist(bs.Namespace, i+10)
+		bks := helper.checkBacklist(bs.Namespace, i+10, false)
 		// complete the backup created
 		for i := range bks.Items {
 			bk := bks.Items[i]
@@ -114,17 +114,29 @@ func TestManager(t *testing.T) {
 
 	t.Log("test setting MaxBackups")
 	m.now = time.Now
-	bs.Spec.MaxBackups = pointer.Int32Ptr(3)
+	bs.Spec.MaxBackups = pointer.Int32Ptr(5)
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 3)
+	helper.checkBacklist(bs.Namespace, 5, false)
 
-	t.Log("test setting setting MaxReservedTime")
+	t.Log("test setting MaxReservedTime")
 	bs.Spec.MaxBackups = nil
+	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
+	err = m.Sync(bs)
+	g.Expect(err).Should(BeNil())
+	helper.checkBacklist(bs.Namespace, 3, false)
+
+	t.Log("test has log backup")
+	bs.Spec.LogBackupTemplate = &v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog}
+	logBackup := buildLogBackup(bs, now.Add(-72*time.Hour))
+	logBackup.Status.CommitTs = getTSOStr(now.Add(-72 * time.Hour).Unix())
+	logBackup.Status.LogCheckpointTs = getTSOStr(now.Unix())
+	helper.createBackup(logBackup)
+	bs.Status.LogBackup = &logBackup.Name
 	bs.Spec.MaxReservedTime = pointer.StringPtr("23h")
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 1)
+	helper.checkBacklist(bs.Namespace, 2, true)
 }
 
 func TestGetLastScheduledTime(t *testing.T) {
@@ -350,36 +362,63 @@ func (h *helper) close() {
 }
 
 // check for exists num Backup and return the exists backups "BackupList".
-func (h *helper) checkBacklist(ns string, num int) (bks *v1alpha1.BackupList) {
+func (h *helper) checkBacklist(ns string, num int, checkLogBackupTruncate bool) (bks *v1alpha1.BackupList) {
 	t := h.t
 	deps := h.deps
 	g := NewGomegaWithT(t)
+
+	check := func(backups []*v1alpha1.Backup) error {
+		snapshotBackups, logBackup := separateSnapshotBackupsAndLogBackup(backups)
+		// check snapshot backup num
+		if len(snapshotBackups) != num {
+			var names []string
+			for _, bk := range snapshotBackups {
+				names = append(names, bk.Name)
+			}
+			return fmt.Errorf("there %d backup, but should be %d, cur backups: %v", len(snapshotBackups), num, names)
+		}
+		if !checkLogBackupTruncate {
+			return nil
+		}
+		// check has log backup
+		if logBackup == nil {
+			return fmt.Errorf("there is no log backup, but should have")
+		}
+		// check truncateTSO, it should equal the earliest snapshot backup after gc
+		if len(snapshotBackups) == 0 {
+			return fmt.Errorf("there should have snapshot backup if need check log backup truncate tso")
+		}
+		if logBackup.Status.LogSuccessTruncateUntil != snapshotBackups[0].Spec.CommitTs {
+			return fmt.Errorf("log backup truncate tso should be %s, but cur is %s", snapshotBackups[0].Spec.CommitTs, logBackup.Status.LogSuccessTruncateUntil)
+		}
+		return nil
+	}
 
 	t.Helper()
 	g.Eventually(func() error {
 		var err error
 		bks, err = deps.Clientset.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
 		g.Expect(err).Should(BeNil())
-		if len(bks.Items) != num {
-			var names []string
-			for _, bk := range bks.Items {
-				names = append(names, bk.Name)
-			}
-			return fmt.Errorf("there %d backup, but should be %d, cur backups: %v", len(bks.Items), num, names)
-		}
-		return nil
+		backups := convertToBackupPtrList(bks.Items)
+		return check(backups)
 	}, time.Second*30).Should(BeNil())
 
 	g.Eventually(func() error {
 		var err error
-		bks, err := deps.BackupLister.Backups(ns).List(labels.Everything())
-		if err == nil && len(bks) == num {
-			return nil
-		}
-		return fmt.Errorf("there %d backup, but should be %d", len(bks), num)
+		backups, err := deps.BackupLister.Backups(ns).List(labels.Everything())
+		g.Expect(err).Should(BeNil())
+		return check(backups)
 	}, time.Second*30).Should(BeNil())
 
 	return
+}
+
+func convertToBackupPtrList(backups []v1alpha1.Backup) []*v1alpha1.Backup {
+	backupPtrs := make([]*v1alpha1.Backup, 0)
+	for i := 0; i < len(backups); i++ {
+		backupPtrs = append(backupPtrs, &backups[i])
+	}
+	return backupPtrs
 }
 
 func (h *helper) updateBackup(bk *v1alpha1.Backup) {
