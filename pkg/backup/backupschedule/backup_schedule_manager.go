@@ -134,7 +134,7 @@ func (bm *backupScheduleManager) performLogBackupIfNeeded(bs *v1alpha1.BackupSch
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
-	// no log backup or already run
+	// no log backup or already run no need to perform log backup again
 	if bs.Spec.LogBackupTemplate == nil || bs.Status.LogBackup != nil {
 		return nil
 	}
@@ -421,7 +421,7 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 	}
 
 	sort.Slice(ascBackupList, func(i, j int) bool {
-		return ascBackupList[i].CreationTimestamp.Unix() > ascBackupList[j].CreationTimestamp.Unix()
+		return ascBackupList[i].CreationTimestamp.Unix() < ascBackupList[j].CreationTimestamp.Unix()
 	})
 	return ascBackupList, logBackup
 }

@@ -16,6 +16,7 @@ package backupschedule
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -103,6 +104,7 @@ func TestManager(t *testing.T) {
 			})
 			if changed {
 				bk.CreationTimestamp = metav1.Time{Time: m.now()}
+				bk.Status.CommitTs = getTSOStr(m.now().Add(10 * time.Minute).Unix())
 				t.Log("complete backup: ", bk.Name)
 				helper.updateBackup(&bk)
 			}
@@ -220,6 +222,108 @@ func TestBuildBackup(t *testing.T) {
 	}
 }
 
+func TestCaculateExpiredBackupsWithLogBackup(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testCase struct {
+		backups                   []*v1alpha1.Backup
+		logBackup                 *v1alpha1.Backup
+		reservedTime              time.Duration
+		expectedDeleteBackupCount int
+		expectedTruncateTS        uint64
+	}
+
+	var (
+		now       = time.Now()
+		last10Min = now.Add(-time.Minute * 10).Unix()
+		last1Day  = now.Add(-time.Hour * 24 * 1).Unix()
+		last2Day  = now.Add(-time.Hour * 24 * 2).Unix()
+		last3Day  = now.Add(-time.Hour * 24 * 3).Unix()
+		last4Day  = now.Add(-time.Hour * 24 * 4).Unix()
+	)
+
+	testCases := []*testCase{
+		// no backup should be deleted and log backup just start, no commit ts/checkpoint ts
+		{
+			backups: []*v1alpha1.Backup{
+				fakeBackup(&last10Min),
+			},
+			logBackup:                 fakeLogBackup(nil, nil),
+			reservedTime:              24 * time.Hour,
+			expectedDeleteBackupCount: 0,
+			expectedTruncateTS:        0,
+		},
+		// backup should be delete and log backup just start, no commit ts/checkpoint ts
+		{
+			backups: []*v1alpha1.Backup{
+				fakeBackup(&last3Day),
+				fakeBackup(&last2Day),
+				fakeBackup(&last1Day),
+				fakeBackup(&last10Min),
+			},
+			logBackup:                 fakeLogBackup(&last10Min, nil),
+			reservedTime:              24 * time.Hour,
+			expectedDeleteBackupCount: 1,
+			expectedTruncateTS:        0,
+		},
+		// no backup should be deleted, has log backup
+		{
+			backups: []*v1alpha1.Backup{
+				fakeBackup(&last3Day),
+				fakeBackup(&last1Day),
+			},
+			logBackup:                 fakeLogBackup(&last4Day, &last10Min),
+			reservedTime:              24 * time.Hour,
+			expectedDeleteBackupCount: 0,
+			expectedTruncateTS:        0,
+		},
+		// 1 backup should be deleted, no log backup should be truncated
+		{
+			backups: []*v1alpha1.Backup{
+				fakeBackup(&last3Day),
+				fakeBackup(&last2Day),
+				fakeBackup(&last1Day),
+			},
+			logBackup:                 fakeLogBackup(&last1Day, &last10Min),
+			reservedTime:              24 * time.Hour,
+			expectedDeleteBackupCount: 1,
+			expectedTruncateTS:        0,
+		},
+		// 2 backup should be deleted, no log backup should be truncated
+		{
+			backups: []*v1alpha1.Backup{
+				fakeBackup(&last4Day),
+				fakeBackup(&last3Day),
+				fakeBackup(&last2Day),
+				fakeBackup(&last1Day),
+			},
+			logBackup:                 fakeLogBackup(&last1Day, &last10Min),
+			reservedTime:              24 * time.Hour,
+			expectedDeleteBackupCount: 2,
+			expectedTruncateTS:        0,
+		},
+		// 2 backup should be deleted, has log backup should be truncated
+		{
+			backups: []*v1alpha1.Backup{
+				fakeBackup(&last4Day),
+				fakeBackup(&last3Day),
+				fakeBackup(&last2Day),
+				fakeBackup(&last1Day),
+			},
+			logBackup:                 fakeLogBackup(&last3Day, &last10Min),
+			reservedTime:              24 * time.Hour,
+			expectedDeleteBackupCount: 2,
+			expectedTruncateTS:        getTSO(last2Day),
+		},
+	}
+
+	for _, tc := range testCases {
+		deletedBackups, truncateTS, err := caculateExpiredBackupsWithLogBackup(tc.backups, tc.logBackup, tc.reservedTime)
+		g.Expect(err).Should(BeNil())
+		g.Expect(len(deletedBackups)).Should(Equal(tc.expectedDeleteBackupCount))
+		g.Expect(truncateTS).Should(Equal(tc.expectedTruncateTS))
+	}
+}
+
 type helper struct {
 	t    *testing.T
 	deps *controller.Dependencies
@@ -322,4 +426,35 @@ func (h *helper) deleteBackup(bk *v1alpha1.Backup) {
 		_, err := deps.BackupLister.Backups(bk.Namespace).Get(bk.Name)
 		return err
 	}, time.Second*10).ShouldNot(BeNil())
+}
+
+func fakeBackup(ts *int64) *v1alpha1.Backup {
+	backup := &v1alpha1.Backup{}
+	if ts == nil {
+		return backup
+	}
+	backup.Status.CommitTs = getTSOStr(*ts)
+	return backup
+}
+
+func fakeLogBackup(startTS, checkPointTS *int64) *v1alpha1.Backup {
+	logBackup := &v1alpha1.Backup{}
+	if startTS == nil {
+		return logBackup
+	}
+	logBackup.Status.CommitTs = getTSOStr(*startTS)
+	if checkPointTS == nil {
+		return logBackup
+	}
+	logBackup.Status.LogCheckpointTs = getTSOStr(*checkPointTS)
+	return logBackup
+}
+
+func getTSOStr(ts int64) string {
+	tso := getTSO(ts)
+	return strconv.FormatUint(tso, 10)
+}
+
+func getTSO(ts int64) uint64 {
+	return uint64((ts << 18) * 1000)
 }
