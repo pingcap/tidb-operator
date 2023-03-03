@@ -284,6 +284,10 @@ func ConstructRestoreMetaStr() string {
 				"spec": {
 					"discovery": {},
 					"version": ""
+					"tikv": {
+						"config": "[security]\n  [security.encryption]\n    data-encryption-method = \"aes128-ctr\"\n    data-key-rotation-period = \"168h\"\n    [security.encryption.master-key]\n      key-id = \"333a53ad-f75b-461b-bb2a-0183dd9e7fed\"\n      region = \"us-west-2\"\n      type = \"kms\"\n",
+						"replicas": 3,
+					},
 				},
 				"status": {
 					"pd": {
