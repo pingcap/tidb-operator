@@ -389,10 +389,10 @@ func GoTimeToTS(t time.Time) uint64 {
 	return uint64(ts)
 }
 
-func TransToTS(tso uint64) int64 {
+func TSOToTS(tso uint64) int64 {
 	return int64((tso / 1000) >> 18)
 }
 
-func TransToTSO(ts int64) uint64 {
+func TSToTSO(ts int64) uint64 {
 	return uint64((ts << 18) * 1000)
 }

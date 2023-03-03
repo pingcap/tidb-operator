@@ -279,6 +279,10 @@ func buildLogBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
+	if bs.Spec.LogBackupTemplate == nil {
+		return nil
+	}
+
 	logBackupSpec := *bs.Spec.LogBackupTemplate.DeepCopy()
 
 	logBackupPrefix := "log" + "-" + timestamp.UTC().Format(v1alpha1.BackupNameTimeFormat)
@@ -472,7 +476,7 @@ func caculateExpiredBackupsWithLogBackup(backupsList []*v1alpha1.Backup, logBack
 }
 
 func caculateExpiredBackups(backupsList []*v1alpha1.Backup, reservedTime time.Duration) ([]*v1alpha1.Backup, error) {
-	expiredTS := config.TransToTSO(time.Now().Add(-1 * reservedTime).Unix())
+	expiredTS := config.TSToTSO(time.Now().Add(-1 * reservedTime).Unix())
 	i := 0
 	for ; i < len(backupsList); i++ {
 		startTS, err := config.ParseTSString(backupsList[i].Status.CommitTs)
@@ -523,9 +527,9 @@ func calculateLatestTSO(backupsList []*v1alpha1.Backup, logBackup *v1alpha1.Back
 
 // calculateExpiredTSO calculate latestTSO - reservedTime
 func calculateExpiredTSO(latestTSO uint64, reservedTime time.Duration) uint64 {
-	latestTS := config.TransToTS(latestTSO)
+	latestTS := config.TSOToTS(latestTSO)
 	expiredTS := time.Unix(latestTS, 0).Add(-1 * reservedTime).Unix()
-	return config.TransToTSO(expiredTS)
+	return config.TSToTSO(expiredTS)
 }
 
 // calDeleteSnapshotBackupsByExpiredTSO according to expired tso calculate delete backups and truncate tso
