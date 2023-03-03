@@ -12,7 +12,8 @@ if [ -n "$BUILD" ]; then
 	make DOCKER_REPO=xx operator-docker
 fi
 
-kubectl create -f $BASE/../../manifests/crd.yaml || kubectl replace -f $BASE/../../manifests/crd.yaml
+kubectl replace -f $BASE/../../manifests/crd.yaml
+kubectl replace -f $BASE/../../manifests/advanced-statefulset-crd.v1.yaml
 
 kubectl delete --force namespace $namespace || true
 
@@ -34,5 +35,5 @@ if [ -n "$ENABLE_SSL" ]; then
 	kubectl create secret generic ${cluster}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
 fi
 
-helm install operator $BASE/../../charts/tidb-operator/ --namespace ${namespace} --set "operatorImage=xx/tidb-operator:latest"
+helm install operator $BASE/../../charts/tidb-operator/ --namespace ${namespace} -f $BASE/operator.yaml
 kubectl apply -f $BASE/cluster.yaml --namespace ${namespace}
