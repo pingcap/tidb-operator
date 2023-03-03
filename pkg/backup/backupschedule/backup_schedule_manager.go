@@ -532,7 +532,7 @@ func calculateExpiredTSO(latestTSO uint64, reservedTime time.Duration) uint64 {
 	return config.TSToTSO(expiredTS)
 }
 
-// calDeleteSnapshotBackupsByExpiredTSO according to expired tso calculate delete backups and truncate tso
+// calExpiredSnapshotBackupsWithLogBackup according to expired tso calculate expired backups
 func calExpiredSnapshotBackupsWithLogBackup(backupsList []*v1alpha1.Backup, expiredTSO uint64) ([]*v1alpha1.Backup, error) {
 	var (
 		i                int
@@ -558,7 +558,7 @@ func calExpiredSnapshotBackupsWithLogBackup(backupsList []*v1alpha1.Backup, expi
 	return nil, nil
 }
 
-// calDeleteSnapshotBackupsByExpiredTSO according to expired tso calculate delete backups and truncate tso
+// calLogBackupExpiredTSO according to expired tso calculate truncate tso
 func calLogBackupExpiredTSO(backupsList []*v1alpha1.Backup, logBackup *v1alpha1.Backup, expiredTSO uint64) (uint64, error) {
 	var truncateTSO uint64
 	for i := 0; i < len(backupsList); i++ {
