@@ -283,10 +283,10 @@ func ConstructRestoreMetaStr() string {
 				},
 				"spec": {
 					"discovery": {},
-					"version": ""
+					"version": "",
 					"tikv": {
 						"replicas": 3,
-					},
+					}
 				},
 				"status": {
 					"pd": {
