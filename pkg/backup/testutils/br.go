@@ -285,7 +285,8 @@ func ConstructRestoreMetaStr() string {
 					"discovery": {},
 					"version": "",
 					"tikv": {
-						"replicas": 3,
+						"maxFailoverCount": 0,
+						"replicas": 3
 					}
 				},
 				"status": {
