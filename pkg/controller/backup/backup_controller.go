@@ -490,7 +490,7 @@ func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(backup *v1alpha
 
 	// start to retry
 	err = c.control.UpdateStatus(backup, &v1alpha1.BackupCondition{
-		Type:    v1alpha1.BackupRetryFailed,
+		Type:    v1alpha1.BackupRetryTheFailed,
 		Status:  corev1.ConditionTrue,
 		Reason:  "RetryFailedBackup",
 		Message: fmt.Sprintf("reason %s, original reason %s", retryRecord.RetryReason, retryRecord.OriginalReason),
@@ -592,7 +592,7 @@ func isBackoffRetrying(backup *v1alpha1.Backup) bool {
 	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
 		return false
 	}
-	return backup.Status.Phase == v1alpha1.BackupRetryFailed
+	return backup.Status.Phase == v1alpha1.BackupRetryTheFailed
 }
 
 func isCurrentBackoffRetryDone(backup *v1alpha1.Backup) bool {

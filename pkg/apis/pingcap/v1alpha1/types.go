@@ -2046,8 +2046,8 @@ const (
 	BackupClean BackupConditionType = "Clean"
 	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
-	// BackupRetryFailed means this failure can be retried
-	BackupRetryFailed BackupConditionType = "RetryFailed"
+	// BackupRetryTheFailed means this failure can be retried
+	BackupRetryTheFailed BackupConditionType = "RetryFailed"
 	// BackupInvalid means invalid backup CR
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
