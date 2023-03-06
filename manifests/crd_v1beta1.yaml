@@ -329,6 +329,15 @@ spec:
                     secretName:
                       type: string
                   type: object
+                backoffRetryPolicy:
+                  properties:
+                    maxRetryTimes:
+                      type: integer
+                    minRetryDuration:
+                      type: integer
+                    retryTimeout:
+                      type: integer
+                  type: object
                 backupMode:
                   type: string
                 backupType:
@@ -3059,6 +3068,15 @@ spec:
                 secretName:
                   type: string
               type: object
+            backoffRetryPolicy:
+              properties:
+                maxRetryTimes:
+                  type: integer
+                minRetryDuration:
+                  type: integer
+                retryTimeout:
+                  type: integer
+              type: object
             backupMode:
               type: string
             backupType:
@@ -4086,6 +4104,26 @@ spec:
           type: object
         status:
           properties:
+            backoffRetryStatus:
+              items:
+                properties:
+                  detectFailedAt:
+                    format: date-time
+                    type: string
+                  expectedRetryAt:
+                    format: date-time
+                    type: string
+                  originalReason:
+                    type: string
+                  realRetryAt:
+                    format: date-time
+                    type: string
+                  retryNum:
+                    type: integer
+                  retryReason:
+                    type: string
+                type: object
+              type: array
             backupPath:
               type: string
             backupSize:
