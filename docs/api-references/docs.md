@@ -3424,6 +3424,17 @@ string
 <p>Reason is the reason of retry</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>originalReason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>OriginalReason is the original reason of backup job or pod failed</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="backupcondition">BackupCondition</h3>

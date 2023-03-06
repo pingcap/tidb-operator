@@ -2027,6 +2027,8 @@ type BackoffRetryRecord struct {
 	RealRetryAt *metav1.Time `json:"realRetryAt,omitempty"`
 	// Reason is the reason of retry
 	RetryReason string `json:"retryReason,omitempty"`
+	// OriginalReason is the original reason of backup job or pod failed
+	OriginalReason string `json:"originalReason,omitempty"`
 }
 
 // BackupConditionType represents a valid condition of a Backup.

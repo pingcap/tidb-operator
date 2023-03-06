@@ -70,6 +70,8 @@ type BackupUpdateStatus struct {
 	RealRetryAt *metav1.Time
 	// Reason is the reason of retry
 	RetryReason *string
+	// OriginalReason is the original reason of backup job or pod failed
+	OriginalReason *string
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -490,6 +492,11 @@ func updateBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatus *BackupUp
 
 	if newStatus.RetryReason != nil && *newStatus.RetryReason != currentRecord.RetryReason {
 		currentRecord.RetryReason = *newStatus.RetryReason
+		isUpdate = true
+	}
+
+	if newStatus.OriginalReason != nil && *newStatus.OriginalReason != currentRecord.OriginalReason {
+		currentRecord.OriginalReason = *newStatus.OriginalReason
 		isUpdate = true
 	}
 

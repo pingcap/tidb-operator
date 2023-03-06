@@ -1393,6 +1393,8 @@ spec:
                   expectedRetryAt:
                     format: date-time
                     type: string
+                  originalReason:
+                    type: string
                   realRetryAt:
                     format: date-time
                     type: string
