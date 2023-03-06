@@ -242,7 +242,7 @@ func TestBackupManagerBR(t *testing.T) {
 		// failed to get relate tc
 		err = bm.syncBackupJob(backup)
 		g.Expect(err).ShouldNot(BeNil())
-		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupRetryFailed, "failed to fetch tidbcluster")
+		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupRetryTheFailed, "failed to fetch tidbcluster")
 
 		// create relate tc and try again should success and job created.
 		helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster)
