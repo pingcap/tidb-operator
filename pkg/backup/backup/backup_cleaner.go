@@ -79,7 +79,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return nil
 	} else if !errors.IsNotFound(err) {
 		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupRetryFailed,
+			Type:    v1alpha1.BackupRetryTheFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetBackupFailed",
 			Message: err.Error(),
@@ -100,7 +100,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	job, reason, err := bc.makeCleanJob(backup)
 	if err != nil {
 		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupRetryFailed,
+			Type:    v1alpha1.BackupRetryTheFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
@@ -111,7 +111,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	if err := bc.deps.JobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, cleanJobName, err)
 		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupRetryFailed,
+			Type:    v1alpha1.BackupRetryTheFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateCleanJobFailed",
 			Message: errMsg.Error(),

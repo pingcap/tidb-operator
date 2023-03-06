@@ -1914,6 +1914,9 @@ type BackupSpec struct {
 
 	// PriorityClassName of Backup Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
+	BackoffRetryPolicy BackoffRetryPolicy `json:"backoffRetryPolicy,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1958,6 +1961,43 @@ type BRConfig struct {
 	Options []string `json:"options,omitempty"`
 }
 
+// BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup.
+// When backup job or pod failed, it will retry in the following way:
+// first time: retry after MinRetryDuration
+// second time: retry after MinRetryDuration * 2
+// third time: retry after MinRetryDuration * 2 * 2
+// ...
+// as the limit:
+// 1. the number of retries can not exceed MaxRetryTimes
+// 2. the time from discovery failure can not exceed RetryTimeout
+type BackoffRetryPolicy struct {
+	// MinRetryDuration is the seconds of min retry duration, the retry duration will be MinRetryDuration << (retry num -1)
+	// +kubebuilder:default=300
+	MinRetryDuration int `json:"minRetryDuration,omitempty"`
+	// MaxRetryTimes is the max retry times
+	// +kubebuilder:default=2
+	MaxRetryTimes int `json:"maxRetryTimes,omitempty"`
+	// RetryTimeout is the minutes of retry timeout
+	// +kubebuilder:default=30
+	RetryTimeout int `json:"retryTimeout,omitempty"`
+}
+
+// BackoffRetryRecord is the record of backoff retry
+type BackoffRetryRecord struct {
+	// RetryNum is the number of retry
+	RetryNum int `json:"retryNum,omitempty"`
+	// DetectFailedAt is the time when detect failure
+	DetectFailedAt *metav1.Time `json:"detectFailedAt,omitempty"`
+	// ExpectedRetryAt is the time we calculate and expect retry after it
+	ExpectedRetryAt *metav1.Time `json:"expectedRetryAt,omitempty"`
+	// RealRetryAt is the time when the retry was actually initiated
+	RealRetryAt *metav1.Time `json:"realRetryAt,omitempty"`
+	// Reason is the reason of retry
+	RetryReason string `json:"retryReason,omitempty"`
+	// OriginalReason is the original reason of backup job or pod failed
+	OriginalReason string `json:"originalReason,omitempty"`
+}
+
 // BackupConditionType represents a valid condition of a Backup.
 type BackupConditionType string
 
@@ -1973,8 +2013,8 @@ const (
 	BackupClean BackupConditionType = "Clean"
 	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
-	// BackupRetryFailed means this failure can be retried
-	BackupRetryFailed BackupConditionType = "RetryFailed"
+	// BackupRetryTheFailed means this failure can be retried
+	BackupRetryTheFailed BackupConditionType = "RetryFailed"
 	// BackupInvalid means invalid backup CR
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
@@ -2060,6 +2100,8 @@ type BackupStatus struct {
 	// Progresses is the progress of backup.
 	// +nullable
 	Progresses []Progress `json:"progresses,omitempty"`
+	// BackoffRetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
+	BackoffRetryStatus []BackoffRetryRecord `json:"backoffRetryStatus,omitempty"`
 }
 
 // +genclient
