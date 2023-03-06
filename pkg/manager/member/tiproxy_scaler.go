@@ -18,7 +18,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -58,10 +57,6 @@ func (s *tiproxyScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, n
 	resetReplicas(newSet, oldSet)
 
 	klog.Infof("scaling out tiproxy statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := s.deleteDeferDeletingPVC(tc, v1alpha1.TiProxyMemberType, ordinal)
-	if err != nil {
-		return err
-	}
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
@@ -79,29 +74,12 @@ func (s *tiproxyScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	tcName := tc.GetName()
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
-	podName := ordinalPodName(v1alpha1.TiProxyMemberType, tcName, ordinal)
 
 	if !tc.Status.TiProxy.Synced {
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed, can't scale in now", ns, tcName)
 	}
 
 	klog.Infof("scaling in tiproxy statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-
-	pod, err := s.deps.PodLister.Pods(ns).Get(podName)
-	if err != nil {
-		return fmt.Errorf("tiproxyScaler.ScaleIn: failed to get pod %s/%s for tiproxy in tc %s/%s, error: %s", ns, podName, ns, tcName, err)
-	}
-
-	pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
-	if err != nil {
-		return fmt.Errorf("tiproxyScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
-	}
-
-	for _, pvc := range pvcs {
-		if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
-			return err
-		}
-	}
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
