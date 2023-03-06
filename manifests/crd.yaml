@@ -1652,6 +1652,18 @@ spec:
                       secretName:
                         type: string
                     type: object
+                  backoffRetryPolicy:
+                    properties:
+                      maxRetryTimes:
+                        default: 2
+                        type: integer
+                      minRetryDuration:
+                        default: 300
+                        type: integer
+                      retryTimeout:
+                        default: 30
+                        type: integer
+                    type: object
                   backupMode:
                     default: snapshot
                     type: string
