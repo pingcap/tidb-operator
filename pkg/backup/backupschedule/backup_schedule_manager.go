@@ -367,7 +367,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 	)
 
 	if logBackup != nil {
-		expiredBackups, truncateTSO, err = caculateExpiredBackupsWithLogBackup(ascBackups, logBackup, reservedTime)
+		expiredBackups, truncateTSO, err = calExpiredBackupsAndLogBackup(ascBackups, logBackup, reservedTime)
 		if err != nil {
 			klog.Errorf("caculate expired backups with log backup, err: %s", err)
 			return
@@ -425,7 +425,7 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 	return ascBackupList, logBackup
 }
 
-// caculateExpiredBackupsWithLogBackup calculate what backups and log backup we can delete or truncate.
+// calExpiredBackupsAndLogBackup calculate what backups and log backup we can delete or truncate.
 //
 // snapshot1----snapshot2--------------snapshot3-----snapshot...----snapshot n-----------> snapshot backups
 // ---------------------------------------------------------------------checkpointTS----> log backup
@@ -436,7 +436,7 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 // so we should reserve snapshots from snapshot2 to snapshot n.
 // then we can delete snapshot1 and truncate log backup to t2.
 // so the returned value is snapshot1 and t2.
-func caculateExpiredBackupsWithLogBackup(backupsList []*v1alpha1.Backup, logBackup *v1alpha1.Backup, reservedTime time.Duration) ([]*v1alpha1.Backup, uint64, error) {
+func calExpiredBackupsAndLogBackup(backupsList []*v1alpha1.Backup, logBackup *v1alpha1.Backup, reservedTime time.Duration) ([]*v1alpha1.Backup, uint64, error) {
 	var (
 		lastestTSO     uint64
 		expiredTSO     uint64
@@ -454,7 +454,7 @@ func caculateExpiredBackupsWithLogBackup(backupsList []*v1alpha1.Backup, logBack
 	expiredTSO = calculateExpiredTSO(lastestTSO, reservedTime)
 
 	// calculate expired backups
-	expiredBackups, err = calExpiredSnapshotBackupsWithLogBackup(backupsList, expiredTSO)
+	expiredBackups, err = calExpiredBackupsWithLogBackupOn(backupsList, expiredTSO)
 	if err != nil {
 		return nil, 0, perrors.Annotate(err, "calculate expired backups which should be deleted")
 	}
@@ -467,7 +467,7 @@ func caculateExpiredBackupsWithLogBackup(backupsList []*v1alpha1.Backup, logBack
 	}
 
 	// calculate truncate tso
-	truncateTSO, err = calLogBackupExpiredTSO(backupsList, logBackup, expiredTSO)
+	truncateTSO, err = calLogBackupTruncateTSO(backupsList, logBackup, expiredTSO)
 	if err != nil {
 		return nil, 0, perrors.Annotate(err, "calculate expired log backup tso which should be truncated")
 	}
@@ -532,8 +532,9 @@ func calculateExpiredTSO(latestTSO uint64, reservedTime time.Duration) uint64 {
 	return config.TSToTSO(expiredTS)
 }
 
-// calExpiredSnapshotBackupsWithLogBackup according to expired tso calculate expired backups
-func calExpiredSnapshotBackupsWithLogBackup(backupsList []*v1alpha1.Backup, expiredTSO uint64) ([]*v1alpha1.Backup, error) {
+// calExpiredBackupsWithLogBackupOn according to expired tso calculate expired backups when there is log backup.
+// we will save latest expired snapshot backup to make sure it can be used as the starting point of PiTR Restore.
+func calExpiredBackupsWithLogBackupOn(backupsList []*v1alpha1.Backup, expiredTSO uint64) ([]*v1alpha1.Backup, error) {
 	var (
 		i                int
 		currentBackupTSO uint64
@@ -558,8 +559,8 @@ func calExpiredSnapshotBackupsWithLogBackup(backupsList []*v1alpha1.Backup, expi
 	return nil, nil
 }
 
-// calLogBackupExpiredTSO according to expired tso calculate truncate tso
-func calLogBackupExpiredTSO(backupsList []*v1alpha1.Backup, logBackup *v1alpha1.Backup, expiredTSO uint64) (uint64, error) {
+// calLogBackupTruncateTSO according to expired tso calculate log backup truncate tso
+func calLogBackupTruncateTSO(backupsList []*v1alpha1.Backup, logBackup *v1alpha1.Backup, expiredTSO uint64) (uint64, error) {
 	var truncateTSO uint64
 	for i := 0; i < len(backupsList); i++ {
 		currentBackupTSO, err := config.ParseTSString(backupsList[i].Status.CommitTs)

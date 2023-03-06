@@ -329,7 +329,7 @@ func TestCaculateExpiredBackupsWithLogBackup(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		deletedBackups, truncateTS, err := caculateExpiredBackupsWithLogBackup(tc.backups, tc.logBackup, tc.reservedTime)
+		deletedBackups, truncateTS, err := calExpiredBackupsAndLogBackup(tc.backups, tc.logBackup, tc.reservedTime)
 		g.Expect(err).Should(BeNil())
 		g.Expect(len(deletedBackups)).Should(Equal(tc.expectedDeleteBackupCount))
 		g.Expect(truncateTS).Should(Equal(tc.expectedTruncateTS))
