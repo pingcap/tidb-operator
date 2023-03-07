@@ -569,6 +569,19 @@ BackupSpec
 </tr>
 <tr>
 <td>
+<code>logBackupTemplate</code></br>
+<em>
+<a href="#backupspec">
+BackupSpec
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupTemplate is the specification of the log backup structure to get scheduled.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageClassName</code></br>
 <em>
 string
@@ -3620,6 +3633,19 @@ BackupSpec
 </tr>
 <tr>
 <td>
+<code>logBackupTemplate</code></br>
+<em>
+<a href="#backupspec">
+BackupSpec
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupTemplate is the specification of the log backup structure to get scheduled.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageClassName</code></br>
 <em>
 string
@@ -3683,6 +3709,17 @@ string
 </td>
 <td>
 <p>LastBackup represents the last backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackup</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>logBackup represents the name of log backup.</p>
 </td>
 </tr>
 <tr>
