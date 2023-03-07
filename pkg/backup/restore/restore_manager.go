@@ -37,6 +37,11 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+const (
+	TiKVConfigEncryptionMethod      = "security.encryption.data-encryption-method"
+	TiKVConfigEncryptionMasterKeyId = "security.encryption.master-key.key-id"
+)
+
 type restoreManager struct {
 	deps          *controller.Dependencies
 	statusUpdater controller.RestoreConditionUpdaterInterface
@@ -268,6 +273,64 @@ func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.Tidb
 		}
 	}
 
+	// check tikv encrypt config
+	if err = rm.checkTiKVEncryption(r, tc); err != nil {
+		return fmt.Errorf("TiKV encryption missmatched with backup with error %v", err)
+	}
+	return nil
+}
+
+// volume snapshot restore support
+//
+//	both backup and restore with the same encryption
+//	backup without encryption and restore has encryption
+//
+// volume snapshot restore does not support
+//
+//	backup has encryption and restore has not
+func (rm *restoreManager) checkTiKVEncryption(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
+	backupConfig, reason, err := rm.readTiKVConfigFromBackupMeta(r)
+	if err != nil {
+		klog.Errorf("read tiflash replica failure with reason %s", reason)
+		return err
+	}
+
+	// nothing configured in crd during the backup
+	if backupConfig == nil {
+		return nil
+	}
+
+	// check if encryption is enabled in backup tikv config
+	backupEncryptMethod := backupConfig.Get(TiKVConfigEncryptionMethod)
+	if backupEncryptMethod == nil || backupEncryptMethod.Interface() == "plaintext" {
+		return nil //encryption is disabled
+	}
+
+	// tikv backup encryption is enabled
+	config := tc.Spec.TiKV.Config
+	if config == nil {
+		return fmt.Errorf("TiKV encryption config missmatched, backup configured TiKV encryption, however, restore tc.spec.tikv.config doesn't contains encryption, please check TiKV encryption config. e.g. download s3 backupmeta, check kubernetes.crd_tidb_cluster.spec, and then edit restore tc.")
+	}
+
+	restoreEncryptMethod := config.Get(TiKVConfigEncryptionMethod)
+	if backupEncryptMethod.Interface() != restoreEncryptMethod.Interface() {
+		// restore crd must contains data-encryption
+		return fmt.Errorf("TiKV encryption config missmatched, backup data enabled TiKV encryption, restore crd does not enabled TiKV encryption")
+	}
+
+	// if backup tikv configured encryption, restore require tc to have the same encryption configured.
+	// since master key is is unique, only check master key id is enough. e.g. https://docs.aws.amazon.com/kms/latest/cryptographic-details/basic-concepts.html
+	backupMasterKey := backupConfig.Get(TiKVConfigEncryptionMasterKeyId)
+	if backupMasterKey != nil {
+		restoreMasterKey := config.Get(TiKVConfigEncryptionMasterKeyId)
+		if restoreMasterKey == nil {
+			return fmt.Errorf("TiKV encryption config missmatched, backup data has master key, restore crd have not one")
+		}
+
+		if backupMasterKey.Interface() != restoreMasterKey.Interface() {
+			return fmt.Errorf("TiKV encryption config master key missmatched")
+		}
+	}
 	return nil
 }
 
@@ -282,6 +345,19 @@ func (rm *restoreManager) readTiFlashReplicasFromBackupMeta(r *v1alpha1.Restore)
 	}
 
 	return metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas, "", nil
+}
+
+func (rm *restoreManager) readTiKVConfigFromBackupMeta(r *v1alpha1.Restore) (*v1alpha1.TiKVConfigWraper, string, error) {
+	metaInfo, err := backuputil.GetVolSnapBackupMetaData(r, rm.deps.SecretLister)
+	if err != nil {
+		return nil, "GetVolSnapBackupMetaData failed", err
+	}
+
+	if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV == nil {
+		return nil, "BackupMetaDoesnotContainTiKV", fmt.Errorf("TiKV is not configure in backup")
+	}
+
+	return metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Config, "", nil
 }
 
 func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (string, error) {
