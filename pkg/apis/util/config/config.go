@@ -388,3 +388,11 @@ func GoTimeToTS(t time.Time) uint64 {
 	ts := (t.UnixNano() / int64(time.Millisecond)) << 18
 	return uint64(ts)
 }
+
+func TSOToTS(tso uint64) int64 {
+	return int64((tso / 1000) >> 18)
+}
+
+func TSToTSO(ts int64) uint64 {
+	return uint64((ts << 18) * 1000)
+}

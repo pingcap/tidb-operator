@@ -895,6 +895,12 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec"),
 						},
 					},
+					"logBackupTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LogBackupTemplate is the specification of the log backup structure to get scheduled.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec"),
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec. Defaults to Kubernetes default storage class.",
@@ -923,7 +929,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"schedule", "backupTemplate"},
+				Required: []string{"schedule", "backupTemplate", "logBackupTemplate"},
 			},
 		},
 		Dependencies: []string{
