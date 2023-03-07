@@ -1097,7 +1097,7 @@ const tidbSupportLabelsMinVersin = "6.3.0"
 func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, error) {
 	tidbVersion := tc.TiDBVersion()
 	isOlder, err := cmpver.Compare(tidbVersion, cmpver.Less, tidbSupportLabelsMinVersin)
-	// meet an custom build of tidb without version in tag, directly return as if it was old tidb that doesn't support set labels
+	// meet a custom build of tidb without version in tag, directly return as if it was old tidb that doesn't support set labels
 	if err != nil {
 		klog.Warningf("parse tidb verson '%s' failed, skip setting store labels for TiKV of TiDB cluster %s/%s. err: %v", tidbVersion, tc.Namespace, tc.Name, err)
 		return 0, nil
