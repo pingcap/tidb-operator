@@ -421,6 +421,19 @@ string
 <p>PriorityClassName of Backup Job Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>backoffRetryPolicy</code></br>
+<em>
+<a href="#backoffretrypolicy">
+BackoffRetryPolicy
+</a>
+</em>
+</td>
+<td>
+<p>BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -552,6 +565,19 @@ BackupSpec
 </td>
 <td>
 <p>BackupTemplate is the specification of the backup structure to get scheduled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackupTemplate</code></br>
+<em>
+<a href="#backupspec">
+BackupSpec
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupTemplate is the specification of the log backup structure to get scheduled.</p>
 </td>
 </tr>
 <tr>
@@ -3275,6 +3301,155 @@ bool
 </tr>
 </tbody>
 </table>
+<h3 id="backoffretrypolicy">BackoffRetryPolicy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup.
+When backup job or pod failed, it will retry in the following way:
+first time: retry after MinRetryDuration
+second time: retry after MinRetryDuration * 2
+third time: retry after MinRetryDuration * 2 * 2
+&hellip;
+as the limit:
+1. the number of retries can not exceed MaxRetryTimes
+2. the time from discovery failure can not exceed RetryTimeout</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>minRetryDuration</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>MinRetryDuration is the seconds of min retry duration, the retry duration will be MinRetryDuration &lt;&lt; (retry num -1)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxRetryTimes</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>MaxRetryTimes is the max retry times</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retryTimeout</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>RetryTimeout is the minutes of retry timeout</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="backoffretryrecord">BackoffRetryRecord</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupstatus">BackupStatus</a>)
+</p>
+<p>
+<p>BackoffRetryRecord is the record of backoff retry</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>retryNum</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>RetryNum is the number of retry</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>detectFailedAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>DetectFailedAt is the time when detect failure</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>expectedRetryAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>ExpectedRetryAt is the time we calculate and expect retry after it</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>realRetryAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>RealRetryAt is the time when the retry was actually initiated</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retryReason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reason is the reason of retry</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>originalReason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>OriginalReason is the original reason of backup job or pod failed</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="backupcondition">BackupCondition</h3>
 <p>
 (<em>Appears on:</em>
@@ -3458,6 +3633,19 @@ BackupSpec
 </tr>
 <tr>
 <td>
+<code>logBackupTemplate</code></br>
+<em>
+<a href="#backupspec">
+BackupSpec
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupTemplate is the specification of the log backup structure to get scheduled.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageClassName</code></br>
 <em>
 string
@@ -3521,6 +3709,17 @@ string
 </td>
 <td>
 <p>LastBackup represents the last backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackup</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>logBackup represents the name of log backup.</p>
 </td>
 </tr>
 <tr>
@@ -3907,6 +4106,19 @@ string
 <p>PriorityClassName of Backup Job Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>backoffRetryPolicy</code></br>
+<em>
+<a href="#backoffretrypolicy">
+BackoffRetryPolicy
+</a>
+</em>
+</td>
+<td>
+<p>BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="backupstatus">BackupStatus</h3>
@@ -4069,6 +4281,19 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType
 </td>
 <td>
 <p>Progresses is the progress of backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffRetryStatus</code></br>
+<em>
+<a href="#backoffretryrecord">
+[]BackoffRetryRecord
+</a>
+</em>
+</td>
+<td>
+<p>BackoffRetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly</p>
 </td>
 </tr>
 </tbody>

@@ -505,3 +505,19 @@ func ParseRestoreProgress(line string) (step, progress string) {
 	step, progress = matchs[1], matchs[2]
 	return
 }
+
+const (
+	e2eBackupEnv                string = "E2E_TEST_ENV"
+	e2eExtendBackupTime         string = "Extend_BACKUP_TIME"
+	e2eExtendBackupTimeAndPanic string = "Extend_BACKUP_TIME_AND_PANIC"
+)
+
+func IsE2EExtendBackupTime() bool {
+	e2eEnv := os.Getenv(e2eBackupEnv)
+	return strings.Contains(e2eEnv, e2eExtendBackupTime)
+}
+
+func IsE2EExtendBackupTimeAndPanic() bool {
+	e2eEnv := os.Getenv(e2eBackupEnv)
+	return strings.Contains(e2eEnv, e2eExtendBackupTimeAndPanic)
+}
