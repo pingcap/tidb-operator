@@ -332,7 +332,6 @@ func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, uint64,
 	}
 
 	var nextToken *string
-	var blockSize uint64
 
 	for {
 		resp, err := ebsSession.EBS.ListChangedBlocks(&ebs.ListChangedBlocksInput{
@@ -350,8 +349,7 @@ func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, uint64,
 		// retrieve only changed block and blocks only existed in current snapshot (new add blocks)
 		for _, block := range resp.ChangedBlocks {
 			if block.SecondBlockToken != nil && resp.BlockSize != nil {
-				blockSize = uint64(*resp.BlockSize)
-				snapshotSize += 1 * blockSize
+				snapshotSize += uint64(*resp.BlockSize)
 			}
 		}
 
@@ -361,6 +359,6 @@ func changedBlocksSize(preSnapshotId string, snapshotId string) (uint64, uint64,
 		}
 		nextToken = resp.NextToken
 	}
-	klog.Infof("the total size of snapshot %d, num of api ListChangedBlocks request %d, snapshot id %s, data change rate %.4f", snapshotSize, numApiReq, snapshotId, float64(snapshotSize/blockSize)/float64(numBlocks))
+	klog.Infof("the total size of snapshot %d, num of api ListChangedBlocks request %d, snapshot id %s", snapshotSize, numApiReq, snapshotId)
 	return snapshotSize, numApiReq, nil
 }
