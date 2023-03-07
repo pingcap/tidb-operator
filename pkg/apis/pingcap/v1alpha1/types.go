@@ -2186,6 +2186,8 @@ type BackupScheduleSpec struct {
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
+	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
+	LogBackupTemplate *BackupSpec `json:"logBackupTemplate"`
 	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -2201,6 +2203,8 @@ type BackupScheduleSpec struct {
 type BackupScheduleStatus struct {
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup,omitempty"`
+	// logBackup represents the name of log backup.
+	LogBackup *string `json:"logBackup,omitempty"`
 	// LastBackupTime represents the last time the backup was successfully created.
 	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
