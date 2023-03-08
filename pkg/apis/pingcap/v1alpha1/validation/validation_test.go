@@ -40,6 +40,7 @@ func TestValidateAnnotations(t *testing.T) {
 					Annotations: map[string]string{
 						label.AnnTiKVDeleteSlots:    "[1,2]",
 						label.AnnTiFlashDeleteSlots: "[1]",
+						label.AnnTiCDCDeleteSlots:   "[1,2]",
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
@@ -105,6 +106,7 @@ func TestValidateAnnotations(t *testing.T) {
 					Annotations: map[string]string{
 						label.AnnTiKVDeleteSlots:    "",
 						label.AnnTiFlashDeleteSlots: "",
+						label.AnnTiCDCDeleteSlots:   "",
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
@@ -131,6 +133,10 @@ func TestValidateAnnotations(t *testing.T) {
 				{
 					Type:   field.ErrorTypeInvalid,
 					Detail: `value of "tiflash.tidb.pingcap.com/delete-slots" annotation must be a JSON list of int32`,
+				},
+				{
+					Type:   field.ErrorTypeInvalid,
+					Detail: `value of "ticdc.tidb.pingcap.com/delete-slots" annotation must be a JSON list of int32`,
 				},
 			},
 		},
