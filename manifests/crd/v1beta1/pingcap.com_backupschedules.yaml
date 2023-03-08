@@ -334,9 +334,9 @@ spec:
                     maxRetryTimes:
                       type: integer
                     minRetryDuration:
-                      type: integer
+                      type: string
                     retryTimeout:
-                      type: integer
+                      type: string
                   type: object
                 backupMode:
                   type: string
@@ -1652,9 +1652,9 @@ spec:
                     maxRetryTimes:
                       type: integer
                     minRetryDuration:
-                      type: integer
+                      type: string
                     retryTimeout:
-                      type: integer
+                      type: string
                   type: object
                 backupMode:
                   type: string

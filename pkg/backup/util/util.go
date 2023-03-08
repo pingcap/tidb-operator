@@ -538,6 +538,18 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 			}
 		}
 
+		if backup.Spec.BackoffRetryPolicy.MinRetryDuration != "" {
+			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.MinRetryDuration)
+			if err != nil {
+				return fmt.Errorf("fail to parse minRetryDuration %s of backup %s/%s, %v", backup.Spec.BackoffRetryPolicy.MinRetryDuration, backup.Namespace, backup.Name, err)
+			}
+		}
+		if backup.Spec.BackoffRetryPolicy.RetryTimeout != "" {
+			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.RetryTimeout)
+			if err != nil {
+				return fmt.Errorf("fail to parse retryTimeout %s of backup %s/%s, %v", backup.Spec.BackoffRetryPolicy.RetryTimeout, backup.Namespace, backup.Name, err)
+			}
+		}
 	}
 	return nil
 }

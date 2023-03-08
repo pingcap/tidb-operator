@@ -335,11 +335,11 @@ spec:
                         default: 2
                         type: integer
                       minRetryDuration:
-                        default: 300
-                        type: integer
+                        default: 300s
+                        type: string
                       retryTimeout:
-                        default: 30
-                        type: integer
+                        default: 30m
+                        type: string
                     type: object
                   backupMode:
                     default: snapshot
@@ -1658,11 +1658,11 @@ spec:
                         default: 2
                         type: integer
                       minRetryDuration:
-                        default: 300
-                        type: integer
+                        default: 300s
+                        type: string
                       retryTimeout:
-                        default: 30
-                        type: integer
+                        default: 30m
+                        type: string
                     type: object
                   backupMode:
                     default: snapshot
