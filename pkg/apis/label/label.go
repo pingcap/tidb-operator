@@ -116,6 +116,9 @@ const (
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
 	// AnnTiFlashDeleteSlots is annotation key of tiflash delete slots.
 	AnnTiFlashDeleteSlots = "tiflash.tidb.pingcap.com/delete-slots"
+
+	// AnnTiCDCDeleteSlots is annotation key of ticdc delete slots.
+	AnnTiCDCDeleteSlots = "ticdc.tidb.pingcap.com/delete-slots"
 	// AnnTiProxyDeleteSlots is annotation key of tiproxy delete slots.
 	AnnTiProxyDeleteSlots = "tiproxy.tidb.pingcap.com/delete-slots"
 	// AnnDMMasterDeleteSlots is annotation key of dm-master delete slots.

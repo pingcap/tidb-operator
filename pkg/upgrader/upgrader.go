@@ -137,7 +137,8 @@ func deleteSlotAnns(tc *v1alpha1.TidbCluster) map[string]string {
 	if tc == nil || tc.Annotations == nil {
 		return anns
 	}
-	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots, label.AnnTiProxyDeleteSlots} {
+
+	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots, label.AnnTiProxyDeleteSlots, label.AnnTiCDCDeleteSlots} {
 		if v, ok := tc.Annotations[key]; ok {
 			anns[key] = v
 		}
