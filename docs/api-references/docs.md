@@ -3329,11 +3329,12 @@ as the limit:
 <td>
 <code>minRetryDuration</code></br>
 <em>
-int
+string
 </em>
 </td>
 <td>
-<p>MinRetryDuration is the seconds of min retry duration, the retry duration will be MinRetryDuration &lt;&lt; (retry num -1)</p>
+<p>MinRetryDuration is the min retry duration, the retry duration will be MinRetryDuration &lt;&lt; (retry num -1)
+format reference, <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
 <tr>
@@ -3351,11 +3352,12 @@ int
 <td>
 <code>retryTimeout</code></br>
 <em>
-int
+string
 </em>
 </td>
 <td>
-<p>RetryTimeout is the minutes of retry timeout</p>
+<p>RetryTimeout is the retry timeout
+format reference, <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
 </tbody>

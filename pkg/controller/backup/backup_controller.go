@@ -326,7 +326,12 @@ func (c *Controller) recordDetectedFailure(backup *v1alpha1.Backup, reason, orig
 
 	retryNum := len(backup.Status.BackoffRetryStatus) + 1
 	detectFailedAt := metav1.Now()
-	duration := time.Duration((backup.Spec.BackoffRetryPolicy.MinRetryDuration << (retryNum - 1)) * int(time.Second))
+	minDuration, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.MinRetryDuration)
+	if err != nil {
+		klog.Errorf("fail to parse minRetryDuration %s of backup %s/%s, %v", backup.Spec.BackoffRetryPolicy.MinRetryDuration, ns, name, err)
+		return err
+	}
+	duration := time.Duration(minDuration.Nanoseconds() << (retryNum - 1))
 	expectedRetryAt := metav1.NewTime(detectFailedAt.Add(duration))
 
 	// update
@@ -460,9 +465,13 @@ func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(backup *v1alpha
 	if isExceedRetryTimes {
 		failedReason = fmt.Sprintf("exceed retry times, max is %d, failed reason %s, original reason %s", backup.Spec.BackoffRetryPolicy.MaxRetryTimes, retryRecord.RetryReason, retryRecord.OriginalReason)
 	}
-	isRetryTimeout := isRetryTimeout(backup, &now)
+	isRetryTimeout, err := isRetryTimeout(backup, &now)
+	if err != nil {
+		klog.Errorf("fail to check whether the retry is timeout, backup is %s/%s, %v", ns, name, err)
+		return err
+	}
 	if isRetryTimeout {
-		failedReason = fmt.Sprintf("retry timeout, max is %d minutes, failed reason %s, original reason %s", backup.Spec.BackoffRetryPolicy.RetryTimeout, retryRecord.RetryReason, retryRecord.OriginalReason)
+		failedReason = fmt.Sprintf("retry timeout, max is %s, failed reason %s, original reason %s", backup.Spec.BackoffRetryPolicy.RetryTimeout, retryRecord.RetryReason, retryRecord.OriginalReason)
 	}
 
 	if isExceedRetryTimes || isRetryTimeout {
@@ -513,13 +522,18 @@ func isExceedRetryTimes(backup *v1alpha1.Backup) bool {
 	return currentRetryNum > backup.Spec.BackoffRetryPolicy.MaxRetryTimes
 }
 
-func isRetryTimeout(backup *v1alpha1.Backup, now *time.Time) bool {
+func isRetryTimeout(backup *v1alpha1.Backup, now *time.Time) (bool, error) {
 	records := backup.Status.BackoffRetryStatus
 	if len(records) == 0 {
-		return false
+		return false, nil
 	}
 	firstDetectAt := records[0].DetectFailedAt
-	return now.Unix()-firstDetectAt.Unix() > int64(backup.Spec.BackoffRetryPolicy.RetryTimeout)*int64(time.Minute)/int64(time.Second)
+	retryTimeout, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.RetryTimeout)
+	if err != nil {
+		klog.Errorf("fail to parse retryTimeout %s of backup %s/%s, %v", backup.Spec.BackoffRetryPolicy.RetryTimeout, backup.Namespace, backup.Name, err)
+		return false, err
+	}
+	return now.Unix()-firstDetectAt.Unix() > int64(retryTimeout)/int64(time.Second), nil
 }
 
 func isTimeToRetry(backup *v1alpha1.Backup, now *time.Time) bool {
