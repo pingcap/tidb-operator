@@ -480,6 +480,10 @@ func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32)
 		key = label.AnnTiKVDeleteSlots
 	} else if component == label.TiFlashLabelVal {
 		key = label.AnnTiFlashDeleteSlots
+	} else if component == label.TiCDCLabelVal {
+		key = label.AnnTiCDCDeleteSlots
+	} else if component == label.TiProxyLabelVal {
+		key = label.AnnTiProxyDeleteSlots
 	} else {
 		return
 	}

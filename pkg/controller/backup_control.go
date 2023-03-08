@@ -29,6 +29,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -47,6 +48,7 @@ import (
 type BackupControlInterface interface {
 	CreateBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup, error)
 	DeleteBackup(backup *v1alpha1.Backup) error
+	TruncateLogBackup(logBackup *v1alpha1.Backup, truncateTSO uint64) error
 }
 
 type realBackupControl struct {
@@ -92,6 +94,22 @@ func (c *realBackupControl) DeleteBackup(backup *v1alpha1.Backup) error {
 		klog.V(4).Infof("delete backup: [%s/%s] successfully, backupSchedule/%s", ns, backupName, bsName)
 	}
 	c.recordBackupEvent("delete", backup, err)
+	return err
+}
+
+func (c *realBackupControl) TruncateLogBackup(backup *v1alpha1.Backup, truncateTSO uint64) error {
+	ns := backup.GetNamespace()
+	backupName := backup.GetName()
+
+	bsName := backup.GetLabels()[label.BackupScheduleLabelKey]
+	backup.Spec.LogTruncateUntil = strconv.FormatUint(truncateTSO, 10)
+	_, err := c.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
+	if err != nil {
+		klog.Errorf("failed to truncate Log Backup: [%s/%s] for backupSchedule/%s, truncateTSO: %d, err: %v", ns, backupName, bsName, truncateTSO, err)
+	} else {
+		klog.V(4).Infof("truncate log backup: [%s/%s] successfully, backupSchedule/%s, truncateTSO: %d", ns, backupName, bsName, truncateTSO)
+	}
+	c.recordBackupEvent("truncate", backup, err)
 	return err
 }
 
@@ -163,6 +181,17 @@ func (fbc *FakeBackupControl) DeleteBackup(backup *v1alpha1.Backup) error {
 	}
 
 	return fbc.backupIndexer.Delete(backup)
+}
+
+// TruncateLogBackup truncate the log backup
+func (fbc *FakeBackupControl) TruncateLogBackup(backup *v1alpha1.Backup, truncateTSO uint64) error {
+	defer fbc.createBackupTracker.Inc()
+	if fbc.createBackupTracker.ErrorReady() {
+		defer fbc.createBackupTracker.Reset()
+		return fbc.createBackupTracker.GetError()
+	}
+	backup.Spec.LogTruncateUntil = strconv.FormatUint(truncateTSO, 10)
+	return fbc.backupIndexer.Update(backup)
 }
 
 var _ BackupControlInterface = &FakeBackupControl{}
