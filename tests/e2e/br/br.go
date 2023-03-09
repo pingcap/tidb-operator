@@ -650,9 +650,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
 				backup.Spec.BackoffRetryPolicy = v1alpha1.BackoffRetryPolicy{
-					MinRetryDuration: 60,
+					MinRetryDuration: "60s",
 					MaxRetryTimes:    2,
-					RetryTimeout:     30,
+					RetryTimeout:     "30m",
 				}
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
@@ -729,9 +729,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
 				backup.Spec.BackoffRetryPolicy = v1alpha1.BackoffRetryPolicy{
-					MinRetryDuration: 70,
+					MinRetryDuration: "70s",
 					MaxRetryTimes:    2,
-					RetryTimeout:     2,
+					RetryTimeout:     "2m",
 				}
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
