@@ -1378,6 +1378,8 @@ const (
 	EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
 	// EvictLeaderAnnKeyForResize is the annotation key to evict leader user by pvc resizer.
 	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
+	// PDLeaderTransferAnnKey is the annotation key to transfer PD leader used by user.
+	PDLeaderTransferAnnKey = "tidb.pingcap.com/pd-transfer-leader"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -1387,6 +1389,15 @@ const (
 const (
 	EvictLeaderValueNone      = "none"
 	EvictLeaderValueDeletePod = "delete-pod"
+)
+
+// The `Value` of PD leader transfer annotation controls the behavior when the leader is transferred to another member, the valid value is one of:
+//
+// - `none`: doing nothing.
+// - `delete-pod`: delete pod.
+const (
+	TransferLeaderValueNone      = "none"
+	TransferLeaderValueDeletePod = "delete-pod"
 )
 
 type EvictLeaderStatus struct {
@@ -2004,15 +2015,17 @@ type BRConfig struct {
 // 1. the number of retries can not exceed MaxRetryTimes
 // 2. the time from discovery failure can not exceed RetryTimeout
 type BackoffRetryPolicy struct {
-	// MinRetryDuration is the seconds of min retry duration, the retry duration will be MinRetryDuration << (retry num -1)
-	// +kubebuilder:default=300
-	MinRetryDuration int `json:"minRetryDuration,omitempty"`
+	// MinRetryDuration is the min retry duration, the retry duration will be MinRetryDuration << (retry num -1)
+	// format reference, https://golang.org/pkg/time/#ParseDuration
+	// +kubebuilder:default="300s"
+	MinRetryDuration string `json:"minRetryDuration,omitempty"`
 	// MaxRetryTimes is the max retry times
 	// +kubebuilder:default=2
 	MaxRetryTimes int `json:"maxRetryTimes,omitempty"`
-	// RetryTimeout is the minutes of retry timeout
-	// +kubebuilder:default=30
-	RetryTimeout int `json:"retryTimeout,omitempty"`
+	// RetryTimeout is the retry timeout
+	// format reference, https://golang.org/pkg/time/#ParseDuration
+	// +kubebuilder:default="30m"
+	RetryTimeout string `json:"retryTimeout,omitempty"`
 }
 
 // BackoffRetryRecord is the record of backoff retry
