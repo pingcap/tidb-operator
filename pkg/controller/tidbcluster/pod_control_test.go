@@ -15,6 +15,8 @@ package tidbcluster
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -41,7 +43,7 @@ func (c *kvClient) GetLeaderCount() (int, error) {
 	return int(count), nil
 }
 
-func TestPodControllerSync(t *testing.T) {
+func TestTiKVPodSync(t *testing.T) {
 	interval := time.Millisecond * 100
 	timeout := time.Minute * 1
 	g := NewGomegaWithT(t)
@@ -124,6 +126,197 @@ func TestPodControllerSync(t *testing.T) {
 		stat := c.getPodStat(pod)
 		return stat.finishAnnotationCounts
 	}, timeout, interval).ShouldNot(Equal(0), "should finish annotation")
+}
+
+func TestPDPodSync(t *testing.T) {
+	const (
+		interval = 100 * time.Millisecond
+		timeout  = time.Minute
+	)
+	testCases := []struct {
+		name                string
+		replicas            int
+		phase               v1alpha1.MemberPhase
+		leader              int
+		failed              []int
+		target              int
+		deleteAfterTransfer bool
+		shouldTransfer      bool
+	}{
+		{
+			name:                "transfer leader only",
+			replicas:            3,
+			phase:               v1alpha1.NormalPhase,
+			leader:              0,
+			failed:              nil,
+			target:              0,
+			deleteAfterTransfer: false,
+			shouldTransfer:      true,
+		},
+		{
+			name:                "transfer leader and delete pod",
+			replicas:            3,
+			phase:               v1alpha1.NormalPhase,
+			leader:              0,
+			failed:              nil,
+			target:              0,
+			deleteAfterTransfer: true,
+			shouldTransfer:      true,
+		},
+		{
+			name:                "delete pod only",
+			replicas:            3,
+			phase:               v1alpha1.NormalPhase,
+			leader:              0,
+			failed:              nil,
+			target:              1,
+			deleteAfterTransfer: true,
+			shouldTransfer:      true,
+		},
+		{
+			name:                "not enough quorum",
+			replicas:            3,
+			phase:               v1alpha1.NormalPhase,
+			leader:              0,
+			failed:              []int{1},
+			target:              0,
+			deleteAfterTransfer: true,
+			shouldTransfer:      false,
+		},
+		{
+			name:                "transfer while upgrade",
+			replicas:            3,
+			phase:               v1alpha1.UpgradePhase,
+			leader:              0,
+			failed:              nil,
+			target:              0,
+			deleteAfterTransfer: true,
+			shouldTransfer:      false,
+		},
+	}
+
+	for _, c := range testCases {
+		t.Run(c.name, func(t *testing.T) {
+			ctx := context.TODO()
+			g := NewGomegaWithT(t)
+			tc := newTidbCluster()
+
+			var mu sync.Mutex
+			currentLeader := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), c.leader)
+			pdClient := pdapi.NewFakePDClient()
+			pdClient.AddReaction(pdapi.TransferPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
+				mu.Lock()
+				defer mu.Unlock()
+				currentLeader = action.Name
+				return nil, nil
+			})
+
+			deps := controller.NewFakeDependencies()
+			podController := NewPodController(deps)
+			podController.testPDClient = pdClient
+
+			stop := make(chan struct{})
+			go func() {
+				deps.KubeInformerFactory.Start(stop)
+			}()
+			deps.KubeInformerFactory.WaitForCacheSync(stop)
+			go func() {
+				deps.InformerFactory.Start(stop)
+			}()
+			deps.InformerFactory.WaitForCacheSync(stop)
+
+			defer close(stop)
+			go func() {
+				podController.Run(1, stop)
+			}()
+
+			tc.Status.PD = v1alpha1.PDStatus{
+				Synced: true,
+				Phase:  c.phase,
+				Leader: v1alpha1.PDMember{
+					Name:   fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), c.leader),
+					Health: true,
+				},
+				Members: make(map[string]v1alpha1.PDMember),
+			}
+			for i := 0; i < c.replicas; i++ {
+				member := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), i)
+				tc.Status.PD.Members[member] = v1alpha1.PDMember{
+					Name:   member,
+					Health: true,
+				}
+			}
+			for _, i := range c.failed {
+				member := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), i)
+				tc.Status.PD.Members[member] = v1alpha1.PDMember{
+					Name:   member,
+					Health: false,
+				}
+			}
+			tc, err := deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(ctx, tc, metav1.CreateOptions{})
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Eventually(func() error {
+				_, err := deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(tc.Name)
+				return err
+			}, timeout, interval).Should(Succeed())
+
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), c.target),
+					Namespace: tc.Namespace,
+					Labels: map[string]string{
+						label.ManagedByLabelKey: "tidb-operator",
+						label.ComponentLabelKey: "pd",
+						label.InstanceLabelKey:  tc.Name,
+					},
+					Annotations: make(map[string]string),
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: "dummy-name",
+						},
+					},
+				},
+			}
+			if c.deleteAfterTransfer {
+				pod.Annotations[v1alpha1.PDLeaderTransferAnnKey] = v1alpha1.TransferLeaderValueDeletePod
+			} else {
+				pod.Annotations[v1alpha1.PDLeaderTransferAnnKey] = v1alpha1.TransferLeaderValueNone
+			}
+			pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+			g.Expect(err).NotTo(HaveOccurred())
+
+			// verify end state
+			if c.shouldTransfer {
+				g.Eventually(func() bool {
+					mu.Lock()
+					defer mu.Unlock()
+
+					// verify leader has been transferred
+					if currentLeader == pod.Name {
+						// leader has not been transferred
+						return false
+					}
+
+					if c.deleteAfterTransfer {
+						_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+						return errors.IsNotFound(err)
+					}
+					return true
+				}, timeout, interval).Should(BeTrue(), "should delete pod")
+			} else {
+				g.Consistently(func() bool {
+					// verify leader remain the same as initial state
+					if currentLeader != fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), c.leader) {
+						return false
+					}
+					_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+					return err == nil
+				}, timeout, interval).Should(BeTrue(), "should not transfer leader")
+			}
+		})
+	}
 }
 
 func TestNeedEvictLeader(t *testing.T) {
