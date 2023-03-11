@@ -59,6 +59,19 @@ type BackupUpdateStatus struct {
 	Progress *float64
 	// ProgressUpdateTime is the progress update time.
 	ProgressUpdateTime *metav1.Time
+
+	// RetryNum is the number of retry
+	RetryNum *int
+	// DetectFailedAt is the time when detect failure
+	DetectFailedAt *metav1.Time
+	// ExpectedRetryAt is the time we calculate and expect retry after it
+	ExpectedRetryAt *metav1.Time
+	// RealRetryAt is the time when the retry was actually initiated
+	RealRetryAt *metav1.Time
+	// Reason is the reason of retry
+	RetryReason *string
+	// OriginalReason is the original reason of backup job or pod failed
+	OriginalReason *string
 }
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -92,7 +105,7 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		// Always get the latest backup before update.
 		if updated, err := u.backupLister.Backups(ns).Get(backupName); err == nil {
 			// make a copy so we don't mutate the shared cache
-			backup = updated.DeepCopy()
+			*backup = *(updated.DeepCopy())
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
 			return err
@@ -164,6 +177,11 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 			isUpdate = true
 		}
 	}
+
+	if newStatus.RetryNum != nil || newStatus.RealRetryAt != nil {
+		isUpdate = updateBackoffRetryStatus(status, newStatus)
+	}
+
 	return isUpdate
 }
 
@@ -434,6 +452,71 @@ func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *fl
 	}
 
 	return progresses, isUpdate
+}
+
+func updateBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
+	isUpdate := false
+	currentRecord := getCurrentBackoffRetryRecord(status, newStatus)
+
+	// no record which is newStatus want to modify in current backup status, we need create a new record
+	if currentRecord == nil {
+		// no records in BackoffRetryStatus, make record array first
+		if len(status.BackoffRetryStatus) == 0 {
+			status.BackoffRetryStatus = make([]v1alpha1.BackoffRetryRecord, 0)
+		}
+		// create a new record
+		status.BackoffRetryStatus = append(status.BackoffRetryStatus, v1alpha1.BackoffRetryRecord{})
+		currentRecord = &status.BackoffRetryStatus[len(status.BackoffRetryStatus)-1]
+		isUpdate = true
+	}
+
+	if newStatus.RetryNum != nil && *newStatus.RetryNum != currentRecord.RetryNum {
+		currentRecord.RetryNum = *newStatus.RetryNum
+		isUpdate = true
+	}
+
+	if newStatus.DetectFailedAt != nil && (currentRecord.DetectFailedAt == nil || *newStatus.DetectFailedAt != *currentRecord.DetectFailedAt) {
+		currentRecord.DetectFailedAt = newStatus.DetectFailedAt
+		isUpdate = true
+	}
+
+	if newStatus.ExpectedRetryAt != nil && (currentRecord.ExpectedRetryAt == nil || *newStatus.ExpectedRetryAt != *currentRecord.ExpectedRetryAt) {
+		currentRecord.ExpectedRetryAt = newStatus.ExpectedRetryAt
+		isUpdate = true
+	}
+
+	if newStatus.RealRetryAt != nil && (currentRecord.RealRetryAt == nil || *newStatus.RealRetryAt != *currentRecord.RealRetryAt) {
+		currentRecord.RealRetryAt = newStatus.RealRetryAt
+		isUpdate = true
+	}
+
+	if newStatus.RetryReason != nil && *newStatus.RetryReason != currentRecord.RetryReason {
+		currentRecord.RetryReason = *newStatus.RetryReason
+		isUpdate = true
+	}
+
+	if newStatus.OriginalReason != nil && *newStatus.OriginalReason != currentRecord.OriginalReason {
+		currentRecord.OriginalReason = *newStatus.OriginalReason
+		isUpdate = true
+	}
+
+	return isUpdate
+}
+
+func getCurrentBackoffRetryRecord(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) *v1alpha1.BackoffRetryRecord {
+	// no record
+	if len(status.BackoffRetryStatus) == 0 {
+		return nil
+	}
+	// no RetryNum, means modify latest record
+	if newStatus.RetryNum == nil {
+		return &status.BackoffRetryStatus[len(status.BackoffRetryStatus)-1]
+	}
+
+	if *newStatus.RetryNum <= len(status.BackoffRetryStatus) {
+		return &status.BackoffRetryStatus[*newStatus.RetryNum-1]
+	}
+	return nil
 }
 
 var _ BackupConditionUpdaterInterface = &realBackupConditionUpdater{}

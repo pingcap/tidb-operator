@@ -895,6 +895,12 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec"),
 						},
 					},
+					"logBackupTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LogBackupTemplate is the specification of the log backup structure to get scheduled.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec"),
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec. Defaults to Kubernetes default storage class.",
@@ -923,7 +929,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"schedule", "backupTemplate"},
+				Required: []string{"schedule", "backupTemplate", "logBackupTemplate"},
 			},
 		},
 		Dependencies: []string{
@@ -1143,11 +1149,17 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"backoffRetryPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackoffRetryPolicy"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackoffRetryPolicy", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 

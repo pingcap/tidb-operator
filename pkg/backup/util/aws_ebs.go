@@ -16,11 +16,16 @@ package util
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ebs"
+	"github.com/aws/aws-sdk-go/service/ebs/ebsiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
 )
 
@@ -28,9 +33,10 @@ import (
 type EBSVolumeType string
 
 const (
-	GP3Volume EBSVolumeType = "gp3"
-	IO1Volume EBSVolumeType = "io1"
-	IO2Volume EBSVolumeType = "io2"
+	GP3Volume           EBSVolumeType = "gp3"
+	IO1Volume           EBSVolumeType = "io1"
+	IO2Volume           EBSVolumeType = "io2"
+	CloudAPIConcurrency               = 3
 )
 
 func (t EBSVolumeType) Valid() bool {
@@ -63,11 +69,11 @@ type ClusterInfo struct {
 	Replicas       map[string]uint64 `json:"replicas" toml:"replicas"`
 }
 
-type Kubernetes struct {
-	PVs     []interface{}          `json:"pvs" toml:"pvs"`
-	PVCs    []interface{}          `json:"pvcs" toml:"pvcs"`
-	CRD     interface{}            `json:"crd_tidb_cluster" toml:"crd_tidb_cluster"`
-	Options map[string]interface{} `json:"options" toml:"options"`
+type KubernetesBackup struct {
+	PVCs         []*corev1.PersistentVolumeClaim `json:"pvcs"`
+	PVs          []*corev1.PersistentVolume      `json:"pvs"`
+	TiDBCluster  *v1alpha1.TidbCluster           `json:"crd_tidb_cluster"`
+	Unstructured *unstructured.Unstructured      `json:"options"`
 }
 
 type TiKVComponent struct {
@@ -88,13 +94,13 @@ type EBSBasedBRMeta struct {
 	TiKVComponent  *TiKVComponent         `json:"tikv" toml:"tikv"`
 	TiDBComponent  *TiDBComponent         `json:"tidb" toml:"tidb"`
 	PDComponent    *PDComponent           `json:"pd" toml:"pd"`
-	KubernetesMeta *Kubernetes            `json:"kubernetes" toml:"kubernetes"`
+	KubernetesMeta *KubernetesBackup      `json:"kubernetes" toml:"kubernetes"`
 	Options        map[string]interface{} `json:"options" toml:"options"`
 	Region         string                 `json:"region" toml:"region"`
 }
 
 type EC2Session struct {
-	ec2 ec2iface.EC2API
+	EC2 ec2iface.EC2API
 	// aws operation concurrency
 	concurrency uint
 }
@@ -114,7 +120,7 @@ func NewEC2Session(concurrency uint) (*EC2Session, error) {
 		return nil, errors.Trace(err)
 	}
 	ec2Session := ec2.New(sess)
-	return &EC2Session{ec2: ec2Session, concurrency: concurrency}, nil
+	return &EC2Session{EC2: ec2Session, concurrency: concurrency}, nil
 }
 
 func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
@@ -124,7 +130,7 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 	for volID := range snapIDMap {
 		snapID := snapIDMap[volID]
 		eg.Go(func() error {
-			_, err := e.ec2.DeleteSnapshot(&ec2.DeleteSnapshotInput{
+			_, err := e.EC2.DeleteSnapshot(&ec2.DeleteSnapshotInput{
 				SnapshotId: &snapID,
 			})
 			if err != nil {
@@ -143,4 +149,22 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 		return err
 	}
 	return nil
+}
+
+type EBSSession struct {
+	EBS ebsiface.EBSAPI
+	// aws operation concurrency
+	concurrency uint
+}
+
+func NewEBSSession(concurrency uint) (*EBSSession, error) {
+	awsConfig := aws.NewConfig().WithMaxRetries(9)
+	// TiDB Operator need make sure we have the correct permission to call aws api(through aws env variables)
+	sessionOptions := session.Options{Config: *awsConfig}
+	sess, err := session.NewSessionWithOptions(sessionOptions)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	ebsSession := ebs.New(sess)
+	return &EBSSession{EBS: ebsSession, concurrency: concurrency}, nil
 }

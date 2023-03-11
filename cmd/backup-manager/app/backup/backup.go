@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dustin/go-humanize"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
@@ -71,7 +70,7 @@ func (bo *Options) backupData(
 		)
 		localCSBFile := path.Join(util.BRBinPath, "csb_backup.json")
 		// read cluster meta from external storage and pass it to BR
-		klog.Infof("read the restore meta from external storage")
+		klog.Infof("read the cluster meta from external storage")
 		externalStorage, err := pkgutil.NewStorageBackend(backup.Spec.StorageProvider, &pkgutil.StorageCredential{})
 		if err != nil {
 			return err
@@ -92,23 +91,13 @@ func (bo *Options) backupData(
 		logCallback = func(line string) {
 			if strings.Contains(line, successTag) {
 				extract := strings.Split(line, successTag)[1]
-				sizeStr := regexp.MustCompile(`size=(\d+)`).FindString(extract)
-				size := strings.ReplaceAll(sizeStr, "size=", "")
 				tsStr := regexp.MustCompile(`resolved_ts=(\d+)`).FindString(extract)
 				ts := strings.ReplaceAll(tsStr, "resolved_ts=", "")
-				klog.Infof("%s size: %s, resolved_ts: %s", successTag, size, ts)
+				klog.Infof("%s resolved_ts: %s", successTag, ts)
 
-				backupSize, err := strconv.ParseInt(size, 10, 64)
-				if err != nil {
-					klog.Warningf("Failed to parse BackupSize %s, %v", size, err)
-				}
-				backupSize = backupSize << 30 // Convert GiB to bytes.
-				backupSizeReadable := humanize.Bytes(uint64(backupSize))
 				progress := 100.0
 				if err := statusUpdater.Update(backup, nil, &controller.BackupUpdateStatus{
 					CommitTs:           &ts,
-					BackupSize:         &backupSize,
-					BackupSizeReadable: &backupSizeReadable,
 					ProgressStep:       &progressStep,
 					Progress:           &progress,
 					ProgressUpdateTime: &metav1.Time{Time: time.Now()},
@@ -285,6 +274,8 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
 	}
 
+	e2eTestSimulate(bo)
+
 	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
 	return nil
 }
@@ -329,5 +320,22 @@ func (bo *Options) updateProgressFromFile(
 		case <-stopCh:
 			return
 		}
+	}
+}
+
+// TODO use https://github.com/pingcap/failpoint instead e2e test env
+func e2eTestSimulate(bo *Options) {
+	if backupUtil.IsE2EExtendBackupTime() {
+		for i := 0; i < 5*60; i++ {
+			klog.Infof("simulate br running for backup %s", bo)
+			time.Sleep(time.Second * 1)
+		}
+	}
+	if backupUtil.IsE2EExtendBackupTimeAndPanic() {
+		for i := 0; i < 2*60; i++ {
+			klog.Infof("simulate br running for backup %s", bo)
+			time.Sleep(time.Second * 1)
+		}
+		panic("simulate backup pod unexpected termination for e2e test")
 	}
 }

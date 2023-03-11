@@ -20,7 +20,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/dustin/go-humanize"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -90,6 +93,20 @@ func (bm *Manager) ProcessBackup() error {
 		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
+	}
+
+	// we treat snapshot backup as restarted if its status is not scheduled when backup pod just start to run
+	// we will clean backup data before run br command
+	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && (backup.Status.Phase != v1alpha1.BackupScheduled || v1alpha1.IsBackupRestart(backup)) {
+		klog.Infof("snapshot backup %s was restarted, status is %s", bm, backup.Status.Phase)
+		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:   v1alpha1.BackupRestart,
+			Status: corev1.ConditionTrue,
+		}, nil)
+		if uerr != nil {
+			errs = append(errs, uerr)
+			return errorutils.NewAggregate(errs)
+		}
 	}
 
 	if backup.Spec.BR == nil {
@@ -269,6 +286,15 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		}
 	}
 
+	// clean snapshot backup data if it was restarted
+	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupRestart(backup) && !bm.isBRCanContinueRunByCheckpoint() {
+		klog.Infof("clean snapshot backup %s data before run br command, backup path is %s", bm, backup.Status.BackupPath)
+		err := bm.cleanSnapshotBackupEnv(ctx, backup)
+		if err != nil {
+			return errors.Annotatef(err, "clean snapshot backup %s failed", bm)
+		}
+	}
+
 	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupRunning,
@@ -321,11 +347,21 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	var updateStatus *controller.BackupUpdateStatus
 	switch bm.Mode {
 	case string(v1alpha1.BackupModeVolumeSnapshot):
-		// In volume snapshot mode, commitTS and size have been updated according to the
-		// br command output, so we don't need to update them here.
+		// In volume snapshot mode, commitTS have been updated according to the
+		// br command output, so we don't need to update it here.
+		backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
+
+		if err != nil {
+			klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
+		}
+
+		backupSizeReadable := humanize.Bytes(uint64(backupSize))
+
 		updateStatus = &controller.BackupUpdateStatus{
-			TimeStarted:   &metav1.Time{Time: started},
-			TimeCompleted: &metav1.Time{Time: time.Now()},
+			TimeStarted:        &metav1.Time{Time: started},
+			TimeCompleted:      &metav1.Time{Time: time.Now()},
+			BackupSize:         &backupSize,
+			BackupSizeReadable: &backupSizeReadable,
 		}
 	default:
 		backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
@@ -526,4 +562,23 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 		LogSuccessTruncateUntil: &bm.TruncateUntil,
 	}
 	return updateStatus, "", nil
+}
+
+func (bm *Manager) cleanSnapshotBackupEnv(ctx context.Context, backup *v1alpha1.Backup) error {
+	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+		return nil
+	}
+
+	cleanOpt := clean.Options{Namespace: bm.Namespace, BackupName: bm.ResourceName}
+	return cleanOpt.CleanBRRemoteBackupData(ctx, backup)
+}
+
+func (bm *Manager) isBRCanContinueRunByCheckpoint() bool {
+	v, err := semver.NewVersion(bm.TiKVVersion)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", bm.TiKVVersion, err)
+		return false
+	}
+	lessThanV651, _ := semver.NewConstraint("<v6.5.1-0")
+	return !lessThanV651.Check(v)
 }

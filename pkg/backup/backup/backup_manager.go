@@ -71,8 +71,9 @@ func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
 	return bm.syncBackupJob(backup)
 }
 
-func (bm *backupManager) UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
-	return bm.statusUpdater.Update(backup, condition, nil)
+// UpdateStatus updates the status for a Backup, include condition and status info.
+func (bm *backupManager) UpdateStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
+	return bm.statusUpdater.Update(backup, condition, newStatus)
 }
 
 func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
@@ -105,7 +106,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	// make bakcup job
+	// make backup job
 	var job *batchv1.Job
 	var reason string
 	var updateStatus *controller.BackupUpdateStatus
@@ -119,7 +120,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
-			Type:    v1alpha1.BackupRetryFailed,
+			Type:    v1alpha1.BackupRetryTheFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateBackupJobFailed",
 			Message: errMsg.Error(),
@@ -154,7 +155,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Command: logBackupSubcommand,
-				Type:    v1alpha1.BackupRetryFailed,
+				Type:    v1alpha1.BackupRetryTheFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
@@ -233,7 +234,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 		job, reason, err = bm.makeExportJob(backup)
 		if err != nil {
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupRetryFailed,
+				Type:    v1alpha1.BackupRetryTheFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
@@ -244,7 +245,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 		reason, err = bm.ensureBackupPVCExist(backup)
 		if err != nil {
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupRetryFailed,
+				Type:    v1alpha1.BackupRetryTheFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
@@ -259,7 +260,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 		if err != nil {
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Command: logBackupSubcommand,
-				Type:    v1alpha1.BackupRetryFailed,
+				Type:    v1alpha1.BackupRetryTheFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
@@ -273,7 +274,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 			if err != nil {
 				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 					Command: logBackupSubcommand,
-					Type:    v1alpha1.BackupRetryFailed,
+					Type:    v1alpha1.BackupRetryTheFailed,
 					Status:  corev1.ConditionTrue,
 					Reason:  "start log backup progress tracker error",
 					Message: err.Error(),
@@ -508,7 +509,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			}
 		}
 	case v1alpha1.BackupModeVolumeSnapshot:
-		reason, err = bm.volSnapshotBackup(backup, tc)
+		reason, err = bm.volumeSnapshotBackup(backup, tc)
 		if err != nil {
 			return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 		}
@@ -695,7 +696,7 @@ func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, cs
 	return "", nil
 }
 
-func (bm *backupManager) volSnapshotBackup(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
+func (bm *backupManager) volumeSnapshotBackup(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
 	if s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps); err != nil {
 		return reason, err
 	} else if s != nil {
@@ -876,7 +877,8 @@ func (m *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
 	return m.err
 }
 
-func (m *FakeBackupManager) UpdateCondition(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
+// UpdateStatus updates the status for a Backup, include condition and status info.
+func (m *FakeBackupManager) UpdateStatus(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
 	return nil
 }
 
