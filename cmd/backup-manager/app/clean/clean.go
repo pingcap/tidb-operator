@@ -42,8 +42,7 @@ var (
 )
 
 const (
-	metaFile            = "/backupmeta"
-	CloudAPIConcurrency = 3
+	metaFile = "/backupmeta"
 )
 
 // Options contains the input arguments to the backup command

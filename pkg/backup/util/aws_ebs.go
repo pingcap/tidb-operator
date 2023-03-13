@@ -101,13 +101,11 @@ type EBSBasedBRMeta struct {
 
 type EC2Session struct {
 	EC2 ec2iface.EC2API
-	// aws operation concurrency
-	concurrency uint
 }
 
 type VolumeAZs map[string]string
 
-func NewEC2Session(concurrency uint) (*EC2Session, error) {
+func NewEC2Session() (*EC2Session, error) {
 	// aws-sdk has builtin exponential backoff retry mechanism, see:
 	// https://github.com/aws/aws-sdk-go/blob/db4388e8b9b19d34dcde76c492b17607cd5651e2/aws/client/default_retryer.go#L12-L16
 	// with default retryer & max-retry=9, we will wait for at least 30s in total
@@ -120,7 +118,7 @@ func NewEC2Session(concurrency uint) (*EC2Session, error) {
 		return nil, errors.Trace(err)
 	}
 	ec2Session := ec2.New(sess)
-	return &EC2Session{EC2: ec2Session, concurrency: concurrency}, nil
+	return &EC2Session{EC2: ec2Session}, nil
 }
 
 func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
@@ -153,11 +151,9 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 
 type EBSSession struct {
 	EBS ebsiface.EBSAPI
-	// aws operation concurrency
-	concurrency uint
 }
 
-func NewEBSSession(concurrency uint) (*EBSSession, error) {
+func NewEBSSession() (*EBSSession, error) {
 	awsConfig := aws.NewConfig().WithMaxRetries(9)
 	// TiDB Operator need make sure we have the correct permission to call aws api(through aws env variables)
 	sessionOptions := session.Options{Config: *awsConfig}
@@ -166,5 +162,5 @@ func NewEBSSession(concurrency uint) (*EBSSession, error) {
 		return nil, errors.Trace(err)
 	}
 	ebsSession := ebs.New(sess)
-	return &EBSSession{EBS: ebsSession, concurrency: concurrency}, nil
+	return &EBSSession{EBS: ebsSession}, nil
 }

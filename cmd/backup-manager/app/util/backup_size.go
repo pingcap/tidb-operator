@@ -57,8 +57,46 @@ const (
 	EbsApiConcurrency = 40
 )
 
+type VolSnapBackupSize struct {
+	ebsSession *util.EBSSession
+	ec2Session *util.EC2Session
+}
+
+func NewVolSnapBackupSize() (*VolSnapBackupSize, error) {
+	ebsSession, err := util.NewEBSSession()
+	if err != nil {
+		klog.Errorf("new a ebs session failure.")
+		return nil, err
+	}
+
+	// read all snapshots from aws
+	ec2Session, err := util.NewEC2Session()
+	if err != nil {
+		klog.Errorf("new a ec2 session failure.")
+		return nil, err
+	}
+	return &VolSnapBackupSize{ebsSession: ebsSession, ec2Session: ec2Session}, nil
+}
+
+// for unit test
+func NewMockVolSnapBackupSize() (*VolSnapBackupSize, error) {
+	ebsSession, err := util.NewMockEBSSession(util.CloudAPIConcurrency)
+	if err != nil {
+		klog.Errorf("new a ebs session failure.")
+		return nil, err
+	}
+
+	// read all snapshots from aws
+	ec2Session, err := util.NewMockEC2Session(util.CloudAPIConcurrency)
+	if err != nil {
+		klog.Errorf("new a ec2 session failure.")
+		return nil, err
+	}
+	return &VolSnapBackupSize{ebsSession: ebsSession, ec2Session: ec2Session}, nil
+}
+
 // CalcVolSnapBackupSize get snapshots from backup meta and then calc the backup size of snapshots.
-func CalcVolSnapBackupSize(ctx context.Context, provider v1alpha1.StorageProvider) (int64, error) {
+func (vsbl *VolSnapBackupSize) CalcVolSnapBackupSize(ctx context.Context, provider v1alpha1.StorageProvider) (int64, error) {
 	start := time.Now()
 	// retrieves all snapshots from backup meta file
 	volSnapshots, err := getSnapshotsFromBackupmeta(ctx, provider)
@@ -308,7 +346,7 @@ func getPrevSnapshotId(snapshotId string, volSnapshots []*ec2.Snapshot) (string,
 				return "", nil
 			}
 			prevSnapshotId = *volSnapshots[i-1].SnapshotId
-			klog.Infof("the prevSnapshot index is %d, ID is %s", i, *snapshot.SnapshotId)
+			klog.Infof("the number of prevous snapshot is %d, ID is %s", i, prevSnapshotId)
 			break
 		}
 	}
