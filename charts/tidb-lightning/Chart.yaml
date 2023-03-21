@@ -1,7 +1,7 @@
 apiVersion: v1
 description: A Helm chart for TiDB Lightning
 name: tidb-lightning
-version: dev
+version: v1-canary
 home: https://github.com/pingcap/tidb-lightning
 sources:
   - https://github.com/pingcap/tidb-operator

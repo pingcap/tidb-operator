@@ -39,6 +39,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+const (
+	RequeueInterval = time.Minute
+)
+
 // PodController control pods of tidb cluster.
 // see docs/design-proposals/2021-11-24-graceful-reschedule-tikv-pod.md
 type PodController struct {
@@ -208,6 +212,8 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	component := pod.Labels[label.ComponentLabelKey]
 	ctx := context.Background()
 	switch component {
+	case label.PDLabelVal:
+		return c.syncPDPod(ctx, pod, tc)
 	case label.TiKVLabelVal:
 		return c.syncTiKVPod(ctx, pod, tc)
 	default:
@@ -222,6 +228,52 @@ func (c *PodController) getPDClient(tc *v1alpha1.TidbCluster) pdapi.PDClient {
 
 	pdClient := controller.GetPDClient(c.deps.PDControl, tc)
 	return pdClient
+}
+
+func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value, ok := needPDLeaderTransfer(pod)
+	if !ok {
+		// No need to transfer leader
+		return reconcile.Result{}, nil
+	}
+
+	switch value {
+	case v1alpha1.TransferLeaderValueNone:
+	case v1alpha1.TransferLeaderValueDeletePod:
+	default:
+		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.PDLeaderTransferAnnKey, pod.Namespace, pod.Name)
+		return reconcile.Result{}, nil
+	}
+
+	// Check if there's any ongoing updates in PD.
+	if tc.Status.PD.Phase != v1alpha1.NormalPhase {
+		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	}
+
+	// Make sure we have quorum after we shut down this Pod.
+	if !safeToRestartPD(tc) {
+		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	}
+
+	// Transfer leader to other peer if necessary.
+	var err error
+	pdName := getPdName(pod, tc)
+	if tc.Status.PD.Leader.Name == pod.Name || tc.Status.PD.Leader.Name == pdName {
+		err = transferPDLeader(tc, c.getPDClient(tc))
+		if err != nil {
+			return reconcile.Result{}, nil
+		}
+	}
+
+	// Delete pod after leader transfer if configured.
+	if value == v1alpha1.TransferLeaderValueDeletePod {
+		err = c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
+		}
+	}
+
+	return reconcile.Result{}, nil
 }
 
 func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
@@ -369,4 +421,63 @@ func needEvictLeader(pod *corev1.Pod) (string, string, bool) {
 	}
 
 	return "", "", false
+}
+
+func needPDLeaderTransfer(pod *corev1.Pod) (string, bool) {
+	value, exist := pod.Annotations[v1alpha1.PDLeaderTransferAnnKey]
+	if !exist {
+		return "", false
+	}
+	return value, true
+}
+
+func safeToRestartPD(tc *v1alpha1.TidbCluster) bool {
+	healthCount := 0
+	for _, pdMember := range tc.Status.PD.Members {
+		if pdMember.Health {
+			healthCount++
+		}
+	}
+	for _, pdMember := range tc.Status.PD.PeerMembers {
+		if pdMember.Health {
+			healthCount++
+		}
+	}
+	return healthCount > (len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers))/2+1
+}
+
+func transferPDLeader(tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) error {
+	// find a target from peer members
+	target := pickNewLeader(tc)
+	if len(target) == 0 {
+		return fmt.Errorf("can't find a target pd for leader transfer")
+	}
+
+	return pdClient.TransferPDLeader(target)
+}
+
+func pickNewLeader(tc *v1alpha1.TidbCluster) string {
+	for _, pdMember := range tc.Status.PD.Members {
+		if pdMember.Name != tc.Status.PD.Leader.Name && pdMember.Health {
+			return pdMember.Name
+		}
+	}
+	for _, peerMember := range tc.Status.PD.PeerMembers {
+		if peerMember.Name != tc.Status.PD.Leader.Name && peerMember.Health {
+			return peerMember.Name
+		}
+	}
+	return ""
+}
+
+func getPdName(pod *corev1.Pod, tc *v1alpha1.TidbCluster) string {
+	if len(tc.Spec.ClusterDomain) > 0 {
+		return fmt.Sprintf("%s.%s-pd-peer.%s.svc.%s", pod.Name, tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
+	}
+
+	if tc.Spec.AcrossK8s {
+		return fmt.Sprintf("%s.%s-pd-peer.%s.svc", pod.Name, tc.Name, tc.Namespace)
+	}
+
+	return pod.Name
 }

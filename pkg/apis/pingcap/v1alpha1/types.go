@@ -1378,6 +1378,8 @@ const (
 	EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
 	// EvictLeaderAnnKeyForResize is the annotation key to evict leader user by pvc resizer.
 	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
+	// PDLeaderTransferAnnKey is the annotation key to transfer PD leader used by user.
+	PDLeaderTransferAnnKey = "tidb.pingcap.com/pd-transfer-leader"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -1387,6 +1389,15 @@ const (
 const (
 	EvictLeaderValueNone      = "none"
 	EvictLeaderValueDeletePod = "delete-pod"
+)
+
+// The `Value` of PD leader transfer annotation controls the behavior when the leader is transferred to another member, the valid value is one of:
+//
+// - `none`: doing nothing.
+// - `delete-pod`: delete pod.
+const (
+	TransferLeaderValueNone      = "none"
+	TransferLeaderValueDeletePod = "delete-pod"
 )
 
 type EvictLeaderStatus struct {
@@ -1947,6 +1958,9 @@ type BackupSpec struct {
 
 	// PriorityClassName of Backup Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
+	BackoffRetryPolicy BackoffRetryPolicy `json:"backoffRetryPolicy,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1991,6 +2005,45 @@ type BRConfig struct {
 	Options []string `json:"options,omitempty"`
 }
 
+// BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup.
+// When backup job or pod failed, it will retry in the following way:
+// first time: retry after MinRetryDuration
+// second time: retry after MinRetryDuration * 2
+// third time: retry after MinRetryDuration * 2 * 2
+// ...
+// as the limit:
+// 1. the number of retries can not exceed MaxRetryTimes
+// 2. the time from discovery failure can not exceed RetryTimeout
+type BackoffRetryPolicy struct {
+	// MinRetryDuration is the min retry duration, the retry duration will be MinRetryDuration << (retry num -1)
+	// format reference, https://golang.org/pkg/time/#ParseDuration
+	// +kubebuilder:default="300s"
+	MinRetryDuration string `json:"minRetryDuration,omitempty"`
+	// MaxRetryTimes is the max retry times
+	// +kubebuilder:default=2
+	MaxRetryTimes int `json:"maxRetryTimes,omitempty"`
+	// RetryTimeout is the retry timeout
+	// format reference, https://golang.org/pkg/time/#ParseDuration
+	// +kubebuilder:default="30m"
+	RetryTimeout string `json:"retryTimeout,omitempty"`
+}
+
+// BackoffRetryRecord is the record of backoff retry
+type BackoffRetryRecord struct {
+	// RetryNum is the number of retry
+	RetryNum int `json:"retryNum,omitempty"`
+	// DetectFailedAt is the time when detect failure
+	DetectFailedAt *metav1.Time `json:"detectFailedAt,omitempty"`
+	// ExpectedRetryAt is the time we calculate and expect retry after it
+	ExpectedRetryAt *metav1.Time `json:"expectedRetryAt,omitempty"`
+	// RealRetryAt is the time when the retry was actually initiated
+	RealRetryAt *metav1.Time `json:"realRetryAt,omitempty"`
+	// Reason is the reason of retry
+	RetryReason string `json:"retryReason,omitempty"`
+	// OriginalReason is the original reason of backup job or pod failed
+	OriginalReason string `json:"originalReason,omitempty"`
+}
+
 // BackupConditionType represents a valid condition of a Backup.
 type BackupConditionType string
 
@@ -2006,8 +2059,8 @@ const (
 	BackupClean BackupConditionType = "Clean"
 	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
-	// BackupRetryFailed means this failure can be retried
-	BackupRetryFailed BackupConditionType = "RetryFailed"
+	// BackupRetryTheFailed means this failure can be retried
+	BackupRetryTheFailed BackupConditionType = "RetryFailed"
 	// BackupInvalid means invalid backup CR
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
@@ -2093,6 +2146,8 @@ type BackupStatus struct {
 	// Progresses is the progress of backup.
 	// +nullable
 	Progresses []Progress `json:"progresses,omitempty"`
+	// BackoffRetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
+	BackoffRetryStatus []BackoffRetryRecord `json:"backoffRetryStatus,omitempty"`
 }
 
 // +genclient
@@ -2144,6 +2199,8 @@ type BackupScheduleSpec struct {
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
+	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
+	LogBackupTemplate *BackupSpec `json:"logBackupTemplate"`
 	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -2159,6 +2216,8 @@ type BackupScheduleSpec struct {
 type BackupScheduleStatus struct {
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup,omitempty"`
+	// logBackup represents the name of log backup.
+	LogBackup *string `json:"logBackup,omitempty"`
 	// LastBackupTime represents the last time the backup was successfully created.
 	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up

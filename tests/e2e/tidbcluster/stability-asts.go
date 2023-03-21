@@ -232,6 +232,30 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					replicas:    5,
 					deleteSlots: sets.NewInt32(0, 3),
 				},
+				{
+					name:        "Scaling in ticdc from 3 to 2 by deleting pod 1",
+					component:   "ticdc",
+					replicas:    2,
+					deleteSlots: sets.NewInt32(1),
+				},
+				{
+					name:        "Scaling in ticdc from 2 to 0",
+					component:   "ticdc",
+					replicas:    0,
+					deleteSlots: sets.NewInt32(),
+				},
+				{
+					name:        "Scaling out ticdc from 0 to 2 by adding pods 0 and 2",
+					component:   "ticdc",
+					replicas:    2,
+					deleteSlots: sets.NewInt32(1),
+				},
+				{
+					name:        "Scaling ticdc from 2 to 4 by deleting pods 2 and adding pods 3, 4 and 5",
+					component:   "ticdc",
+					replicas:    4,
+					deleteSlots: sets.NewInt32(1, 2),
+				},
 			}
 
 			for _, st := range scalingTests {
@@ -263,6 +287,9 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					} else if st.component == "tidb" {
 						tc.Annotations[label.AnnTiDBDeleteSlots] = mustToString(st.deleteSlots)
 						tc.Spec.TiDB.Replicas = replicas
+					} else if st.component == "ticdc" {
+						tc.Annotations[label.AnnTiCDCDeleteSlots] = mustToString(st.deleteSlots)
+						tc.Spec.TiCDC.Replicas = replicas
 					} else {
 						return fmt.Errorf("unsupported component: %v", st.component)
 					}

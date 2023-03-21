@@ -21,3 +21,7 @@ import (
 func (bs *BackupSchedule) GetBackupCRDName(timestamp time.Time) string {
 	return fmt.Sprintf("%s-%s", bs.GetName(), timestamp.UTC().Format(BackupNameTimeFormat))
 }
+
+func (bs *BackupSchedule) GetLogBackupCRDName() string {
+	return fmt.Sprintf("%s-%s", "log", bs.GetName())
+}
