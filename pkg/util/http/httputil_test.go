@@ -16,7 +16,6 @@ package httputil
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -46,7 +45,7 @@ func TestDoBodyOK(t *testing.T) {
 		switch r.URL.Path {
 		case "/ok":
 			// just echo the body
-			data, err := ioutil.ReadAll(r.Body)
+			data, err := io.ReadAll(r.Body)
 			if err != nil {
 				w.WriteHeader(403)
 			}

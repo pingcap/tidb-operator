@@ -16,7 +16,7 @@ package webhook
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"k8s.io/api/admission/v1beta1"
@@ -49,7 +49,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 
 	// The AdmissionReview that will be returned
 	if r.Body != nil {
-		if data, err := ioutil.ReadAll(r.Body); err == nil {
+		if data, err := io.ReadAll(r.Body); err == nil {
 			body = data
 		} else {
 			responseAdmissionReview.Response = toAdmissionResponse(err)

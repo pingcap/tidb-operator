@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -41,7 +41,7 @@ func GetMembersV2(addr string) (*GetMembersResponse, error) {
 	}
 	defer httpResp.Body.Close()
 
-	data, err := ioutil.ReadAll(httpResp.Body)
+	data, err := io.ReadAll(httpResp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read body failed: %s", err)
 	}
@@ -83,7 +83,7 @@ func UpdateMemberPeerURLs(addr string, id string, peerURLs []string) error {
 	defer httpResp.Body.Close()
 
 	if httpResp.StatusCode < http.StatusContinue || httpResp.StatusCode >= http.StatusBadRequest {
-		respData, err := ioutil.ReadAll(httpResp.Body)
+		respData, err := io.ReadAll(httpResp.Body)
 		if err != nil {
 			return fmt.Errorf("read body failed: %s", err)
 		}
