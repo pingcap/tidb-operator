@@ -6,7 +6,6 @@
 - **Mailing list**: [Google Group](https://groups.google.com/forum/#!forum/tidb-user)
 - [**For support, please contact PingCAP**](http://bit.ly/contact_us_via_github)
 
-[![Build Status](https://internal.pingcap.net/idc-jenkins/job/tidb-operator-master/badge/icon)](https://internal.pingcap.net/idc-jenkins/job/tidb-operator-master)
 [![codecov](https://codecov.io/gh/pingcap/tidb-operator/branch/master/graph/badge.svg)](https://codecov.io/gh/pingcap/tidb-operator)
 [![LICENSE](https://img.shields.io/github/license/pingcap/tidb-operator.svg)](https://github.com/pingcap/tidb-operator/blob/master/LICENSE)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
