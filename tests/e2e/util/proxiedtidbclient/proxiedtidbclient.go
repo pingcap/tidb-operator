@@ -18,7 +18,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -81,7 +81,7 @@ func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32)
 		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", resp.StatusCode, u.String()))
 		return nil, errMsg
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

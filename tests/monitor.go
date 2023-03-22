@@ -17,7 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -151,7 +151,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward, e
 			return false, nil
 		}
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
@@ -184,7 +184,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward, e
 			return false, nil
 		}
 		defer targetResponse.Body.Close()
-		body, err := ioutil.ReadAll(targetResponse.Body)
+		body, err := io.ReadAll(targetResponse.Body)
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
@@ -273,7 +273,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 			return false, nil
 		}
 		defer resp.Body.Close()
-		buf, err := ioutil.ReadAll(resp.Body)
+		buf, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return false, nil
 		}
@@ -337,7 +337,7 @@ func CheckThanosQueryData(name, namespace string, fw portforward.PortForward, ex
 			return false, nil
 		}
 		defer storesResponse.Body.Close()
-		storesBody, err := ioutil.ReadAll(storesResponse.Body)
+		storesBody, err := io.ReadAll(storesResponse.Body)
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil
@@ -363,7 +363,7 @@ func CheckThanosQueryData(name, namespace string, fw portforward.PortForward, ex
 			return false, nil
 		}
 		defer instanceUpResponse.Body.Close()
-		instanceUpResponseBody, err := ioutil.ReadAll(instanceUpResponse.Body)
+		instanceUpResponseBody, err := io.ReadAll(instanceUpResponse.Body)
 		if err != nil {
 			log.Logf("ERROR: %v", err)
 			return false, nil

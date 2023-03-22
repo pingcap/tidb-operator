@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -115,7 +115,7 @@ func (cli *Client) AddAnnotation(annotation Annotation) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("add annotation faield, statusCode=%v", resp.Status)
 	}
-	_, err = ioutil.ReadAll(resp.Body)
+	_, err = io.ReadAll(resp.Body)
 	return err
 }
 

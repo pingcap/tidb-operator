@@ -17,7 +17,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -264,7 +264,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 			break
 		}
 	}
-	tmpErr, _ := ioutil.ReadAll(stdErr)
+	tmpErr, _ := io.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)

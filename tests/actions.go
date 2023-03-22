@@ -18,7 +18,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os/exec"
 	"path/filepath"
@@ -1106,7 +1106,7 @@ func getDatasourceID(addr string) (int, error) {
 		}
 	}()
 
-	buf, err := ioutil.ReadAll(resp.Body)
+	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, err
 	}
@@ -1201,7 +1201,7 @@ func (oa *OperatorActions) pumpIsHealthy(tcName, ns, podName string, tlsEnabled 
 		log.Logf("Error response %v", res.StatusCode)
 		return false
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Logf("cluster:[%s] read response body failed,error:%v", tcName, err)
 		return false
@@ -1265,7 +1265,7 @@ func (oa *OperatorActions) drainerHealth(tcName, ns, podName string, tlsEnabled 
 		log.Logf("Error response %v", res.StatusCode)
 		return false
 	}
-	body, err = ioutil.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
 		log.Logf("cluster:[%s] read response body failed,error:%v", tcName, err)
 		return false
