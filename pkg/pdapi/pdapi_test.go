@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -730,7 +729,7 @@ func TestGetEvictLeaderSchedulersForStores(t *testing.T) {
 func readJSON(r io.ReadCloser, data interface{}) error {
 	defer r.Close()
 
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return err
 	}
