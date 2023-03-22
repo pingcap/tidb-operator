@@ -3393,7 +3393,7 @@ int
 <td>
 <code>detectFailedAt</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -3406,7 +3406,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>expectedRetryAt</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -3419,7 +3419,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>realRetryAt</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
