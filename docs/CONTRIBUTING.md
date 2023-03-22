@@ -182,6 +182,8 @@ Arguments for some e2e tests run in our CI:
 - pull-e2e-kind-br: `--ginkgo.focus='Backup\sand\sRestore'`
 - pull-e2e-kind-basic: `--ginkgo.focus='\[TiDBCluster:\sBasic\]' --install-dm-mysql=false`
 
+In PR comments, you can run `/test ${case-name}` (e.g `/test pull-e2e-kind`) to trigger the case manually.
+
 ### Step 5: Keep your branch in sync
 
 While on your `myfeature` branch, run the following commands:
