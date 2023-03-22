@@ -16,7 +16,7 @@ package mock
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
@@ -74,7 +74,7 @@ func (m *mockPrometheus) ServeQuery(w http.ResponseWriter, r *http.Request) {
 
 func (m *mockPrometheus) SetResponse(w http.ResponseWriter, r *http.Request) {
 	mp := &MonitorParams{}
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeResponse(w, err.Error())
 		return

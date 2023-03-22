@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -91,7 +91,7 @@ func (c *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*
 		return nil, err
 	}
 	defer httputil.DeferClose(res.Body)
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (c *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32
 		return nil, err
 	}
 	defer httputil.DeferClose(res.Body)
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +163,7 @@ func getBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 		return nil, err
 	}
 	defer httputil.DeferClose(res.Body)
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}

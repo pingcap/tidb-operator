@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -155,7 +155,7 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 		klog.Infof("ticdc control: %s service unavailable drain capture, retry", this.AdvertiseAddr)
 		return 0, true, nil
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return 0, false, fmt.Errorf("ticdc drain capture failed, read response error: %v", err)
 	}
@@ -299,7 +299,7 @@ func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, bool, 
 		return nil, true, nil
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, false, fmt.Errorf("ticdc get captures failed, read response error: %v", err)
 	}

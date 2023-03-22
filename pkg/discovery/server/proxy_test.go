@@ -14,7 +14,7 @@
 package server
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -46,7 +46,7 @@ func TestProxyServer(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status code expects %v, got %v", http.StatusOK, resp.StatusCode)
 	}
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

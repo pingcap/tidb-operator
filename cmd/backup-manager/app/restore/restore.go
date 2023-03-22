@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -166,7 +165,7 @@ func (ro *Options) restoreData(
 			break
 		}
 	}
-	tmpErr, _ := ioutil.ReadAll(stdErr)
+	tmpErr, _ := io.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)

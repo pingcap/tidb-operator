@@ -17,7 +17,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -69,7 +69,7 @@ func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpo
 		return nil, err
 	}
 	defer r.Body.Close()
-	bytes, err := ioutil.ReadAll(r.Body)
+	bytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
