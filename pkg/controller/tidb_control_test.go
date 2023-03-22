@@ -16,7 +16,7 @@ package controller
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -349,7 +349,7 @@ func TestSetLabels(t *testing.T) {
 			g.Expect(request.URL.Path).To(Equal("/labels"), "check url")
 			buffer := bytes.NewBuffer([]byte{})
 			g.Expect(json.NewEncoder(buffer).Encode(c.labels)).NotTo(HaveOccurred())
-			body, err := ioutil.ReadAll(request.Body)
+			body, err := io.ReadAll(request.Body)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(body).To(Equal(buffer.Bytes()))
 

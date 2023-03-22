@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -77,7 +77,7 @@ func SetPrometheusResponse(monitorName, monitorNamespace string, mp *MonitorPara
 	if err != nil {
 		return err
 	}
-	b, err = ioutil.ReadAll(r.Body)
+	b, err = io.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}

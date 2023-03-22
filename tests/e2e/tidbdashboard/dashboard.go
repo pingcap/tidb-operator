@@ -16,7 +16,7 @@ package tidbdashboard
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -157,7 +157,7 @@ func checkHttp200(addr string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusContinue || resp.StatusCode >= http.StatusBadRequest {
-		respData, err := ioutil.ReadAll(resp.Body)
+		respData, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("read body failed: %s", err)
 		}
