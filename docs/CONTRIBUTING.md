@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Please install the latest version of [Go](https://go.dev/doc/install). If you want to run TiDB Operator locally, please also install the latest version of [Docker](https://www.docker.com/get-started/), [kind](https://kind.sigs.k8s.io/docs/user/quick-start/), [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) and [Helm](https://helm.sh/docs/intro/quickstart/).
+Please install [Go 1.19.x](https://go.dev/doc/install). If you want to run TiDB Operator locally, please also install the latest version of [Docker](https://www.docker.com/get-started/), [kind](https://kind.sigs.k8s.io/docs/user/quick-start/), [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) and [Helm](https://helm.sh/docs/intro/quickstart/).
 
 ## Workflow
 
@@ -82,14 +82,15 @@ You can now edit the code on the `myfeature` branch.
 
 #### Check
 
-Run following commands to check your code change.
+At first, you must have [jq](https://stedolan.github.io/jq/) installed.
+
+Run following commands to check your code change (with 1300+ test cases).
 
 ```sh
 $ make check
 ```
 
-This will show errors if your code change does not pass checks (e.g. fmt,
-lint). Please fix them before submitting the PR.
+This will show errors if your code change does not pass checks (e.g. fmt, lint). Please fix them before submitting the PR.
 
 If you change code related to CRD, such as type definitions in `pkg/apis/pingcap/v1alpha1/types.go`, please also run following commands to generate necessary code and artifacts.
 
@@ -161,8 +162,9 @@ $ ./hack/e2e.sh
 > **Note:**
 >
 > - You can run `make docker` if you only want to build images.
-> - It's possible to limit specs to run, for example: `./hack/e2e.sh -- --ginkgo.focus='Basic'`.
+> - Running all e2e tests typically takes hours and consumes a lot of system resources, so it's better to limit specs to run, for example: `./hack/e2e.sh -- --ginkgo.focus='Basic'`.
 > - It's possible to reuse the kind cluster, e.g pass `SKIP_DOWN=y` for the first time and pass `SKIP_UP=y SKIP_DOWN=y` later.
+> - If you have configured multi docker registry repos, please ensure docker hub is used when building images.
 > - `hack/run-in-container.sh` can start a dev container the same as our CI environment. This is the recommended way to run e2e tests, e.g: `./hack/run-in-container.sh sleep 1d`. You can start more than one terminals and run `./hack/run-in-container.sh` to enter into the same container for debugging. Run `./hack/run-in-container.sh -h` to see help.
 > - We don't support bash version < 4 for now. For those who are using a not supported version of bash, especially macOS (which default bash version is 3.2) users, please run `hack/run-in-container.sh` to start a containerized environment or install bash 4+ manually.
 
@@ -173,7 +175,7 @@ Run the following command to see help:
 $ ./hack/e2e.sh -h
 ```
 
-Arguments for some e2e tests run in our CI:
+Arguments for some e2e test pipelines run in our CI (including 180+ cases):
 
 - pull-e2e-kind: `--ginkgo.focus='DMCluster|TiDBCluster' --ginkgo.skip="\[TiDBCluster:\sBasic\]"`
 - pull-e2e-kind-across-kubernetes: `--ginkgo.focus='\[Across\sKubernetes\]' --install-dm-mysql=false`
