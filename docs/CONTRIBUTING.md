@@ -160,6 +160,7 @@ $ ./hack/e2e.sh
 
 > **Note:**
 >
+> - You can run `make docker` if you only want to build images.
 > - It's possible to limit specs to run, for example: `./hack/e2e.sh -- --ginkgo.focus='Basic'`.
 > - It's possible to reuse the kind cluster, e.g pass `SKIP_DOWN=y` for the first time and pass `SKIP_UP=y SKIP_DOWN=y` later.
 > - `hack/run-in-container.sh` can start a dev container the same as our CI environment. This is the recommended way to run e2e tests, e.g: `./hack/run-in-container.sh sleep 1d`. You can start more than one terminals and run `./hack/run-in-container.sh` to enter into the same container for debugging. Run `./hack/run-in-container.sh -h` to see help.
