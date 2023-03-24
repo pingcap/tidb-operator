@@ -84,7 +84,7 @@ You can now edit the code on the `myfeature` branch.
 
 At first, you must have [jq](https://stedolan.github.io/jq/) installed.
 
-Run following commands to check your code change (with 1300+ test cases).
+Run following commands to check your code change.
 
 ```sh
 $ make check
@@ -145,7 +145,7 @@ $ kubectl apply -f examples/basic/tidb-cluster.yaml
 
 #### Run unit tests
 
-Before running your code in a real Kubernetes cluster, make sure it passes all unit tests.
+Before running your code in a real Kubernetes cluster, make sure it passes all (1300+) unit tests.
 
 ```sh
 $ make test
