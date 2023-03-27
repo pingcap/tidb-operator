@@ -154,7 +154,7 @@ scheduler:
     requests:
       cpu: 80m
       memory: 50Mi
-  kubeSchedulerImageName: k8s.gcr.io/kube-scheduler
+  kubeSchedulerImageName: registry.k8s.io/kube-scheduler
   # This will default to matching your kubernetes version
   # kubeSchedulerImageTag:
   ## affinity defines pod scheduling rules,affinity default settings is empty.
