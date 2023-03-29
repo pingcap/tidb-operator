@@ -416,6 +416,10 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 			logBackup = backup
 			continue
 		}
+		// the backup status CommitTs will be empty after created. without this, all newly created backups will be GC'ed
+		if v1alpha1.IsBackupScheduled(backup) || v1alpha1.IsBackupRunning(backup) || v1alpha1.IsBackupPrepared(backup) {
+			continue
+		}
 		ascBackupList = append(ascBackupList, backup)
 	}
 
@@ -479,10 +483,6 @@ func caculateExpiredBackups(backupsList []*v1alpha1.Backup, reservedTime time.Du
 	expiredTS := config.TSToTSO(time.Now().Add(-1 * reservedTime).Unix())
 	i := 0
 	for ; i < len(backupsList); i++ {
-		// the backup status CommitTs will be empty after created. without this, all newly created backups will be GC'ed
-		if len(backupsList[i].Status.CommitTs) == 0 && (v1alpha1.IsBackupScheduled(backupsList[i]) || v1alpha1.IsBackupRunning(backupsList[i]) || v1alpha1.IsBackupPrepared(backupsList[i])) {
-			continue
-		}
 		startTS, err := config.ParseTSString(backupsList[i].Status.CommitTs)
 		if err != nil {
 			return nil, perrors.Annotatef(err, "parse start tso: %s", backupsList[i].Status.CommitTs)
@@ -546,10 +546,6 @@ func calExpiredBackupsWithLogBackupOn(backupsList []*v1alpha1.Backup, expiredTSO
 	)
 
 	for ; i < len(backupsList); i++ {
-		// the backup status CommitTs will be empty after created. without this, all newly created backups will be GC'ed
-		if len(backupsList[i].Status.CommitTs) == 0 && (v1alpha1.IsBackupScheduled(backupsList[i]) || v1alpha1.IsBackupRunning(backupsList[i]) || v1alpha1.IsBackupPrepared(backupsList[i])) {
-			continue
-		}
 		currentBackupTSO, err = config.ParseTSString(backupsList[i].Status.CommitTs)
 		if err != nil {
 			return nil, perrors.Annotatef(err, "parse backup ts of backup %s/%s", backupsList[i].Namespace, backupsList[i].Name)
