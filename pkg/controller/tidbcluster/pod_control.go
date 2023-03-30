@@ -216,6 +216,8 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 		return c.syncPDPod(ctx, pod, tc)
 	case label.TiKVLabelVal:
 		return c.syncTiKVPod(ctx, pod, tc)
+	case label.TiDBLabelVal:
+		return c.syncTiDBPod(ctx, pod, tc)
 	default:
 		return reconcile.Result{}, nil
 	}
@@ -274,6 +276,57 @@ func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1al
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value, ok := needDeleteTiDBPod(pod)
+	if !ok {
+		// No need to delete tidb pod
+		return reconcile.Result{}, nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.PD.Phase == v1alpha1.ScalePhase ||
+		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.ScalePhase ||
+		tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase ||
+		tc.Status.Pump.Phase == v1alpha1.UpgradePhase || tc.Status.Pump.Phase == v1alpha1.ScalePhase ||
+		tc.TiDBScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
+			"tikv status is %s, tiflash status is %s, pump status is %s, "+
+			"tidb status is %s, can not delete tidb",
+			ns, tcName,
+			tc.Status.PD.Phase, tc.Status.TiKV.Phase, tc.Status.TiFlash.Phase,
+			tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
+		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	}
+
+	switch value {
+	case v1alpha1.TiDBPodDeletionValueNone:
+	case v1alpha1.TiDBPodDeletionDeletePod:
+	default:
+		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.PDLeaderTransferAnnKey, pod.Namespace, pod.Name)
+		return reconcile.Result{}, nil
+	}
+	
+	if value == v1alpha1.TiDBPodDeletionDeletePod {
+		err := c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
+		}
+	}
+
+	return reconcile.Result{}, nil
+}
+
+func needDeleteTiDBPod(pod *corev1.Pod) (string, bool) {
+	value, exist := pod.Annotations[v1alpha1.TiDBGracefulShutdownAnnKey]
+	if exist {
+		return value, true
+	}
+	
+	return "", false
 }
 
 func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
