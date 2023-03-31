@@ -97,7 +97,7 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		Image:                     cfg.OperatorImage,
 		Tag:                       cfg.OperatorTag,
 		ControllerManagerReplicas: util.IntPtr(2),
-		SchedulerImage:            "k8s.gcr.io/kube-scheduler",
+		SchedulerImage:            "registry.k8s.io/kube-scheduler",
 		SchedulerReplicas:         util.IntPtr(2),
 		Features:                  features,
 		LogLevel:                  "4",
