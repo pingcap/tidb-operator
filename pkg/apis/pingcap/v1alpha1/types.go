@@ -1407,8 +1407,8 @@ const (
 // - `none`: doing nothing.
 // - `delete-pod`: delete pod.
 const (
-	TiDBPodDeletionValueNone      = "none"
-	TiDBPodDeletionDeletePod      =  "delete-pod"
+	TiDBPodDeletionValueNone = "none"
+	TiDBPodDeletionDeletePod = "delete-pod"
 )
 
 type EvictLeaderStatus struct {

@@ -324,32 +324,32 @@ func TestTiDBPodSync(t *testing.T) {
 		timeout  = time.Minute
 	)
 	testCases := []struct {
-		name                string
-		pdPhase             v1alpha1.MemberPhase
-		tikvPhase           v1alpha1.MemberPhase
-		shouldDelete        bool
-		target              int
+		name         string
+		pdPhase      v1alpha1.MemberPhase
+		tikvPhase    v1alpha1.MemberPhase
+		shouldDelete bool
+		target       int
 	}{
 		{
-			name:                "delete tidb pod successfully",
-			pdPhase:             v1alpha1.NormalPhase,
-			tikvPhase: 					 v1alpha1.NormalPhase,
-			shouldDelete:        true,
-			target:              0,
+			name:         "delete tidb pod successfully",
+			pdPhase:      v1alpha1.NormalPhase,
+			tikvPhase:    v1alpha1.NormalPhase,
+			shouldDelete: true,
+			target:       0,
 		},
 		{
-			name:                "PD rolling restart",
-			pdPhase:             v1alpha1.UpgradePhase,
-			tikvPhase: 					 v1alpha1.NormalPhase,
-			shouldDelete:        false,
-			target:              0,
+			name:         "PD rolling restart",
+			pdPhase:      v1alpha1.UpgradePhase,
+			tikvPhase:    v1alpha1.NormalPhase,
+			shouldDelete: false,
+			target:       0,
 		},
 		{
-			name:                "TiKV rolling restart",
-			pdPhase:             v1alpha1.NormalPhase,
-			tikvPhase:           v1alpha1.UpgradePhase,
-			shouldDelete:        false,
-			target:              0,
+			name:         "TiKV rolling restart",
+			pdPhase:      v1alpha1.NormalPhase,
+			tikvPhase:    v1alpha1.UpgradePhase,
+			shouldDelete: false,
+			target:       0,
 		},
 	}
 	for _, c := range testCases {
@@ -387,7 +387,7 @@ func TestTiDBPodSync(t *testing.T) {
 
 			tc.Status.TiKV = v1alpha1.TiKVStatus{
 				Synced: true,
-				Phase:  c.pdPhase,
+				Phase:  c.tikvPhase,
 				Stores: map[string]v1alpha1.TiKVStore{
 					"0": {
 						PodName: fmt.Sprintf("%s-%d", controller.TiKVMemberName(tc.Name), 0),
@@ -424,7 +424,7 @@ func TestTiDBPodSync(t *testing.T) {
 			}
 
 			pod.Annotations[v1alpha1.TiDBGracefulShutdownAnnKey] = v1alpha1.TiDBPodDeletionDeletePod
-			
+
 			pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
 			g.Expect(err).NotTo(HaveOccurred())
 
@@ -437,6 +437,8 @@ func TestTiDBPodSync(t *testing.T) {
 			} else {
 				g.Consistently(func() bool {
 					_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+					t.Log("error is ")
+					t.Log(err)
 					return err == nil
 				}, timeout, interval).Should(BeTrue(), "should not delete pod")
 			}

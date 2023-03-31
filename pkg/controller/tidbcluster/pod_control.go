@@ -309,7 +309,7 @@ func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.PDLeaderTransferAnnKey, pod.Namespace, pod.Name)
 		return reconcile.Result{}, nil
 	}
-	
+
 	if value == v1alpha1.TiDBPodDeletionDeletePod {
 		err := c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 		if err != nil && !errors.IsNotFound(err) {
@@ -325,7 +325,7 @@ func needDeleteTiDBPod(pod *corev1.Pod) (string, bool) {
 	if exist {
 		return value, true
 	}
-	
+
 	return "", false
 }
 
