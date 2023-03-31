@@ -517,30 +517,38 @@ func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs 
 		index int
 		pvc   *corev1.PersistentVolumeClaim
 	}
-	indexedPVCs := make([]*indexedPVC, 0, len(pvcs))
-	reStr := fmt.Sprintf(`%s-(\d+)$`, stsName)
+	indexedPVCsGroups := make(map[string][]*indexedPVC, 8)
+	reStr := fmt.Sprintf(`^(.+)-%s-(\d+)$`, stsName)
 	re := regexp.MustCompile(reStr)
 	for _, pvc := range pvcs {
 		subMatches := re.FindStringSubmatch(pvc.Name)
 		// subMatches contains full text that matches regex and the matches in brackets.
 		// so if the pvc matches regex, it should contain 2 items.
-		if len(subMatches) != 2 {
+		if len(subMatches) != 3 {
 			return nil, nil, fmt.Errorf("pvc name %s doesn't match regex %s", pvc.Name, reStr)
 		}
 		// get the number of pvc, for example, there is a pvc "tikv-db-tikv-0", try to get the number "0"
-		index, err := strconv.Atoi(subMatches[1])
+		index, err := strconv.Atoi(subMatches[2])
 		if err != nil {
 			return nil, nil, fmt.Errorf("parse index %s of pvc %s to int: %s", subMatches[1], pvc.Name, err.Error())
 		}
-		indexedPVCs = append(indexedPVCs, &indexedPVC{
+		// get the volume name of pod from pvc, for example, there is a pvc "tikv-db-tikv-0", get "tikv"
+		// there can be multiple volumes in a pod, so we should group pvc by volume name
+		indexedPVCs, ok := indexedPVCsGroups[subMatches[1]]
+		if !ok {
+			indexedPVCs = make([]*indexedPVC, 0, len(pvcs))
+		}
+		indexedPVCsGroups[subMatches[1]] = append(indexedPVCs, &indexedPVC{
 			index: index,
 			pvc:   pvc,
 		})
 	}
 
-	sort.Slice(indexedPVCs, func(i, j int) bool {
-		return indexedPVCs[i].index < indexedPVCs[j].index
-	})
+	for _, indexedPVCs := range indexedPVCsGroups {
+		sort.Slice(indexedPVCs, func(i, j int) bool {
+			return indexedPVCs[i].index < indexedPVCs[j].index
+		})
+	}
 	pvc2pv := make(map[string]*corev1.PersistentVolume, len(pvs))
 	for _, pv := range pvs {
 		pvc2pv[pv.Spec.ClaimRef.Name] = pv
@@ -548,24 +556,26 @@ func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs 
 
 	sequentialPVCs := make([]*corev1.PersistentVolumeClaim, 0, len(pvcs))
 	sequentialPVs := make([]*corev1.PersistentVolume, 0, len(pvs))
-	for i, iPVC := range indexedPVCs {
-		pv, ok := pvc2pv[iPVC.pvc.Name]
-		if !ok {
-			return nil, nil, fmt.Errorf("pv with claim %s not found", iPVC.pvc.Name)
-		}
-		// when create cluster, tidb-operator will create tikv instances from 0 to n-1, and pvcs are also [0, n-1]
-		// for backup cluster, advanced statefulset allows scaling in at arbitrary position
-		// so pvcs of backup might not be [0, n-1], we should reset it to [0, n-1]
-		if i != iPVC.index {
-			names := strings.Split(iPVC.pvc.Name, "-")
-			restorePVCName := fmt.Sprintf("%s-%d", strings.Join(names[:len(names)-1], "-"), i)
+	for _, indexedPVCs := range indexedPVCsGroups {
+		for i, iPVC := range indexedPVCs {
+			pv, ok := pvc2pv[iPVC.pvc.Name]
+			if !ok {
+				return nil, nil, fmt.Errorf("pv with claim %s not found", iPVC.pvc.Name)
+			}
+			// when create cluster, tidb-operator will create tikv instances from 0 to n-1, and pvcs are also [0, n-1]
+			// for backup cluster, advanced statefulset allows scaling in at arbitrary position
+			// so pvcs of backup might not be [0, n-1], we should reset it to [0, n-1]
+			if i != iPVC.index {
+				names := strings.Split(iPVC.pvc.Name, "-")
+				restorePVCName := fmt.Sprintf("%s-%d", strings.Join(names[:len(names)-1], "-"), i)
 
-			klog.Infof("reset pvc name %s to %s", iPVC.pvc.Name, restorePVCName)
-			iPVC.pvc.Name = restorePVCName
-			pv.Spec.ClaimRef.Name = restorePVCName
+				klog.Infof("reset pvc name %s to %s", iPVC.pvc.Name, restorePVCName)
+				iPVC.pvc.Name = restorePVCName
+				pv.Spec.ClaimRef.Name = restorePVCName
+			}
+			sequentialPVCs = append(sequentialPVCs, iPVC.pvc)
+			sequentialPVs = append(sequentialPVs, pv)
 		}
-		sequentialPVCs = append(sequentialPVCs, iPVC.pvc)
-		sequentialPVs = append(sequentialPVs, pv)
 	}
 	return sequentialPVCs, sequentialPVs, nil
 }
