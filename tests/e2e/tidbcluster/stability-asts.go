@@ -108,7 +108,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				ReleaseName:    "operator",
 				Image:          cfg.OperatorImage,
 				Tag:            cfg.OperatorTag,
-				SchedulerImage: "k8s.gcr.io/kube-scheduler",
+				SchedulerImage: "registry.k8s.io/kube-scheduler",
 				Features: []string{
 					"StableScheduling=true",
 					"AdvancedStatefulSet=true",
@@ -345,7 +345,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ReleaseName:    "operator",
 			Image:          cfg.OperatorImage,
 			Tag:            cfg.OperatorTag,
-			SchedulerImage: "k8s.gcr.io/kube-scheduler",
+			SchedulerImage: "registry.k8s.io/kube-scheduler",
 			Features: []string{
 				"StableScheduling=true",
 				"AdvancedStatefulSet=false",
@@ -437,7 +437,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			ReleaseName:    "operator",
 			Image:          cfg.OperatorImage,
 			Tag:            cfg.OperatorTag,
-			SchedulerImage: "k8s.gcr.io/kube-scheduler",
+			SchedulerImage: "registry.k8s.io/kube-scheduler",
 			Features: []string{
 				"StableScheduling=true",
 				"AdvancedStatefulSet=false",
