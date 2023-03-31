@@ -15,6 +15,7 @@ package snapshotter
 
 import (
 	"encoding/json"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -890,6 +891,11 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 							SnapshotID:      "snap-1234567890abcdef0",
 							RestoreVolumeID: "vol-0e65f40961a9f0001",
 						},
+						{
+							VolumeID:        "vol-1e65f40961a9f6244",
+							SnapshotID:      "snap-2234567890abcdef0",
+							RestoreVolumeID: "vol-1e65f40961a9f0001",
+						},
 					},
 				},
 				{
@@ -899,6 +905,11 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 							VolumeID:        "vol-0e65f40961a9f6245",
 							SnapshotID:      "snap-1234567890abcdef1",
 							RestoreVolumeID: "vol-0e65f40961a9f0002",
+						},
+						{
+							VolumeID:        "vol-1e65f40961a9f6245",
+							SnapshotID:      "snap-2234567890abcdef1",
+							RestoreVolumeID: "vol-1e65f40961a9f0002",
 						},
 					},
 				},
@@ -910,6 +921,11 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 							SnapshotID:      "snap-1234567890abcdef2",
 							RestoreVolumeID: "vol-0e65f40961a9f0003",
 						},
+						{
+							VolumeID:        "vol-1e65f40961a9f6246",
+							SnapshotID:      "snap-2234567890abcdef2",
+							RestoreVolumeID: "vol-1e65f40961a9f0003",
+						},
 					},
 				},
 			},
@@ -918,7 +934,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 			PVs: []*corev1.PersistentVolume{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pv-1",
+						Name: "pv-1-1",
 						Labels: map[string]string{
 							"test/label": "retained",
 						},
@@ -942,7 +958,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 							},
 						},
 						ClaimRef: &corev1.ObjectReference{
-							Name:            "test-tikv-1",
+							Name:            "tikv-test-tikv-1",
 							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
 							ResourceVersion: "1957",
 						},
@@ -953,7 +969,42 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pv-2",
+						Name: "pv-1-2",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+							constants.AnnTemporaryVolumeID:          "vol-1e65f40961a9f6244",
+							"test/annotation":                       "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3122",
+						ResourceVersion: "1958",
+						Finalizers: []string{
+							"kubernetes.io/pv-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeSource: corev1.PersistentVolumeSource{
+							CSI: &corev1.CSIPersistentVolumeSource{
+								Driver:       "ebs.csi.aws.com",
+								VolumeHandle: "vol-1e65f40961a9f6244",
+								FSType:       "ext4",
+							},
+						},
+						ClaimRef: &corev1.ObjectReference{
+							Name:            "tikv-raft-test-tikv-1",
+							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
+							ResourceVersion: "1957",
+						},
+					},
+					Status: corev1.PersistentVolumeStatus{
+						Phase: corev1.VolumeBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-2-1",
 						Labels: map[string]string{
 							"test/label": "retained",
 						},
@@ -977,7 +1028,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 							},
 						},
 						ClaimRef: &corev1.ObjectReference{
-							Name:            "test-tikv-2",
+							Name:            "tikv-test-tikv-2",
 							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
 							ResourceVersion: "1959",
 						},
@@ -988,7 +1039,42 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pv-3",
+						Name: "pv-2-2",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+							constants.AnnTemporaryVolumeID:          "vol-1e65f40961a9f6245",
+							"test/annotation":                       "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3124",
+						ResourceVersion: "1960",
+						Finalizers: []string{
+							"kubernetes.io/pv-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeSource: corev1.PersistentVolumeSource{
+							CSI: &corev1.CSIPersistentVolumeSource{
+								Driver:       "ebs.csi.aws.com",
+								VolumeHandle: "vol-1e65f40961a9f6245",
+								FSType:       "ext4",
+							},
+						},
+						ClaimRef: &corev1.ObjectReference{
+							Name:            "tikv-raft-test-tikv-2",
+							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
+							ResourceVersion: "1959",
+						},
+					},
+					Status: corev1.PersistentVolumeStatus{
+						Phase: corev1.VolumeBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-3-1",
 						Labels: map[string]string{
 							"test/label": "retained",
 						},
@@ -1012,7 +1098,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 							},
 						},
 						ClaimRef: &corev1.ObjectReference{
-							Name:            "test-tikv-3",
+							Name:            "tikv-test-tikv-3",
 							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
 							ResourceVersion: "1961",
 						},
@@ -1023,7 +1109,42 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pv-4",
+						Name: "pv-3-2",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+							constants.AnnTemporaryVolumeID:          "vol-1e65f40961a9f6246",
+							"test/annotation":                       "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3126",
+						ResourceVersion: "1962",
+						Finalizers: []string{
+							"kubernetes.io/pv-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeSource: corev1.PersistentVolumeSource{
+							CSI: &corev1.CSIPersistentVolumeSource{
+								Driver:       "ebs.csi.aws.com",
+								VolumeHandle: "vol-1e65f40961a9f6246",
+								FSType:       "ext4",
+							},
+						},
+						ClaimRef: &corev1.ObjectReference{
+							Name:            "tikv-raft-test-tikv-3",
+							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
+							ResourceVersion: "1961",
+						},
+					},
+					Status: corev1.PersistentVolumeStatus{
+						Phase: corev1.VolumeBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-4-1",
 						Labels: map[string]string{
 							"test/label": "retained",
 						},
@@ -1047,7 +1168,42 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 							},
 						},
 						ClaimRef: &corev1.ObjectReference{
-							Name:            "test-tikv-4",
+							Name:            "tikv-test-tikv-4",
+							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9acd23",
+							ResourceVersion: "1961",
+						},
+					},
+					Status: corev1.PersistentVolumeStatus{
+						Phase: corev1.VolumeBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-4-2",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+							constants.AnnTemporaryVolumeID:          "vol-1e65f40961a9fcd23",
+							"test/annotation":                       "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9acd23",
+						ResourceVersion: "1962",
+						Finalizers: []string{
+							"kubernetes.io/pv-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						PersistentVolumeSource: corev1.PersistentVolumeSource{
+							CSI: &corev1.CSIPersistentVolumeSource{
+								Driver:       "ebs.csi.aws.com",
+								VolumeHandle: "vol-1e65f40961a9fcd23",
+								FSType:       "ext4",
+							},
+						},
+						ClaimRef: &corev1.ObjectReference{
+							Name:            "tikv-raft-test-tikv-4",
 							UID:             "301b0e8b-3538-4f61-a0fd-a25abd9acd23",
 							ResourceVersion: "1961",
 						},
@@ -1060,7 +1216,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 			PVCs: []*corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-tikv-1",
+						Name:      "tikv-test-tikv-1",
 						Namespace: "default",
 						Labels: map[string]string{
 							"test/label": "retained",
@@ -1077,7 +1233,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 						},
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						VolumeName: "pv-1",
+						VolumeName: "pv-1-1",
 					},
 					Status: corev1.PersistentVolumeClaimStatus{
 						Phase: corev1.ClaimBound,
@@ -1085,7 +1241,32 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-tikv-2",
+						Name:      "tikv-raft-test-tikv-1",
+						Namespace: "default",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnBindCompleted:     "yes",
+							constants.KubeAnnBoundByController: "yes",
+							"test/annotation":                  "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
+						ResourceVersion: "1957",
+						Finalizers: []string{
+							"kubernetes.io/pvc-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-1-2",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tikv-test-tikv-2",
 						Namespace: "default",
 						Labels: map[string]string{
 							"test/label": "retained",
@@ -1102,7 +1283,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 						},
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						VolumeName: "pv-2",
+						VolumeName: "pv-2-1",
 					},
 					Status: corev1.PersistentVolumeClaimStatus{
 						Phase: corev1.ClaimBound,
@@ -1110,7 +1291,32 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-tikv-3",
+						Name:      "tikv-raft-test-tikv-2",
+						Namespace: "default",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnBindCompleted:     "yes",
+							constants.KubeAnnBoundByController: "yes",
+							"test/annotation":                  "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
+						ResourceVersion: "1959",
+						Finalizers: []string{
+							"kubernetes.io/pvc-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-2-2",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tikv-test-tikv-3",
 						Namespace: "default",
 						Labels: map[string]string{
 							"test/label": "retained",
@@ -1127,7 +1333,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 						},
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						VolumeName: "pv-3",
+						VolumeName: "pv-3-1",
 					},
 					Status: corev1.PersistentVolumeClaimStatus{
 						Phase: corev1.ClaimBound,
@@ -1135,7 +1341,32 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-tikv-4",
+						Name:      "tikv-raft-test-tikv-3",
+						Namespace: "default",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnBindCompleted:     "yes",
+							constants.KubeAnnBoundByController: "yes",
+							"test/annotation":                  "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
+						ResourceVersion: "1961",
+						Finalizers: []string{
+							"kubernetes.io/pvc-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-3-2",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tikv-test-tikv-4",
 						Namespace: "default",
 						Labels: map[string]string{
 							"test/label": "retained",
@@ -1152,7 +1383,32 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 						},
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						VolumeName: "pv-4",
+						VolumeName: "pv-4-1",
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tikv-raft-test-tikv-4",
+						Namespace: "default",
+						Labels: map[string]string{
+							"test/label": "retained",
+						},
+						Annotations: map[string]string{
+							constants.KubeAnnBindCompleted:     "yes",
+							constants.KubeAnnBoundByController: "yes",
+							"test/annotation":                  "retained",
+						},
+						UID:             "301b0e8b-3538-4f61-a0fd-a25abd9acd23",
+						ResourceVersion: "1961",
+						Finalizers: []string{
+							"kubernetes.io/pvc-protection",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-4-2",
 					},
 					Status: corev1.PersistentVolumeClaimStatus{
 						Phase: corev1.ClaimBound,
@@ -1194,6 +1450,9 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 		"vol-0e65f40961a9f6244": "vol-0e65f40961a9f0001",
 		"vol-0e65f40961a9f6245": "vol-0e65f40961a9f0002",
 		"vol-0e65f40961a9f6246": "vol-0e65f40961a9f0003",
+		"vol-1e65f40961a9f6244": "vol-1e65f40961a9f0001",
+		"vol-1e65f40961a9f6245": "vol-1e65f40961a9f0002",
+		"vol-1e65f40961a9f6246": "vol-1e65f40961a9f0003",
 	}
 	require.Equal(t, volIDMapWanted, m.rsVolIDMap)
 
@@ -1201,7 +1460,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 	pvsWanted := []*corev1.PersistentVolume{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pv-1",
+				Name: "pv-1-1",
 				Labels: map[string]string{
 					"test/label": "retained",
 				},
@@ -1219,13 +1478,37 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					},
 				},
 				ClaimRef: &corev1.ObjectReference{
-					Name: "test-tikv-0",
+					Name: "tikv-test-tikv-0",
 				},
 			},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pv-2",
+				Name: "pv-1-2",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+					"test/annotation":                       "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeSpec{
+				PersistentVolumeSource: corev1.PersistentVolumeSource{
+					CSI: &corev1.CSIPersistentVolumeSource{
+						Driver:       "ebs.csi.aws.com",
+						VolumeHandle: "vol-1e65f40961a9f0001",
+						FSType:       "ext4",
+					},
+				},
+				ClaimRef: &corev1.ObjectReference{
+					Name: "tikv-raft-test-tikv-0",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pv-2-1",
 				Labels: map[string]string{
 					"test/label": "retained",
 				},
@@ -1243,13 +1526,37 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					},
 				},
 				ClaimRef: &corev1.ObjectReference{
-					Name: "test-tikv-1",
+					Name: "tikv-test-tikv-1",
 				},
 			},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pv-3",
+				Name: "pv-2-2",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+					"test/annotation":                       "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeSpec{
+				PersistentVolumeSource: corev1.PersistentVolumeSource{
+					CSI: &corev1.CSIPersistentVolumeSource{
+						Driver:       "ebs.csi.aws.com",
+						VolumeHandle: "vol-1e65f40961a9f0002",
+						FSType:       "ext4",
+					},
+				},
+				ClaimRef: &corev1.ObjectReference{
+					Name: "tikv-raft-test-tikv-1",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pv-3-1",
 				Labels: map[string]string{
 					"test/label": "retained",
 				},
@@ -1267,18 +1574,49 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 					},
 				},
 				ClaimRef: &corev1.ObjectReference{
-					Name: "test-tikv-2",
+					Name: "tikv-test-tikv-2",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pv-3-2",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
+					"test/annotation":                       "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeSpec{
+				PersistentVolumeSource: corev1.PersistentVolumeSource{
+					CSI: &corev1.CSIPersistentVolumeSource{
+						Driver:       "ebs.csi.aws.com",
+						VolumeHandle: "vol-1e65f40961a9f0003",
+						FSType:       "ext4",
+					},
+				},
+				ClaimRef: &corev1.ObjectReference{
+					Name: "tikv-raft-test-tikv-2",
 				},
 			},
 		},
 	}
+
+	sort.Slice(pvsWanted, func(i, j int) bool {
+		return pvsWanted[i].Name < pvsWanted[j].Name
+	})
+	sort.Slice(csb.Kubernetes.PVs, func(i, j int) bool {
+		return csb.Kubernetes.PVs[i].Name < csb.Kubernetes.PVs[j].Name
+	})
 	assert.Equal(t, pvsWanted, csb.Kubernetes.PVs)
 
 	// happy path for reformed PVCs as the reborn resource
 	pvcsWanted := []*corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-tikv-0",
+				Name:      "tikv-test-tikv-0",
 				Namespace: "default",
 				Labels: map[string]string{
 					"test/label": "retained",
@@ -1288,12 +1626,12 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				VolumeName: "pv-1",
+				VolumeName: "pv-1-1",
 			},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-tikv-1",
+				Name:      "tikv-raft-test-tikv-0",
 				Namespace: "default",
 				Labels: map[string]string{
 					"test/label": "retained",
@@ -1303,12 +1641,12 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				VolumeName: "pv-2",
+				VolumeName: "pv-1-2",
 			},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-tikv-2",
+				Name:      "tikv-test-tikv-1",
 				Namespace: "default",
 				Labels: map[string]string{
 					"test/label": "retained",
@@ -1318,10 +1656,62 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				},
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				VolumeName: "pv-3",
+				VolumeName: "pv-2-1",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tikv-raft-test-tikv-1",
+				Namespace: "default",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					"test/annotation": "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				VolumeName: "pv-2-2",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tikv-test-tikv-2",
+				Namespace: "default",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					"test/annotation": "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				VolumeName: "pv-3-1",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tikv-raft-test-tikv-2",
+				Namespace: "default",
+				Labels: map[string]string{
+					"test/label": "retained",
+				},
+				Annotations: map[string]string{
+					"test/annotation": "retained",
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				VolumeName: "pv-3-2",
 			},
 		},
 	}
+
+	sort.Slice(pvcsWanted, func(i, j int) bool {
+		return pvcsWanted[i].Name < pvcsWanted[j].Name
+	})
+	sort.Slice(csb.Kubernetes.PVCs, func(i, j int) bool {
+		return csb.Kubernetes.PVCs[i].Name < csb.Kubernetes.PVCs[j].Name
+	})
 	assert.Equal(t, pvcsWanted, csb.Kubernetes.PVCs)
 }
 
