@@ -1380,6 +1380,8 @@ const (
 	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
 	// PDLeaderTransferAnnKey is the annotation key to transfer PD leader used by user.
 	PDLeaderTransferAnnKey = "tidb.pingcap.com/pd-transfer-leader"
+	// TiDBTransferAnnKey is the annotation key to graceful shutdown tidb pod by user.
+	TiDBGracefulShutdownAnnKey = "tidb.pingcap.com/tidb-graceful-shutdown"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -1398,6 +1400,15 @@ const (
 const (
 	TransferLeaderValueNone      = "none"
 	TransferLeaderValueDeletePod = "delete-pod"
+)
+
+// The `Value` of TiDB deletion annotation controls the behavior when the tidb pod got deleted, the valid value is one of:
+//
+// - `none`: doing nothing.
+// - `delete-pod`: delete pod.
+const (
+	TiDBPodDeletionValueNone = "none"
+	TiDBPodDeletionDeletePod = "delete-pod"
 )
 
 type EvictLeaderStatus struct {
