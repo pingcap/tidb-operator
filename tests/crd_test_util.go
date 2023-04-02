@@ -17,7 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os/exec"
 	"time"
@@ -637,7 +637,7 @@ func (ctu *CrdTestUtil) pumpHealth(tc *v1alpha1.TidbCluster, podName string) boo
 		log.Logf("ERROR: Error response %v", res.StatusCode)
 		return false
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Logf("ERROR: cluster:[%s] read response body failed,error:%v", tc.Name, err)
 		return false

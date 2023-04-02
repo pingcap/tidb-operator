@@ -75,6 +75,8 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc member type
 	TiCDCMemberType MemberType = "ticdc"
+	// TiProxyMemberType is ticdc member type
+	TiProxyMemberType MemberType = "tiproxy"
 	// PumpMemberType is pump member type
 	PumpMemberType MemberType = "pump"
 
@@ -90,6 +92,9 @@ const (
 
 	// NGMonitoringMemberType is ng monitoring member type
 	NGMonitoringMemberType MemberType = "ng-monitoring"
+
+	// TiDBDashboardMemberType is tidb-dashboard member type
+	TiDBDashboardMemberType MemberType = "tidb-dashboard"
 
 	// UnknownMemberType is unknown member type
 	UnknownMemberType MemberType = "unknown"
@@ -203,6 +208,10 @@ type TidbClusterSpec struct {
 	// +optional
 	TiCDC *TiCDCSpec `json:"ticdc,omitempty"`
 
+	// TiProxy cluster spec
+	// +optional
+	TiProxy *TiProxySpec `json:"tiproxy,omitempty"`
+
 	// Pump cluster spec
 	// +optional
 	Pump *PumpSpec `json:"pump,omitempty"`
@@ -215,6 +224,11 @@ type TidbClusterSpec struct {
 	// the controller.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
+
+	// Whether RecoveryMode is enabled for TiDB cluster to restore
+	// Optional: Defaults to false
+	// +optional
+	RecoveryMode bool `json:"recoveryMode,omitempty"`
 
 	// TiDB cluster version
 	// +optional
@@ -357,6 +371,9 @@ type TidbClusterSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -367,6 +384,7 @@ type TidbClusterStatus struct {
 	TiDB       TiDBStatus                `json:"tidb,omitempty"`
 	Pump       PumpStatus                `json:"pump,omitempty"`
 	TiFlash    TiFlashStatus             `json:"tiflash,omitempty"`
+	TiProxy    TiProxyStatus             `json:"tiproxy,omitempty"`
 	TiCDC      TiCDCStatus               `json:"ticdc,omitempty"`
 	AutoScaler *TidbClusterAutoScalerRef `json:"auto-scaler,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
@@ -491,6 +509,7 @@ type PDSpec struct {
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
 	// Start up script version
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1"
@@ -584,9 +603,16 @@ type TiKVSpec struct {
 	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 
 	// EvictLeaderTimeout indicates the timeout to evict tikv leader, in the format of Go Duration.
-	// Defaults to 10m
+	// Defaults to 1500min
 	// +optional
 	EvictLeaderTimeout *string `json:"evictLeaderTimeout,omitempty"`
+
+	// WaitLeaderTransferBackTimeout indicates the timeout to wait for leader transfer back before
+	// the next tikv upgrade.
+	//
+	// Defaults to 400s
+	// +optional
+	WaitLeaderTransferBackTimeout *metav1.Duration `json:"waitLeaderTransferBackTimeout,omitempty"`
 
 	// StorageVolumes configure additional storage for TiKV pods.
 	// +optional
@@ -735,6 +761,45 @@ type TiCDCConfig struct {
 	LogFile *string `toml:"log-file,omitempty" json:"logFile,omitempty"`
 }
 
+// TiProxySpec contains details of TiProxy members
+// +k8s:openapi-gen=true
+type TiProxySpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiProxy
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// used by TiProxy to check health status.
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/tiproxy
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// Config is the Configuration of tiproxy-servers
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Config *TiProxyConfigWraper `json:"config,omitempty"`
+
+	// StorageVolumes configure additional storage for TiProxy pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiProxy data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+}
+
 // LogTailerSpec represents an optional log tailer sidecar container
 // +k8s:openapi-gen=true
 type LogTailerSpec struct {
@@ -813,6 +878,11 @@ type TiDBSpec struct {
 	// +optional
 	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
 
+	// Whether enable `tidb_auth_token` authentication method. The tidb_auth_token authentication method is used only for the internal operation of TiDB Cloud.
+	// Optional: Defaults to false
+	// +optional
+	TokenBasedAuthEnabled *bool `json:"tokenBasedAuthEnabled,omitempty"`
+
 	// Plugins is a list of plugins that are loaded by TiDB server, empty means plugin disabled
 	// +optional
 	Plugins []string `json:"plugins,omitempty"`
@@ -839,15 +909,18 @@ type TiDBSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
-	// ReadinessProbe describes actions that probe the tidb's readiness.
-	// the default behavior is like setting type as "tcp"
-	// +optional
-	ReadinessProbe *TiDBProbe `json:"readinessProbe,omitempty"`
 
 	// Initializer is the init configurations of TiDB
 	//
 	// +optional
 	Initializer *TiDBInitializer `json:"initializer,omitempty"`
+
+	// BootstrapSQLConfigMapName is the name of the ConfigMap which contains the bootstrap SQL file with the key `bootstrap-sql`,
+	// which will only be executed when a TiDB cluster bootstrap on the first time.
+	// The field should be set ONLY when create a TC, since it only take effect on the first time bootstrap.
+	// Only v6.6.0+ supports this feature.
+	// +optional
+	BootstrapSQLConfigMapName *string `json:"bootstrapSQLConfigMapName,omitempty"`
 }
 
 type TiDBInitializer struct {
@@ -861,11 +934,11 @@ const (
 	CommandProbeType string = "command"
 )
 
-// TiDBProbe contains details of probing tidb.
+// Probe contains details of probing tidb.
 // +k8s:openapi-gen=true
-// default probe by TCPPort on 4000.
-type TiDBProbe struct {
-	// "tcp" will use TCP socket to connetct port 4000
+// default probe by TCPPort on tidb 4000 / tikv 20160 / pd 2349.
+type Probe struct {
+	// "tcp" will use TCP socket to connect component port.
 	//
 	// "command" will probe the status api of tidb.
 	// This will use curl command to request tidb, before v4.0.9 there is no curl in the image,
@@ -1101,6 +1174,11 @@ type ComponentSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// ReadinessProbe describes actions that probe the pd's readiness.
+	// the default behavior is like setting type as "tcp"
+	// +optional
+	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
 }
 
 // ServiceSpec specifies the service object in k8s
@@ -1242,6 +1320,7 @@ type PDFailureMember struct {
 	PVCUID        types.UID                 `json:"pvcUID,omitempty"`
 	PVCUIDSet     map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
 	MemberDeleted bool                      `json:"memberDeleted,omitempty"`
+	HostDown      bool                      `json:"hostDown,omitempty"`
 	// +nullable
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
@@ -1299,6 +1378,8 @@ const (
 	EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
 	// EvictLeaderAnnKeyForResize is the annotation key to evict leader user by pvc resizer.
 	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
+	// PDLeaderTransferAnnKey is the annotation key to transfer PD leader used by user.
+	PDLeaderTransferAnnKey = "tidb.pingcap.com/pd-transfer-leader"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -1308,6 +1389,15 @@ const (
 const (
 	EvictLeaderValueNone      = "none"
 	EvictLeaderValueDeletePod = "delete-pod"
+)
+
+// The `Value` of PD leader transfer annotation controls the behavior when the leader is transferred to another member, the valid value is one of:
+//
+// - `none`: doing nothing.
+// - `delete-pod`: delete pod.
+const (
+	TransferLeaderValueNone      = "none"
+	TransferLeaderValueDeletePod = "delete-pod"
 )
 
 type EvictLeaderStatus struct {
@@ -1330,7 +1420,7 @@ type TiKVStatus struct {
 	Phase           MemberPhase                   `json:"phase,omitempty"`
 	BootStrapped    bool                          `json:"bootStrapped,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus       `json:"statefulSet,omitempty"`
-	Stores          map[string]TiKVStore          `json:"stores,omitempty"`
+	Stores          map[string]TiKVStore          `json:"stores,omitempty"` // key: store id
 	PeerStores      map[string]TiKVStore          `json:"peerStores,omitempty"`
 	TombstoneStores map[string]TiKVStore          `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore   `json:"failureStores,omitempty"`
@@ -1358,6 +1448,32 @@ type TiFlashStatus struct {
 	Image           string                      `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// TiProxyMember is TiProxy member
+type TiProxyMember struct {
+	Name   string `json:"name"`
+	Health bool   `json:"health"`
+	// Additional healthinfo if it is healthy.
+	// +optional
+	Info string `json:"info"`
+	// Last time the health transitioned from one to another.
+	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
+// TiProxyStatus is TiProxy status
+type TiProxyStatus struct {
+	Synced      bool                                       `json:"synced,omitempty"`
+	Phase       MemberPhase                                `json:"phase,omitempty"`
+	Members     map[string]TiProxyMember                   `json:"members,omitempty"`
+	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
+	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
 	// +optional
 	// +nullable
@@ -1399,12 +1515,20 @@ type TiKVStore struct {
 	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// LeaderCountBeforeUpgrade records the leader count before upgrade.
+	//
+	// It is set when evicting leader and used to wait for most leaders to transfer back after upgrade.
+	// It is unset after leader transfer is completed.
+	LeaderCountBeforeUpgrade *int32 `json:"leaderCountBeforeUpgrade,omitempty"`
 }
 
 // TiKVFailureStore is the tikv failure store information
 type TiKVFailureStore struct {
-	PodName string `json:"podName,omitempty"`
-	StoreID string `json:"storeID,omitempty"`
+	PodName      string                    `json:"podName,omitempty"`
+	StoreID      string                    `json:"storeID,omitempty"`
+	PVCUIDSet    map[types.UID]EmptyStruct `json:"pvcUIDSet,omitempty"`
+	StoreDeleted bool                      `json:"storeDeleted,omitempty"`
+	HostDown     bool                      `json:"hostDown,omitempty"`
 	// +nullable
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
@@ -1669,6 +1793,8 @@ const (
 	BackupModeSnapshot BackupMode = "snapshot"
 	// BackupModeLog represents the log backup of tidb cluster.
 	BackupModeLog BackupMode = "log"
+	// BackupModeVolumeSnapshot represents volume backup of tidb cluster.
+	BackupModeVolumeSnapshot BackupMode = "volume-snapshot"
 )
 
 // TiDBAccessConfig defines the configuration for access tidb cluster
@@ -1731,6 +1857,16 @@ type CleanOption struct {
 	BackoffEnabled bool `json:"backoffEnabled,omitempty"`
 
 	BatchDeleteOption `json:",inline"`
+}
+
+type Progress struct {
+	// Step is the step name of progress
+	Step string `json:"step,omitempty"`
+	// Progress is the backup progress value
+	Progress float64 `json:"progress,omitempty"`
+	// LastTransitionTime is the update time
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 // BackupSpec contains the backup specification for a tidb cluster.
@@ -1822,6 +1958,9 @@ type BackupSpec struct {
 
 	// PriorityClassName of Backup Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
+	BackoffRetryPolicy BackoffRetryPolicy `json:"backoffRetryPolicy,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1866,6 +2005,45 @@ type BRConfig struct {
 	Options []string `json:"options,omitempty"`
 }
 
+// BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup.
+// When backup job or pod failed, it will retry in the following way:
+// first time: retry after MinRetryDuration
+// second time: retry after MinRetryDuration * 2
+// third time: retry after MinRetryDuration * 2 * 2
+// ...
+// as the limit:
+// 1. the number of retries can not exceed MaxRetryTimes
+// 2. the time from discovery failure can not exceed RetryTimeout
+type BackoffRetryPolicy struct {
+	// MinRetryDuration is the min retry duration, the retry duration will be MinRetryDuration << (retry num -1)
+	// format reference, https://golang.org/pkg/time/#ParseDuration
+	// +kubebuilder:default="300s"
+	MinRetryDuration string `json:"minRetryDuration,omitempty"`
+	// MaxRetryTimes is the max retry times
+	// +kubebuilder:default=2
+	MaxRetryTimes int `json:"maxRetryTimes,omitempty"`
+	// RetryTimeout is the retry timeout
+	// format reference, https://golang.org/pkg/time/#ParseDuration
+	// +kubebuilder:default="30m"
+	RetryTimeout string `json:"retryTimeout,omitempty"`
+}
+
+// BackoffRetryRecord is the record of backoff retry
+type BackoffRetryRecord struct {
+	// RetryNum is the number of retry
+	RetryNum int `json:"retryNum,omitempty"`
+	// DetectFailedAt is the time when detect failure
+	DetectFailedAt *metav1.Time `json:"detectFailedAt,omitempty"`
+	// ExpectedRetryAt is the time we calculate and expect retry after it
+	ExpectedRetryAt *metav1.Time `json:"expectedRetryAt,omitempty"`
+	// RealRetryAt is the time when the retry was actually initiated
+	RealRetryAt *metav1.Time `json:"realRetryAt,omitempty"`
+	// Reason is the reason of retry
+	RetryReason string `json:"retryReason,omitempty"`
+	// OriginalReason is the original reason of backup job or pod failed
+	OriginalReason string `json:"originalReason,omitempty"`
+}
+
 // BackupConditionType represents a valid condition of a Backup.
 type BackupConditionType string
 
@@ -1881,12 +2059,16 @@ const (
 	BackupClean BackupConditionType = "Clean"
 	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
-	// BackupRetryFailed means this failure can be retried
-	BackupRetryFailed BackupConditionType = "RetryFailed"
+	// BackupRetryTheFailed means this failure can be retried
+	BackupRetryTheFailed BackupConditionType = "RetryFailed"
 	// BackupInvalid means invalid backup CR
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// BackupStopped means the backup was stopped, just log backup has this condition
+	BackupStopped BackupConditionType = "Stopped"
+	// BackupRestart means the backup was restarted, now just support snapshot backup
+	BackupRestart BackupConditionType = "Restart"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -1961,6 +2143,11 @@ type BackupStatus struct {
 	Conditions []BackupCondition `json:"conditions,omitempty"`
 	// LogSubCommandStatuses is the detail status of log backup subcommands, record each command separately, but only record the last command.
 	LogSubCommandStatuses map[LogSubCommandType]LogSubCommandStatus `json:"logSubCommandStatuses,omitempty"`
+	// Progresses is the progress of backup.
+	// +nullable
+	Progresses []Progress `json:"progresses,omitempty"`
+	// BackoffRetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
+	BackoffRetryStatus []BackoffRetryRecord `json:"backoffRetryStatus,omitempty"`
 }
 
 // +genclient
@@ -2012,6 +2199,8 @@ type BackupScheduleSpec struct {
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
+	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
+	LogBackupTemplate *BackupSpec `json:"logBackupTemplate"`
 	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -2027,6 +2216,8 @@ type BackupScheduleSpec struct {
 type BackupScheduleStatus struct {
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup,omitempty"`
+	// logBackup represents the name of log backup.
+	LogBackup *string `json:"logBackup,omitempty"`
 	// LastBackupTime represents the last time the backup was successfully created.
 	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
@@ -2076,6 +2267,8 @@ const (
 	RestoreModeSnapshot RestoreMode = "snapshot"
 	// RestoreModePiTR represents PiTR restore which is from a snapshot backup and log backup.
 	RestoreModePiTR RestoreMode = "pitr"
+	// RestoreModeVolumeSnapshot represents restore from a volume snapshot backup.
+	RestoreModeVolumeSnapshot RestoreMode = "volume-snapshot"
 )
 
 // RestoreConditionType represents a valid condition of a Restore.
@@ -2086,6 +2279,12 @@ const (
 	RestoreScheduled RestoreConditionType = "Scheduled"
 	// RestoreRunning means the Restore is currently being executed.
 	RestoreRunning RestoreConditionType = "Running"
+	// RestoreVolumeComplete means the Restore has successfully executed part-1 and the
+	// backup volumes have been rebuilded from the corresponding snapshot
+	RestoreVolumeComplete RestoreConditionType = "VolumeComplete"
+	// RestoreDataComplete means the Restore has successfully executed part-2 and the
+	// data in restore volumes has been deal with consistency based on min_resolved_ts
+	RestoreDataComplete RestoreConditionType = "DataComplete"
 	// RestoreComplete means the Restore has successfully executed and the
 	// backup data has been loaded into tidb cluster.
 	RestoreComplete RestoreConditionType = "Complete"
@@ -2106,16 +2305,6 @@ type RestoreCondition struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	Reason             string      `json:"reason,omitempty"`
 	Message            string      `json:"message,omitempty"`
-}
-
-type RestoreProgress struct {
-	// Step is the step name of progress
-	Step string `json:"step,omitempty"`
-	// Progress is the restore progress value
-	Progress float64 `json:"progress,omitempty"`
-	// LastTransitionTime is the update time
-	// +nullable
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -2213,7 +2402,7 @@ type RestoreStatus struct {
 	Conditions []RestoreCondition `json:"conditions,omitempty"`
 	// Progresses is the progress of restore.
 	// +nullable
-	Progresses []RestoreProgress `json:"progresses,omitempty"`
+	Progresses []Progress `json:"progresses,omitempty"`
 }
 
 // +k8s:openapi-gen=true

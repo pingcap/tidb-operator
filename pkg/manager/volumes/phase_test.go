@@ -73,6 +73,8 @@ func TestGetVolumePhase(t *testing.T) {
 		sc       *storagev1.StorageClass
 		size     string
 		expected VolumePhase
+
+		noDesired bool
 	}{
 		{
 			desc:  "size and sc are not modified",
@@ -193,6 +195,14 @@ func TestGetVolumePhase(t *testing.T) {
 
 			expected: VolumePhaseCannotModify,
 		},
+		{
+			desc:      "no desired volume matched",
+			pvc:       newTestPVCForGetVolumePhase(oldSize, &oldScName, nil),
+			oldSc:     newStorageClassForGetVolumePhase(oldScName, "ebs.csi.aws.com", false),
+			noDesired: true,
+
+			expected: VolumePhaseCannotModify,
+		},
 	}
 
 	pvm := &podVolModifier{
@@ -207,10 +217,12 @@ func TestGetVolumePhase(t *testing.T) {
 		actual := ActualVolume{
 			PVC:          c.pvc,
 			StorageClass: c.oldSc,
-			Desired: &DesiredVolume{
+		}
+		if !c.noDesired {
+			actual.Desired = &DesiredVolume{
 				StorageClass: c.sc,
 				Size:         resource.MustParse(c.size),
-			},
+			}
 		}
 		phase := pvm.getVolumePhase(&actual)
 		g.Expect(phase).Should(Equal(c.expected), c.desc)

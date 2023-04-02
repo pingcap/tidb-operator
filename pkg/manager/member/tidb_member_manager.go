@@ -65,9 +65,17 @@ const (
 	// When user use self-signed certificates, the root CA must be provided. We
 	// following the same convention used in Kubernetes service token.
 	tlsSecretRootCAKey = corev1.ServiceAccountRootCAKey
+	// nolint: gosec
+	// tidbAuthTokenPath is where the assets for auth tidb client stored. Such as: tidb auth token JWKS
+	tidbAuthTokenPath = "/var/lib/tidb-auth-token"
+	// nolint: gosec
+	tidbAuthTokenJWKS = "tidb_auth_token_jwks.json"
 
 	// tidb DC label Name
 	tidbDCLabel = "zone"
+
+	bootstrapSQLFilePath = "/etc/tidb-bootstrap"
+	bootstrapSQLFileName = "bootstrap.sql"
 )
 
 var (
@@ -123,6 +131,11 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 
+	// Sync TidbCluster Recovery
+	if err := m.syncRecoveryForTidbCluster(tc); err != nil {
+		return err
+	}
+
 	if tc.Spec.Pump != nil && !tc.PumpIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
 	}
@@ -149,6 +162,18 @@ func (m *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	// Sync TiDB StatefulSet
 	return m.syncTiDBStatefulSetForTidbCluster(tc)
+}
+
+func (m *tidbMemberManager) syncRecoveryForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	// Check whether the cluster is in recovery mode
+	// and whether the volumes have been restored for TiKV
+	if !tc.Spec.RecoveryMode {
+		return nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV restore data completed", ns, tcName)
 }
 
 func (m *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error {
@@ -534,11 +559,20 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 	config := tc.Spec.TiDB.Config.DeepCopy()
 
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		config.Set("security.auth-token-jwks", path.Join(tidbAuthTokenPath, tidbAuthTokenJWKS))
+	}
+
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
 		config.Set("security.cluster-ssl-ca", path.Join(clusterCertPath, tlsSecretRootCAKey))
 		config.Set("security.cluster-ssl-cert", path.Join(clusterCertPath, corev1.TLSCertKey))
 		config.Set("security.cluster-ssl-key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
+		// set session token certs automatically if tiproxy is available
+		if tc.Spec.TiProxy != nil && tc.Spec.TiProxy.Replicas != 0 {
+			config.Set("security.session-token-signing-key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
+			config.Set("security.session-token-signing-cert", path.Join(clusterCertPath, corev1.TLSCertKey))
+		}
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
 		// No need to configure the ssl-ca parameter when client authentication is disabled.
@@ -547,6 +581,9 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		}
 		config.Set("security.ssl-cert", path.Join(serverCertPath, corev1.TLSCertKey))
 		config.Set("security.ssl-key", path.Join(serverCertPath, corev1.TLSPrivateKeyKey))
+	}
+	if tc.Spec.TiDB.IsBootstrapSQLEnabled() {
+		config.Set("initialize-sql-file", path.Join(bootstrapSQLFilePath, bootstrapSQLFileName))
 	}
 	confText, err := config.MarshalTOML()
 	if err != nil {
@@ -692,6 +729,11 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-auth-token", ReadOnly: true, MountPath: tidbAuthTokenPath,
+		})
+	}
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-tls", ReadOnly: true, MountPath: clusterCertPath,
@@ -721,6 +763,31 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
 			}},
 		},
+	}
+	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-auth-token", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBAuthTokenJWKSSecretName(tcName),
+				},
+			},
+		})
+	}
+	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsBootstrapSQLEnabled() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-bootstrap-sql", ReadOnly: true, MountPath: bootstrapSQLFilePath,
+		})
+
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-bootstrap-sql", VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: *tc.Spec.TiDB.BootstrapSQLConfigMapName,
+					},
+					Items: []corev1.KeyToPath{{Key: "bootstrap-sql", Path: bootstrapSQLFileName}},
+				},
+			},
+		})
 	}
 	if tc.IsTLSClusterEnabled() {
 		vols = append(vols, corev1.Volume{
@@ -937,7 +1004,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	stsLabels := label.New().Instance(instanceName).TiDB()
 	podLabels := util.CombineStringMap(stsLabels, baseTiDBSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(10080), baseTiDBSpec.Annotations())
+	podAnnotations := util.CombineStringMap(baseTiDBSpec.Annotations(), controller.AnnProm(10080, "/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiDBLabelVal)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
@@ -1057,9 +1124,10 @@ const tidbSupportLabelsMinVersin = "6.3.0"
 func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, error) {
 	tidbVersion := tc.TiDBVersion()
 	isOlder, err := cmpver.Compare(tidbVersion, cmpver.Less, tidbSupportLabelsMinVersin)
+	// meet a custom build of tidb without version in tag, directly return as if it was old tidb that doesn't support set labels
 	if err != nil {
-		klog.Warningf("parse tidb verson '%s' failed, err: %v", tidbVersion, err)
-		return 0, err
+		klog.Warningf("parse tidb verson '%s' failed, skip setting store labels for TiKV of TiDB cluster %s/%s. err: %v", tidbVersion, tc.Namespace, tc.Name, err)
+		return 0, nil
 	}
 	// meet an old verion tidb, directly return because tidb doesn't support set labels
 	if isOlder {
@@ -1092,7 +1160,7 @@ outer:
 	}
 
 	if zoneLabel == "" {
-		klog.Infof("zone labels not found in pd location-labels %v, skip set labels", config.Replication.LocationLabels)
+		klog.V(4).Infof("zone labels not found in pd location-labels %v, skip set labels", config.Replication.LocationLabels)
 		return 0, nil
 	}
 
@@ -1107,7 +1175,7 @@ outer:
 
 		labels, err := getNodeLabels(m.deps.NodeLister, db.NodeName, config.Replication.LocationLabels)
 		if err != nil || len(labels) == 0 {
-			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", db.NodeName, ns, name)
+			klog.Warningf("node: [%s] has no node labels %v, skipping set store labels for Pod: [%s/%s]", db.NodeName, config.Replication.LocationLabels, ns, name)
 			continue
 		}
 		// add the special `zone` label because tidb depends on this label for follower read.

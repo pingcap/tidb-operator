@@ -34,7 +34,7 @@ JQ_BIN=$OUTPUT_BIN/jq
 CFSSL_VERSION=${CFSSL_VERSION:-1.2}
 K8S_VERSION=${K8S_VERSION:-0.19.16}
 JQ_VERSION=${JQ_VERSION:-1.6}
-HELM_VERSION=${HELM_VERSION:-3.5.0}
+HELM_VERSION=${HELM_VERSION:-3.11.0}
 KIND_VERSION=${KIND_VERSION:-0.11.1}
 KIND_BIN=$OUTPUT_BIN/kind
 KUBETEST2_VERSION=v0.1.0
@@ -68,11 +68,11 @@ function hack::install_cfssl() {
     echo "info: Installing cfssl/cfssljson R${CFSSL_VERSION}"
     tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
-    
+
     curl --retry 10 -L -o $tmpfile https://pkg.cfssl.org/R${CFSSL_VERSION}/cfssl_linux-amd64
     mv $tmpfile $CFSSL_BIN
     chmod +x $CFSSL_BIN
-    
+
     curl --retry 10 -L -o $tmpfile https://pkg.cfssl.org/R${CFSSL_VERSION}/cfssljson_linux-amd64
     mv $tmpfile $CFSSLJSON_BIN
     chmod +x $CFSSLJSON_BIN
@@ -152,7 +152,8 @@ function hack::ensure_helm() {
     fi
     echo "Installing helm ${HELM_VERSION}..."
     local HELM_URL=https://get.helm.sh/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
-    curl --retry 3 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
+    echo "Installing helm from tarball: ${HELM_URL} ..."
+    curl --fail --retry 3 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
 }
 
 function hack::verify_kind() {
@@ -170,7 +171,7 @@ function hack::ensure_kind() {
     echo "Installing kind v$KIND_VERSION..."
     tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
-    curl --retry 10 -L -o $tmpfile https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-$(uname)-amd64
+    curl --retry 10 -L -o $tmpfile https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-${OS}-${ARCH}
     mv $tmpfile $KIND_BIN
     chmod +x $KIND_BIN
 }
@@ -274,8 +275,8 @@ function hack::ensure_misspell() {
 }
 
 function hack::ensure_golangci_lint() {
-    echo "Installing golangci_lint..."
-    GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.41.1
+  echo "Installing golangci_lint..."
+  GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
 }
 
 function hack::ensure_controller_gen() {
@@ -297,3 +298,5 @@ function hack::ensure_openapi() {
     echo "Installing openpi_gen..."
     GOBIN=$OUTPUT_BIN go install k8s.io/code-generator/cmd/openapi-gen@v$K8S_VERSION
 }
+
+function version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }

@@ -692,3 +692,48 @@ func newRestore() *v1alpha1.Restore {
 		},
 	}
 }
+
+func TestGetSliceExcludeOneString(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name   string
+		str    string
+		strs   []string
+		expect []string
+	}
+
+	tests := []*testcase{
+		{
+			name:   "test-1",
+			str:    "--skip-aws",
+			strs:   []string{"--skip-aws=true", "--dry-run=true", "--check-requirements=false"},
+			expect: []string{"--dry-run=true", "--check-requirements=false"},
+		},
+		{
+			name:   "test-2",
+			str:    "--skip-aws",
+			strs:   []string{},
+			expect: []string{},
+		},
+		{
+			name:   "test-3",
+			str:    "--skip-aws",
+			strs:   []string{"--dry-run=true", "--skip-aws=false", "--skip-aws=true"},
+			expect: []string{"--dry-run=true", "--skip-aws=true"},
+		},
+		{
+			name:   "test-4",
+			str:    "--skip-aws",
+			strs:   []string{"--dry-run=true", "--check-requirements=false"},
+			expect: []string{"--dry-run=true", "--check-requirements=false"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			strs := GetSliceExcludeOneString(tt.strs, tt.str)
+			g.Expect(strs).To(Equal(tt.expect))
+		})
+	}
+}

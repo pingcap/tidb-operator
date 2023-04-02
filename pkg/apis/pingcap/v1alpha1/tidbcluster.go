@@ -38,7 +38,8 @@ const (
 	defaultSeparateRaftLog    = false
 	defaultEnablePVReclaim    = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
-	defaultEvictLeaderTimeout = 1500 * time.Minute
+	defaultEvictLeaderTimeout            = 1500 * time.Minute
+	defaultWaitLeaderTransferBackTimeout = 400 * time.Second
 	// defaultTiCDCGracefulShutdownTimeout is the timeout limit of graceful
 	// shutdown a TiCDC pod.
 	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
@@ -147,6 +148,13 @@ func (tc *TidbCluster) TiKVEvictLeaderTimeout() time.Duration {
 	return defaultEvictLeaderTimeout
 }
 
+func (tc *TidbCluster) TiKVWaitLeaderTransferBackTimeout() time.Duration {
+	if tc.Spec.TiKV != nil && tc.Spec.TiKV.WaitLeaderTransferBackTimeout != nil {
+		return tc.Spec.TiKV.WaitLeaderTransferBackTimeout.Duration
+	}
+	return defaultWaitLeaderTransferBackTimeout
+}
+
 // TiFlashImage return the image used by TiFlash.
 //
 // If TiFlash isn't specified, return empty string.
@@ -204,6 +212,31 @@ func (tc *TidbCluster) TiCDCImage() string {
 	// base image takes higher priority
 	if baseImage != "" {
 		version := tc.Spec.TiCDC.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
+	}
+	return image
+}
+
+// TiProxyImage return the image used by TiProxy.
+//
+// If TiProxy isn't specified, return empty string.
+func (tc *TidbCluster) TiProxyImage() string {
+	if tc.Spec.TiProxy == nil {
+		return ""
+	}
+
+	image := tc.Spec.TiProxy.Image
+	baseImage := tc.Spec.TiProxy.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := tc.Spec.TiProxy.Version
 		if version == nil {
 			version = &tc.Spec.Version
 		}
@@ -384,6 +417,14 @@ func (tc *TidbCluster) TiFlashScaling() bool {
 	return tc.Status.TiFlash.Phase == ScalePhase
 }
 
+func (tc *TidbCluster) TiProxyUpgrading() bool {
+	return tc.Status.TiProxy.Phase == UpgradePhase
+}
+
+func (tc *TidbCluster) TiProxyScaling() bool {
+	return tc.Status.TiProxy.Phase == ScalePhase
+}
+
 func (tc *TidbCluster) ComponentIsNormal(typ MemberType) bool {
 	status := tc.ComponentStatus(typ)
 	if status == nil {
@@ -439,6 +480,10 @@ func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32)
 		key = label.AnnTiKVDeleteSlots
 	} else if component == label.TiFlashLabelVal {
 		key = label.AnnTiFlashDeleteSlots
+	} else if component == label.TiCDCLabelVal {
+		key = label.AnnTiCDCDeleteSlots
+	} else if component == label.TiProxyLabelVal {
+		key = label.AnnTiProxyDeleteSlots
 	} else {
 		return
 	}
@@ -669,6 +714,40 @@ func (tc *TidbCluster) TiCDCAllCapturesReady() bool {
 	return true
 }
 
+func (tc *TidbCluster) TiProxyAllMembersReady() bool {
+	if tc.Spec.TiProxy == nil {
+		return false
+	}
+
+	if int(tc.TiProxyStsDesiredReplicas()) != len(tc.Status.TiProxy.Members) {
+		return false
+	}
+
+	for _, member := range tc.Status.TiProxy.Members {
+		if !member.Health {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (tc *TidbCluster) TiProxyStsDesiredReplicas() int32 {
+	if tc.Spec.TiProxy == nil {
+		return 0
+	}
+
+	return tc.Spec.TiProxy.Replicas
+}
+
+func (tc *TidbCluster) TiProxyStsActualReplicas() int32 {
+	stsStatus := tc.Status.TiProxy.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
+}
+
 func (tc *TidbCluster) TiCDCDeployDesiredReplicas() int32 {
 	if tc.Spec.TiCDC == nil {
 		return 0
@@ -814,6 +893,20 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 	return true
 }
 
+func (tc *TidbCluster) AllTiKVsAreAvailable() bool {
+	if len(tc.Status.TiKV.Stores) != int(tc.Spec.TiKV.Replicas) {
+		return false
+	}
+
+	for _, store := range tc.Status.TiKV.Stores {
+		if store.State != TiKVStateUp {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (tc *TidbCluster) PumpIsAvailable() bool {
 	lowerLimit := 1
 	if len(tc.Status.Pump.Members) < lowerLimit {
@@ -840,6 +933,10 @@ func (tc *TidbCluster) GetClusterID() string {
 
 func (tc *TidbCluster) IsTLSClusterEnabled() bool {
 	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
+}
+
+func (tc *TidbCluster) IsRecoveryMode() bool {
+	return tc.Spec.RecoveryMode
 }
 
 func (tc *TidbCluster) NeedToSyncTiDBInitializer() bool {
@@ -880,6 +977,14 @@ func (tc *TidbCluster) IsTiDBBinlogEnabled() bool {
 		return isPumpCreated
 	}
 	return *binlogEnabled
+}
+
+func (tidb *TiDBSpec) IsBootstrapSQLEnabled() bool {
+	if tidb.BootstrapSQLConfigMapName != nil && *tidb.BootstrapSQLConfigMapName != "" {
+		return true
+	}
+
+	return false
 }
 
 func (tidb *TiDBSpec) IsTLSClientEnabled() bool {

@@ -116,6 +116,11 @@ const (
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
 	// AnnTiFlashDeleteSlots is annotation key of tiflash delete slots.
 	AnnTiFlashDeleteSlots = "tiflash.tidb.pingcap.com/delete-slots"
+
+	// AnnTiCDCDeleteSlots is annotation key of ticdc delete slots.
+	AnnTiCDCDeleteSlots = "ticdc.tidb.pingcap.com/delete-slots"
+	// AnnTiProxyDeleteSlots is annotation key of tiproxy delete slots.
+	AnnTiProxyDeleteSlots = "tiproxy.tidb.pingcap.com/delete-slots"
 	// AnnDMMasterDeleteSlots is annotation key of dm-master delete slots.
 	AnnDMMasterDeleteSlots = "dm-master.tidb.pingcap.com/delete-slots"
 	// AnnDMWorkerDeleteSlots is annotation key of dm-worker delete slots.
@@ -123,6 +128,14 @@ const (
 
 	// AnnSkipTLSWhenConnectTiDB describes whether skip TLS when connecting to TiDB Server
 	AnnSkipTLSWhenConnectTiDB = "tidb.tidb.pingcap.com/skip-tls-when-connect-tidb"
+
+	// AnnBackupCloudSnapKey is the annotation key for backup metadata based cloud snapshot
+	AnnBackupCloudSnapKey string = "tidb.pingcap.com/backup-cloud-snapshot"
+
+	// AnnTiKVVolumesReadyKey is the annotation key to indicate whether the TiKV volumes are ready.
+	// TiKV member manager will wait until the TiKV volumes are ready before starting the TiKV pod
+	// when TiDB cluster is restored from volume snapshot based backup.
+	AnnTiKVVolumesReadyKey = "tidb.pingcap.com/tikv-volumes-ready"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
@@ -134,6 +147,8 @@ const (
 	TiFlashLabelVal string = "tiflash"
 	// TiCDCLabelVal is TiCDC label value
 	TiCDCLabelVal string = "ticdc"
+	// TiProxyLabelVal is TiProxy label value
+	TiProxyLabelVal string = "tiproxy"
 	// PumpLabelVal is Pump label value
 	PumpLabelVal string = "pump"
 	// DiscoveryLabelVal is Discovery label value
@@ -161,6 +176,9 @@ const (
 
 	// NGMonitorLabelVal is ng-monitoring label value
 	NGMonitorLabelVal string = "ng-monitoring"
+
+	// TiDBDashboardLabelVal is tidb-dashboard label value
+	TiDBDashboardLabelVal string = "tidb-dashboard"
 
 	// PrometheusVal is Prometheus label value
 	PrometheusVal string = "prometheus"
@@ -240,6 +258,13 @@ func NewMonitor() Label {
 func NewTiDBNGMonitoring() Label {
 	return Label{
 		NameLabelKey:      "tidb-ng-monitoring",
+		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
+func NewTiDBDashboard() Label {
+	return Label{
+		NameLabelKey:      "tidb-dashboard",
 		ManagedByLabelKey: TiDBOperator,
 	}
 }
@@ -347,6 +372,16 @@ func (l Label) IsPD() bool {
 	return l[ComponentLabelKey] == PDLabelVal
 }
 
+// TiProxy assigns tiproxy to component key in label
+func (l Label) TiProxy() Label {
+	return l.Component(TiProxyLabelVal)
+}
+
+// IsTiProxy returns whether label is a TiProxy component
+func (l Label) IsTiProxy() bool {
+	return l[ComponentLabelKey] == TiProxyLabelVal
+}
+
 // Pump assigns pump to component key in label
 func (l Label) Pump() Label {
 	return l.Component(PumpLabelVal)
@@ -395,6 +430,11 @@ func (l Label) Grafana() Label {
 // NGMonitoring assigns ng monitoring to component key in label
 func (l Label) NGMonitoring() Label {
 	return l.Component(NGMonitorLabelVal)
+}
+
+// TiDBDashboard assigns tidb dashboard to component key in label
+func (l Label) TiDBDashboard() Label {
+	return l.Component(TiDBDashboardLabelVal)
 }
 
 // IsNGMonitoring returns whether label is a NGMonitoring component

@@ -32,12 +32,14 @@ import (
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	"k8s.io/utils/pointer"
 )
 
 const (
-	// EvictLeaderBeginTime is the key of evict Leader begin time
-	EvictLeaderBeginTime = "evictLeaderBeginTime"
-
+	// annoKeyEvictLeaderBeginTime is the annotation key in a pod to record the time to begin leader eviction
+	annoKeyEvictLeaderBeginTime = "evictLeaderBeginTime"
+	// annoKeyEvictLeaderEndTime is the annotation key in a pod to record the time to end leader eviction
+	annoKeyEvictLeaderEndTime = "tidb.pingcap.com/tikv-evict-leader-end-at"
 	// TODO: change to use minReadySeconds in sts spec
 	// See https://kubernetes.io/blog/2021/08/27/minreadyseconds-statefulsets/
 	annoKeyTiKVMinReadySeconds = "tidb.pingcap.com/tikv-min-ready-seconds"
@@ -161,13 +163,14 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			}
 
 			// If pods recreated successfully, endEvictLeader for the store on this Pod.
-			storeID, err := strconv.ParseUint(store.ID, 10, 64)
+			done, err := u.endEvictLeaderAfterUpgrade(tc, pod)
 			if err != nil {
 				return err
 			}
-			if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
-				return err
+			if !done {
+				return controller.RequeueErrorf("waiting to end evict leader of pod %s for tc %s/%s", podName, ns, tcName)
 			}
+
 			continue
 		}
 
@@ -209,7 +212,7 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 }
 
 func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgradePod *corev1.Pod) (bool, error) {
-	logPrefix := fmt.Sprintf("evict leader before upgrading tikv pod %s/%s", upgradePod.Namespace, upgradePod.Name)
+	logPrefix := fmt.Sprintf("evictLeaderBeforeUpgrade: for tikv pod %s/%s", upgradePod.Namespace, upgradePod.Name)
 
 	storeID, err := TiKVStoreIDFromStatus(tc, upgradePod.Name)
 	if err != nil {
@@ -217,17 +220,17 @@ func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgrad
 	}
 
 	// evict leader if needed
-	_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
+	_, evicting := upgradePod.Annotations[annoKeyEvictLeaderBeginTime]
 	if !evicting {
 		return false, u.beginEvictLeader(tc, storeID, upgradePod)
 	}
 
 	// wait for leader eviction to complete or timeout
 	evictLeaderTimeout := tc.TiKVEvictLeaderTimeout()
-	if evictLeaderBeginTimeStr, evicting := upgradePod.Annotations[EvictLeaderBeginTime]; evicting {
+	if evictLeaderBeginTimeStr, evicting := upgradePod.Annotations[annoKeyEvictLeaderBeginTime]; evicting {
 		evictLeaderBeginTime, err := time.Parse(time.RFC3339, evictLeaderBeginTimeStr)
 		if err != nil {
-			klog.Errorf("%s: parse annotation %q to time failed", logPrefix, EvictLeaderBeginTime)
+			klog.Errorf("%s: parse annotation %q to time failed", logPrefix, annoKeyEvictLeaderBeginTime)
 			return false, nil
 		}
 		if time.Now().After(evictLeaderBeginTime.Add(evictLeaderTimeout)) {
@@ -270,29 +273,139 @@ func (u *tikvUpgrader) modifyVolumesBeforeUpgrade(tc *v1alpha1.TidbCluster, upgr
 	return true, nil
 }
 
+func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod *corev1.Pod) (bool /*done*/, error) {
+	logPrefix := fmt.Sprintf("endEvictLeaderAfterUpgrade: for tikv pod %s/%s", pod.Namespace, pod.Name)
+
+	store, err := TiKVStoreFromStatus(tc, pod.Name)
+	if err != nil {
+		return false, err
+	}
+	storeID, err := strconv.ParseUint(store.ID, 10, 64)
+	if err != nil {
+		return false, err
+	}
+
+	// evict leader
+	err = u.endEvictLeader(tc, storeID, pod)
+	if err != nil {
+		return false, err
+	}
+
+	// wait for leaders to transfer back or timeout
+	// refer to https://github.com/pingcap/tiup/pull/2051
+
+	isLeaderTransferBackOrTimeout := func() bool {
+		leaderCountBefore := int(*store.LeaderCountBeforeUpgrade)
+		if leaderCountBefore < 200 {
+			klog.Infof("%s: leader count is %d and less than 200, so skip waiting leaders for transfer back", logPrefix, leaderCountBefore)
+			return true
+		}
+
+		evictLeaderEndTimeStr, exist := pod.Annotations[annoKeyEvictLeaderEndTime]
+		if !exist {
+			klog.Errorf("%s: miss annotation %q, so skip waiting leaders for transfer back", logPrefix, annoKeyEvictLeaderEndTime)
+			return true
+		}
+		evictLeaderEndTime, err := time.Parse(time.RFC3339, evictLeaderEndTimeStr)
+		if err != nil {
+			klog.Errorf("%s: parse annotation %q to time failed, so skip waiting leaders for transfer back", logPrefix, annoKeyEvictLeaderEndTime)
+			return true
+		}
+
+		timeout := tc.TiKVWaitLeaderTransferBackTimeout()
+		if time.Now().After(evictLeaderEndTime.Add(timeout)) {
+			klog.Infof("%s: time out with threshold %v, so skip waiting leaders for transfer back", logPrefix, timeout)
+			return true
+		}
+
+		leaderCountNow := int(store.LeaderCount)
+		if leaderCountNow >= leaderCountBefore*2/3 {
+			klog.Infof("%s: leader count is %d and greater than 2/3 of original count %d, so ready to upgrade next store",
+				logPrefix, leaderCountNow, leaderCountBefore)
+			return true
+		}
+
+		klog.Infof("%s: leader count is %d and less than 2/3 of original count %d, and wait for leaders to transfer back",
+			logPrefix, leaderCountNow, leaderCountBefore)
+		return false
+	}
+
+	if store.LeaderCountBeforeUpgrade != nil {
+		done := isLeaderTransferBackOrTimeout()
+		if done {
+			store.LeaderCountBeforeUpgrade = nil
+			tc.Status.TiKV.Stores[store.ID] = store
+		}
+		return done, nil
+	} else {
+		klog.V(4).Infof("%s: miss leader count before upgrade, so skip waiting leaders for transfer back", logPrefix)
+	}
+
+	return true, nil
+
+}
+
 func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
 	ns := tc.GetNamespace()
 	podName := pod.GetName()
+	annosToRecordInfo := map[string]string{}
+
+	if status, exist := tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))]; exist {
+		status.LeaderCountBeforeUpgrade = pointer.Int32Ptr(int32(status.LeaderCount))
+		tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))] = status
+	}
+
 	err := controller.GetPDClient(u.deps.PDControl, tc).BeginEvictLeader(storeID)
 	if err != nil {
-		klog.Errorf("tikv upgrader: failed to begin evict leader: %d, %s/%s, %v",
+		klog.Errorf("beginEvictLeader: failed to begin evict leader: %d, %s/%s, %v",
 			storeID, ns, podName, err)
 		return err
 	}
-	klog.Infof("tikv upgrader: begin evict leader: %d, %s/%s successfully", storeID, ns, podName)
+	klog.Infof("beginEvictLeader: begin evict leader: %d, %s/%s successfully", storeID, ns, podName)
+	annosToRecordInfo[annoKeyEvictLeaderBeginTime] = time.Now().Format(time.RFC3339)
+
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	now := time.Now().Format(time.RFC3339)
-	pod.Annotations[EvictLeaderBeginTime] = now
+	for k, v := range annosToRecordInfo {
+		pod.Annotations[k] = v
+	}
 	_, err = u.deps.PodControl.UpdatePod(tc, pod)
 	if err != nil {
-		klog.Errorf("tikv upgrader: failed to set pod %s/%s annotation %s to %s, %v",
-			ns, podName, EvictLeaderBeginTime, now, err)
+		klog.Errorf("beginEvictLeader: failed to set pod %s/%s annotation to record info, annos:%v err:%v",
+			ns, podName, annosToRecordInfo, err)
 		return err
 	}
-	klog.Infof("tikv upgrader: set pod %s/%s annotation %s to %s successfully",
-		ns, podName, EvictLeaderBeginTime, now)
+
+	klog.Infof("beginEvictLeader: set pod %s/%s annotation to record info successfully, annos:%v",
+		ns, podName, annosToRecordInfo)
+	return nil
+}
+
+func (u *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
+	ns := tc.GetNamespace()
+	podName := pod.GetName()
+
+	// call pd to end evict leader
+	if err := endEvictLeaderbyStoreID(u.deps, tc, storeID); err != nil {
+		return fmt.Errorf("end evict leader for store %d failed: %v", storeID, err)
+	}
+	klog.Infof("endEvictLeader: end evict leader: %d, %s/%s successfully", storeID, ns, podName)
+
+	// record evict leader end time which is used to wait for leaders to transfer back
+	if _, exist := pod.Annotations[annoKeyEvictLeaderEndTime]; !exist {
+		if pod.Annotations == nil {
+			pod.Annotations = map[string]string{}
+		}
+		pod.Annotations[annoKeyEvictLeaderEndTime] = time.Now().Format(time.RFC3339)
+		_, err := u.deps.PodControl.UpdatePod(tc, pod)
+		if err != nil {
+			klog.Errorf("endEvictLeader: failed to set pod %s/%s annotation %s, err:%v",
+				ns, podName, annoKeyEvictLeaderEndTime, err)
+			return fmt.Errorf("end evict leader for store %d failed: %v", storeID, err)
+		}
+	}
+
 	return nil
 }
 
@@ -341,7 +454,7 @@ func endEvictLeaderForAllStore(deps *controller.Dependencies, tc *v1alpha1.TidbC
 func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ordinal int32) error {
 	store := getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
 	if store == nil {
-		klog.Errorf("tikv: no store found for TiKV ordinal %v of %s/%s", ordinal, tc.Namespace, tc.Name)
+		klog.Errorf("endEvictLeader: no store found for TiKV ordinal %v of %s/%s", ordinal, tc.Namespace, tc.Name)
 		return nil
 	}
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
@@ -360,10 +473,11 @@ func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbClu
 
 	err := controller.GetPDClient(deps.PDControl, tc).EndEvictLeader(storeID)
 	if err != nil {
-		klog.Errorf("tikv: failed to end evict leader for store: %d of %s/%s, error: %v", storeID, tc.Namespace, tc.Name, err)
+		klog.Errorf("endEvictLeaderbyStoreID: failed to end evict leader for store: %d of %s/%s, error: %v", storeID, tc.Namespace, tc.Name, err)
 		return err
 	}
-	klog.Infof("tikv: end evict leader for store: %d of %s/%s successfully", storeID, tc.Namespace, tc.Name)
+	klog.Infof("endEvictLeaderbyStoreID: end evict leader for store: %d of %s/%s successfully", storeID, tc.Namespace, tc.Name)
+
 	return nil
 }
 
@@ -378,10 +492,10 @@ func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *
 }
 
 func isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) (bool, string) {
-	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase {
+	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase {
 		return false, fmt.Sprintf("tiflash status is %s", tc.Status.TiFlash.Phase)
 	}
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.PD.Phase == v1alpha1.ScalePhase {
 		return false, fmt.Sprintf("pd status is %s", tc.Status.PD.Phase)
 	}
 	if tc.TiKVScaling() {

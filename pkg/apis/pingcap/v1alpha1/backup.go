@@ -126,13 +126,25 @@ func UpdateBackupCondition(status *BackupStatus, condition *BackupCondition) boo
 	// Try to find this Backup condition.
 	conditionIndex, oldCondition := GetBackupCondition(status, condition.Type)
 
-	status.Phase = condition.Type
+	isDiffPhase := status.Phase != condition.Type
+
+	// restart condition no need to update to phase
+	if isDiffPhase && condition.Type != BackupRestart {
+		status.Phase = condition.Type
+	}
 
 	if oldCondition == nil {
 		// We are adding new Backup condition.
 		status.Conditions = append(status.Conditions, *condition)
 		return true
 	}
+
+	// if phase is diff, we need update condition
+	if isDiffPhase {
+		status.Conditions[conditionIndex] = *condition
+		return true
+	}
+
 	// We are updating an existing condition, so we need to check if it has changed.
 	if condition.Status == oldCondition.Status {
 		condition.LastTransitionTime = oldCondition.LastTransitionTime
@@ -193,6 +205,12 @@ func IsBackupRunning(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsBackupRestart returns true if a Backup was restarted.
+func IsBackupRestart(backup *Backup) bool {
+	_, hasRestartCondition := GetBackupCondition(&backup.Status, BackupRestart)
+	return hasRestartCondition != nil
+}
+
 // IsBackupPrepared returns true if a Backup is Prepare.
 func IsBackupPrepared(backup *Backup) bool {
 	if backup.Spec.Mode == BackupModeLog {
@@ -200,6 +218,17 @@ func IsBackupPrepared(backup *Backup) bool {
 	}
 	_, condition := GetBackupCondition(&backup.Status, BackupPrepare)
 	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsLogBackupStopped returns true if a log backup is stopped.
+// It means log backup is at stopped status.
+// It used to filter CR update event which is stop command and stopped status, and let it run truncate after log backup stopped which is truncate command and stopped status.
+func IsLogBackupStopped(backup *Backup) bool {
+	if backup.Spec.Mode == BackupModeLog {
+		command := ParseLogBackupSubcommand(backup)
+		return command == LogStopCommand && backup.Status.Phase == BackupStopped
+	}
+	return false
 }
 
 // IsBackupClean returns true if a Backup has been successfully cleaned up
@@ -298,5 +327,5 @@ func IsLogBackupAlreadyTruncate(backup *Backup) bool {
 
 // IsLogBackupAlreadyStop return whether log backup has already stoped.
 func IsLogBackupAlreadyStop(backup *Backup) bool {
-	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupComplete
+	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupStopped
 }

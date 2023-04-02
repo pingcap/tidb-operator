@@ -348,6 +348,18 @@ spec:
                   secretName:
                     type: string
                 type: object
+              backoffRetryPolicy:
+                properties:
+                  maxRetryTimes:
+                    default: 2
+                    type: integer
+                  minRetryDuration:
+                    default: 300s
+                    type: string
+                  retryTimeout:
+                    default: 30m
+                    type: string
+                type: object
               backupMode:
                 default: snapshot
                 type: string
@@ -1377,6 +1389,26 @@ spec:
             type: object
           status:
             properties:
+              backoffRetryStatus:
+                items:
+                  properties:
+                    detectFailedAt:
+                      format: date-time
+                      type: string
+                    expectedRetryAt:
+                      format: date-time
+                      type: string
+                    originalReason:
+                      type: string
+                    realRetryAt:
+                      format: date-time
+                      type: string
+                    retryNum:
+                      type: integer
+                    retryReason:
+                      type: string
+                  type: object
+                type: array
               backupPath:
                 type: string
               backupSize:
@@ -1457,6 +1489,20 @@ spec:
                 type: string
               phase:
                 type: string
+              progresses:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      nullable: true
+                      type: string
+                    progress:
+                      type: number
+                    step:
+                      type: string
+                  type: object
+                nullable: true
+                type: array
               timeCompleted:
                 format: date-time
                 nullable: true

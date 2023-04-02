@@ -296,6 +296,79 @@ scrape_configs:
     - __tmp_hash
     regex: $(SHARD)
     action: keep
+- job_name: ns1-target-tiproxy
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    action: keep
+    regex: target
+  - source_labels:
+    - __meta_kubernetes_namespace
+    action: keep
+    regex: ns1
+  - source_labels:
+    - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+    action: keep
+    regex: "true"
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_component
+    action: keep
+    regex: tiproxy
+  - action: replace
+    regex: (.+);(.+);(.+);(.+)
+    replacement: $1.$2-tiproxy-peer.$3:$4
+    target_label: __address__
+    source_labels:
+    - __meta_kubernetes_pod_name
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    - __meta_kubernetes_namespace
+    - __meta_kubernetes_pod_annotation_prometheus_io_port
+  - source_labels:
+    - __meta_kubernetes_namespace
+    action: replace
+    target_label: kubernetes_namespace
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    action: replace
+    target_label: cluster
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    action: replace
+    target_label: instance
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_component
+    action: replace
+    target_label: component
+  - source_labels:
+    - __meta_kubernetes_namespace
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels:
+    - __meta_kubernetes_pod_annotation_prometheus_io_path
+    action: replace
+    target_label: __metrics_path__
+    regex: (.+)
+  - source_labels:
+    - __address__
+    action: hashmod
+    target_label: __tmp_hash
+    modulus: 0
+  - source_labels:
+    - __tmp_hash
+    regex: $(SHARD)
+    action: keep
 - job_name: ns1-target-tiflash
   honor_labels: true
   scrape_interval: 15s
@@ -1226,6 +1299,79 @@ scrape_configs:
   - action: replace
     regex: (.+);(.+);(.+);(.+)
     replacement: $1.$2-tikv-peer.$3:$4
+    target_label: __address__
+    source_labels:
+    - __meta_kubernetes_pod_name
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    - __meta_kubernetes_namespace
+    - __meta_kubernetes_pod_annotation_prometheus_io_port
+  - source_labels:
+    - __meta_kubernetes_namespace
+    action: replace
+    target_label: kubernetes_namespace
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    action: replace
+    target_label: cluster
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    action: replace
+    target_label: instance
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_component
+    action: replace
+    target_label: component
+  - source_labels:
+    - __meta_kubernetes_namespace
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels:
+    - __meta_kubernetes_pod_annotation_prometheus_io_path
+    action: replace
+    target_label: __metrics_path__
+    regex: (.+)
+  - source_labels:
+    - __address__
+    action: hashmod
+    target_label: __tmp_hash
+    modulus: 0
+  - source_labels:
+    - __tmp_hash
+    regex: $(SHARD)
+    action: keep
+- job_name: ns1-target-tiproxy
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: http
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    action: keep
+    regex: target
+  - source_labels:
+    - __meta_kubernetes_namespace
+    action: keep
+    regex: ns1
+  - source_labels:
+    - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+    action: keep
+    regex: "true"
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_component
+    action: keep
+    regex: tiproxy
+  - action: replace
+    regex: (.+);(.+);(.+);(.+)
+    replacement: $1.$2-tiproxy-peer.$3:$4
     target_label: __address__
     source_labels:
     - __meta_kubernetes_pod_name
@@ -2240,6 +2386,79 @@ scrape_configs:
     - __tmp_hash
     regex: $(SHARD)
     action: keep
+- job_name: ns1-target-tiproxy
+  honor_labels: true
+  scrape_interval: 15s
+  scheme: https
+  kubernetes_sd_configs:
+  - api_server: null
+    role: pod
+    namespaces:
+      names:
+      - ns1
+  tls_config:
+    insecure_skip_verify: true
+  relabel_configs:
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    action: keep
+    regex: target
+  - source_labels:
+    - __meta_kubernetes_namespace
+    action: keep
+    regex: ns1
+  - source_labels:
+    - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+    action: keep
+    regex: "true"
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_component
+    action: keep
+    regex: tiproxy
+  - action: replace
+    regex: (.+);(.+);(.+);(.+)
+    replacement: $1.$2-tiproxy-peer.$3:$4
+    target_label: __address__
+    source_labels:
+    - __meta_kubernetes_pod_name
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    - __meta_kubernetes_namespace
+    - __meta_kubernetes_pod_annotation_prometheus_io_port
+  - source_labels:
+    - __meta_kubernetes_namespace
+    action: replace
+    target_label: kubernetes_namespace
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    action: replace
+    target_label: cluster
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    action: replace
+    target_label: instance
+  - source_labels:
+    - __meta_kubernetes_pod_label_app_kubernetes_io_component
+    action: replace
+    target_label: component
+  - source_labels:
+    - __meta_kubernetes_namespace
+    - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+    separator: '-'
+    target_label: tidb_cluster
+  - source_labels:
+    - __meta_kubernetes_pod_annotation_prometheus_io_path
+    action: replace
+    target_label: __metrics_path__
+    regex: (.+)
+  - source_labels:
+    - __address__
+    action: hashmod
+    target_label: __tmp_hash
+    modulus: 0
+  - source_labels:
+    - __tmp_hash
+    regex: $(SHARD)
+    action: keep
 - job_name: ns1-target-tiflash
   honor_labels: true
   scrape_interval: 15s
@@ -2971,7 +3190,7 @@ func TestMultipleClusterConfigRender(t *testing.T) {
 	for _, item := range pc {
 		key := item.Key
 		if key == "scrape_configs" {
-			g.Expect(len(item.Value.([]yaml.MapSlice))).Should(Equal(24))
+			g.Expect(len(item.Value.([]yaml.MapSlice))).Should(Equal(26))
 		}
 	}
 

@@ -66,7 +66,24 @@ func ValidateDMCluster(dc *v1alpha1.DMCluster) field.ErrorList {
 func ValidateTiDBNGMonitoring(tngm *v1alpha1.TidbNGMonitoring) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, validateTidbNGMonitorinSpec(&tngm.Spec, field.NewPath("spec"))...)
+	allErrs = append(allErrs, validateTidbNGMonitoringSpec(&tngm.Spec, field.NewPath("spec"))...)
+
+	return allErrs
+}
+
+// ValidateTiDBDashboard validates a TidbDashboard.
+func ValidateTiDBDashboard(td *v1alpha1.TidbDashboard) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if len(td.Spec.Clusters) != 1 {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec").Child("clusters"), len(td.Spec.Clusters), "must have at exactly one item"))
+	}
+
+	allErrs = append(allErrs, validateComponentSpec(&td.Spec.ComponentSpec, field.NewPath("spec"))...)
+
+	if len(td.Spec.StorageVolumes) > 0 {
+		allErrs = append(allErrs, validateStorageVolumes(td.Spec.StorageVolumes, field.NewPath("spec").Child("storageVolumes"))...)
+	}
 
 	return allErrs
 }
@@ -90,7 +107,8 @@ func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
 func validateAnnotations(anns map[string]string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, apivalidation.ValidateAnnotations(anns, fldPath)...)
-	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots} {
+
+	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots, label.AnnTiProxyDeleteSlots, label.AnnTiCDCDeleteSlots} {
 		allErrs = append(allErrs, validateDeleteSlots(anns, key, fldPath.Child(key))...)
 	}
 	return allErrs
@@ -336,7 +354,7 @@ func validateWorkerSpec(spec *v1alpha1.WorkerSpec, fldPath *field.Path) field.Er
 	return allErrs
 }
 
-func validateTidbNGMonitorinSpec(spec *v1alpha1.TidbNGMonitoringSpec, fldPath *field.Path) field.ErrorList {
+func validateTidbNGMonitoringSpec(spec *v1alpha1.TidbNGMonitoringSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(spec.Clusters) < 1 {
@@ -527,6 +545,7 @@ func ValidateUpdateTidbCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
 			"The instance must not be mutate or set value other than the cluster name"))
 	}
 	allErrs = append(allErrs, validateUpdatePDConfig(old.Spec.PD, tc.Spec.PD, field.NewPath("spec.pd.config"))...)
+	allErrs = append(allErrs, disallowMutateBootstrapSQLConfigMapName(old.Spec.TiDB, tc.Spec.TiDB, field.NewPath("spec.tidb.bootstrapSQLConfigMapName"))...)
 	allErrs = append(allErrs, disallowUsingLegacyAPIInNewCluster(old, tc)...)
 
 	return allErrs
@@ -631,6 +650,23 @@ func validateUpdatePDConfig(oldPdSpec, pdSpec *v1alpha1.PDSpec, path *field.Path
 		allErrs = append(allErrs, field.Invalid(path.Child("replication"), newRepl.Interface(),
 			"PD Replication Config is immutable through CRD, please modify with pd-ctl instead."))
 	}
+	return allErrs
+}
+
+// disallowMutateBootstrapSQLConfigMapName checks if user mutate the bootstrapSQLConfigMapName field.
+// Only allow to update bootstrapSQLConfigMapName from non-nil to nil.
+func disallowMutateBootstrapSQLConfigMapName(old, new *v1alpha1.TiDBSpec, p *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if old == nil || new == nil {
+		return allErrs
+	}
+
+	bootstrapSQLSpecified := old.BootstrapSQLConfigMapName != nil && new.BootstrapSQLConfigMapName != nil
+	if (bootstrapSQLSpecified && *old.BootstrapSQLConfigMapName != *new.BootstrapSQLConfigMapName) ||
+		(!bootstrapSQLSpecified && new.BootstrapSQLConfigMapName != nil) {
+		return append(allErrs, field.Invalid(p, new.BootstrapSQLConfigMapName, "bootstrapSQLConfigMapName is immutable"))
+	}
+
 	return allErrs
 }
 

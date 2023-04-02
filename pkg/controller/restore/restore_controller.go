@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -63,6 +64,11 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return c
 }
 
+// Name returns the name of the restore controller
+func (c *Controller) Name() string {
+	return "restore"
+}
+
 // Run runs the restore controller.
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
@@ -87,6 +93,9 @@ func (c *Controller) worker() {
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
 func (c *Controller) processNextWorkItem() bool {
+	metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(1)
+	defer metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(-1)
+
 	key, quit := c.queue.Get()
 	if quit {
 		return false
@@ -112,7 +121,9 @@ func (c *Controller) processNextWorkItem() bool {
 func (c *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished syncing Restore %q (%v)", key, time.Since(startTime))
+		duration := time.Since(startTime)
+		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+		klog.V(4).Infof("Finished syncing Restore %q (%v)", key, duration)
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
@@ -131,12 +142,14 @@ func (c *Controller) sync(key string) error {
 	return c.syncRestore(restore.DeepCopy())
 }
 
-func (c *Controller) syncRestore(tc *v1alpha1.Restore) error {
-	return c.control.UpdateRestore(tc)
+func (c *Controller) syncRestore(restore *v1alpha1.Restore) error {
+	return c.control.UpdateRestore(restore)
 }
 
 func (c *Controller) updateRestore(cur interface{}) {
 	newRestore := cur.(*v1alpha1.Restore)
+	klog.V(4).Infof("restore-manager update %v", newRestore)
+
 	ns := newRestore.GetNamespace()
 	name := newRestore.GetName()
 
@@ -152,6 +165,37 @@ func (c *Controller) updateRestore(cur interface{}) {
 
 	if v1alpha1.IsRestoreFailed(newRestore) {
 		klog.V(4).Infof("restore %s/%s is Failed, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsRestoreDataComplete(newRestore) {
+		tc, err := c.getTC(newRestore)
+		if err != nil {
+			klog.Errorf("Fail to get tidbcluster for restore %s/%s, %v", ns, name, err)
+			return
+		}
+		if tc.IsRecoveryMode() {
+			c.enqueueRestore(newRestore)
+			return
+		}
+
+		klog.V(4).Infof("restore %s/%s is already DataComplete, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsRestoreVolumeComplete(newRestore) {
+		tc, err := c.getTC(newRestore)
+		if err != nil {
+			klog.Errorf("Fail to get tidbcluster for restore %s/%s, %v", ns, name, err)
+			return
+		}
+
+		if _, ok := tc.Annotations[label.AnnTiKVVolumesReadyKey]; ok {
+			klog.V(4).Infof("restore %s/%s is already VolumeComplete, skipping.", ns, name)
+			return
+		}
+
+		c.enqueueRestore(newRestore)
 		return
 	}
 
@@ -193,8 +237,17 @@ func (c *Controller) updateRestore(cur interface{}) {
 func (c *Controller) enqueueRestore(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
+		utilruntime.HandleError(fmt.Errorf("cound't get key for object %+v: %v", obj, err))
 		return
 	}
 	c.queue.Add(key)
+}
+
+func (c *Controller) getTC(restore *v1alpha1.Restore) (*v1alpha1.TidbCluster, error) {
+	restoreNamespace := restore.GetNamespace()
+	if restore.Spec.BR.ClusterNamespace != "" {
+		restoreNamespace = restore.Spec.BR.ClusterNamespace
+	}
+
+	return c.deps.TiDBClusterLister.TidbClusters(restoreNamespace).Get(restore.Spec.BR.Cluster)
 }

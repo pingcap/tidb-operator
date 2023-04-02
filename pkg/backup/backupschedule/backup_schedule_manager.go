@@ -20,8 +20,10 @@ import (
 	"strings"
 	"time"
 
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -52,6 +54,10 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 
 	if bs.Spec.Pause {
 		return controller.IgnoreErrorf("backupSchedule %s/%s has been paused", bs.GetNamespace(), bs.GetName())
+	}
+
+	if err := bm.performLogBackupIfNeeded(bs); err != nil {
+		return err
 	}
 
 	if err := bm.canPerformNextBackup(bs); err != nil {
@@ -122,6 +128,26 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 	// If the last backup is in a failed state, but it is not scheduled yet,
 	// skip this sync round of the backup schedule and waiting the last backup.
 	return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
+}
+
+func (bm *backupScheduleManager) performLogBackupIfNeeded(bs *v1alpha1.BackupSchedule) error {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
+	// no log backup or already run no need to perform log backup again
+	if bs.Spec.LogBackupTemplate == nil || bs.Status.LogBackup != nil {
+		return nil
+	}
+
+	// create log backup
+	logBackup := buildLogBackup(bs, time.Now())
+	_, err := bm.deps.BackupControl.CreateBackup(logBackup)
+	if err != nil {
+		return fmt.Errorf("backup schedule %s/%s, create log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
+	}
+
+	bs.Status.LogBackup = &logBackup.Name
+	return nil
 }
 
 // getLastScheduledTime return the newest time need to be scheduled according last backup time.
@@ -221,6 +247,8 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix, backupPrefix)
 		} else if backupSpec.Gcs != nil {
 			backupSpec.Gcs.Prefix = path.Join(backupSpec.Gcs.Prefix, backupPrefix)
+		} else if backupSpec.Azblob != nil {
+			backupSpec.Azblob.Prefix = path.Join(backupSpec.Azblob.Prefix, backupPrefix)
 		} else if backupSpec.Local != nil {
 			backupSpec.Local.Prefix = path.Join(backupSpec.Local.Prefix, backupPrefix)
 		}
@@ -245,6 +273,48 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 	}
 
 	return backup
+}
+
+func buildLogBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Backup {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
+	if bs.Spec.LogBackupTemplate == nil {
+		return nil
+	}
+
+	logBackupSpec := *bs.Spec.LogBackupTemplate.DeepCopy()
+
+	logBackupPrefix := "log" + "-" + timestamp.UTC().Format(v1alpha1.BackupNameTimeFormat)
+	if logBackupSpec.S3 != nil {
+		logBackupSpec.S3.Prefix = path.Join(logBackupSpec.S3.Prefix, logBackupPrefix)
+	} else if logBackupSpec.Gcs != nil {
+		logBackupSpec.Gcs.Prefix = path.Join(logBackupSpec.Gcs.Prefix, logBackupPrefix)
+	} else if logBackupSpec.Azblob != nil {
+		logBackupSpec.Azblob.Prefix = path.Join(logBackupSpec.Azblob.Prefix, logBackupPrefix)
+	} else if logBackupSpec.Local != nil {
+		logBackupSpec.Local.Prefix = path.Join(logBackupSpec.Local.Prefix, logBackupPrefix)
+	}
+
+	if bs.Spec.ImagePullSecrets != nil {
+		logBackupSpec.ImagePullSecrets = bs.Spec.ImagePullSecrets
+	}
+
+	bsLabel := util.CombineStringMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), bs.Labels)
+	logBackup := &v1alpha1.Backup{
+		Spec: logBackupSpec,
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   ns,
+			Name:        bs.GetLogBackupCRDName(),
+			Labels:      bsLabel,
+			Annotations: bs.Annotations,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetBackupScheduleOwnerRef(bs),
+			},
+		},
+	}
+
+	return logBackup
 }
 
 func createBackup(bkController controller.BackupControlInterface, bs *v1alpha1.BackupSchedule, timestamp time.Time) (*v1alpha1.Backup, error) {
@@ -286,24 +356,259 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 		return
 	}
 
-	var deleteCount int
-	for _, backup := range backupsList {
-		if backup.CreationTimestamp.Add(reservedTime).After(bm.now()) {
-			continue
+	ascBackups, logBackup := separateSnapshotBackupsAndLogBackup(backupsList)
+	if len(ascBackups) == 0 {
+		return
+	}
+
+	var (
+		expiredBackups []*v1alpha1.Backup
+		truncateTSO    uint64
+	)
+
+	if logBackup != nil {
+		expiredBackups, truncateTSO, err = calExpiredBackupsAndLogBackup(ascBackups, logBackup, reservedTime)
+		if err != nil {
+			klog.Errorf("caculate expired backups with log backup, err: %s", err)
+			return
 		}
+	} else {
+		expiredBackups, err = caculateExpiredBackups(ascBackups, reservedTime)
+		if err != nil {
+			klog.Errorf("caculate expired backups without log backup, err: %s", err)
+			return
+		}
+	}
+
+	for _, backup := range expiredBackups {
 		// delete the expired backup
-		if err := bm.deps.BackupControl.DeleteBackup(backup); err != nil {
+		if err = bm.deps.BackupControl.DeleteBackup(backup); err != nil {
 			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
 			return
 		}
-		deleteCount += 1
 		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 	}
 
-	if deleteCount == len(backupsList) && deleteCount > 0 {
+	if truncateTSO > 0 {
+		// truncate the log backup
+		if err = bm.deps.BackupControl.TruncateLogBackup(logBackup, truncateTSO); err != nil {
+			klog.Errorf("backup schedule %s/%s truncate log backup %s failed, truncateTSO %d, err %v", ns, bsName, logBackup.GetName(), truncateTSO, err)
+			return
+		}
+		klog.Infof("backup schedule %s/%s truncate log backup %s success, truncateTSO %d", ns, bsName, logBackup.GetName(), truncateTSO)
+	}
+
+	if len(expiredBackups) == len(backupsList) && len(expiredBackups) > 0 {
 		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
 		bm.resetLastBackup(bs)
 	}
+}
+
+// separateSnapshotBackupsAndLogBackup return snapot backups ordry by create time asc and log backup
+func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1alpha1.Backup, *v1alpha1.Backup) {
+	var (
+		ascBackupList = make([]*v1alpha1.Backup, 0)
+		logBackup     *v1alpha1.Backup
+	)
+
+	for _, backup := range backupsList {
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+			logBackup = backup
+			continue
+		}
+		ascBackupList = append(ascBackupList, backup)
+	}
+
+	sort.Slice(ascBackupList, func(i, j int) bool {
+		return ascBackupList[i].CreationTimestamp.Unix() < ascBackupList[j].CreationTimestamp.Unix()
+	})
+	return ascBackupList, logBackup
+}
+
+// calExpiredBackupsAndLogBackup calculate what backups and log backup we can delete or truncate.
+//
+// snapshot1----snapshot2--------------snapshot3-----snapshot...----snapshot n-----------> snapshot backups
+// ---------------------------------------------------------------------checkpointTS----> log backup
+// ---t1-----------t2-------expiredTS-----t3------------t...-----------tn------------------> time
+//
+// supposed that expiredTS = checkpointTS - retentionPeriod, and expiredTS is between t2 and t3.
+// we should promise user can restore to any time between expiredTS and checkpointTS,
+// so we should reserve snapshots from snapshot2 to snapshot n.
+// then we can delete snapshot1 and truncate log backup to t2.
+// so the returned value is snapshot1 and t2.
+func calExpiredBackupsAndLogBackup(backupsList []*v1alpha1.Backup, logBackup *v1alpha1.Backup, reservedTime time.Duration) ([]*v1alpha1.Backup, uint64, error) {
+	var (
+		lastestTSO     uint64
+		expiredTSO     uint64
+		expiredBackups []*v1alpha1.Backup
+		truncateTSO    uint64
+		err            error
+	)
+
+	// caculate latest ts
+	lastestTSO, err = calculateLatestTSO(backupsList, logBackup)
+	if err != nil {
+		return nil, 0, perrors.Annotate(err, "calculate latest tso")
+	}
+
+	expiredTSO = calculateExpiredTSO(lastestTSO, reservedTime)
+
+	// calculate expired backups
+	expiredBackups, err = calExpiredBackupsWithLogBackupOn(backupsList, expiredTSO)
+	if err != nil {
+		return nil, 0, perrors.Annotate(err, "calculate expired backups which should be deleted")
+	}
+
+	// no expired backup should be deleted, we can skip and wait next time.
+	// because log backup checkpoint ts is always changing, but we should't frequently delete or truncate.
+	// we can delete or truncate log backup when there has backup should be deleted, and this is not frequent and will not trigger repeatedly.
+	if len(expiredBackups) == 0 {
+		return nil, 0, nil
+	}
+
+	// calculate truncate tso
+	truncateTSO, err = calLogBackupTruncateTSO(backupsList, logBackup, expiredTSO)
+	if err != nil {
+		return nil, 0, perrors.Annotate(err, "calculate expired log backup tso which should be truncated")
+	}
+
+	return expiredBackups, truncateTSO, nil
+}
+
+func caculateExpiredBackups(backupsList []*v1alpha1.Backup, reservedTime time.Duration) ([]*v1alpha1.Backup, error) {
+	expiredTS := config.TSToTSO(time.Now().Add(-1 * reservedTime).Unix())
+	i := 0
+	for ; i < len(backupsList); i++ {
+		startTS, err := config.ParseTSString(backupsList[i].Status.CommitTs)
+		if err != nil {
+			return nil, perrors.Annotatef(err, "parse start tso: %s", backupsList[i].Status.CommitTs)
+		}
+		if startTS >= expiredTS {
+			break
+		}
+	}
+	return backupsList[:i], nil
+}
+
+// calculateLatestTSO calculate the latest tso in auto backups and log backups
+func calculateLatestTSO(backupsList []*v1alpha1.Backup, logBackup *v1alpha1.Backup) (uint64, error) {
+	var (
+		currentBackupTS    uint64
+		latestBackupTS     uint64
+		latestCheckPointTS uint64
+		latestTS           uint64
+		err                error
+	)
+
+	// get latestCheckPointTs
+	latestCheckPointTS, err = config.ParseTSString(logBackup.Status.LogCheckpointTs)
+	if err != nil {
+		return 0, perrors.Annotatef(err, "parse checkpoint ts of log backup %s/%s", logBackup.Namespace, logBackup.Name)
+	}
+
+	for _, backup := range backupsList {
+		currentBackupTS, err = config.ParseTSString(backup.Status.CommitTs)
+		if err != nil {
+			return 0, perrors.Annotatef(err, "parse backup ts of backup %s/%s", backup.Namespace, backup.Name)
+		}
+		if currentBackupTS > latestBackupTS {
+			latestBackupTS = currentBackupTS
+		}
+	}
+
+	// use the larger of backup and logBackup ts as the latestTS
+	latestTS = latestBackupTS
+	if latestCheckPointTS > latestTS {
+		latestTS = latestCheckPointTS
+	}
+
+	return latestTS, nil
+}
+
+// calculateExpiredTSO calculate latestTSO - reservedTime
+func calculateExpiredTSO(latestTSO uint64, reservedTime time.Duration) uint64 {
+	latestTS := config.TSOToTS(latestTSO)
+	expiredTS := time.Unix(latestTS, 0).Add(-1 * reservedTime).Unix()
+	return config.TSToTSO(expiredTS)
+}
+
+// calExpiredBackupsWithLogBackupOn according to expired tso calculate expired backups when there is log backup.
+// we will save latest expired snapshot backup to make sure it can be used as the starting point of PiTR Restore.
+func calExpiredBackupsWithLogBackupOn(backupsList []*v1alpha1.Backup, expiredTSO uint64) ([]*v1alpha1.Backup, error) {
+	var (
+		i                int
+		currentBackupTSO uint64
+		err              error
+	)
+
+	for ; i < len(backupsList); i++ {
+		currentBackupTSO, err = config.ParseTSString(backupsList[i].Status.CommitTs)
+		if err != nil {
+			return nil, perrors.Annotatef(err, "parse backup ts of backup %s/%s", backupsList[i].Namespace, backupsList[i].Name)
+		}
+
+		if currentBackupTSO > expiredTSO {
+			break
+		}
+	}
+
+	if i != 0 {
+		return backupsList[:i-1], nil
+	}
+
+	return nil, nil
+}
+
+// calLogBackupTruncateTSO according to expired tso calculate log backup truncate tso
+func calLogBackupTruncateTSO(backupsList []*v1alpha1.Backup, logBackup *v1alpha1.Backup, expiredTSO uint64) (uint64, error) {
+	var truncateTSO uint64
+	for i := 0; i < len(backupsList); i++ {
+		currentBackupTSO, err := config.ParseTSString(backupsList[i].Status.CommitTs)
+		if err != nil {
+			return 0, perrors.Annotatef(err, "parse backup ts of backup %s/%s", backupsList[i].Namespace, backupsList[i].Name)
+		}
+
+		if currentBackupTSO > expiredTSO {
+			break
+		}
+
+		truncateTSO = currentBackupTSO
+	}
+
+	// check truncate tso is within log backup's effective range
+	isTruncateTSOInLogBackup, err := checkTruncateTSOWithinLogBackupRange(logBackup, truncateTSO)
+	if err != nil {
+		return 0, perrors.Annotate(err, "check truncate ts in log backup")
+	}
+	if isTruncateTSOInLogBackup {
+		return truncateTSO, nil
+	}
+
+	return 0, nil
+}
+
+func checkTruncateTSOWithinLogBackupRange(logBackup *v1alpha1.Backup, truncateTSO uint64) (bool, error) {
+	var (
+		startTSO      uint64
+		checkPointTSO uint64
+		err           error
+	)
+
+	startTSO, err = config.ParseTSString(logBackup.Status.CommitTs)
+	if err != nil {
+		return false, perrors.Annotatef(err, "parse commit ts of log backup %s/%s", logBackup.Namespace, logBackup.Name)
+	}
+
+	checkPointTSO, err = config.ParseTSString(logBackup.Status.LogCheckpointTs)
+	if err != nil {
+		return false, perrors.Annotatef(err, "parse checkpoint ts of log backup %s/%s", logBackup.Namespace, logBackup.Name)
+	}
+
+	if truncateTSO > startTSO && truncateTSO <= checkPointTSO {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedule) {

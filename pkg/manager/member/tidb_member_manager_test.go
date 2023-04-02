@@ -579,6 +579,18 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 }
 
+func TestSyncRecoveryForTidbCluster(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbClusterForTiDB()
+	tmm, _, _, _ := newFakeTiDBMemberManager()
+	err := tmm.syncRecoveryForTidbCluster(tc)
+	g.Expect(err).To(BeNil())
+
+	tc.Spec.RecoveryMode = true
+	err = tmm.syncRecoveryForTidbCluster(tc)
+	g.Expect(err).NotTo(BeNil())
+}
+
 func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
@@ -1234,10 +1246,15 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{},
-					TiDB: &v1alpha1.TiDBSpec{ReadinessProbe: &v1alpha1.TiDBProbe{
-						InitialDelaySeconds: pointer.Int32Ptr(5),
-						PeriodSeconds:       pointer.Int32Ptr(2),
-					}},
+
+					TiDB: &v1alpha1.TiDBSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{
+								InitialDelaySeconds: pointer.Int32Ptr(5),
+								PeriodSeconds:       pointer.Int32Ptr(2),
+							},
+						},
+					},
 					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
@@ -2505,7 +2522,7 @@ func TestBuildTiDBProbeHandler(t *testing.T) {
 	g.Expect(get).Should(Equal(defaultHandler))
 
 	// test set command type & not tls
-	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.TiDBProbe{
+	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.Probe{
 		Type: pointer.StringPtr(v1alpha1.CommandProbeType),
 	}
 	get = buildTiDBReadinessProbHandler(tc)
@@ -2519,7 +2536,7 @@ func TestBuildTiDBProbeHandler(t *testing.T) {
 	g.Expect(get).Should(Equal(sslExecHandler))
 
 	// test tcp type
-	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.TiDBProbe{
+	tc.Spec.TiDB.ReadinessProbe = &v1alpha1.Probe{
 		Type: pointer.StringPtr(v1alpha1.TCPProbeType),
 	}
 	get = buildTiDBReadinessProbHandler(tc)

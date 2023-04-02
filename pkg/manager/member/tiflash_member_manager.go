@@ -91,6 +91,11 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	if err := m.syncRecoveryForTiFlash(tc); err != nil {
+		klog.Info("sync recovery for TiFlash", err.Error())
+		return nil
+	}
+
 	err = m.enablePlacementRules(tc)
 	if err != nil {
 		klog.Errorf("Enable placement rules failed, error: %v", err)
@@ -102,6 +107,40 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	return m.syncStatefulSet(tc)
+}
+
+func (m *tiflashMemberManager) syncRecoveryForTiFlash(tc *v1alpha1.TidbCluster) error {
+	// Check whether the cluster is in recovery mode
+	// and whether the volumes have been restored for TiKV
+	if !tc.Spec.RecoveryMode {
+		return nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	anns := tc.GetAnnotations()
+	if _, ok := anns[label.AnnTiKVVolumesReadyKey]; !ok {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiFlash is waiting for TiKV volumes ready", ns, tcName)
+	}
+
+	if mark, _ := m.checkRecoveringMark(tc); mark {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiFlash is waiting for recovery mode unmask", ns, tcName)
+	}
+
+	return nil
+}
+
+// check the recovering mark from pd
+// volume-snapshot restore requires pd allocate id set done and then start tiflash. the purpose is to solve tiflash store id conflict with tikvs'
+// pd recovering mark indicates the pd allcate id had been set properly.
+func (m *tiflashMemberManager) checkRecoveringMark(tc *v1alpha1.TidbCluster) (bool, error) {
+	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
+	mark, err := pdCli.GetRecoveringMark()
+	if err != nil {
+		return false, err
+	}
+
+	return mark, nil
 }
 
 func (m *tiflashMemberManager) enablePlacementRules(tc *v1alpha1.TidbCluster) error {
@@ -172,6 +211,15 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		return fmt.Errorf("syncStatefulSet: fail to get sts %s for cluster %s/%s, error: %s", controller.TiFlashMemberName(tcName), ns, tcName, err)
 	}
 	setNotExist := errors.IsNotFound(err)
+
+	// if TiFlash is scale from 0 and with previous StatefulSet, we delete the previous StatefulSet first
+	// to avoid some fileds (e.g storage request) reused and cause unexpected behavior (e.g scale down).
+	if oldSetTmp != nil && *oldSetTmp.Spec.Replicas == 0 && oldSetTmp.Status.UpdatedReplicas == 0 && tc.Spec.TiFlash.Replicas > 0 {
+		if err := m.deps.StatefulSetControl.DeleteStatefulSet(tc, oldSetTmp); err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("syncStatefulSet: fail to delete sts %s for cluster %s/%s, error: %s", controller.TiFlashMemberName(tcName), ns, tcName, err)
+		}
+		return controller.RequeueErrorf("wait for previous sts %s for cluster %s/%s to be deleted", controller.TiFlashMemberName(tcName), ns, tcName)
+	}
 
 	oldSet := oldSetTmp.DeepCopy()
 
@@ -456,7 +504,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	stsLabels := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)
 	podLabels := util.CombineStringMap(stsLabels, baseTiFlashSpec.Labels())
-	podAnnotations := util.CombineStringMap(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
+	podAnnotations := util.CombineStringMap(baseTiFlashSpec.Annotations(), controller.AnnProm(8234, "/metrics"))
 	podAnnotations = util.CombineStringMap(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiFlashLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiFlash.Limits)
@@ -687,6 +735,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 
 	previousStores := tc.Status.TiFlash.Stores
 	previousPeerStores := tc.Status.TiFlash.PeerStores
+	previousTombstoneStores := tc.Status.TiFlash.TombstoneStores
 	stores := map[string]v1alpha1.TiKVStore{}
 	peerStores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
@@ -743,6 +792,12 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		status := m.getTiFlashStore(store)
 		if status == nil {
 			continue
+		}
+
+		oldStore, exist := previousTombstoneStores[status.ID]
+		status.LastTransitionTime = metav1.Now()
+		if exist && status.State == oldStore.State {
+			status.LastTransitionTime = oldStore.LastTransitionTime
 		}
 		tombstoneStores[status.ID] = *status
 	}
@@ -832,7 +887,7 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 		nodeName := pod.Spec.NodeName
 		ls, err := getNodeLabels(m.deps.NodeLister, nodeName, locationLabels)
 		if err != nil || len(ls) == 0 {
-			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
+			klog.Warningf("node: [%s] has no node labels %v, skipping set store labels for Pod: [%s/%s]", nodeName, locationLabels, ns, podName)
 			continue
 		}
 

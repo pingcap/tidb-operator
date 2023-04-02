@@ -1,4 +1,4 @@
-LDFLAGS = $(shell ./hack/version.sh)
+LDFLAGS ?= $(shell ./hack/version.sh)
 
 GOVER_MAJOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\1/")
 GOVER_MINOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\2/")
@@ -189,5 +189,11 @@ debug-build-docker: debug-build
 
 debug-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
+
+kubekins-e2e-docker:
+	docker build -t "${DOCKER_REPO}/kubekins-e2e:latest" tests/images/kubekins-e2e
+
+docker-release:
+	docker buildx build --platform linux/amd64,linux/arm64 --push -t "$(DOCKER_REPO)/tidb-operator:$(IMAGE_TAG)" --build-arg "GOPROXY=$(shell go env GOPROXY)" --build-arg "LDFLAGS=$(LDFLAGS)" -f images/tidb-operator/Dockerfile.new .
 
 .PHONY: check check-setup build e2e-build debug-build cli e2e gocovmerge test docker e2e-docker debug-build-docker

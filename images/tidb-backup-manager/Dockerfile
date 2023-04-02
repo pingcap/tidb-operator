@@ -1,9 +1,9 @@
-FROM pingcap/alpine-glibc:alpine-3.14.3-gcompat
+FROM rockylinux:9.1.20230215
 ARG TARGETARCH
-ARG RCLONE_VERSION=v1.51.0
+ARG RCLONE_VERSION=v1.57.0
 ARG SHUSH_VERSION=v1.4.0
-ARG TOOLKIT_VERSION=v6.1.0
-RUN apk update && apk add ca-certificates wget unzip bind-tools --no-cache && rm -rf /var/cache/apk/*
+ARG TOOLKIT_VERSION=v6.5.0
+RUN dnf install -y ca-certificates bind-utils wget nc unzip && dnf clean all
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip \
   && unzip rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip \
@@ -20,9 +20,9 @@ ARG TOOLKIT_PKG_NAME=tidb-community-toolkit-${TOOLKIT_NAME}
 RUN \
   wget -nv https://download.pingcap.org/${TOOLKIT_PKG_NAME}.tar.gz \
   && tar -xzf ${TOOLKIT_PKG_NAME}.tar.gz \
-  && tar -xzf ${TOOLKIT_PKG_NAME}/tidb-lightning-${TOOLKIT_NAME}.tar.gz && mv tidb-lightning /tidb-lightning \
+  && tar -xzf ${TOOLKIT_PKG_NAME}/tidb-lightning-${TOOLKIT_NAME}.tar.gz \
   && mv ${TOOLKIT_PKG_NAME}/tidb-lightning-ctl /tidb-lightning-ctl \
-  && tar -xzf ${TOOLKIT_PKG_NAME}/dumpling-${TOOLKIT_NAME}.tar.gz && mv dumpling /dumpling \
+  && tar -xzf ${TOOLKIT_PKG_NAME}/dumpling-${TOOLKIT_NAME}.tar.gz \
   && chmod 755 /dumpling /tidb-lightning /tidb-lightning-ctl \
   && rm -rf ${TOOLKIT_PKG_NAME}.tar.gz \
   && rm -rf ${TOOLKIT_PKG_NAME}

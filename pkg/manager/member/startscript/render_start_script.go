@@ -14,9 +14,15 @@
 package startscript
 
 import (
+	"errors"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	v2 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v2"
+)
+
+var (
+	ErrVersionNotFound = errors.New("corresponding startscript of the version not found")
 )
 
 type Render func(tc *v1alpha1.TidbCluster) (string, error)
@@ -80,4 +86,13 @@ func RenderTiFlashStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
 	return tiflashInit[tc.StartScriptVersion()](tc)
+}
+
+func RenderTiProxyStartScript(tc *v1alpha1.TidbCluster) (string, error) {
+	switch tc.StartScriptVersion() {
+	case v1alpha1.StartScriptV1, v1alpha1.StartScriptV2:
+		return v2.RenderTiProxyStartScript(tc)
+	default:
+		return "", ErrVersionNotFound
+	}
 }

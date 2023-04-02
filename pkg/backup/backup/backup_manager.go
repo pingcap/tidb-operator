@@ -14,6 +14,8 @@
 package backup
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -22,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/backup/snapshotter"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -68,8 +71,9 @@ func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
 	return bm.syncBackupJob(backup)
 }
 
-func (bm *backupManager) UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
-	return bm.statusUpdater.Update(backup, condition, nil)
+// UpdateStatus updates the status for a Backup, include condition and status info.
+func (bm *backupManager) UpdateStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
+	return bm.statusUpdater.Update(backup, condition, newStatus)
 }
 
 func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
@@ -102,7 +106,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	// make bakcup job
+	// make backup job
 	var job *batchv1.Job
 	var reason string
 	var updateStatus *controller.BackupUpdateStatus
@@ -116,7 +120,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
-			Type:    v1alpha1.BackupRetryFailed,
+			Type:    v1alpha1.BackupRetryTheFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CreateBackupJobFailed",
 			Message: errMsg.Error(),
@@ -151,7 +155,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Command: logBackupSubcommand,
-				Type:    v1alpha1.BackupRetryFailed,
+				Type:    v1alpha1.BackupRetryTheFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
@@ -230,7 +234,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 		job, reason, err = bm.makeExportJob(backup)
 		if err != nil {
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupRetryFailed,
+				Type:    v1alpha1.BackupRetryTheFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
@@ -241,7 +245,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 		reason, err = bm.ensureBackupPVCExist(backup)
 		if err != nil {
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupRetryFailed,
+				Type:    v1alpha1.BackupRetryTheFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
@@ -256,7 +260,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 		if err != nil {
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Command: logBackupSubcommand,
-				Type:    v1alpha1.BackupRetryFailed,
+				Type:    v1alpha1.BackupRetryTheFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
@@ -266,7 +270,17 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 
 		if logBackupSubcommand == v1alpha1.LogStartCommand {
 			// log start need to start tracker
-			bm.backupTracker.StartTrackLogBackupProgress(backup)
+			err = bm.backupTracker.StartTrackLogBackupProgress(backup)
+			if err != nil {
+				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+					Command: logBackupSubcommand,
+					Type:    v1alpha1.BackupRetryTheFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  "start log backup progress tracker error",
+					Message: err.Error(),
+				}, nil)
+				return nil, nil, "", err
+			}
 		} else if logBackupSubcommand == v1alpha1.LogTruncateCommand {
 			updateStatus = &controller.BackupUpdateStatus{
 				LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
@@ -437,6 +451,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	if backup.Spec.BR.ClusterNamespace != "" {
 		backupNamespace = backup.Spec.BR.ClusterNamespace
 	}
+
 	tc, err := bm.deps.TiDBClusterLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
@@ -471,7 +486,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
-		fmt.Sprintf("--mode=%s", backup.Spec.Mode),
 	}
 	tikvImage := tc.TiKVImage()
 	_, tikvVersion := backuputil.ParseImage(tikvImage)
@@ -479,7 +493,9 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+	switch backup.Spec.Mode {
+	case v1alpha1.BackupModeLog:
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeLog))
 		subcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		args = append(args, fmt.Sprintf("--subcommand=%s", subcommand))
 		switch subcommand {
@@ -492,6 +508,14 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 				args = append(args, fmt.Sprintf("--truncate-until=%s", backup.Spec.LogTruncateUntil))
 			}
 		}
+	case v1alpha1.BackupModeVolumeSnapshot:
+		reason, err = bm.volumeSnapshotBackup(backup, tc)
+		if err != nil {
+			return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+		}
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeVolumeSnapshot))
+	default:
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeSnapshot))
 	}
 
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
@@ -525,10 +549,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			args = append(args, "--skipClientCA=true")
 		}
 
-		clientSecretName := util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster)
-		if backup.Spec.From.TLSClientSecretName != nil {
-			clientSecretName = *backup.Spec.From.TLSClientSecretName
-		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "tidb-client-tls",
 			ReadOnly:  true,
@@ -538,7 +558,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			Name: "tidb-client-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: clientSecretName,
+					SecretName: util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster, backup.Spec.From.TLSClientSecretName),
 				},
 			},
 		})
@@ -635,6 +655,55 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	}
 
 	return job, "", nil
+}
+
+// save cluster meta to external storage since k8s size limitation on annotation/configMap
+func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, csb *snapshotter.CloudSnapBackup) (string, error) {
+
+	data, err := json.Marshal(csb)
+	if err != nil {
+		return "ParseCloudSnapshotBackupFailed", err
+	}
+	// since the cluster meta is small (~5M), assume 1 minutes is enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
+	defer cancel()
+
+	// write a file into external storage
+	klog.Infof("save the cluster meta to external storage")
+	cred := backuputil.GetStorageCredential(b.Namespace, b.Spec.StorageProvider, bm.deps.SecretLister)
+	externalStorage, err := backuputil.NewStorageBackend(b.Spec.StorageProvider, cred)
+	if err != nil {
+		return "NewStorageBackendFailed", err
+	}
+
+	// if file existed, it looks backup write into a storage has backup already
+	exist, err := externalStorage.Exists(ctx, constants.ClusterBackupMeta)
+	if err != nil {
+		return "FileExistedInExternalStorageFailed", err
+	}
+	if exist {
+		return "FileExistedInExternalStorage", fmt.Errorf("%s exist", constants.ClusterBackupMeta)
+	}
+
+	err = externalStorage.WriteAll(ctx, constants.ClusterBackupMeta, data, nil)
+	if err != nil {
+		return "SaveFileToExternalStorageFailed", err
+	}
+	return "", nil
+}
+
+func (bm *backupManager) volumeSnapshotBackup(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
+	if s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps); err != nil {
+		return reason, err
+	} else if s != nil {
+		csb, reason, err := s.GenerateBackupMetadata(b, tc)
+		if err != nil {
+			return reason, err
+		}
+
+		return bm.saveClusterMetaToExternalStorage(b, csb)
+	}
+	return "", nil
 }
 
 func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, error) {
@@ -804,7 +873,8 @@ func (m *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
 	return m.err
 }
 
-func (m *FakeBackupManager) UpdateCondition(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
+// UpdateStatus updates the status for a Backup, include condition and status info.
+func (m *FakeBackupManager) UpdateStatus(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
 	return nil
 }
 

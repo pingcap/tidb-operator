@@ -16,7 +16,7 @@ package _import
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -66,11 +66,11 @@ func (ro *Options) downloadBackupData(ctx context.Context, localPath string, opt
 	}
 
 	var errMsg string
-	tmpOut, _ := ioutil.ReadAll(stdOut)
+	tmpOut, _ := io.ReadAll(stdOut)
 	if len(tmpOut) > 0 {
 		klog.Info(string(tmpOut))
 	}
-	tmpErr, _ := ioutil.ReadAll(stdErr)
+	tmpErr, _ := io.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
 		errMsg = string(tmpErr)

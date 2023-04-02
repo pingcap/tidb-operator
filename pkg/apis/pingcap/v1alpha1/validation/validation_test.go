@@ -40,6 +40,7 @@ func TestValidateAnnotations(t *testing.T) {
 					Annotations: map[string]string{
 						label.AnnTiKVDeleteSlots:    "[1,2]",
 						label.AnnTiFlashDeleteSlots: "[1]",
+						label.AnnTiCDCDeleteSlots:   "[1,2]",
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
@@ -105,6 +106,7 @@ func TestValidateAnnotations(t *testing.T) {
 					Annotations: map[string]string{
 						label.AnnTiKVDeleteSlots:    "",
 						label.AnnTiFlashDeleteSlots: "",
+						label.AnnTiCDCDeleteSlots:   "",
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
@@ -131,6 +133,10 @@ func TestValidateAnnotations(t *testing.T) {
 				{
 					Type:   field.ErrorTypeInvalid,
 					Detail: `value of "tiflash.tidb.pingcap.com/delete-slots" annotation must be a JSON list of int32`,
+				},
+				{
+					Type:   field.ErrorTypeInvalid,
+					Detail: `value of "ticdc.tidb.pingcap.com/delete-slots" annotation must be a JSON list of int32`,
 				},
 			},
 		},
@@ -810,6 +816,77 @@ func TestValidatePDSpec(t *testing.T) {
 			err := validatePDSpec(tc.Spec.PD, field.NewPath("pd"))
 			r := len(err)
 			g.Expect(r).Should(Equal(tt.expectedErrors))
+		})
+	}
+}
+
+func Test_disallowMutateBootstrapSQLConfigMapName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tests := []struct {
+		name      string
+		old       *v1alpha1.TiDBSpec
+		new       *v1alpha1.TiDBSpec
+		wantError bool
+	}{
+		{
+			name: "no change, both nil",
+			old: &v1alpha1.TiDBSpec{
+				BootstrapSQLConfigMapName: nil,
+			},
+			new: &v1alpha1.TiDBSpec{
+				BootstrapSQLConfigMapName: nil,
+			},
+			wantError: false,
+		},
+		{
+			name: "no change, both non-nil",
+			old: &v1alpha1.TiDBSpec{
+				BootstrapSQLConfigMapName: pointer.StringPtr("old"),
+			},
+			new: &v1alpha1.TiDBSpec{
+				BootstrapSQLConfigMapName: pointer.StringPtr("old"),
+			},
+			wantError: false,
+		},
+		{
+			name: "mutate from non-nil to nil",
+			old: &v1alpha1.TiDBSpec{
+				BootstrapSQLConfigMapName: pointer.StringPtr("old"),
+			},
+			new: &v1alpha1.TiDBSpec{
+				BootstrapSQLConfigMapName: nil,
+			},
+			wantError: false,
+		},
+		{
+			name: "mutate from nil to non-nil",
+			old: &v1alpha1.TiDBSpec{
+				BootstrapSQLConfigMapName: nil,
+			},
+			new: &v1alpha1.TiDBSpec{
+				BootstrapSQLConfigMapName: pointer.StringPtr("new"),
+			},
+			wantError: true,
+		},
+		{
+			name: "mutate from non-nil to non-nil",
+			old: &v1alpha1.TiDBSpec{
+				BootstrapSQLConfigMapName: pointer.StringPtr("old"),
+			},
+			new: &v1alpha1.TiDBSpec{
+				BootstrapSQLConfigMapName: pointer.StringPtr("new"),
+			},
+			wantError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := disallowMutateBootstrapSQLConfigMapName(tt.old, tt.new, field.NewPath("spec.tidb.bootstrapSQLConfigMapName"))
+			if tt.wantError {
+				g.Expect(len(errs)).NotTo(Equal(0))
+			} else {
+				g.Expect(len(errs)).To(Equal(0))
+			}
 		})
 	}
 }

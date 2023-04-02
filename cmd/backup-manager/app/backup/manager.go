@@ -20,7 +20,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/dustin/go-humanize"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -90,6 +93,20 @@ func (bm *Manager) ProcessBackup() error {
 		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
+	}
+
+	// we treat snapshot backup as restarted if its status is not scheduled when backup pod just start to run
+	// we will clean backup data before run br command
+	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && (backup.Status.Phase != v1alpha1.BackupScheduled || v1alpha1.IsBackupRestart(backup)) {
+		klog.Infof("snapshot backup %s was restarted, status is %s", bm, backup.Status.Phase)
+		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:   v1alpha1.BackupRestart,
+			Status: corev1.ConditionTrue,
+		}, nil)
+		if uerr != nil {
+			errs = append(errs, uerr)
+			return errorutils.NewAggregate(errs)
+		}
 	}
 
 	if backup.Spec.BR == nil {
@@ -269,6 +286,15 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		}
 	}
 
+	// clean snapshot backup data if it was restarted
+	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupRestart(backup) && !bm.isBRCanContinueRunByCheckpoint() {
+		klog.Infof("clean snapshot backup %s data before run br command, backup path is %s", bm, backup.Status.BackupPath)
+		err := bm.cleanSnapshotBackupEnv(ctx, backup)
+		if err != nil {
+			return errors.Annotatef(err, "clean snapshot backup %s failed", bm)
+		}
+	}
+
 	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupRunning,
@@ -278,7 +304,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.backupData(ctx, backup)
+	backupErr := bm.backupData(ctx, backup, bm.StatusUpdater)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
@@ -318,35 +344,53 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}
 	klog.Infof("backup cluster %s data to %s success", bm, backupFullPath)
 
-	backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("Get backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetBackupMetadataFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-	klog.Infof("Get br metadata for backup files in %s of cluster %s success", backupFullPath, bm)
-	size := util.GetBRArchiveSize(backupMeta)
-	commitTs := backupMeta.EndVersion
-	klog.Infof("Get size %d for backup files in %s of cluster %s success", size, backupFullPath, bm)
-	klog.Infof("Get cluster %s commitTs %d success", bm, commitTs)
-	finish := time.Now()
+	var updateStatus *controller.BackupUpdateStatus
+	switch bm.Mode {
+	case string(v1alpha1.BackupModeVolumeSnapshot):
+		// In volume snapshot mode, commitTS have been updated according to the
+		// br command output, so we don't need to update it here.
+		backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
 
-	backupSize := int64(size)
-	backupSizeReadable := humanize.Bytes(uint64(size))
-	ts := strconv.FormatUint(commitTs, 10)
-	updateStatus := &controller.BackupUpdateStatus{
-		TimeStarted:        &metav1.Time{Time: started},
-		TimeCompleted:      &metav1.Time{Time: finish},
-		BackupSize:         &backupSize,
-		BackupSizeReadable: &backupSizeReadable,
-		CommitTs:           &ts,
+		if err != nil {
+			klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
+		}
+
+		backupSizeReadable := humanize.Bytes(uint64(backupSize))
+
+		updateStatus = &controller.BackupUpdateStatus{
+			TimeStarted:        &metav1.Time{Time: started},
+			TimeCompleted:      &metav1.Time{Time: time.Now()},
+			BackupSize:         &backupSize,
+			BackupSizeReadable: &backupSizeReadable,
+		}
+	default:
+		backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
+		if err != nil {
+			errs = append(errs, err)
+			klog.Errorf("Get backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
+			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:    v1alpha1.BackupFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "GetBackupMetadataFailed",
+				Message: err.Error(),
+			}, nil)
+			errs = append(errs, uerr)
+			return errorutils.NewAggregate(errs)
+		}
+		klog.Infof("Get br metadata for backup files in %s of cluster %s success", backupFullPath, bm)
+		backupSize := int64(util.GetBRArchiveSize(backupMeta))
+		backupSizeReadable := humanize.Bytes(uint64(backupSize))
+		commitTS := backupMeta.EndVersion
+		klog.Infof("Get size %d for backup files in %s of cluster %s success", backupSize, backupFullPath, bm)
+		klog.Infof("Get cluster %s commitTs %d success", bm, commitTS)
+		ts := strconv.FormatUint(commitTS, 10)
+		updateStatus = &controller.BackupUpdateStatus{
+			TimeStarted:        &metav1.Time{Time: started},
+			TimeCompleted:      &metav1.Time{Time: time.Now()},
+			BackupSize:         &backupSize,
+			BackupSizeReadable: &backupSizeReadable,
+			CommitTs:           &ts,
+		}
 	}
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupComplete,
@@ -413,7 +457,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 		klog.Errorf("Get backup full path of cluster %s failed, err: %s", bm, err)
 		return nil, "GetBackupRemotePathFailed", err
 	}
-	klog.Infof("Get backup full path %s of cluster %s failed", backupFullPath, bm)
+	klog.Infof("Get backup full path %s of cluster %s success", backupFullPath, bm)
 
 	updatePathStatus := &controller.BackupUpdateStatus{
 		BackupPath: &backupFullPath,
@@ -518,4 +562,23 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 		LogSuccessTruncateUntil: &bm.TruncateUntil,
 	}
 	return updateStatus, "", nil
+}
+
+func (bm *Manager) cleanSnapshotBackupEnv(ctx context.Context, backup *v1alpha1.Backup) error {
+	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+		return nil
+	}
+
+	cleanOpt := clean.Options{Namespace: bm.Namespace, BackupName: bm.ResourceName}
+	return cleanOpt.CleanBRRemoteBackupData(ctx, backup)
+}
+
+func (bm *Manager) isBRCanContinueRunByCheckpoint() bool {
+	v, err := semver.NewVersion(bm.TiKVVersion)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", bm.TiKVVersion, err)
+		return false
+	}
+	lessThanV651, _ := semver.NewConstraint("<v6.5.1-0")
+	return !lessThanV651.Check(v)
 }

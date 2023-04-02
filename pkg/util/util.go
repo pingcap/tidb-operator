@@ -114,6 +114,12 @@ func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (s
 	} else if memberType == v1alpha1.TiFlashMemberType {
 		ann = label.AnnTiFlashDeleteSlots
 		replicas = tc.Spec.TiFlash.Replicas
+	} else if memberType == v1alpha1.TiCDCMemberType {
+		ann = label.AnnTiCDCDeleteSlots
+		replicas = tc.Spec.TiCDC.Replicas
+	} else if memberType == v1alpha1.TiProxyMemberType {
+		ann = label.AnnTiProxyDeleteSlots
+		replicas = tc.Spec.TiProxy.Replicas
 	} else {
 		return nil, fmt.Errorf("unknown member type %v", memberType)
 	}
@@ -193,12 +199,19 @@ func ClusterTLSSecretName(tcName, component string) string {
 	return fmt.Sprintf("%s-%s-cluster-secret", tcName, component)
 }
 
-func TiDBClientTLSSecretName(tcName string) string {
+func TiDBClientTLSSecretName(tcName string, secretName *string) string {
+	if secretName != nil {
+		return *secretName
+	}
 	return fmt.Sprintf("%s-tidb-client-secret", tcName)
 }
 
 func TiDBServerTLSSecretName(tcName string) string {
 	return fmt.Sprintf("%s-tidb-server-secret", tcName)
+}
+
+func TiDBAuthTokenJWKSSecretName(tcName string) string {
+	return fmt.Sprintf("%s-tidb-auth-token-jwks-secret", tcName)
 }
 
 // SortEnvByName implements sort.Interface to sort env list by name.

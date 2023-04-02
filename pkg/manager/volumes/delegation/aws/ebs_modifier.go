@@ -88,6 +88,11 @@ func (m *EBSModifier) Validate(spvc, dpvc *corev1.PersistentVolumeClaim, ssc, ds
 }
 
 func (m *EBSModifier) ModifyVolume(ctx context.Context, pvc *corev1.PersistentVolumeClaim, pv *corev1.PersistentVolume, sc *storagev1.StorageClass) ( /*wait*/ bool, error) {
+	if pv == nil {
+		klog.V(4).Infof("Persistent volume is nil, skip modifying PV for %s. This may be caused by no relevant permissions", pvc.Spec.VolumeName)
+		return false, nil
+	}
+
 	desired, err := m.getExpectedVolume(pvc, pv, sc)
 	if err != nil {
 		return false, err
@@ -126,6 +131,7 @@ func (m *EBSModifier) ModifyVolume(ctx context.Context, pvc *corev1.PersistentVo
 	return true, nil
 }
 
+// If some params are not set, assume they are equal.
 func (m *EBSModifier) diffVolume(actual, desired *Volume) bool {
 	if diffInt32(actual.IOPS, desired.IOPS) {
 		return true
@@ -136,6 +142,9 @@ func (m *EBSModifier) diffVolume(actual, desired *Volume) bool {
 	if diffInt32(actual.Size, desired.Size) {
 		return true
 	}
+	if actual.Type == "" || desired.Type == "" {
+		return false
+	}
 	if actual.Type != desired.Type {
 		return true
 	}
@@ -144,12 +153,8 @@ func (m *EBSModifier) diffVolume(actual, desired *Volume) bool {
 }
 
 func diffInt32(a, b *int32) bool {
-	if a == nil && b == nil {
-		return false
-	}
-
 	if a == nil || b == nil {
-		return true
+		return false
 	}
 
 	if *a == *b {

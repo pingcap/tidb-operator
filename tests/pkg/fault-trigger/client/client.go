@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/api"
@@ -100,7 +100,7 @@ func (c client) do(req *http.Request) (*http.Response, []byte, error) {
 		}
 	}
 
-	bodyByte, err := ioutil.ReadAll(resp.Body)
+	bodyByte, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return resp, nil, &clientError{
 			code: code,

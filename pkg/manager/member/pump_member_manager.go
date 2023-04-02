@@ -135,6 +135,7 @@ func (m *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	}
 
 	// Wait for PD & TiKV upgrading done
+	// NO check for v1alpha1.ScalePhase now, as it shouldn't block when some other components scaling to 0 and deleting Pump
 	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.PD.Phase == v1alpha1.UpgradePhase ||
 		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
@@ -361,7 +362,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	replicas := tc.Spec.Pump.Replicas
 	storageClass := tc.Spec.Pump.StorageClassName
 	podLabels := util.CombineStringMap(stsLabels.Labels(), spec.Labels())
-	podAnnos := util.CombineStringMap(controller.AnnProm(8250), spec.Annotations())
+	podAnnos := util.CombineStringMap(spec.Annotations(), controller.AnnProm(8250, "/metrics"))
 	storageRequest, err := controller.ParseStorageRequest(tc.Spec.Pump.Requests)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)

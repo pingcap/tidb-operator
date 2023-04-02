@@ -42,6 +42,10 @@ func TestTidbClusterControlUpdateTidbCluster(t *testing.T) {
 	updateTC, err := control.UpdateTidbCluster(tc, &v1alpha1.TidbClusterStatus{}, &v1alpha1.TidbClusterStatus{})
 	g.Expect(err).To(Succeed())
 	g.Expect(updateTC.Spec.PD.Replicas).To(Equal(int32(5)))
+
+	updateTC1, err := control.Update(tc)
+	g.Expect(err).To(Succeed())
+	g.Expect(updateTC1.Spec.PD.Replicas).To(Equal(int32(5)))
 }
 
 func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
@@ -62,5 +66,8 @@ func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
 		return true, update.GetObject(), nil
 	})
 	_, err := control.UpdateTidbCluster(tc, &v1alpha1.TidbClusterStatus{}, &v1alpha1.TidbClusterStatus{})
+	g.Expect(err).To(Succeed())
+
+	_, err = control.Update(tc)
 	g.Expect(err).To(Succeed())
 }

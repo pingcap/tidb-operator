@@ -14,16 +14,23 @@
 package util
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
+	"path"
 	"strings"
+	"time"
+	"unsafe"
 
 	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
 
@@ -531,6 +538,18 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 			}
 		}
 
+		if backup.Spec.BackoffRetryPolicy.MinRetryDuration != "" {
+			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.MinRetryDuration)
+			if err != nil {
+				return fmt.Errorf("fail to parse minRetryDuration %s of backup %s/%s, %v", backup.Spec.BackoffRetryPolicy.MinRetryDuration, backup.Namespace, backup.Name, err)
+			}
+		}
+		if backup.Spec.BackoffRetryPolicy.RetryTimeout != "" {
+			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.RetryTimeout)
+			if err != nil {
+				return fmt.Errorf("fail to parse retryTimeout %s of backup %s/%s, %v", backup.Spec.BackoffRetryPolicy.RetryTimeout, backup.Namespace, backup.Name, err)
+			}
+		}
 	}
 	return nil
 }
@@ -663,6 +682,19 @@ func canSkipSetGCLifeTime(image string) bool {
 	return true
 }
 
+func BytesToString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func StringToBytes(s string) []byte {
+	return *(*[]byte)(unsafe.Pointer(
+		&struct {
+			string
+			Cap int
+		}{s, len(s)},
+	))
+}
+
 // isLogBackSupport returns whether tikv supports log backup
 func isLogBackSupport(tikvImage string) bool {
 	_, version := ParseImage(tikvImage)
@@ -675,4 +707,97 @@ func isLogBackSupport(tikvImage string) bool {
 		return false
 	}
 	return true
+}
+
+// GetStorageRestorePath generate the path of a specific storage from Restore
+func GetStoragePath(privoder v1alpha1.StorageProvider) (string, error) {
+	var url, bucket, prefix string
+	st := GetStorageType(privoder)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		prefix = privoder.S3.Prefix
+		bucket = privoder.S3.Bucket
+		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeGcs:
+		prefix = privoder.Gcs.Prefix
+		bucket = privoder.Gcs.Bucket
+		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeAzblob:
+		prefix = privoder.Azblob.Prefix
+		bucket = privoder.Azblob.Container
+		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
+		return url, nil
+	case v1alpha1.BackupStorageTypeLocal:
+		prefix = privoder.Local.Prefix
+		mountPath := privoder.Local.VolumeMount.MountPath
+		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
+		return url, nil
+	default:
+		return "", fmt.Errorf("storage %s not supported yet", st)
+	}
+}
+
+// GetOptions gets the rclone options
+func GetOptions(provider v1alpha1.StorageProvider) []string {
+	st := GetStorageType(provider)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		return provider.S3.Options
+	default:
+		return nil
+	}
+}
+
+// getVolSnapBackupMetaData get backup metadata from cloud storage
+func GetVolSnapBackupMetaData(r *v1alpha1.Restore, secretLister corelisterv1.SecretLister) (*EBSBasedBRMeta, error) {
+	// since the restore meta is small (~5M), assume 1 minutes is enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
+	defer cancel()
+
+	klog.Infof("read the backup meta from external storage")
+	cred := GetStorageCredential(r.Namespace, r.Spec.StorageProvider, secretLister)
+	s, err := NewStorageBackend(r.Spec.StorageProvider, cred)
+	if err != nil {
+		return nil, err
+	}
+	defer s.Close()
+
+	var metaInfo []byte
+	// use exponential backoff, every retry duration is duration * factor ^ (used_step - 1)
+	backoff := wait.Backoff{
+		Duration: time.Second,
+		Steps:    6,
+		Factor:   2.0,
+		Cap:      time.Minute,
+	}
+	readBackupMeta := func() error {
+		exist, err := s.Exists(ctx, constants.MetaFile)
+		if err != nil {
+			return err
+		}
+		if !exist {
+			return fmt.Errorf("%s not exist", constants.MetaFile)
+		}
+		metaInfo, err = s.ReadAll(ctx, constants.MetaFile)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	isRetry := func(err error) bool {
+		return !strings.Contains(err.Error(), "not exist")
+	}
+	err = retry.OnError(backoff, isRetry, readBackupMeta)
+	if err != nil {
+		return nil, fmt.Errorf("read backup meta from bucket %s and prefix %s, err: %v", s.GetBucket(), s.GetPrefix(), err)
+	}
+
+	backupMeta := &EBSBasedBRMeta{}
+	err = json.Unmarshal(metaInfo, backupMeta)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal backup meta from bucket %s and prefix %s, err: %v", s.GetBucket(), s.GetPrefix(), err)
+	}
+	return backupMeta, nil
 }

@@ -242,7 +242,7 @@ func TestBackupManagerBR(t *testing.T) {
 		// failed to get relate tc
 		err = bm.syncBackupJob(backup)
 		g.Expect(err).ShouldNot(BeNil())
-		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupRetryFailed, "failed to fetch tidbcluster")
+		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupRetryTheFailed, "failed to fetch tidbcluster")
 
 		// create relate tc and try again should success and job created.
 		helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster)
@@ -278,14 +278,14 @@ func TestClean(t *testing.T) {
 	deps := helper.Deps
 
 	for _, backup := range genValidBRBackups() {
+		// make the backup need to be clean
+		backup.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+		backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+
 		_, err := deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(context.TODO(), backup, metav1.CreateOptions{})
 		g.Expect(err).Should(BeNil())
 		helper.CreateSecret(backup)
 		helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster)
-
-		// make the backup need to be clean
-		backup.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-		backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 
 		statusUpdater := controller.NewRealBackupConditionUpdater(deps.Clientset, deps.BackupLister, deps.Recorder)
 		bc := NewBackupCleaner(deps, statusUpdater)

@@ -19,10 +19,10 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -134,9 +134,31 @@ func (h *Helper) CreateTC(namespace, clusterName string) {
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 			TiKV: &v1alpha1.TiKVSpec{
 				BaseImage: "pingcap/tikv",
+				Replicas:  3,
 			},
 			TiDB: &v1alpha1.TiDBSpec{
 				TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
+			},
+			PD: &v1alpha1.PDSpec{
+				Replicas: 1,
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			PD: v1alpha1.PDStatus{
+				Members: map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+				},
+			},
+			TiKV: v1alpha1.TiKVStatus{
+				Stores: map[string]v1alpha1.TiKVStore{
+					"1": {ID: "1", State: v1alpha1.TiKVStateUp},
+					"2": {ID: "2", State: v1alpha1.TiKVStateUp},
+					"3": {ID: "3", State: v1alpha1.TiKVStateUp},
+				},
+				StatefulSet: &appsv1.StatefulSetStatus{
+					Replicas:      3,
+					ReadyReplicas: 3,
+				},
 			},
 		},
 	}
@@ -149,5 +171,18 @@ func (h *Helper) CreateTC(namespace, clusterName string) {
 		_, err := h.Deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(tc.Name)
 		return err
 	}, time.Second*10).Should(BeNil())
+	g.Expect(err).Should(BeNil())
+}
+
+func (h *Helper) CreateRestore(restore *v1alpha1.Restore) {
+	h.T.Helper()
+	g := NewGomegaWithT(h.T)
+	_, err := h.Deps.Clientset.PingcapV1alpha1().Restores(restore.Namespace).Create(context.TODO(), restore, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+	// make sure can read tc from lister
+	g.Eventually(func() error {
+		_, err := h.Deps.RestoreLister.Restores(restore.Namespace).Get(restore.Name)
+		return err
+	}, time.Second).Should(BeNil())
 	g.Expect(err).Should(BeNil())
 }

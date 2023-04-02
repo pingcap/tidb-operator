@@ -51,6 +51,7 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&ro.SkipClientCA, "skipClientCA", false, "Whether to skip tidb server's certificates validation")
 	cmd.Flags().StringVar(&ro.Mode, "mode", string(v1alpha1.RestoreModeSnapshot), "restore mode, which is pitr or snapshot(default)")
 	cmd.Flags().StringVar(&ro.PitrRestoredTs, "pitrRestoredTs", "0", "The pitr restored ts")
+	cmd.Flags().BoolVar(&ro.Prepare, "prepare", false, "Whether to prepare for restore")
 	return cmd
 }
 
@@ -66,6 +67,7 @@ func runRestore(restoreOpts restore.Options, kubecfg string) error {
 	recorder := util.NewEventRecorder(kubeCli, "restore")
 	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
 	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
+	restoreControl := controller.NewRealRestoreControl(cli, restoreInformer.Lister(), recorder)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -75,6 +77,6 @@ func runRestore(restoreOpts restore.Options, kubecfg string) error {
 	cache.WaitForCacheSync(ctx.Done(), restoreInformer.Informer().HasSynced)
 
 	klog.Infof("start to process restore %s", restoreOpts.String())
-	rm := restore.NewManager(restoreInformer.Lister(), statusUpdater, restoreOpts)
+	rm := restore.NewManager(restoreInformer.Lister(), statusUpdater, restoreControl, restoreOpts)
 	return rm.ProcessRestore()
 }

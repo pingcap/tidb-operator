@@ -17,7 +17,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -116,7 +116,7 @@ func TestServer(t *testing.T) {
 					time.Sleep(time.Millisecond * 100)
 					continue
 				}
-				data, err := ioutil.ReadAll(resp.Body)
+				data, err := io.ReadAll(resp.Body)
 				if err != nil {
 					return err
 				}
@@ -200,7 +200,7 @@ func TestDMServer(t *testing.T) {
 					time.Sleep(time.Millisecond * 100)
 					continue
 				}
-				data, err := ioutil.ReadAll(resp.Body)
+				data, err := io.ReadAll(resp.Body)
 				if err != nil {
 					return err
 				}
@@ -253,7 +253,7 @@ func TestVerifyServer(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		_, err = ioutil.ReadAll(resp.Body)
+		_, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}

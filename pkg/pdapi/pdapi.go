@@ -18,7 +18,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -92,6 +92,8 @@ type PDClient interface {
 	TransferPDLeader(name string) error
 	// GetAutoscalingPlans returns the scaling plan for the cluster
 	GetAutoscalingPlans(strategy Strategy) ([]Plan, error)
+	// GetRecoveringMark return the pd recovering mark
+	GetRecoveringMark() (bool, error)
 }
 
 var (
@@ -109,6 +111,7 @@ var (
 	// config API, available since PD v3.1.0.
 	evictLeaderSchedulerConfigPrefix = "pd/api/v1/scheduler-config/evict-leader-scheduler/list"
 	autoscalingPrefix                = "autoscaling"
+	recoveringMarkPrefix             = "pd/api/v1/admin/cluster/markers/snapshot-recovering"
 )
 
 // pdClient is default implementation of PDClient
@@ -245,6 +248,10 @@ type schedulerInfo struct {
 	StoreID uint64 `json:"store_id"`
 }
 
+type RecoveringMark struct {
+	Mark bool `json:"marked"`
+}
+
 func (c *pdClient) GetHealth() (*HealthInfo, error) {
 	apiURL := fmt.Sprintf("%s/%s", c.url, healthPrefix)
 	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
@@ -375,7 +382,7 @@ func (c *pdClient) DeleteStore(storeID uint64) error {
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}
@@ -399,7 +406,7 @@ func (c *pdClient) SetStoreState(storeID uint64, state string) error {
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}
@@ -674,6 +681,20 @@ func (c *pdClient) filterLeaderEvictScheduler(evictLeaderSchedulers []string) ([
 		schedulerIds = append(schedulerIds, evictLeaderSchedulers...)
 	}
 	return schedulerIds, nil
+}
+
+func (c *pdClient) GetRecoveringMark() (bool, error) {
+	apiURL := fmt.Sprintf("%s/%s", c.url, recoveringMarkPrefix)
+	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
+	if err != nil {
+		return false, err
+	}
+	recoveringMark := &RecoveringMark{}
+	err = json.Unmarshal(body, recoveringMark)
+	if err != nil {
+		return false, err
+	}
+	return recoveringMark.Mark, nil
 }
 
 func (c *pdClient) GetPDLeader() (*pdpb.Member, error) {

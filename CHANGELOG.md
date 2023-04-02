@@ -502,7 +502,7 @@ Please check [cluster configuration](https://pingcap.com/docs/v3.0/tidb-in-kuber
 
 - get the TS first and increase the TiKV GC life time to 3 hours before the full backup
 - Add endpoints list and watch permission for controller-manager
-- Scheduler image is updated to use "k8s.gcr.io/kube-scheduler" which is much smaller than "gcr.io/google-containers/hyperkube". You must pre-pull the new scheduler image into your airgap environment before upgrading.
+- Scheduler image is updated to use "registry.k8s.io/kube-scheduler" which is much smaller than "gcr.io/google-containers/hyperkube". You must pre-pull the new scheduler image into your airgap environment before upgrading.
 - Full backup data can be uploaded to or downloaded from Amazon S3
 - The terraform scripts support manage multiple TiDB clusters in one EKS cluster.
 - Add `tikv.storeLables` setting

@@ -43,6 +43,7 @@ var (
 	allMatchPattern  = "(.+)"
 	portPattern      = "([^:]+)(?::\\d+)?;(\\d+)"
 	tikvPattern      = "tikv"
+	tiproxyPattern   = "tiproxy"
 	pdPattern        = "pd"
 	tidbPattern      = "tidb"
 	addressPattern   = "(.+);(.+);(.+);(.+)"
@@ -94,6 +95,7 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
 	scrapeJobs = append(scrapeJobs, scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfigByComponent("pd"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfigByComponent("tikv"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tiproxy", tiproxyPattern, cmodel, buildAddressRelabelConfigByComponent("tiproxy"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash-proxy"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfigByComponent("pump"))...)
@@ -140,6 +142,8 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 	case "tidb":
 		return f()
 	case "tikv":
+		return f()
+	case "tiproxy":
 		return f()
 	case "tiflash":
 		return f()
@@ -254,11 +258,34 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 			},
 		}
 
-		if cluster.enableTLS && !isDMJob(jobName) {
-			schemeRelabelConfig.Value = "https"
-			// lightning does not need to authenticate the access of other components,
-			// so there is no need to enable mtls for the time being.
-			if jobName != "lightning" {
+		if cluster.enableTLS {
+			switch {
+			case jobName == "tiproxy":
+				// tiproxy use certs from tidb. There is no suitable CA for peer addresses.
+				schemeRelabelConfig.Value = "https"
+			case jobName == "lightning":
+				// lightning does not need to authenticate the access of other components,
+				// so there is no need to enable mtls for the time being.
+				schemeRelabelConfig.Value = "https"
+			case isDMJob(jobName):
+				schemeRelabelConfig.Value = "https"
+				dmTlsSecretName := util.DMClientTLSSecretName(cluster.Name)
+				tlsConfigRelabelConfig = yaml.MapSlice{
+					yaml.MapItem{
+						Key:   "ca_file",
+						Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
+					},
+					yaml.MapItem{
+						Key:   "cert_file",
+						Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSCertKey}.String()),
+					},
+					yaml.MapItem{
+						Key:   "key_file",
+						Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
+					},
+				}
+			default:
+				schemeRelabelConfig.Value = "https"
 				tcTlsSecretName := util.ClusterClientTLSSecretName(cluster.Name)
 				tlsConfigRelabelConfig = yaml.MapSlice{
 					yaml.MapItem{
@@ -275,26 +302,6 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 					},
 				}
 			}
-		}
-
-		if cluster.enableTLS && isDMJob(jobName) {
-			schemeRelabelConfig.Value = "https"
-			dmTlsSecretName := util.DMClientTLSSecretName(cluster.Name)
-			tlsConfigRelabelConfig = yaml.MapSlice{
-				yaml.MapItem{
-					Key:   "ca_file",
-					Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.ServiceAccountRootCAKey}.String()),
-				},
-				yaml.MapItem{
-					Key:   "cert_file",
-					Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSCertKey}.String()),
-				},
-				yaml.MapItem{
-					Key:   "key_file",
-					Value: path.Join(util.ClusterAssetsTLSPath, TLSAssetKey{"secret", cluster.Namespace, dmTlsSecretName, corev1.TLSPrivateKeyKey}.String()),
-				},
-			}
-
 		}
 
 		scrapeConfig := yaml.MapSlice{
