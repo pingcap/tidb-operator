@@ -34,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	testutils "github.com/pingcap/tidb-operator/tests/e2e/util"
 	utilcloud "github.com/pingcap/tidb-operator/tests/e2e/util/cloud"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
@@ -67,7 +68,6 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/pod"
 	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
-	testutils "k8s.io/kubernetes/test/utils"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
