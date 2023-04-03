@@ -25,4 +25,12 @@ var (
 			Name:      "spec_replicas",
 			Help:      "Desired replicas of each component in TidbCluster",
 		}, []string{LabelNamespace, LabelName, LabelComponent})
+
+	ClusterUpdateErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "tidb_operator",
+			Subsystem: "cluster",
+			Name:      "update_errors",
+			Help:      "Desired replicas of each component in TidbCluster",
+		}, []string{LabelNamespace, LabelName, LabelComponent})
 )
