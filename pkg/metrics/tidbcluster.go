@@ -31,6 +31,6 @@ var (
 			Namespace: "tidb_operator",
 			Subsystem: "cluster",
 			Name:      "update_errors",
-			Help:      "Desired replicas of each component in TidbCluster",
+			Help:      "Number of errors generated in each stage when updating TiDB Clusters",
 		}, []string{LabelNamespace, LabelName, LabelComponent})
 )
