@@ -388,7 +388,7 @@ func TestTiDBPodSync(t *testing.T) {
 
 			tc.Status.TiKV = v1alpha1.TiKVStatus{
 				Synced: true,
-				Phase:  c.pdPhase,
+				Phase:  c.tikvPhase,
 				Stores: map[string]v1alpha1.TiKVStore{
 					"0": {
 						PodName: fmt.Sprintf("%s-%d", controller.TiKVMemberName(tc.Name), 0),
