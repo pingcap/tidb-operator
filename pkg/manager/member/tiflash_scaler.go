@@ -18,15 +18,16 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
 type tiflashScaler struct {
@@ -56,15 +57,39 @@ func (s *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, n
 		return nil
 	}
 
+	ls, err := label.New().Instance(tc.Name).Component(label.TiFlashLabelVal).Selector()
+	if err != nil {
+		return fmt.Errorf("invalid label selector: %w", err)
+	}
+
+	pods, err := s.deps.PodLister.Pods(tc.Namespace).List(ls)
+	if err != nil {
+		return fmt.Errorf("can't list pods with label selector %s: %w", ls, err)
+	}
+
+	if len(pods) < int(*oldSet.Spec.Replicas) {
+		return fmt.Errorf("wait until tiflash pods are created, expected in sts %v, current pods num %v", *oldSet.Spec.Replicas, len(pods))
+	}
+
+	unscheduledPods := sets.NewString()
+	for _, pod := range pods {
+		if pod.Spec.NodeName == "" {
+			unscheduledPods.Insert(pod.Name)
+		}
+	}
+
+	if unscheduledPods.Len() > 0 {
+		return fmt.Errorf("wait until tiflash pods are scheduled, unscheduled pods: %v", unscheduledPods)
+	}
+
 	scaleOutParallelism := tc.Spec.TiFlash.GetScaleOutParallelism()
 	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleOutParallelism)
 	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %v (replicas: %d, scale out parallelism: %d, delete slots: %v)",
 		oldSet.Namespace, oldSet.Name, ordinals, replicas, scaleOutParallelism, deleteSlots.List())
 
 	var (
-		errs                         []error
-		finishedOrdinals             = sets.NewInt32()
-		updateReplicasAndDeleteSlots bool
+		errs             []error
+		finishedOrdinals = sets.NewInt32()
 	)
 	for _, ordinal := range ordinals {
 		err := s.scaleOutOne(tc, ordinal)
@@ -72,15 +97,14 @@ func (s *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, n
 			errs = append(errs, err)
 		} else {
 			finishedOrdinals.Insert(ordinal)
-			updateReplicasAndDeleteSlots = true
 		}
 	}
-	if updateReplicasAndDeleteSlots {
-		setReplicasAndDeleteSlotsByFinished(scalingOutFlag, newSet, oldSet, ordinals, finishedOrdinals)
-	} else {
-		resetReplicas(newSet, oldSet)
+	if err := errorutils.NewAggregate(errs); err != nil {
+		return err
 	}
-	return errorutils.NewAggregate(errs)
+	setReplicasAndDeleteSlotsByFinished(scalingOutFlag, newSet, oldSet, ordinals, finishedOrdinals)
+
+	return nil
 }
 
 func (s *tiflashScaler) scaleOutOne(tc *v1alpha1.TidbCluster, ordinal int32) error {
@@ -120,6 +144,11 @@ func (s *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 		}
 	}
 
+	// If len(errs) != 0, resetReplicas is not useful.
+	// But only when len(ordinals) == 0, resetReplicas and len(errs) == 0 will both be true.
+	// However, len(ordinals) != 0 only when the first return value of scaleMulti is not zero (scaling != 0).
+	// And only when scaling != 0 this function will be called.
+	// TODO: resetReplicas is not needed
 	if updateReplicasAndDeleteSlots {
 		setReplicasAndDeleteSlotsByFinished(scalingInFlag, newSet, oldSet, ordinals, finishedOrdinals)
 	} else {

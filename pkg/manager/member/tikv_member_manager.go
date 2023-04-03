@@ -241,6 +241,13 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		if err != nil {
 			return err
 		}
+		if newSet.Spec.Replicas == nil {
+			newSet.Spec.Replicas = pointer.Int32Ptr(1)
+		}
+
+		if *newSet.Spec.Replicas >= 3 {
+			newSet.Spec.Replicas = pointer.Int32Ptr(3)
+		}
 		err = m.deps.StatefulSetControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
 			return err
