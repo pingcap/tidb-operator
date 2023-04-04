@@ -442,7 +442,7 @@ func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	case v1alpha1.TiDBPodDeletionValueNone:
 	case v1alpha1.TiDBPodDeletionDeletePod:
 	default:
-		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.PDLeaderTransferAnnKey, pod.Namespace, pod.Name)
+		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.TiDBGracefulShutdownAnnKey, pod.Namespace, pod.Name)
 		return reconcile.Result{}, nil
 	}
 
