@@ -4,8 +4,8 @@ go 1.19
 
 require (
 	github.com/pingcap/tidb-operator/pkg/apis v1.4.2
-	k8s.io/apimachinery v0.19.16
-	k8s.io/client-go v0.19.16
+	k8s.io/apimachinery v0.20.15
+	k8s.io/client-go v0.20.15
 )
 
 require (
@@ -40,7 +40,7 @@ require (
 	github.com/prometheus/prometheus v1.8.2 // indirect
 	golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
-	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6 // indirect
+	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
 	golang.org/x/sys v0.0.0-20220908164124-27713097b956 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
@@ -49,11 +49,11 @@ require (
 	google.golang.org/protobuf v1.26.0-rc.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/api v0.19.16 // indirect
-	k8s.io/apiextensions-apiserver v0.19.16 // indirect
-	k8s.io/klog/v2 v2.3.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6 // indirect
-	k8s.io/utils v0.0.0-20200912215256-4140de9c8800 // indirect
+	k8s.io/api v0.20.15 // indirect
+	k8s.io/apiextensions-apiserver v0.20.15 // indirect
+	k8s.io/klog/v2 v2.4.0 // indirect
+	k8s.io/kube-openapi v0.0.0-20211110013926-83f114cd0513 // indirect
+	k8s.io/utils v0.0.0-20201110183641-67b214c5f920 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
