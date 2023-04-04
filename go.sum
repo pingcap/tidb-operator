@@ -662,6 +662,8 @@ github.com/pierrec/lz4 v2.0.5+incompatible h1:2xWsjqPFWcplujydGg4WmhC/6fZqK42wMM
 github.com/pierrec/lz4 v2.0.5+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
 github.com/pingcap/TiProxy/lib v0.0.0-20230201020701-df06ec482c69 h1:UY87I8QfUUbJHrkbZ51eQpopIdQc34D2vRpLZILWyCg=
 github.com/pingcap/TiProxy/lib v0.0.0-20230201020701-df06ec482c69/go.mod h1:AR0IJ6SdStz1dkxG0gi47RxzQWxbPKACQ7JG1VY6Dnc=
+github.com/pingcap/advanced-statefulset/client v1.17.1-0.20230403114412-d141a788a127 h1:XssrrUPwGZIBVWWTULzaj3HBrLto0O83nz7IZOUt+PA=
+github.com/pingcap/advanced-statefulset/client v1.17.1-0.20230403114412-d141a788a127/go.mod h1:JRlq+qzKSB/P+25mlmD3Gx9hCF/Ag3PXjJXVhpAf80c=
 github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 h1:USx2/E1bX46VG32FIw034Au6seQ2fY9NEILmNh/UlQg=
 github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8/go.mod h1:B1+S9LNcuMyLH/4HMTViQOJevkGiik3wW2AN9zb2fNQ=
 github.com/pingcap/errors v0.11.4 h1:lFuQV/oaUMGcD2tqt+01ROSmJs75VG1ToEOkZIZ4nE4=

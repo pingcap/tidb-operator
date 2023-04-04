@@ -32,7 +32,7 @@ require (
 	github.com/onsi/gomega v1.10.2
 	github.com/openshift/generic-admission-server v1.14.1-0.20210422140326-da96454c926d
 	github.com/pingcap/TiProxy/lib v0.0.0-20230201020701-df06ec482c69
-	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20210831081013-d54ef54b2938
+	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20230403114412-d141a788a127
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
@@ -310,6 +310,3 @@ replace github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt v3.2.1+incompat
 replace k8s.io/component-helpers => k8s.io/component-helpers v0.20.15
 
 replace k8s.io/mount-utils => k8s.io/mount-utils v0.20.15
-
-// FIXME:
-replace github.com/pingcap/advanced-statefulset/client => /root/shiori/pingcap/asts/src/github.com/pingcap/advanced-statefulset/client
