@@ -20,10 +20,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
+	testutils "github.com/pingcap/tidb-operator/tests/e2e/util"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	testutils "k8s.io/kubernetes/test/utils"
 )
 
 type TCCondition func(tc *v1alpha1.TidbCluster) (bool, error)
