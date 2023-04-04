@@ -289,24 +289,16 @@ replace k8s.io/controller-manager => k8s.io/controller-manager v0.20.15
 
 replace k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.20.15
 
+replace k8s.io/component-helpers => k8s.io/component-helpers v0.20.15
+
+replace k8s.io/mount-utils => k8s.io/mount-utils v0.20.15
+
 // workaround for https://github.com/kubernetes/apiserver/issues/65
 // controller-rutime v0.7.2 use github.com/googleapis/gnostic v0.5.0, kube-apiserver v1.19 use github.com/googleapis/gnostic v0.4.1
 // so downgrade github.com/googleapis/gnostic to v0.4.1
 // TODO: remove it after upgrading kubernetes dependency to v1.22
 replace github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
 
-// workaround for avd.aquasec.com/nvd/cve-2020-29652
-// TODO: remove it after upgrading
-replace golang.org/x/crypto => golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
-
 // workaround for github.com/advisories/GHSA-25xm-hr59-7c27
 // TODO: remove it after upgrading github.com/mholt/archiver greater than v3.5.0
 replace github.com/ulikunitz/xz => github.com/ulikunitz/xz v0.5.8
-
-// workaround for github.com/advisories/GHSA-w73w-5m7g-f7qc
-// TODO: remove it after upgrading k8s.io/client-go equal or greater than v0.20.0
-replace github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt v3.2.1+incompatible
-
-replace k8s.io/component-helpers => k8s.io/component-helpers v0.20.15
-
-replace k8s.io/mount-utils => k8s.io/mount-utils v0.20.15
