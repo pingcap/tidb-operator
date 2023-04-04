@@ -302,3 +302,7 @@ replace github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
 // workaround for github.com/advisories/GHSA-25xm-hr59-7c27
 // TODO: remove it after upgrading github.com/mholt/archiver greater than v3.5.0
 replace github.com/ulikunitz/xz => github.com/ulikunitz/xz v0.5.8
+
+// workaround for github.com/advisories/GHSA-w73w-5m7g-f7qc
+// TODO: remove it after upgrading k8s.io/client-go equal or greater than v0.20.0
+replace github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt v3.2.1+incompatible
