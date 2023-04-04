@@ -22,11 +22,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	apiutilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/wait"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	testutils "k8s.io/kubernetes/test/utils"
 )
 
 // WaitForAPIServicesAvaiable waits for apiservices to be available
@@ -100,7 +100,7 @@ func WaitForCRDNotFound(client apiextensionsclientset.Interface, name string) er
 	return wait.PollImmediate(time.Second, 1*time.Minute, func() (bool, error) {
 		_, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
-			if testutils.IsRetryableAPIError(err) {
+			if IsRetryableAPIError(err) {
 				return false, nil
 			}
 			if apierrors.IsNotFound(err) {
@@ -136,4 +136,17 @@ func PollWithReason(interval, timeout time.Duration, cond func() (bool, error, s
 
 func IntPtr(i int) *int {
 	return &i
+}
+
+func IsRetryableAPIError(err error) bool {
+	// These errors may indicate a transient error that we can retry in tests.
+	if apierrors.IsInternalError(err) || apierrors.IsTimeout(err) || apierrors.IsServerTimeout(err) ||
+		apierrors.IsTooManyRequests(err) || apiutilnet.IsProbableEOF(err) || apiutilnet.IsConnectionReset(err) {
+		return true
+	}
+	// If the error sends the Retry-After header, we respect it as an explicit confirmation we should retry.
+	if _, shouldRetry := apierrors.SuggestsClientDelay(err); shouldRetry {
+		return true
+	}
+	return false
 }
