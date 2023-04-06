@@ -328,6 +328,7 @@ func TestTiDBPodSync(t *testing.T) {
 		name         string
 		pdPhase      v1alpha1.MemberPhase
 		tikvPhase    v1alpha1.MemberPhase
+		tidbPhase    v1alpha1.MemberPhase
 		shouldDelete bool
 		target       int
 	}{
@@ -335,6 +336,7 @@ func TestTiDBPodSync(t *testing.T) {
 			name:         "delete tidb pod successfully",
 			pdPhase:      v1alpha1.NormalPhase,
 			tikvPhase:    v1alpha1.NormalPhase,
+			tidbPhase:    v1alpha1.NormalPhase,
 			shouldDelete: true,
 			target:       0,
 		},
@@ -342,6 +344,7 @@ func TestTiDBPodSync(t *testing.T) {
 			name:         "PD rolling restart",
 			pdPhase:      v1alpha1.UpgradePhase,
 			tikvPhase:    v1alpha1.NormalPhase,
+			tidbPhase:    v1alpha1.NormalPhase,
 			shouldDelete: false,
 			target:       0,
 		},
@@ -349,6 +352,15 @@ func TestTiDBPodSync(t *testing.T) {
 			name:         "TiKV rolling restart",
 			pdPhase:      v1alpha1.NormalPhase,
 			tikvPhase:    v1alpha1.UpgradePhase,
+			tidbPhase:    v1alpha1.NormalPhase,
+			shouldDelete: false,
+			target:       0,
+		},
+		{
+			name:         "TiDB rolling restart",
+			pdPhase:      v1alpha1.NormalPhase,
+			tikvPhase:    v1alpha1.NormalPhase,
+			tidbPhase:    v1alpha1.UpgradePhase,
 			shouldDelete: false,
 			target:       0,
 		},
@@ -395,6 +407,10 @@ func TestTiDBPodSync(t *testing.T) {
 						ID:      "0",
 					},
 				},
+			}
+
+			tc.Status.TiDB = v1alpha1.TiDBStatus{
+				Phase: c.tidbPhase,
 			}
 
 			tc, err := deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(ctx, tc, metav1.CreateOptions{})
