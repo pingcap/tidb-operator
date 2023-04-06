@@ -456,13 +456,11 @@ func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	return reconcile.Result{}, nil
 }
 
-func needDeleteTiDBPod(pod *corev1.Pod) (string, bool) {
-	value, exist := pod.Annotations[v1alpha1.TiDBGracefulShutdownAnnKey]
-	if exist {
-		return value, true
+func needDeleteTiDBPod(pod *corev1.Pod) string {
+	if pod.Annotations == nil {
+		return ""
 	}
-
-	return "", false
+	return pod.Annotations[v1alpha1.TiDBGracefulShutdownAnnKey]
 }
 
 func needEvictLeader(pod *corev1.Pod) (string, string, bool) {
