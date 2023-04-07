@@ -27,7 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	"github.com/pingcap/tidb/config"
+	"github.com/pingcap/tidb-operator/pkg/tidb"
 )
 
 type proxiedTiDBClient struct {
@@ -46,7 +46,7 @@ func (p *proxiedTiDBClient) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*c
 	panic("implement when necessary")
 }
 
-func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
+func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*tidb.Config, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
@@ -85,7 +85,7 @@ func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32)
 	if err != nil {
 		return nil, err
 	}
-	info := config.Config{}
+	info := tidb.Config{}
 	err = json.Unmarshal(body, &info)
 	if err != nil {
 		return nil, err

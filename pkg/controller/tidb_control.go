@@ -23,7 +23,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
-	"github.com/pingcap/tidb/config"
+	"github.com/pingcap/tidb-operator/pkg/tidb"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
@@ -45,7 +45,7 @@ type TiDBControlInterface interface {
 	// Get TIDB info return tidb's DBInfo
 	GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error)
 	// GetSettings return the TiDB instance settings
-	GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error)
+	GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*tidb.Config, error)
 	// SetServerLabels update TiDB's labels config
 	SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error
 }
@@ -107,7 +107,7 @@ func (c *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*
 	return &info, nil
 }
 
-func (c *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
+func (c *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*tidb.Config, error) {
 	httpClient, err := c.getHTTPClient(tc)
 	if err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func (c *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32
 		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL: %s", string(body), res.StatusCode, url))
 		return nil, errMsg
 	}
-	info := config.Config{}
+	info := tidb.Config{}
 	err = json.Unmarshal(body, &info)
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ type FakeTiDBControl struct {
 	healthInfo     map[string]bool
 	tiDBInfo       *DBInfo
 	getInfoError   error
-	tidbConfig     *config.Config
+	tidbConfig     *tidb.Config
 	setLabelsError error
 }
 
@@ -226,7 +226,7 @@ func (c *FakeTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBI
 	return c.tiDBInfo, c.getInfoError
 }
 
-func (c *FakeTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
+func (c *FakeTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*tidb.Config, error) {
 	return c.tidbConfig, c.getInfoError
 }
 

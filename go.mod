@@ -35,7 +35,6 @@ require (
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20230403114412-d141a788a127
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
-	github.com/pingcap/tidb v2.1.0-beta+incompatible
 	github.com/pingcap/tidb-operator/pkg/apis v1.4.2
 	github.com/pingcap/tidb-operator/pkg/client v1.4.2
 	github.com/prometheus/client_golang v1.7.1
@@ -93,7 +92,7 @@ require (
 	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
 	github.com/Azure/go-autorest/logger v0.2.0 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
-	github.com/BurntSushi/toml v0.3.1 // indirect
+	github.com/BurntSushi/toml v0.3.1
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v0.0.0-20200415212048-7901bc822317 // indirect
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
 	github.com/Microsoft/go-winio v0.4.15 // indirect
@@ -182,7 +181,7 @@ require (
 	github.com/prometheus/prometheus v1.8.2 // indirect
 	github.com/russross/blackfriday v1.5.2 // indirect
 	github.com/uber-go/atomic v0.0.0-00010101000000-000000000000 // indirect
-	github.com/uber/jaeger-client-go v2.19.0+incompatible // indirect
+	github.com/uber/jaeger-client-go v2.19.0+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/ulikunitz/xz v0.5.6 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect

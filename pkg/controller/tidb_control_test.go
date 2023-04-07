@@ -23,7 +23,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb/config"
+	"github.com/pingcap/tidb-operator/pkg/tidb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -220,23 +220,23 @@ func TestSettings(t *testing.T) {
 		path     string
 		method   string
 		failed   bool
-		resp     config.Config
-		expected *config.Config
+		resp     tidb.Config
+		expected *tidb.Config
 	}{
 		{
 			caseName: "GetSettings",
 			path:     "/settings",
 			method:   "GET",
 			failed:   false,
-			resp:     config.Config{Host: "host1", Port: 1},
-			expected: &config.Config{Host: "host1", Port: 1},
+			resp:     tidb.Config{Host: "host1", Port: 1},
+			expected: &tidb.Config{Host: "host1", Port: 1},
 		},
 		{
 			caseName: "GetSettings",
 			path:     "/settings",
 			method:   "GET",
 			failed:   true,
-			resp:     config.Config{Host: "host2", Port: 2},
+			resp:     tidb.Config{Host: "host2", Port: 2},
 			expected: nil,
 		},
 	}
