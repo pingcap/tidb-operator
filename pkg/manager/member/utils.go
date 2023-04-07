@@ -21,8 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
@@ -31,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	"github.com/Masterminds/semver"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -594,4 +593,9 @@ func BuildProbeCommand(tc *v1alpha1.TidbCluster, componentType string) (command 
 		command = append(command, "--key", key)
 	}
 	return
+}
+
+func SetServiceWhenPreferIPv6(svc *corev1.Service) {
+	policy := corev1.IPFamilyPolicySingleStack
+	svc.Spec.IPFamilyPolicy = &policy
 }

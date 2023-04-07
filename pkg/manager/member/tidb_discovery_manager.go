@@ -57,6 +57,7 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 
 	var (
 		clusterPolicyRule rbacv1.PolicyRule
+		preferIPv6        bool
 	)
 	switch cluster := obj.(type) {
 	case *v1alpha1.TidbCluster:
@@ -70,6 +71,7 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 			ResourceNames: []string{metaObj.GetName()},
 			Verbs:         []string{"get"},
 		}
+		preferIPv6 = cluster.Spec.PreferIPv6
 	case *v1alpha1.DMCluster:
 		clusterPolicyRule = rbacv1.PolicyRule{
 			APIGroups:     []string{v1alpha1.GroupName},
@@ -128,16 +130,16 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
 	// RBAC ensured, reconcile
-	_, err = m.deps.TypedControl.CreateOrUpdateService(obj, getTidbDiscoveryService(metaObj, deploy))
+	_, err = m.deps.TypedControl.CreateOrUpdateService(obj, getTidbDiscoveryService(metaObj, deploy, preferIPv6))
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
 	return nil
 }
 
-func getTidbDiscoveryService(obj metav1.Object, deploy *appsv1.Deployment) *corev1.Service {
+func getTidbDiscoveryService(obj metav1.Object, deploy *appsv1.Deployment, preferIPv6 bool) *corev1.Service {
 	meta, _ := getDiscoveryMeta(obj, controller.DiscoveryMemberName)
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
@@ -158,6 +160,10 @@ func getTidbDiscoveryService(obj metav1.Object, deploy *appsv1.Deployment) *core
 			Selector: deploy.Spec.Template.Labels,
 		},
 	}
+	if preferIPv6 {
+		SetServiceWhenPreferIPv6(svc)
+	}
+	return svc
 }
 
 func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object) (*appsv1.Deployment, error) {
