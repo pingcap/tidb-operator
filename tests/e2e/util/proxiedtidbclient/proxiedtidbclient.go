@@ -25,9 +25,9 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/tidb"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	"github.com/pingcap/tidb-operator/pkg/tidb"
 )
 
 type proxiedTiDBClient struct {
