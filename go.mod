@@ -283,7 +283,7 @@ replace github.com/uber-go/atomic => go.uber.org/atomic v1.5.0
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v14.2.0+incompatible
 
-replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.0
+replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.1
 
 replace k8s.io/controller-manager => k8s.io/controller-manager v0.20.15
 
