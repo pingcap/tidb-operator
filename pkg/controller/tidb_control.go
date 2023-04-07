@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb-operator/pkg/tidb"
+	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
