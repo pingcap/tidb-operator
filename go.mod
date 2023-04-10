@@ -191,7 +191,7 @@ require (
 	go.opencensus.io v0.22.3 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.23.0 // indirect
-	golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f // indirect
+	golang.org/x/crypto v0.0.0-20211202192323-5770296d904e // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
@@ -283,7 +283,7 @@ replace github.com/uber-go/atomic => go.uber.org/atomic v1.5.0
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v14.2.0+incompatible
 
-replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.0
+replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.1
 
 replace k8s.io/controller-manager => k8s.io/controller-manager v0.20.15
 
