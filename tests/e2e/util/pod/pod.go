@@ -17,6 +17,7 @@ import (
 	"context"
 	"time"
 
+	testutils "github.com/pingcap/tidb-operator/tests/e2e/util"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,7 +26,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/log"
-	testutils "k8s.io/kubernetes/test/utils"
 )
 
 // PodsAreChanged checks the given pods are changed or not (recreate, update).

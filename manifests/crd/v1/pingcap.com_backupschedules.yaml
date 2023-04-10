@@ -1062,8 +1062,6 @@ spec:
                                       type: object
                                   type: object
                                 type: array
-                            required:
-                            - sources
                             type: object
                           quobyte:
                             properties:
@@ -2385,8 +2383,6 @@ spec:
                                       type: object
                                   type: object
                                 type: array
-                            required:
-                            - sources
                             type: object
                           quobyte:
                             properties:
@@ -2705,7 +2701,6 @@ spec:
               storageSize:
                 type: string
             required:
-            - backupTemplate
             - logBackupTemplate
             - schedule
             type: object
