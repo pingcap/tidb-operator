@@ -14,19 +14,11 @@
 package proxiedtidbclient
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/tidb"
-	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 )
 
@@ -44,53 +36,6 @@ func (p *proxiedTiDBClient) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (
 
 func (p *proxiedTiDBClient) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.DBInfo, error) {
 	panic("implement when necessary")
-}
-
-func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*tidb.Config, error) {
-	tcName := tc.GetName()
-	ns := tc.GetNamespace()
-	scheme := tc.Scheme()
-
-	if tc.IsTLSClusterEnabled() {
-		rootCAs := x509.NewCertPool()
-		rootCAs.AppendCertsFromPEM(p.caCert)
-		p.httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: rootCAs,
-			},
-		}
-	}
-
-	podName := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
-	localHost, localPort, cancel, err := portforward.ForwardOnePort(p.fw, ns, fmt.Sprintf("pod/%s", podName), 10080)
-	if err != nil {
-		return nil, err
-	}
-	defer cancel()
-	u := url.URL{
-		Scheme: scheme,
-		Host:   fmt.Sprintf("%s:%d", localHost, localPort),
-		Path:   "/settings",
-	}
-	resp, err := p.httpClient.Get(u.String())
-	if err != nil {
-		return nil, err
-	}
-	defer httputil.DeferClose(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", resp.StatusCode, u.String()))
-		return nil, errMsg
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	info := tidb.Config{}
-	err = json.Unmarshal(body, &info)
-	if err != nil {
-		return nil, err
-	}
-	return &info, nil
 }
 
 func (p *proxiedTiDBClient) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {
