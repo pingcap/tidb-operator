@@ -2695,7 +2695,6 @@ spec:
             storageSize:
               type: string
           required:
-          - backupTemplate
           - logBackupTemplate
           - schedule
           type: object
