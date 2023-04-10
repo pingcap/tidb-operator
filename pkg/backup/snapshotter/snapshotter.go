@@ -16,7 +16,6 @@ package snapshotter
 import (
 	"errors"
 	"fmt"
-	"k8s.io/klog"
 	"regexp"
 	"sort"
 	"strconv"
@@ -31,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/klog/v2"
 )
 
 type Snapshotter interface {
