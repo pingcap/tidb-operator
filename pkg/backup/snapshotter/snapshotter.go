@@ -508,9 +508,11 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnap
 }
 
 // If a backup cluster has scaled in and the tidb-operator enabled advanced-statefulset(ref: https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/advanced-statefulset)
-// the name of pvc can be not sequential, eg: [tikv-db-tikv-0, tikv-db-tikv-1, tikv-db-tikv-2, tikv-db-tikv-6, tikv-db-tikv-7, tikv-db-tikv-8]
-// When create cluster, we should ensure pvc name sequential, so we should reset it to
-// [tikv-db-tikv-0, tikv-db-tikv-1, tikv-db-tikv-2, tikv-db-tikv-3, tikv-db-tikv-4, tikv-db-tikv-5]
+// the name of pvc can be not sequential, and every tikv pod can have multiple pvc, eg:
+// [tikv-db-tikv-0, tikv-db-tikv-2, tikv-db-tikv-3, tikv-raft-db-tikv-0, tikv-raft-db-tikv-2, tikv-raft-db-tikv-3]
+// the format of tikv pvc name is {volume_name}-{tc_name}-tikv-{index}
+// When create cluster, we should ensure pvc name with same volume sequential, so we should reset it to
+// [tikv-db-tikv-0, tikv-db-tikv-1, tikv-db-tikv-2, tikv-raft-db-tikv-0, tikv-raft-db-tikv-1, tikv-raft-db-tikv-2]
 func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs []*corev1.PersistentVolume) (
 	[]*corev1.PersistentVolumeClaim, []*corev1.PersistentVolume, error) {
 	type indexedPVC struct {
