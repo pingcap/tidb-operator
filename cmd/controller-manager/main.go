@@ -76,8 +76,6 @@ func main() {
 		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
 
-	metrics.RegisterMetrics()
-
 	hostName, err := os.Hostname()
 	if err != nil {
 		klog.Fatalf("failed to get hostname: %v", err)
