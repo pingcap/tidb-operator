@@ -14,20 +14,20 @@
 package proxiedtidbclient
 
 import (
+<<<<<<< HEAD
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+=======
+>>>>>>> 4fee39867 (*: remove the dep to github.com/pingcap/tidb (#4963))
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	"github.com/pingcap/tidb/config"
 )
 
 type proxiedTiDBClient struct {
@@ -46,6 +46,7 @@ func (p *proxiedTiDBClient) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*c
 	panic("implement when necessary")
 }
 
+<<<<<<< HEAD
 func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
@@ -93,6 +94,8 @@ func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32)
 	return &info, nil
 }
 
+=======
+>>>>>>> 4fee39867 (*: remove the dep to github.com/pingcap/tidb (#4963))
 func (p *proxiedTiDBClient) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {
 	panic("implement when necessary")
 }
