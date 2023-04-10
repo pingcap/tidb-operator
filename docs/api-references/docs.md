@@ -564,6 +564,7 @@ BackupSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>BackupTemplate is the specification of the backup structure to get scheduled.</p>
 </td>
 </tr>
@@ -3630,6 +3631,7 @@ BackupSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>BackupTemplate is the specification of the backup structure to get scheduled.</p>
 </td>
 </tr>
