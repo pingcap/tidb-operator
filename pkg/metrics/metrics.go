@@ -17,11 +17,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// RegisterMetrics registers all metrics of tidb-operator.
-func RegisterMetrics() {
-	prometheus.MustRegister(ClusterSpecReplicas)
-}
-
 // Label constants.
 const (
 	LabelNamespace = "namespace"
@@ -77,5 +72,8 @@ func init() {
 		ReconcileTime,
 		WorkerCount,
 		ActiveWorkers,
+
+		ClusterSpecReplicas,
+		ClusterUpdateErrors,
 	)
 }
