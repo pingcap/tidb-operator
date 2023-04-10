@@ -416,6 +416,10 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 			logBackup = backup
 			continue
 		}
+		// the backup status CommitTs will be empty after created. without this, all newly created backups will be GC'ed
+		if v1alpha1.IsBackupScheduled(backup) || v1alpha1.IsBackupRunning(backup) || v1alpha1.IsBackupPrepared(backup) {
+			continue
+		}
 		ascBackupList = append(ascBackupList, backup)
 	}
 
