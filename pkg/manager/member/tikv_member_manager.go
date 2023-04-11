@@ -344,6 +344,11 @@ func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) 
 	} else {
 		svc.Spec.Type = controller.GetServiceType(tc.Spec.Services, v1alpha1.TiKVMemberType.String())
 	}
+
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(&svc)
+	}
+
 	return &svc
 }
 

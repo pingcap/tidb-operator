@@ -337,7 +337,7 @@ func getNewCDCHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 	svcName := controller.TiCDCPeerMemberName(tcName)
 	svcLabel := label.New().Instance(instanceName).TiCDC().Labels()
 
-	svc := corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -358,7 +358,12 @@ func getNewCDCHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 			PublishNotReadyAddresses: true,
 		},
 	}
-	return &svc
+
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(svc)
+	}
+
+	return svc
 }
 
 // Only Use config file if cm is not nil

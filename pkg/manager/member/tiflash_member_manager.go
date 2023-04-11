@@ -325,7 +325,7 @@ func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 	svcName := controller.TiFlashPeerMemberName(tcName)
 	svcLabel := label.New().Instance(instanceName).TiFlash().Labels()
 
-	svc := corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -365,7 +365,12 @@ func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 			PublishNotReadyAddresses: true,
 		},
 	}
-	return &svc
+
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(svc)
+	}
+
+	return svc
 }
 
 func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
