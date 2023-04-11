@@ -596,6 +596,6 @@ func BuildProbeCommand(tc *v1alpha1.TidbCluster, componentType string) (command 
 }
 
 func SetServiceWhenPreferIPv6(svc *corev1.Service) {
-	policy := corev1.IPFamilyPolicySingleStack
+	policy := corev1.IPFamilyPolicyPreferDualStack
 	svc.Spec.IPFamilyPolicy = &policy
 }
