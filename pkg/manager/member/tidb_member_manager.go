@@ -677,6 +677,10 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 	if svcSpec.ClusterIP != nil {
 		tidbSvc.Spec.ClusterIP = *svcSpec.ClusterIP
 	}
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(tidbSvc)
+	}
+
 	return tidbSvc
 }
 
@@ -688,7 +692,7 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 	tidbSelector := label.New().Instance(instanceName).TiDB()
 	tidbLabel := tidbSelector.Copy().UsedByPeer().Labels()
 
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -709,6 +713,11 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 			PublishNotReadyAddresses: true,
 		},
 	}
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(svc)
+	}
+
+	return svc
 }
 
 func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
