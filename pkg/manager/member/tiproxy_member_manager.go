@@ -344,6 +344,9 @@ func (m *tiproxyMemberManager) syncProxyService(tc *v1alpha1.TidbCluster, peer b
 			},
 		)
 	}
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(newSvc)
+	}
 
 	oldSvcTmp, err := m.deps.ServiceLister.Services(tc.GetNamespace()).Get(newSvc.ObjectMeta.Name)
 	if errors.IsNotFound(err) {
