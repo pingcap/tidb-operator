@@ -508,12 +508,13 @@ echo "waiting for dm-master cluster ready timeout" >&2
 exit 1
 fi
 
-if nslookup ${domain} 2>/dev/null
+digRes=$(dig ${domain} A ${domain} AAAA +search +short 2>/dev/null)
+if [ -z "${digRes}" ]
 then
-echo "nslookup domain ${domain} success"
-break
+echo "dig domain ${domain} failed" >&2
 else
-echo "nslookup domain ${domain} failed" >&2
+echo "dig domain ${domain} success"
+break
 fi
 done
 
