@@ -1969,7 +1969,7 @@ exec /dm-master ${ARGS}
 		{
 			name:     "check-dns-v1",
 			modifyDM: func(tc *v1alpha1.DMCluster) {},
-			checkDNS: dmMasterCheckDNSV1,
+			checkDNS: DMMasterCheckDNSV1,
 			result: `#!/bin/sh
 
 # This script is used to start dm-master containers in kubernetes cluster

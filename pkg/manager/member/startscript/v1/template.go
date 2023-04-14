@@ -550,7 +550,8 @@ echo "/dm-master ${ARGS}"
 exec /dm-master ${ARGS}
 `))
 
-var dmMasterCheckDNSV1 string = `
+// TODO: refactor to confine the checking script within the package
+var DMMasterCheckDNSV1 string = `
 digRes=$(dig ${domain} A ${domain} AAAA +search +short 2>/dev/null)
 if [ -z "${digRes}" ]
 then
