@@ -5147,6 +5147,11 @@ spec:
                 type: string
               schedulerName:
                 type: string
+              startUpScriptVersion:
+                enum:
+                - ""
+                - v1
+                type: string
               statefulSetUpdateStrategy:
                 type: string
               suspendAction:
