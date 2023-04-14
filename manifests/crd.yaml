@@ -9280,6 +9280,11 @@ spec:
                       type:
                         type: string
                     type: object
+                  startUpScriptVersion:
+                    enum:
+                    - ""
+                    - v1
+                    type: string
                   statefulSetUpdateStrategy:
                     type: string
                   storageClassName:
@@ -9403,11 +9408,6 @@ spec:
                 default: Retain
                 type: string
               schedulerName:
-                type: string
-              startUpScriptVersion:
-                enum:
-                - ""
-                - v1
                 type: string
               statefulSetUpdateStrategy:
                 type: string
