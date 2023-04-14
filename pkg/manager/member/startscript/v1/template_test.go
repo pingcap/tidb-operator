@@ -14,6 +14,7 @@
 package v1
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1859,6 +1860,236 @@ conn.close()
 			if diff := cmp.Diff(tt.result, script); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
 			}
+		})
+	}
+}
+
+func TestRenderDMMasterStartScript(t *testing.T) {
+	tests := []struct {
+		name     string
+		modifyDM func(tc *v1alpha1.DMCluster)
+		checkDNS string
+		result   string
+	}{
+		{
+			name:     "empty-check-domain-script",
+			modifyDM: func(tc *v1alpha1.DMCluster) {},
+			result: `#!/bin/sh
+
+# This script is used to start dm-master containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+# the general form of variable PEER_SERVICE_NAME is: "<clusterName>-dm-master-peer"
+cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-dm-master-peer//'` + "`" +
+				`
+domain="${POD_NAME}.${PEER_SERVICE_NAME}"
+discovery_url="${cluster_name}-dm-discovery.${NAMESPACE}:10261"
+encoded_domain_url=` + "`" + `echo ${domain}:8291 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
+				`
+elapseTime=0
+period=1
+threshold=30
+while true; do
+sleep ${period}
+elapseTime=$(( elapseTime+period ))
+
+if [[ ${elapseTime} -ge ${threshold} ]]
+then
+echo "waiting for dm-master cluster ready timeout" >&2
+exit 1
+fi
+
+if nslookup ${domain} 2>/dev/null
+then
+echo "nslookup domain ${domain} success"
+break
+else
+echo "nslookup domain ${domain} failed" >&2
+fi
+done
+
+ARGS="--data-dir=/foo \
+--name=${POD_NAME} \
+--peer-urls=http://0.0.0.0:8291 \
+--advertise-peer-urls=http://${domain}:8291 \
+--master-addr=:8261 \
+--advertise-addr=${domain}:8261 \
+--config=/etc/dm-master/dm-master.toml \
+"
+
+if [[ -f /foo/join ]]
+then
+# The content of the join file is:
+#   demo-dm-master-0=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8291,demo-dm-master-1=http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8291
+# The --join args must be:
+#   --join=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8261,http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8261
+join=` + "`" + `cat /foo/join | sed -e 's/8291/8261/g' | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=${join%,}
+ARGS="${ARGS} --join=${join}"
+elif [[ ! -d /foo/member/wal ]]
+then
+until result=$(wget -qO- -T 3 ${discovery_url}/new/${encoded_domain_url}/dm 2>/dev/null); do
+echo "waiting for discovery service to return start args ..."
+sleep $((RANDOM % 5))
+done
+ARGS="${ARGS}${result}"
+fi
+
+echo "starting dm-master ..."
+sleep $((RANDOM % 10))
+echo "/dm-master ${ARGS}"
+exec /dm-master ${ARGS}
+`,
+		},
+		{
+			name:     "check-dns-v1",
+			modifyDM: func(tc *v1alpha1.DMCluster) {},
+			checkDNS: dmMasterCheckDNSV1,
+			result: `#!/bin/sh
+
+# This script is used to start dm-master containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+# the general form of variable PEER_SERVICE_NAME is: "<clusterName>-dm-master-peer"
+cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-dm-master-peer//'` + "`" +
+				`
+domain="${POD_NAME}.${PEER_SERVICE_NAME}"
+discovery_url="${cluster_name}-dm-discovery.${NAMESPACE}:10261"
+encoded_domain_url=` + "`" + `echo ${domain}:8291 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
+				`
+elapseTime=0
+period=1
+threshold=30
+while true; do
+sleep ${period}
+elapseTime=$(( elapseTime+period ))
+
+if [[ ${elapseTime} -ge ${threshold} ]]
+then
+echo "waiting for dm-master cluster ready timeout" >&2
+exit 1
+fi
+
+digRes=$(dig ${domain} A ${domain} AAAA +search +short 2>/dev/null)
+if [ -z "${digRes}" ]
+then
+echo "dig domain ${domain} failed" >&2
+else
+echo "dig domain ${domain} success"
+break
+fi
+done
+
+ARGS="--data-dir=/foo \
+--name=${POD_NAME} \
+--peer-urls=http://0.0.0.0:8291 \
+--advertise-peer-urls=http://${domain}:8291 \
+--master-addr=:8261 \
+--advertise-addr=${domain}:8261 \
+--config=/etc/dm-master/dm-master.toml \
+"
+
+if [[ -f /foo/join ]]
+then
+# The content of the join file is:
+#   demo-dm-master-0=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8291,demo-dm-master-1=http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8291
+# The --join args must be:
+#   --join=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8261,http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8261
+join=` + "`" + `cat /foo/join | sed -e 's/8291/8261/g' | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=${join%,}
+ARGS="${ARGS} --join=${join}"
+elif [[ ! -d /foo/member/wal ]]
+then
+until result=$(wget -qO- -T 3 ${discovery_url}/new/${encoded_domain_url}/dm 2>/dev/null); do
+echo "waiting for discovery service to return start args ..."
+sleep $((RANDOM % 5))
+done
+ARGS="${ARGS}${result}"
+fi
+
+echo "starting dm-master ..."
+sleep $((RANDOM % 10))
+echo "/dm-master ${ARGS}"
+exec /dm-master ${ARGS}
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := gomega.NewGomegaWithT(t)
+
+			dc := &v1alpha1.DMCluster{
+				Spec: v1alpha1.DMClusterSpec{
+					Master: v1alpha1.MasterSpec{},
+				},
+			}
+			dc.Name = "test-dc"
+			if tt.modifyDM != nil {
+				tt.modifyDM(dc)
+			}
+			model := &DMMasterStartScriptModel{
+				Scheme:            dc.Scheme(),
+				DataDir:           filepath.Join("/foo", dc.Spec.Master.DataSubDir),
+				CheckDomainScript: tt.checkDNS,
+			}
+
+			script, err := RenderDMMasterStartScript(model)
+			g.Expect(err).Should(gomega.Succeed())
+			if diff := cmp.Diff(tt.result, script); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+			g.Expect(validateScript(script)).Should(gomega.Succeed())
 		})
 	}
 }
