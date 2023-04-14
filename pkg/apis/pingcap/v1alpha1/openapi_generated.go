@@ -2191,13 +2191,6 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction"),
 						},
 					},
-					"startUpScriptVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Start up script version",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 				},
 			},
 		},
@@ -4464,6 +4457,13 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of dm-master-servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterConfigWraper"),
+						},
+					},
+					"startUpScriptVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Start up script version",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},

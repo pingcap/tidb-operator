@@ -775,7 +775,7 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 		Scheme:  dc.Scheme(),
 		DataDir: filepath.Join(dmMasterDataVolumeMountPath, dc.Spec.Master.DataSubDir),
 	}
-	if dc.Spec.StartUpScriptVersion == "v1" {
+	if dc.Spec.Master.StartUpScriptVersion == "v1" {
 		model.CheckDomainScript = v1.DMMasterCheckDNSV1
 	}
 	startScript, err := startscriptv1.RenderDMMasterStartScript(model)

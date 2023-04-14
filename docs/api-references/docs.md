@@ -1074,18 +1074,6 @@ SuspendAction
 <p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>startUpScriptVersion</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Start up script version</p>
-</td>
-</tr>
 </table>
 </td>
 </tr>
@@ -6168,18 +6156,6 @@ SuspendAction
 <p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>startUpScriptVersion</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Start up script version</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="dmclusterstatus">DMClusterStatus</h3>
@@ -8985,6 +8961,18 @@ MasterConfigWraper
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of dm-master-servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startUpScriptVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Start up script version</p>
 </td>
 </tr>
 </tbody>
