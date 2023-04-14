@@ -507,15 +507,14 @@ then
 echo "waiting for dm-master cluster ready timeout" >&2
 exit 1
 fi
-
-digRes=$(dig ${domain} A ${domain} AAAA +search +short 2>/dev/null)
-if [ -z "${digRes}" ]
+{{ if eq .CheckDomainScript ""}}
+if nslookup ${domain} 2>/dev/null
 then
-echo "dig domain ${domain} failed" >&2
-else
-echo "dig domain ${domain} success"
+echo "nslookup domain ${domain} success"
 break
-fi
+else
+echo "nslookup domain ${domain} failed" >&2
+fi {{- else}}{{.CheckDomainScript}}{{end}}
 done
 
 ARGS="--data-dir={{ .DataDir }} \
@@ -551,9 +550,20 @@ echo "/dm-master ${ARGS}"
 exec /dm-master ${ARGS}
 `))
 
+var dmMasterCheckDNSV1 string = `
+digRes=$(dig ${domain} A ${domain} AAAA +search +short 2>/dev/null)
+if [ -z "${digRes}" ]
+then
+echo "dig domain ${domain} failed" >&2
+else
+echo "dig domain ${domain} success"
+break
+fi`
+
 type DMMasterStartScriptModel struct {
-	Scheme  string
-	DataDir string
+	Scheme            string
+	DataDir           string
+	CheckDomainScript string
 }
 
 func RenderDMMasterStartScript(model *DMMasterStartScriptModel) (string, error) {
