@@ -194,7 +194,7 @@ func (m *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, 
 	if err != nil {
 		return err
 	}
-	
+
 	delete(oldSvc.Annotations, LastAppliedConfigAnnotation)
 	annoEqual := equality.Semantic.DeepEqual(newSvc.Annotations, oldSvc.Annotations)
 	labelEqual := equality.Semantic.DeepEqual(newSvc.Labels, oldSvc.Labels)
