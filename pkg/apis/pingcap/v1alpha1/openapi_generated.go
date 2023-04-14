@@ -2191,6 +2191,13 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction"),
 						},
 					},
+					"startUpScriptVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Start up script version",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
