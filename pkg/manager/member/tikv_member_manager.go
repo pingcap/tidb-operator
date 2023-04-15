@@ -208,6 +208,8 @@ func (m *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, 
 			return err
 		}
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		svc.Annotations = newSvc.Annotations
+		svc.Labels = newSvc.Labels
 		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
