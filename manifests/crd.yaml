@@ -1081,11 +1081,8 @@ spec:
                                   type: object
                               type: object
                             type: array
-<<<<<<< HEAD
                         required:
                         - sources
-=======
->>>>>>> 06bfd0f06 (Add startUpScriptVersion for dm-master spec (#4971))
                         type: object
                       quobyte:
                         properties:
