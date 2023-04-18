@@ -33,7 +33,6 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -185,28 +184,17 @@ func (m *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) err
 
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	if newSvc.Annotations == nil {
-		newSvc.Annotations = map[string]string{}
-	}
-	if oldSvc.Annotations == nil {
-		oldSvc.Annotations = map[string]string{}
-	}
-	if newSvc.Labels == nil {
-		newSvc.Labels = map[string]string{}
-	}
-	if oldSvc.Labels == nil {
-		oldSvc.Labels = map[string]string{}
-	}
-
 	equal, err := controller.ServiceEqual(newSvc, oldSvc)
 	if err != nil {
 		return err
 	}
-	delete(oldSvc.Annotations, LastAppliedConfigAnnotation)
-	annoEqual := equality.Semantic.DeepEqual(newSvc.Annotations, oldSvc.Annotations)
-	labelEqual := equality.Semantic.DeepEqual(newSvc.Labels, oldSvc.Labels)
 
-	if !equal || !annoEqual || !labelEqual {
+	annLabelEqual, err := controller.ServiceAnnLabelEqual(newSvc, oldSvc)
+	if err != nil {
+		return err
+	}
+
+	if !equal || !annLabelEqual {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
 		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
