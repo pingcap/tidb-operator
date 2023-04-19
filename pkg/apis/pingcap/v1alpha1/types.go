@@ -2619,6 +2619,9 @@ type DMClusterSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // DMClusterStatus represents the current status of a dm cluster.
