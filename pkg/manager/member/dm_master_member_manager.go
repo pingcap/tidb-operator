@@ -158,7 +158,7 @@ func (m *masterMemberManager) syncMasterHeadlessServiceForDMCluster(dc *v1alpha1
 		return fmt.Errorf("syncMasterHeadlessServiceForDMCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.DMMasterPeerMemberName(dcName), ns, dcName, err)
 	}
 
-	err = m.deps.ServiceControl.SyncComponentService(
+	_, err = m.deps.ServiceControl.SyncComponentService(
 		dc,
 		newSvc,
 		oldSvc,
