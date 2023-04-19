@@ -82,6 +82,9 @@ type TidbNGMonitoringSpec struct {
 
 	// NGMonitoring is spec of ng monitoring
 	NGMonitoring NGMonitoringSpec `json:"ngMonitoring"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // TidbNGMonitoringStatus is status of tidb ng monitoring
