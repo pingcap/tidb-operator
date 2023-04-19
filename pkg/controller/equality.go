@@ -93,29 +93,6 @@ func ServiceEqual(newSvc, oldSvc *corev1.Service) (bool, error) {
 	return false, nil
 }
 
-// ServiceAnnLabelEqual compares the new Services's annotation and lables with old Services
-func ServiceAnnLabelEqual(newSvc, oldSvc *corev1.Service) (bool, error) {
-	if newSvc == nil || oldSvc == nil {
-		return false, fmt.Errorf("ServiceAnnLabelEqual: newservice or oldService is nil")
-	}
-	if newSvc.Annotations == nil {
-		newSvc.Annotations = map[string]string{}
-	}
-	if oldSvc.Annotations == nil {
-		oldSvc.Annotations = map[string]string{}
-	}
-	if newSvc.Labels == nil {
-		newSvc.Labels = map[string]string{}
-	}
-	if oldSvc.Labels == nil {
-		oldSvc.Labels = map[string]string{}
-	}
-	delete(oldSvc.Annotations, LastAppliedConfigAnnotation)
-	annoEqual := apiequality.Semantic.DeepEqual(newSvc.Annotations, oldSvc.Annotations)
-	labelEqual := apiequality.Semantic.DeepEqual(newSvc.Labels, oldSvc.Labels)
-	return annoEqual && labelEqual, nil
-}
-
 func IngressV1beta1Equal(newIngress, oldIngres *extensionsv1beta1.Ingress) (bool, error) {
 	oldIngressSpec := extensionsv1beta1.IngressSpec{}
 	if lastAppliedConfig, ok := oldIngres.Annotations[LastAppliedConfigAnnotation]; ok {
