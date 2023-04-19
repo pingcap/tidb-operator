@@ -362,26 +362,15 @@ func (m *tiproxyMemberManager) syncProxyService(tc *v1alpha1.TidbCluster, peer b
 
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
-	if err != nil {
-		return err
-	}
+	_, err = m.deps.ServiceControl.SyncComponentService(
+		tc,
+		newSvc,
+		oldSvc,
+		func(*corev1.Service) {
+			newSvc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		})
 
-	annLabelEqual, err := controller.ServiceAnnLabelEqual(newSvc, oldSvc)
 	if err != nil {
-		return err
-	}
-
-	if !equal || !annLabelEqual {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		svc.Annotations = newSvc.Annotations
-		svc.Labels = newSvc.Labels
-		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 

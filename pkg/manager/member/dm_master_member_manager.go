@@ -121,30 +121,15 @@ func (m *masterMemberManager) syncMasterServiceForDMCluster(dc *v1alpha1.DMClust
 
 	util.RetainManagedFields(newSvc, oldSvc)
 
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
-	if err != nil {
-		return err
-	}
+	_, err = m.deps.ServiceControl.SyncComponentService(
+		dc,
+		newSvc,
+		oldSvc,
+		func(*corev1.Service) {
+			newSvc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		})
 
-	annLabelEqual, err := controller.ServiceAnnLabelEqual(newSvc, oldSvc)
 	if err != nil {
-		return err
-	}
-
-	if !equal || !annLabelEqual {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		svc.Annotations = newSvc.Annotations
-		svc.Labels = newSvc.Labels
-		for k, v := range newSvc.Annotations {
-			svc.Annotations[k] = v
-		}
-		_, err = m.deps.ServiceControl.UpdateService(dc, &svc)
 		return err
 	}
 
@@ -173,26 +158,13 @@ func (m *masterMemberManager) syncMasterHeadlessServiceForDMCluster(dc *v1alpha1
 		return fmt.Errorf("syncMasterHeadlessServiceForDMCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.DMMasterPeerMemberName(dcName), ns, dcName, err)
 	}
 
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
-	if err != nil {
-		return err
-	}
+	err = m.deps.ServiceControl.SyncComponentService(
+		dc,
+		newSvc,
+		oldSvc,
+		nil)
 
-	annLabelEqual, err := controller.ServiceAnnLabelEqual(newSvc, oldSvc)
 	if err != nil {
-		return err
-	}
-
-	if !equal || !annLabelEqual {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		svc.Annotations = newSvc.Annotations
-		svc.Labels = newSvc.Labels
-		_, err = m.deps.ServiceControl.UpdateService(dc, &svc)
 		return err
 	}
 
