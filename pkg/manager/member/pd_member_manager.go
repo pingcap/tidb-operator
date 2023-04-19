@@ -129,7 +129,7 @@ func (m *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) 
 
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	err = m.deps.ServiceControl.SyncComponentService(
+	_, err = m.deps.ServiceControl.SyncComponentService(
 		tc,
 		newSvc,
 		oldSvc,
