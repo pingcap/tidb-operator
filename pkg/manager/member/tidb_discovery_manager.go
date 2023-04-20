@@ -79,6 +79,7 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 			ResourceNames: []string{metaObj.GetName()},
 			Verbs:         []string{"get"},
 		}
+		preferIPv6 = cluster.Spec.PreferIPv6
 	default:
 		klog.Warningf("unsupported type %T for discovery", obj)
 		return nil

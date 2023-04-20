@@ -142,7 +142,7 @@ func getNewWorkerHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Ser
 	svcName := controller.DMWorkerPeerMemberName(dcName)
 	svcLabel := label.NewDM().Instance(instanceName).DMWorker().Labels()
 
-	svc := corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -163,7 +163,12 @@ func getNewWorkerHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Ser
 			PublishNotReadyAddresses: true,
 		},
 	}
-	return &svc
+
+	if dc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(svc)
+	}
+
+	return svc
 }
 
 func (m *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.DMCluster) error {
