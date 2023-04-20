@@ -462,6 +462,11 @@ func (m *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMClu
 			masterSvc.Spec.Ports[0].Name = *svcSpec.PortName
 		}
 	}
+
+	if dc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(masterSvc)
+	}
+
 	return masterSvc
 }
 
@@ -473,7 +478,7 @@ func getNewMasterHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Ser
 	masterSelector := label.NewDM().Instance(instanceName).DMMaster()
 	masterLabels := masterSelector.Copy().UsedByPeer().Labels()
 
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -494,6 +499,12 @@ func getNewMasterHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Ser
 			PublishNotReadyAddresses: true,
 		},
 	}
+
+	if dc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(svc)
+	}
+
+	return svc
 }
 
 func (m *masterMemberManager) masterStatefulSetIsUpgrading(set *apps.StatefulSet, dc *v1alpha1.DMCluster) (bool, error) {

@@ -1071,6 +1071,12 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		}
 	}
 
+	for _, svc := range services {
+		if monitor.Spec.PreferIPv6 {
+			member.SetServiceWhenPreferIPv6(svc)
+		}
+	}
+
 	return services
 }
 
