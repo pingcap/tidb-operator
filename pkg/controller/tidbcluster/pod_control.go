@@ -328,8 +328,8 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		if err != nil {
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status for pod %s/%s", pod.Namespace, pod.Name)
 		}
-		if isStable, reason := pdapi.IsClusterStable(pdClient); !isStable {
-			return reconcile.Result{RequeueAfter: c.recheckClusterStableDuration}, perrors.Annotatef(err, "cluster is unstable: %s", reason)
+		if unstableReason := pdapi.IsClusterStable(pdClient); unstableReason != "" {
+			return reconcile.Result{RequeueAfter: c.recheckClusterStableDuration}, perrors.Annotatef(err, "cluster is unstable: %s", unstableReason)
 		}
 		err = pdClient.BeginEvictLeader(storeID)
 		if err != nil {
