@@ -2629,6 +2629,11 @@ type MasterSpec struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *MasterConfigWraper `json:"config,omitempty"`
+
+	// Start up script version
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1"
+	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
 }
 
 type MasterServiceSpec struct {

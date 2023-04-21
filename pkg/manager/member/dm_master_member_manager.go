@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
+	v1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -770,10 +771,14 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	startScript, err := startscriptv1.RenderDMMasterStartScript(&startscriptv1.DMMasterStartScriptModel{
+	model := &startscriptv1.DMMasterStartScriptModel{
 		Scheme:  dc.Scheme(),
 		DataDir: filepath.Join(dmMasterDataVolumeMountPath, dc.Spec.Master.DataSubDir),
-	})
+	}
+	if dc.Spec.Master.StartUpScriptVersion == "v1" {
+		model.CheckDomainScript = v1.DMMasterCheckDNSV1
+	}
+	startScript, err := startscriptv1.RenderDMMasterStartScript(model)
 	if err != nil {
 		return nil, err
 	}

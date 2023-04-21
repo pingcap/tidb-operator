@@ -8963,6 +8963,18 @@ MasterConfigWraper
 <p>Config is the Configuration of dm-master-servers</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>startUpScriptVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Start up script version</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="masterstatus">MasterStatus</h3>
