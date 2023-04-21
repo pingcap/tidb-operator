@@ -44,6 +44,7 @@ const (
 	// TODO: change to use minReadySeconds in sts spec
 	// See https://kubernetes.io/blog/2021/08/27/minreadyseconds-statefulsets/
 	annoKeyTiKVMinReadySeconds = "tidb.pingcap.com/tikv-min-ready-seconds"
+	annoKeySkipStoreStateCheck = "tidb.pingcap.com/skip-store-check-for-upgrade"
 )
 
 type TiKVUpgrader interface {
@@ -71,8 +72,8 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	var status *v1alpha1.TiKVStatus
 	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
-		if ready, reason := isTiKVReadyToUpgrade(u.deps.PDControl, meta); !ready {
-			klog.Infof("TidbCluster: [%s/%s], can not upgrade tikv because: %s", ns, tcName, reason)
+		if notReadyReason := u.isTiKVReadyToUpgrade(meta); notReadyReason != "" {
+			klog.Infof("TidbCluster: [%s/%s], can not upgrade tikv because: %s", ns, tcName, notReadyReason)
 			_, podSpec, err := GetLastAppliedConfig(oldSet)
 			if err != nil {
 				return err
@@ -175,14 +176,23 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			continue
 		}
 
-		if isStable, reason := pdapi.IsClusterStable(controller.GetPDClient(u.deps.PDControl, tc)); !isStable {
-			return controller.RequeueErrorf("cluster is unstable: %s", reason)
+		// verify that cluster is stable before each node upgrade
+		if unstableReason := u.isClusterStable(tc); unstableReason != "" {
+			return controller.RequeueErrorf("cluster is unstable: %s", unstableReason)
 		}
 
 		return u.upgradeTiKVPod(tc, i, newSet)
 	}
 
 	return nil
+}
+
+func (u *tikvUpgrader) isClusterStable(tc *v1alpha1.TidbCluster) string {
+	if skip, ok := tc.Annotations[annoKeySkipStoreStateCheck]; ok && skip != "false" {
+		// bypass cluster stability check to force the upgrade
+		return ""
+	}
+	return pdapi.IsClusterStable(controller.GetPDClient(u.deps.PDControl, tc))
 }
 
 func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
@@ -496,23 +506,23 @@ func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *
 	return nil
 }
 
-func isTiKVReadyToUpgrade(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) (bool, string) {
+func (u *tikvUpgrader) isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) string {
 	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase {
-		return false, fmt.Sprintf("tiflash status is %s", tc.Status.TiFlash.Phase)
+		return fmt.Sprintf("tiflash status is %s", tc.Status.TiFlash.Phase)
 	}
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.PD.Phase == v1alpha1.ScalePhase {
-		return false, fmt.Sprintf("pd status is %s", tc.Status.PD.Phase)
+		return fmt.Sprintf("pd status is %s", tc.Status.PD.Phase)
 	}
 	if tc.TiKVScaling() {
-		return false, fmt.Sprintf("tikv status is %s", tc.Status.TiKV.Phase)
+		return fmt.Sprintf("tikv status is %s", tc.Status.TiKV.Phase)
 	}
 	if tc.Status.TiKV.Phase != v1alpha1.UpgradePhase { // skip check if cluster upgrade is already in progress
-		if isStable, reason := pdapi.IsClusterStable(controller.GetPDClient(pdControl, tc)); !isStable {
-			return false, fmt.Sprintf("cluster is not stable: %s", reason)
+		if unstableReason := u.isClusterStable(tc); unstableReason != "" {
+			return fmt.Sprintf("cluster is not stable: %s", unstableReason)
 		}
 	}
 
-	return true, ""
+	return ""
 }
 
 type fakeTiKVUpgrader struct{}

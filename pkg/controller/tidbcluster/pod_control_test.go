@@ -65,9 +65,22 @@ func TestTiKVPodSync(t *testing.T) {
 	c := NewPodController(deps)
 	pdClient := pdapi.NewFakePDClient()
 	c.testPDClient = pdClient
-	setTiKVState(pdClient, v1alpha1.TiKVStateDown)
 	c.recheckLeaderCountDuration = time.Millisecond * 100
 	c.recheckClusterStableDuration = time.Millisecond * 100
+	var tikvStatus atomic.Value
+	tikvStatus.Store(v1alpha1.TiKVStateDown)
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+		storesInfo := &pdapi.StoresInfo{
+			Stores: []*pdapi.StoreInfo{
+				{
+					Store: &pdapi.MetaStore{
+						StateName: tikvStatus.Load().(string),
+					},
+				},
+			},
+		}
+		return storesInfo, nil
+	})
 
 	stop := make(chan struct{})
 	go func() {
@@ -123,7 +136,7 @@ func TestTiKVPodSync(t *testing.T) {
 		return err == nil
 	}, time.Second*5, interval).Should(BeTrue(), "should not delete pod while cluster is unstable")
 
-	setTiKVState(pdClient, v1alpha1.TiKVStateUp)
+	tikvStatus.Store(v1alpha1.TiKVStateUp)
 	g.Eventually(func() bool {
 		_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 		return errors.IsNotFound(err)
@@ -136,21 +149,6 @@ func TestTiKVPodSync(t *testing.T) {
 		stat := c.getPodStat(pod)
 		return stat.finishAnnotationCounts
 	}, timeout, interval).ShouldNot(Equal(0), "should finish annotation")
-}
-
-func setTiKVState(pdClient *pdapi.FakePDClient, statusName string) {
-	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-		storesInfo := &pdapi.StoresInfo{
-			Stores: []*pdapi.StoreInfo{
-				{
-					Store: &pdapi.MetaStore{
-						StateName: statusName,
-					},
-				},
-			},
-		}
-		return storesInfo, nil
-	})
 }
 
 func TestPDPodSync(t *testing.T) {
