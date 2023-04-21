@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -70,7 +71,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	var status *v1alpha1.TiKVStatus
 	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
-		if ready, reason := isTiKVReadyToUpgrade(meta); !ready {
+		if ready, reason := isTiKVReadyToUpgrade(u.deps.PDControl, meta); !ready {
 			klog.Infof("TidbCluster: [%s/%s], can not upgrade tikv because: %s", ns, tcName, reason)
 			_, podSpec, err := GetLastAppliedConfig(oldSet)
 			if err != nil {
@@ -172,6 +173,10 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			}
 
 			continue
+		}
+
+		if isStable, reason := pdapi.IsClusterStable(controller.GetPDClient(u.deps.PDControl, tc)); !isStable {
+			return controller.RequeueErrorf("cluster is unstable: %s", reason)
 		}
 
 		return u.upgradeTiKVPod(tc, i, newSet)
@@ -491,7 +496,7 @@ func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *
 	return nil
 }
 
-func isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) (bool, string) {
+func isTiKVReadyToUpgrade(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) (bool, string) {
 	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase {
 		return false, fmt.Sprintf("tiflash status is %s", tc.Status.TiFlash.Phase)
 	}
@@ -500,6 +505,11 @@ func isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) (bool, string) {
 	}
 	if tc.TiKVScaling() {
 		return false, fmt.Sprintf("tikv status is %s", tc.Status.TiKV.Phase)
+	}
+	if tc.Status.TiKV.Phase != v1alpha1.UpgradePhase { // skip check if cluster upgrade is already in progress
+		if isStable, reason := pdapi.IsClusterStable(controller.GetPDClient(pdControl, tc)); !isStable {
+			return false, fmt.Sprintf("cluster is not stable: %s", reason)
+		}
 	}
 
 	return true, ""

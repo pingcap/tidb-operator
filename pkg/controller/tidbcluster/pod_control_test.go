@@ -63,8 +63,11 @@ func TestTiKVPodSync(t *testing.T) {
 	kvClient := &kvClient{}
 	fakeTiKVControl.SetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, kvClient)
 	c := NewPodController(deps)
-	c.testPDClient = pdapi.NewFakePDClient()
+	pdClient := pdapi.NewFakePDClient()
+	c.testPDClient = pdClient
+	setTiKVState(pdClient, v1alpha1.TiKVStateDown)
 	c.recheckLeaderCountDuration = time.Millisecond * 100
+	c.recheckClusterStableDuration = time.Millisecond * 100
 
 	stop := make(chan struct{})
 	go func() {
@@ -114,10 +117,17 @@ func TestTiKVPodSync(t *testing.T) {
 	g.Expect(err).Should(Succeed())
 
 	atomic.StoreInt32(&kvClient.leaderCount, 0)
+
+	g.Consistently(func() bool {
+		_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+		return err == nil
+	}, time.Second*5, interval).Should(BeTrue(), "should not delete pod while cluster is unstable")
+
+	setTiKVState(pdClient, v1alpha1.TiKVStateUp)
 	g.Eventually(func() bool {
 		_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 		return errors.IsNotFound(err)
-	}, timeout, interval).Should(BeTrue(), "should delete pod if leader count is 0")
+	}, timeout, interval).Should(BeTrue(), "should delete pod if leader count is 0 and cluster is stable")
 
 	pod = newTiKVPod(tc)
 	pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
@@ -126,6 +136,21 @@ func TestTiKVPodSync(t *testing.T) {
 		stat := c.getPodStat(pod)
 		return stat.finishAnnotationCounts
 	}, timeout, interval).ShouldNot(Equal(0), "should finish annotation")
+}
+
+func setTiKVState(pdClient *pdapi.FakePDClient, statusName string) {
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+		storesInfo := &pdapi.StoresInfo{
+			Stores: []*pdapi.StoreInfo{
+				{
+					Store: &pdapi.MetaStore{
+						StateName: statusName,
+					},
+				},
+			},
+		}
+		return storesInfo, nil
+	})
 }
 
 func TestPDPodSync(t *testing.T) {
