@@ -104,6 +104,9 @@ type TidbDashboardSpec struct {
 	// Optional: Defaults to false
 	// +optional
 	Experimental *bool `json:"experimental,omitempty"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // TidbDashboardStatus is status of tidb dashboard.

@@ -2296,6 +2296,8 @@ spec:
                       type: string
                   type: object
               type: object
+            preferIPv6:
+              type: boolean
             priorityClassName:
               type: string
             pvReclaimPolicy:
