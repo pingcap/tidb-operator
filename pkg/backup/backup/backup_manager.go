@@ -198,7 +198,8 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	backupJobName := backup.GetBackupJobName()
 
 	// check whether backup should wait and requeue
-	if logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup); shouldLogBackupCommandRequeue(backup) {
+	if shouldLogBackupCommandRequeue(backup) {
+		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		klog.Infof("log backup %s/%s subcommand %s should wait log backup start complete, will requeue.", ns, name, logBackupSubcommand)
 		return controller.RequeueErrorf(fmt.Sprintf("log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand))
 	}
