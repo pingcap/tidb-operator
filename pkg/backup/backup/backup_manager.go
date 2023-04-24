@@ -14,6 +14,7 @@
 package backup
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -253,13 +254,24 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 		// not found backup job, so we need to create it
 		job, reason, err = bm.makeBRBackupJob(backup)
 		if err != nil {
-			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Command: logBackupSubcommand,
-				Type:    v1alpha1.BackupRetryTheFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  reason,
-				Message: err.Error(),
-			}, nil)
+			// don't retry on dup metadata file existing error
+			if reason == "FileExistedInExternalStorage" {
+				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+					Command: logBackupSubcommand,
+					Type:    v1alpha1.BackupFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  reason,
+					Message: err.Error(),
+				}, nil)
+			} else {
+				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+					Command: logBackupSubcommand,
+					Type:    v1alpha1.BackupRetryTheFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  reason,
+					Message: err.Error(),
+				}, nil)
+			}
 			return nil, nil, "", err
 		}
 
@@ -677,7 +689,19 @@ func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, cs
 		return "FileExistedInExternalStorageFailed", err
 	}
 	if exist {
-		return "FileExistedInExternalStorage", fmt.Errorf("%s exist", constants.ClusterBackupMeta)
+		// check to see if content of existing meta file is identical to what to save
+		// if yes, reuse it; else fail the backup
+		existingClustermeta, err := externalStorage.ReadAll(ctx, constants.ClusterBackupMeta)
+		if err != nil {
+			return "ExistingMetaFileReadFailed", err
+		}
+
+		if bytes.Equal(data, existingClustermeta) {
+			klog.Infof("reuse existing cluster meta in external storage")
+			return "", nil
+		} else {
+			return "FileExistedInExternalStorage", fmt.Errorf("%s exist", constants.ClusterBackupMeta)
+		}
 	}
 
 	err = externalStorage.WriteAll(ctx, constants.ClusterBackupMeta, data, nil)
