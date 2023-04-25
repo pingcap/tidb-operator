@@ -133,9 +133,7 @@ func (m *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) 
 		tc,
 		newSvc,
 		oldSvc,
-		func(*corev1.Service) {
-			newSvc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		})
+		false)
 
 	if err != nil {
 		return err
@@ -170,7 +168,7 @@ func (m *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbC
 		tc,
 		newSvc,
 		oldSvc,
-		nil)
+		false)
 
 	if err != nil {
 		return err

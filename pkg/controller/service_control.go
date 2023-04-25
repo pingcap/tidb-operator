@@ -41,7 +41,7 @@ type ServiceControlInterface interface {
 	CreateService(runtime.Object, *corev1.Service) error
 	UpdateService(runtime.Object, *corev1.Service) (*corev1.Service, error)
 	DeleteService(runtime.Object, *corev1.Service) error
-	SyncComponentService(runtime.Object, *corev1.Service, *corev1.Service, func(*corev1.Service)) (*corev1.Service, error)
+	SyncComponentService(runtime.Object, *corev1.Service, *corev1.Service, bool) (*corev1.Service, error)
 }
 
 type realServiceControl struct {
@@ -133,7 +133,7 @@ func (c *realServiceControl) recordServiceEvent(verb, name, kind string, object 
 	}
 }
 
-func (c *realServiceControl) SyncComponentService(tc runtime.Object, newSvc, oldSvc *corev1.Service, syncClusterIPFn func(newSvc *corev1.Service)) (*corev1.Service, error) {
+func (c *realServiceControl) SyncComponentService(tc runtime.Object, newSvc, oldSvc *corev1.Service, isHeadlessSvc bool) (*corev1.Service, error) {
 	equal, err := ServiceEqual(newSvc, oldSvc)
 	if err != nil {
 		return nil, err
@@ -166,8 +166,8 @@ func (c *realServiceControl) SyncComponentService(tc runtime.Object, newSvc, old
 			return nil, err
 		}
 
-		if syncClusterIPFn != nil {
-			syncClusterIPFn(newSvc)
+		if isHeadlessSvc {
+			svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		}
 		for k, v := range newSvc.Annotations {
 			svc.Annotations[k] = v
@@ -267,7 +267,7 @@ func (c *FakeServiceControl) UpdateService(_ runtime.Object, svc *corev1.Service
 	return svc, c.SvcIndexer.Update(svc)
 }
 
-func (c *FakeServiceControl) SyncComponentService(tc runtime.Object, svc *corev1.Service, _ *corev1.Service, _ func(*corev1.Service)) (*corev1.Service, error) {
+func (c *FakeServiceControl) SyncComponentService(tc runtime.Object, svc *corev1.Service, _ *corev1.Service, _ bool) (*corev1.Service, error) {
 	return c.UpdateService(tc, svc)
 }
 

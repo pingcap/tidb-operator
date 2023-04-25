@@ -125,9 +125,7 @@ func (m *masterMemberManager) syncMasterServiceForDMCluster(dc *v1alpha1.DMClust
 		dc,
 		newSvc,
 		oldSvc,
-		func(*corev1.Service) {
-			newSvc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		})
+		true)
 
 	if err != nil {
 		return err
@@ -162,7 +160,7 @@ func (m *masterMemberManager) syncMasterHeadlessServiceForDMCluster(dc *v1alpha1
 		dc,
 		newSvc,
 		oldSvc,
-		nil)
+		false)
 
 	if err != nil {
 		return err
