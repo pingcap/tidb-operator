@@ -188,9 +188,7 @@ func (m *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) err
 		tc,
 		newSvc,
 		oldSvc,
-		func(*corev1.Service) {
-			newSvc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		})
+		true)
 
 	if err != nil {
 		return err

@@ -159,7 +159,7 @@ func TestSyncComponentServiceSucceed(t *testing.T) {
 		update := action.(core.UpdateAction)
 		return true, update.GetObject(), nil
 	})
-	updateSvc, err := control.SyncComponentService(tc, svc, oldSvc, nil)
+	updateSvc, err := control.SyncComponentService(tc, svc, oldSvc, true)
 	g.Expect(err).To(Succeed())
 	g.Expect(updateSvc.Annotations["newAnn"]).To(Equal("newAnnVal"))
 	_, ok := updateSvc.Annotations[LastAppliedConfigAnnotation]

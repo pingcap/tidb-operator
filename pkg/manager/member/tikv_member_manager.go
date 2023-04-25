@@ -180,9 +180,7 @@ func (m *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, 
 		tc,
 		newSvc,
 		oldSvc,
-		func(*corev1.Service) {
-			newSvc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		})
+		true)
 
 	if err != nil {
 		return err

@@ -121,7 +121,7 @@ func (m *workerMemberManager) syncWorkerHeadlessServiceForDMCluster(dc *v1alpha1
 		dc,
 		newSvc,
 		oldSvc,
-		nil)
+		false)
 
 	if err != nil {
 		return err
