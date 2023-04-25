@@ -394,22 +394,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "tikv can not upgrade when cluster is unstable",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-			},
-			changeOldSet: func(oldSet *apps.StatefulSet) {
-				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
-			},
-			clusterIsUnstable: true,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
-				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
-			},
-		},
-		{
 			name: "tikv can upgrade when cluster is unstable and the ann is present",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
@@ -456,7 +440,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "unstable cluster between 1st and 2nd nodes upgrade",
+			name: "unstable cluster",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
@@ -480,6 +464,37 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
 				_, exist := pods[TikvPodName(upgradeTcName, 1)].Annotations[annoKeyEvictLeaderBeginTime]
 				g.Expect(exist).To(BeFalse())
+			},
+		},
+		{
+			name: "unstable cluster and tidb.pingcap.com/skip-store-check-for-upgrade",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiKV.Synced = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
+				if tc.Annotations == nil {
+					tc.Annotations = map[string]string{}
+				}
+				tc.Annotations[annoKeySkipStoreStateCheck] = "true"
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				oldSet.Status.CurrentReplicas = 2
+				oldSet.Status.UpdatedReplicas = 1
+				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(2)
+			},
+			clusterIsUnstable: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				// this error happens only if we ignored unstable cluster message
+				g.Expect(err.Error()).To(ContainSubstring("upgradeTiKVPod: evicting leader of pod upgrader-tikv-1 for tc default/upgrader"))
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
+				_, exist := pods[TikvPodName(upgradeTcName, 1)].Annotations[annoKeyEvictLeaderBeginTime]
+				g.Expect(exist).To(BeTrue())
 			},
 		},
 		{
