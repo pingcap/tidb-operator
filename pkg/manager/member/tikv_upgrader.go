@@ -516,12 +516,6 @@ func (u *tikvUpgrader) isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) string {
 	if tc.TiKVScaling() {
 		return fmt.Sprintf("tikv status is %s", tc.Status.TiKV.Phase)
 	}
-	if tc.Status.TiKV.Phase != v1alpha1.UpgradePhase { // skip check if cluster upgrade is already in progress
-		if unstableReason := u.isClusterStable(tc); unstableReason != "" {
-			return fmt.Sprintf("cluster is not stable: %s", unstableReason)
-		}
-	}
-
 	return ""
 }
 
