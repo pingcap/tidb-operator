@@ -104,42 +104,6 @@ func (c *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*
 	return &info, nil
 }
 
-<<<<<<< HEAD
-func (c *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
-	httpClient, err := c.getHTTPClient(tc)
-	if err != nil {
-		return nil, err
-	}
-
-	baseURL := c.getBaseURL(tc, ordinal)
-	url := fmt.Sprintf("%s/settings", baseURL)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer httputil.DeferClose(res.Body)
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL: %s", string(body), res.StatusCode, url))
-		return nil, errMsg
-	}
-	info := config.Config{}
-	err = json.Unmarshal(body, &info)
-	if err != nil {
-		return nil, err
-	}
-	return &info, nil
-}
-
-=======
->>>>>>> 4fee39867 (*: remove the dep to github.com/pingcap/tidb (#4963))
 // SetServerLabels update TiDB's labels config
 func (c *defaultTiDBControl) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {
 	httpClient, err := c.getHTTPClient(tc)
