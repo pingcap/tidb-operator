@@ -23,7 +23,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
-	"github.com/pingcap/tidb/config"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
@@ -44,8 +43,6 @@ type TiDBControlInterface interface {
 	GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error)
 	// Get TIDB info return tidb's DBInfo
 	GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error)
-	// GetSettings return the TiDB instance settings
-	GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error)
 	// SetServerLabels update TiDB's labels config
 	SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error
 }
@@ -107,39 +104,6 @@ func (c *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*
 	return &info, nil
 }
 
-func (c *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
-	httpClient, err := c.getHTTPClient(tc)
-	if err != nil {
-		return nil, err
-	}
-
-	baseURL := c.getBaseURL(tc, ordinal)
-	url := fmt.Sprintf("%s/settings", baseURL)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer httputil.DeferClose(res.Body)
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL: %s", string(body), res.StatusCode, url))
-		return nil, errMsg
-	}
-	info := config.Config{}
-	err = json.Unmarshal(body, &info)
-	if err != nil {
-		return nil, err
-	}
-	return &info, nil
-}
-
 // SetServerLabels update TiDB's labels config
 func (c *defaultTiDBControl) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {
 	httpClient, err := c.getHTTPClient(tc)
@@ -193,7 +157,6 @@ type FakeTiDBControl struct {
 	healthInfo     map[string]bool
 	tiDBInfo       *DBInfo
 	getInfoError   error
-	tidbConfig     *config.Config
 	setLabelsError error
 }
 
@@ -224,10 +187,6 @@ func (c *FakeTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bo
 
 func (c *FakeTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error) {
 	return c.tiDBInfo, c.getInfoError
-}
-
-func (c *FakeTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
-	return c.tidbConfig, c.getInfoError
 }
 
 func (c *FakeTiDBControl) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {

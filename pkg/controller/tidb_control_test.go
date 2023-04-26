@@ -23,7 +23,6 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -209,64 +208,6 @@ func TestInfo(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(result).To(Equal(c.expected))
 		}
-	}
-}
-
-func TestSettings(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	cases := []struct {
-		caseName string
-		path     string
-		method   string
-		failed   bool
-		resp     config.Config
-		expected *config.Config
-	}{
-		{
-			caseName: "GetSettings",
-			path:     "/settings",
-			method:   "GET",
-			failed:   false,
-			resp:     config.Config{Host: "host1", Port: 1},
-			expected: &config.Config{Host: "host1", Port: 1},
-		},
-		{
-			caseName: "GetSettings",
-			path:     "/settings",
-			method:   "GET",
-			failed:   true,
-			resp:     config.Config{Host: "host2", Port: 2},
-			expected: nil,
-		},
-	}
-
-	for _, c := range cases {
-		svc := getClientServer(func(w http.ResponseWriter, request *http.Request) {
-			g.Expect(request.Method).To(Equal(c.method), "check method")
-			g.Expect(request.URL.Path).To(Equal(c.path), "check url")
-
-			w.Header().Set("Content-Type", ContentTypeJSON)
-			if c.failed {
-				w.WriteHeader(http.StatusInternalServerError)
-			} else {
-				data, err := json.Marshal(c.resp)
-				g.Expect(err).NotTo(HaveOccurred())
-				w.Write(data)
-			}
-		})
-		defer svc.Close()
-
-		fakeClient := &fake.Clientset{}
-		informer := kubeinformers.NewSharedInformerFactory(fakeClient, 0)
-		control := NewDefaultTiDBControl(informer.Core().V1().Secrets().Lister())
-		control.testURL = svc.URL
-		tc := getTidbCluster()
-		result, err := control.GetSettings(tc, 0)
-		if c.failed {
-			g.Expect(err).To(HaveOccurred())
-		}
-		g.Expect(result).To(Equal(c.expected))
 	}
 }
 
