@@ -71,6 +71,9 @@ const (
 	// the volumes provisioned by CSI driver on AWSElasticBlockStore
 	EbsCSIDriver = "ebs.csi.aws.com"
 
+	// OpenEbsCSIDriver is the name of the CSI driver backed by OpenEBS.
+	OpenEbsCSIDriver = "local.csi.openebs.io"
+
 	// the volumes provisioned by CSI driver on GCEPersistentDisk
 	PdCSIDriver = "pd.csi.storage.gke.io"
 

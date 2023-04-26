@@ -45,6 +45,8 @@ func (s *AWSSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, error
 		driver := pv.Spec.CSI.Driver
 		if driver == constants.EbsCSIDriver {
 			return s.volRegexp.FindString(pv.Spec.CSI.VolumeHandle), nil
+		} else if driver == constants.OpenEbsCSIDriver {
+			return pv.Spec.CSI.VolumeHandle, nil
 		}
 		return "", fmt.Errorf("unable to handle CSI driver: %s", driver)
 	}
@@ -67,6 +69,8 @@ func (s *AWSSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID strin
 		// PV is provisioned by CSI driver
 		driver := pv.Spec.CSI.Driver
 		if driver == constants.EbsCSIDriver {
+			pv.Spec.CSI.VolumeHandle = volumeID
+		} else if driver == constants.OpenEbsCSIDriver {
 			pv.Spec.CSI.VolumeHandle = volumeID
 		} else {
 			return fmt.Errorf("unable to handle CSI driver: %s", driver)
