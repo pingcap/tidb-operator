@@ -30,7 +30,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/juju/errors"
+	"github.com/pingcap/errors"
 	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
