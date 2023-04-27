@@ -160,7 +160,7 @@ func (m *masterMemberManager) syncMasterHeadlessServiceForDMCluster(dc *v1alpha1
 		dc,
 		newSvc,
 		oldSvc,
-		true)
+		false)
 
 	if err != nil {
 		return err
