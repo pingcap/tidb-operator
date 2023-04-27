@@ -188,7 +188,7 @@ func (m *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) err
 		tc,
 		newSvc,
 		oldSvc,
-		true)
+		false)
 
 	if err != nil {
 		return err

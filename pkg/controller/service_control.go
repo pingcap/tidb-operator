@@ -41,7 +41,7 @@ type ServiceControlInterface interface {
 	CreateService(runtime.Object, *corev1.Service) error
 	UpdateService(runtime.Object, *corev1.Service) (*corev1.Service, error)
 	DeleteService(runtime.Object, *corev1.Service) error
-	SyncComponentService(runtime.Object, *corev1.Service, *corev1.Service, bool) (*corev1.Service, error)
+	SyncComponentService(tc runtime.Object, newSvc *corev1.Service, oldService *corev1.Service, setClusterIP bool) (*corev1.Service, error)
 }
 
 type realServiceControl struct {
@@ -133,7 +133,7 @@ func (c *realServiceControl) recordServiceEvent(verb, name, kind string, object 
 	}
 }
 
-func (c *realServiceControl) SyncComponentService(tc runtime.Object, newSvc, oldSvc *corev1.Service, isHeadlessSvc bool) (*corev1.Service, error) {
+func (c *realServiceControl) SyncComponentService(tc runtime.Object, newSvc, oldSvc *corev1.Service, setClusterIP bool) (*corev1.Service, error) {
 	equal, err := ServiceEqual(newSvc, oldSvc)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (c *realServiceControl) SyncComponentService(tc runtime.Object, newSvc, old
 			return nil, err
 		}
 
-		if isHeadlessSvc {
+		if setClusterIP {
 			svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		}
 		for k, v := range newSvc.Annotations {
