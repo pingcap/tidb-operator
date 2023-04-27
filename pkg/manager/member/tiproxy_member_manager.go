@@ -366,7 +366,7 @@ func (m *tiproxyMemberManager) syncProxyService(tc *v1alpha1.TidbCluster, peer b
 		tc,
 		newSvc,
 		oldSvc,
-		true)
+		false)
 
 	if err != nil {
 		return err

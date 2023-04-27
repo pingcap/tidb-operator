@@ -133,7 +133,7 @@ func (m *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) 
 		tc,
 		newSvc,
 		oldSvc,
-		false)
+		true)
 
 	if err != nil {
 		return err
