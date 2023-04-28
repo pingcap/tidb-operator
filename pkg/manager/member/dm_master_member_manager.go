@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	startscriptv1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
+	v1 "github.com/pingcap/tidb-operator/pkg/manager/member/startscript/v1"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -461,6 +462,11 @@ func (m *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMClu
 			masterSvc.Spec.Ports[0].Name = *svcSpec.PortName
 		}
 	}
+
+	if dc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(masterSvc)
+	}
+
 	return masterSvc
 }
 
@@ -472,7 +478,7 @@ func getNewMasterHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Ser
 	masterSelector := label.NewDM().Instance(instanceName).DMMaster()
 	masterLabels := masterSelector.Copy().UsedByPeer().Labels()
 
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -493,6 +499,12 @@ func getNewMasterHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Ser
 			PublishNotReadyAddresses: true,
 		},
 	}
+
+	if dc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(svc)
+	}
+
+	return svc
 }
 
 func (m *masterMemberManager) masterStatefulSetIsUpgrading(set *apps.StatefulSet, dc *v1alpha1.DMCluster) (bool, error) {
@@ -770,10 +782,14 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	startScript, err := startscriptv1.RenderDMMasterStartScript(&startscriptv1.DMMasterStartScriptModel{
+	model := &startscriptv1.DMMasterStartScriptModel{
 		Scheme:  dc.Scheme(),
 		DataDir: filepath.Join(dmMasterDataVolumeMountPath, dc.Spec.Master.DataSubDir),
-	})
+	}
+	if dc.Spec.Master.StartUpScriptVersion == "v1" {
+		model.CheckDomainScript = v1.DMMasterCheckDNSV1
+	}
+	startScript, err := startscriptv1.RenderDMMasterStartScript(model)
 	if err != nil {
 		return nil, err
 	}

@@ -1074,6 +1074,17 @@ SuspendAction
 <p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2921,6 +2932,17 @@ string
 <em>(Optional)</em>
 <p>Time zone of TidbMonitor
 Optional: Defaults to UTC</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
 </table>
@@ -6156,6 +6178,17 @@ SuspendAction
 <p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="dmclusterstatus">DMClusterStatus</h3>
@@ -8961,6 +8994,18 @@ MasterConfigWraper
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of dm-master-servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startUpScriptVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Start up script version</p>
 </td>
 </tr>
 </tbody>
@@ -23884,6 +23929,17 @@ production.
 Optional: Defaults to false</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -24063,6 +24119,17 @@ When enabled, experimental TiDB Dashboard features will be available.
 These features are incomplete or not well tested. Suggest not to enable in
 production.
 Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
 </tbody>
@@ -24808,6 +24875,17 @@ string
 Optional: Defaults to UTC</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbmonitorstatus">TidbMonitorStatus</h3>
@@ -24970,6 +25048,17 @@ NGMonitoringSpec
 <p>NGMonitoring is spec of ng monitoring</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -25080,6 +25169,17 @@ NGMonitoringSpec
 </td>
 <td>
 <p>NGMonitoring is spec of ng monitoring</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
 </tbody>
