@@ -522,6 +522,8 @@ func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs 
 	indexedPVCsGroups := make(map[string][]*indexedPVC, 8)
 	reStr := fmt.Sprintf(`^(.+)-%s-(\d+)$`, stsName)
 	re := regexp.MustCompile(reStr)
+	// because one tikv may have multiple volumes, corresponding multiple pvc, and every pvc has serial number.
+	// we should split pvc to multiple groups by volume name, and make the pvc sequential in every group
 	for _, pvc := range pvcs {
 		subMatches := re.FindStringSubmatch(pvc.Name)
 		// subMatches contains full text that matches regex and the matches in brackets.
@@ -529,18 +531,20 @@ func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs 
 		if len(subMatches) != 3 {
 			return nil, nil, fmt.Errorf("pvc name %s doesn't match regex %s", pvc.Name, reStr)
 		}
+		volumeName := subMatches[1]
+		pvcNumberStr := subMatches[2]
 		// get the number of pvc, for example, there is a pvc "tikv-db-tikv-0", try to get the number "0"
-		index, err := strconv.Atoi(subMatches[2])
+		index, err := strconv.Atoi(pvcNumberStr)
 		if err != nil {
-			return nil, nil, fmt.Errorf("parse index %s of pvc %s to int: %s", subMatches[1], pvc.Name, err.Error())
+			return nil, nil, fmt.Errorf("parse index %s of pvc %s to int: %s", pvcNumberStr, pvc.Name, err.Error())
 		}
 		// get the volume name of pod from pvc, for example, there is a pvc "tikv-db-tikv-0", get "tikv"
 		// there can be multiple volumes in a pod, so we should group pvc by volume name
-		indexedPVCs, ok := indexedPVCsGroups[subMatches[1]]
+		indexedPVCs, ok := indexedPVCsGroups[volumeName]
 		if !ok {
 			indexedPVCs = make([]*indexedPVC, 0, len(pvcs))
 		}
-		indexedPVCsGroups[subMatches[1]] = append(indexedPVCs, &indexedPVC{
+		indexedPVCsGroups[volumeName] = append(indexedPVCs, &indexedPVC{
 			index: index,
 			pvc:   pvc,
 		})
@@ -558,6 +562,7 @@ func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs 
 
 	sequentialPVCs := make([]*corev1.PersistentVolumeClaim, 0, len(pvcs))
 	sequentialPVs := make([]*corev1.PersistentVolume, 0, len(pvs))
+	// for every pvc group, make the pvc list in the group sequential
 	for _, indexedPVCs := range indexedPVCsGroups {
 		for i, iPVC := range indexedPVCs {
 			pv, ok := pvc2pv[iPVC.pvc.Name]
