@@ -25,7 +25,6 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/go-cmp v0.5.8
 	github.com/google/gofuzz v1.1.0
-	github.com/juju/errors v0.0.0-20180806074554-22422dad46e1
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/minio/minio-go/v6 v6.0.55
 	github.com/onsi/ginkgo v1.14.1
@@ -150,8 +149,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/jstemmer/go-junit-report v0.9.1 // indirect
-	github.com/juju/loggo v0.0.0-20180524022052-584905176618 // indirect
-	github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
@@ -202,7 +199,6 @@ require (
 	gopkg.in/gcfg.v1 v1.2.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.51.0 // indirect
-	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/warnings.v0 v0.1.1 // indirect
