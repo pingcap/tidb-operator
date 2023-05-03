@@ -144,3 +144,25 @@ func TestServiceControlDeleteServiceFailed(t *testing.T) {
 	g.Expect(events).To(HaveLen(1))
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
 }
+
+func TestSyncComponentServiceSucceed(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+	tc := newTidbCluster()
+	oldSvc := newService(tc, "pd")
+	svc := newService(tc, "pd")
+	svc.Annotations = map[string]string{"newAnn": "newAnnVal"}
+	svc.Labels = map[string]string{"newLabel": "newLabelVal"}
+	fakeClient := &fake.Clientset{}
+	control := NewRealServiceControl(fakeClient, nil, recorder)
+	fakeClient.AddReactor("update", "services", func(action core.Action) (bool, runtime.Object, error) {
+		update := action.(core.UpdateAction)
+		return true, update.GetObject(), nil
+	})
+	updateSvc, err := control.SyncComponentService(tc, svc, oldSvc, true)
+	g.Expect(err).To(Succeed())
+	g.Expect(updateSvc.Annotations["newAnn"]).To(Equal("newAnnVal"))
+	_, ok := updateSvc.Annotations[LastAppliedConfigAnnotation]
+	g.Expect(ok).To(BeTrue())
+	g.Expect(updateSvc.Labels["newLabel"]).To(Equal("newLabelVal"))
+}
