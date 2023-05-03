@@ -176,20 +176,13 @@ func (m *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, 
 
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	_, err = m.deps.ServiceControl.SyncComponentService(
+		tc,
+		newSvc,
+		oldSvc,
+		true)
+
 	if err != nil {
-		return err
-	}
-	if !equal {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		// TODO add unit test
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 
