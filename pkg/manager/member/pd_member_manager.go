@@ -129,20 +129,13 @@ func (m *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) 
 
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	_, err = m.deps.ServiceControl.SyncComponentService(
+		tc,
+		newSvc,
+		oldSvc,
+		true)
+
 	if err != nil {
-		return err
-	}
-	if !equal {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		// TODO add unit test
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 
@@ -171,18 +164,13 @@ func (m *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbC
 		return fmt.Errorf("syncPDHeadlessServiceForTidbCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.PDPeerMemberName(tcName), ns, tcName, err)
 	}
 
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	_, err = m.deps.ServiceControl.SyncComponentService(
+		tc,
+		newSvc,
+		oldSvc,
+		false)
+
 	if err != nil {
-		return err
-	}
-	if !equal {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 

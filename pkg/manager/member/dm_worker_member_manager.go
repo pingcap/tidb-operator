@@ -117,18 +117,13 @@ func (m *workerMemberManager) syncWorkerHeadlessServiceForDMCluster(dc *v1alpha1
 
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	_, err = m.deps.ServiceControl.SyncComponentService(
+		dc,
+		newSvc,
+		oldSvc,
+		false)
+
 	if err != nil {
-		return err
-	}
-	if !equal {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		_, err = m.deps.ServiceControl.UpdateService(dc, &svc)
 		return err
 	}
 
