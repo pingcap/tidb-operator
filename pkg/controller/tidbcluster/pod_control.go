@@ -328,7 +328,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		if err != nil {
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status for pod %s/%s", pod.Namespace, pod.Name)
 		}
-		if unstableReason := pdapi.IsClusterStable(pdClient); unstableReason != "" {
+		if unstableReason := pdapi.IsTiKVStable(pdClient); unstableReason != "" {
 			klog.Infof("Cluster %s is unstable: %s", tc.Name, unstableReason)
 			return reconcile.Result{RequeueAfter: c.recheckClusterStableDuration}, nil
 		}

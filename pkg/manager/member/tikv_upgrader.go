@@ -44,7 +44,7 @@ const (
 	// TODO: change to use minReadySeconds in sts spec
 	// See https://kubernetes.io/blog/2021/08/27/minreadyseconds-statefulsets/
 	annoKeyTiKVMinReadySeconds = "tidb.pingcap.com/tikv-min-ready-seconds"
-	annoKeySkipStoreStateCheck = "tidb.pingcap.com/skip-store-check-for-upgrade"
+	annoKeyTiKVStoreStateCheck = "tidb.pingcap.com/tikv-check-all-stores-up-before-upgrade"
 )
 
 type TiKVUpgrader interface {
@@ -188,11 +188,10 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 }
 
 func (u *tikvUpgrader) isClusterStable(tc *v1alpha1.TidbCluster) string {
-	if skip, ok := tc.Annotations[annoKeySkipStoreStateCheck]; ok && skip != "false" {
-		// bypass cluster stability check to force the upgrade
-		return ""
+	if check, ok := tc.Annotations[annoKeyTiKVStoreStateCheck]; ok && check == "true" {
+		return pdapi.IsTiKVStable(controller.GetPDClient(u.deps.PDControl, tc))
 	}
-	return pdapi.IsClusterStable(controller.GetPDClient(u.deps.PDControl, tc))
+	return ""
 }
 
 func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {

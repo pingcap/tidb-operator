@@ -56,7 +56,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 		leaderCount         int
 		podName             string
 		updatePodErr        bool
-		clusterIsUnstable   bool
+		tikvIsUnstable      bool
 		modifyVolumesResult func() (bool /*should modify*/, error /*result of modify*/) // default to (true, nil)
 		errExpectFn         func(*GomegaWithT, error)
 		expectFn            func(*GomegaWithT, *v1alpha1.TidbCluster, *apps.StatefulSet, map[string]*corev1.Pod)
@@ -112,7 +112,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 		}
 
 		var tikvState string
-		if test.clusterIsUnstable {
+		if test.tikvIsUnstable {
 			tikvState = v1alpha1.TiKVStateDown
 		} else {
 			tikvState = v1alpha1.TiKVStateUp
@@ -394,30 +394,6 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "tikv can upgrade when cluster is unstable and the ann is present",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.Synced = true
-				if tc.Annotations == nil {
-					tc.Annotations = map[string]string{}
-				}
-				tc.Annotations[annoKeySkipStoreStateCheck] = "true"
-			},
-			changeOldSet: func(oldSet *apps.StatefulSet) {
-				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
-				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
-			},
-			clusterIsUnstable: true,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
-				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
-			},
-		},
-		{
 			name: "get last apply config error",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.UpgradePhase
@@ -440,13 +416,17 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "unstable cluster",
+			name: "unstable tikv nodes and tidb.pingcap.com/tikv-check-all-stores-up-before-upgrade prevents upgrade",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
+				if tc.Annotations == nil {
+					tc.Annotations = map[string]string{}
+				}
+				tc.Annotations[annoKeyTiKVStoreStateCheck] = "true"
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
@@ -454,7 +434,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(2)
 			},
-			clusterIsUnstable: true,
+			tikvIsUnstable: true,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(err.Error()).To(ContainSubstring("cluster is unstable"))
@@ -467,17 +447,13 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "unstable cluster and tidb.pingcap.com/skip-store-check-for-upgrade",
+			name: "operator ignores unstable tikv nodes if tidb.pingcap.com/tikv-check-all-stores-up-before-upgrade is missing",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
 				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 				tc.Status.TiKV.Synced = true
 				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
-				if tc.Annotations == nil {
-					tc.Annotations = map[string]string{}
-				}
-				tc.Annotations[annoKeySkipStoreStateCheck] = "true"
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
@@ -485,7 +461,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(2)
 			},
-			clusterIsUnstable: true,
+			tikvIsUnstable: true,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
 				// this error happens only if we ignored unstable cluster message
