@@ -36,8 +36,9 @@ default: build
 docker-push: docker
 	docker push "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}"
 	docker push "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}"
+	docker push "${DOCKER_REPO}/br-federation-manager:${IMAGE_TAG}"
 
-docker: operator-docker backup-docker
+docker: operator-docker backup-docker br-federation-docker
 
 ifeq ($(NO_BUILD),y)
 operator-docker:
@@ -51,7 +52,7 @@ else
 	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-operator
 endif
 
-build: controller-manager scheduler discovery admission-webhook backup-manager
+build: controller-manager scheduler discovery admission-webhook backup-manager br-federation-manager
 
 controller-manager:
 ifeq ($(E2E),y)
@@ -88,6 +89,13 @@ else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-backup-manager/bin/$(GOARCH)/tidb-backup-manager cmd/backup-manager/main.go
 endif
 
+br-federation-manager:
+ifeq ($(E2E),y)
+	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/br-federation-manager/bin/br-federation-manager ./cmd/br-federation-manager
+else
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/br-federation-manager/bin/$(GOARCH)/br-federation-manager ./cmd/br-federation-manager
+endif
+
 ifeq ($(NO_BUILD),y)
 backup-docker:
 	@echo "NO_BUILD=y, skip build for $@"
@@ -99,6 +107,14 @@ ifeq ($(E2E),y)
 else
 	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/tidb-backup-manager
 endif
+
+ifeq ($(NO_BUILD),y)
+br-federation-docker:
+	@echo "NO_BUILD=y, skip build for $@"
+else
+br-federation-docker: br-federation-manager
+endif
+	docker build --tag "${DOCKER_REPO}/br-federation-manager:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/br-federation-manager
 
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}"
