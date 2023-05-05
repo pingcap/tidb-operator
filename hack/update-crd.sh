@@ -57,7 +57,7 @@ find ${CRD_OUTPUT_DIR}/v1beta1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manif
 # generate CRDs for BR federation into separate files so that most users don't need to install them
 echo "Generating CRDs for BR federation ..."
 
-API_PACKAGES="github.com/pingcap/tidb-operator/pkg/apis/pingcap/br-federation-v1alpha1/..."
+API_PACKAGES="github.com/pingcap/tidb-operator/pkg/apis/pingcap/br_federation_v1alpha1/..."
 CRD_OUTPUT_DIR=${ROOT}/manifests/crd/br-federation
 CRD_OPTIONS="preserveUnknownFields=false,allowDangerousTypes=true,maxDescLen=0"
 
