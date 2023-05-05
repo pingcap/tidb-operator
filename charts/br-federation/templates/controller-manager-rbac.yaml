@@ -26,6 +26,9 @@ metadata:
     app.kubernetes.io/component: br-federation-manager
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["create", "get", "list", "watch", "update", "delete"]
 - apiGroups: ["pingcap.com"]
   resources: ["*"]
   verbs: ["*"]
