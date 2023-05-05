@@ -23,13 +23,26 @@ cd $ROOT
 target="pkg/apis/pingcap/v1alpha1/openapi_generated.go"
 verify_tmp=$(mktemp)
 trap "rm -f $verify_tmp" EXIT
-
 cp "$target" "${verify_tmp}"
+
+targetFed="pkg/apis/federation/pingcap/v1alpha1/openapi_generated.go"
+verifyFed_tmp=$(mktemp)
+trap "rm -f $verifyFed_tmp" EXIT
+cp "$targetFed" "${verifyFed_tmp}"
 
 hack/update-openapi-spec.sh
 
 echo "diffing $target with $verify_tmp" >&2
 diff=$(diff "$target" "$verify_tmp") || true
+if [[ -n "${diff}" ]]; then
+    echo "${diff}" >&2
+    echo >&2
+    echo "Run ./hack/update-openapi-spec.sh" >&2
+    exit 1
+fi
+
+echo "diffing $targetFed with $verifyFed_tmp" >&2
+diff=$(diff "$targetFed" "$verifyFed_tmp") || true
 if [[ -n "${diff}" ]]; then
     echo "${diff}" >&2
     echo >&2
