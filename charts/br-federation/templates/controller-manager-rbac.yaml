@@ -29,7 +29,7 @@ rules:
 - apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["create", "get", "list", "watch", "update", "delete"]
-- apiGroups: ["pingcap.com"]
+- apiGroups: ["federation.pingcap.com"]
   resources: ["*"]
   verbs: ["*"]
 ---
