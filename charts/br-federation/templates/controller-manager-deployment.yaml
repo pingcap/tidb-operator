@@ -1,0 +1,117 @@
+{{- if (hasKey .Values.brFederationManager "create" | ternary .Values.brFederationManager.create true) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: br-federation-manager-{{.Release.Name }}
+  {{- else }}
+  name: br-federation-manager
+  {{- end }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: br-federation-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  replicas: {{ .Values.brFederationManager.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "chart.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: br-federation-manager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: br-federation-manager
+{{- if .Values.brFederationManager.podAnnotations }}
+      annotations:
+{{ toYaml .Values.brFederationManager.podAnnotations | indent 8 }}
+{{ end }}
+    spec:
+    {{- if .Values.brFederationManager.serviceAccount }}
+      {{- if eq .Values.appendReleaseSuffix true}}
+      serviceAccount: {{ .Values.brFederationManager.serviceAccount }}-{{ .Release.Name }}
+      {{- else }}
+      serviceAccount: {{ .Values.brFederationManager.serviceAccount }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+  {{ toYaml .Values.imagePullSecrets | indent 6 }}
+    {{- end }}
+      containers:
+      - name: br-federation-manager
+        image: {{ .Values.image }}
+        imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+        {{- if .Values.brFederationManager.resources }}
+        resources:
+{{ toYaml .Values.brFederationManager.resources | indent 12 }}
+        {{- end }}
+        livenessProbe:
+          tcpSocket:
+            port: 6060
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 10
+        command:
+          - /usr/local/bin/br-federation-manager
+          - -v={{ .Values.brFederationManager.logLevel }}
+          {{- if .Values.brFederationManager.workers }}
+          - -workers={{ .Values.brFederationManager.workers | default 5 }}
+          {{- end }}
+         {{- if .Values.brFederationManager.leaderLeaseDuration }}
+          - -leader-lease-duration={{ .Values.brFederationManager.leaderLeaseDuration }}
+         {{- end }}
+         {{- if .Values.brFederationManager.leaderRenewDeadline }}
+          - -leader-renew-deadline={{ .Values.brFederationManager.leaderRenewDeadline }}
+         {{- end }}
+         {{- if .Values.brFederationManager.leaderRetryPeriod }}
+          - -leader-retry-period={{ .Values.brFederationManager.leaderRetryPeriod }}
+         {{- end }}
+         {{- if .Values.brFederationManager.kubeClientQPS }}
+          - -kube-client-qps={{ .Values.brFederationManager.kubeClientQPS }}
+         {{- end }}
+         {{- if .Values.brFederationManager.kubeClientBurst }}
+          - -kube-client-burst={{ .Values.brFederationManager.kubeClientBurst }}
+         {{- end }}
+        env:
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: TZ
+            value: {{ .Values.timezone | default "UTC" }}
+          {{- if eq .Values.appendReleaseSuffix true}}
+          - name: HELM_RELEASE
+            value: {{ .Release.Name }}
+          {{- end }}
+          {{- with .Values.brFederationManager.env }}
+{{ toYaml . | indent 10 }}
+          {{- end }}
+      {{- with .Values.brFederationManager.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+
+      {{- with .Values.brFederationManager.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+
+      {{- with .Values.brFederationManager.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+
+      {{- if .Values.brFederationManager.priorityClassName }}
+      priorityClassName: {{ .Values.brFederationManager.priorityClassName }}
+      {{- end }}
+    {{- with .Values.brFederationManager.securityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+    {{- end}}
+{{- end }}
