@@ -38,12 +38,12 @@ pushd ${API_DIR} >/dev/null
 popd >/dev/null
 
 echo "Generating API references docs for federation ..."
-API_DIR="${ROOT}/pkg/apis/pingcap/federation/v1alpha1"
+API_DIR="${ROOT}/pkg/apis/federation/pingcap/v1alpha1"
 
 pushd ${API_DIR} >/dev/null
     GOROOT=$(go env GOROOT) ${DOCS_BIN} \
         -config "$DOCS_PATH/config.json" \
         -template-dir "$DOCS_PATH/template" \
-        -api-dir "github.com/pingcap/tidb-operator/pkg/apis/pingcap/federation/v1alpha1" \
+        -api-dir "github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1" \
         -out-file "$DOCS_PATH/federation-docs.md"
 popd >/dev/null
