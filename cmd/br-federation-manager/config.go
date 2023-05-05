@@ -41,12 +41,12 @@ type CLIConfig struct {
 // DefaultCLIConfig returns the default command line configuration
 func DefaultCLIConfig() *CLIConfig {
 	return &CLIConfig{
-		Workers:                5,
-		LeaseDuration:          15 * time.Second,
-		RenewDeadline:          10 * time.Second,
-		RetryPeriod:            2 * time.Second,
-		WaitDuration:           5 * time.Second,
-		ResyncDuration:         30 * time.Second,
+		Workers:        5,
+		LeaseDuration:  15 * time.Second,
+		RenewDeadline:  10 * time.Second,
+		RetryPeriod:    2 * time.Second,
+		WaitDuration:   5 * time.Second,
+		ResyncDuration: 30 * time.Second,
 	}
 }
 

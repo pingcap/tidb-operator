@@ -95,7 +95,6 @@ type VolumeBackupScheduleSpec struct {
 type VolumeBackupScheduleStatus struct {
 }
 
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
