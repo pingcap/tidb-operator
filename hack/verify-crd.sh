@@ -41,3 +41,19 @@ for version in v1beta1 v1; do
         fi
     done
 done
+
+# verify for BR federation
+for version in v1beta1 v1; do
+    for file in `ls $TARGET_DIR/br-federation/$version`; do
+        targetFile=$TARGET_DIR/br-federation/$version/$file
+        verifyFile=$VERIFY_TMP_DIR/br-federation/$version/$file
+        echo "diffing $targetFile with $verifyFile" >&2
+        diff=$(diff "$targetFile" "$verifyFile") || true
+        if [[ -n "${diff}" ]]; then
+            echo "${diff}" >&2
+            echo >&2
+            echo "Run ./hack/update-crd.sh" >&2
+            exit 1
+        fi
+    done
+done
