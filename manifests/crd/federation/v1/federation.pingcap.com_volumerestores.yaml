@@ -6,16 +6,16 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
-  name: volumerestorefederations.pingcap.com
+  name: volumerestores.federation.pingcap.com
 spec:
-  group: pingcap.com
+  group: federation.pingcap.com
   names:
-    kind: VolumeRestoreFederation
-    listKind: VolumeRestoreFederationList
-    plural: volumerestorefederations
+    kind: VolumeRestore
+    listKind: VolumeRestoreList
+    plural: volumerestores
     shortNames:
-    - vrtf
-    singular: volumerestorefederation
+    - vrt
+    singular: volumerestore
   scope: Namespaced
   versions:
   - name: v1alpha1

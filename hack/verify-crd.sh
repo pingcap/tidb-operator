@@ -42,11 +42,11 @@ for version in v1beta1 v1; do
     done
 done
 
-# verify for BR federation
+# verify for federation
 for version in v1beta1 v1; do
-    for file in `ls $TARGET_DIR/br-federation/$version`; do
-        targetFile=$TARGET_DIR/br-federation/$version/$file
-        verifyFile=$VERIFY_TMP_DIR/br-federation/$version/$file
+    for file in `ls $TARGET_DIR/federation/$version`; do
+        targetFile=$TARGET_DIR/federation/$version/$file
+        verifyFile=$VERIFY_TMP_DIR/federation/$version/$file
         echo "diffing $targetFile with $verifyFile" >&2
         diff=$(diff "$targetFile" "$verifyFile") || true
         if [[ -n "${diff}" ]]; then

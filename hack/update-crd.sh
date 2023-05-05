@@ -54,11 +54,11 @@ find ${CRD_OUTPUT_DIR}/v1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/
 find ${CRD_OUTPUT_DIR}/v1beta1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/crd_v1beta1.yaml
 
 
-# generate CRDs for BR federation into separate files so that most users don't need to install them
-echo "Generating CRDs for BR federation ..."
+# generate CRDs for federation into separate files so that most users don't need to install them
+echo "Generating CRDs for federation ..."
 
-API_PACKAGES="github.com/pingcap/tidb-operator/pkg/apis/pingcap/br_federation_v1alpha1/..."
-CRD_OUTPUT_DIR=${ROOT}/manifests/crd/br-federation
+API_PACKAGES="github.com/pingcap/tidb-operator/pkg/apis/pingcap/federation/v1alpha1/..."
+CRD_OUTPUT_DIR=${ROOT}/manifests/crd/federation
 CRD_OPTIONS="preserveUnknownFields=false,allowDangerousTypes=true,maxDescLen=0"
 
 # generate CRDs
@@ -77,5 +77,5 @@ for file in ${SKIP_CRD_FILES[@]}; do
 done
 
 # merge all CRDs
-find ${CRD_OUTPUT_DIR}/v1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/br-federation-crd.yaml
-find ${CRD_OUTPUT_DIR}/v1beta1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/br-federation-crd_v1beta1.yaml
+find ${CRD_OUTPUT_DIR}/v1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/federation-crd.yaml
+find ${CRD_OUTPUT_DIR}/v1beta1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/federation-crd_v1beta1.yaml
