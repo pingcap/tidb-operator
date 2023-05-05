@@ -13,9 +13,9 @@
 
 // +k8s:deepcopy-gen=package,register
 
-// Package v1alpha1 is the v1alpha1 version of the BR federation API.
-// +groupName=pingcap.com
+// Package v1alpha1 is the v1alpha1 version of the federation API.
+// +groupName=federation.pingcap.com
 
-// We use a seperate package for BR federation so that most users do not need to install these CRDs.
+// We use a seperate package for federation so that most users do not need to install these CRDs.
 
 package v1alpha1

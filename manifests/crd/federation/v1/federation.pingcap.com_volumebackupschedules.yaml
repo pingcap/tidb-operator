@@ -6,16 +6,16 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
-  name: volumebackupfederations.pingcap.com
+  name: volumebackupschedules.federation.pingcap.com
 spec:
-  group: pingcap.com
+  group: federation.pingcap.com
   names:
-    kind: VolumeBackupFederation
-    listKind: VolumeBackupFederationList
-    plural: volumebackupfederations
+    kind: VolumeBackupSchedule
+    listKind: VolumeBackupScheduleList
+    plural: volumebackupschedules
     shortNames:
-    - vbkf
-    singular: volumebackupfederation
+    - vbks
+    singular: volumebackupschedule
   scope: Namespaced
   versions:
   - name: v1alpha1
