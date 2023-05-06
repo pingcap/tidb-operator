@@ -18,6 +18,10 @@ import (
 	"time"
 )
 
+const (
+	defaultFederationKubeConfigPath = "/etc/br-federation/federation-kubeconfig"
+)
+
 // BrFedCLIConfig is used to save the configuration of br-federation-manager read from command line.
 type BrFedCLIConfig struct {
 	PrintVersion bool
@@ -36,6 +40,9 @@ type BrFedCLIConfig struct {
 	// KubeClientQPS indicates the maximum QPS to the kubenetes API server from client.
 	KubeClientQPS   float64
 	KubeClientBurst int
+
+	// FederationKubeConfigPath is the path to the directory containing the federation kubeconfig files
+	FederationKubeConfigPath string
 }
 
 // DefaultBrFedCLIConfig returns the default command line configuration
@@ -47,6 +54,8 @@ func DefaultBrFedCLIConfig() *BrFedCLIConfig {
 		RetryPeriod:    2 * time.Second,
 		WaitDuration:   5 * time.Second,
 		ResyncDuration: 30 * time.Second,
+
+		FederationKubeConfigPath: defaultFederationKubeConfigPath,
 	}
 }
 
@@ -63,4 +72,6 @@ func (c *BrFedCLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.DurationVar(&c.RetryPeriod, "leader-retry-period", c.RetryPeriod, "leader-retry-period is the duration the LeaderElector clients should wait between tries of actions")
 	flag.Float64Var(&c.KubeClientQPS, "kube-client-qps", c.KubeClientQPS, "The maximum QPS to the kubenetes API server from client")
 	flag.IntVar(&c.KubeClientBurst, "kube-client-burst", c.KubeClientBurst, "The maximum burst for throttle to the kubenetes API server from client")
+
+	flag.StringVar(&c.FederationKubeConfigPath, "federation-kubeconfig-path", c.FederationKubeConfigPath, "The path to the directory containing the federation kubeconfig files")
 }
