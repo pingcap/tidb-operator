@@ -39,3 +39,19 @@ func IsTiKVStable(pdClient PDClient) string {
 
 	return ""
 }
+
+// IsPDStable queries PD to verify that all peers are in the healthy state
+func IsPDStable(pdClient PDClient) string {
+	healthInfo, err := pdClient.GetHealth()
+	if err != nil {
+		return fmt.Sprintf("can't access PD: %s", err)
+	}
+
+	for _, memberHealth := range healthInfo.Healths {
+		if !memberHealth.Health {
+			return fmt.Sprintf("One of PDs (%s) are not healthy", memberHealth.Name)
+		}
+	}
+
+	return ""
+}
