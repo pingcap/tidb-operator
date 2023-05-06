@@ -27,10 +27,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/federation/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
 type Controls struct {
-	// TODO(csuzhangxc): backup, backup-scheduler, restore
+	FedVolumeBackupControl controller.FedVolumeBackupControlInterface
 }
 
 // Dependencies is used to store all shared dependent resources to avoid
@@ -119,5 +120,7 @@ func newRealControls(
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	recorder record.EventRecorder) Controls {
-	return Controls{}
+	return Controls{
+		FedVolumeBackupControl: controller.NewRealFedVolumeBackupControl(clientset, recorder),
+	}
 }
