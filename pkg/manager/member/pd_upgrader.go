@@ -28,7 +28,8 @@ import (
 )
 
 const (
-	annoKeyPDPeersCheck = "tidb.pingcap.com/check-pd-peers-before-upgrade"
+	// set this PD clustre annotation to true to fail cluster upgrade if one of PD peers are not healthy
+	annoKeyPDPeersCheck = "tidb.pingcap.com/pd-check-all-peers-up-before-upgrade"
 )
 
 type pdUpgrader struct {
