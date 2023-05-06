@@ -232,6 +232,68 @@ VolumeRestoreStatus
 </tr>
 </tbody>
 </table>
+<h3 id="volumebackupcondition">VolumeBackupCondition</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumebackupschedulestatus">VolumeBackupScheduleStatus</a>)
+</p>
+<p>
+<p>VolumeBackupCondition describes the observed state of a VolumeBackup at a certain point.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#conditionstatus-v1-core">
+Kubernetes core/v1.ConditionStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>reason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>message</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="volumebackupschedulespec">VolumeBackupScheduleSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -248,6 +310,28 @@ VolumeRestoreStatus
 <p>
 <p>VolumeBackupScheduleStatus represents the current status of a volume backup schedule.</p>
 </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="#volumebackupcondition">
+[]VolumeBackupCondition
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="volumebackupspec">VolumeBackupSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -264,6 +348,68 @@ VolumeRestoreStatus
 <p>
 <p>VolumeBackupStatus represents the current status of a volume backup.</p>
 </p>
+<h3 id="volumerestorecondition">VolumeRestoreCondition</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumerestorestatus">VolumeRestoreStatus</a>)
+</p>
+<p>
+<p>VolumeRestoreCondition describes the observed state of a VolumeRestore at a certain point.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#conditionstatus-v1-core">
+Kubernetes core/v1.ConditionStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>reason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>message</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="volumerestorespec">VolumeRestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -280,6 +426,28 @@ VolumeRestoreStatus
 <p>
 <p>VolumeRestoreStatus represents the current status of a volume restore.</p>
 </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="#volumerestorecondition">
+[]VolumeRestoreCondition
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>

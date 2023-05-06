@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -93,6 +94,18 @@ type VolumeBackupScheduleSpec struct {
 
 // VolumeBackupScheduleStatus represents the current status of a volume backup schedule.
 type VolumeBackupScheduleStatus struct {
+	// +nullable
+	Conditions []VolumeBackupCondition `json:"conditions,omitempty"`
+}
+
+// VolumeBackupCondition describes the observed state of a VolumeBackup at a certain point.
+type VolumeBackupCondition struct {
+	Status corev1.ConditionStatus `json:"status"`
+
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	Reason             string      `json:"reason,omitempty"`
+	Message            string      `json:"message,omitempty"`
 }
 
 // +genclient
@@ -131,4 +144,16 @@ type VolumeRestoreSpec struct {
 
 // VolumeRestoreStatus represents the current status of a volume restore.
 type VolumeRestoreStatus struct {
+	// +nullable
+	Conditions []VolumeRestoreCondition `json:"conditions,omitempty"`
+}
+
+// VolumeRestoreCondition describes the observed state of a VolumeRestore at a certain point.
+type VolumeRestoreCondition struct {
+	Status corev1.ConditionStatus `json:"status"`
+
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	Reason             string      `json:"reason,omitempty"`
+	Message            string      `json:"message,omitempty"`
 }
