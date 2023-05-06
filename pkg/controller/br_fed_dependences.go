@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package controller
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -27,18 +27,17 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/federation/listers/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
-type Controls struct {
-	FedVolumeBackupControl controller.FedVolumeBackupControlInterface
+type BrFedControls struct {
+	FedVolumeBackupControl FedVolumeBackupControlInterface
 }
 
-// Dependencies is used to store all shared dependent resources to avoid
+// BrFedDependencies is used to store all shared dependent resources to avoid
 // pass parameters everywhere.
-type Dependencies struct {
+type BrFedDependencies struct {
 	// CLIConfig represents all parameters read from command line
-	CLIConfig *CLIConfig
+	CLIConfig *BrFedCLIConfig
 	// Operator client interface
 	Clientset versioned.Interface
 	// Kubernetes client interface
@@ -55,11 +54,11 @@ type Dependencies struct {
 	VolumeBackupScheduleLister listers.VolumeBackupScheduleLister
 
 	// Controls
-	Controls
+	BrFedControls
 }
 
-// NewDependencies is used to construct the dependencies
-func NewDependencies(cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) *Dependencies {
+// NewBrFedDependencies is used to construct the dependencies
+func NewBrFedDependencies(cliCfg *BrFedCLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) *BrFedDependencies {
 	tweakListOptionsFunc := func(options *metav1.ListOptions) {
 		if len(options.LabelSelector) > 0 {
 			options.LabelSelector += ",app.kubernetes.io/managed-by=tidb-operator"
@@ -81,21 +80,21 @@ func NewDependencies(cliCfg *CLIConfig, clientset versioned.Interface, kubeClien
 		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "br-federation-manager"})
 
-	deps := newDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
-	deps.Controls = newRealControls(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
+	deps := newBrFedDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
+	deps.BrFedControls = newRealBrFedControls(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
 	return deps
 }
 
-func newDependencies(
-	cliCfg *CLIConfig,
+func newBrFedDependencies(
+	cliCfg *BrFedCLIConfig,
 	clientset versioned.Interface,
 	kubeClientset kubernetes.Interface,
 	genericCli client.Client,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	labelFilterKubeInformerFactory kubeinformers.SharedInformerFactory,
-	recorder record.EventRecorder) *Dependencies {
-	return &Dependencies{
+	recorder record.EventRecorder) *BrFedDependencies {
+	return &BrFedDependencies{
 		CLIConfig:                      cliCfg,
 		Clientset:                      clientset,
 		KubeClientset:                  kubeClientset,
@@ -112,15 +111,15 @@ func newDependencies(
 	}
 }
 
-func newRealControls(
-	cliCfg *CLIConfig,
+func newRealBrFedControls(
+	cliCfg *BrFedCLIConfig,
 	clientset versioned.Interface,
 	kubeClientset kubernetes.Interface,
 	genericCli client.Client,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	recorder record.EventRecorder) Controls {
-	return Controls{
-		FedVolumeBackupControl: controller.NewRealFedVolumeBackupControl(clientset, recorder),
+	recorder record.EventRecorder) BrFedControls {
+	return BrFedControls{
+		FedVolumeBackupControl: NewRealFedVolumeBackupControl(clientset, recorder),
 	}
 }

@@ -37,13 +37,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/version"
 )
 
 func main() {
 	var cfg *rest.Config
-	cliCfg := DefaultCLIConfig()
+	cliCfg := controller.DefaultBrFedCLIConfig()
 	cliCfg.AddFlag(flag.CommandLine)
 	flag.Parse()
 
@@ -104,7 +105,7 @@ func main() {
 		klog.Fatalf("failed to get the generic kube-apiserver client: %v", err)
 	}
 
-	deps := NewDependencies(cliCfg, cli, kubeCli, genericCli)
+	deps := controller.NewBrFedDependencies(cliCfg, cli, kubeCli, genericCli)
 
 	onStarted := func(ctx context.Context) {
 		// Define some nested types to simplify the codebase
