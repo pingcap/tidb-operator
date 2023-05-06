@@ -20,6 +20,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"reflect"
 	"syscall"
 
@@ -36,6 +37,7 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	fedversioned "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/controller/fedvolumebackup"
@@ -108,7 +110,13 @@ func main() {
 		klog.Fatalf("failed to get the generic kube-apiserver client: %v", err)
 	}
 
-	deps := controller.NewBrFedDependencies(cliCfg, cli, kubeCli, genericCli)
+	// init kube clients to the federation K8s clusters
+	fedClients, err := initFederationKubeClients(cliCfg)
+	if err != nil {
+		klog.Fatalf("failed to init federation kube clients: %v", err)
+	}
+
+	deps := controller.NewBrFedDependencies(cliCfg, cli, kubeCli, genericCli, fedClients)
 
 	onStarted := func(ctx context.Context) {
 		// Define some nested types to simplify the codebase
@@ -208,6 +216,37 @@ func main() {
 		klog.Fatal(err)
 	}
 	klog.Infof("br-federation-manager exited")
+}
+
+func initFederationKubeClients(cliCfg *controller.BrFedCLIConfig) (map[string]*fedversioned.Clientset, error) {
+	files, err := os.ReadDir(cliCfg.FederationKubeConfigPath)
+	if err != nil {
+		return nil, err
+	}
+
+	clients := make(map[string]*fedversioned.Clientset)
+	for _, f := range files {
+		if f.IsDir() || f.Name() == "..data" {
+			continue
+		}
+
+		cfg, err := clientcmd.BuildConfigFromFlags("", filepath.Join(cliCfg.FederationKubeConfigPath, f.Name()))
+		if err != nil {
+			return nil, err // return error if any kube client init failed
+		}
+
+		// we use the same QPS and Burst as for the API server which is running this manager now
+		cfg.QPS = float32(cliCfg.KubeClientQPS)
+		cfg.Burst = cliCfg.KubeClientBurst
+
+		cli, err := fedversioned.NewForConfig(cfg)
+		if err != nil {
+			return nil, err
+		}
+		clients[f.Name()] = cli
+	}
+
+	return clients, nil
 }
 
 func createHTTPServer() *http.Server {

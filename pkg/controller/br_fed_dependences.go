@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
+	fedversioned "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/federation/listers/pingcap/v1alpha1"
@@ -55,10 +56,14 @@ type BrFedDependencies struct {
 
 	// Controls
 	BrFedControls
+
+	// FedClientset is the clientset for the federation clusters
+	FedClientset map[string]*fedversioned.Clientset
 }
 
 // NewBrFedDependencies is used to construct the dependencies
-func NewBrFedDependencies(cliCfg *BrFedCLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) *BrFedDependencies {
+func NewBrFedDependencies(cliCfg *BrFedCLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface,
+	genericCli client.Client, fedClientset map[string]*fedversioned.Clientset) *BrFedDependencies {
 	tweakListOptionsFunc := func(options *metav1.ListOptions) {
 		if len(options.LabelSelector) > 0 {
 			options.LabelSelector += ",app.kubernetes.io/managed-by=tidb-operator"
@@ -80,7 +85,7 @@ func NewBrFedDependencies(cliCfg *BrFedCLIConfig, clientset versioned.Interface,
 		Interface: eventv1.New(kubeClientset.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "br-federation-manager"})
 
-	deps := newBrFedDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder)
+	deps := newBrFedDependencies(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder, fedClientset)
 	deps.BrFedControls = newRealBrFedControls(cliCfg, clientset, kubeClientset, genericCli, informerFactory, kubeInformerFactory, recorder)
 	return deps
 }
@@ -93,7 +98,8 @@ func newBrFedDependencies(
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	labelFilterKubeInformerFactory kubeinformers.SharedInformerFactory,
-	recorder record.EventRecorder) *BrFedDependencies {
+	recorder record.EventRecorder,
+	fedClientset map[string]*fedversioned.Clientset) *BrFedDependencies {
 	return &BrFedDependencies{
 		CLIConfig:                      cliCfg,
 		Clientset:                      clientset,
@@ -108,6 +114,8 @@ func newBrFedDependencies(
 		VolumeBackupLister:         informerFactory.Federation().V1alpha1().VolumeBackups().Lister(),
 		VolumeRestoreLister:        informerFactory.Federation().V1alpha1().VolumeRestores().Lister(),
 		VolumeBackupScheduleLister: informerFactory.Federation().V1alpha1().VolumeBackupSchedules().Lister(),
+
+		FedClientset: fedClientset,
 	}
 }
 

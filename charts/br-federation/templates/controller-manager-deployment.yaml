@@ -92,6 +92,14 @@ spec:
           {{- with .Values.brFederationManager.env }}
 {{ toYaml . | indent 10 }}
           {{- end }}
+        volumeMounts:
+        - name: federation-kubeconfig
+          mountPath: /etc/br-federation/federation-kubeconfig
+          readOnly: true
+      volumes:
+      - name: federation-kubeconfig
+        secret:
+          secretName: {{ .Values.brFederationManager.federationKubeconfigSecret }}
       {{- with .Values.brFederationManager.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
