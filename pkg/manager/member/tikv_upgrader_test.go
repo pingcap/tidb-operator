@@ -56,6 +56,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 		leaderCount         int
 		podName             string
 		updatePodErr        bool
+		tikvIsUnstable      bool
 		modifyVolumesResult func() (bool /*should modify*/, error /*result of modify*/) // default to (true, nil)
 		errExpectFn         func(*GomegaWithT, error)
 		expectFn            func(*GomegaWithT, *v1alpha1.TidbCluster, *apps.StatefulSet, map[string]*corev1.Pod)
@@ -109,6 +110,25 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				return nil, nil
 			})
 		}
+
+		var tikvState string
+		if test.tikvIsUnstable {
+			tikvState = v1alpha1.TiKVStateDown
+		} else {
+			tikvState = v1alpha1.TiKVStateUp
+		}
+		pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+			storesInfo := &pdapi.StoresInfo{
+				Stores: []*pdapi.StoreInfo{
+					{
+						Store: &pdapi.MetaStore{
+							StateName: tikvState,
+						},
+					},
+				},
+			}
+			return storesInfo, nil
+		})
 
 		tikvPods := getTiKVPods(oldSet)
 		if test.changePods != nil {
@@ -393,6 +413,64 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
 				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.NormalPhase))
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
+			},
+		},
+		{
+			name: "unstable tikv nodes and tidb.pingcap.com/tikv-check-all-stores-up-before-upgrade prevents upgrade",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiKV.Synced = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
+				if tc.Annotations == nil {
+					tc.Annotations = map[string]string{}
+				}
+				tc.Annotations[annoKeyTiKVStoreStateCheck] = "true"
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				oldSet.Status.CurrentReplicas = 2
+				oldSet.Status.UpdatedReplicas = 1
+				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(2)
+			},
+			tikvIsUnstable: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(err.Error()).To(ContainSubstring("cluster is unstable"))
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
+				// verify second node is not started eviction
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
+				_, exist := pods[TikvPodName(upgradeTcName, 1)].Annotations[annoKeyEvictLeaderBeginTime]
+				g.Expect(exist).To(BeFalse())
+			},
+		},
+		{
+			name: "operator ignores unstable tikv nodes if tidb.pingcap.com/tikv-check-all-stores-up-before-upgrade is missing",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+				tc.Status.TiKV.Synced = true
+				tc.Status.TiKV.StatefulSet.CurrentReplicas = 2
+				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
+			},
+			changeOldSet: func(oldSet *apps.StatefulSet) {
+				mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
+				oldSet.Status.CurrentReplicas = 2
+				oldSet.Status.UpdatedReplicas = 1
+				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(2)
+			},
+			tikvIsUnstable: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).To(HaveOccurred())
+				// this error happens only if we ignored unstable cluster message
+				g.Expect(err.Error()).To(ContainSubstring("upgradeTiKVPod: evicting leader of pod upgrader-tikv-1 for tc default/upgrader"))
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
+				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
+				_, exist := pods[TikvPodName(upgradeTcName, 1)].Annotations[annoKeyEvictLeaderBeginTime]
+				g.Expect(exist).To(BeTrue())
 			},
 		},
 		{
