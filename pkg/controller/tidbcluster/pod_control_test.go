@@ -197,7 +197,7 @@ func TestPDPodSync(t *testing.T) {
 			shouldTransfer:      true,
 		},
 		{
-			name:                "not enough quorum",
+			name:                "one pd is unhealthy",
 			replicas:            3,
 			phase:               v1alpha1.NormalPhase,
 			leader:              0,
@@ -262,13 +262,27 @@ func TestPDPodSync(t *testing.T) {
 				},
 				Members: make(map[string]v1alpha1.PDMember),
 			}
+			healths := make([]pdapi.MemberHealth, c.replicas)
 			for i := 0; i < c.replicas; i++ {
 				member := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), i)
 				tc.Status.PD.Members[member] = v1alpha1.PDMember{
 					Name:   member,
 					Health: true,
 				}
+				health := true
+				for _, failed := range c.failed {
+					if i == failed {
+						health = false
+					}
+				}
+				healths[i] = pdapi.MemberHealth{
+					Name:   member,
+					Health: health,
+				}
 			}
+			pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+				return &pdapi.HealthInfo{Healths: healths}, nil
+			})
 			for _, i := range c.failed {
 				member := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), i)
 				tc.Status.PD.Members[member] = v1alpha1.PDMember{

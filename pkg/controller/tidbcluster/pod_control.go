@@ -254,16 +254,18 @@ func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1al
 		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
 	}
 
-	// Make sure we have quorum after we shut down this Pod.
-	if !safeToRestartPD(tc) {
-		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	pdClient := c.getPDClient(tc)
+
+	if unstableReason := pdapi.IsPDStable(pdClient); unstableReason != "" {
+		klog.Infof("PD cluster in %s is unstable: %s", tc.Name, unstableReason)
+		return reconcile.Result{RequeueAfter: c.recheckClusterStableDuration}, nil
 	}
 
 	// Transfer leader to other peer if necessary.
 	var err error
 	pdName := getPdName(pod, tc)
 	if tc.Status.PD.Leader.Name == pod.Name || tc.Status.PD.Leader.Name == pdName {
-		err = transferPDLeader(tc, c.getPDClient(tc))
+		err = transferPDLeader(tc, pdClient)
 		if err != nil {
 			return reconcile.Result{}, nil
 		}
@@ -482,21 +484,6 @@ func needPDLeaderTransfer(pod *corev1.Pod) (string, bool) {
 		return "", false
 	}
 	return value, true
-}
-
-func safeToRestartPD(tc *v1alpha1.TidbCluster) bool {
-	healthCount := 0
-	for _, pdMember := range tc.Status.PD.Members {
-		if pdMember.Health {
-			healthCount++
-		}
-	}
-	for _, pdMember := range tc.Status.PD.PeerMembers {
-		if pdMember.Health {
-			healthCount++
-		}
-	}
-	return healthCount > (len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers))/2+1
 }
 
 func transferPDLeader(tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) error {
