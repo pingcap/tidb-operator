@@ -43,7 +43,7 @@ func (bm *backupManager) Sync(volumeBackup *v1alpha1.VolumeBackup) error {
 		return nil
 	}
 
-	return bm.syncBackupJob(volumeBackup)
+	return bm.syncBackup(volumeBackup)
 }
 
 // UpdateStatus updates the status for a Backup, include condition and status info.
@@ -52,7 +52,7 @@ func (bm *backupManager) UpdateStatus(backup *v1alpha1.VolumeBackup, newStatus *
 	return nil
 }
 
-func (bm *backupManager) syncBackupJob(volumeBackup *v1alpha1.VolumeBackup) error {
+func (bm *backupManager) syncBackup(volumeBackup *v1alpha1.VolumeBackup) error {
 	ns := volumeBackup.GetNamespace()
 	name := volumeBackup.GetName()
 
