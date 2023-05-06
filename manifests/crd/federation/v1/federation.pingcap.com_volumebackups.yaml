@@ -31,6 +31,25 @@ spec:
           spec:
             type: object
           status:
+            properties:
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      nullable: true
+                      type: string
+                    message:
+                      type: string
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                  required:
+                  - status
+                  type: object
+                nullable: true
+                type: array
             type: object
         required:
         - metadata
