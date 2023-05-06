@@ -11,15 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package controller
 
 import (
 	"flag"
 	"time"
 )
 
-// CLIConfig is used to save the configuration of br-federation-manager read from command line.
-type CLIConfig struct {
+// BrFedCLIConfig is used to save the configuration of br-federation-manager read from command line.
+type BrFedCLIConfig struct {
 	PrintVersion bool
 	// The number of workers that are allowed to sync concurrently.
 	// Larger number = more responsive management, but more CPU
@@ -38,9 +38,9 @@ type CLIConfig struct {
 	KubeClientBurst int
 }
 
-// DefaultCLIConfig returns the default command line configuration
-func DefaultCLIConfig() *CLIConfig {
-	return &CLIConfig{
+// DefaultBrFedCLIConfig returns the default command line configuration
+func DefaultBrFedCLIConfig() *BrFedCLIConfig {
+	return &BrFedCLIConfig{
 		Workers:        5,
 		LeaseDuration:  15 * time.Second,
 		RenewDeadline:  10 * time.Second,
@@ -51,7 +51,7 @@ func DefaultCLIConfig() *CLIConfig {
 }
 
 // AddFlag adds a flag for setting global feature gates to the specified FlagSet.
-func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
+func (c *BrFedCLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.BoolVar(&c.PrintVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&c.PrintVersion, "version", false, "Show version and quit")
 	flag.IntVar(&c.Workers, "workers", c.Workers, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
