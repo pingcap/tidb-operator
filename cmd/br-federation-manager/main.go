@@ -39,6 +39,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/controller/fedvolumebackup"
+	"github.com/pingcap/tidb-operator/pkg/controller/fedvolumerestore"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/version"
 )
@@ -127,6 +128,7 @@ func main() {
 		controllers := []Controller{
 			// TODO(csuzhangxc)
 			fedvolumebackup.NewController(deps),
+			fedvolumerestore.NewController(deps),
 		}
 
 		// Start informer factories after all controllers are initialized.
