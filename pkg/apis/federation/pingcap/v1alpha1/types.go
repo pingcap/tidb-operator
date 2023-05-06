@@ -56,6 +56,18 @@ type VolumeBackupSpec struct {
 
 // VolumeBackupStatus represents the current status of a volume backup.
 type VolumeBackupStatus struct {
+	// +nullable
+	Conditions []VolumeBackupCondition `json:"conditions,omitempty"`
+}
+
+// VolumeBackupCondition describes the observed state of a VolumeBackup at a certain point.
+type VolumeBackupCondition struct {
+	Status corev1.ConditionStatus `json:"status"`
+
+	// +nullable
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	Reason             string      `json:"reason,omitempty"`
+	Message            string      `json:"message,omitempty"`
 }
 
 // +genclient
@@ -94,18 +106,6 @@ type VolumeBackupScheduleSpec struct {
 
 // VolumeBackupScheduleStatus represents the current status of a volume backup schedule.
 type VolumeBackupScheduleStatus struct {
-	// +nullable
-	Conditions []VolumeBackupCondition `json:"conditions,omitempty"`
-}
-
-// VolumeBackupCondition describes the observed state of a VolumeBackup at a certain point.
-type VolumeBackupCondition struct {
-	Status corev1.ConditionStatus `json:"status"`
-
-	// +nullable
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-	Reason             string      `json:"reason,omitempty"`
-	Message            string      `json:"message,omitempty"`
 }
 
 // +genclient

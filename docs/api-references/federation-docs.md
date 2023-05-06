@@ -235,7 +235,7 @@ VolumeRestoreStatus
 <h3 id="volumebackupcondition">VolumeBackupCondition</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#volumebackupschedulestatus">VolumeBackupScheduleStatus</a>)
+<a href="#volumebackupstatus">VolumeBackupStatus</a>)
 </p>
 <p>
 <p>VolumeBackupCondition describes the observed state of a VolumeBackup at a certain point.</p>
@@ -310,6 +310,22 @@ string
 <p>
 <p>VolumeBackupScheduleStatus represents the current status of a volume backup schedule.</p>
 </p>
+<h3 id="volumebackupspec">VolumeBackupSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumebackup">VolumeBackup</a>)
+</p>
+<p>
+<p>VolumeBackupSpec describes the attributes that a user creates on a volume backup.</p>
+</p>
+<h3 id="volumebackupstatus">VolumeBackupStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumebackup">VolumeBackup</a>)
+</p>
+<p>
+<p>VolumeBackupStatus represents the current status of a volume backup.</p>
+</p>
 <table>
 <thead>
 <tr>
@@ -332,22 +348,6 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="volumebackupspec">VolumeBackupSpec</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#volumebackup">VolumeBackup</a>)
-</p>
-<p>
-<p>VolumeBackupSpec describes the attributes that a user creates on a volume backup.</p>
-</p>
-<h3 id="volumebackupstatus">VolumeBackupStatus</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#volumebackup">VolumeBackup</a>)
-</p>
-<p>
-<p>VolumeBackupStatus represents the current status of a volume backup.</p>
-</p>
 <h3 id="volumerestorecondition">VolumeRestoreCondition</h3>
 <p>
 (<em>Appears on:</em>
