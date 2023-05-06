@@ -23,10 +23,10 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
+	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions"
+	listers "github.com/pingcap/tidb-operator/pkg/client/federation/listers/pingcap/v1alpha1"
 )
 
 type Controls struct {
@@ -49,16 +49,15 @@ type Dependencies struct {
 	Recorder                       record.EventRecorder
 
 	// Listers
-	BackupLister         listers.BackupLister
-	RestoreLister        listers.RestoreLister
-	BackupScheduleLister listers.BackupScheduleLister
+	VolumeBackupLister         listers.VolumeBackupLister
+	VolumeRestoreLister        listers.VolumeRestoreLister
+	VolumeBackupScheduleLister listers.VolumeBackupScheduleLister
 
 	// Controls
 	Controls
 }
 
 // NewDependencies is used to construct the dependencies
-// TODO(csuzhangxc): `clientset` for federation only
 func NewDependencies(cliCfg *CLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface, genericCli client.Client) *Dependencies {
 	tweakListOptionsFunc := func(options *metav1.ListOptions) {
 		if len(options.LabelSelector) > 0 {
@@ -106,9 +105,9 @@ func newDependencies(
 		Recorder:                       recorder,
 
 		// Listers
-		BackupLister:         informerFactory.Pingcap().V1alpha1().Backups().Lister(),
-		RestoreLister:        informerFactory.Pingcap().V1alpha1().Restores().Lister(),
-		BackupScheduleLister: informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
+		VolumeBackupLister:         informerFactory.Federation().V1alpha1().VolumeBackups().Lister(),
+		VolumeRestoreLister:        informerFactory.Federation().V1alpha1().VolumeRestores().Lister(),
+		VolumeBackupScheduleLister: informerFactory.Federation().V1alpha1().VolumeBackupSchedules().Lister(),
 	}
 }
 

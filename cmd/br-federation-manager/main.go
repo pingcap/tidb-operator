@@ -23,10 +23,6 @@ import (
 	"reflect"
 	"syscall"
 
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/metrics"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -39,6 +35,10 @@ import (
 	"k8s.io/component-base/logs"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
+	"github.com/pingcap/tidb-operator/pkg/version"
 )
 
 func main() {
@@ -99,7 +99,7 @@ func main() {
 		klog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 	// TODO: optimize the read of genericCli with the shared cache
-	genericCli, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	genericCli, err := client.New(cfg, client.Options{Scheme: Scheme})
 	if err != nil {
 		klog.Fatalf("failed to get the generic kube-apiserver client: %v", err)
 	}
