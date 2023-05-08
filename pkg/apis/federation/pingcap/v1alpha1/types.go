@@ -18,7 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TODO: add `kubebuilder:printcolumn` after fileds are defined
+// TODO(federation): add `kubebuilder:printcolumn` after fileds are defined
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
