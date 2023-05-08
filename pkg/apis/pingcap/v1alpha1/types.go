@@ -1382,6 +1382,10 @@ const (
 	PDLeaderTransferAnnKey = "tidb.pingcap.com/pd-transfer-leader"
 	// TiDBGracefulShutdownAnnKey is the annotation key to graceful shutdown tidb pod by user.
 	TiDBGracefulShutdownAnnKey = "tidb.pingcap.com/tidb-graceful-shutdown"
+	// TiKVEvictLeaderExpirationTimeAnnKey is the annotation key to expire evict leader annotation. Type: time.RFC3339.
+	TiKVEvictLeaderExpirationTimeAnnKey = "tidb.pingcap.com/tikv-evict-leader-expiration-time"
+	// PDKVEvictLeaderExpirationTimeAnnKey is the annotation key to expire evict leader annotation. Type: time.RFC3339.
+	PDEvictLeaderExpirationTimeAnnKey = "tidb.pingcap.com/pd-evict-leader-expiration-time"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
