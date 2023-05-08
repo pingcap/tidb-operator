@@ -106,6 +106,15 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return err
 	}
 
+	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot &&
+		backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
+		if err := bm.teardownVolumeBackup(backup); err != nil {
+			klog.Errorf("backup %s/%s teardown volume backup error %v.", ns, name, err)
+			return err
+		}
+		return nil
+	}
+
 	// make backup job
 	var job *batchv1.Job
 	var reason string
@@ -142,7 +151,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 	var err error
 	if backup.Spec.BR == nil {
-		err = backuputil.ValidateBackup(backup, "")
+		err = backuputil.ValidateBackup(backup, "", false)
 	} else {
 		backupNamespace := backup.GetNamespace()
 		if backup.Spec.BR.ClusterNamespace != "" {
@@ -164,7 +173,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 		}
 
 		tikvImage := tc.TiKVImage()
-		err = backuputil.ValidateBackup(backup, tikvImage)
+		err = backuputil.ValidateBackup(backup, tikvImage, tc.AcrossK8s())
 	}
 
 	if err != nil {
@@ -185,8 +194,11 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
 		return bm.skipLogBackupSync(backup)
+	} else if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+		return bm.skipVolumeSnapshotBackupSync(backup)
+	} else {
+		return bm.skipSnapshotBackupSync(backup)
 	}
-	return bm.skipSnapshotBackupSync(backup)
 }
 
 // waitPreTaskDone waits pre task done. this can make sure there is only one backup job running.
@@ -454,6 +466,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
+	jobName := backup.GetBackupJobName()
 	backupNamespace := ns
 	if backup.Spec.BR.ClusterNamespace != "" {
 		backupNamespace = backup.Spec.BR.ClusterNamespace
@@ -516,9 +529,14 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			}
 		}
 	case v1alpha1.BackupModeVolumeSnapshot:
-		reason, err = bm.volumeSnapshotBackup(backup, tc)
-		if err != nil {
-			return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+		if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupExecute {
+			reason, err = bm.volumeSnapshotBackup(backup, tc)
+			if err != nil {
+				return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+			}
+		} else if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupInitialize {
+			jobName = backup.GetVolumeBackupInitializeJobName()
+			args = append(args, "--initialize=true")
 		}
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeVolumeSnapshot))
 	default:
@@ -645,9 +663,10 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		},
 	}
 
+	// TODO remove resources of containers and init containers when create initializing job.
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        backup.GetBackupJobName(),
+			Name:        jobName,
 			Namespace:   ns,
 			Labels:      jobLabels,
 			Annotations: jobAnnotations,
@@ -820,6 +839,62 @@ func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error
 		klog.Infof("log backup %s/%s subcommand %s is already done, will skip sync.", backup.Namespace, backup.Name, command)
 	}
 	return skip, err
+}
+
+func (bm *backupManager) skipVolumeSnapshotBackupSync(backup *v1alpha1.Backup) (bool, error) {
+	if backup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot {
+		return false, nil
+	}
+
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	var backupJobName string
+	switch backup.Spec.FederalVolumeBackupPhase {
+	case v1alpha1.FederalVolumeBackupInitialize, v1alpha1.FederalVolumeBackupTeardown:
+		backupJobName = backup.GetVolumeBackupInitializeJobName()
+	default:
+		backupJobName = backup.GetBackupJobName()
+	}
+
+	_, err := bm.deps.JobLister.Jobs(ns).Get(backupJobName)
+	if err == nil {
+		// for teardown phase, we should delete the backup job, so we can't skip when job exists
+		return backup.Spec.FederalVolumeBackupPhase != v1alpha1.FederalVolumeBackupTeardown, nil
+	}
+	if !errors.IsNotFound(err) {
+		return false, fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
+	}
+	return false, nil
+}
+
+func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err error) {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	backupInitializeJobName := backup.GetVolumeBackupInitializeJobName()
+
+	defer func() {
+		if err == nil {
+			err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:   v1alpha1.BackupComplete,
+				Status: corev1.ConditionTrue,
+			}, nil)
+		}
+	}()
+
+	backupInitializeJob, err := bm.deps.JobLister.Jobs(ns).Get(backupInitializeJobName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("backup %s/%s get initializing job %s failed, err: %v",
+			ns, name, backupInitializeJobName, err)
+	}
+
+	if err := bm.deps.JobControl.DeleteJob(backup, backupInitializeJob); err != nil {
+		return fmt.Errorf("backup %s/%s delete initializing job %s failed, err: %v",
+			ns, name, backupInitializeJobName, err)
+	}
+	return nil
 }
 
 // shouldLogBackupCommandRequeue returns whether log backup subcommand should requeue.

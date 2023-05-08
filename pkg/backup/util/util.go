@@ -16,6 +16,7 @@ package util
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -467,7 +468,7 @@ func validateAccessConfig(config *v1alpha1.TiDBAccessConfig) string {
 }
 
 // ValidateBackup validates backup sepc
-func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
+func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, acrossK8s bool) error {
 	ns := backup.Namespace
 	name := backup.Name
 
@@ -535,6 +536,14 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 			_, err = config.ParseTSString(backup.Spec.LogTruncateUntil)
 			if err != nil {
 				return err
+			}
+		}
+
+		// validate volume snapshot backup
+		if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+			// only support across k8s now. TODO compatible for single k8s
+			if !acrossK8s {
+				return errors.New("only support volume snapshot backup across k8s clusters")
 			}
 		}
 

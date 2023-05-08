@@ -50,6 +50,11 @@ func (bk *Backup) GetBackupJobName() string {
 	return fmt.Sprintf("backup-%s", bk.GetName())
 }
 
+func (bk *Backup) GetVolumeBackupInitializeJobName() string {
+	backupJobName := bk.GetBackupJobName()
+	return fmt.Sprintf("%s-assistant", backupJobName)
+}
+
 // GetAllLogBackupJobName return the all log backup job name
 func (bk *Backup) GetAllLogBackupJobName() []string {
 	return []string{
