@@ -114,7 +114,11 @@ br-federation-docker:
 else
 br-federation-docker: br-federation-manager
 endif
+ifeq ($(E2E),y)
+	docker build --tag "${DOCKER_REPO}/br-federation-manager:${IMAGE_TAG}" -f images/br-federation-manager/Dockerfile.e2e images/br-federation-manager
+else
 	docker build --tag "${DOCKER_REPO}/br-federation-manager:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/br-federation-manager
+endif
 
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}"

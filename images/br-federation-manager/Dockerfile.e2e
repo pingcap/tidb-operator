@@ -1,0 +1,5 @@
+FROM alpine:3.14
+
+ARG TARGETARCH
+RUN apk add tzdata bind-tools --no-cache
+ADD bin/br-federation-manager /usr/local/bin/br-federation-manager
