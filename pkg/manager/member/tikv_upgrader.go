@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -43,6 +44,7 @@ const (
 	// TODO: change to use minReadySeconds in sts spec
 	// See https://kubernetes.io/blog/2021/08/27/minreadyseconds-statefulsets/
 	annoKeyTiKVMinReadySeconds = "tidb.pingcap.com/tikv-min-ready-seconds"
+	annoKeyTiKVStoreStateCheck = "tidb.pingcap.com/tikv-check-all-stores-up-before-upgrade"
 )
 
 type TiKVUpgrader interface {
@@ -70,8 +72,8 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	var status *v1alpha1.TiKVStatus
 	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
-		if ready, reason := isTiKVReadyToUpgrade(meta); !ready {
-			klog.Infof("TidbCluster: [%s/%s], can not upgrade tikv because: %s", ns, tcName, reason)
+		if notReadyReason := u.isTiKVReadyToUpgrade(meta); notReadyReason != "" {
+			klog.Infof("TidbCluster: [%s/%s], can not upgrade tikv because: %s", ns, tcName, notReadyReason)
 			_, podSpec, err := GetLastAppliedConfig(oldSet)
 			if err != nil {
 				return err
@@ -174,10 +176,22 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			continue
 		}
 
+		// verify that cluster is stable before each node upgrade
+		if unstableReason := u.isClusterStable(tc); unstableReason != "" {
+			return controller.RequeueErrorf("cluster is unstable: %s", unstableReason)
+		}
+
 		return u.upgradeTiKVPod(tc, i, newSet)
 	}
 
 	return nil
+}
+
+func (u *tikvUpgrader) isClusterStable(tc *v1alpha1.TidbCluster) string {
+	if check, ok := tc.Annotations[annoKeyTiKVStoreStateCheck]; ok && check == "true" {
+		return pdapi.IsTiKVStable(controller.GetPDClient(u.deps.PDControl, tc))
+	}
+	return ""
 }
 
 func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
@@ -491,18 +505,17 @@ func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *
 	return nil
 }
 
-func isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) (bool, string) {
+func (u *tikvUpgrader) isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) string {
 	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase {
-		return false, fmt.Sprintf("tiflash status is %s", tc.Status.TiFlash.Phase)
+		return fmt.Sprintf("tiflash status is %s", tc.Status.TiFlash.Phase)
 	}
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.PD.Phase == v1alpha1.ScalePhase {
-		return false, fmt.Sprintf("pd status is %s", tc.Status.PD.Phase)
+		return fmt.Sprintf("pd status is %s", tc.Status.PD.Phase)
 	}
 	if tc.TiKVScaling() {
-		return false, fmt.Sprintf("tikv status is %s", tc.Status.TiKV.Phase)
+		return fmt.Sprintf("tikv status is %s", tc.Status.TiKV.Phase)
 	}
-
-	return true, ""
+	return ""
 }
 
 type fakeTiKVUpgrader struct{}

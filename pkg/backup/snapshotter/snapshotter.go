@@ -508,39 +508,53 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnap
 }
 
 // If a backup cluster has scaled in and the tidb-operator enabled advanced-statefulset(ref: https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/advanced-statefulset)
-// the name of pvc can be not sequential, eg: [tikv-db-tikv-0, tikv-db-tikv-1, tikv-db-tikv-2, tikv-db-tikv-6, tikv-db-tikv-7, tikv-db-tikv-8]
-// When create cluster, we should ensure pvc name sequential, so we should reset it to
-// [tikv-db-tikv-0, tikv-db-tikv-1, tikv-db-tikv-2, tikv-db-tikv-3, tikv-db-tikv-4, tikv-db-tikv-5]
+// the name of pvc can be not sequential, and every tikv pod can have multiple pvc, eg:
+// [tikv-db-tikv-0, tikv-db-tikv-2, tikv-db-tikv-3, tikv-raft-db-tikv-0, tikv-raft-db-tikv-2, tikv-raft-db-tikv-3]
+// the format of tikv pvc name is {volume_name}-{tc_name}-tikv-{index}
+// When create cluster, we should ensure pvc name with same volume sequential, so we should reset it to
+// [tikv-db-tikv-0, tikv-db-tikv-1, tikv-db-tikv-2, tikv-raft-db-tikv-0, tikv-raft-db-tikv-1, tikv-raft-db-tikv-2]
 func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs []*corev1.PersistentVolume) (
 	[]*corev1.PersistentVolumeClaim, []*corev1.PersistentVolume, error) {
 	type indexedPVC struct {
 		index int
 		pvc   *corev1.PersistentVolumeClaim
 	}
-	indexedPVCs := make([]*indexedPVC, 0, len(pvcs))
-	reStr := fmt.Sprintf(`%s-(\d+)$`, stsName)
+	indexedPVCsGroups := make(map[string][]*indexedPVC, 8)
+	reStr := fmt.Sprintf(`^(.+)-%s-(\d+)$`, stsName)
 	re := regexp.MustCompile(reStr)
+	// because one tikv may have multiple volumes, corresponding multiple pvc, and every pvc has serial number.
+	// we should split pvc to multiple groups by volume name, and make the pvc sequential in every group
 	for _, pvc := range pvcs {
 		subMatches := re.FindStringSubmatch(pvc.Name)
 		// subMatches contains full text that matches regex and the matches in brackets.
-		// so if the pvc matches regex, it should contain 2 items.
-		if len(subMatches) != 2 {
+		// so if the pvc matches regex, it should contain 3 items.
+		if len(subMatches) != 3 {
 			return nil, nil, fmt.Errorf("pvc name %s doesn't match regex %s", pvc.Name, reStr)
 		}
+		volumeName := subMatches[1]
+		pvcNumberStr := subMatches[2]
 		// get the number of pvc, for example, there is a pvc "tikv-db-tikv-0", try to get the number "0"
-		index, err := strconv.Atoi(subMatches[1])
+		index, err := strconv.Atoi(pvcNumberStr)
 		if err != nil {
-			return nil, nil, fmt.Errorf("parse index %s of pvc %s to int: %s", subMatches[1], pvc.Name, err.Error())
+			return nil, nil, fmt.Errorf("parse index %s of pvc %s to int: %s", pvcNumberStr, pvc.Name, err.Error())
 		}
-		indexedPVCs = append(indexedPVCs, &indexedPVC{
+		// get the volume name of pod from pvc, for example, there is a pvc "tikv-db-tikv-0", get "tikv"
+		// there can be multiple volumes in a pod, so we should group pvc by volume name
+		indexedPVCs, ok := indexedPVCsGroups[volumeName]
+		if !ok {
+			indexedPVCs = make([]*indexedPVC, 0, len(pvcs))
+		}
+		indexedPVCsGroups[volumeName] = append(indexedPVCs, &indexedPVC{
 			index: index,
 			pvc:   pvc,
 		})
 	}
 
-	sort.Slice(indexedPVCs, func(i, j int) bool {
-		return indexedPVCs[i].index < indexedPVCs[j].index
-	})
+	for _, indexedPVCs := range indexedPVCsGroups {
+		sort.Slice(indexedPVCs, func(i, j int) bool {
+			return indexedPVCs[i].index < indexedPVCs[j].index
+		})
+	}
 	pvc2pv := make(map[string]*corev1.PersistentVolume, len(pvs))
 	for _, pv := range pvs {
 		pvc2pv[pv.Spec.ClaimRef.Name] = pv
@@ -548,24 +562,27 @@ func resetPVCSequence(stsName string, pvcs []*corev1.PersistentVolumeClaim, pvs 
 
 	sequentialPVCs := make([]*corev1.PersistentVolumeClaim, 0, len(pvcs))
 	sequentialPVs := make([]*corev1.PersistentVolume, 0, len(pvs))
-	for i, iPVC := range indexedPVCs {
-		pv, ok := pvc2pv[iPVC.pvc.Name]
-		if !ok {
-			return nil, nil, fmt.Errorf("pv with claim %s not found", iPVC.pvc.Name)
-		}
-		// when create cluster, tidb-operator will create tikv instances from 0 to n-1, and pvcs are also [0, n-1]
-		// for backup cluster, advanced statefulset allows scaling in at arbitrary position
-		// so pvcs of backup might not be [0, n-1], we should reset it to [0, n-1]
-		if i != iPVC.index {
-			names := strings.Split(iPVC.pvc.Name, "-")
-			restorePVCName := fmt.Sprintf("%s-%d", strings.Join(names[:len(names)-1], "-"), i)
+	// for every pvc group, make the pvc list in the group sequential
+	for _, indexedPVCs := range indexedPVCsGroups {
+		for i, iPVC := range indexedPVCs {
+			pv, ok := pvc2pv[iPVC.pvc.Name]
+			if !ok {
+				return nil, nil, fmt.Errorf("pv with claim %s not found", iPVC.pvc.Name)
+			}
+			// when create cluster, tidb-operator will create tikv instances from 0 to n-1, and pvcs are also [0, n-1]
+			// for backup cluster, advanced statefulset allows scaling in at arbitrary position
+			// so pvcs of backup might not be [0, n-1], we should reset it to [0, n-1]
+			if i != iPVC.index {
+				names := strings.Split(iPVC.pvc.Name, "-")
+				restorePVCName := fmt.Sprintf("%s-%d", strings.Join(names[:len(names)-1], "-"), i)
 
-			klog.Infof("reset pvc name %s to %s", iPVC.pvc.Name, restorePVCName)
-			iPVC.pvc.Name = restorePVCName
-			pv.Spec.ClaimRef.Name = restorePVCName
+				klog.Infof("reset pvc name %s to %s", iPVC.pvc.Name, restorePVCName)
+				iPVC.pvc.Name = restorePVCName
+				pv.Spec.ClaimRef.Name = restorePVCName
+			}
+			sequentialPVCs = append(sequentialPVCs, iPVC.pvc)
+			sequentialPVs = append(sequentialPVs, pv)
 		}
-		sequentialPVCs = append(sequentialPVCs, iPVC.pvc)
-		sequentialPVs = append(sequentialPVs, pv)
 	}
 	return sequentialPVCs, sequentialPVs, nil
 }
