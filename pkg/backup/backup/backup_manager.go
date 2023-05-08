@@ -209,6 +209,11 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
 
+	// when teardown volume snapshot backup, it will delete job later, need not wait pre task done
+	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot && backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
+		return nil
+	}
+
 	// check whether backup should wait and requeue
 	if shouldLogBackupCommandRequeue(backup) {
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
