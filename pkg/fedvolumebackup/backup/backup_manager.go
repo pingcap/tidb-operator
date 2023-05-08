@@ -14,6 +14,9 @@
 package backup
 
 import (
+	"context"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
@@ -58,6 +61,18 @@ func (bm *backupManager) syncBackup(volumeBackup *v1alpha1.VolumeBackup) error {
 
 	// TODO(federation): implement the main logic of backup
 	klog.Infof("sync VolumeBackup %s/%s", ns, name)
+
+	// TODO(federation): remove the following code
+	for k8sName, k8sClient := range bm.deps.FedClientset {
+		bkList, err := k8sClient.PingcapV1alpha1().Backups("default").List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			klog.Errorf("failed to list backups in %s: %v", k8sName, err)
+			continue
+		}
+		for _, bk := range bkList.Items {
+			klog.Infof("get backup %s/%s", bk.Namespace, bk.Name)
+		}
+	}
 
 	return nil
 }
