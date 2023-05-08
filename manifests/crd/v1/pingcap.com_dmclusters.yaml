@@ -5023,6 +5023,11 @@ spec:
                       type:
                         type: string
                     type: object
+                  startUpScriptVersion:
+                    enum:
+                    - ""
+                    - v1
+                    type: string
                   statefulSetUpdateStrategy:
                     type: string
                   storageClassName:
@@ -5140,6 +5145,8 @@ spec:
                         type: string
                     type: object
                 type: object
+              preferIPv6:
+                type: boolean
               priorityClassName:
                 type: string
               pvReclaimPolicy:

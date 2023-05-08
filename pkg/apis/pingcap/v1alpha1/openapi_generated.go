@@ -945,7 +945,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"schedule", "backupTemplate", "logBackupTemplate"},
+				Required: []string{"schedule", "logBackupTemplate"},
 			},
 		},
 		Dependencies: []string{
@@ -2189,6 +2189,13 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 						SchemaProps: spec.SchemaProps{
 							Description: "SuspendAction defines the suspend actions for all component.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction"),
+						},
+					},
+					"preferIPv6": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PreferIPv6 indicates whether to prefer IPv6 addresses for all components.",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
@@ -4457,6 +4464,13 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of dm-master-servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterConfigWraper"),
+						},
+					},
+					"startUpScriptVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Start up script version",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -14319,6 +14333,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbDashboardSpec(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
+					"preferIPv6": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PreferIPv6 indicates whether to prefer IPv6 addresses for all components.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"clusters"},
 			},
@@ -14988,6 +15009,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"preferIPv6": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PreferIPv6 indicates whether to prefer IPv6 addresses for all components.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"prometheus", "reloader", "initializer"},
 			},
@@ -15406,6 +15434,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoringSpec(ref common.ReferenceC
 							Description: "NGMonitoring is spec of ng monitoring",
 							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.NGMonitoringSpec"),
+						},
+					},
+					"preferIPv6": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PreferIPv6 indicates whether to prefer IPv6 addresses for all components.",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},

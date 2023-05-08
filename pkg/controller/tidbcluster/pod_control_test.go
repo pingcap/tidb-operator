@@ -63,8 +63,24 @@ func TestTiKVPodSync(t *testing.T) {
 	kvClient := &kvClient{}
 	fakeTiKVControl.SetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, kvClient)
 	c := NewPodController(deps)
-	c.testPDClient = pdapi.NewFakePDClient()
+	pdClient := pdapi.NewFakePDClient()
+	c.testPDClient = pdClient
 	c.recheckLeaderCountDuration = time.Millisecond * 100
+	c.recheckClusterStableDuration = time.Millisecond * 100
+	var tikvStatus atomic.Value
+	tikvStatus.Store(v1alpha1.TiKVStateDown)
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+		storesInfo := &pdapi.StoresInfo{
+			Stores: []*pdapi.StoreInfo{
+				{
+					Store: &pdapi.MetaStore{
+						StateName: tikvStatus.Load().(string),
+					},
+				},
+			},
+		}
+		return storesInfo, nil
+	})
 
 	stop := make(chan struct{})
 	go func() {
@@ -114,10 +130,17 @@ func TestTiKVPodSync(t *testing.T) {
 	g.Expect(err).Should(Succeed())
 
 	atomic.StoreInt32(&kvClient.leaderCount, 0)
+
+	g.Consistently(func() bool {
+		_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+		return err == nil
+	}, time.Second*5, interval).Should(BeTrue(), "should not delete pod while cluster is unstable")
+
+	tikvStatus.Store(v1alpha1.TiKVStateUp)
 	g.Eventually(func() bool {
 		_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 		return errors.IsNotFound(err)
-	}, timeout, interval).Should(BeTrue(), "should delete pod if leader count is 0")
+	}, timeout, interval).Should(BeTrue(), "should delete pod if leader count is 0 and cluster is stable")
 
 	pod = newTiKVPod(tc)
 	pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
@@ -314,6 +337,148 @@ func TestPDPodSync(t *testing.T) {
 					_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 					return err == nil
 				}, timeout, interval).Should(BeTrue(), "should not transfer leader")
+			}
+		})
+	}
+}
+
+func TestTiDBPodSync(t *testing.T) {
+	const (
+		interval = 100 * time.Millisecond
+		timeout  = time.Minute
+	)
+	testCases := []struct {
+		name         string
+		pdPhase      v1alpha1.MemberPhase
+		tikvPhase    v1alpha1.MemberPhase
+		tidbPhase    v1alpha1.MemberPhase
+		shouldDelete bool
+		target       int
+	}{
+		{
+			name:         "delete tidb pod successfully",
+			pdPhase:      v1alpha1.NormalPhase,
+			tikvPhase:    v1alpha1.NormalPhase,
+			tidbPhase:    v1alpha1.NormalPhase,
+			shouldDelete: true,
+			target:       0,
+		},
+		{
+			name:         "PD rolling restart",
+			pdPhase:      v1alpha1.UpgradePhase,
+			tikvPhase:    v1alpha1.NormalPhase,
+			tidbPhase:    v1alpha1.NormalPhase,
+			shouldDelete: false,
+			target:       0,
+		},
+		{
+			name:         "TiKV rolling restart",
+			pdPhase:      v1alpha1.NormalPhase,
+			tikvPhase:    v1alpha1.UpgradePhase,
+			tidbPhase:    v1alpha1.NormalPhase,
+			shouldDelete: false,
+			target:       0,
+		},
+		{
+			name:         "TiDB rolling restart",
+			pdPhase:      v1alpha1.NormalPhase,
+			tikvPhase:    v1alpha1.NormalPhase,
+			tidbPhase:    v1alpha1.UpgradePhase,
+			shouldDelete: false,
+			target:       0,
+		},
+	}
+	for _, c := range testCases {
+		t.Run(c.name, func(t *testing.T) {
+			ctx := context.TODO()
+			g := NewGomegaWithT(t)
+			tc := newTidbCluster()
+			deps := controller.NewFakeDependencies()
+			podController := NewPodController(deps)
+
+			stop := make(chan struct{})
+			go func() {
+				deps.KubeInformerFactory.Start(stop)
+			}()
+			deps.KubeInformerFactory.WaitForCacheSync(stop)
+			go func() {
+				deps.InformerFactory.Start(stop)
+			}()
+			deps.InformerFactory.WaitForCacheSync(stop)
+
+			defer close(stop)
+			go func() {
+				podController.Run(1, stop)
+			}()
+
+			tc.Status.PD = v1alpha1.PDStatus{
+				Synced: true,
+				Phase:  c.pdPhase,
+				Leader: v1alpha1.PDMember{
+					Name:   fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), 0),
+					Health: true,
+				},
+				Members: make(map[string]v1alpha1.PDMember),
+			}
+
+			tc.Status.TiKV = v1alpha1.TiKVStatus{
+				Synced: true,
+				Phase:  c.tikvPhase,
+				Stores: map[string]v1alpha1.TiKVStore{
+					"0": {
+						PodName: fmt.Sprintf("%s-%d", controller.TiKVMemberName(tc.Name), 0),
+						ID:      "0",
+					},
+				},
+			}
+
+			tc.Status.TiDB = v1alpha1.TiDBStatus{
+				Phase: c.tidbPhase,
+			}
+
+			tc, err := deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(ctx, tc, metav1.CreateOptions{})
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Eventually(func() error {
+				_, err := deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(tc.Name)
+				return err
+			}, timeout, interval).Should(Succeed())
+
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.Name), c.target),
+					Namespace: tc.Namespace,
+					Labels: map[string]string{
+						label.ManagedByLabelKey: "tidb-operator",
+						label.ComponentLabelKey: "tidb",
+						label.InstanceLabelKey:  tc.Name,
+					},
+					Annotations: make(map[string]string),
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: "dummy-name",
+						},
+					},
+				},
+			}
+
+			pod.Annotations[v1alpha1.TiDBGracefulShutdownAnnKey] = v1alpha1.TiDBPodDeletionDeletePod
+
+			pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+			g.Expect(err).NotTo(HaveOccurred())
+
+			// verify end state
+			if c.shouldDelete {
+				g.Eventually(func() bool {
+					_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+					return errors.IsNotFound(err)
+				}, timeout, interval).Should(BeTrue(), "should delete pod")
+			} else {
+				g.Consistently(func() bool {
+					_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+					return err == nil
+				}, timeout, interval).Should(BeTrue(), "should not delete pod")
 			}
 		})
 	}

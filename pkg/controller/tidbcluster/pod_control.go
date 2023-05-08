@@ -53,8 +53,9 @@ type PodController struct {
 	podStats   map[string]stat
 
 	// only set in test
-	testPDClient               pdapi.PDClient
-	recheckLeaderCountDuration time.Duration
+	testPDClient                 pdapi.PDClient
+	recheckLeaderCountDuration   time.Duration
+	recheckClusterStableDuration time.Duration
 }
 
 // NewPodController create a PodController.
@@ -65,8 +66,9 @@ func NewPodController(deps *controller.Dependencies) *PodController {
 			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
 			"tidbcluster pods",
 		),
-		podStats:                   make(map[string]stat),
-		recheckLeaderCountDuration: time.Second * 15,
+		podStats:                     make(map[string]stat),
+		recheckLeaderCountDuration:   time.Second * 15,
+		recheckClusterStableDuration: time.Minute * 1,
 	}
 
 	podsInformer := deps.KubeInformerFactory.Core().V1().Pods()
@@ -216,6 +218,8 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 		return c.syncPDPod(ctx, pod, tc)
 	case label.TiKVLabelVal:
 		return c.syncTiKVPod(ctx, pod, tc)
+	case label.TiDBLabelVal:
+		return c.syncTiDBPod(ctx, pod, tc)
 	default:
 		return reconcile.Result{}, nil
 	}
@@ -324,6 +328,10 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		if err != nil {
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status for pod %s/%s", pod.Namespace, pod.Name)
 		}
+		if unstableReason := pdapi.IsTiKVStable(pdClient); unstableReason != "" {
+			klog.Infof("Cluster %s is unstable: %s", tc.Name, unstableReason)
+			return reconcile.Result{RequeueAfter: c.recheckClusterStableDuration}, nil
+		}
 		err = pdClient.BeginEvictLeader(storeID)
 		if err != nil {
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to evict leader for store %d (Pod %s/%s)", storeID, pod.Namespace, pod.Name)
@@ -410,6 +418,51 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value := needDeleteTiDBPod(pod)
+	if value == "" {
+		// No need to delete tidb pod
+		return reconcile.Result{}, nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	if tc.PDUpgrading() || tc.PDScaling() || tc.TiKVUpgrading() || tc.TiKVScaling() || tc.TiDBUpgrading() || tc.TiDBScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
+			"tikv status is %s, tiflash status is %s, pump status is %s, "+
+			"tidb status is %s, can not delete tidb",
+			ns, tcName,
+			tc.Status.PD.Phase, tc.Status.TiKV.Phase, tc.Status.TiFlash.Phase,
+			tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
+		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	}
+
+	switch value {
+	case v1alpha1.TiDBPodDeletionValueNone:
+	case v1alpha1.TiDBPodDeletionDeletePod:
+	default:
+		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.TiDBGracefulShutdownAnnKey, pod.Namespace, pod.Name)
+		return reconcile.Result{}, nil
+	}
+
+	if value == v1alpha1.TiDBPodDeletionDeletePod {
+		err := c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
+		}
+	}
+
+	return reconcile.Result{}, nil
+}
+
+func needDeleteTiDBPod(pod *corev1.Pod) string {
+	if pod.Annotations == nil {
+		return ""
+	}
+	return pod.Annotations[v1alpha1.TiDBGracefulShutdownAnnKey]
 }
 
 func needEvictLeader(pod *corev1.Pod) (string, string, bool) {

@@ -1380,6 +1380,8 @@ const (
 	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
 	// PDLeaderTransferAnnKey is the annotation key to transfer PD leader used by user.
 	PDLeaderTransferAnnKey = "tidb.pingcap.com/pd-transfer-leader"
+	// TiDBGracefulShutdownAnnKey is the annotation key to graceful shutdown tidb pod by user.
+	TiDBGracefulShutdownAnnKey = "tidb.pingcap.com/tidb-graceful-shutdown"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -1398,6 +1400,15 @@ const (
 const (
 	TransferLeaderValueNone      = "none"
 	TransferLeaderValueDeletePod = "delete-pod"
+)
+
+// The `Value` of TiDB deletion annotation controls the behavior when the tidb pod got deleted, the valid value is one of:
+//
+// - `none`: doing nothing.
+// - `delete-pod`: delete pod.
+const (
+	TiDBPodDeletionValueNone = "none"
+	TiDBPodDeletionDeletePod = "delete-pod"
 )
 
 type EvictLeaderStatus struct {
@@ -2198,6 +2209,7 @@ type BackupScheduleSpec struct {
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
+	// +optional
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
 	LogBackupTemplate *BackupSpec `json:"logBackupTemplate"`
@@ -2607,6 +2619,9 @@ type DMClusterSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // DMClusterStatus represents the current status of a dm cluster.
@@ -2672,6 +2687,11 @@ type MasterSpec struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *MasterConfigWraper `json:"config,omitempty"`
+
+	// Start up script version
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1"
+	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
 }
 
 type MasterServiceSpec struct {

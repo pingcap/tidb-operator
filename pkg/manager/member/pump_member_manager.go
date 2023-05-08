@@ -298,7 +298,7 @@ func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 
 	objMeta, pumpLabel := getPumpMeta(tc, controller.PumpPeerMemberName)
 
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: objMeta,
 		Spec: corev1.ServiceSpec{
 			ClusterIP: "None",
@@ -314,6 +314,12 @@ func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 			PublishNotReadyAddresses: true,
 		},
 	}
+
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(svc)
+	}
+
+	return svc
 }
 
 // getNewPumpConfigMap returns a configMap for pump

@@ -115,7 +115,7 @@ func ConstructRestoreMetaStr() string {
 		"kubernetes": {
 			"pvcs": [{
 				"metadata": {
-					"name": "test-tikv-1",
+					"name": "tikv-test-tikv-1",
 					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
 					"resourceVersion": "1957",
 					"creationTimestamp": null,
@@ -138,7 +138,7 @@ func ConstructRestoreMetaStr() string {
 				}
 			}, {
 				"metadata": {
-					"name": "test-tikv-2",
+					"name": "tikv-test-tikv-2",
 					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
 					"resourceVersion": "1959",
 					"creationTimestamp": null,
@@ -161,7 +161,7 @@ func ConstructRestoreMetaStr() string {
 				}
 			}, {
 				"metadata": {
-					"name": "test-tikv-3",
+					"name": "tikv-test-tikv-3",
 					"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
 					"resourceVersion": "1961",
 					"creationTimestamp": null,
@@ -206,7 +206,7 @@ func ConstructRestoreMetaStr() string {
 						"fsType": "ext4"
 					},
 					"claimRef": {
-						"name": "test-tikv-1",
+						"name": "tikv-test-tikv-1",
 						"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3121",
 						"resourceVersion": "1957"
 					}
@@ -237,7 +237,7 @@ func ConstructRestoreMetaStr() string {
 						"fsType": "ext4"
 					},
 					"claimRef": {
-						"name": "test-tikv-2",
+						"name": "tikv-test-tikv-2",
 						"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3123",
 						"resourceVersion": "1959"
 					}
@@ -268,7 +268,7 @@ func ConstructRestoreMetaStr() string {
 						"fsType": "ext4"
 					},
 					"claimRef": {
-						"name": "test-tikv-3",
+						"name": "tikv-test-tikv-3",
 						"uid": "301b0e8b-3538-4f61-a0fd-a25abd9a3125",
 						"resourceVersion": "1961"
 					}
@@ -279,6 +279,7 @@ func ConstructRestoreMetaStr() string {
 			}],
 			"crd_tidb_cluster": {
 				"metadata": {
+					"name": "test",
 					"creationTimestamp": null
 				},
 				"spec": {
