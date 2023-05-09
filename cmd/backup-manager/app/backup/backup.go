@@ -194,6 +194,8 @@ func (bo *Options) doTruncateLogBackup(ctx context.Context, backup *v1alpha1.Bac
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
+// doInitializeVolumeBackup generates br args to stop GC and PD schedules
+// and update backup status to VolumeBackupInitialized when watches corresponding logs
 func (bo *Options) doInitializeVolumeBackup(
 	ctx context.Context,
 	backup *v1alpha1.Backup,

@@ -579,6 +579,8 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	return updateStatus, "", nil
 }
 
+// performVolumeBackupInitialize execute br to stop GC and PD schedules
+// it will keep running until the process is killed
 func (bm *Manager) performVolumeBackupInitialize(ctx context.Context, backup *v1alpha1.Backup) error {
 	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupRunning,
@@ -625,6 +627,7 @@ func (bm *Manager) isBRCanContinueRunByCheckpoint() bool {
 	return !lessThanV651.Check(v)
 }
 
+// VolumeBackupInitializeManager manages volume backup initializing status
 type VolumeBackupInitializeManager struct {
 	done               bool
 	gcStopped          bool
@@ -634,6 +637,8 @@ type VolumeBackupInitializeManager struct {
 	statusUpdater controller.BackupConditionUpdaterInterface
 }
 
+// UpdateBackupStatus extracts information from log line and update backup status to VolumeBackupInitialized
+// when GC and PD schedules are all stopped
 func (vb *VolumeBackupInitializeManager) UpdateBackupStatus(logLine string) {
 	if vb.done {
 		return
@@ -647,6 +652,7 @@ func (vb *VolumeBackupInitializeManager) UpdateBackupStatus(logLine string) {
 	vb.tryUpdateBackupStatus()
 }
 
+// tryUpdateBackupStatus tries to update backup status
 func (vb *VolumeBackupInitializeManager) tryUpdateBackupStatus() {
 	if !vb.gcStopped || !vb.pdSchedulesStopped {
 		return
