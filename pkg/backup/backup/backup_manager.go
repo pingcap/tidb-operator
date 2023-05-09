@@ -209,11 +209,6 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
 
-	// when teardown volume snapshot backup, it will delete job later, need not wait pre task done
-	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot && backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
-		return nil
-	}
-
 	// check whether backup should wait and requeue
 	if shouldLogBackupCommandRequeue(backup) {
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
@@ -656,7 +651,13 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		},
 	}
 
-	// TODO remove resources of containers and init containers when create initializing job.
+	// for volume backup initializing job, we should set resource requirement empty
+	// avoid it consuming too much resource
+	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot &&
+		backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupInitialize {
+		bm.setBackupPodResourceRequirementsEmpty(podSpec)
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
@@ -674,6 +675,17 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	}
 
 	return job, "", nil
+}
+
+func (bm *backupManager) setBackupPodResourceRequirementsEmpty(podSpec *corev1.PodTemplateSpec) {
+	for _, c := range podSpec.Spec.InitContainers {
+		c.Resources.Requests = make(corev1.ResourceList, 0)
+		c.Resources.Limits = make(corev1.ResourceList, 0)
+	}
+	for _, c := range podSpec.Spec.Containers {
+		c.Resources.Requests = make(corev1.ResourceList, 0)
+		c.Resources.Limits = make(corev1.ResourceList, 0)
+	}
 }
 
 // save cluster meta to external storage since k8s size limitation on annotation/configMap
@@ -834,6 +846,7 @@ func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error
 	return skip, err
 }
 
+// skipVolumeSnapshotBackupSync skip volume snapshot backup, returns true if can be skipped.
 func (bm *backupManager) skipVolumeSnapshotBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	if backup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot {
 		return false, nil
@@ -860,6 +873,7 @@ func (bm *backupManager) skipVolumeSnapshotBackupSync(backup *v1alpha1.Backup) (
 	return false, nil
 }
 
+// teardownVolumeBackup delete the initializing job and set backup to complete status
 func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
@@ -904,7 +918,7 @@ func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
 	return false
 }
 
-// waitOldBackupJobDone wait old log backup job done
+// waitOldBackupJobDone wait old backup job done
 func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, backup *v1alpha1.Backup, oldJob *batchv1.Job) error {
 	if oldJob.DeletionTimestamp != nil {
 		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s job %s is being deleted", ns, name, backupJobName))
@@ -917,13 +931,19 @@ func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, bac
 		}
 	}
 	if finished {
+		// when teardown volume snapshot backup, just wait execution job done, don't need to delete the execution job
+		if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot &&
+			backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
+			return nil
+		}
+
 		klog.Infof("backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
 		if err := bm.deps.JobControl.DeleteJob(backup, oldJob); err != nil {
 			return fmt.Errorf("backup %s/%s delete job %s failed, err: %v", ns, name, backupJobName, err)
 		}
 	}
-	// job running no need to requeue, because delete job will call update and it will requeue
-	return controller.IgnoreErrorf("backup %s/%s job %s is running, will be ignored", ns, name, backupJobName)
+
+	return controller.RequeueErrorf("backup %s/%s job %s is running, requeue it", ns, name, backupJobName)
 }
 
 var _ backup.BackupManager = &backupManager{}

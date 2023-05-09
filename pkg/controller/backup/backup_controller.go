@@ -180,7 +180,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	// volume backup has multiple phases, not check it
+	// volume backup has multiple phases, and it can create multiple jobs, not check it
 	if newBackup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot &&
 		(v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsLogBackupStopped(newBackup)) {
 		klog.V(0).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
