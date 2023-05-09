@@ -893,6 +893,11 @@ func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err erro
 
 	defer func() {
 		if err == nil {
+			// if backup is failed, just delete job, not modify status
+			if v1alpha1.IsBackupFailed(backup) {
+				return
+			}
+
 			err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Type:   v1alpha1.BackupComplete,
 				Status: corev1.ConditionTrue,
