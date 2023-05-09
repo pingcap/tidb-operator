@@ -59,7 +59,7 @@ const (
 	// RestoreLabelKey is restore key
 	RestoreLabelKey string = "tidb.pingcap.com/restore"
 
-	// BackupProtectionFinalizer is the name of finalizer on backups
+	// BackupProtectionFinalizer is the name of finalizer on backups or federation backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
 	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB

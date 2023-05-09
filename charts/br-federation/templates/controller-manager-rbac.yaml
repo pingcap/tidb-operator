@@ -1,0 +1,58 @@
+{{- if and .Values.rbac.create (hasKey .Values.brFederationManager "create" | ternary .Values.brFederationManager.create true) }}
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.brFederationManager.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
+  name: {{ .Values.brFederationManager.serviceAccount }}
+  {{- end }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: br-federation-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Release.Name }}:br-federation-manager
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: br-federation-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+rules:
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["create", "get", "list", "watch", "update", "delete"]
+- apiGroups: ["federation.pingcap.com"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Release.Name }}:br-federation-manager
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: br-federation-manager
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+subjects:
+- kind: ServiceAccount
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.brFederationManager.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
+  name: {{ .Values.brFederationManager.serviceAccount }}
+  {{- end }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ .Release.Name }}:br-federation-manager
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
