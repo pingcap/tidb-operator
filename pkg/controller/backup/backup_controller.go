@@ -175,13 +175,13 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	// when volume backup failed, we should delete initialing job to resume GC and PD schedules, not check it
+	// when volume backup failed, we should delete initialing job to resume GC and PD schedules, not skip it
 	if v1alpha1.IsBackupFailed(newBackup) && newBackup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot {
 		klog.V(4).Infof("backup %s/%s is Failed, skipping.", ns, name)
 		return
 	}
 
-	// volume backup has multiple phases, and it can create multiple jobs, not check it
+	// volume backup has multiple phases, and it can create multiple jobs, not skip it
 	if (v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsLogBackupStopped(newBackup)) &&
 		newBackup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot {
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
