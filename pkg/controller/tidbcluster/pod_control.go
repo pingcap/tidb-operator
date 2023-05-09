@@ -53,8 +53,9 @@ type PodController struct {
 	podStats   map[string]stat
 
 	// only set in test
-	testPDClient               pdapi.PDClient
-	recheckLeaderCountDuration time.Duration
+	testPDClient                 pdapi.PDClient
+	recheckLeaderCountDuration   time.Duration
+	recheckClusterStableDuration time.Duration
 }
 
 // NewPodController create a PodController.
@@ -65,8 +66,9 @@ func NewPodController(deps *controller.Dependencies) *PodController {
 			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
 			"tidbcluster pods",
 		),
-		podStats:                   make(map[string]stat),
-		recheckLeaderCountDuration: time.Second * 15,
+		podStats:                     make(map[string]stat),
+		recheckLeaderCountDuration:   time.Second * 15,
+		recheckClusterStableDuration: time.Minute * 1,
 	}
 
 	podsInformer := deps.KubeInformerFactory.Core().V1().Pods()
@@ -325,6 +327,10 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		storeID, err := member.TiKVStoreIDFromStatus(tc, pod.Name)
 		if err != nil {
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status for pod %s/%s", pod.Namespace, pod.Name)
+		}
+		if unstableReason := pdapi.IsTiKVStable(pdClient); unstableReason != "" {
+			klog.Infof("Cluster %s is unstable: %s", tc.Name, unstableReason)
+			return reconcile.Result{RequeueAfter: c.recheckClusterStableDuration}, nil
 		}
 		err = pdClient.BeginEvictLeader(storeID)
 		if err != nil {
