@@ -113,7 +113,7 @@ func (c *Controller) processNextWorkItem() bool {
 			klog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
 			c.queue.AddRateLimited(key)
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
-			klog.V(0).Infof("Backup: %v, ignore err: %v", key.(string), err)
+			klog.V(4).Infof("Backup: %v, ignore err: %v", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
 			c.queue.AddRateLimited(key)
@@ -130,7 +130,7 @@ func (c *Controller) sync(key string) error {
 	defer func() {
 		duration := time.Since(startTime)
 		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
-		klog.V(0).Infof("Finished syncing Backup %q (%v)", key, duration)
+		klog.V(4).Infof("Finished syncing Backup %q (%v)", key, duration)
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
@@ -166,24 +166,25 @@ func (c *Controller) updateBackup(cur interface{}) {
 	}
 
 	if v1alpha1.IsBackupInvalid(newBackup) {
-		klog.V(0).Infof("backup %s/%s is invalid, skipping.", ns, name)
+		klog.V(4).Infof("backup %s/%s is invalid, skipping.", ns, name)
 		return
 	}
 
 	if v1alpha1.IsBackupComplete(newBackup) {
-		klog.V(0).Infof("backup %s/%s is Complete, skipping.", ns, name)
+		klog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
 		return
 	}
 
-	if v1alpha1.IsBackupFailed(newBackup) {
-		klog.V(0).Infof("backup %s/%s is Failed, skipping.", ns, name)
+	// when volume backup failed, we should delete initialing job to resume GC and PD schedules, not check it
+	if v1alpha1.IsBackupFailed(newBackup) && newBackup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot {
+		klog.V(4).Infof("backup %s/%s is Failed, skipping.", ns, name)
 		return
 	}
 
 	// volume backup has multiple phases, and it can create multiple jobs, not check it
-	if newBackup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot &&
-		(v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsLogBackupStopped(newBackup)) {
-		klog.V(0).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
+	if (v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsLogBackupStopped(newBackup)) &&
+		newBackup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot {
+		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
 		// TODO: log backup check all subcommand job's pod status
 		if newBackup.Spec.Mode == v1alpha1.BackupModeLog {
 			return
@@ -209,7 +210,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	klog.V(0).Infof("backup object %s/%s enqueue", ns, name)
+	klog.V(4).Infof("backup object %s/%s enqueue", ns, name)
 	c.enqueueBackup(newBackup)
 }
 
@@ -225,7 +226,7 @@ func (c *Controller) deleteJob(obj interface{}) {
 	if backup == nil {
 		return
 	}
-	klog.V(0).Infof("Job %s/%s deleted through %v.", ns, jobName, utilruntime.GetCaller())
+	klog.V(4).Infof("Job %s/%s deleted through %v.", ns, jobName, utilruntime.GetCaller())
 	c.updateBackup(backup)
 }
 
@@ -452,7 +453,7 @@ func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(backup *v1alpha
 		failedReason string
 		retryRecord  = backup.Status.BackoffRetryStatus[len(backup.Status.BackoffRetryStatus)-1]
 	)
-	klog.V(0).Infof("retry backup %s/%s, retry reason %s, original reason %s", ns, name, retryRecord.RetryReason, retryRecord.OriginalReason)
+	klog.V(4).Infof("retry backup %s/%s, retry reason %s, original reason %s", ns, name, retryRecord.RetryReason, retryRecord.OriginalReason)
 
 	// check retrying
 	if isBackoffRetrying(backup) {
@@ -495,11 +496,11 @@ func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(backup *v1alpha
 
 	// check is time to retry
 	if !isTimeToRetry(backup, &now) {
-		klog.V(0).Infof("backup %s/%s is not the time to retry, expected retry time is %s, now is %s", ns, name, retryRecord.ExpectedRetryAt, now)
+		klog.V(4).Infof("backup %s/%s is not the time to retry, expected retry time is %s, now is %s", ns, name, retryRecord.ExpectedRetryAt, now)
 		return nil
 	}
 
-	klog.V(0).Infof("backup %s/%s is the time to retry, expected retry time is %s, now is %s", ns, name, retryRecord.ExpectedRetryAt, now)
+	klog.V(4).Infof("backup %s/%s is the time to retry, expected retry time is %s, now is %s", ns, name, retryRecord.ExpectedRetryAt, now)
 
 	// update retry status
 	err = c.control.UpdateStatus(backup, &v1alpha1.BackupCondition{
@@ -570,7 +571,7 @@ func (c *Controller) cleanBackupOldJobIfExist(backup *v1alpha1.Backup) error {
 func (c *Controller) doRetryFailedBackup(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	klog.V(0).Infof("backup %s/%s is retrying after it has been scheduled", ns, name)
+	klog.V(4).Infof("backup %s/%s is retrying after it has been scheduled", ns, name)
 
 	// retry done
 	if isCurrentBackoffRetryDone(backup) {
