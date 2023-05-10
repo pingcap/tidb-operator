@@ -25,6 +25,8 @@ source hack/lib.sh
 hack::ensure_gen_crd_api_references_docs
 
 DOCS_PATH="$ROOT/docs/api-references"
+
+echo "Generating API references docs ..."
 API_DIR="${ROOT}/pkg/apis/pingcap/v1alpha1"
 
 pushd ${API_DIR} >/dev/null
@@ -33,4 +35,15 @@ pushd ${API_DIR} >/dev/null
         -template-dir "$DOCS_PATH/template" \
         -api-dir "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1" \
         -out-file "$DOCS_PATH/docs.md"
+popd >/dev/null
+
+echo "Generating API references docs for federation ..."
+API_DIR="${ROOT}/pkg/apis/federation/pingcap/v1alpha1"
+
+pushd ${API_DIR} >/dev/null
+    GOROOT=$(go env GOROOT) ${DOCS_BIN} \
+        -config "$DOCS_PATH/config.json" \
+        -template-dir "$DOCS_PATH/template" \
+        -api-dir "github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1" \
+        -out-file "$DOCS_PATH/federation-docs.md"
 popd >/dev/null
