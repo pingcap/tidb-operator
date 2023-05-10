@@ -83,6 +83,14 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 	var err error
 
+	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+		// check volume backup initialize job, we should ensure the job is existed during volume backup
+		if err = bm.checkVolumeBackupInitializeJobExisted(backup); err != nil {
+			klog.Errorf("backup %s/%s check volume backup initialize job error %v.", ns, name, err)
+			return err
+		}
+	}
+
 	// validate backup
 	if err = bm.validateBackup(backup); err != nil {
 		klog.Errorf("backup %s/%s validate error %v.", ns, name, err)
@@ -186,6 +194,37 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 		}, nil)
 
 		return controller.IgnoreErrorf("invalid backup spec %s/%s cause %s", ns, name, err.Error())
+	}
+	return nil
+}
+
+// checkVolumeBackupInitializeJobExisted check if volume backup initialized job is existed during volume backup
+func (bm *backupManager) checkVolumeBackupInitializeJobExisted(backup *v1alpha1.Backup) error {
+	if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
+		return nil
+	}
+	if !v1alpha1.IsVolumeBackupInitialized(backup) {
+		return nil
+	}
+
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	initializeJobName := backup.GetVolumeBackupInitializeJobName()
+	_, err := bm.deps.JobLister.Jobs(ns).Get(initializeJobName)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, initializeJobName, err)
+		}
+		// volume backup initialize job was deleted during volume backup
+		// we can't ensure GC and PD schedules are stopped, set backup VolumeBackupInitializeFailed
+		updateErr := bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:   v1alpha1.VolumeBackupInitializeFailed,
+			Status: corev1.ConditionTrue,
+		}, nil)
+		if updateErr != nil {
+			return updateErr
+		}
+		return controller.IgnoreErrorf("backup %s/%s job was deleted, set it VolumeBackupInitializeFailed", ns, name)
 	}
 	return nil
 }
@@ -900,6 +939,22 @@ func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err erro
 		}
 		return fmt.Errorf("backup %s/%s get initializing job %s failed, err: %v",
 			ns, name, backupInitializeJobName, err)
+	}
+
+	jobRunning := true
+	for _, condition := range backupInitializeJob.Status.Conditions {
+		if condition.Type == batchv1.JobFailed || condition.Type == batchv1.JobComplete {
+			jobRunning = false
+			break
+		}
+	}
+	// if job isn't running, we can't ensure GC and PD schedules are stopped during volume backup
+	// the volume snapshots are invalid, we should set backup failed
+	if !jobRunning {
+		return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:   v1alpha1.BackupFailed,
+			Status: corev1.ConditionTrue,
+		}, nil)
 	}
 
 	if err := bm.deps.JobControl.DeleteJob(backup, backupInitializeJob); err != nil {
