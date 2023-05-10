@@ -66,14 +66,11 @@ func CalcVolSnapBackupSize(ctx context.Context, provider v1alpha1.StorageProvide
 		return 0, err
 	}
 
-	// get all snapshots per backup volume from aws
-	snapshots, err := getBackupVolSnapshots(volSnapshots)
-
 	if err != nil {
 		return 0, err
 	}
 
-	backupSize, err := calcBackupSize(ctx, volSnapshots, snapshots)
+	backupSize, err := calcBackupSize(ctx, volSnapshots)
 
 	if err != nil {
 		return 0, err
@@ -142,7 +139,7 @@ func getSnapshotsFromBackupmeta(ctx context.Context, provider v1alpha1.StoragePr
 	return volumeIDMap, nil
 }
 
-// getBackupVolSnapshots get a volue-snapshots map contains map[volumeId]{snapshot1, snapshot2, snapshot3}
+// getBackupVolSnapshots get a volume-snapshots map contains map[volumeId]{snapshot1, snapshot2, snapshot3}
 func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapshot, error) {
 	volWithTheirSnapshots := make(map[string][]*ec2.Snapshot)
 
@@ -205,42 +202,22 @@ func getBackupVolSnapshots(volumes map[string]string) (map[string][]*ec2.Snapsho
 	return volWithTheirSnapshots, nil
 }
 
-// calcBackupSize get a volue-snapshots backup size
-func calcBackupSize(ctx context.Context, volumes map[string]string, snapshots map[string][]*ec2.Snapshot) (uint64, error) {
+// calcBackupSize get a volume-snapshots backup size
+func calcBackupSize(ctx context.Context, volumes map[string]string) (uint64, error) {
 	var backupSize uint64
 	var apiReqCount uint64
 
 	workerPool := util.NewWorkerPool(EbsApiConcurrency, "list snapshot size")
 	eg, _ := errgroup.WithContext(ctx)
 
-	for volumeId, id := range volumes {
-		volSnapshots := snapshots[volumeId]
+	for _, id := range volumes {
 		snapshotId := id
 		// sort snapshots by timestamp
 		workerPool.ApplyOnErrorGroup(eg, func() error {
-			// get prev snapshot backup
-			prevSnapshot, err := getPrevSnapshotId(snapshotId, volSnapshots)
+			snapSize, apiReq, err := initialSnapshotSize(snapshotId)
 			if err != nil {
 				return err
 			}
-
-			// full/initial snapshot backup
-			if prevSnapshot == "" {
-				snapSize, apiReq, err := initialSnapshotSize(snapshotId)
-				if err != nil {
-					return err
-				}
-
-				atomic.AddUint64(&backupSize, snapSize)
-				atomic.AddUint64(&apiReqCount, apiReq)
-				return nil
-			}
-
-			snapSize, apiReq, err := changedBlocksSize(prevSnapshot, snapshotId)
-			if err != nil {
-				return err
-			}
-
 			atomic.AddUint64(&backupSize, snapSize)
 			atomic.AddUint64(&apiReqCount, apiReq)
 			return nil
