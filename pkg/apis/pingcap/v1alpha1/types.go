@@ -2105,6 +2105,8 @@ const (
 	BackupRestart BackupConditionType = "Restart"
 	// VolumeBackupInitialized means the volume backup has stopped GC and PD schedule
 	VolumeBackupInitialized BackupConditionType = "VolumeBackupInitialized"
+	// VolumeBackupInitializeFailed means the volume backup initialize job failed
+	VolumeBackupInitializeFailed BackupConditionType = "VolumeBackupInitializeFailed"
 	// VolumeBackupComplete means the volume backup has taken volume snapshots successfully
 	VolumeBackupComplete BackupConditionType = "VolumeBackupComplete"
 )
