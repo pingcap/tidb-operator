@@ -487,7 +487,7 @@ func (c *PodController) isEvictLeaderExpired(pod *corev1.Pod, annKey string) boo
 				return true
 			}
 		} else {
-			klog.Warningf("Can't parse %s value %s on %s/%s. Ignore and never expire. Err: ", annKey, evictionExpirationTime, pod.Namespace, pod.Name, err)
+			klog.Warningf("Can't parse %s value %s on %s/%s. Mark pod as expired right away. Err: ", annKey, evictionExpirationTime, pod.Namespace, pod.Name, err)
 			return true
 		}
 	}
