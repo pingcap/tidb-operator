@@ -14,7 +14,6 @@
 package backup
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -268,6 +267,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 					Reason:  reason,
 					Message: err.Error(),
 				}, nil)
+				return nil, nil, "", controller.IgnoreErrorf(reason)
 			} else {
 				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 					Command: logBackupSubcommand,
@@ -276,8 +276,8 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 					Reason:  reason,
 					Message: err.Error(),
 				}, nil)
+				return nil, nil, "", err
 			}
-			return nil, nil, "", err
 		}
 
 		if logBackupSubcommand == v1alpha1.LogStartCommand {
@@ -694,19 +694,7 @@ func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, cs
 		return "FileExistedInExternalStorageFailed", err
 	}
 	if exist {
-		// check to see if content of existing meta file is identical to what to save
-		// if yes, reuse it; else fail the backup
-		existingClustermeta, err := externalStorage.ReadAll(ctx, constants.ClusterBackupMeta)
-		if err != nil {
-			return "ExistingMetaFileReadFailed", err
-		}
-
-		if bytes.Equal(data, existingClustermeta) {
-			klog.Infof("reuse existing cluster meta in external storage")
-			return "", nil
-		} else {
-			return "FileExistedInExternalStorage", fmt.Errorf("%s exist", constants.ClusterBackupMeta)
-		}
+		return "FileExistedInExternalStorage", fmt.Errorf("%s exist", constants.ClusterBackupMeta)
 	}
 
 	err = externalStorage.WriteAll(ctx, constants.ClusterBackupMeta, data, nil)
