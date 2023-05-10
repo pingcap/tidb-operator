@@ -137,6 +137,12 @@ func IsRestoreVolumeComplete(restore *Restore) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsRestoreTiKVComplete returns true if all TiKVs run successfully during volume restore
+func IsRestoreTiKVComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreTiKVComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsRestoreDataComplete returns true if a Restore for data consistency has successfully completed
 func IsRestoreDataComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreDataComplete)
