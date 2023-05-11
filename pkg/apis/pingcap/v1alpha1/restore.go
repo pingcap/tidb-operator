@@ -70,16 +70,9 @@ func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) 
 		return false
 	}
 	condition.LastTransitionTime = metav1.Now()
+	status.Phase = condition.Type
 	// Try to find this Restore condition.
 	conditionIndex, oldCondition := GetRestoreCondition(status, condition.Type)
-
-	switch condition.Type {
-	case RestoreVolumeComplete, RestoreDataComplete:
-		// VolumeComplete and DataComplete are intermediately conditions,
-		// they can not represent the current phase of restore.
-	default:
-		status.Phase = condition.Type
-	}
 
 	if oldCondition == nil {
 		// We are adding new Restore condition.
