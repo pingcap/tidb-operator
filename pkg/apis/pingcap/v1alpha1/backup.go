@@ -243,6 +243,15 @@ func IsVolumeBackupInitializeFailed(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsVolumeBackupFailed returns true if volume backup is initialized failed
+func IsVolumeBackupFailed(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeVolumeSnapshot {
+		return false
+	}
+	_, condition := GetBackupCondition(&backup.Status, VolumeBackupFailed)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsLogBackupStopped returns true if a log backup is stopped.
 // It means log backup is at stopped status.
 // It used to filter CR update event which is stop command and stopped status, and let it run truncate after log backup stopped which is truncate command and stopped status.
