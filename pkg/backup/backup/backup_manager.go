@@ -929,19 +929,31 @@ func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err erro
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupInitializeJobName := backup.GetVolumeBackupInitializeJobName()
+	jobCompleteOrFailed := false
 
 	defer func() {
-		if err == nil {
-			// if backup is failed, just delete job, not modify status
-			if v1alpha1.IsBackupFailed(backup) {
-				return
-			}
-
-			err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:   v1alpha1.BackupComplete,
-				Status: corev1.ConditionTrue,
-			}, nil)
+		if err != nil {
+			return
 		}
+
+		// if backup is failed or complete, just delete job, not modify status
+		if v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupComplete(backup) {
+			return
+		}
+		backupCondition := v1alpha1.BackupComplete
+		// if volume backup failed in previous phase, we should set backup failed
+		if v1alpha1.IsVolumeBackupInitializeFailed(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
+			backupCondition = v1alpha1.BackupFailed
+		}
+		// if job exists but isn't running, we can't ensure GC and PD schedules are stopped during volume backup
+		// the volume snapshots are invalid, we should set backup failed
+		if !jobCompleteOrFailed {
+			backupCondition = v1alpha1.BackupFailed
+		}
+		err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:   backupCondition,
+			Status: corev1.ConditionTrue,
+		}, nil)
 	}()
 
 	backupInitializeJob, err := bm.deps.JobLister.Jobs(ns).Get(backupInitializeJobName)
@@ -953,20 +965,11 @@ func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err erro
 			ns, name, backupInitializeJobName, err)
 	}
 
-	jobRunning := true
 	for _, condition := range backupInitializeJob.Status.Conditions {
 		if condition.Type == batchv1.JobFailed || condition.Type == batchv1.JobComplete {
-			jobRunning = false
+			jobCompleteOrFailed = true
 			break
 		}
-	}
-	// if job isn't running, we can't ensure GC and PD schedules are stopped during volume backup
-	// the volume snapshots are invalid, we should set backup failed
-	if !jobRunning {
-		return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:   v1alpha1.BackupFailed,
-			Status: corev1.ConditionTrue,
-		}, nil)
 	}
 
 	if err := bm.deps.JobControl.DeleteJob(backup, backupInitializeJob); err != nil {

@@ -2109,6 +2109,8 @@ const (
 	VolumeBackupInitializeFailed BackupConditionType = "VolumeBackupInitializeFailed"
 	// VolumeBackupComplete means the volume backup has taken volume snapshots successfully
 	VolumeBackupComplete BackupConditionType = "VolumeBackupComplete"
+	// VolumeBackupFailed means the volume backup take volume snapshots failed
+	VolumeBackupFailed BackupConditionType = "VolumeBackupFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
