@@ -602,7 +602,7 @@ func (bm *Manager) performVolumeBackupInitialize(ctx context.Context, backup *v1
 		errs := make([]error, 0, 2)
 		errs = append(errs, err)
 		updateErr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    v1alpha1.VolumeBackupInitializeFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "InitializeVolumeBackupFailed",
 			Message: err.Error(),

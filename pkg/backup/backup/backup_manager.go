@@ -1006,7 +1006,8 @@ func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, bac
 		}
 	}
 
-	return controller.RequeueErrorf("backup %s/%s job %s is running, requeue it", ns, name, backupJobName)
+	// job running no need to requeue, because delete job will call update and it will requeue
+	return controller.IgnoreErrorf("backup %s/%s job %s is running, will be ignored", ns, name, backupJobName)
 }
 
 var _ backup.BackupManager = &backupManager{}
