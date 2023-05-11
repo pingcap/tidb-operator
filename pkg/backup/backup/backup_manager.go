@@ -262,7 +262,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 					Reason:  reason,
 					Message: err.Error(),
 				}, nil)
-				return nil, nil, "", controller.IgnoreErrorf(reason)
+				return nil, nil, "", controller.IgnoreErrorf("backup failed [%s], reason is [%s]", err.Error(), reason)
 			} else {
 				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 					Command: logBackupSubcommand,
