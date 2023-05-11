@@ -33,7 +33,7 @@ sed "s#CHECKPOINT_USE_DATA_DIR#$data_dir#g" /etc/tidb-lightning/tidb-lightning.t
     --importer={{ .Values.targetTidbCluster.name }}-importer.{{ .Values.targetTidbCluster.namespace | default .Release.Namespace }}:8287 \
 {{- else if eq .Values.backend "tidb" }}
     --backend=tidb \
-    --tidb-port=4000 \
+    --tidb-port={{ .Values.targetTidbCluster.port | default 4000 }} \
 {{- else if eq .Values.backend "local" }}
     --backend=local \
     --sorted-kv-dir=/var/lib/sorted-kv \
