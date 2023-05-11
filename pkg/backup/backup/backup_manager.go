@@ -971,7 +971,11 @@ func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err erro
 			break
 		}
 	}
+	if jobCompleteOrFailed {
+		return nil
+	}
 
+	// delete the initializing job to resume GC and PD schedules
 	if err := bm.deps.JobControl.DeleteJob(backup, backupInitializeJob); err != nil {
 		return fmt.Errorf("backup %s/%s delete initializing job %s failed, err: %v",
 			ns, name, backupInitializeJobName, err)
