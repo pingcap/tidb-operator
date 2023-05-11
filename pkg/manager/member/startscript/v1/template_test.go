@@ -1702,7 +1702,7 @@ func TestRenderTiDBInitStartScript(t *testing.T) {
 				CAPath:          "/var/lib/tidb-client-tls/ca.crt",
 				CertPath:        "/var/lib/tidb-client-tls/tls.crt",
 				KeyPath:         "/var/lib/tidb-client-tls/tls.key",
-				TiDBServicePort: 4000,
+				TiDBServicePort: v1alpha1.DefaultTiDBServerPort,
 			},
 			result: `import os, sys, time, MySQLdb
 host = 'test-tidb'
@@ -1755,7 +1755,7 @@ conn.close()
 				CAPath:          "/var/lib/tidb-client-tls/ca.crt",
 				CertPath:        "/var/lib/tidb-client-tls/tls.crt",
 				KeyPath:         "/var/lib/tidb-client-tls/tls.key",
-				TiDBServicePort: 4000,
+				TiDBServicePort: v1alpha1.DefaultTiDBServerPort,
 			},
 			result: `import os, sys, time, MySQLdb
 host = 'test-tidb'

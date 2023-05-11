@@ -643,7 +643,7 @@ func newBackup() *v1alpha1.Backup {
 		Spec: v1alpha1.BackupSpec{
 			From: &v1alpha1.TiDBAccessConfig{
 				Host:       "10.1.1.2",
-				Port:       v1alpha1.DefaultTiDBServicePort,
+				Port:       v1alpha1.DefaultTiDBServerPort,
 				User:       v1alpha1.DefaultTidbUser,
 				SecretName: "demo1-tidb-secret",
 			},
@@ -675,7 +675,7 @@ func newRestore() *v1alpha1.Restore {
 		Spec: v1alpha1.RestoreSpec{
 			To: &v1alpha1.TiDBAccessConfig{
 				Host:       "10.1.1.2",
-				Port:       v1alpha1.DefaultTiDBServicePort,
+				Port:       v1alpha1.DefaultTiDBServerPort,
 				User:       v1alpha1.DefaultTidbUser,
 				SecretName: "demo1-tidb-secret",
 			},

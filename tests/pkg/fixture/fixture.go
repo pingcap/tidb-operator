@@ -574,7 +574,7 @@ func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string,
 			From: &v1alpha1.TiDBAccessConfig{
 				Host:       util.GetTidbServiceName(tc.Name),
 				SecretName: fromSecretName,
-				Port:       4000,
+				Port:       v1alpha1.DefaultTiDBServerPort,
 				User:       "root",
 			},
 			BR: &v1alpha1.BRConfig{
@@ -610,7 +610,7 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 			To: &v1alpha1.TiDBAccessConfig{
 				Host:       util.GetTidbServiceName(tc.Name),
 				SecretName: toSecretName,
-				Port:       4000,
+				Port:       v1alpha1.DefaultTiDBServerPort,
 				User:       "root",
 			},
 			BR: &v1alpha1.BRConfig{

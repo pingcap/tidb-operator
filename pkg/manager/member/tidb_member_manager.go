@@ -585,6 +585,11 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if tc.Spec.TiDB.IsBootstrapSQLEnabled() {
 		config.Set("initialize-sql-file", path.Join(bootstrapSQLFilePath, bootstrapSQLFileName))
 	}
+	// `DefaultTiDBServerPort` may be changed when building the binary
+	if v1alpha1.DefaultTiDBServerPort != int32(4000) {
+		config.Set("port", int64(v1alpha1.DefaultTiDBServerPort)) // `int64` to avoid marshal to string
+	}
+
 	confText, err := config.MarshalTOML()
 	if err != nil {
 		return nil, err
@@ -633,7 +638,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 		{
 			Name:       svcSpec.GetPortName(),
 			Port:       tc.Spec.TiDB.GetServicePort(),
-			TargetPort: intstr.FromInt(4000),
+			TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBServerPort)),
 			Protocol:   corev1.ProtocolTCP,
 			NodePort:   svcSpec.GetMySQLNodePort(),
 		},
@@ -963,7 +968,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "server",
-				ContainerPort: int32(4000),
+				ContainerPort: v1alpha1.DefaultTiDBServerPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{
@@ -1262,7 +1267,7 @@ func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 	// fall to default case v1alpha1.TCPProbeType
 	return corev1.Handler{
 		TCPSocket: &corev1.TCPSocketAction{
-			Port: intstr.FromInt(4000),
+			Port: intstr.FromInt(int(v1alpha1.DefaultTiDBServerPort)),
 		},
 	}
 }

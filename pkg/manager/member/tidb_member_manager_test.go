@@ -1694,8 +1694,8 @@ func TestGetNewTiDBService(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "mysql-client",
-							Port:       4000,
-							TargetPort: intstr.FromInt(4000),
+							Port:       v1alpha1.DefaultTiDBServerPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBServerPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},
@@ -1755,8 +1755,8 @@ func TestGetNewTiDBService(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "mysql-client",
-							Port:       4000,
-							TargetPort: intstr.FromInt(4000),
+							Port:       v1alpha1.DefaultTiDBServerPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBServerPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 						{
@@ -1839,8 +1839,8 @@ func TestGetNewTiDBService(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "mysql-client",
-							Port:       4000,
-							TargetPort: intstr.FromInt(4000),
+							Port:       v1alpha1.DefaultTiDBServerPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBServerPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 						{
@@ -1910,7 +1910,7 @@ func TestGetNewTiDBService(t *testing.T) {
 						{
 							Name:       "mysql-client",
 							Port:       5000,
-							TargetPort: intstr.FromInt(4000),
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBServerPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 						{
@@ -2482,7 +2482,7 @@ func TestBuildTiDBProbeHandler(t *testing.T) {
 
 	defaultHandler := corev1.Handler{
 		TCPSocket: &corev1.TCPSocketAction{
-			Port: intstr.FromInt(4000),
+			Port: intstr.FromInt(int(v1alpha1.DefaultTiDBServerPort)),
 		},
 	}
 

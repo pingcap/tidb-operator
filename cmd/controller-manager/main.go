@@ -25,6 +25,7 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
@@ -75,6 +76,8 @@ func main() {
 	flag.VisitAll(func(flag *flag.Flag) {
 		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
+
+	logCustomPorts()
 
 	hostName, err := os.Hostname()
 	if err != nil {
@@ -270,4 +273,16 @@ func createHTTPServer() *http.Server {
 		Addr:    ":6060",
 		Handler: serverMux,
 	}
+}
+
+func logCustomPorts() {
+	if v1alpha1.DefaultTiDBServerPort != 4000 {
+		klog.Infof("running TiDB Operator with custom ports: %#v", CustomPorts{
+			TiDBServerPort: v1alpha1.DefaultTiDBServerPort,
+		})
+	}
+}
+
+type CustomPorts struct {
+	TiDBServerPort int32 `json:"TiDB-Server-Port"`
 }
