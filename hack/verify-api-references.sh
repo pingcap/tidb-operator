@@ -23,13 +23,27 @@ cd $ROOT
 targetDocs="$ROOT/docs/api-references/docs.md"
 verifyDocs_tmp=$(mktemp)
 trap "rm -f $verifyDocs_tmp" EXIT
-
 cp "$targetDocs" "${verifyDocs_tmp}"
+
+targetFedDocs="$ROOT/docs/api-references/federation-docs.md"
+verifyFedDocs_tmp=$(mktemp)
+trap "rm -f $verifyFedDocs_tmp" EXIT
+cp "$targetFedDocs" "${verifyFedDocs_tmp}"
 
 hack/update-api-references.sh
 
 echo "diffing $targetDocs with $verifyDocs_tmp" >&2
 diff=$(diff "$targetDocs" "$verifyDocs_tmp") || true
+if [[ -n "${diff}" ]]; then
+    echo "${diff}" >&2
+    echo >&2
+    echo "Run ./hack/update-api-references.sh" >&2
+    exit 1
+fi
+
+# verify for federation
+echo "diffing $targetFedDocs with $verifyFedDocs_tmp" >&2
+diff=$(diff "$targetFedDocs" "$verifyFedDocs_tmp") || true
 if [[ -n "${diff}" ]]; then
     echo "${diff}" >&2
     echo >&2
