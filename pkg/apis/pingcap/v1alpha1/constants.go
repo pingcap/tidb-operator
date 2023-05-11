@@ -24,14 +24,11 @@ const (
 )
 
 var (
-	// `string` type so that they can be set by `go build -ldflags "-X ..."
-	customPortTiDBServer = "4000"
-)
-
-var (
 	// DefaultTiDBServerPort is the default tidb cluster port for connecting
 	// It is used both fo Pods and Services.
 	DefaultTiDBServerPort = int32(4000)
+	// `string` type so that they can be set by `go build -ldflags "-X ..."`
+	customPortTiDBServer = "4000"
 )
 
 func init() {
