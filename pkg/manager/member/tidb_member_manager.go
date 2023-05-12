@@ -585,9 +585,13 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if tc.Spec.TiDB.IsBootstrapSQLEnabled() {
 		config.Set("initialize-sql-file", path.Join(bootstrapSQLFilePath, bootstrapSQLFileName))
 	}
-	// `DefaultTiDBServerPort` may be changed when building the binary
+
+	// `DefaultTiDBServerPort`/`DefaultTiDBStatusPort` may be changed when building the binary
 	if v1alpha1.DefaultTiDBServerPort != int32(4000) {
 		config.Set("port", int64(v1alpha1.DefaultTiDBServerPort)) // `int64` to avoid marshal to string
+	}
+	if v1alpha1.DefaultTiDBStatusPort != int32(10080) {
+		config.Set("status.status-port", int64(v1alpha1.DefaultTiDBStatusPort))
 	}
 
 	confText, err := config.MarshalTOML()
@@ -647,8 +651,8 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 	if svcSpec.ShouldExposeStatus() {
 		ports = append(ports, corev1.ServicePort{
 			Name:       "status",
-			Port:       10080,
-			TargetPort: intstr.FromInt(10080),
+			Port:       v1alpha1.DefaultTiDBStatusPort,
+			TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBStatusPort)),
 			Protocol:   corev1.ProtocolTCP,
 			NodePort:   svcSpec.GetStatusNodePort(),
 		})
@@ -709,8 +713,8 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "status",
-					Port:       10080,
-					TargetPort: intstr.FromInt(10080),
+					Port:       v1alpha1.DefaultTiDBStatusPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBStatusPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -973,7 +977,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 			{
 				Name:          "status", // pprof, status, metrics
-				ContainerPort: int32(10080),
+				ContainerPort: v1alpha1.DefaultTiDBStatusPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
@@ -1018,7 +1022,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	stsLabels := label.New().Instance(instanceName).TiDB()
 	podLabels := util.CombineStringMap(stsLabels, baseTiDBSpec.Labels())
-	podAnnotations := util.CombineStringMap(baseTiDBSpec.Annotations(), controller.AnnProm(10080, "/metrics"))
+	podAnnotations := util.CombineStringMap(baseTiDBSpec.Annotations(), controller.AnnProm(v1alpha1.DefaultTiDBStatusPort, "/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiDBLabelVal)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
@@ -1275,7 +1279,7 @@ func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 func buildTiDBProbeCommand(tc *v1alpha1.TidbCluster) (command []string) {
 	host := "127.0.0.1"
 
-	readinessURL := fmt.Sprintf("%s://%s:10080/status", tc.Scheme(), host)
+	readinessURL := fmt.Sprintf("%s://%s:%d/status", tc.Scheme(), host, v1alpha1.DefaultTiDBStatusPort)
 	command = append(command, "curl")
 	command = append(command, readinessURL)
 

@@ -15,6 +15,7 @@ package member
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
@@ -53,7 +54,7 @@ var (
 					DataDir:       pointer.StringPtr("/data0/proxy"),
 				},
 				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
-				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
+				TiDBStatusAddr: pointer.StringPtr(fmt.Sprintf("test-tidb.test.svc:%d", v1alpha1.DefaultTiDBStatusPort)),
 			},
 			HTTPPort:               pointer.Int32Ptr(8123),
 			HTTPSPort:              pointer.Int32Ptr(8123),

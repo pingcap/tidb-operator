@@ -53,6 +53,8 @@ targetTidbCluster:
   user: root
   # the tidb cluster port, which is used in `tidb` backend
   port: 4000
+  # the tidb server status port, which is used in `local` backend
+  statusPort: 10080
   # If the `secretName` and `secretUserKey` are set,
   # the `user` will be ignored and the user in the
   # `secretName` will be used by lightning.

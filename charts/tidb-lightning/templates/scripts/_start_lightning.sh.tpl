@@ -37,6 +37,7 @@ sed "s#CHECKPOINT_USE_DATA_DIR#$data_dir#g" /etc/tidb-lightning/tidb-lightning.t
 {{- else if eq .Values.backend "local" }}
     --backend=local \
     --sorted-kv-dir=/var/lib/sorted-kv \
+    --tidb-status={{ .Values.targetTidbCluster.statusPort | default 10080 }} \
 {{- end }}
     --server-mode=false \
 {{- if and .Values.targetTidbCluster.secretName .Values.targetTidbCluster.secretUserKey -}}

@@ -165,18 +165,18 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		common.SetIfNil("http_port", int64(8123))
 
 		// flash
-		tidbStatusAddr := fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(name), ns)
+		tidbStatusAddr := fmt.Sprintf("%s.%s.svc:%d", controller.TiDBMemberName(name), ns, v1alpha1.DefaultTiDBStatusPort)
 		if tc.WithoutLocalTiDB() {
 			// TODO: support first cluster which don't contain TiDB when deploy cluster across mutli Kubernete clusters
 			if tc.Heterogeneous() {
 				if tc.AcrossK8s() {
 					// use headless service of TiDB in reference cluster
-					tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080",
-						controller.TiDBPeerMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+					tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:%d",
+						controller.TiDBPeerMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain), v1alpha1.DefaultTiDBStatusPort)
 				} else {
 					// use service of TiDB in reference cluster
-					tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080",
-						controller.TiDBMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+					tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:%d",
+						controller.TiDBMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain), v1alpha1.DefaultTiDBStatusPort)
 				}
 			}
 		}
@@ -376,16 +376,18 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 }
 
 func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain, listenHost string, noLocalTiDB, acrossK8s bool) {
-	tidbStatusAddr := fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(clusterName), ns)
+	tidbStatusAddr := fmt.Sprintf("%s.%s.svc:%d", controller.TiDBMemberName(clusterName), ns, v1alpha1.DefaultTiDBStatusPort)
 	if noLocalTiDB {
 		// TODO: support first cluster without TiDB when deploy cluster across mutli Kubernete clusters
 		if ref != nil {
 			if acrossK8s {
 				// use headless service of TiDB in reference cluster
-				tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080", controller.TiDBPeerMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+				tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:%d", controller.TiDBPeerMemberName(ref.Name), ref.Namespace,
+					controller.FormatClusterDomain(ref.ClusterDomain), v1alpha1.DefaultTiDBStatusPort)
 			} else {
 				// use service of TiDB in reference cluster
-				tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:10080", controller.TiDBMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain))
+				tidbStatusAddr = fmt.Sprintf("%s.%s.svc%s:%d", controller.TiDBMemberName(ref.Name), ref.Namespace,
+					controller.FormatClusterDomain(ref.ClusterDomain), v1alpha1.DefaultTiDBStatusPort)
 			}
 		}
 	}

@@ -919,8 +919,8 @@ func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "status",
-							Port:       10080,
-							TargetPort: intstr.FromInt(10080),
+							Port:       v1alpha1.DefaultTiDBStatusPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBStatusPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},
@@ -1761,8 +1761,8 @@ func TestGetNewTiDBService(t *testing.T) {
 						},
 						{
 							Name:       "status",
-							Port:       10080,
-							TargetPort: intstr.FromInt(10080),
+							Port:       v1alpha1.DefaultTiDBStatusPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBStatusPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},
@@ -1845,8 +1845,8 @@ func TestGetNewTiDBService(t *testing.T) {
 						},
 						{
 							Name:       "status",
-							Port:       10080,
-							TargetPort: intstr.FromInt(10080),
+							Port:       v1alpha1.DefaultTiDBStatusPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBStatusPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},
@@ -1915,8 +1915,8 @@ func TestGetNewTiDBService(t *testing.T) {
 						},
 						{
 							Name:       "status",
-							Port:       10080,
-							TargetPort: intstr.FromInt(10080),
+							Port:       v1alpha1.DefaultTiDBStatusPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiDBStatusPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},
@@ -2490,7 +2490,7 @@ func TestBuildTiDBProbeHandler(t *testing.T) {
 		Exec: &corev1.ExecAction{
 			Command: []string{
 				"curl",
-				"http://127.0.0.1:10080/status",
+				fmt.Sprintf("http://127.0.0.1:%d/status", v1alpha1.DefaultTiDBStatusPort),
 				"--fail",
 				"--location",
 			},
@@ -2501,7 +2501,7 @@ func TestBuildTiDBProbeHandler(t *testing.T) {
 		Exec: &corev1.ExecAction{
 			Command: []string{
 				"curl",
-				"https://127.0.0.1:10080/status",
+				fmt.Sprintf("https://127.0.0.1:%d/status", v1alpha1.DefaultTiDBStatusPort),
 				"--fail",
 				"--location",
 				"--cacert", path.Join(clusterCertPath, tlsSecretRootCAKey),

@@ -29,11 +29,19 @@ var (
 	DefaultTiDBServerPort = int32(4000)
 	// `string` type so that they can be set by `go build -ldflags "-X ..."`
 	customPortTiDBServer = "4000"
+
+	DefaultTiDBStatusPort = int32(10080)
+	customPortTiDBStatus  = "10080"
 )
 
 func init() {
-	if port, err := strconv.Atoi(customPortTiDBServer); err == nil {
+	if port, err := strconv.ParseUint(customPortTiDBServer, 10, 32); err == nil {
 		DefaultTiDBServerPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiDBStatus, 10, 32); err == nil {
+		DefaultTiDBStatusPort = int32(port)
 	} else {
 		panic(err)
 	}
