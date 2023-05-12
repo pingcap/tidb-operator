@@ -306,7 +306,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			transferLeaderErr:  false,
 			pdPeersAreUnstable: true,
 			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(fmt.Sprintf("Peer PDs is unstable: Only 0 out of 1 PDs are healthy")).To(Equal(err.Error()))
+				g.Expect("Peer PDs is unstable: Only 0 out of 1 PDs are healthy").To(Equal(err.Error()))
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
