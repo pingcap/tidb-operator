@@ -15,11 +15,11 @@ In the diagrams below, the red lines represent AWS and Kubernetes related operat
 
 <h4>Backup</h4>
 
-![current backup process .png](current backup process.png)
+![current-backup-process.png](current-backup-process.png)
 
 <h4>Restore</h4>
 
-![current restore process.png](current restore process.png)
+![current-restore-process.png](current-restore-process.png)
 
 
 <h2>Scope and prerequisites</h2>
@@ -46,7 +46,7 @@ Longer term(beyond 2023):
 
 <h2>Architecture Design</h2>
 
-![ebs br multiple k8s support architecture.png](ebs br multiple k8s architecture.png)
+![ebs-br-multiple-k8s-support-architecture.png](ebs-br-multiple-k8s-architecture.png)
 
 <h2>Detailed Design</h2>
 
@@ -66,7 +66,7 @@ The federal operator should cooperate tidb-operators in the data plane by Kubern
 
 The user configures the KubeConfig of all data plane Kubernetes clusters into one secret in the control plane and mount the secret to the BR federation operator._
 
-```json
+```yaml
 apiVersion: pingcap.com/v1alpha1
 kind: KubeClientConfig
 metadata:
@@ -78,14 +78,16 @@ spec:
     name: ctx-secret1
 ```
 
+Customers can use other kinds of ways of authorization and authentication except for KubeClientConfig.
+
 <h3>Backup</h3>
 
 
 In the federal Operator, a new CRD, VolumeBackupFederation, will be created. The user needs to specify the kubeConfig and TiDBCluster information for each Kubernetes cluster so that the control plane can control the backup of TiKV volumes for each Kubernetes cluster.
 
-```json
-apiVersion: pingcap.com/v1alpha1
-kind: VolumeBackupFederation
+```yaml
+apiVersion: federation.pingcap.com/v1alpha1
+kind: VolumeBackup
 metadata:
   name: bk-federation
   namespace: default
@@ -115,7 +117,7 @@ spec:
 
 During EBS backup, as EBS snapshot is an asynchronous and time-consuming operation, to ensure data safety, we need to first stop PD scheduling and maintain GC safe point less than resolved ts before taking the EBS snapshot. In a multi-Kubernetes cluster scenario, as EBS snapshot needs to be taken in each Kubernetes cluster, this operation becomes a distributed operation. Therefore, we need to ensure that PD scheduling and GC are stopped before taking EBS snapshot in each Kubernetes cluster, and PD scheduling and GC are resumed only after EBS snapshot is taken in all Kubernetes clusters. Therefore, we divide the EBS backup process into three phases.
 
-![new backup process.png](new backup process in data plane.png)
+![new-backup-process.png](new-backup-process-in-data-plane.png)
 
 **First phase:**
 
@@ -140,7 +142,7 @@ During EBS backup, as EBS snapshot is an asynchronous and time-consuming operati
 7. The backup controller of the control plane discovers that all backup CRs are in VolumeBackupComplete state. At this time, all data planes have completed effective backups (if the condition is not met, the backup enters the failed state).
 8. The backup controller of the control plane sets federalVolumeBackupPhase of the backup CR in step1 to “teardown”, the backup controller of the corresponding data plane Kubernetes cluster deletes backup pod1 is deleted to stop maintaining the GC safepoint and resume PD scheduling. The EBS backup is completed.
 
-![new backup process in control plane.png](new backup process in control plane.png)
+![new-backup-process-in-control-plane.png](new-backup-process-in-control-plane.png)
 
 <h4>Delete Backup</h4>
 
@@ -152,7 +154,7 @@ When the VolumeBackupFederation CR is deleted, the backup controller in the cont
 
 In the Federal Operator, a new CRD, VolumeBackupScheduleFederation, will be created to support automatic scheduling of backups and regular cleanup of backups based on maxReservedTime. Its implementation is similar to BackupSchedule and will automatically create and delete VolumeBackupFederation CRs based on the configuration.
 
-```json
+```yaml
 apiVersion: pingcap.com/v1alpha1
 kind: VolumeBackupScheduleFederation
 metadata:
@@ -170,9 +172,9 @@ spec:
 
 In the Federal Operator, a new CRD, VolumeRestoreFederation, will be created. The user needs to specify the kubeConfig, tc, and backup storage path information for each Kubernetes cluster, and it is necessary to ensure that Kubernetes and backups are in the same AZ.
 
-```json
-apiVersion: pingcap.com/v1alpha1
-kind: VolumeRestoreFederation
+```yaml
+apiVersion: federation.pingcap.com/v1alpha1
+kind: VolumeRestore
 metadata:
   name: rt-federation
   namespace: default
@@ -208,7 +210,7 @@ spec:
 
 The restore process was originally divided into two phases, where the first phase involved restoring the TiKV disks and the second phase involved restoring TiKV data to the resolved ts state. The first phase needs to be executed in each Kubernetes cluster, while the second phase only needs to be executed in a single Kubernetes cluster. However, there is a follow-up task after the second phase, which involves restarting TiKV pods and setting TC recoveryMode to false. This task needs to be executed in each Kubernetes cluster, so we divide the restore process into three phases.
 
-![new prpocess of restore in data plane.png](new process of restore in data plane.png)
+![new-prpocess-of-restore-in-data-plane.png](new-process-of-restore-in-data-plane.png)
 
 **Before restoration:**
 
@@ -238,5 +240,5 @@ The restore process was originally divided into two phases, where the first phas
 8. The restore controller of the data plane restarts the TiKV pods in the Kubernetes cluster where it is located, sets TC recoveryMode to false. Then the restore CR enters complete status.
 9. The restore is completed when the restore controller of the control plane discovers that all restore CRs have entered complete status.
 
-![new process of restore in control plane.png](new process of restore in control plane.png)
+![new-process-of-restore-in-control-plane.png](new-process-of-restore-in-control-plane.png)
 
