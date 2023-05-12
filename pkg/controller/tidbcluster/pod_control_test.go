@@ -355,7 +355,7 @@ func TestPDPodSync(t *testing.T) {
 				pod.Annotations[v1alpha1.PDLeaderTransferAnnKey] = v1alpha1.TransferLeaderValueNone
 			}
 			if !c.expirationTime.IsZero() {
-				pod.Annotations[v1alpha1.PDEvictLeaderExpirationTimeAnnKey] = c.expirationTime.Format(time.RFC3339)
+				pod.Annotations[v1alpha1.PDLeaderTransferExpirationTimeAnnKey] = c.expirationTime.Format(time.RFC3339)
 			}
 
 			pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})

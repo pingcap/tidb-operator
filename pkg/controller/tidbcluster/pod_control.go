@@ -249,8 +249,8 @@ func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1al
 		return reconcile.Result{}, nil
 	}
 
-	if c.isEvictLeaderExpired(pod, v1alpha1.PDEvictLeaderExpirationTimeAnnKey) {
-		return reconcile.Result{}, c.cleanupLeaderEvictionAnnotations(pod, tc, []string{v1alpha1.PDLeaderTransferAnnKey, v1alpha1.PDEvictLeaderExpirationTimeAnnKey})
+	if c.isEvictLeaderExpired(pod, v1alpha1.PDLeaderTransferExpirationTimeAnnKey) {
+		return reconcile.Result{}, c.cleanupLeaderEvictionAnnotations(pod, tc, []string{v1alpha1.PDLeaderTransferAnnKey, v1alpha1.PDLeaderTransferExpirationTimeAnnKey})
 	}
 
 	// Check if there's any ongoing updates in PD.
