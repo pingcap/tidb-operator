@@ -25,6 +25,9 @@ properties([
         string(name: 'GINKGO_NODES', defaultValue: env.DEFAULT_GINKGO_NODES, description: 'the number of ginkgo nodes'),
         string(name: 'E2E_ARGS', defaultValue: env.DEFAULT_E2E_ARGS, description: "e2e args, e.g. --ginkgo.focus='\\[Stability\\]'"),
         string(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE, description: 'delete ns after test case fails')
+
+        string(name: 'CUSTOM_PORT_TIDB_SERVER', defaultValue: '', description: 'custom component port: tidb server'),
+        string(name: 'CUSTOM_PORT_TIDB_STATUS', defaultValue: '', description: 'custom component port: tidb status'),
     ])
 ])
 
@@ -255,6 +258,9 @@ try {
         GIT_REF = env.ghprbActualCommit
     }
 
+    def CUSTOM_PORT_TIDB_SERVER = params.CUSTOM_PORT_TIDB_SERVER
+    def CUSTOM_PORT_TIDB_STATUS = params.CUSTOM_PORT_TIDB_STATUS
+
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
@@ -335,6 +341,8 @@ try {
                             echo "info: building"
                             echo "info: patch charts and golang code to enable coverage profile"
                             ./hack/e2e-patch-codecov.sh
+                            export CUSTOM_PORT_TIDB_SERVER=${CUSTOM_PORT_TIDB_SERVER}
+                            export CUSTOM_PORT_TIDB_STATUS=${CUSTOM_PORT_TIDB_STATUS}
                             E2E=y make build e2e-build
                             make gocovmerge
                             """
