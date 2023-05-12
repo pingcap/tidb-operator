@@ -341,6 +341,16 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}
 
 	if backupErr != nil {
+		// Calculate the backup size for failed backup job
+		backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
+
+		if err != nil {
+			klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
+			errs = append(errs, err)
+		}
+
+		backupSizeReadable := humanize.Bytes(uint64(backupSize))
+
 		errs = append(errs, backupErr)
 		klog.Errorf("backup cluster %s data failed, err: %s", bm, backupErr)
 		failedCondition := v1alpha1.BackupFailed
@@ -356,7 +366,10 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			Status:  corev1.ConditionTrue,
 			Reason:  "BackupDataToRemoteFailed",
 			Message: backupErr.Error(),
-		}, nil)
+		}, &controller.BackupUpdateStatus{
+			BackupSize:         &backupSize,
+			BackupSizeReadable: &backupSizeReadable,
+		})
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}

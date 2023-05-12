@@ -214,7 +214,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (uint64, err
 		snapshotId := id
 		// sort snapshots by timestamp
 		workerPool.ApplyOnErrorGroup(eg, func() error {
-			snapSize, apiReq, err := initialSnapshotSize(snapshotId)
+			snapSize, apiReq, err := calculateSnapshotSize(snapshotId)
 			if err != nil {
 				return err
 			}
@@ -234,9 +234,8 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (uint64, err
 	return backupSize, nil
 }
 
-// initialSnapshotSize calculate size of an initial snapshot in bytes by listing its blocks.
-// initial snapshot always a ful backup of volume
-func initialSnapshotSize(snapshotId string) (uint64, uint64, error) {
+// calculateSnapshotSize calculate size of an snapshot in bytes by listing its blocks.
+func calculateSnapshotSize(snapshotId string) (uint64, uint64, error) {
 	var snapshotSize uint64
 	var numApiReq uint64
 	ebsSession, err := util.NewEBSSession(util.CloudAPIConcurrency)
