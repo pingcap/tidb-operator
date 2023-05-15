@@ -72,7 +72,7 @@ try {
             yaml: podYAML,
             // We allow this pod to remain active for a while, later jobs can
             // reuse cache in previous created nodes.
-            idleMinutes: 180,
+            idleMinutes: 30,
         ) {
         node(buildPodLabel) {
             container("golang-builder") {
