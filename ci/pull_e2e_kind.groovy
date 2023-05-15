@@ -110,18 +110,6 @@ spec:
     key: tidb-operator
     operator: Exists
   affinity:
-<% if (!any) { %>
-    # run on nodes prepared for tidb-operator by default
-    # https://github.com/pingcap/tidb-operator/issues/1603
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: ci.pingcap.com
-            operator: In
-            values:
-            - tidb-operator
-<% } %>
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
@@ -166,8 +154,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                     dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
                         unstash 'tidb-operator'
                         stage("Debug Info") {
-                            println "debug host: 172.16.5.21"
-                            println "debug command: kubectl -n jenkins-tidb-operator exec -ti ${NODE_NAME} bash"
                             sh """
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
@@ -284,7 +270,7 @@ try {
             yaml: buildPodYAML(resources: resources, any: true),
             // We allow this pod to remain active for a while, later jobs can
             // reuse cache in previous created nodes.
-            idleMinutes: 180,
+            idleMinutes: 30,
         ) {
         node(buildPodLabel) {
             container("main") {
