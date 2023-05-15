@@ -98,8 +98,8 @@ type VolumeBackupMemberSpec struct {
 	BR                              *BRConfig `json:"br,omitempty"`
 	pingcapv1alpha1.StorageProvider `json:",inline"`
 	Tolerations                     []corev1.Toleration `json:"tolerations,omitempty"`
-	// ToolImage specifies the tool image used in `Backup`, which supports BR and Dumpling images.
-	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/dumpling:v4.0.8`
+	// ToolImage specifies the tool image used in `Backup`, which supports BR.
+	// For examples `spec.toolImage: pingcap/br:v6.5.0`
 	// For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
@@ -268,20 +268,103 @@ type VolumeRestoreList struct {
 // VolumeRestoreSpec describes the attributes that a user creates on a volume restore.
 // +k8s:openapi-gen=true
 type VolumeRestoreSpec struct {
+	Clusters []VolumeRestoreMemberCluster `json:"clusters,omitempty"`
+	Template VolumeRestoreMemberSpec      `json:"template,omitempty"`
+}
+
+// VolumeRestoreMemberCluster contains the TiDB cluster which need to execute volume restore
+// +k8s:openapi-gen=true
+type VolumeRestoreMemberCluster struct {
+	// K8sClusterName is the name of the k8s cluster where the tc locates
+	K8sClusterName string `json:"k8sClusterName,omitempty"`
+	// TCName is the name of the TiDBCluster CR which need to execute volume backup
+	TCName string `json:"tcName,omitempty"`
+	// TCNamespace is the namespace of the TiDBCluster CR
+	TCNamespace string `json:"tcNamespace,omitempty"`
+	// AZName is the available zone which the volume snapshots restore to
+	AZName string `json:"azName,omitempty"`
+	// Backup is the volume backup information
+	Backup VolumeRestoreMemberBackupInfo `json:"backup,omitempty"`
+}
+
+// VolumeRestoreMemberSpec contains the restore specification for one tidb cluster
+// +k8s:openapi-gen=true
+type VolumeRestoreMemberSpec struct {
+	corev1.ResourceRequirements `json:"resources,omitempty"`
+	// List of environment variables to set in the container, like v1.Container.Env.
+	// Note that the following builtin env vars will be overwritten by values set here
+	// - S3_PROVIDER
+	// - S3_ENDPOINT
+	// - AWS_REGION
+	// - AWS_ACL
+	// - AWS_STORAGE_CLASS
+	// - AWS_DEFAULT_REGION
+	// - AWS_ACCESS_KEY_ID
+	// - AWS_SECRET_ACCESS_KEY
+	// - GCS_PROJECT_ID
+	// - GCS_OBJECT_ACL
+	// - GCS_BUCKET_ACL
+	// - GCS_LOCATION
+	// - GCS_STORAGE_CLASS
+	// - GCS_SERVICE_ACCOUNT_JSON_KEY
+	// - BR_LOG_TO_TERM
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
+	// RestoredTS is the volume restored ts, it is from CommitTs of volume backup status
+	RestoredTs string `json:"restoredTs,omitempty"`
+	// BRConfig is the configs for BR
+	BR          *BRConfig           `json:"br,omitempty"`
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// ToolImage specifies the tool image used in `Restore`, which supports BR image.
+	// For examples `spec.toolImage: pingcap/br:v6.5.0`
+	// For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.
+	// +optional
+	ToolImage string `json:"toolImage,omitempty"`
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// Specify service account of restore
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+	// PriorityClassName of Restore Job Pods
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+}
+
+type VolumeRestoreMemberBackupInfo struct {
+	pingcapv1alpha1.StorageProvider `json:",inline"`
 }
 
 // VolumeRestoreStatus represents the current status of a volume restore.
 type VolumeRestoreStatus struct {
+	// TimeStarted is the time at which the restore was started.
+	// +nullable
+	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
+	// TimeCompleted is the time at which the restore was completed.
+	// +nullable
+	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+	// TimeTaken is the time that volume restore federation takes, it is TimeCompleted - TimeStarted
+	TimeTaken string `json:"timeTaken,omitempty"`
+	// Phase is a user readable state inferred from the underlying Restore conditions
+	Phase VolumeRestoreCondition `json:"phase,omitempty"`
 	// +nullable
 	Conditions []VolumeRestoreCondition `json:"conditions,omitempty"`
 }
 
 // VolumeRestoreCondition describes the observed state of a VolumeRestore at a certain point.
 type VolumeRestoreCondition struct {
-	Status corev1.ConditionStatus `json:"status"`
+	Status corev1.ConditionStatus     `json:"status"`
+	Type   VolumeRestoreConditionType `json:"type"`
 
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	Reason             string      `json:"reason,omitempty"`
 	Message            string      `json:"message,omitempty"`
 }
+
+type VolumeRestoreConditionType string
+
+const (
+	VolumeRestoreInvalid  VolumeRestoreConditionType = "invalid"
+	VolumeRestoreRunning  VolumeRestoreConditionType = "running"
+	VolumeRestoreComplete VolumeRestoreConditionType = "complete"
+	VolumeRestoreFailed   VolumeRestoreConditionType = "failed"
+)
