@@ -25,7 +25,7 @@ import (
 // VolumeBackup is the control script's spec
 //
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName="vbk"
+// +kubebuilder:resource:shortName="vbf"
 // +genclient:noStatus
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
@@ -194,6 +194,10 @@ const (
 	VolumeBackupFailed VolumeBackupConditionType = "Failed"
 	// VolumeBackupCleaned means all the resources about VolumeBackup have cleaned
 	VolumeBackupCleaned VolumeBackupConditionType = "Cleaned"
+	// VolumeBackupCleanFailed means the VolumeBackup cleanup is failed
+	VolumeBackupCleanFailed VolumeBackupConditionType = "CleanFailed"
+	// VolumeBackupPrepared means the VolumeBackup is prepared
+	VolumeBackupPrepared VolumeBackupConditionType = "Prepared"
 )
 
 // +genclient
