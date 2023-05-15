@@ -182,6 +182,9 @@ check: $(addprefix check-,$(ALL_CHECKS)) tidy
 check-%:
 	./hack/verify-$*.sh
 
+generate:
+	./hack/update-all.sh
+
 crd:
 	./hack/update-crd.sh
 

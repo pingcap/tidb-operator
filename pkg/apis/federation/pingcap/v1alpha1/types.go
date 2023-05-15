@@ -14,11 +14,10 @@
 package v1alpha1
 
 import (
+	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-// TODO(federation): add `kubebuilder:printcolumn` after fileds are defined
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -26,8 +25,13 @@ import (
 // VolumeBackup is the control script's spec
 //
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName="vbk"
+// +kubebuilder:resource:shortName="vbf"
 // +genclient:noStatus
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
+// +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
+// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
+// +kubebuilder:printcolumn:name="TimeTaken",type=string,JSONPath=`.status.timeTaken`,description="The time that volume backup federation takes"
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type VolumeBackup struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -52,23 +56,147 @@ type VolumeBackupList struct {
 // VolumeBackupSpec describes the attributes that a user creates on a volume backup.
 // +k8s:openapi-gen=true
 type VolumeBackupSpec struct {
+	Clusters []VolumeBackupMemberCluster `json:"clusters,omitempty"`
+	Template VolumeBackupMemberSpec      `json:"template,omitempty"`
+}
+
+// VolumeBackupMemberCluster contains the TiDB cluster which need to execute volume backup
+// +k8s:openapi-gen=true
+type VolumeBackupMemberCluster struct {
+	// K8sClusterName is the name of the k8s cluster where the tc locates
+	K8sClusterName string `json:"k8sClusterName,omitempty"`
+	// TCName is the name of the TiDBCluster CR which need to execute volume backup
+	TCName string `json:"tcName,omitempty"`
+	// TCNamespace is the namespace of the TiDBCluster CR
+	TCNamespace string `json:"tcNamespace,omitempty"`
+}
+
+// VolumeBackupMemberSpec contains the backup specification for one tidb cluster
+// +k8s:openapi-gen=true
+type VolumeBackupMemberSpec struct {
+	corev1.ResourceRequirements `json:"resources,omitempty"`
+	// List of environment variables to set in the container, like v1.Container.Env.
+	// Note that the following builtin env vars will be overwritten by values set here
+	// - S3_PROVIDER
+	// - S3_ENDPOINT
+	// - AWS_REGION
+	// - AWS_ACL
+	// - AWS_STORAGE_CLASS
+	// - AWS_DEFAULT_REGION
+	// - AWS_ACCESS_KEY_ID
+	// - AWS_SECRET_ACCESS_KEY
+	// - GCS_PROJECT_ID
+	// - GCS_OBJECT_ACL
+	// - GCS_BUCKET_ACL
+	// - GCS_LOCATION
+	// - GCS_STORAGE_CLASS
+	// - GCS_SERVICE_ACCOUNT_JSON_KEY
+	// - BR_LOG_TO_TERM
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
+	// BRConfig is the configs for BR
+	BR                              *BRConfig `json:"br,omitempty"`
+	pingcapv1alpha1.StorageProvider `json:",inline"`
+	Tolerations                     []corev1.Toleration `json:"tolerations,omitempty"`
+	// ToolImage specifies the tool image used in `Backup`, which supports BR and Dumpling images.
+	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/dumpling:v4.0.8`
+	// For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.
+	// +optional
+	ToolImage string `json:"toolImage,omitempty"`
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// Specify service account of backup
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
+	CleanPolicy pingcapv1alpha1.CleanPolicyType `json:"cleanPolicy,omitempty"`
+	// PriorityClassName of Backup Job Pods
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+}
+
+// BRConfig contains config for BR
+// +k8s:openapi-gen=true
+type BRConfig struct {
+	// Concurrency is the size of thread pool on each node that execute the backup task
+	Concurrency *uint32 `json:"concurrency,omitempty"`
+	// CheckRequirements specifies whether to check requirements
+	CheckRequirements *bool `json:"checkRequirements,omitempty"`
+	// SendCredToTikv specifies whether to send credentials to TiKV
+	SendCredToTikv *bool `json:"sendCredToTikv,omitempty"`
+	// Options means options for backup data to remote storage with BR. These options has highest priority.
+	Options []string `json:"options,omitempty"`
 }
 
 // VolumeBackupStatus represents the current status of a volume backup.
 type VolumeBackupStatus struct {
+	// Backups are volume backups' information in data plane
+	Backups []VolumeBackupMemberStatus `json:"backups,omitempty"`
+	// TimeStarted is the time at which the backup was started.
+	// +nullable
+	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
+	// TimeCompleted is the time at which the backup was completed.
+	// +nullable
+	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+	// TimeTaken is the time that volume backup federation takes, it is TimeCompleted - TimeStarted
+	TimeTaken string `json:"timeTaken,omitempty"`
+	// BackupSizeReadable is the data size of the backup.
+	// the difference with BackupSize is that its format is human readable
+	BackupSizeReadable string `json:"backupSizeReadable,omitempty"`
+	// BackupSize is the data size of the backup.
+	BackupSize int64 `json:"backupSize,omitempty"`
+	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+	CommitTs string `json:"commitTs,omitempty"`
+	// Phase is a user readable state inferred from the underlying Backup conditions
+	Phase VolumeBackupConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []VolumeBackupCondition `json:"conditions,omitempty"`
 }
 
+type VolumeBackupMemberStatus struct {
+	// K8sClusterName is the name of the k8s cluster where the tc locates
+	K8sClusterName string `json:"k8sClusterName,omitempty"`
+	// TCName is the name of the TiDBCluster CR which need to execute volume backup
+	TCName string `json:"tcName,omitempty"`
+	// TCNamespace is the namespace of the TiDBCluster CR
+	TCNamespace string `json:"tcNamespace,omitempty"`
+	// BackupName is the name of Backup CR
+	BackupName string `json:"backupName"`
+	// BackupPath is the location of the backup
+	BackupPath string `json:"backupPath,omitempty"`
+	// BackupSize is the data size of the backup
+	BackupSize int64 `json:"backupSize,omitempty"`
+	// CommitTs is the commit ts of the backup
+	CommitTs string `json:"commitTs,omitempty"`
+}
+
 // VolumeBackupCondition describes the observed state of a VolumeBackup at a certain point.
 type VolumeBackupCondition struct {
-	Status corev1.ConditionStatus `json:"status"`
+	Status corev1.ConditionStatus    `json:"status"`
+	Type   VolumeBackupConditionType `json:"type"`
 
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	Reason             string      `json:"reason,omitempty"`
 	Message            string      `json:"message,omitempty"`
 }
+
+// VolumeBackupConditionType represents a valid condition of a VolumeBackup.
+type VolumeBackupConditionType string
+
+const (
+	// VolumeBackupInvalid means the VolumeBackup is invalid
+	VolumeBackupInvalid VolumeBackupConditionType = "Invalid"
+	// VolumeBackupRunning means the VolumeBackup is running
+	VolumeBackupRunning VolumeBackupConditionType = "Running"
+	// VolumeBackupComplete means all the backups in data plane are complete and the VolumeBackup is complete
+	VolumeBackupComplete VolumeBackupConditionType = "Complete"
+	// VolumeBackupFailed means one of backup in data plane is failed and the VolumeBackup is failed
+	VolumeBackupFailed VolumeBackupConditionType = "Failed"
+	// VolumeBackupCleaned means all the resources about VolumeBackup have cleaned
+	VolumeBackupCleaned VolumeBackupConditionType = "Cleaned"
+	// VolumeBackupCleanFailed means the VolumeBackup cleanup is failed
+	VolumeBackupCleanFailed VolumeBackupConditionType = "CleanFailed"
+)
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
