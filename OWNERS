@@ -9,16 +9,19 @@ approvers:
   - KanShiori
   - liubog2008
   # kubernetes-committers:
-  - dragonly
-  - gozssky
-  - handlerww
-  - KanShiori
-  - LinuxGit
-  - mikechengwei
-  - sdojjy
-  - shuijing198799
-  - tennix
   - WangLe1321
+  - tennix
+  - shuijing198799
+  - sdojjy
+  - mikechengwei
+  - LinuxGit
+  - KanShiori
+  - handlerww
+  - gozssky
+  - fengou1
+  - Ehco1996
+  - dragonly
+  - BornChanger
 reviewers:
   # kubernetes-reviewers:
   - howardlau1999
