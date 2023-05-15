@@ -342,6 +342,14 @@ func (bm *backupManager) setVolumeBackupCleaned(volumeBackupStatus *v1alpha1.Vol
 	})
 }
 
+func (bm *backupManager) setVolumeBackupPrepared(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
+	volumeBackupStatus.TimeStarted = metav1.Now()
+	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupPrepared,
+		Status: corev1.ConditionTrue,
+	})
+}
+
 func (bm *backupManager) setVolumeBackupSize(volumeBackupStatus *v1alpha1.VolumeBackupStatus, backupMembers []*volumeBackupMember) {
 	var totalBackupSize int64
 	for _, backupMember := range backupMembers {
