@@ -1068,6 +1068,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"federalVolumeBackupPhase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FederalVolumeBackupPhase indicates which phase to execute in federal volume backup",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"dumpling": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DumplingConfig is the configs for dumpling",
@@ -7397,6 +7404,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					"logRestoreStartTs": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"federalVolumeRestorePhase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FederalVolumeRestorePhase indicates which phase to execute in federal volume restore",
 							Type:        []string{"string"},
 							Format:      "",
 						},
