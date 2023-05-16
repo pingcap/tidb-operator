@@ -1050,8 +1050,8 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "tcp-peer-2380",
-							Port:       2380,
-							TargetPort: intstr.FromInt(2380),
+							Port:       v1alpha1.DefaultPDPeerPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDPeerPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 						{

@@ -515,9 +515,9 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 			ClusterIP: "None",
 			Ports: []corev1.ServicePort{
 				{
-					Name:       "tcp-peer-2380",
-					Port:       2380,
-					TargetPort: intstr.FromInt(2380),
+					Name:       fmt.Sprintf("tcp-peer-%d", v1alpha1.DefaultPDPeerPort),
+					Port:       v1alpha1.DefaultPDPeerPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDPeerPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 				{
@@ -724,7 +724,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "server",
-				ContainerPort: int32(2380),
+				ContainerPort: v1alpha1.DefaultPDPeerPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{

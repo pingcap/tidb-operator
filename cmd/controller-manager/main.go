@@ -279,6 +279,9 @@ func logCustomPorts() {
 	if v1alpha1.DefaultTiDBServerPort != 4000 {
 		klog.Infof("running TiDB Operator with custom ports: %#v", CustomPorts{
 			TiDBServerPort: v1alpha1.DefaultTiDBServerPort,
+			TiDBStatusPort: v1alpha1.DefaultTiDBStatusPort,
+			PDClientPort:   v1alpha1.DefaultPDClientPort,
+			PDPeerPort:     v1alpha1.DefaultPDPeerPort,
 		})
 	}
 }

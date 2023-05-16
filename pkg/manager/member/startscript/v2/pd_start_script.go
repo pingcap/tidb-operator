@@ -55,9 +55,9 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.DataDir = filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir)
 
-	m.PeerURL = fmt.Sprintf("%s://0.0.0.0:2380", tc.Scheme())
+	m.PeerURL = fmt.Sprintf("%s://0.0.0.0:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
 
-	m.AdvertisePeerURL = fmt.Sprintf("%s://${PD_DOMAIN}:2380", tc.Scheme())
+	m.AdvertisePeerURL = fmt.Sprintf("%s://${PD_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
 
 	m.ClientURL = fmt.Sprintf("%s://0.0.0.0:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 

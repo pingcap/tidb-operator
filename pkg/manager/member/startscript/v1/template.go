@@ -213,6 +213,9 @@ func replacePDStartScriptCustomPorts(startScript string) string {
 	if v1alpha1.DefaultPDClientPort != 2379 {
 		startScript = strings.ReplaceAll(startScript, ":2379", fmt.Sprintf(":%d", v1alpha1.DefaultPDClientPort))
 	}
+	if v1alpha1.DefaultPDPeerPort != 2380 {
+		startScript = strings.ReplaceAll(startScript, ":2380", fmt.Sprintf(":%d", v1alpha1.DefaultPDPeerPort))
+	}
 	return startScript
 }
 
