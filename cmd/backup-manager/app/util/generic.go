@@ -47,6 +47,7 @@ type GenericOptions struct {
 	CommitTS       string
 	TruncateUntil  string
 	PitrRestoredTs string
+	Initialize     bool
 }
 
 func (bo *GenericOptions) String() string {
