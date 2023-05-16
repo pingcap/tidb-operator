@@ -42,6 +42,13 @@ var (
 	customPortTiKVServer  = "20160"
 	DefaultTiKVStatusPort = int32(20180)
 	customPortTiKVStatus  = "20180"
+
+	DefaultTiFlashTcpPort = int32(9000)
+	customPortTiFlashTcp  = "9000"
+	DefaultTiFlashHttpPort = int32(8123)
+	customPortTiFlashHttp  = "8123"
+	DefaultTiFlashFlashPort = int32(3930)
+	customPortTiFlashFlash  = "3930"
 )
 
 func init() {
@@ -74,6 +81,22 @@ func init() {
 	}
 	if port, err := strconv.ParseUint(customPortTiKVStatus, 10, 32); err == nil {
 		DefaultTiKVStatusPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortTiFlashTcp, 10, 32); err == nil {
+		DefaultTiFlashTcpPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiFlashHttp, 10, 32); err == nil {
+		DefaultTiFlashHttpPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiFlashFlash, 10, 32); err == nil {
+		DefaultTiFlashFlashPort = int32(port)
 	} else {
 		panic(err)
 	}

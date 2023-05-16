@@ -278,21 +278,27 @@ func createHTTPServer() *http.Server {
 func logCustomPorts() {
 	if v1alpha1.DefaultTiDBServerPort != 4000 {
 		klog.Infof("running TiDB Operator with custom ports: %#v", CustomPorts{
-			TiDBServerPort: v1alpha1.DefaultTiDBServerPort,
-			TiDBStatusPort: v1alpha1.DefaultTiDBStatusPort,
-			PDClientPort:   v1alpha1.DefaultPDClientPort,
-			PDPeerPort:     v1alpha1.DefaultPDPeerPort,
-			TiKVServerPort: v1alpha1.DefaultTiKVServerPort,
-			TiKVStatusPort: v1alpha1.DefaultTiKVStatusPort,
+			TiDBServerPort:   v1alpha1.DefaultTiDBServerPort,
+			TiDBStatusPort:   v1alpha1.DefaultTiDBStatusPort,
+			PDClientPort:     v1alpha1.DefaultPDClientPort,
+			PDPeerPort:       v1alpha1.DefaultPDPeerPort,
+			TiKVServerPort:   v1alpha1.DefaultTiKVServerPort,
+			TiKVStatusPort:   v1alpha1.DefaultTiKVStatusPort,
+			TiFlashTcpPort:   v1alpha1.DefaultTiFlashTcpPort,
+			TiFlashHttpPort:  v1alpha1.DefaultTiFlashHttpPort,
+			TiFlashFlashPort: v1alpha1.DefaultTiFlashFlashPort,
 		})
 	}
 }
 
 type CustomPorts struct {
-	TiDBServerPort int32 `json:"TiDB-Server-Port"`
-	TiDBStatusPort int32 `json:"TiDB-Status-Port"`
-	PDClientPort   int32 `json:"PD-Client-Port"`
-	PDPeerPort     int32 `json:"PD-Peer-Port"`
-	TiKVServerPort int32 `json:"TiKV-Server-Port"`
-	TiKVStatusPort int32 `json:"TiKV-Status-Port"`
+	TiDBServerPort   int32 `json:"TiDB-Server-Port"`
+	TiDBStatusPort   int32 `json:"TiDB-Status-Port"`
+	PDClientPort     int32 `json:"PD-Client-Port"`
+	PDPeerPort       int32 `json:"PD-Peer-Port"`
+	TiKVServerPort   int32 `json:"TiKV-Server-Port"`
+	TiKVStatusPort   int32 `json:"TiKV-Status-Port"`
+	TiFlashTcpPort   int32 `json:"TiFlash-TCP-Port"`
+	TiFlashHttpPort  int32 `json:"TiFlash-HTTP-Port"`
+	TiFlashFlashPort int32 `json:"TiFlash-Flash-Port"`
 }

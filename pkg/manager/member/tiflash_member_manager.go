@@ -332,8 +332,8 @@ func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "tiflash",
-					Port:       3930,
-					TargetPort: intstr.FromInt(int(3930)),
+					Port:       v1alpha1.DefaultTiFlashFlashPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiFlashFlashPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 				{
@@ -558,7 +558,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "tiflash",
-				ContainerPort: int32(3930),
+				ContainerPort: v1alpha1.DefaultTiFlashFlashPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{
@@ -568,12 +568,12 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			},
 			{
 				Name:          "tcp",
-				ContainerPort: int32(9000),
+				ContainerPort: v1alpha1.DefaultTiFlashTcpPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{
 				Name:          "http",
-				ContainerPort: int32(8123),
+				ContainerPort: v1alpha1.DefaultTiFlashHttpPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{

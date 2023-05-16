@@ -161,8 +161,8 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		common.SetIfNil("tmp_path", "/data0/tmp")
 
 		// port
-		common.SetIfNil("tcp_port", int64(9000))
-		common.SetIfNil("http_port", int64(8123))
+		common.SetIfNil("tcp_port", int64(v1alpha1.DefaultTiFlashTcpPort))
+		common.SetIfNil("http_port", int64(v1alpha1.DefaultTiFlashHttpPort))
 
 		// flash
 		tidbStatusAddr := fmt.Sprintf("%s.%s.svc:%d", controller.TiDBMemberName(name), ns, v1alpha1.DefaultTiDBStatusPort)
@@ -181,7 +181,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 			}
 		}
 		common.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
-		common.SetIfNil("flash.service_addr", listenHost+":3930")
+		common.SetIfNil("flash.service_addr", listenHost+fmt.Sprintf(":%d", v1alpha1.DefaultTiFlashFlashPort))
 		common.SetIfNil("flash.flash_cluster.log", defaultClusterLog)
 		common.SetIfNil("flash.proxy.addr", listenHost+":20170")
 		common.SetIfNil("flash.proxy.advertise-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20170", controller.TiFlashMemberName(name),
@@ -212,7 +212,8 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 	// proxy
 	{
 		proxy.SetIfNil("log-level", "info")
-		proxy.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:3930", controller.TiFlashMemberName(name), controller.TiFlashPeerMemberName(name), ns, controller.FormatClusterDomain(clusterDomain)))
+		proxy.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d", controller.TiFlashMemberName(name), controller.TiFlashPeerMemberName(name), ns,
+			controller.FormatClusterDomain(clusterDomain), v1alpha1.DefaultTiFlashFlashPort))
 		proxy.SetIfNil("server.status-addr", listenHost+":20292")
 		proxy.SetIfNil("server.advertise-status-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20292", controller.TiFlashMemberName(name), controller.TiFlashPeerMemberName(name), ns, controller.FormatClusterDomain(clusterDomain)))
 	}
@@ -222,8 +223,8 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		common.Set("security.ca_path", path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
 		common.Set("security.cert_path", path.Join(tiflashCertPath, corev1.TLSCertKey))
 		common.Set("security.key_path", path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
-		common.SetIfNil("tcp_port_secure", int64(9000))
-		common.SetIfNil("https_port", int64(8123))
+		common.SetIfNil("tcp_port_secure", int64(v1alpha1.DefaultTiFlashTcpPort))
+		common.SetIfNil("https_port", int64(v1alpha1.DefaultTiFlashHttpPort))
 		common.Del("http_port")
 		common.Del("tcp_port")
 
@@ -323,7 +324,8 @@ func setTiFlashConfigDefault(config *v1alpha1.TiFlashConfigWraper, ref *v1alpha1
 
 func setTiFlashProxyConfigDefault(config *v1alpha1.TiFlashProxyConfigWraper, clusterName, ns, clusterDomain, listenHost string) {
 	config.SetIfNil("log-level", "info")
-	config.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
+	config.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns,
+		controller.FormatClusterDomain(clusterDomain), v1alpha1.DefaultTiFlashFlashPort))
 	config.SetIfNil("server.status-addr", listenHost+":20292")
 	config.SetIfNil("server.advertise-status-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:20292", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
 }
@@ -336,10 +338,10 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	config.SetIfNil("path_realtime_mode", false)
 	config.SetIfNil("mark_cache_size", int64(5368709120))
 	config.SetIfNil("minmax_index_cache_size", int64(5368709120))
-	config.SetIfNil("tcp_port", int64(9000))
-	config.SetIfNil("tcp_port_secure", int64(9000))
-	config.SetIfNil("https_port", int64(8123))
-	config.SetIfNil("http_port", int64(8123))
+	config.SetIfNil("tcp_port", int64(v1alpha1.DefaultTiFlashTcpPort))
+	config.SetIfNil("tcp_port_secure", int64(v1alpha1.DefaultTiFlashTcpPort))
+	config.SetIfNil("https_port", int64(v1alpha1.DefaultTiFlashHttpPort))
+	config.SetIfNil("http_port", int64(v1alpha1.DefaultTiFlashHttpPort))
 	config.SetIfNil("interserver_http_port", int64(9009))
 	setTiFlashFlashConfigDefault(config, ref, clusterName, ns, clusterDomain, listenHost, noLocalTiDB, acrossK8s)
 	setTiFlashLoggerConfigDefault(config)
@@ -394,7 +396,7 @@ func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, re
 	}
 
 	config.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
-	config.SetIfNil("flash.service_addr", listenHost+":3930")
+	config.SetIfNil("flash.service_addr", listenHost+fmt.Sprintf(":%d", v1alpha1.DefaultTiFlashFlashPort))
 	config.SetIfNil("flash.overlap_threshold", 0.6)
 	config.SetIfNil("flash.compact_log_min_period", int64(200))
 

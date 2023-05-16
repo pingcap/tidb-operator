@@ -49,6 +49,16 @@ function tidb_operator::port::ldflags() {
   ldflags+=($(tidb_operator::port::ldflag "customPortTiKVStatus" "${TIKV_STATUS_PORT}"))
   fi
 
+  if [[ -n ${TIFLASH_TCP_PORT-} ]]; then
+  ldflags+=($(tidb_operator::port::ldflag "customPortTiFlashTcp" "${TIFLASH_TCP_PORT}"))
+  fi
+  if [[ -n ${TIFLASH_HTTP_PORT-} ]]; then
+  ldflags+=($(tidb_operator::port::ldflag "customPortTiFlashHttp" "${TIFLASH_HTTP_PORT}"))
+  fi
+  if [[ -n ${TIFLASH_FLASH_PORT-} ]]; then
+  ldflags+=($(tidb_operator::port::ldflag "customPortTiFlashFlash" "${TIFLASH_FLASH_PORT}"))
+  fi
+
   # The -ldflags parameter takes a single string, so join the output.
   echo "${ldflags[*]-}"
 }
