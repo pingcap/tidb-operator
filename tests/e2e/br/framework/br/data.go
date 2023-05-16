@@ -25,9 +25,8 @@ import (
 )
 
 const (
-	BRType        = "br"
-	DumperType    = "dumper"
-	PDServicePort = int32(2379)
+	BRType     = "br"
+	DumperType = "dumper"
 )
 
 // GetRole returns a role for br test.

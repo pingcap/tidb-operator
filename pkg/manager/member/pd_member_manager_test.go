@@ -1056,8 +1056,8 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 						},
 						{
 							Name:       "tcp-peer-2379",
-							Port:       2379,
-							TargetPort: intstr.FromInt(2379),
+							Port:       v1alpha1.DefaultPDClientPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},
@@ -2380,8 +2380,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "client",
-							Port:       2379,
-							TargetPort: intstr.FromInt(2379),
+							Port:       v1alpha1.DefaultPDClientPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},
@@ -2448,8 +2448,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "client",
-							Port:       2379,
-							TargetPort: intstr.FromInt(2379),
+							Port:       v1alpha1.DefaultPDClientPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},
@@ -2516,8 +2516,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "client",
-							Port:       2379,
-							TargetPort: intstr.FromInt(2379),
+							Port:       v1alpha1.DefaultPDClientPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},
@@ -2585,8 +2585,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "client",
-							Port:       2379,
-							TargetPort: intstr.FromInt(2379),
+							Port:       v1alpha1.DefaultPDClientPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},
@@ -2657,8 +2657,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "http-pd",
-							Port:       2379,
-							TargetPort: intstr.FromInt(2379),
+							Port:       v1alpha1.DefaultPDClientPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},

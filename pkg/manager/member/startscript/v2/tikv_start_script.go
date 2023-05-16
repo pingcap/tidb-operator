@@ -44,15 +44,15 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	tcNS := tc.Namespace
 	peerServiceName := controller.TiKVPeerMemberName(tcName)
 
-	m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tcName))
+	m.PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
 		m.AcrossK8s = &AcrossK8sScriptModel{
-			PDAddr:        fmt.Sprintf("%s:2379", controller.PDMemberName(tcName)),
+			PDAddr:        fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
 			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
 		}
 		m.PDAddr = "${result}" // get pd addr in subscript
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
+		m.PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	listenHost := "0.0.0.0"

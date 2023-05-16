@@ -32,6 +32,11 @@ var (
 
 	DefaultTiDBStatusPort = int32(10080)
 	customPortTiDBStatus  = "10080"
+
+	DefaultPDClientPort = int32(2379)
+	customPortPDClient  = "2379"
+	DefaultPDPeerPort   = int32(2380)
+	customPortPDPeer    = "2380"
 )
 
 func init() {
@@ -42,6 +47,17 @@ func init() {
 	}
 	if port, err := strconv.ParseUint(customPortTiDBStatus, 10, 32); err == nil {
 		DefaultTiDBStatusPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortPDClient, 10, 32); err == nil {
+		DefaultPDClientPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortPDPeer, 10, 32); err == nil {
+		DefaultPDPeerPort = int32(port)
 	} else {
 		panic(err)
 	}

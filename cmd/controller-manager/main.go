@@ -285,4 +285,7 @@ func logCustomPorts() {
 
 type CustomPorts struct {
 	TiDBServerPort int32 `json:"TiDB-Server-Port"`
+	TiDBStatusPort int32 `json:"TiDB-Status-Port"`
+	PDClientPort   int32 `json:"PD-Client-Port"`
+	PDPeerPort     int32 `json:"PD-Peer-Port"`
 }

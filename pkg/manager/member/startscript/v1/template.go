@@ -16,7 +16,10 @@ package v1
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 type CommonModel struct {
@@ -113,7 +116,7 @@ type TidbStartScriptModel struct {
 
 // pdStartScriptTpl is the pd start script
 // Note: changing this will cause a rolling-update of pd cluster
-var pdStartScriptTpl = template.Must(template.New("pd-start-script").Parse(`#!/bin/sh
+var pdStartScriptTplText = `#!/bin/sh
 
 # This script is used to start pd containers in kubernetes cluster
 
@@ -203,7 +206,17 @@ echo "starting pd-server ..."
 sleep $((RANDOM % 10))
 echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
-`))
+`
+
+func replacePDStartScriptCustomPorts(startScript string) string {
+	// `DefaultPDClientPort` may be changed when building the binary
+	if v1alpha1.DefaultPDClientPort != 2379 {
+		startScript = strings.ReplaceAll(startScript, ":2379", fmt.Sprintf(":%d", v1alpha1.DefaultPDClientPort))
+	}
+	return startScript
+}
+
+var pdStartScriptTpl = template.Must(template.New("pd-start-script").Parse(replacePDStartScriptCustomPorts(pdStartScriptTplText)))
 
 var checkDNSV1 string = `
 digRes=$(dig ${domain} A ${domain} AAAA +search +short)

@@ -194,11 +194,12 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		common.SetIfNil("logger.log", defaultServerLog)
 
 		// raft
-		pdAddr := fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(name), ns)
+		pdAddr := fmt.Sprintf("%s.%s.svc:%d", controller.PDMemberName(name), ns, v1alpha1.DefaultPDClientPort)
 		if tc.AcrossK8s() {
 			pdAddr = "PD_ADDR" // get pd addr from discovery in startup script
 		} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-			pdAddr = fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain)) // use pd of reference cluster
+			pdAddr = fmt.Sprintf("%s.%s.svc%s:%d", controller.PDMemberName(ref.Name), ref.Namespace,
+				controller.FormatClusterDomain(ref.ClusterDomain), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 		}
 		common.SetIfNil("raft.pd_addr", pdAddr)
 
@@ -431,8 +432,9 @@ func setTiFlashRaftConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref
 	if acrossK8s {
 		config.SetIfNil("raft.pd_addr", "PD_ADDR") // get pd addr from discovery in startup script
 	} else if ref != nil && noLocalPD {
-		config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(ref.Name), ref.Namespace, controller.FormatClusterDomain(ref.ClusterDomain)))
+		config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc%s:%d", controller.PDMemberName(ref.Name), ref.Namespace,
+			controller.FormatClusterDomain(ref.ClusterDomain), v1alpha1.DefaultPDClientPort))
 	} else {
-		config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(clusterName), ns))
+		config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc:%d", controller.PDMemberName(clusterName), ns, v1alpha1.DefaultPDClientPort))
 	}
 }

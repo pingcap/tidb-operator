@@ -40,11 +40,11 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		model.EnableAdvertiseStatusAddr = true
 	}
 
-	model.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
+	model.PDAddress = tc.Scheme() + fmt.Sprintf("://${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
-		model.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
+		model.PDAddress = tc.Scheme() + fmt.Sprintf("://${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		model.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
+		model.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + fmt.Sprintf(":%d", v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	listenHost := "0.0.0.0"
@@ -83,11 +83,11 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		PluginDirectory: "/plugins",
 		PluginList:      strings.Join(plugins, ","),
 	}
-	model.Path = "${CLUSTER_NAME}-pd:2379"
+	model.Path = fmt.Sprintf("${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
-		model.Path = "${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
+		model.Path = fmt.Sprintf("${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		model.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
+		model.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + fmt.Sprintf(":%d", v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	return renderTemplateFunc(tidbStartScriptTpl, model)
@@ -106,7 +106,7 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
 	}
 
-	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, pdDomain)
+	pdAddr := fmt.Sprintf("%s://%s:%d", scheme, pdDomain, v1alpha1.DefaultPDClientPort)
 	return renderTemplateFunc(pumpStartScriptTpl, &PumpStartScriptModel{
 		CommonModel: CommonModel{
 			AcrossK8s:     tc.AcrossK8s(),
@@ -136,11 +136,11 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.IsTLSClusterEnabled() {
 		scheme = "https"
 	}
-	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Name))
+	pdAddr := fmt.Sprintf("%s://%s:%d", scheme, controller.PDMemberName(tc.Name), v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
 		pdAddr = "${result}" // get pd addr from discovery in startup script
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		pdAddr = fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
+		pdAddr = fmt.Sprintf("%s://%s:%d", scheme, controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	if tc.IsTLSClusterEnabled() {
@@ -161,9 +161,9 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		var pdAddr string
 		pdDomain := controller.PDMemberName(tcName)
 		if tc.IsTLSClusterEnabled() {
-			pdAddr = fmt.Sprintf("https://%s:2379", pdDomain)
+			pdAddr = fmt.Sprintf("https://%s:%d", pdDomain, v1alpha1.DefaultPDClientPort)
 		} else {
-			pdAddr = fmt.Sprintf("http://%s:2379", pdDomain)
+			pdAddr = fmt.Sprintf("http://%s:%d", pdDomain, v1alpha1.DefaultPDClientPort)
 		}
 
 		str := `set -uo pipefail
@@ -196,9 +196,9 @@ func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.AcrossK8s() {
 		var pdAddr string
 		if tc.IsTLSClusterEnabled() {
-			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
+			pdAddr = fmt.Sprintf("https://%s-pd:%d", tcName, v1alpha1.DefaultPDClientPort)
 		} else {
-			pdAddr = fmt.Sprintf("http://%s-pd:2379", tcName)
+			pdAddr = fmt.Sprintf("http://%s-pd:%d", tcName, v1alpha1.DefaultPDClientPort)
 		}
 		str := `pd_url="%s"
 set +e

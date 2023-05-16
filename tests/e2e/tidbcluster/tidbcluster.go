@@ -1690,7 +1690,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				"--",
 				"/cdc", "cli", "changefeed", "create",
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
-				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
+				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
 			data, err := framework.RunKubectl(ns, args...)
 			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
@@ -1818,7 +1818,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				"--",
 				"/cdc", "cli", "changefeed", "create",
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
-				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
+				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
 			data, err := framework.RunKubectl(ns, args...)
 			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)

@@ -24,10 +24,12 @@ properties([
         string(name: 'PR_ID', defaultValue: '', description: 'pull request ID, this will override GIT_REF if set, e.g. 1889'),
         string(name: 'GINKGO_NODES', defaultValue: env.DEFAULT_GINKGO_NODES, description: 'the number of ginkgo nodes'),
         string(name: 'E2E_ARGS', defaultValue: env.DEFAULT_E2E_ARGS, description: "e2e args, e.g. --ginkgo.focus='\\[Stability\\]'"),
-        string(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE, description: 'delete ns after test case fails')
+        string(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE, description: 'delete ns after test case fails'),
 
         string(name: 'CUSTOM_PORT_TIDB_SERVER', defaultValue: '', description: 'custom component port: tidb server'),
         string(name: 'CUSTOM_PORT_TIDB_STATUS', defaultValue: '', description: 'custom component port: tidb status'),
+        string(name: 'CUSTOM_PORT_PD_CLIENT', defaultValue: '', description: 'custom component port: pd client'),
+        string(name: 'CUSTOM_PORT_PD_PEER', defaultValue: '', description: 'custom component port: pd peer')
     ])
 ])
 
@@ -246,6 +248,8 @@ try {
 
     def CUSTOM_PORT_TIDB_SERVER = params.CUSTOM_PORT_TIDB_SERVER
     def CUSTOM_PORT_TIDB_STATUS = params.CUSTOM_PORT_TIDB_STATUS
+    def CUSTOM_PORT_PD_CLIENT = params.CUSTOM_PORT_PD_CLIENT
+    def CUSTOM_PORT_PD_PEER = params.CUSTOM_PORT_PD_PEER
 
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
@@ -329,6 +333,8 @@ try {
                             ./hack/e2e-patch-codecov.sh
                             export CUSTOM_PORT_TIDB_SERVER=${CUSTOM_PORT_TIDB_SERVER}
                             export CUSTOM_PORT_TIDB_STATUS=${CUSTOM_PORT_TIDB_STATUS}
+                            export CUSTOM_PORT_PD_CLIENT=${CUSTOM_PORT_PD_CLIENT}
+                            export CUSTOM_PORT_PD_PEER=${CUSTOM_PORT_PD_PEER}
                             E2E=y make build e2e-build
                             make gocovmerge
                             """

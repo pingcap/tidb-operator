@@ -63,6 +63,7 @@ targetTidbCluster:
   #secretName: ""
   #secretUserKey: user
   #secretPwdKey: password
+  pdClientPort: 2379
 
 # Whether enable the TLS connection between TiDB cluster components.
 # If enabled, a Secret named "<targetTidbCluster.name>-lightning-cluster-secret" must exist.
