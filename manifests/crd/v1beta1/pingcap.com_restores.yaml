@@ -425,6 +425,8 @@ spec:
                 - name
                 type: object
               type: array
+            federalVolumeRestorePhase:
+              type: string
             gcs:
               properties:
                 bucket:
