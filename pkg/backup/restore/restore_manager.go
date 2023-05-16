@@ -148,7 +148,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 		if restore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreFinish {
 			if !v1alpha1.IsRestoreComplete(restore) {
-				return controller.RequeueErrorf("restore %s/%s: waiting for restore status complete", ns, name, tc.Namespace, tc.Name)
+				return controller.RequeueErrorf("restore %s/%s: waiting for restore status complete in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 			} else {
 				return nil
 			}
