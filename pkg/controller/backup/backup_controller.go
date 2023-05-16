@@ -180,6 +180,12 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
+	// volume backup has multiple phases, we should always reconcile it before it is complete or failed
+	if newBackup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+		klog.V(4).Infof("backup object %s/%s enqueue", ns, name)
+		c.enqueueBackup(newBackup)
+	}
+
 	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsLogBackupStopped(newBackup) {
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
 		// TODO: log backup check all subcommand job's pod status

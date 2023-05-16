@@ -1944,6 +1944,9 @@ type BackupSpec struct {
 	// LogStop indicates that will stop the log backup.
 	// +optional
 	LogStop bool `json:"logStop,omitempty"`
+	// FederalVolumeBackupPhase indicates which phase to execute in federal volume backup
+	// +optional
+	FederalVolumeBackupPhase FederalVolumeBackupPhase `json:"federalVolumeBackupPhase,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1981,6 +1984,18 @@ type BackupSpec struct {
 	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
 	BackoffRetryPolicy BackoffRetryPolicy `json:"backoffRetryPolicy,omitempty"`
 }
+
+// FederalVolumeBackupPhase represents a phase to execute in federal volume backup
+type FederalVolumeBackupPhase string
+
+const (
+	// FederalVolumeBackupInitialize means we should stop GC and PD schedule
+	FederalVolumeBackupInitialize FederalVolumeBackupPhase = "initialize"
+	// FederalVolumeBackupExecute means we should take volume snapshots for TiKV
+	FederalVolumeBackupExecute FederalVolumeBackupPhase = "execute"
+	// FederalVolumeBackupTeardown means we should resume GC and PD schedule
+	FederalVolumeBackupTeardown FederalVolumeBackupPhase = "teardown"
+)
 
 // +k8s:openapi-gen=true
 // DumplingConfig contains config for dumpling
@@ -2088,6 +2103,14 @@ const (
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
 	BackupRestart BackupConditionType = "Restart"
+	// VolumeBackupInitialized means the volume backup has stopped GC and PD schedule
+	VolumeBackupInitialized BackupConditionType = "VolumeBackupInitialized"
+	// VolumeBackupInitializeFailed means the volume backup initialize job failed
+	VolumeBackupInitializeFailed BackupConditionType = "VolumeBackupInitializeFailed"
+	// VolumeBackupComplete means the volume backup has taken volume snapshots successfully
+	VolumeBackupComplete BackupConditionType = "VolumeBackupComplete"
+	// VolumeBackupFailed means the volume backup take volume snapshots failed
+	VolumeBackupFailed BackupConditionType = "VolumeBackupFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -2305,6 +2328,8 @@ const (
 	// RestoreDataComplete means the Restore has successfully executed part-2 and the
 	// data in restore volumes has been deal with consistency based on min_resolved_ts
 	RestoreDataComplete RestoreConditionType = "DataComplete"
+	// RestoreTiKVComplete means in volume restore, all TiKV instances are started and up
+	RestoreTiKVComplete RestoreConditionType = "TikvComplete"
 	// RestoreComplete means the Restore has successfully executed and the
 	// backup data has been loaded into tidb cluster.
 	RestoreComplete RestoreConditionType = "Complete"
@@ -2361,6 +2386,9 @@ type RestoreSpec struct {
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
+	// FederalVolumeRestorePhase indicates which phase to execute in federal volume restore
+	// +optional
+	FederalVolumeRestorePhase FederalVolumeRestorePhase `json:"federalVolumeRestorePhase,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
@@ -2405,6 +2433,18 @@ type RestoreSpec struct {
 	// PriorityClassName of Restore Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
+
+// FederalVolumeRestorePhase represents a phase to execute in federal volume restore
+type FederalVolumeRestorePhase string
+
+const (
+	// FederalVolumeRestoreVolume means restore volumes of TiKV and start TiKV
+	FederalVolumeRestoreVolume FederalVolumeRestorePhase = "restore-volume"
+	// FederalVolumeRestoreData means restore data of TiKV to resolved TS
+	FederalVolumeRestoreData FederalVolumeRestorePhase = "restore-data"
+	// FederalVolumeRestoreFinish means restart TiKV and set recoveryMode true
+	FederalVolumeRestoreFinish FederalVolumeRestorePhase = "restore-finish"
+)
 
 // RestoreStatus represents the current status of a tidb cluster restore.
 type RestoreStatus struct {
