@@ -42,6 +42,13 @@ function tidb_operator::port::ldflags() {
   ldflags+=($(tidb_operator::port::ldflag "customPortPDPeer" "${PD_PEER_PORT}"))
   fi
 
+  if [[ -n ${TIKV_SERVER_PORT-} ]]; then
+  ldflags+=($(tidb_operator::port::ldflag "customPortTiKVServer" "${TIKV_SERVER_PORT}"))
+  fi
+  if [[ -n ${TIKV_STATUS_PORT-} ]]; then
+  ldflags+=($(tidb_operator::port::ldflag "customPortTiKVStatus" "${TIKV_STATUS_PORT}"))
+  fi
+
   # The -ldflags parameter takes a single string, so join the output.
   echo "${ldflags[*]-}"
 }

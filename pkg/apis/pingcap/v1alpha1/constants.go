@@ -37,6 +37,11 @@ var (
 	customPortPDClient  = "2379"
 	DefaultPDPeerPort   = int32(2380)
 	customPortPDPeer    = "2380"
+
+	DefaultTiKVServerPort = int32(20160)
+	customPortTiKVServer  = "20160"
+	DefaultTiKVStatusPort = int32(20180)
+	customPortTiKVStatus  = "20180"
 )
 
 func init() {
@@ -58,6 +63,17 @@ func init() {
 	}
 	if port, err := strconv.ParseUint(customPortPDPeer, 10, 32); err == nil {
 		DefaultPDPeerPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortTiKVServer, 10, 32); err == nil {
+		DefaultTiKVServerPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiKVStatus, 10, 32); err == nil {
+		DefaultTiKVStatusPort = int32(port)
 	} else {
 		panic(err)
 	}

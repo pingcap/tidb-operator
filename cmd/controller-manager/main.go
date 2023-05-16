@@ -282,6 +282,8 @@ func logCustomPorts() {
 			TiDBStatusPort: v1alpha1.DefaultTiDBStatusPort,
 			PDClientPort:   v1alpha1.DefaultPDClientPort,
 			PDPeerPort:     v1alpha1.DefaultPDPeerPort,
+			TiKVServerPort: v1alpha1.DefaultTiKVServerPort,
+			TiKVStatusPort: v1alpha1.DefaultTiKVStatusPort,
 		})
 	}
 }
@@ -291,4 +293,6 @@ type CustomPorts struct {
 	TiDBStatusPort int32 `json:"TiDB-Status-Port"`
 	PDClientPort   int32 `json:"PD-Client-Port"`
 	PDPeerPort     int32 `json:"PD-Peer-Port"`
+	TiKVServerPort int32 `json:"TiKV-Server-Port"`
+	TiKVStatusPort int32 `json:"TiKV-Status-Port"`
 }

@@ -51,8 +51,8 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.Spec.PreferIPv6 {
 		listenHost = "[::]"
 	}
-	model.Addr = fmt.Sprintf("%s:20160", listenHost)
-	model.StatusAddr = fmt.Sprintf("%s:20180", listenHost)
+	model.Addr = fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiKVServerPort)
+	model.StatusAddr = fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiKVStatusPort)
 
 	return renderTemplateFunc(tikvStartScriptTpl, model)
 }

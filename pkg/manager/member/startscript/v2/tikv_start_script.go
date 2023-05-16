@@ -59,14 +59,14 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.Spec.PreferIPv6 {
 		listenHost = "[::]"
 	}
-	m.Addr = fmt.Sprintf("%s:20160", listenHost)
-	m.StatusAddr = fmt.Sprintf("%s:20180", listenHost)
+	m.Addr = fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiKVServerPort)
+	m.StatusAddr = fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiKVStatusPort)
 
 	advertiseAddr := fmt.Sprintf("${TIKV_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
 		advertiseAddr = advertiseAddr + "." + tc.Spec.ClusterDomain
 	}
-	m.AdvertiseAddr = advertiseAddr + ":20160"
+	m.AdvertiseAddr = advertiseAddr + fmt.Sprintf(":%d", v1alpha1.DefaultTiKVServerPort)
 
 	m.DataDir = filepath.Join(constants.TiKVDataVolumeMountPath, tc.Spec.TiKV.DataSubDir)
 
@@ -78,7 +78,7 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		if tc.Spec.ClusterDomain != "" {
 			advertiseStatusAddr = advertiseStatusAddr + "." + tc.Spec.ClusterDomain
 		}
-		extraArgs = append(extraArgs, fmt.Sprintf("--advertise-status-addr=%s:20180", advertiseStatusAddr))
+		extraArgs = append(extraArgs, fmt.Sprintf("--advertise-status-addr=%s:%d", advertiseStatusAddr, v1alpha1.DefaultTiKVStatusPort))
 	}
 	if len(extraArgs) > 0 {
 		m.ExtraArgs = strings.Join(extraArgs, " ")

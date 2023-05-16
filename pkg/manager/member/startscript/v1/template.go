@@ -209,7 +209,7 @@ exec /pd-server ${ARGS}
 `
 
 func replacePDStartScriptCustomPorts(startScript string) string {
-	// `DefaultPDClientPort` may be changed when building the binary
+	// `DefaultPDClientPort`/`DefaultPDPeerPort` may be changed when building the binary
 	if v1alpha1.DefaultPDClientPort != 2379 {
 		startScript = strings.ReplaceAll(startScript, ":2379", fmt.Sprintf(":%d", v1alpha1.DefaultPDClientPort))
 	}
@@ -247,7 +247,7 @@ type PDStartScriptModel struct {
 	CheckDomainScript string
 }
 
-var tikvStartScriptTpl = template.Must(template.New("tikv-start-script").Parse(`#!/bin/sh
+var tikvStartScriptTplText = `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
 
@@ -306,7 +306,20 @@ fi
 echo "starting tikv-server ..."
 echo "/tikv-server ${ARGS}"
 exec /tikv-server ${ARGS}
-`))
+`
+
+func replaceTiKVStartScriptCustomPorts(startScript string) string {
+	// `DefaultTiKVServerPort`/`DefaultTiKVStatusPort` may be changed when building the binary
+	if v1alpha1.DefaultTiKVServerPort != 20160 {
+		startScript = strings.ReplaceAll(startScript, ":20160", fmt.Sprintf(":%d", v1alpha1.DefaultTiKVServerPort))
+	}
+	if v1alpha1.DefaultTiKVStatusPort != 20180 {
+		startScript = strings.ReplaceAll(startScript, ":20180", fmt.Sprintf(":%d", v1alpha1.DefaultTiKVStatusPort))
+	}
+	return startScript
+}
+
+var tikvStartScriptTpl = template.Must(template.New("tikv-start-script").Parse(replaceTiKVStartScriptCustomPorts(tikvStartScriptTplText)))
 
 type TiKVStartScriptModel struct {
 	CommonModel
