@@ -74,6 +74,10 @@ function tidb_operator::port::ldflags() {
   if [[ -n ${PUMP_PORT-} ]]; then
   ldflags+=($(tidb_operator::port::ldflag "customPortPump" "${PUMP_PORT}"))
   fi
+  
+  if [[ -n ${DRAINER_PORT-} ]]; then
+  ldflags+=($(tidb_operator::port::ldflag "customPortDrainer" "${DRAINER_PORT}"))
+  fi
 
   # The -ldflags parameter takes a single string, so join the output.
   echo "${ldflags[*]-}"

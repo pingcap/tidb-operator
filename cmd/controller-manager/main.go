@@ -289,7 +289,8 @@ func logCustomPorts() {
 		v1alpha1.DefaultTiFlashMetricsPort != 8234 ||
 		v1alpha1.DefaultTiFlashProxyStatusPort != 20292 ||
 		v1alpha1.DefaultTiFlashInternalPort != 9009 ||
-		v1alpha1.DefaultPumpPort != 8250 {
+		v1alpha1.DefaultPumpPort != 8250 ||
+		v1alpha1.DefaultDrainerPort != 8249 {
 		klog.Infof("running TiDB Operator with custom ports: %#v", CustomPorts{
 			TiDBServerPort: v1alpha1.DefaultTiDBServerPort,
 			TiDBStatusPort: v1alpha1.DefaultTiDBStatusPort,
@@ -309,6 +310,8 @@ func logCustomPorts() {
 			TiFlashInternalPort:    v1alpha1.DefaultTiFlashInternalPort,
 
 			PumpPort: v1alpha1.DefaultPumpPort,
+
+			DrainerPort: v1alpha1.DefaultDrainerPort,
 		})
 	}
 }
@@ -332,4 +335,6 @@ type CustomPorts struct {
 	TiFlashInternalPort    int32 `json:"TiFlash-Internal-Port"`
 
 	PumpPort int32 `json:"Pump-Port"`
+
+	DrainerPort int32 `json:"Drainer-Port"`
 }

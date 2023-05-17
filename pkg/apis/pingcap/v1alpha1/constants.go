@@ -57,6 +57,10 @@ var (
 
 	DefaultPumpPort = int32(8250)
 	customPortPump  = "8250"
+
+	// in fact, only used in tests now
+	DefaultDrainerPort = int32(8249)
+	customPortDrainer  = "8249"
 )
 
 func init() {
@@ -131,6 +135,12 @@ func init() {
 
 	if port, err := strconv.ParseUint(customPortPump, 10, 32); err == nil {
 		DefaultPumpPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortDrainer, 10, 32); err == nil {
+		DefaultDrainerPort = int32(port)
 	} else {
 		panic(err)
 	}
