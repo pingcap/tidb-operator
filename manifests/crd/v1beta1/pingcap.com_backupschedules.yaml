@@ -471,6 +471,8 @@ spec:
                     - name
                     type: object
                   type: array
+                federalVolumeBackupPhase:
+                  type: string
                 from:
                   properties:
                     host:
@@ -1787,6 +1789,8 @@ spec:
                     - name
                     type: object
                   type: array
+                federalVolumeBackupPhase:
+                  type: string
                 from:
                   properties:
                     host:
