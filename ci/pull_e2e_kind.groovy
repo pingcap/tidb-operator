@@ -29,7 +29,16 @@ properties([
         string(name: 'CUSTOM_PORT_TIDB_SERVER', defaultValue: '', description: 'custom component port: tidb server'),
         string(name: 'CUSTOM_PORT_TIDB_STATUS', defaultValue: '', description: 'custom component port: tidb status'),
         string(name: 'CUSTOM_PORT_PD_CLIENT', defaultValue: '', description: 'custom component port: pd client'),
-        string(name: 'CUSTOM_PORT_PD_PEER', defaultValue: '', description: 'custom component port: pd peer')
+        string(name: 'CUSTOM_PORT_PD_PEER', defaultValue: '', description: 'custom component port: pd peer'),
+        string(name: 'CUSTOM_PORT_TIKV_SERVER', defaultValue: '', description: 'custom component port: tikv server'),
+        string(name: 'CUSTOM_PORT_TIKV_STATUS', defaultValue: '', description: 'custom component port: tikv status'),
+        string(name: 'CUSTOM_PORT_TIFLASH_TCP', defaultValue: '', description: 'custom component port: tiflash tcp'),
+        string(name: 'CUSTOM_PORT_TIFLASH_HTTP', defaultValue: '', description: 'custom component port: tiflash http'),
+        string(name: 'CUSTOM_PORT_TIFLASH_FLASH', defaultValue: '', description: 'custom component port: tiflash flash'),
+        string(name: 'CUSTOM_PORT_TIFLASH_PROXY', defaultValue: '', description: 'custom component port: tiflash proxy'),
+        string(name: 'CUSTOM_PORT_TIFLASH_METRICS', defaultValue: '', description: 'custom component port: tiflash metrics'),
+        string(name: 'CUSTOM_PORT_TIFLASH_PROXY_STATUS', defaultValue: '', description: 'custom component port: tiflash proxy status'),
+        string(name: 'CUSTOM_PORT_TIFLASH_INTERNAL_STATUS', defaultValue: '', description: 'custom component port: tiflash internal status')
     ])
 ])
 
@@ -250,6 +259,15 @@ try {
     def CUSTOM_PORT_TIDB_STATUS = params.CUSTOM_PORT_TIDB_STATUS
     def CUSTOM_PORT_PD_CLIENT = params.CUSTOM_PORT_PD_CLIENT
     def CUSTOM_PORT_PD_PEER = params.CUSTOM_PORT_PD_PEER
+    def CUSTOM_PORT_TIKV_SERVER = params.CUSTOM_PORT_TIKV_SERVER
+    def CUSTOM_PORT_TIKV_STATUS = params.CUSTOM_PORT_TIKV_STATUS
+    def CUSTOM_PORT_TIFLASH_TCP = params.CUSTOM_PORT_TIFLASH_TCP
+    def CUSTOM_PORT_TIFLASH_HTTP = params.CUSTOM_PORT_TIFLASH_HTTP
+    def CUSTOM_PORT_TIFLASH_FLASH = params.CUSTOM_PORT_TIFLASH_FLASH
+    def CUSTOM_PORT_TIFLASH_PROXY = params.CUSTOM_PORT_TIFLASH_PROXY
+    def CUSTOM_PORT_TIFLASH_METRICS = params.CUSTOM_PORT_TIFLASH_METRICS
+    def CUSTOM_PORT_TIFLASH_PROXY_STATUS = params.CUSTOM_PORT_TIFLASH_PROXY_STATUS
+    def CUSTOM_PORT_TIFLASH_INTERNAL_STATUS = params.CUSTOM_PORT_TIFLASH_INTERNAL_STATUS
 
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
@@ -335,6 +353,15 @@ try {
                             export CUSTOM_PORT_TIDB_STATUS=${CUSTOM_PORT_TIDB_STATUS}
                             export CUSTOM_PORT_PD_CLIENT=${CUSTOM_PORT_PD_CLIENT}
                             export CUSTOM_PORT_PD_PEER=${CUSTOM_PORT_PD_PEER}
+                            export CUSTOM_PORT_TIKV_SERVER=${CUSTOM_PORT_TIKV_SERVER}
+                            export CUSTOM_PORT_TIKV_STATUS=${CUSTOM_PORT_TIKV_STATUS}
+                            export CUSTOM_PORT_TIFLASH_TCP=${CUSTOM_PORT_TIFLASH_TCP}
+                            export CUSTOM_PORT_TIFLASH_HTTP=${CUSTOM_PORT_TIFLASH_HTTP}
+                            export CUSTOM_PORT_TIFLASH_FLASH=${CUSTOM_PORT_TIFLASH_FLASH}
+                            export CUSTOM_PORT_TIFLASH_PROXY=${CUSTOM_PORT_TIFLASH_PROXY}
+                            export CUSTOM_PORT_TIFLASH_METRICS=${CUSTOM_PORT_TIFLASH_METRICS}
+                            export CUSTOM_PORT_TIFLASH_PROXY_STATUS=${CUSTOM_PORT_TIFLASH_PROXY_STATUS}
+                            export CUSTOM_PORT_TIFLASH_INTERNAL_STATUS=${CUSTOM_PORT_TIFLASH_INTERNAL_STATUS}
                             E2E=y make build e2e-build
                             make gocovmerge
                             """

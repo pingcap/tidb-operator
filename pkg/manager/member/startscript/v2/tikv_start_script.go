@@ -66,7 +66,7 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.Spec.ClusterDomain != "" {
 		advertiseAddr = advertiseAddr + "." + tc.Spec.ClusterDomain
 	}
-	m.AdvertiseAddr = advertiseAddr + fmt.Sprintf(":%d", v1alpha1.DefaultTiKVServerPort)
+	m.AdvertiseAddr = fmt.Sprintf("%s:%d", advertiseAddr, v1alpha1.DefaultTiKVServerPort)
 
 	m.DataDir = filepath.Join(constants.TiKVDataVolumeMountPath, tc.Spec.TiKV.DataSubDir)
 

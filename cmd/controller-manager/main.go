@@ -276,29 +276,55 @@ func createHTTPServer() *http.Server {
 }
 
 func logCustomPorts() {
-	if v1alpha1.DefaultTiDBServerPort != 4000 {
+	if v1alpha1.DefaultTiDBServerPort != 4000 ||
+		v1alpha1.DefaultTiDBStatusPort != 10080 ||
+		v1alpha1.DefaultPDClientPort != 2379 ||
+		v1alpha1.DefaultPDPeerPort != 2380 ||
+		v1alpha1.DefaultTiKVServerPort != 20160 ||
+		v1alpha1.DefaultTiKVStatusPort != 20180 ||
+		v1alpha1.DefaultTiFlashTcpPort != 9000 ||
+		v1alpha1.DefaultTiFlashHttpPort != 8123 ||
+		v1alpha1.DefaultTiFlashFlashPort != 3930 ||
+		v1alpha1.DefaultTiFlashProxyPort != 20170 ||
+		v1alpha1.DefaultTiFlashMetricsPort != 8234 ||
+		v1alpha1.DefaultTiFlashProxyStatusPort != 20292 ||
+		v1alpha1.DefaultTiFlashInternalPort != 9009 {
 		klog.Infof("running TiDB Operator with custom ports: %#v", CustomPorts{
-			TiDBServerPort:   v1alpha1.DefaultTiDBServerPort,
-			TiDBStatusPort:   v1alpha1.DefaultTiDBStatusPort,
-			PDClientPort:     v1alpha1.DefaultPDClientPort,
-			PDPeerPort:       v1alpha1.DefaultPDPeerPort,
-			TiKVServerPort:   v1alpha1.DefaultTiKVServerPort,
-			TiKVStatusPort:   v1alpha1.DefaultTiKVStatusPort,
-			TiFlashTcpPort:   v1alpha1.DefaultTiFlashTcpPort,
-			TiFlashHttpPort:  v1alpha1.DefaultTiFlashHttpPort,
-			TiFlashFlashPort: v1alpha1.DefaultTiFlashFlashPort,
+			TiDBServerPort: v1alpha1.DefaultTiDBServerPort,
+			TiDBStatusPort: v1alpha1.DefaultTiDBStatusPort,
+
+			PDClientPort: v1alpha1.DefaultPDClientPort,
+			PDPeerPort:   v1alpha1.DefaultPDPeerPort,
+
+			TiKVServerPort: v1alpha1.DefaultTiKVServerPort,
+			TiKVStatusPort: v1alpha1.DefaultTiKVStatusPort,
+
+			TiFlashTcpPort:         v1alpha1.DefaultTiFlashTcpPort,
+			TiFlashHttpPort:        v1alpha1.DefaultTiFlashHttpPort,
+			TiFlashFlashPort:       v1alpha1.DefaultTiFlashFlashPort,
+			TiFlashProxyPort:       v1alpha1.DefaultTiFlashProxyPort,
+			TiFlashMetricsPort:     v1alpha1.DefaultTiFlashMetricsPort,
+			TiFlashProxyStatusPort: v1alpha1.DefaultTiFlashProxyStatusPort,
+			TiFlashInternalPort:    v1alpha1.DefaultTiFlashInternalPort,
 		})
 	}
 }
 
 type CustomPorts struct {
-	TiDBServerPort   int32 `json:"TiDB-Server-Port"`
-	TiDBStatusPort   int32 `json:"TiDB-Status-Port"`
-	PDClientPort     int32 `json:"PD-Client-Port"`
-	PDPeerPort       int32 `json:"PD-Peer-Port"`
-	TiKVServerPort   int32 `json:"TiKV-Server-Port"`
-	TiKVStatusPort   int32 `json:"TiKV-Status-Port"`
-	TiFlashTcpPort   int32 `json:"TiFlash-TCP-Port"`
-	TiFlashHttpPort  int32 `json:"TiFlash-HTTP-Port"`
-	TiFlashFlashPort int32 `json:"TiFlash-Flash-Port"`
+	TiDBServerPort int32 `json:"TiDB-Server-Port"`
+	TiDBStatusPort int32 `json:"TiDB-Status-Port"`
+
+	PDClientPort int32 `json:"PD-Client-Port"`
+	PDPeerPort   int32 `json:"PD-Peer-Port"`
+
+	TiKVServerPort int32 `json:"TiKV-Server-Port"`
+	TiKVStatusPort int32 `json:"TiKV-Status-Port"`
+
+	TiFlashTcpPort         int32 `json:"TiFlash-TCP-Port"`
+	TiFlashHttpPort        int32 `json:"TiFlash-HTTP-Port"`
+	TiFlashFlashPort       int32 `json:"TiFlash-Flash-Port"`
+	TiFlashProxyPort       int32 `json:"TiFlash-Proxy-Port"`
+	TiFlashMetricsPort     int32 `json:"TiFlash-Metrics-Port"`
+	TiFlashProxyStatusPort int32 `json:"TiFlash-Proxy-Status-Port"`
+	TiFlashInternalPort    int32 `json:"TiFlash-Internal-Port"`
 }

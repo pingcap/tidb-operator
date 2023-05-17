@@ -48,8 +48,8 @@ var (
 				},
 				OverlapThreshold: pointer.Float64Ptr(0.6),
 				FlashProxy: &v1alpha1.FlashProxy{
-					Addr:          pointer.StringPtr("0.0.0.0:20170"),
-					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
+					Addr:          pointer.StringPtr(fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultTiFlashProxyPort)),
+					AdvertiseAddr: pointer.StringPtr(fmt.Sprintf("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:%d", v1alpha1.DefaultTiFlashProxyPort)),
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
 				},
@@ -58,7 +58,7 @@ var (
 			},
 			HTTPPort:               pointer.Int32Ptr(v1alpha1.DefaultTiFlashHttpPort),
 			HTTPSPort:              pointer.Int32Ptr(v1alpha1.DefaultTiFlashHttpPort),
-			InternalServerHTTPPort: pointer.Int32Ptr(9009),
+			InternalServerHTTPPort: pointer.Int32Ptr(v1alpha1.DefaultTiFlashInternalPort),
 			ListenHost:             pointer.StringPtr("0.0.0.0"),
 			FlashLogger: &v1alpha1.FlashLogger{
 				Count:     pointer.Int32Ptr(10),
@@ -99,7 +99,7 @@ var (
 				StorageEngine: pointer.StringPtr("dt"),
 			},
 			FlashStatus: &v1alpha1.FlashStatus{
-				MetricsPort: pointer.Int32Ptr(8234),
+				MetricsPort: pointer.Int32Ptr(v1alpha1.DefaultTiFlashMetricsPort),
 			},
 			TCPPort:       pointer.Int32Ptr(v1alpha1.DefaultTiFlashTcpPort),
 			TCPPortSecure: pointer.Int32Ptr(v1alpha1.DefaultTiFlashTcpPort),
@@ -125,8 +125,8 @@ var (
 			LogLevel: pointer.StringPtr("info"),
 			Server: &v1alpha1.FlashServerConfig{
 				EngineAddr:          pointer.StringPtr(fmt.Sprintf("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:%d", v1alpha1.DefaultTiFlashFlashPort)),
-				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
-				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
+				StatusAddr:          pointer.StringPtr(fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultTiFlashProxyStatusPort)),
+				AdvertiseStatusAddr: pointer.StringPtr(fmt.Sprintf("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:%d", v1alpha1.DefaultTiFlashProxyStatusPort)),
 			},
 		},
 	}
@@ -225,8 +225,8 @@ var (
 			LogLevel: pointer.StringPtr("info1"),
 			Server: &v1alpha1.FlashServerConfig{
 				EngineAddr:          pointer.StringPtr(fmt.Sprintf("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:%d", v1alpha1.DefaultTiFlashFlashPort)),
-				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
-				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
+				StatusAddr:          pointer.StringPtr(fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultTiFlashProxyStatusPort)),
+				AdvertiseStatusAddr: pointer.StringPtr(fmt.Sprintf("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:%d", v1alpha1.DefaultTiFlashProxyStatusPort)),
 			},
 		},
 	}

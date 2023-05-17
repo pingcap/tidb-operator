@@ -58,6 +58,18 @@ function tidb_operator::port::ldflags() {
   if [[ -n ${TIFLASH_FLASH_PORT-} ]]; then
   ldflags+=($(tidb_operator::port::ldflag "customPortTiFlashFlash" "${TIFLASH_FLASH_PORT}"))
   fi
+  if [[ -n ${TIFLASH_PROXY_PORT-} ]]; then
+  ldflags+=($(tidb_operator::port::ldflag "customPortTiFlashProxy" "${TIFLASH_PROXY_PORT}"))
+  fi
+  if [[ -n ${TIFLASH_METRICS_PORT-} ]]; then
+  ldflags+=($(tidb_operator::port::ldflag "customPortTiFlashMetrics" "${TIFLASH_METRICS_PORT}"))
+  fi
+  if [[ -n ${TIFLASH_PROXY_STATUS_PORT-} ]]; then
+  ldflags+=($(tidb_operator::port::ldflag "customPortTiFlashProxyStatus" "${TIFLASH_PROXY_STATUS_PORT}"))
+  fi
+  if [[ -n ${TIFLASH_INTERNAL_PORT-} ]]; then
+  ldflags+=($(tidb_operator::port::ldflag "customPortTiFlashInternal" "${TIFLASH_INTERNAL_PORT}"))
+  fi
 
   # The -ldflags parameter takes a single string, so join the output.
   echo "${ldflags[*]-}"

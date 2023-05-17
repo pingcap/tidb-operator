@@ -23,13 +23,10 @@ const (
 	DefaultTidbUser = "root"
 )
 
+// Default component ports, can be overridden with ENV variables when building
 var (
-	// DefaultTiDBServerPort is the default tidb cluster port for connecting
-	// It is used both fo Pods and Services.
 	DefaultTiDBServerPort = int32(4000)
-	// `string` type so that they can be set by `go build -ldflags "-X ..."`
-	customPortTiDBServer = "4000"
-
+	customPortTiDBServer  = "4000" // `string` type so that they can be set by `go build -ldflags "-X ..."`
 	DefaultTiDBStatusPort = int32(10080)
 	customPortTiDBStatus  = "10080"
 
@@ -43,12 +40,20 @@ var (
 	DefaultTiKVStatusPort = int32(20180)
 	customPortTiKVStatus  = "20180"
 
-	DefaultTiFlashTcpPort = int32(9000)
-	customPortTiFlashTcp  = "9000"
-	DefaultTiFlashHttpPort = int32(8123)
-	customPortTiFlashHttp  = "8123"
-	DefaultTiFlashFlashPort = int32(3930)
-	customPortTiFlashFlash  = "3930"
+	DefaultTiFlashTcpPort         = int32(9000)
+	customPortTiFlashTcp          = "9000"
+	DefaultTiFlashHttpPort        = int32(8123)
+	customPortTiFlashHttp         = "8123"
+	DefaultTiFlashFlashPort       = int32(3930)
+	customPortTiFlashFlash        = "3930"
+	DefaultTiFlashProxyPort       = int32(20170)
+	customPortTiFlashProxy        = "20170"
+	DefaultTiFlashMetricsPort     = int32(8234)
+	customPortTiFlashMetrics      = "8234"
+	DefaultTiFlashProxyStatusPort = int32(20292)
+	customPortTiFlashProxyStatus  = "20292"
+	DefaultTiFlashInternalPort    = int32(9009)
+	customPortTiFlashInternal     = "9009"
 )
 
 func init() {
@@ -97,6 +102,26 @@ func init() {
 	}
 	if port, err := strconv.ParseUint(customPortTiFlashFlash, 10, 32); err == nil {
 		DefaultTiFlashFlashPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiFlashProxy, 10, 32); err == nil {
+		DefaultTiFlashProxyPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiFlashMetrics, 10, 32); err == nil {
+		DefaultTiFlashMetricsPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiFlashProxyStatus, 10, 32); err == nil {
+		DefaultTiFlashProxyStatusPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiFlashInternal, 10, 32); err == nil {
+		DefaultTiFlashInternalPort = int32(port)
 	} else {
 		panic(err)
 	}
