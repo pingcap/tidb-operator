@@ -767,7 +767,7 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 			},
 		},
 		Config: tcconfig.New(map[string]interface{}{
-			"addr":               "0.0.0.0:8250",
+			"addr":               fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultPumpPort),
 			"gc":                 7,
 			"data-dir":           "/data",
 			"heartbeat-interval": 2,

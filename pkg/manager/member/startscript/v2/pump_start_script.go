@@ -57,7 +57,7 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	} else if tc.Spec.ClusterDomain == "" && tc.AcrossK8s() {
 		advertiseAddr = advertiseAddr + fmt.Sprintf(".%s.svc", tcNS)
 	}
-	m.AdvertiseAddr = advertiseAddr + ":8250"
+	m.AdvertiseAddr = fmt.Sprintf("%s:%d", advertiseAddr, v1alpha1.DefaultPumpPort)
 
 	m.ExtraArgs = ""
 

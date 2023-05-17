@@ -1086,7 +1086,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					BaseImage:            "pingcap/tidb-binlog",
 					ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 					Config: tcconfig.New(map[string]interface{}{
-						"addr": "0.0.0.0:8250",
+						"addr": fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultPumpPort),
 						"storage": map[string]interface{}{
 							"stop-write-at-available-space": 0,
 						},
@@ -1277,7 +1277,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				BaseImage:            "pingcap/tidb-binlog",
 				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
-					"addr": "0.0.0.0:8250",
+					"addr": fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultPumpPort),
 					"storage": map[string]interface{}{
 						"stop-write-at-available-space": 0,
 					},
@@ -3238,7 +3238,7 @@ func checkPumpStatus(pcli versioned.Interface, ns string, name string, onlineNum
 func testBinlog(oa *tests.OperatorActions, tc *v1alpha1.TidbCluster, cli ctrlCli.Client, pcli versioned.Interface) {
 	config := tcconfig.New(map[string]interface{}{})
 	config.Set("storage.stop-write-at-available-space", 0)
-	config.Set("addr", "0.0.0.0:8250")
+	config.Set("addr", fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultPumpPort))
 
 	pumpSpec := &v1alpha1.PumpSpec{
 		BaseImage: "pingcap/tidb-binlog",

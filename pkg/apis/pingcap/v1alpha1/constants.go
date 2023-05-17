@@ -54,6 +54,9 @@ var (
 	customPortTiFlashProxyStatus  = "20292"
 	DefaultTiFlashInternalPort    = int32(9009)
 	customPortTiFlashInternal     = "9009"
+
+	DefaultPumpPort = int32(8250)
+	customPortPump  = "8250"
 )
 
 func init() {
@@ -122,6 +125,12 @@ func init() {
 	}
 	if port, err := strconv.ParseUint(customPortTiFlashInternal, 10, 32); err == nil {
 		DefaultTiFlashInternalPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortPump, 10, 32); err == nil {
+		DefaultPumpPort = int32(port)
 	} else {
 		panic(err)
 	}

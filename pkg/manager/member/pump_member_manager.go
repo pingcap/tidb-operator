@@ -305,8 +305,8 @@ func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "pump",
-					Port:       8250,
-					TargetPort: intstr.FromInt(8250),
+					Port:       v1alpha1.DefaultPumpPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultPumpPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -368,7 +368,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	replicas := tc.Spec.Pump.Replicas
 	storageClass := tc.Spec.Pump.StorageClassName
 	podLabels := util.CombineStringMap(stsLabels.Labels(), spec.Labels())
-	podAnnos := util.CombineStringMap(spec.Annotations(), controller.AnnProm(8250, "/metrics"))
+	podAnnos := util.CombineStringMap(spec.Annotations(), controller.AnnProm(v1alpha1.DefaultPumpPort, "/metrics"))
 	storageRequest, err := controller.ParseStorageRequest(tc.Spec.Pump.Requests)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for pump, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
@@ -458,7 +458,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			},
 			Ports: []corev1.ContainerPort{{
 				Name:          "pump",
-				ContainerPort: 8250,
+				ContainerPort: v1alpha1.DefaultPumpPort,
 			}},
 			Resources:    controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
 			Env:          util.AppendEnv(envs, spec.Env()),
@@ -467,7 +467,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			ReadinessProbe: &corev1.Probe{
 				Handler: corev1.Handler{
 					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.FromInt(8250),
+						Port: intstr.FromInt(int(v1alpha1.DefaultPumpPort)),
 					},
 				},
 			},

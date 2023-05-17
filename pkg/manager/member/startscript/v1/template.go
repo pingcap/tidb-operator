@@ -334,7 +334,7 @@ type TiKVStartScriptModel struct {
 
 // pumpStartScriptTpl is the template string of pump start script
 // Note: changing this will cause a rolling-update of pump cluster
-var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .AcrossK8s }}
+var pumpStartScriptTplText = `{{ if .AcrossK8s }}
 pd_url="{{ .PDAddr }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}:10261"
@@ -361,7 +361,17 @@ set -euo pipefail
 if [ $? == 0 ]; then
     echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
     tail -f /dev/null
-fi`))
+fi`
+
+func replacePumpStartScriptCustomPorts(startScript string) string {
+	// `DefaultPumpPort` may be changed when building the binary
+	if v1alpha1.DefaultPumpPort != 8250 {
+		startScript = strings.ReplaceAll(startScript, ":8250", fmt.Sprintf(":%d", v1alpha1.DefaultPumpPort))
+	}
+	return startScript
+}
+
+var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(replacePumpStartScriptCustomPorts(pumpStartScriptTplText)))
 
 type PumpStartScriptModel struct {
 	CommonModel

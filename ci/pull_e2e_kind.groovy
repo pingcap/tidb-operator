@@ -39,6 +39,7 @@ properties([
         string(name: 'CUSTOM_PORT_TIFLASH_METRICS', defaultValue: '', description: 'custom component port: tiflash metrics'),
         string(name: 'CUSTOM_PORT_TIFLASH_PROXY_STATUS', defaultValue: '', description: 'custom component port: tiflash proxy status'),
         string(name: 'CUSTOM_PORT_TIFLASH_INTERNAL_STATUS', defaultValue: '', description: 'custom component port: tiflash internal status')
+        string(name: 'CUSTOM_PORT_PUMP', defaultValue: '', description: 'custom component port: pump'),
     ])
 ])
 
@@ -268,6 +269,7 @@ try {
     def CUSTOM_PORT_TIFLASH_METRICS = params.CUSTOM_PORT_TIFLASH_METRICS
     def CUSTOM_PORT_TIFLASH_PROXY_STATUS = params.CUSTOM_PORT_TIFLASH_PROXY_STATUS
     def CUSTOM_PORT_TIFLASH_INTERNAL_STATUS = params.CUSTOM_PORT_TIFLASH_INTERNAL_STATUS
+    def CUSTOM_PORT_PUMP = params.CUSTOM_PORT_PUMP
 
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
@@ -362,6 +364,7 @@ try {
                             export CUSTOM_PORT_TIFLASH_METRICS=${CUSTOM_PORT_TIFLASH_METRICS}
                             export CUSTOM_PORT_TIFLASH_PROXY_STATUS=${CUSTOM_PORT_TIFLASH_PROXY_STATUS}
                             export CUSTOM_PORT_TIFLASH_INTERNAL_STATUS=${CUSTOM_PORT_TIFLASH_INTERNAL_STATUS}
+                            export CUSTOM_PORT_PUMP=${CUSTOM_PORT_PUMP}
                             E2E=y make build e2e-build
                             make gocovmerge
                             """

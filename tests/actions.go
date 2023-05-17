@@ -1169,15 +1169,15 @@ func (oa *OperatorActions) pumpIsHealthy(tcName, ns, podName string, tlsEnabled 
 	var err error
 	var addr string
 	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("pod/%s", podName), 8250)
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("pod/%s", podName), uint16(v1alpha1.DefaultPumpPort))
 		if err != nil {
-			log.Logf("failed to forward port %d for %s/%s", 8250, ns, podName)
+			log.Logf("failed to forward port %d for %s/%s", v1alpha1.DefaultPumpPort, ns, podName)
 			return false
 		}
 		defer cancel()
 		addr = fmt.Sprintf("%s:%d", localHost, localPort)
 	} else {
-		addr = fmt.Sprintf("%s.%s-pump.%s:8250", podName, tcName, ns)
+		addr = fmt.Sprintf("%s.%s-pump.%s:%d", podName, tcName, ns, v1alpha1.DefaultPumpPort)
 	}
 	var tlsConfig *tls.Config
 	scheme := "http"
