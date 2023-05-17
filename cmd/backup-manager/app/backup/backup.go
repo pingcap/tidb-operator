@@ -62,7 +62,7 @@ func (bo *Options) backupData(
 
 	var logCallback func(line string)
 	// Add extra args for volume snapshot backup.
-	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+	if bo.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bo.Initialize {
 		var (
 			progressFile = "progress.txt"
 			progressStep = "Full Backup"
@@ -112,7 +112,7 @@ func (bo *Options) backupData(
 		go bo.updateProgressFromFile(progressCtx.Done(), backup, progressFile, progressStep, statusUpdater)
 	}
 
-	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs)
+	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (bo *Options) doStartLogBackup(ctx context.Context, backup *v1alpha1.Backup
 	if bo.CommitTS != "" && bo.CommitTS != "0" {
 		specificArgs = append(specificArgs, fmt.Sprintf("--start-ts=%s", bo.CommitTS))
 	}
-	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs)
+	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
 	if err != nil {
 		return err
 	}
@@ -169,15 +169,15 @@ func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 		"stop",
 		fmt.Sprintf("--task-name=%s", backup.Name),
 	}
-	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs)
+	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
 	if err != nil {
 		return err
 	}
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
-// doTruncatelogBackup generates br args about log backup truncate and runs br binary to do the real backup work.
-func (bo *Options) doTruncatelogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+// doTruncateLogBackup generates br args about log backup truncate and runs br binary to do the real backup work.
+func (bo *Options) doTruncateLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
 		"log",
 		"truncate",
@@ -187,15 +187,39 @@ func (bo *Options) doTruncatelogBackup(ctx context.Context, backup *v1alpha1.Bac
 	} else {
 		return fmt.Errorf("log backup truncate until %s is invalid", bo.TruncateUntil)
 	}
-	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs)
+	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
 	if err != nil {
 		return err
 	}
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
+// doInitializeVolumeBackup generates br args to stop GC and PD schedules
+// and update backup status to VolumeBackupInitialized when watches corresponding logs
+func (bo *Options) doInitializeVolumeBackup(
+	ctx context.Context,
+	backup *v1alpha1.Backup,
+	statusUpdater controller.BackupConditionUpdaterInterface,
+) error {
+	specificArgs := []string{
+		"operator",
+		"pause-gc-and-schedulers",
+	}
+	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, true)
+	if err != nil {
+		return err
+	}
+
+	backupInitializeMgr := &VolumeBackupInitializeManager{
+		backup:        backup,
+		statusUpdater: statusUpdater,
+	}
+	logCallback := backupInitializeMgr.UpdateBackupStatus
+	return bo.brCommandRunWithLogCallback(ctx, fullArgs, logCallback)
+}
+
 // logBackupCommandTemplate is the template to generate br args.
-func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs []string) ([]string, error) {
+func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs []string, skipBackupArgs bool) ([]string, error) {
 	if len(specificArgs) == 0 {
 		return nil, fmt.Errorf("backup command is invalid, Args: %v", specificArgs)
 	}
@@ -211,6 +235,11 @@ func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs [
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
+
+	if skipBackupArgs {
+		return append(specificArgs, args...), nil
+	}
+
 	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
 	dataArgs, err := constructOptions(backup)
 	if err != nil {

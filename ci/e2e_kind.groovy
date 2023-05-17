@@ -70,15 +70,6 @@ spec:
     key: tidb-operator
     operator: Exists
   affinity:
-    # running on nodes for tidb-operator only
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: ci.pingcap.com
-            operator: In
-            values:
-            - tidb-operator
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
