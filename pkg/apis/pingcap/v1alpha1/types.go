@@ -1384,7 +1384,7 @@ const (
 	TiDBGracefulShutdownAnnKey = "tidb.pingcap.com/tidb-graceful-shutdown"
 	// TiKVEvictLeaderExpirationTimeAnnKey is the annotation key to expire evict leader annotation. Type: time.RFC3339.
 	TiKVEvictLeaderExpirationTimeAnnKey = "tidb.pingcap.com/tikv-evict-leader-expiration-time"
-	// PDLeaderTransferExpirationTimeAnnKey is the annotation key to expire evict leader annotation. Type: time.RFC3339.
+	// PDLeaderTransferExpirationTimeAnnKey is the annotation key to expire transfer leader annotation. Type: time.RFC3339.
 	PDLeaderTransferExpirationTimeAnnKey = "tidb.pingcap.com/pd-evict-leader-expiration-time"
 )
 
