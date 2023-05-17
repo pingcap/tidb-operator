@@ -61,6 +61,10 @@ var (
 	// in fact, only used in tests now
 	DefaultDrainerPort = int32(8249)
 	customPortDrainer  = "8249"
+
+	// NOTE: this should be 8300 in TiCDC itself, but we have used 8301 in TiDB Operator at the beginning
+	DefaultTiCDCPort = int32(8301)
+	customPortTiCDC  = "8301"
 )
 
 func init() {
@@ -141,6 +145,12 @@ func init() {
 
 	if port, err := strconv.ParseUint(customPortDrainer, 10, 32); err == nil {
 		DefaultDrainerPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortTiCDC, 10, 32); err == nil {
+		DefaultTiCDCPort = int32(port)
 	} else {
 		panic(err)
 	}

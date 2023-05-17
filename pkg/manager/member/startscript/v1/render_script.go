@@ -125,9 +125,9 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	// NB: TiCDC control relies the format.
 	// TODO move advertise addr format to package controller.
-	advertiseAddr := fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:8301",
-		controller.FormatClusterDomain(tc.Spec.ClusterDomain))
-	cmdArgs := []string{"/cdc server", "--addr=0.0.0.0:8301", fmt.Sprintf("--advertise-addr=%s", advertiseAddr)}
+	advertiseAddr := fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d",
+		controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiCDCPort)
+	cmdArgs := []string{"/cdc server", fmt.Sprintf("--addr=0.0.0.0:%d", v1alpha1.DefaultTiCDCPort), fmt.Sprintf("--advertise-addr=%s", advertiseAddr)}
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--gc-ttl=%d", tc.TiCDCGCTTL()))
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-file=%s", tc.TiCDCLogFile()))
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-level=%s", tc.TiCDCLogLevel()))

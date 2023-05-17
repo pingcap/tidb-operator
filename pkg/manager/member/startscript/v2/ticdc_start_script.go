@@ -50,7 +50,7 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.Spec.ClusterDomain != "" {
 		advertiseAddr = advertiseAddr + "." + tc.Spec.ClusterDomain
 	}
-	m.AdvertiseAddr = advertiseAddr + ":8301"
+	m.AdvertiseAddr = fmt.Sprintf("%s:%d", advertiseAddr, v1alpha1.DefaultTiCDCPort)
 
 	m.GCTTL = tc.TiCDCGCTTL()
 
@@ -121,8 +121,16 @@ exec /cdc server ${ARGS}
 `
 )
 
+func replaceTicdcStartScriptCustomPorts(startScript string) string {
+	// `DefaultTiCDCPort` may be changed when building the binary
+	if v1alpha1.DefaultTiCDCPort != 8301 {
+		startScript = strings.ReplaceAll(startScript, ":8301", fmt.Sprintf(":%d", v1alpha1.DefaultTiCDCPort))
+	}
+	return startScript
+}
+
 var ticdcStartScriptTpl = template.Must(
 	template.Must(
 		template.New("ticdc-start-script").Parse(ticdcStartSubScript),
-	).Parse(componentCommonScript + ticdcStartScript),
+	).Parse(componentCommonScript + replaceTicdcStartScriptCustomPorts(ticdcStartScript)),
 )
