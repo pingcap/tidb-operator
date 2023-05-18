@@ -249,6 +249,10 @@ func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1al
 		return reconcile.Result{}, nil
 	}
 
+	if c.isEvictLeaderExpired(pod, v1alpha1.PDLeaderTransferExpirationTimeAnnKey) {
+		return reconcile.Result{}, c.cleanupLeaderEvictionAnnotations(pod, tc, []string{v1alpha1.PDLeaderTransferAnnKey, v1alpha1.PDLeaderTransferExpirationTimeAnnKey})
+	}
+
 	// Check if there's any ongoing updates in PD.
 	if tc.Status.PD.Phase != v1alpha1.NormalPhase {
 		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
@@ -294,6 +298,10 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	}
 
 	if ok {
+		if c.isEvictLeaderExpired(pod, v1alpha1.TiKVEvictLeaderExpirationTimeAnnKey) {
+			return reconcile.Result{}, c.cleanupLeaderEvictionAnnotations(pod, tc, append(v1alpha1.EvictLeaderAnnKeys, v1alpha1.TiKVEvictLeaderExpirationTimeAnnKey))
+		}
+
 		evictStatus := &v1alpha1.EvictLeaderStatus{
 			PodCreateTime: pod.CreationTimestamp,
 			BeginTime:     metav1.Now(),
@@ -456,6 +464,34 @@ func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (c *PodController) cleanupLeaderEvictionAnnotations(pod *corev1.Pod, tc *v1alpha1.TidbCluster, annKeys []string) error {
+	for _, ann := range annKeys {
+		delete(pod.Annotations, ann)
+	}
+
+	if _, err := c.deps.PodControl.UpdatePod(tc, pod); err != nil {
+		return perrors.Annotatef(err, "failed delete expired annotations for tc %s/%s", pod.Namespace, pod.Name)
+	}
+	return nil
+}
+
+func (c *PodController) isEvictLeaderExpired(pod *corev1.Pod, annKey string) bool {
+	timeToExpireAnnValue, exist := pod.Annotations[annKey]
+	if exist {
+		evictionExpirationTime, err := time.Parse(time.RFC3339, timeToExpireAnnValue)
+		if err == nil {
+			if metav1.Now().Time.After(evictionExpirationTime) {
+				klog.Infof("Annotation to evict leader on the Pod %s/%s is expired", pod.Namespace, pod.Name)
+				return true
+			}
+		} else {
+			klog.Warningf("Can't parse %s value %s on %s/%s. Mark pod as expired right away. Err: ", annKey, evictionExpirationTime, pod.Namespace, pod.Name, err)
+			return true
+		}
+	}
+	return false
 }
 
 func needDeleteTiDBPod(pod *corev1.Pod) string {
