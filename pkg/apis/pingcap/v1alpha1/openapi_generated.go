@@ -7422,6 +7422,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"volumeAZ": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VolumeAZ indicates which AZ the volume snapshots restore to. it is only valid for mode of volume-snapshot",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"tikvGCLifeTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TikvGCLifeTime is to specify the safe gc life time for restore. The time limit during which data is retained for each GC, in the format of Go Duration. When a GC happens, the current time minus this value is the safe point.",

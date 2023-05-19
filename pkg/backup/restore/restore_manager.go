@@ -656,6 +656,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeVolumeSnapshot))
 		if !v1alpha1.IsRestoreVolumeComplete(restore) {
 			args = append(args, "--prepare")
+			if restore.Spec.VolumeAZ != "" {
+				args = append(args, fmt.Sprintf("--target-az=%s", restore.Spec.VolumeAZ))
+			}
 		}
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))
