@@ -40,11 +40,11 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		model.EnableAdvertiseStatusAddr = true
 	}
 
-	model.PDAddress = tc.Scheme() + fmt.Sprintf("://${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort)
+	model.PDAddress = fmt.Sprintf("%s://${CLUSTER_NAME}-pd:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
-		model.PDAddress = tc.Scheme() + fmt.Sprintf("://${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
+		model.PDAddress = fmt.Sprintf("%s://${CLUSTER_NAME}-pd:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		model.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + fmt.Sprintf(":%d", v1alpha1.DefaultPDClientPort) // use pd of reference cluster
+		model.PDAddress = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	listenHost := "0.0.0.0"
@@ -87,7 +87,7 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.AcrossK8s() {
 		model.Path = fmt.Sprintf("${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		model.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + fmt.Sprintf(":%d", v1alpha1.DefaultPDClientPort) // use pd of reference cluster
+		model.Path = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	return renderTemplateFunc(tidbStartScriptTpl, model)
