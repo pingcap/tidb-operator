@@ -947,7 +947,7 @@ func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err erro
 		}
 		// if job exists but isn't running, we can't ensure GC and PD schedules are stopped during volume backup
 		// the volume snapshots are invalid, we should set backup failed
-		if !jobCompleteOrFailed {
+		if jobCompleteOrFailed {
 			backupCondition = v1alpha1.BackupFailed
 		}
 		err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
