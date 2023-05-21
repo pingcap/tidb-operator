@@ -347,7 +347,9 @@ func EnsureImage(td *v1alpha1.TidbDashboard) string {
 		version := td.Spec.Version
 		if version == nil || *version == "" {
 			image = baseImage
-		} else if l := strings.LastIndex(baseImage, ":"); l >= 0 {
+		} else if l, s := strings.LastIndex(baseImage, ":"), strings.LastIndex(baseImage, "/"); l >= 0 && l > s {
+			// i.e. example.registry.com:30000/foo/pincap/tidb-dashboard:vx.x.x
+			// If there is only one ':', it MUST NOT be the seprator of hostname and port.
 			// Version is specified and base image has tag suffix, override the tag.
 			image = baseImage[:l+1] + *version
 		} else {
