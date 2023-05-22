@@ -120,6 +120,20 @@ func (bm *backupManager) runBackup(ctx context.Context, volumeBackup *v1alpha1.V
 		bm.setVolumeBackupRunning(&volumeBackup.Status)
 	}
 
+<<<<<<< HEAD
+=======
+	if bm.skipSync(volumeBackup) {
+		klog.Infof("skip VolumeBackup %s/%s", ns, name)
+		return nil
+	}
+
+	ctx := context.Background()
+	backupMembers, err := bm.listAllBackupMembers(ctx, volumeBackup)
+	if err != nil {
+		return err
+	}
+
+>>>>>>> 7d84cf89e (br: update backup member to status)
 	if len(backupMembers) == 0 {
 		return false, bm.initializeVolumeBackup(ctx, volumeBackup)
 	}
@@ -411,7 +425,11 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 }
 
 func (bm *backupManager) skipSync(volumeBackup *v1alpha1.VolumeBackup) bool {
+<<<<<<< HEAD
 	return volumeBackup.DeletionTimestamp == nil && (v1alpha1.IsVolumeBackupComplete(volumeBackup) || v1alpha1.IsVolumeBackupFailed(volumeBackup))
+=======
+	return v1alpha1.IsVolumeBackupComplete(volumeBackup) || v1alpha1.IsVolumeBackupFailed(volumeBackup)
+>>>>>>> 7d84cf89e (br: update backup member to status)
 }
 
 func (bm *backupManager) generateBackupMemberName(volumeBackupName, k8sClusterName string) string {
