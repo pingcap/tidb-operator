@@ -328,12 +328,25 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			}
 			errs = append(errs, err)
 			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", bm, oldTikvGCTime, err)
+
+			// Calculate the backup size for failed backup job
+			backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
+			if err != nil {
+				klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
+				errs = append(errs, err)
+			}
+
+			backupSizeReadable := humanize.Bytes(uint64(backupSize))
+
 			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Type:    v1alpha1.BackupFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  "ResetTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			}, nil)
+			}, &controller.BackupUpdateStatus{
+				BackupSize:         &backupSize,
+				BackupSizeReadable: &backupSizeReadable,
+			})
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
