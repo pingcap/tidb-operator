@@ -89,6 +89,11 @@ func (bm *backupManager) syncBackup(volumeBackup *v1alpha1.VolumeBackup) error {
 		bm.setVolumeBackupRunning(&volumeBackup.Status)
 	}
 
+	if bm.skipSync(volumeBackup) {
+		klog.Infof("skip VolumeBackup %s/%s", ns, name)
+		return nil
+	}
+
 	ctx := context.Background()
 	backupMembers, err := bm.listAllBackupMembers(ctx, volumeBackup)
 	if err != nil {
@@ -98,6 +103,8 @@ func (bm *backupManager) syncBackup(volumeBackup *v1alpha1.VolumeBackup) error {
 	if len(backupMembers) == 0 {
 		return bm.initializeVolumeBackup(ctx, volumeBackup)
 	}
+
+	bm.updateVolumeBackupMembersToStatus(&volumeBackup.Status, backupMembers)
 	if err := bm.waitBackupMemberInitialized(ctx, volumeBackup, backupMembers); err != nil {
 		return err
 	}
@@ -383,9 +390,9 @@ func (bm *backupManager) setVolumeBackupCommitTs(volumeBackupStatus *v1alpha1.Vo
 	return nil
 }
 
-func (bm *backupManager) updateVolumeBackupMembersToStatus(volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) {
+func (bm *backupManager) updateVolumeBackupMembersToStatus(volumeBackupStatus *v1alpha1.VolumeBackupStatus, backupMembers []*volumeBackupMember) {
 	for _, backupMember := range backupMembers {
-		v1alpha1.UpdateVolumeBackupMemberStatus(&volumeBackup.Status, backupMember.k8sClusterName, backupMember.backup)
+		v1alpha1.UpdateVolumeBackupMemberStatus(volumeBackupStatus, backupMember.k8sClusterName, backupMember.backup)
 	}
 }
 
@@ -415,6 +422,10 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 		backupMember.Spec.FederalVolumeBackupPhase = pingcapv1alpha1.FederalVolumeBackupInitialize
 	}
 	return backupMember
+}
+
+func (bm *backupManager) skipSync(volumeBackup *v1alpha1.VolumeBackup) bool {
+	return v1alpha1.IsVolumeBackupComplete(volumeBackup) || v1alpha1.IsVolumeBackupFailed(volumeBackup)
 }
 
 func (bm *backupManager) generateBackupMemberName(volumeBackupName, k8sClusterName string) string {
