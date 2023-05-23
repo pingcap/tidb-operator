@@ -316,6 +316,27 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	// run br binary to do the real job
 	backupErr := bm.backupData(ctx, backup, bm.StatusUpdater)
 
+	defer func() {
+		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize {
+			// Calculate the backup size for failed ebs backup job
+			backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
+			if err != nil {
+				klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
+				errs = append(errs, err)
+			}
+
+			backupSizeReadable := humanize.Bytes(uint64(backupSize))
+
+			updateStatus := &controller.BackupUpdateStatus{
+				BackupSize:         &backupSize,
+				BackupSizeReadable: &backupSizeReadable,
+			}
+
+			bm.StatusUpdater.Update(backup, nil,
+				updateStatus)
+		}
+	}()
+
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
 		// `DefaultTerminationGracePeriodSeconds` for a pod is 30, so we use a smaller timeout value here.
@@ -329,24 +350,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			errs = append(errs, err)
 			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", bm, oldTikvGCTime, err)
 
-			// Calculate the backup size for failed backup job
-			backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
-			if err != nil {
-				klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
-				errs = append(errs, err)
-			}
-
-			backupSizeReadable := humanize.Bytes(uint64(backupSize))
-
 			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Type:    v1alpha1.BackupFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  "ResetTikvGCLifeTimeFailed",
 				Message: err.Error(),
-			}, &controller.BackupUpdateStatus{
-				BackupSize:         &backupSize,
-				BackupSizeReadable: &backupSizeReadable,
-			})
+			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
@@ -354,16 +363,6 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}
 
 	if backupErr != nil {
-		// Calculate the backup size for failed backup job
-		backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
-
-		if err != nil {
-			klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
-			errs = append(errs, err)
-		}
-
-		backupSizeReadable := humanize.Bytes(uint64(backupSize))
-
 		errs = append(errs, backupErr)
 		klog.Errorf("backup cluster %s data failed, err: %s", bm, backupErr)
 		failedCondition := v1alpha1.BackupFailed
@@ -379,10 +378,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			Status:  corev1.ConditionTrue,
 			Reason:  "BackupDataToRemoteFailed",
 			Message: backupErr.Error(),
-		}, &controller.BackupUpdateStatus{
-			BackupSize:         &backupSize,
-			BackupSizeReadable: &backupSizeReadable,
-		})
+		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
@@ -396,19 +392,9 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			completeCondition = v1alpha1.VolumeBackupComplete
 			// In volume snapshot mode, commitTS have been updated according to the
 			// br command output, so we don't need to update it here.
-			backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
-
-			if err != nil {
-				klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
-			}
-
-			backupSizeReadable := humanize.Bytes(uint64(backupSize))
-
 			updateStatus = &controller.BackupUpdateStatus{
-				TimeStarted:        &metav1.Time{Time: started},
-				TimeCompleted:      &metav1.Time{Time: time.Now()},
-				BackupSize:         &backupSize,
-				BackupSizeReadable: &backupSizeReadable,
+				TimeStarted:   &metav1.Time{Time: started},
+				TimeCompleted: &metav1.Time{Time: time.Now()},
 			}
 		}
 	default:
