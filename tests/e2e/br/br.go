@@ -821,7 +821,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Forward master PD service")
-			masterPDHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getPDServiceResourceName(masterClusterName), int(v1alpha1.DefaultTiDBServerPort))
+			masterPDHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getPDServiceResourceName(masterClusterName), int(v1alpha1.DefaultPDClientPort))
 			framework.ExpectNoError(err)
 			ginkgo.By("Wait log backup reach current ts")
 			currentTS := strconv.FormatUint(config.GoTimeToTS(time.Now()), 10)
