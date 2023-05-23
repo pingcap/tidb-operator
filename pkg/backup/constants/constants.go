@@ -94,7 +94,7 @@ const (
 	KubeAnnBoundByController      = "pv.kubernetes.io/bound-by-controller"
 	KubeAnnDynamicallyProvisioned = "pv.kubernetes.io/provisioned-by"
 
-	NodeAffinityCsiAzKey = "topology.ebs.csi.aws.com/zone"
+	NodeAffinityCsiEbsAzKey = "topology.ebs.csi.aws.com/zone"
 
 	LocalTmp           = "/tmp"
 	ClusterBackupMeta  = "clustermeta"
