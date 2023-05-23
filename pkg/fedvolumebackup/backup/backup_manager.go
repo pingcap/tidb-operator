@@ -230,7 +230,7 @@ func (bm *backupManager) waitBackupMemberInitialized(ctx context.Context, volume
 			return errors.New(errMsg)
 		}
 	}
-	return errors.New("not backup member initialized, waiting")
+	return controller.IgnoreErrorf("backup member is not initialized, waiting")
 }
 
 func (bm *backupManager) executeVolumeBackup(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) (newMemberCreated bool, err error) {
@@ -253,7 +253,8 @@ func (bm *backupManager) executeVolumeBackup(ctx context.Context, volumeBackup *
 		backupMemberMap[backupMember.backup.Name] = backupMember
 	}
 
-	for _, memberCluster := range volumeBackup.Spec.Clusters {
+	for i := range volumeBackup.Spec.Clusters {
+		memberCluster := volumeBackup.Spec.Clusters[i]
 		backupMemberName := bm.generateBackupMemberName(volumeBackup.Name, memberCluster.K8sClusterName)
 		if _, ok := backupMemberMap[backupMemberName]; ok {
 			continue
@@ -282,7 +283,7 @@ func (bm *backupManager) waitVolumeSnapshotsComplete(ctx context.Context, volume
 			return errors.New(errMsg)
 		}
 		if !pingcapv1alpha1.IsVolumeBackupComplete(backupMember.backup) {
-			return fmt.Errorf("backup member %s of cluster %s is not volume snapshots complete", backupMember.backup.Name, backupMember.k8sClusterName)
+			return controller.IgnoreErrorf("backup member %s of cluster %s is not volume snapshots complete", backupMember.backup.Name, backupMember.k8sClusterName)
 		}
 	}
 	return nil
@@ -317,7 +318,7 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 			return errors.New(errMsg)
 		}
 		if !pingcapv1alpha1.IsBackupComplete(backupMember.backup) {
-			return fmt.Errorf("backup member %s of cluster %s is not complete", backupMember.backup.Name, backupMember.k8sClusterName)
+			return controller.IgnoreErrorf("backup member %s of cluster %s is not complete", backupMember.backup.Name, backupMember.k8sClusterName)
 		}
 	}
 	return nil
