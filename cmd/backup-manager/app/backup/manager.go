@@ -322,7 +322,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
 			if err != nil {
 				klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
-				errs = append(errs, err)
+				return
 			}
 
 			backupSizeReadable := humanize.Bytes(uint64(backupSize))
