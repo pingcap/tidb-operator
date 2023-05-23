@@ -89,3 +89,29 @@ func (s *AWSSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID strin
 func (s *AWSSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error) {
 	return s.BaseSnapshotter.prepareRestoreMetadata(r, csb, s)
 }
+
+func (s *AWSSnapshotter) ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume) {
+	if r.Spec.VolumeAZ == "" {
+		return
+	}
+
+	restoreAZ := r.Spec.VolumeAZ
+	if pv.Spec.NodeAffinity == nil {
+		return
+	}
+	if pv.Spec.NodeAffinity.Required == nil {
+		return
+	}
+	for i, nodeSelector := range pv.Spec.NodeAffinity.Required.NodeSelectorTerms {
+		for j, field := range nodeSelector.MatchFields {
+			if field.Key == constants.NodeAffinityCsiEbsAzKey {
+				pv.Spec.NodeAffinity.Required.NodeSelectorTerms[i].MatchFields[j].Values = []string{restoreAZ}
+			}
+		}
+		for j, expr := range nodeSelector.MatchExpressions {
+			if expr.Key == constants.NodeAffinityCsiEbsAzKey && expr.Operator == corev1.NodeSelectorOpIn {
+				pv.Spec.NodeAffinity.Required.NodeSelectorTerms[i].MatchExpressions[j].Values = []string{restoreAZ}
+			}
+		}
+	}
+}

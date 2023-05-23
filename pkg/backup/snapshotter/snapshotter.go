@@ -53,6 +53,9 @@ type Snapshotter interface {
 	// SetVolumeID sets the cloud provider specific identifier
 	// for the PersistentVolume-PV.
 	SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error
+
+	// ResetPvAvailableZone resets az of pv if the volumes restore to another az
+	ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume)
 }
 
 type BaseSnapshotter struct {
@@ -490,7 +493,7 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnap
 		}
 		// Clear out non-core metadata fields and status
 		resetMetadataAndStatus(r, backupClusterName, pvc, pv)
-		resetPvAvailableZone(r, pv)
+		m.snapshotter.ResetPvAvailableZone(r, pv)
 
 		pvs = append(pvs, pv)
 		pvcs = append(pvcs, pvc)
@@ -670,32 +673,6 @@ func resetMetadataAndStatus(
 	// Never restore status
 	pvc.Status = corev1.PersistentVolumeClaimStatus{}
 	pv.Status = corev1.PersistentVolumeStatus{}
-}
-
-func resetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume) {
-	if r.Spec.VolumeAZ == "" {
-		return
-	}
-
-	restoreAZ := r.Spec.VolumeAZ
-	if pv.Spec.NodeAffinity == nil {
-		return
-	}
-	if pv.Spec.NodeAffinity.Required == nil {
-		return
-	}
-	for i, nodeSelector := range pv.Spec.NodeAffinity.Required.NodeSelectorTerms {
-		for j, field := range nodeSelector.MatchFields {
-			if field.Key == constants.NodeAffinityCsiAzKey {
-				pv.Spec.NodeAffinity.Required.NodeSelectorTerms[i].MatchFields[j].Values = []string{restoreAZ}
-			}
-		}
-		for j, expr := range nodeSelector.MatchExpressions {
-			if expr.Key == constants.NodeAffinityCsiAzKey && expr.Operator == corev1.NodeSelectorOpIn {
-				pv.Spec.NodeAffinity.Required.NodeSelectorTerms[i].MatchExpressions[j].Values = []string{restoreAZ}
-			}
-		}
-	}
 }
 
 func newMetaWithCoreFields(meta metav1.ObjectMeta) metav1.ObjectMeta {
