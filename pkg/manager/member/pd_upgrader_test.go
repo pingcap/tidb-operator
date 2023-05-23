@@ -36,13 +36,14 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
-		name              string
-		changeFn          func(*v1alpha1.TidbCluster)
-		changePods        func(pods []*corev1.Pod)
-		changeOldSet      func(set *apps.StatefulSet)
-		transferLeaderErr bool
-		errExpectFn       func(*GomegaWithT, error)
-		expectFn          func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
+		name               string
+		changeFn           func(*v1alpha1.TidbCluster)
+		changePods         func(pods []*corev1.Pod)
+		changeOldSet       func(set *apps.StatefulSet)
+		transferLeaderErr  bool
+		pdPeersAreUnstable bool
+		errExpectFn        func(*GomegaWithT, error)
+		expectFn           func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
 	}
 
 	testFn := func(test *testcase) {
@@ -81,6 +82,18 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 
 		newSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(3)
+
+		pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+			healthInfo := &pdapi.HealthInfo{
+				Healths: []pdapi.MemberHealth{
+					{
+						Name:   PdPodName(upgradeTcName, 1),
+						Health: !test.pdPeersAreUnstable,
+					},
+				},
+			}
+			return healthInfo, nil
+		})
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		test.errExpectFn(g, err)
@@ -278,6 +291,43 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
 				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
+			},
+		},
+		{
+			name: "fail if pd peers are unstable",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Synced = true
+				if tc.Annotations == nil {
+					tc.Annotations = map[string]string{}
+				}
+				tc.Annotations[annoKeyPDPeersCheck] = "true"
+			},
+			changePods:         nil,
+			transferLeaderErr:  false,
+			pdPeersAreUnstable: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect("Peer PDs is unstable: Only 0 out of 1 PDs are healthy").To(Equal(err.Error()))
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(2)))
+			},
+		},
+		{
+			name: "ignore pd peers health if annotation is not set",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Synced = true
+			},
+			changePods:         nil,
+			changeOldSet:       nil,
+			transferLeaderErr:  false,
+			pdPeersAreUnstable: true,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
 	}
