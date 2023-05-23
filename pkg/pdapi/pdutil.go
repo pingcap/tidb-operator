@@ -39,3 +39,26 @@ func IsTiKVStable(pdClient PDClient) string {
 
 	return ""
 }
+
+// IsPDStable queries PD to verify that there are quorum + 1 healthy PDs
+func IsPDStable(pdClient PDClient) string {
+	healthInfo, err := pdClient.GetHealth()
+	if err != nil {
+		return fmt.Sprintf("can't access PD: %s", err)
+	}
+
+	total := 0
+	healthy := 0
+	for _, memberHealth := range healthInfo.Healths {
+		total++
+		if memberHealth.Health {
+			healthy++
+		}
+	}
+
+	if healthy > total/2+1 {
+		return ""
+	} else {
+		return fmt.Sprintf("Only %d out of %d PDs are healthy", healthy, total)
+	}
+}
