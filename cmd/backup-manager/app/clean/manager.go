@@ -89,11 +89,6 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 			klog.Errorf("delete backup %s for cluster %s backup failure", backup.Name, bm)
 		}
 
-		// update the next backup size
-		if nextNackup != nil {
-			bm.updateVolumeSnapshotBackupSize(ctx, nextNackup)
-		}
-
 	} else {
 		if backup.Spec.BR != nil {
 			err = bm.CleanBRRemoteBackupData(ctx, backup)
