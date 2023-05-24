@@ -1382,6 +1382,10 @@ const (
 	PDLeaderTransferAnnKey = "tidb.pingcap.com/pd-transfer-leader"
 	// TiDBGracefulShutdownAnnKey is the annotation key to graceful shutdown tidb pod by user.
 	TiDBGracefulShutdownAnnKey = "tidb.pingcap.com/tidb-graceful-shutdown"
+	// TiKVEvictLeaderExpirationTimeAnnKey is the annotation key to expire evict leader annotation. Type: time.RFC3339.
+	TiKVEvictLeaderExpirationTimeAnnKey = "tidb.pingcap.com/tikv-evict-leader-expiration-time"
+	// PDLeaderTransferExpirationTimeAnnKey is the annotation key to expire transfer leader annotation. Type: time.RFC3339.
+	PDLeaderTransferExpirationTimeAnnKey = "tidb.pingcap.com/pd-evict-leader-expiration-time"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -2381,6 +2385,10 @@ type RestoreSpec struct {
 	// FederalVolumeRestorePhase indicates which phase to execute in federal volume restore
 	// +optional
 	FederalVolumeRestorePhase FederalVolumeRestorePhase `json:"federalVolumeRestorePhase,omitempty"`
+	// VolumeAZ indicates which AZ the volume snapshots restore to.
+	// it is only valid for mode of volume-snapshot
+	// +optional
+	VolumeAZ string `json:"volumeAZ,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
