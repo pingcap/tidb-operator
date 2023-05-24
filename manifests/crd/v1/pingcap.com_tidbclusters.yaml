@@ -30,7 +30,7 @@ spec:
       jsonPath: .spec.pd.requests.storage
       name: Storage
       type: string
-    - description: The desired replicas number of PD cluster
+    - description: The ready replicas number of PD cluster
       jsonPath: .status.pd.statefulSet.readyReplicas
       name: Ready
       type: integer
