@@ -538,7 +538,6 @@ func (in *VolumeRestoreStatus) DeepCopyInto(out *VolumeRestoreStatus) {
 	*out = *in
 	in.TimeStarted.DeepCopyInto(&out.TimeStarted)
 	in.TimeCompleted.DeepCopyInto(&out.TimeCompleted)
-	in.Phase.DeepCopyInto(&out.Phase)
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]VolumeRestoreCondition, len(*in))

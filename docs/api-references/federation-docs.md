@@ -992,7 +992,8 @@ string
 <h3 id="volumerestoreconditiontype">VolumeRestoreConditionType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#volumerestorecondition">VolumeRestoreCondition</a>)
+<a href="#volumerestorecondition">VolumeRestoreCondition</a>, 
+<a href="#volumerestorestatus">VolumeRestoreStatus</a>)
 </p>
 <p>
 </p>
@@ -1346,8 +1347,8 @@ string
 <td>
 <code>phase</code></br>
 <em>
-<a href="#volumerestorecondition">
-VolumeRestoreCondition
+<a href="#volumerestoreconditiontype">
+VolumeRestoreConditionType
 </a>
 </em>
 </td>

@@ -62,6 +62,9 @@ const (
 	// BackupProtectionFinalizer is the name of finalizer on backups or federation backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
+	// VolumeRestoreFederationFinalizer is the name of finalizer on federation restores
+	VolumeRestoreFederationFinalizer string = "tidb.pingcap.com/restore-protection"
+
 	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB
 	AutoScalingGroupLabelKey = "tidb.pingcap.com/autoscaling-group"
 	// AutoInstanceLabelKey is label key used in autoscaling, it represents the autoscaler name

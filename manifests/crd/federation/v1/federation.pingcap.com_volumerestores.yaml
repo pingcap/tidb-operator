@@ -957,23 +957,7 @@ spec:
                 nullable: true
                 type: array
               phase:
-                properties:
-                  lastTransitionTime:
-                    format: date-time
-                    nullable: true
-                    type: string
-                  message:
-                    type: string
-                  reason:
-                    type: string
-                  status:
-                    type: string
-                  type:
-                    type: string
-                required:
-                - status
-                - type
-                type: object
+                type: string
               timeCompleted:
                 format: date-time
                 nullable: true

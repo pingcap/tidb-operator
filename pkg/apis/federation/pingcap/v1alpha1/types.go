@@ -344,7 +344,7 @@ type VolumeRestoreStatus struct {
 	// TimeTaken is the time that volume restore federation takes, it is TimeCompleted - TimeStarted
 	TimeTaken string `json:"timeTaken,omitempty"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
-	Phase VolumeRestoreCondition `json:"phase,omitempty"`
+	Phase VolumeRestoreConditionType `json:"phase,omitempty"`
 	// +nullable
 	Conditions []VolumeRestoreCondition `json:"conditions,omitempty"`
 }
@@ -367,4 +367,5 @@ const (
 	VolumeRestoreRunning  VolumeRestoreConditionType = "running"
 	VolumeRestoreComplete VolumeRestoreConditionType = "complete"
 	VolumeRestoreFailed   VolumeRestoreConditionType = "failed"
+	VolumeRestoreCleaned  VolumeRestoreConditionType = "Cleaned"
 )
