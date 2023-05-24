@@ -116,8 +116,7 @@ spec:
   - name: kind-data-dir
     emptyDir: {}
   - name: etcd-data-dir
-    emptyDir:
-      medium: Memory
+    emptyDir: {}
   tolerations:
   - effect: NoSchedule
     key: tidb-operator
