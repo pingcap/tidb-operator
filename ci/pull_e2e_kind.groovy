@@ -137,7 +137,7 @@ e2ePodResources = [
     limits: [
         cpu: "16",
         memory: "32Gi",
-        storage: "200Gi"
+        storage: "250Gi"
     ],
 ]
 
