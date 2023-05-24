@@ -80,7 +80,6 @@ spec:
       limits:
         cpu: <%= resources.limits.cpu %>
         memory: <%= resources.limits.memory %>
-        ephemeral-storage: <%= resources.limits.storage %>
     <% } %>
 <% } %>
     # kind needs /lib/modules and cgroups from the host
@@ -117,8 +116,7 @@ spec:
   - name: kind-data-dir
     emptyDir: {}
   - name: etcd-data-dir
-    emptyDir:
-      medium: Memory
+    emptyDir: {}
   tolerations:
   - effect: NoSchedule
     key: tidb-operator
