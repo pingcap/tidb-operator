@@ -147,14 +147,14 @@ String buildPodYAML(Map m = [:]) {
 
 e2ePodResources = [
     requests: [
-        cpu: "3",
-        memory: "6Gi",
-        storage: "200Gi"
-    ],
-    limits: [
         cpu: "8",
         memory: "16Gi",
-        storage: "200Gi"
+        storage: "250Gi"
+    ],
+    limits: [
+        cpu: "16",
+        memory: "32Gi",
+        storage: "250Gi"
     ],
 ]
 
