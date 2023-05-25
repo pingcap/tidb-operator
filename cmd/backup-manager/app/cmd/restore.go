@@ -52,6 +52,7 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&ro.Mode, "mode", string(v1alpha1.RestoreModeSnapshot), "restore mode, which is pitr or snapshot(default)")
 	cmd.Flags().StringVar(&ro.PitrRestoredTs, "pitrRestoredTs", "0", "The pitr restored ts")
 	cmd.Flags().BoolVar(&ro.Prepare, "prepare", false, "Whether to prepare for restore")
+	cmd.Flags().StringVar(&ro.TargetAZ, "target-az", "", "For volume-snapshot restore, which az the volume snapshots restore to")
 	return cmd
 }
 

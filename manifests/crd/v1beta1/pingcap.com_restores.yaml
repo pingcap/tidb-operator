@@ -2080,6 +2080,8 @@ spec:
               type: string
             useKMS:
               type: boolean
+            volumeAZ:
+              type: string
           type: object
         status:
           properties:
