@@ -1292,6 +1292,19 @@ FederalVolumeRestorePhase
 </tr>
 <tr>
 <td>
+<code>volumeAZ</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeAZ indicates which AZ the volume snapshots restore to.
+it is only valid for mode of volume-snapshot</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tikvGCLifeTime</code></br>
 <em>
 string
@@ -13678,6 +13691,19 @@ FederalVolumeRestorePhase
 <td>
 <em>(Optional)</em>
 <p>FederalVolumeRestorePhase indicates which phase to execute in federal volume restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAZ</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeAZ indicates which AZ the volume snapshots restore to.
+it is only valid for mode of volume-snapshot</p>
 </td>
 </tr>
 <tr>

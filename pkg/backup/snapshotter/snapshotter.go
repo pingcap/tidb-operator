@@ -53,6 +53,9 @@ type Snapshotter interface {
 	// SetVolumeID sets the cloud provider specific identifier
 	// for the PersistentVolume-PV.
 	SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error
+
+	// ResetPvAvailableZone resets az of pv if the volumes restore to another az
+	ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume)
 }
 
 type BaseSnapshotter struct {
@@ -490,6 +493,7 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnap
 		}
 		// Clear out non-core metadata fields and status
 		resetMetadataAndStatus(r, backupClusterName, pvc, pv)
+		m.snapshotter.ResetPvAvailableZone(r, pv)
 
 		pvs = append(pvs, pv)
 		pvcs = append(pvcs, pvc)

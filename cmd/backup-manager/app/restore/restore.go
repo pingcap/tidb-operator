@@ -42,6 +42,8 @@ type Options struct {
 	backupUtil.GenericOptions
 	// Prepare to restore data. It's used in volume-snapshot mode.
 	Prepare bool
+	// TargetAZ indicates which az the volume snapshots restore to. It's used in volume-snapshot mode.
+	TargetAZ string
 }
 
 func (ro *Options) restoreData(
@@ -103,6 +105,7 @@ func (ro *Options) restoreData(
 			args = append(args, "--prepare")
 			csbPath = path.Join(util.BRBinPath, "csb_restore.json")
 			args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
+			args = append(args, fmt.Sprintf("--target-az=%s", ro.TargetAZ))
 			progressStep = "Volume Restore"
 		} else {
 			progressStep = "Data Restore"
