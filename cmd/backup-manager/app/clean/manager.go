@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
@@ -89,11 +88,6 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 			klog.Errorf("delete backup %s for cluster %s backup failure", backup.Name, bm)
 		}
 
-		// update the next backup size
-		if nextNackup != nil {
-			bm.updateVolumeSnapshotBackupSize(ctx, nextNackup)
-		}
-
 	} else {
 		if backup.Spec.BR != nil {
 			err = bm.CleanBRRemoteBackupData(ctx, backup)
@@ -155,27 +149,4 @@ func (bm *Manager) getVolumeSnapshotBackup(backups []*v1alpha1.Backup) *v1alpha1
 
 	// reach end of backup list, there is no volume snapshot backups
 	return nil
-}
-
-// updateVolumeSnapshotBackupSize update a volume-snapshot backup size
-func (bm *Manager) updateVolumeSnapshotBackupSize(ctx context.Context, backup *v1alpha1.Backup) error {
-	var updateStatus *controller.BackupUpdateStatus
-
-	backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
-
-	if err != nil {
-		klog.Warningf("Failed to parse BackupSize %d KB, %v", backupSize, err)
-	}
-
-	backupSizeReadable := humanize.Bytes(uint64(backupSize))
-
-	updateStatus = &controller.BackupUpdateStatus{
-		BackupSize:         &backupSize,
-		BackupSizeReadable: &backupSizeReadable,
-	}
-
-	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupComplete,
-		Status: corev1.ConditionTrue,
-	}, updateStatus)
 }
