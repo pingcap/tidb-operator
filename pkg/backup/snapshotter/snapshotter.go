@@ -283,7 +283,7 @@ func NewCloudSnapshotBackup(tc *v1alpha1.TidbCluster) (csb *CloudSnapBackup) {
 		csb = &CloudSnapBackup{
 			TiKV: &TiKVBackup{
 				Component: Component{
-					Replicas: tc.Spec.TiKV.Replicas,
+					Replicas: int32(len(tc.Status.TiKV.Stores) + len(tc.Status.TiKV.PeerStores)),
 				},
 				Stores: []*StoresBackup{},
 			},
