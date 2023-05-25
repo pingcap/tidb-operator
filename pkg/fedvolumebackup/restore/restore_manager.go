@@ -135,7 +135,7 @@ func (rm *restoreManager) listRestoreMembers(ctx context.Context, volumeRestore 
 		k8sClusterName := memberCluster.K8sClusterName
 		kubeClient := rm.deps.FedClientset[k8sClusterName]
 		restoreName := rm.generateRestoreMemberName(volumeRestore.Name, k8sClusterName)
-		restoreMember, err := kubeClient.PingcapV1alpha1().Restores(volumeRestore.Namespace).Get(ctx, restoreName, metav1.GetOptions{})
+		restoreMember, err := kubeClient.PingcapV1alpha1().Restores(memberCluster.TCNamespace).Get(ctx, restoreName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
