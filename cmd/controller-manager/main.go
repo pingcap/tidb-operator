@@ -320,26 +320,26 @@ func logCustomPorts() {
 }
 
 type CustomPorts struct {
-	TiDBServerPort int32 `json:"TiDB-Server-Port"`
-	TiDBStatusPort int32 `json:"TiDB-Status-Port"`
+	TiDBServerPort int32
+	TiDBStatusPort int32
 
-	PDClientPort int32 `json:"PD-Client-Port"`
-	PDPeerPort   int32 `json:"PD-Peer-Port"`
+	PDClientPort int32
+	PDPeerPort   int32
 
-	TiKVServerPort int32 `json:"TiKV-Server-Port"`
-	TiKVStatusPort int32 `json:"TiKV-Status-Port"`
+	TiKVServerPort int32
+	TiKVStatusPort int32
 
-	TiFlashTcpPort         int32 `json:"TiFlash-TCP-Port"`
-	TiFlashHttpPort        int32 `json:"TiFlash-HTTP-Port"`
-	TiFlashFlashPort       int32 `json:"TiFlash-Flash-Port"`
-	TiFlashProxyPort       int32 `json:"TiFlash-Proxy-Port"`
-	TiFlashMetricsPort     int32 `json:"TiFlash-Metrics-Port"`
-	TiFlashProxyStatusPort int32 `json:"TiFlash-Proxy-Status-Port"`
-	TiFlashInternalPort    int32 `json:"TiFlash-Internal-Port"`
+	TiFlashTcpPort         int32
+	TiFlashHttpPort        int32
+	TiFlashFlashPort       int32
+	TiFlashProxyPort       int32
+	TiFlashMetricsPort     int32
+	TiFlashProxyStatusPort int32
+	TiFlashInternalPort    int32
 
-	PumpPort int32 `json:"Pump-Port"`
+	PumpPort int32
 
-	DrainerPort int32 `json:"Drainer-Port"`
+	DrainerPort int32
 
-	TiCDCPort int32 `json:"TiCDC-Port"`
+	TiCDCPort int32
 }
