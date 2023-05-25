@@ -63,6 +63,10 @@ func validCmdFlagFunc(flag *pflag.Flag) {
 	if len(flag.Value.String()) > 0 {
 		return
 	}
+	// optional flag
+	if flag.Name == "target-az" {
+		return
+	}
 
 	cmdutil.CheckErr(fmt.Errorf(cmdHelpMsg, flag.Name))
 }
