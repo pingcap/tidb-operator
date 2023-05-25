@@ -240,7 +240,7 @@ timezone: "UTC"
 
 target-database:
   host: "dm-tidb-tidb.dm-tidb"
-  port: %s # replace this with the real TiDB port
+  port: %d # replace this with the real TiDB port
   user: "root"
   password: ""
 
