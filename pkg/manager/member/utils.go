@@ -569,10 +569,10 @@ func BuildProbeCommand(tc *v1alpha1.TidbCluster, componentType string) (command 
 	host := "127.0.0.1"
 	var readinessURL string
 	if componentType == label.PDLabelVal {
-		readinessURL = fmt.Sprintf("%s://%s:2379/status", tc.Scheme(), host)
+		readinessURL = fmt.Sprintf("%s://%s:%d/status", tc.Scheme(), host, v1alpha1.DefaultPDClientPort)
 	}
 	if componentType == label.TiDBLabelVal {
-		readinessURL = fmt.Sprintf("%s://%s:10080/status", tc.Scheme(), host)
+		readinessURL = fmt.Sprintf("%s://%s:%d/status", tc.Scheme(), host, v1alpha1.DefaultTiDBStatusPort)
 	}
 	command = append(command, "curl")
 	command = append(command, readinessURL)

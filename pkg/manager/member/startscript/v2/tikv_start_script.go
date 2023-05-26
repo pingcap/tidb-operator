@@ -44,29 +44,29 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	tcNS := tc.Namespace
 	peerServiceName := controller.TiKVPeerMemberName(tcName)
 
-	m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tcName))
+	m.PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
 		m.AcrossK8s = &AcrossK8sScriptModel{
-			PDAddr:        fmt.Sprintf("%s:2379", controller.PDMemberName(tcName)),
+			PDAddr:        fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
 			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
 		}
 		m.PDAddr = "${result}" // get pd addr in subscript
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		m.PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
+		m.PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	listenHost := "0.0.0.0"
 	if tc.Spec.PreferIPv6 {
 		listenHost = "[::]"
 	}
-	m.Addr = fmt.Sprintf("%s:20160", listenHost)
-	m.StatusAddr = fmt.Sprintf("%s:20180", listenHost)
+	m.Addr = fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiKVServerPort)
+	m.StatusAddr = fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiKVStatusPort)
 
 	advertiseAddr := fmt.Sprintf("${TIKV_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
 		advertiseAddr = advertiseAddr + "." + tc.Spec.ClusterDomain
 	}
-	m.AdvertiseAddr = advertiseAddr + ":20160"
+	m.AdvertiseAddr = fmt.Sprintf("%s:%d", advertiseAddr, v1alpha1.DefaultTiKVServerPort)
 
 	m.DataDir = filepath.Join(constants.TiKVDataVolumeMountPath, tc.Spec.TiKV.DataSubDir)
 
@@ -78,7 +78,7 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		if tc.Spec.ClusterDomain != "" {
 			advertiseStatusAddr = advertiseStatusAddr + "." + tc.Spec.ClusterDomain
 		}
-		extraArgs = append(extraArgs, fmt.Sprintf("--advertise-status-addr=%s:20180", advertiseStatusAddr))
+		extraArgs = append(extraArgs, fmt.Sprintf("--advertise-status-addr=%s:%d", advertiseStatusAddr, v1alpha1.DefaultTiKVStatusPort))
 	}
 	if len(extraArgs) > 0 {
 		m.ExtraArgs = strings.Join(extraArgs, " ")

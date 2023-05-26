@@ -270,7 +270,7 @@ func (c *defaultTiCDCControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32
 
 	scheme := tc.Scheme()
 	addr := getCaptureAdvertiseAddressPrefix(tc, ordinal)
-	return fmt.Sprintf("%s://%s:8301", scheme, addr)
+	return fmt.Sprintf("%s://%s:%d", scheme, addr, v1alpha1.DefaultTiCDCPort)
 }
 
 // getCaptureAdvertiseAddressPrefix is the prefix of TiCDC advertiseAddress

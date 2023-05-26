@@ -1008,7 +1008,7 @@ func (tidb *TiDBSpec) GetSlowLogTailerSpec() TiDBSlowLogTailerSpec {
 
 // GetServicePort returns the service port for tidb
 func (tidb *TiDBSpec) GetServicePort() int32 {
-	port := DefaultTiDBServicePort
+	port := DefaultTiDBServerPort
 	if tidb.Service != nil && tidb.Service.Port != nil {
 		port = *tidb.Service.Port
 	}

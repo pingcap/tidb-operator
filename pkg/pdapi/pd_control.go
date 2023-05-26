@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/client-go/kubernetes"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
@@ -262,12 +263,12 @@ func genClientUrl(namespace Namespace, clusterName string, scheme string, cluste
 		svc = "pd-peer"
 	}
 	if len(namespace) == 0 {
-		return fmt.Sprintf("%s://%s-%s:2379", scheme, clusterName, svc)
+		return fmt.Sprintf("%s://%s-%s:%d", scheme, clusterName, svc, v1alpha1.DefaultPDClientPort)
 	}
 	if len(clusterDomain) == 0 {
-		return fmt.Sprintf("%s://%s-%s.%s:2379", scheme, clusterName, svc, string(namespace))
+		return fmt.Sprintf("%s://%s-%s.%s:%d", scheme, clusterName, svc, string(namespace), v1alpha1.DefaultPDClientPort)
 	}
-	return fmt.Sprintf("%s://%s-%s.%s.svc.%s:2379", scheme, clusterName, svc, string(namespace), clusterDomain)
+	return fmt.Sprintf("%s://%s-%s.%s.svc.%s:%d", scheme, clusterName, svc, string(namespace), clusterDomain, v1alpha1.DefaultPDClientPort)
 }
 
 // genEtcdClientUrl builds the url of cluster pd etcd client
@@ -277,9 +278,9 @@ func genEtcdClientUrl(namespace Namespace, clusterName, clusterDomain string, he
 		svc = "pd-peer"
 	}
 	if clusterDomain == "" {
-		return fmt.Sprintf("%s-%s.%s:2379", clusterName, svc, string(namespace))
+		return fmt.Sprintf("%s-%s.%s:%d", clusterName, svc, string(namespace), v1alpha1.DefaultPDClientPort)
 	}
-	return fmt.Sprintf("%s-%s.%s.svc.%s:2379", clusterName, svc, string(namespace), clusterDomain)
+	return fmt.Sprintf("%s-%s.%s.svc.%s:%d", clusterName, svc, string(namespace), clusterDomain, v1alpha1.DefaultPDClientPort)
 }
 
 // FakePDControl implements a fake version of PDControlInterface.
