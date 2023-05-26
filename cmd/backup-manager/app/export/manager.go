@@ -61,7 +61,7 @@ func (bm *BackupManager) setOptions(backup *v1alpha1.Backup) (string, error) {
 	if backup.Spec.From.Port != 0 {
 		bm.Options.Port = backup.Spec.From.Port
 	} else {
-		bm.Options.Port = v1alpha1.DefaultTiDBServicePort
+		bm.Options.Port = v1alpha1.DefaultTiDBServerPort
 	}
 
 	if backup.Spec.From.User != "" {

@@ -25,10 +25,8 @@ import (
 )
 
 const (
-	BRType          = "br"
-	DumperType      = "dumper"
-	TiDBServicePort = int32(4000)
-	PDServicePort   = int32(2379)
+	BRType     = "br"
+	DumperType = "dumper"
 )
 
 // GetRole returns a role for br test.
@@ -123,7 +121,7 @@ func GetBackup(ns, name, tcName, typ string, s3Config *v1alpha1.S3StorageProvide
 			From: &v1alpha1.TiDBAccessConfig{
 				Host:       util.GetTidbServiceName(tcName),
 				SecretName: name,
-				Port:       TiDBServicePort,
+				Port:       v1alpha1.DefaultTiDBServerPort,
 				User:       "root",
 			},
 			BR: &v1alpha1.BRConfig{
@@ -159,7 +157,7 @@ func GetRestore(ns, name, tcName, typ string, s3Config *v1alpha1.S3StorageProvid
 			To: &v1alpha1.TiDBAccessConfig{
 				Host:       util.GetTidbServiceName(tcName),
 				SecretName: name,
-				Port:       TiDBServicePort,
+				Port:       v1alpha1.DefaultTiDBServerPort,
 				User:       "root",
 			},
 			BR: &v1alpha1.BRConfig{

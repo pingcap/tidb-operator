@@ -23,7 +23,7 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/metrics"
-        prometheus.io/port: "8249"
+        prometheus.io/port: "{{ .Values.port | default 8249 }}"
       labels:
         app.kubernetes.io/name: {{ include "drainer.name" . }}
         app.kubernetes.io/instance: {{ .Values.clusterName }}
@@ -44,7 +44,7 @@ spec:
         - |-
 {{ tuple "scripts/_start_drainer.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         ports:
-        - containerPort: 8249
+        - containerPort: {{ .Values.port | default 8249 }}
           name: drainer
         volumeMounts:
         - name: data

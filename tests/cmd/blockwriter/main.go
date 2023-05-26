@@ -24,6 +24,7 @@ import (
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	flag "github.com/spf13/pflag"
@@ -49,7 +50,7 @@ func init() {
 	flag.StringVar(&optClusterName, "cluster-name", optClusterName, "cluster name")
 	flag.StringVar(&optDatabase, "database", optDatabase, "database")
 	flag.StringVar(&optPassword, "password", optPassword, "password")
-	flag.Int32Var(&optTiDBSvcPort, "tidb-service-port", 4000, "tidb service port")
+	flag.Int32Var(&optTiDBSvcPort, "tidb-service-port", v1alpha1.DefaultTiDBServerPort, "tidb service port")
 }
 
 func getDSN(ns, tcName, databaseName, password string, port int32) string {
@@ -84,7 +85,7 @@ func main() {
 }
 
 func initDB() error {
-	s := fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/?charset=utf8", optPassword, optClusterName, optNamespace)
+	s := fmt.Sprintf("root:%s@(%s-tidb.%s:%d)/?charset=utf8", optPassword, optClusterName, optNamespace, v1alpha1.DefaultTiDBServerPort)
 	db, err := sql.Open("mysql", s)
 	if err != nil {
 		return err
