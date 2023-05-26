@@ -240,7 +240,7 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 		if backupSpec.BR.ClusterNamespace == "" {
 			clusterNamespace = ns
 		}
-		pdAddress = fmt.Sprintf("%s-pd.%s:2379", backupSpec.BR.Cluster, clusterNamespace)
+		pdAddress = fmt.Sprintf("%s-pd.%s:%d", backupSpec.BR.Cluster, clusterNamespace, v1alpha1.DefaultPDClientPort)
 
 		backupPrefix := strings.ReplaceAll(pdAddress, ":", "-") + "-" + timestamp.UTC().Format(v1alpha1.BackupNameTimeFormat)
 		if backupSpec.S3 != nil {
@@ -414,6 +414,10 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 	for _, backup := range backupsList {
 		if backup.Spec.Mode == v1alpha1.BackupModeLog {
 			logBackup = backup
+			continue
+		}
+		// the backup status CommitTs will be empty after created. without this, all newly created backups will be GC'ed
+		if v1alpha1.IsBackupScheduled(backup) || v1alpha1.IsBackupRunning(backup) || v1alpha1.IsBackupPrepared(backup) {
 			continue
 		}
 		ascBackupList = append(ascBackupList, backup)

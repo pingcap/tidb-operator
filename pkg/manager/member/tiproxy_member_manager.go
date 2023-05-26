@@ -103,13 +103,13 @@ func (m *tiproxyMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-	PDAddr := fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Name))
+	PDAddr := fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Name), v1alpha1.DefaultPDClientPort)
 	// TODO: support it
 	if tc.AcrossK8s() {
 		return nil, fmt.Errorf("across k8s is not supported for")
 	}
 	if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
+		PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	var cfgWrapper *v1alpha1.TiProxyConfigWraper
@@ -344,6 +344,9 @@ func (m *tiproxyMemberManager) syncProxyService(tc *v1alpha1.TidbCluster, peer b
 			},
 		)
 	}
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(newSvc)
+	}
 
 	oldSvcTmp, err := m.deps.ServiceLister.Services(tc.GetNamespace()).Get(newSvc.ObjectMeta.Name)
 	if errors.IsNotFound(err) {
@@ -359,18 +362,13 @@ func (m *tiproxyMemberManager) syncProxyService(tc *v1alpha1.TidbCluster, peer b
 
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	_, err = m.deps.ServiceControl.SyncComponentService(
+		tc,
+		newSvc,
+		oldSvc,
+		false)
+
 	if err != nil {
-		return err
-	}
-	if !equal {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 

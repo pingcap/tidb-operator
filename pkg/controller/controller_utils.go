@@ -20,6 +20,7 @@ import (
 	"regexp"
 
 	"github.com/dustin/go-humanize"
+	fedv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -64,6 +65,15 @@ var (
 
 	// tidbDashboardKind contains the schema.GroupVersionKind for TidbDashboard controller type.
 	tidbDashboardKind = v1alpha1.SchemeGroupVersion.WithKind("TidbDashboard")
+
+	// FedVolumeBackupControllerKind contains the schema.GroupVersionKind for federation VolumeBackup controller type.
+	FedVolumeBackupControllerKind = fedv1alpha1.SchemeGroupVersion.WithKind("VolumeBackup")
+
+	// FedVolumeRestoreControllerKind contains the schema.GroupVersionKind for federation VolumeRestore controller type.
+	FedVolumeRestoreControllerKind = fedv1alpha1.SchemeGroupVersion.WithKind("VolumeRestore")
+
+	// FedVolumeBackupScheduleControllerKind contains the schema.GroupVersionKind for federation VolumeBackupSchedule controller type.
+	FedVolumeBackupScheduleControllerKind = fedv1alpha1.SchemeGroupVersion.WithKind("VolumeBackupSchedule")
 )
 
 // RequeueError is used to requeue the item, this error type should't be considered as a real error

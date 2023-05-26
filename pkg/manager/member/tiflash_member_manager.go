@@ -184,18 +184,13 @@ func (m *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) err
 
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	_, err = m.deps.ServiceControl.SyncComponentService(
+		tc,
+		newSvc,
+		oldSvc,
+		false)
+
 	if err != nil {
-		return err
-	}
-	if !equal {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 
@@ -325,7 +320,7 @@ func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 	svcName := controller.TiFlashPeerMemberName(tcName)
 	svcLabel := label.New().Instance(instanceName).TiFlash().Labels()
 
-	svc := corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -337,27 +332,27 @@ func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "tiflash",
-					Port:       3930,
-					TargetPort: intstr.FromInt(int(3930)),
+					Port:       v1alpha1.DefaultTiFlashFlashPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiFlashFlashPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 				{
 					Name:       "proxy",
-					Port:       20170,
-					TargetPort: intstr.FromInt(int(20170)),
+					Port:       v1alpha1.DefaultTiFlashProxyPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiFlashProxyPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 				{
 					Name:       "metrics",
-					Port:       8234,
-					TargetPort: intstr.FromInt(int(8234)),
+					Port:       v1alpha1.DefaultTiFlashMetricsPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiFlashMetricsPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 
 				{
 					Name:       "proxy-metrics",
-					Port:       20292,
-					TargetPort: intstr.FromInt(int(20292)),
+					Port:       v1alpha1.DefaultTiFlashProxyStatusPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiFlashProxyStatusPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -365,7 +360,12 @@ func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 			PublishNotReadyAddresses: true,
 		},
 	}
-	return &svc
+
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(svc)
+	}
+
+	return svc
 }
 
 func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
@@ -504,8 +504,8 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	stsLabels := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)
 	podLabels := util.CombineStringMap(stsLabels, baseTiFlashSpec.Labels())
-	podAnnotations := util.CombineStringMap(baseTiFlashSpec.Annotations(), controller.AnnProm(8234, "/metrics"))
-	podAnnotations = util.CombineStringMap(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
+	podAnnotations := util.CombineStringMap(baseTiFlashSpec.Annotations(), controller.AnnProm(v1alpha1.DefaultTiFlashMetricsPort, "/metrics"))
+	podAnnotations = util.CombineStringMap(controller.AnnAdditionalProm("tiflash.proxy", v1alpha1.DefaultTiFlashProxyStatusPort), podAnnotations)
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiFlashLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiFlash.Limits)
 	headlessSvcName := controller.TiFlashPeerMemberName(tcName)
@@ -558,32 +558,32 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "tiflash",
-				ContainerPort: int32(3930),
+				ContainerPort: v1alpha1.DefaultTiFlashFlashPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{
 				Name:          "proxy",
-				ContainerPort: int32(20170),
+				ContainerPort: v1alpha1.DefaultTiFlashProxyPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{
 				Name:          "tcp",
-				ContainerPort: int32(9000),
+				ContainerPort: v1alpha1.DefaultTiFlashTcpPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{
 				Name:          "http",
-				ContainerPort: int32(8123),
+				ContainerPort: v1alpha1.DefaultTiFlashHttpPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{
 				Name:          "internal",
-				ContainerPort: int32(9009),
+				ContainerPort: v1alpha1.DefaultTiFlashInternalPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{
 				Name:          "metrics",
-				ContainerPort: int32(8234),
+				ContainerPort: v1alpha1.DefaultTiFlashMetricsPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},

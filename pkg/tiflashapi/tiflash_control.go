@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
@@ -74,7 +75,7 @@ func tiflashPodClientKey(schema, namespace, clusterName, podName string) string 
 
 // TiFlashPodClientURL builds the url of tiflash pod client
 func TiFlashPodClientURL(namespace, clusterName, podName, scheme string) string {
-	return fmt.Sprintf("%s://%s.%s-tiflash-peer.%s:20292", scheme, podName, clusterName, namespace)
+	return fmt.Sprintf("%s://%s.%s-tiflash-peer.%s:%d", scheme, podName, clusterName, namespace, v1alpha1.DefaultTiFlashProxyStatusPort)
 }
 
 // FakeTiFlashControl implements a fake version of TiFlashControlInterface.

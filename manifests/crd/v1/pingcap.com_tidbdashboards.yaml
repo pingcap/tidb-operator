@@ -1132,8 +1132,6 @@ spec:
                                 type: object
                             type: object
                           type: array
-                      required:
-                      - sources
                       type: object
                     quobyte:
                       properties:
@@ -2300,6 +2298,8 @@ spec:
                         type: string
                     type: object
                 type: object
+              preferIPv6:
+                type: boolean
               priorityClassName:
                 type: string
               pvReclaimPolicy:

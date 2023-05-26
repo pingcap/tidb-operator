@@ -425,6 +425,8 @@ spec:
                 - name
                 type: object
               type: array
+            federalVolumeRestorePhase:
+              type: string
             gcs:
               properties:
                 bucket:
@@ -994,8 +996,6 @@ spec:
                                 type: object
                             type: object
                           type: array
-                      required:
-                      - sources
                       type: object
                     quobyte:
                       properties:
@@ -1730,8 +1730,6 @@ spec:
                                     type: object
                                 type: object
                               type: array
-                          required:
-                          - sources
                           type: object
                         quobyte:
                           properties:
@@ -2082,6 +2080,8 @@ spec:
               type: string
             useKMS:
               type: boolean
+            volumeAZ:
+              type: string
           type: object
         status:
           properties:

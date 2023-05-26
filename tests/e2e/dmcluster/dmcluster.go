@@ -48,12 +48,12 @@ import (
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
+	testutils "github.com/pingcap/tidb-operator/tests/e2e/util"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-	testutils "k8s.io/kubernetes/test/utils"
 )
 
 var _ = ginkgo.Describe("DMCluster", func() {
@@ -456,7 +456,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
     ssl-key: /var/lib/source-tls/%[1]s/tls.key
 `, tidbClientSecretName))
 			taskCfg = strings.ReplaceAll(taskCfg, "dm-tidb-tidb.dm-tidb", fmt.Sprintf("%s-tidb", dcName))
-			taskCfg = fmt.Sprintf(taskCfg, tests.DMTaskName(ns), tests.DMTaskName(ns))
+			taskCfg = fmt.Sprintf(taskCfg, tests.DMTaskName(ns), v1alpha1.DefaultTiDBServerPort, tests.DMTaskName(ns))
 			filename = "/tmp/dm-with-tls-task.yaml"
 			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(taskCfg), 0o644), "failed to write task config file")
 			_, err = framework.RunKubectl(ns, "cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))

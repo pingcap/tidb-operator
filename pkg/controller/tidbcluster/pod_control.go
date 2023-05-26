@@ -53,8 +53,9 @@ type PodController struct {
 	podStats   map[string]stat
 
 	// only set in test
-	testPDClient               pdapi.PDClient
-	recheckLeaderCountDuration time.Duration
+	testPDClient                 pdapi.PDClient
+	recheckLeaderCountDuration   time.Duration
+	recheckClusterStableDuration time.Duration
 }
 
 // NewPodController create a PodController.
@@ -65,8 +66,9 @@ func NewPodController(deps *controller.Dependencies) *PodController {
 			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
 			"tidbcluster pods",
 		),
-		podStats:                   make(map[string]stat),
-		recheckLeaderCountDuration: time.Second * 15,
+		podStats:                     make(map[string]stat),
+		recheckLeaderCountDuration:   time.Second * 15,
+		recheckClusterStableDuration: time.Minute * 1,
 	}
 
 	podsInformer := deps.KubeInformerFactory.Core().V1().Pods()
@@ -216,6 +218,8 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 		return c.syncPDPod(ctx, pod, tc)
 	case label.TiKVLabelVal:
 		return c.syncTiKVPod(ctx, pod, tc)
+	case label.TiDBLabelVal:
+		return c.syncTiDBPod(ctx, pod, tc)
 	default:
 		return reconcile.Result{}, nil
 	}
@@ -245,21 +249,27 @@ func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1al
 		return reconcile.Result{}, nil
 	}
 
+	if c.isEvictLeaderExpired(pod, v1alpha1.PDLeaderTransferExpirationTimeAnnKey) {
+		return reconcile.Result{}, c.cleanupLeaderEvictionAnnotations(pod, tc, []string{v1alpha1.PDLeaderTransferAnnKey, v1alpha1.PDLeaderTransferExpirationTimeAnnKey})
+	}
+
 	// Check if there's any ongoing updates in PD.
 	if tc.Status.PD.Phase != v1alpha1.NormalPhase {
 		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
 	}
 
-	// Make sure we have quorum after we shut down this Pod.
-	if !safeToRestartPD(tc) {
-		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	pdClient := c.getPDClient(tc)
+
+	if unstableReason := pdapi.IsPDStable(pdClient); unstableReason != "" {
+		klog.Infof("PD cluster in %s is unstable: %s", tc.Name, unstableReason)
+		return reconcile.Result{RequeueAfter: c.recheckClusterStableDuration}, nil
 	}
 
 	// Transfer leader to other peer if necessary.
 	var err error
 	pdName := getPdName(pod, tc)
 	if tc.Status.PD.Leader.Name == pod.Name || tc.Status.PD.Leader.Name == pdName {
-		err = transferPDLeader(tc, c.getPDClient(tc))
+		err = transferPDLeader(tc, pdClient)
 		if err != nil {
 			return reconcile.Result{}, nil
 		}
@@ -290,6 +300,10 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	}
 
 	if ok {
+		if c.isEvictLeaderExpired(pod, v1alpha1.TiKVEvictLeaderExpirationTimeAnnKey) {
+			return reconcile.Result{}, c.cleanupLeaderEvictionAnnotations(pod, tc, append(v1alpha1.EvictLeaderAnnKeys, v1alpha1.TiKVEvictLeaderExpirationTimeAnnKey))
+		}
+
 		evictStatus := &v1alpha1.EvictLeaderStatus{
 			PodCreateTime: pod.CreationTimestamp,
 			BeginTime:     metav1.Now(),
@@ -323,6 +337,10 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		storeID, err := member.TiKVStoreIDFromStatus(tc, pod.Name)
 		if err != nil {
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status for pod %s/%s", pod.Namespace, pod.Name)
+		}
+		if unstableReason := pdapi.IsTiKVStable(pdClient); unstableReason != "" {
+			klog.Infof("Cluster %s is unstable: %s", tc.Name, unstableReason)
+			return reconcile.Result{RequeueAfter: c.recheckClusterStableDuration}, nil
 		}
 		err = pdClient.BeginEvictLeader(storeID)
 		if err != nil {
@@ -412,6 +430,79 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	return reconcile.Result{}, nil
 }
 
+func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value := needDeleteTiDBPod(pod)
+	if value == "" {
+		// No need to delete tidb pod
+		return reconcile.Result{}, nil
+	}
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	if tc.PDUpgrading() || tc.PDScaling() || tc.TiKVUpgrading() || tc.TiKVScaling() || tc.TiDBUpgrading() || tc.TiDBScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
+			"tikv status is %s, tiflash status is %s, pump status is %s, "+
+			"tidb status is %s, can not delete tidb",
+			ns, tcName,
+			tc.Status.PD.Phase, tc.Status.TiKV.Phase, tc.Status.TiFlash.Phase,
+			tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
+		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	}
+
+	switch value {
+	case v1alpha1.TiDBPodDeletionValueNone:
+	case v1alpha1.TiDBPodDeletionDeletePod:
+	default:
+		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.TiDBGracefulShutdownAnnKey, pod.Namespace, pod.Name)
+		return reconcile.Result{}, nil
+	}
+
+	if value == v1alpha1.TiDBPodDeletionDeletePod {
+		err := c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
+		}
+	}
+
+	return reconcile.Result{}, nil
+}
+
+func (c *PodController) cleanupLeaderEvictionAnnotations(pod *corev1.Pod, tc *v1alpha1.TidbCluster, annKeys []string) error {
+	for _, ann := range annKeys {
+		delete(pod.Annotations, ann)
+	}
+
+	if _, err := c.deps.PodControl.UpdatePod(tc, pod); err != nil {
+		return perrors.Annotatef(err, "failed delete expired annotations for tc %s/%s", pod.Namespace, pod.Name)
+	}
+	return nil
+}
+
+func (c *PodController) isEvictLeaderExpired(pod *corev1.Pod, annKey string) bool {
+	timeToExpireAnnValue, exist := pod.Annotations[annKey]
+	if exist {
+		evictionExpirationTime, err := time.Parse(time.RFC3339, timeToExpireAnnValue)
+		if err == nil {
+			if metav1.Now().Time.After(evictionExpirationTime) {
+				klog.Infof("Annotation to evict leader on the Pod %s/%s is expired", pod.Namespace, pod.Name)
+				return true
+			}
+		} else {
+			klog.Warningf("Can't parse %s value %s on %s/%s. Mark pod as expired right away. Err: ", annKey, evictionExpirationTime, pod.Namespace, pod.Name, err)
+			return true
+		}
+	}
+	return false
+}
+
+func needDeleteTiDBPod(pod *corev1.Pod) string {
+	if pod.Annotations == nil {
+		return ""
+	}
+	return pod.Annotations[v1alpha1.TiDBGracefulShutdownAnnKey]
+}
+
 func needEvictLeader(pod *corev1.Pod) (string, string, bool) {
 	for _, key := range v1alpha1.EvictLeaderAnnKeys {
 		value, exist := pod.Annotations[key]
@@ -429,21 +520,6 @@ func needPDLeaderTransfer(pod *corev1.Pod) (string, bool) {
 		return "", false
 	}
 	return value, true
-}
-
-func safeToRestartPD(tc *v1alpha1.TidbCluster) bool {
-	healthCount := 0
-	for _, pdMember := range tc.Status.PD.Members {
-		if pdMember.Health {
-			healthCount++
-		}
-	}
-	for _, pdMember := range tc.Status.PD.PeerMembers {
-		if pdMember.Health {
-			healthCount++
-		}
-	}
-	return healthCount > (len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers))/2+1
 }
 
 func transferPDLeader(tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) error {

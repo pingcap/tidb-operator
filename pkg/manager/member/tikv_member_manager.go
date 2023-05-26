@@ -120,7 +120,7 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	svcList := []SvcConfig{
 		{
 			Name:       "peer",
-			Port:       20160,
+			Port:       v1alpha1.DefaultTiKVServerPort,
 			Headless:   true,
 			SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
 			MemberName: controller.TiKVPeerMemberName,
@@ -176,20 +176,13 @@ func (m *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, 
 
 	oldSvc := oldSvcTmp.DeepCopy()
 
-	equal, err := controller.ServiceEqual(newSvc, oldSvc)
+	_, err = m.deps.ServiceControl.SyncComponentService(
+		tc,
+		newSvc,
+		oldSvc,
+		true)
+
 	if err != nil {
-		return err
-	}
-	if !equal {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		// TODO add unit test
-		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
-		if err != nil {
-			return err
-		}
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		_, err = m.deps.ServiceControl.UpdateService(tc, &svc)
 		return err
 	}
 
@@ -344,6 +337,11 @@ func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) 
 	} else {
 		svc.Spec.Type = controller.GetServiceType(tc.Spec.Services, v1alpha1.TiKVMemberType.String())
 	}
+
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(&svc)
+	}
+
 	return &svc
 }
 
@@ -468,7 +466,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	stsLabels := labelTiKV(tc)
 	podLabels := util.CombineStringMap(stsLabels.Labels(), baseTiKVSpec.Labels())
 	setName := controller.TiKVMemberName(tcName)
-	podAnnotations := util.CombineStringMap(baseTiKVSpec.Annotations(), controller.AnnProm(20180, "/metrics"))
+	podAnnotations := util.CombineStringMap(baseTiKVSpec.Annotations(), controller.AnnProm(v1alpha1.DefaultTiKVStatusPort, "/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiKVLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
@@ -615,7 +613,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "server",
-				ContainerPort: int32(20160),
+				ContainerPort: v1alpha1.DefaultTiKVServerPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
@@ -642,7 +640,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	if tc.Spec.TiKV.EnableNamedStatusPort {
 		kvStatusPort := corev1.ContainerPort{
 			Name:          "status",
-			ContainerPort: int32(20180),
+			ContainerPort: v1alpha1.DefaultTiKVStatusPort,
 			Protocol:      corev1.ProtocolTCP,
 		}
 
@@ -1056,7 +1054,7 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 func buildTiKVReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 	return corev1.Handler{
 		TCPSocket: &corev1.TCPSocketAction{
-			Port: intstr.FromInt(20160),
+			Port: intstr.FromInt(int(v1alpha1.DefaultTiKVServerPort)),
 		},
 	}
 }

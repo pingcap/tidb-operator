@@ -337,7 +337,7 @@ func getNewCDCHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 	svcName := controller.TiCDCPeerMemberName(tcName)
 	svcLabel := label.New().Instance(instanceName).TiCDC().Labels()
 
-	svc := corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -349,8 +349,8 @@ func getNewCDCHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "ticdc",
-					Port:       8301,
-					TargetPort: intstr.FromInt(int(8301)),
+					Port:       v1alpha1.DefaultTiCDCPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiCDCPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -358,7 +358,12 @@ func getNewCDCHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 			PublishNotReadyAddresses: true,
 		},
 	}
-	return &svc
+
+	if tc.Spec.PreferIPv6 {
+		SetServiceWhenPreferIPv6(svc)
+	}
+
+	return svc
 }
 
 // Only Use config file if cm is not nil
@@ -370,7 +375,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 	stsLabels := labelTiCDC(tc)
 	stsName := controller.TiCDCMemberName(tcName)
 	podLabels := util.CombineStringMap(stsLabels, baseTiCDCSpec.Labels())
-	podAnnotations := util.CombineStringMap(baseTiCDCSpec.Annotations(), controller.AnnProm(8301, "/metrics"))
+	podAnnotations := util.CombineStringMap(baseTiCDCSpec.Annotations(), controller.AnnProm(v1alpha1.DefaultTiCDCPort, "/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
 
@@ -457,7 +462,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "ticdc",
-				ContainerPort: int32(8301),
+				ContainerPort: v1alpha1.DefaultTiCDCPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},

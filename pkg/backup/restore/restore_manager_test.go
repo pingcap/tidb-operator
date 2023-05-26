@@ -206,7 +206,7 @@ func TestBRRestore(t *testing.T) {
 	for i, restore := range genValidBRRestores() {
 		helper.createRestore(restore)
 		helper.CreateSecret(restore)
-		helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster)
+		helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, false)
 
 		m := NewRestoreManager(deps)
 		err = m.Sync(restore)
@@ -439,7 +439,7 @@ func TestBRRestoreByEBS(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 
-			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster)
+			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster, true)
 			helper.CreateRestore(tt.restore)
 			m := NewRestoreManager(deps)
 			err := m.Sync(tt.restore)

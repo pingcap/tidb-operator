@@ -1649,7 +1649,7 @@ func TestGetNewTiKVServiceForTidbCluster(t *testing.T) {
 			},
 			svcConfig: SvcConfig{
 				Name:       "peer",
-				Port:       20160,
+				Port:       v1alpha1.DefaultTiKVServerPort,
 				Headless:   true,
 				SvcLabel:   func(l label.Label) label.Label { return l.TiKV() },
 				MemberName: controller.TiKVPeerMemberName,
@@ -1685,8 +1685,8 @@ func TestGetNewTiKVServiceForTidbCluster(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "peer",
-							Port:       20160,
-							TargetPort: intstr.FromInt(20160),
+							Port:       v1alpha1.DefaultTiKVServerPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiKVServerPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},

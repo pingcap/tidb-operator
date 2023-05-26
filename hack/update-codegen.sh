@@ -31,5 +31,12 @@ GOBIN=$OUTPUT_BIN bash $ROOT/hack/generate-groups.sh "deepcopy,client,informer,l
     --output-base $ROOT \
     --go-header-file ./hack/boilerplate/boilerplate.generatego.txt
 
+GOBIN=$OUTPUT_BIN bash $ROOT/hack/generate-groups.sh "deepcopy,client,informer,lister" \
+    github.com/pingcap/tidb-operator/pkg/client/federation \
+    github.com/pingcap/tidb-operator/pkg/apis/federation \
+    pingcap:v1alpha1 \
+    --output-base $ROOT \
+    --go-header-file ./hack/boilerplate/boilerplate.generatego.txt
+
 # then we merge generated code with our code base and clean up
 cp -r github.com/pingcap/tidb-operator/pkg $ROOT && rm -rf github.com

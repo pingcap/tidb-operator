@@ -451,7 +451,7 @@ func GenerateNGMonitoringMeta(tngm *v1alpha1.TidbNGMonitoring, name string) (met
 func GenerateNGMonitoringHeadlessService(tngm *v1alpha1.TidbNGMonitoring) *corev1.Service {
 	meta, labels := GenerateNGMonitoringMeta(tngm, NGMonitoringHeadlessServiceName(tngm.Name))
 
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
 			ClusterIP: "None",
@@ -467,6 +467,12 @@ func GenerateNGMonitoringHeadlessService(tngm *v1alpha1.TidbNGMonitoring) *corev
 			PublishNotReadyAddresses: true,
 		},
 	}
+
+	if tngm.Spec.PreferIPv6 {
+		member.SetServiceWhenPreferIPv6(svc)
+	}
+
+	return svc
 }
 
 func GenerateNGMonitoringStartScript(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) (string, error) {

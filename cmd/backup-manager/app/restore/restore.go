@@ -42,6 +42,8 @@ type Options struct {
 	backupUtil.GenericOptions
 	// Prepare to restore data. It's used in volume-snapshot mode.
 	Prepare bool
+	// TargetAZ indicates which az the volume snapshots restore to. It's used in volume-snapshot mode.
+	TargetAZ string
 }
 
 func (ro *Options) restoreData(
@@ -55,7 +57,7 @@ func (ro *Options) restoreData(
 		clusterNamespace = restore.Namespace
 	}
 	args := make([]string, 0)
-	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", restore.Spec.BR.Cluster, clusterNamespace))
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:%d", restore.Spec.BR.Cluster, clusterNamespace, v1alpha1.DefaultPDClientPort))
 	if ro.TLSCluster {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
@@ -103,6 +105,7 @@ func (ro *Options) restoreData(
 			args = append(args, "--prepare")
 			csbPath = path.Join(util.BRBinPath, "csb_restore.json")
 			args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
+			args = append(args, fmt.Sprintf("--target-az=%s", ro.TargetAZ))
 			progressStep = "Volume Restore"
 		} else {
 			progressStep = "Data Restore"

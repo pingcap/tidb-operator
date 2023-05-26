@@ -14,12 +14,12 @@ require (
 	github.com/pingcap/errors v0.11.4
 	github.com/prometheus/common v0.26.0
 	github.com/prometheus/prometheus v1.8.2
-	k8s.io/api v0.19.16
-	k8s.io/apiextensions-apiserver v0.19.16
-	k8s.io/apimachinery v0.19.16
-	k8s.io/klog/v2 v2.3.0
-	k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6
-	k8s.io/utils v0.0.0-20200912215256-4140de9c8800
+	k8s.io/api v0.20.15
+	k8s.io/apiextensions-apiserver v0.20.15
+	k8s.io/apimachinery v0.20.15
+	k8s.io/klog/v2 v2.4.0
+	k8s.io/kube-openapi v0.0.0-20211110013926-83f114cd0513
+	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 	sigs.k8s.io/yaml v1.2.0
 )
 
@@ -38,8 +38,8 @@ require (
 	github.com/mailru/easyjson v0.7.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
-	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

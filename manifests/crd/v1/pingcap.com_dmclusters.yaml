@@ -1445,8 +1445,6 @@ spec:
                                     type: object
                                 type: object
                               type: array
-                          required:
-                          - sources
                           type: object
                         quobyte:
                           properties:
@@ -3806,8 +3804,6 @@ spec:
                                     type: object
                                 type: object
                               type: array
-                          required:
-                          - sources
                           type: object
                         quobyte:
                           properties:
@@ -5027,6 +5023,11 @@ spec:
                       type:
                         type: string
                     type: object
+                  startUpScriptVersion:
+                    enum:
+                    - ""
+                    - v1
+                    type: string
                   statefulSetUpdateStrategy:
                     type: string
                   storageClassName:
@@ -5144,6 +5145,8 @@ spec:
                         type: string
                     type: object
                 type: object
+              preferIPv6:
+                type: boolean
               priorityClassName:
                 type: string
               pvReclaimPolicy:
@@ -6303,8 +6306,6 @@ spec:
                                     type: object
                                 type: object
                               type: array
-                          required:
-                          - sources
                           type: object
                         quobyte:
                           properties:

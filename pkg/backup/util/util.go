@@ -16,6 +16,7 @@ package util
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -467,7 +468,7 @@ func validateAccessConfig(config *v1alpha1.TiDBAccessConfig) string {
 }
 
 // ValidateBackup validates backup sepc
-func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
+func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, acrossK8s bool) error {
 	ns := backup.Namespace
 	name := backup.Name
 
@@ -538,6 +539,14 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 			}
 		}
 
+		// validate volume snapshot backup
+		if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+			// only support across k8s now. TODO compatible for single k8s
+			if !acrossK8s {
+				return errors.New("only support volume snapshot backup across k8s clusters")
+			}
+		}
+
 		if backup.Spec.BackoffRetryPolicy.MinRetryDuration != "" {
 			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.MinRetryDuration)
 			if err != nil {
@@ -555,7 +564,7 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string) error {
 }
 
 // ValidateRestore checks whether a restore spec is valid.
-func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
+func ValidateRestore(restore *v1alpha1.Restore, tikvImage string, acrossK8s bool) error {
 	ns := restore.Namespace
 	name := restore.Name
 
@@ -603,6 +612,13 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 		} else if restore.Spec.Local != nil {
 			if err := validateLocal(ns, name, restore.Spec.Local); err != nil {
 				return err
+			}
+		}
+
+		if restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot {
+			// only support across k8s now. TODO compatible for single k8s
+			if !acrossK8s {
+				return errors.New("only support volume snapshot restore across k8s clusters")
 			}
 		}
 	}

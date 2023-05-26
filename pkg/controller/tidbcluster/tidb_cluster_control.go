@@ -146,8 +146,13 @@ func (c *defaultTidbClusterControl) defaulting(tc *v1alpha1.TidbCluster) {
 
 func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
 	c.recordMetrics(tc)
+
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
 	// syncing all PVs managed by operator's reclaim policy to Retain
 	if err := c.reclaimPolicyManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pv_reclaim_policy").Inc()
 		return err
 	}
 
@@ -155,6 +160,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	// this could be useful when failover run into an undesired situation as described in PD failover function
 	skipReasons, err := c.orphanPodsCleaner.Clean(tc)
 	if err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "orphan_pods_cleaner").Inc()
 		return err
 	}
 	if klog.V(10).Enabled() {
@@ -165,6 +171,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 
 	// reconcile TiDB discovery service
 	if err := c.discoveryManager.Reconcile(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "discovery").Inc()
 		return err
 	}
 
@@ -180,6 +187,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - scale out/in the pd cluster
 	//   - failover the pd cluster
 	if err := c.pdMemberManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pd").Inc()
 		return err
 	}
 
@@ -192,6 +200,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - scale out/in the tiproxy cluster
 	//   - failover the tiproxy cluster
 	if err := c.tiproxyMemberManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "tiproxy").Inc()
 		return err
 	}
 
@@ -205,6 +214,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - scale out/in the tiflash cluster
 	//   - failover the tiflash cluster
 	if err := c.tiflashMemberManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "tiflash").Inc()
 		return err
 	}
 
@@ -218,11 +228,13 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - scale out/in the tikv cluster
 	//   - failover the tikv cluster
 	if err := c.tikvMemberManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "tikv").Inc()
 		return err
 	}
 
 	// syncing the pump cluster
 	if err := c.pumpMemberManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pump").Inc()
 		return err
 	}
 
@@ -235,6 +247,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - scale out/in the tidb cluster
 	//   - failover the tidb cluster
 	if err := c.tidbMemberManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "tidb").Inc()
 		return err
 	}
 
@@ -244,6 +257,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - create or update ticdc deployment
 	//   - sync ticdc cluster status from pd to TidbCluster object
 	if err := c.ticdcMemberManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "ticdc").Inc()
 		return err
 	}
 
@@ -252,12 +266,14 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - label.MemberIDLabelKey
 	//   - label.NamespaceLabelKey
 	if err := c.metaManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "meta").Inc()
 		return err
 	}
 
 	// cleaning the pod scheduling annotation for pd and tikv
 	pvcSkipReasons, err := c.pvcCleaner.Clean(tc)
 	if err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_cleaner").Inc()
 		return err
 	}
 	if klog.V(10).Enabled() {
@@ -269,13 +285,18 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	// modify volumes if necessary
 	if features.DefaultFeatureGate.Enabled(features.VolumeModifying) {
 		if err := c.pvcModifier.Sync(tc); err != nil {
+			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_modifier").Inc()
 			return err
 		}
 	}
 
 	// syncing the some tidbcluster status attributes
 	// 	- sync tidbmonitor reference
-	return c.tidbClusterStatusManager.Sync(tc)
+	err = c.tidbClusterStatusManager.Sync(tc)
+	if err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "cluster_status").Inc()
+	}
+	return err
 }
 
 func (c *defaultTidbClusterControl) recordMetrics(tc *v1alpha1.TidbCluster) {

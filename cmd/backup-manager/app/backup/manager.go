@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -36,6 +37,11 @@ import (
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
+)
+
+const (
+	gcPausedKeyword          = "GC is paused"
+	pdSchedulesPausedKeyword = "Schedulers are paused"
 )
 
 // Manager mainly used to manage backup related work
@@ -63,7 +69,7 @@ func (bm *Manager) setFromDBOptions(backup *v1alpha1.Backup) {
 	if backup.Spec.From.Port != 0 {
 		bm.Options.Port = backup.Spec.From.Port
 	} else {
-		bm.Options.Port = v1alpha1.DefaultTiDBServicePort
+		bm.Options.Port = v1alpha1.DefaultTiDBServerPort
 	}
 
 	if backup.Spec.From.User != "" {
@@ -115,6 +121,10 @@ func (bm *Manager) ProcessBackup() error {
 
 	if bm.Mode == string(v1alpha1.BackupModeLog) {
 		return bm.performLogBackup(ctx, backup.DeepCopy())
+	}
+
+	if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bm.Initialize {
+		return bm.performVolumeBackupInitialize(ctx, backup.DeepCopy())
 	}
 
 	if backup.Spec.From == nil {
@@ -306,6 +316,27 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	// run br binary to do the real job
 	backupErr := bm.backupData(ctx, backup, bm.StatusUpdater)
 
+	defer func() {
+		// Calculate the backup size for ebs backup job even if it fails
+		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize {
+			backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
+			if err != nil {
+				klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
+				return
+			}
+
+			backupSizeReadable := humanize.Bytes(uint64(backupSize))
+
+			updateStatus := &controller.BackupUpdateStatus{
+				BackupSize:         &backupSize,
+				BackupSizeReadable: &backupSizeReadable,
+			}
+
+			bm.StatusUpdater.Update(backup, nil,
+				updateStatus)
+		}
+	}()
+
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
 		// `DefaultTerminationGracePeriodSeconds` for a pod is 30, so we use a smaller timeout value here.
@@ -318,6 +349,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			}
 			errs = append(errs, err)
 			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", bm, oldTikvGCTime, err)
+
 			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Type:    v1alpha1.BackupFailed,
 				Status:  corev1.ConditionTrue,
@@ -333,8 +365,16 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	if backupErr != nil {
 		errs = append(errs, backupErr)
 		klog.Errorf("backup cluster %s data failed, err: %s", bm, backupErr)
+		failedCondition := v1alpha1.BackupFailed
+		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) {
+			if bm.Initialize {
+				failedCondition = v1alpha1.VolumeBackupInitializeFailed
+			} else {
+				failedCondition = v1alpha1.VolumeBackupFailed
+			}
+		}
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    failedCondition,
 			Status:  corev1.ConditionTrue,
 			Reason:  "BackupDataToRemoteFailed",
 			Message: backupErr.Error(),
@@ -345,23 +385,17 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	klog.Infof("backup cluster %s data to %s success", bm, backupFullPath)
 
 	var updateStatus *controller.BackupUpdateStatus
+	completeCondition := v1alpha1.BackupComplete
 	switch bm.Mode {
 	case string(v1alpha1.BackupModeVolumeSnapshot):
-		// In volume snapshot mode, commitTS have been updated according to the
-		// br command output, so we don't need to update it here.
-		backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
-
-		if err != nil {
-			klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
-		}
-
-		backupSizeReadable := humanize.Bytes(uint64(backupSize))
-
-		updateStatus = &controller.BackupUpdateStatus{
-			TimeStarted:        &metav1.Time{Time: started},
-			TimeCompleted:      &metav1.Time{Time: time.Now()},
-			BackupSize:         &backupSize,
-			BackupSizeReadable: &backupSizeReadable,
+		if !bm.Initialize {
+			completeCondition = v1alpha1.VolumeBackupComplete
+			// In volume snapshot mode, commitTS have been updated according to the
+			// br command output, so we don't need to update it here.
+			updateStatus = &controller.BackupUpdateStatus{
+				TimeStarted:   &metav1.Time{Time: started},
+				TimeCompleted: &metav1.Time{Time: time.Now()},
+			}
 		}
 	default:
 		backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
@@ -392,8 +426,9 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			CommitTs:           &ts,
 		}
 	}
+
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupComplete,
+		Type:   completeCondition,
 		Status: corev1.ConditionTrue,
 	}, updateStatus)
 }
@@ -546,7 +581,7 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.doTruncatelogBackup(ctx, backup)
+	backupErr := bm.doTruncateLogBackup(ctx, backup)
 
 	if backupErr != nil {
 		klog.Errorf("Truncate log backup of cluster %s failed, err: %s", bm, backupErr)
@@ -562,6 +597,35 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 		LogSuccessTruncateUntil: &bm.TruncateUntil,
 	}
 	return updateStatus, "", nil
+}
+
+// performVolumeBackupInitialize execute br to stop GC and PD schedules
+// it will keep running until the process is killed
+func (bm *Manager) performVolumeBackupInitialize(ctx context.Context, backup *v1alpha1.Backup) error {
+	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupRunning,
+		Status: corev1.ConditionTrue,
+	}, nil)
+	if err != nil {
+		return err
+	}
+
+	if err = bm.doInitializeVolumeBackup(ctx, backup, bm.StatusUpdater); err != nil {
+		errs := make([]error, 0, 2)
+		errs = append(errs, err)
+		updateErr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.VolumeBackupInitializeFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "InitializeVolumeBackupFailed",
+			Message: err.Error(),
+		}, nil)
+		if updateErr != nil {
+			errs = append(errs, updateErr)
+		}
+		return errorutils.NewAggregate(errs)
+	}
+
+	return nil
 }
 
 func (bm *Manager) cleanSnapshotBackupEnv(ctx context.Context, backup *v1alpha1.Backup) error {
@@ -581,4 +645,47 @@ func (bm *Manager) isBRCanContinueRunByCheckpoint() bool {
 	}
 	lessThanV651, _ := semver.NewConstraint("<v6.5.1-0")
 	return !lessThanV651.Check(v)
+}
+
+// VolumeBackupInitializeManager manages volume backup initializing status
+type VolumeBackupInitializeManager struct {
+	done               bool
+	gcStopped          bool
+	pdSchedulesStopped bool
+
+	backup        *v1alpha1.Backup
+	statusUpdater controller.BackupConditionUpdaterInterface
+}
+
+// UpdateBackupStatus extracts information from log line and update backup status to VolumeBackupInitialized
+// when GC and PD schedules are all stopped
+func (vb *VolumeBackupInitializeManager) UpdateBackupStatus(logLine string) {
+	if vb.done {
+		return
+	}
+
+	if strings.Contains(logLine, gcPausedKeyword) {
+		vb.gcStopped = true
+	} else if strings.Contains(logLine, pdSchedulesPausedKeyword) {
+		vb.pdSchedulesStopped = true
+	}
+	vb.tryUpdateBackupStatus()
+}
+
+// tryUpdateBackupStatus tries to update backup status
+func (vb *VolumeBackupInitializeManager) tryUpdateBackupStatus() {
+	if !vb.gcStopped || !vb.pdSchedulesStopped {
+		return
+	}
+
+	err := vb.statusUpdater.Update(vb.backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.VolumeBackupInitialized,
+		Status: corev1.ConditionTrue,
+	}, nil)
+	if err == nil {
+		vb.done = true
+	} else {
+		klog.Warningf("backup %s/%s update status to VolumeBackupInitialized failed, err: %s",
+			vb.backup.Namespace, vb.backup.Name, err.Error())
+	}
 }

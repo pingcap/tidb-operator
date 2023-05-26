@@ -21,8 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
@@ -31,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	"github.com/Masterminds/semver"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -570,10 +569,10 @@ func BuildProbeCommand(tc *v1alpha1.TidbCluster, componentType string) (command 
 	host := "127.0.0.1"
 	var readinessURL string
 	if componentType == label.PDLabelVal {
-		readinessURL = fmt.Sprintf("%s://%s:2379/status", tc.Scheme(), host)
+		readinessURL = fmt.Sprintf("%s://%s:%d/status", tc.Scheme(), host, v1alpha1.DefaultPDClientPort)
 	}
 	if componentType == label.TiDBLabelVal {
-		readinessURL = fmt.Sprintf("%s://%s:10080/status", tc.Scheme(), host)
+		readinessURL = fmt.Sprintf("%s://%s:%d/status", tc.Scheme(), host, v1alpha1.DefaultTiDBStatusPort)
 	}
 	command = append(command, "curl")
 	command = append(command, readinessURL)
@@ -594,4 +593,9 @@ func BuildProbeCommand(tc *v1alpha1.TidbCluster, componentType string) (command 
 		command = append(command, "--key", key)
 	}
 	return
+}
+
+func SetServiceWhenPreferIPv6(svc *corev1.Service) {
+	policy := corev1.IPFamilyPolicyPreferDualStack
+	svc.Spec.IPFamilyPolicy = &policy
 }

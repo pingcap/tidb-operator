@@ -20,6 +20,7 @@ import (
 
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -29,7 +30,7 @@ var dummyCancel = func() {}
 
 // PortForwardAndGetTiDBDSN create a portforward for TiDB and return its DSN
 func PortForwardAndGetTiDBDSN(fw portforward.PortForward, ns, tc, user, password, database string) (string, context.CancelFunc, error) {
-	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tc)), 4000)
+	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tc)), uint16(v1alpha1.DefaultTiDBServerPort))
 	if err != nil {
 		return "", dummyCancel, err
 	}

@@ -142,7 +142,7 @@ const (
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="PD",type=string,JSONPath=`.status.pd.image`,description="The image for PD cluster"
 // +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.pd.requests.storage`,description="The storage size specified for PD node"
-// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.pd.statefulSet.readyReplicas`,description="The desired replicas number of PD cluster"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.pd.statefulSet.readyReplicas`,description="The ready replicas number of PD cluster"
 // +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.pd.replicas`,description="The desired replicas number of PD cluster"
 // +kubebuilder:printcolumn:name="TiKV",type=string,JSONPath=`.status.tikv.image`,description="The image for TiKV cluster"
 // +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.tikv.requests.storage`,description="The storage size specified for TiKV node"
@@ -1380,6 +1380,12 @@ const (
 	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
 	// PDLeaderTransferAnnKey is the annotation key to transfer PD leader used by user.
 	PDLeaderTransferAnnKey = "tidb.pingcap.com/pd-transfer-leader"
+	// TiDBGracefulShutdownAnnKey is the annotation key to graceful shutdown tidb pod by user.
+	TiDBGracefulShutdownAnnKey = "tidb.pingcap.com/tidb-graceful-shutdown"
+	// TiKVEvictLeaderExpirationTimeAnnKey is the annotation key to expire evict leader annotation. Type: time.RFC3339.
+	TiKVEvictLeaderExpirationTimeAnnKey = "tidb.pingcap.com/tikv-evict-leader-expiration-time"
+	// PDLeaderTransferExpirationTimeAnnKey is the annotation key to expire transfer leader annotation. Type: time.RFC3339.
+	PDLeaderTransferExpirationTimeAnnKey = "tidb.pingcap.com/pd-evict-leader-expiration-time"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -1398,6 +1404,15 @@ const (
 const (
 	TransferLeaderValueNone      = "none"
 	TransferLeaderValueDeletePod = "delete-pod"
+)
+
+// The `Value` of TiDB deletion annotation controls the behavior when the tidb pod got deleted, the valid value is one of:
+//
+// - `none`: doing nothing.
+// - `delete-pod`: delete pod.
+const (
+	TiDBPodDeletionValueNone = "none"
+	TiDBPodDeletionDeletePod = "delete-pod"
 )
 
 type EvictLeaderStatus struct {
@@ -1925,6 +1940,9 @@ type BackupSpec struct {
 	// LogStop indicates that will stop the log backup.
 	// +optional
 	LogStop bool `json:"logStop,omitempty"`
+	// FederalVolumeBackupPhase indicates which phase to execute in federal volume backup
+	// +optional
+	FederalVolumeBackupPhase FederalVolumeBackupPhase `json:"federalVolumeBackupPhase,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1962,6 +1980,18 @@ type BackupSpec struct {
 	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
 	BackoffRetryPolicy BackoffRetryPolicy `json:"backoffRetryPolicy,omitempty"`
 }
+
+// FederalVolumeBackupPhase represents a phase to execute in federal volume backup
+type FederalVolumeBackupPhase string
+
+const (
+	// FederalVolumeBackupInitialize means we should stop GC and PD schedule
+	FederalVolumeBackupInitialize FederalVolumeBackupPhase = "initialize"
+	// FederalVolumeBackupExecute means we should take volume snapshots for TiKV
+	FederalVolumeBackupExecute FederalVolumeBackupPhase = "execute"
+	// FederalVolumeBackupTeardown means we should resume GC and PD schedule
+	FederalVolumeBackupTeardown FederalVolumeBackupPhase = "teardown"
+)
 
 // +k8s:openapi-gen=true
 // DumplingConfig contains config for dumpling
@@ -2069,6 +2099,14 @@ const (
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
 	BackupRestart BackupConditionType = "Restart"
+	// VolumeBackupInitialized means the volume backup has stopped GC and PD schedule
+	VolumeBackupInitialized BackupConditionType = "VolumeBackupInitialized"
+	// VolumeBackupInitializeFailed means the volume backup initialize job failed
+	VolumeBackupInitializeFailed BackupConditionType = "VolumeBackupInitializeFailed"
+	// VolumeBackupComplete means the volume backup has taken volume snapshots successfully
+	VolumeBackupComplete BackupConditionType = "VolumeBackupComplete"
+	// VolumeBackupFailed means the volume backup take volume snapshots failed
+	VolumeBackupFailed BackupConditionType = "VolumeBackupFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -2198,6 +2236,7 @@ type BackupScheduleSpec struct {
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
+	// +optional
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
 	LogBackupTemplate *BackupSpec `json:"logBackupTemplate"`
@@ -2285,6 +2324,8 @@ const (
 	// RestoreDataComplete means the Restore has successfully executed part-2 and the
 	// data in restore volumes has been deal with consistency based on min_resolved_ts
 	RestoreDataComplete RestoreConditionType = "DataComplete"
+	// RestoreTiKVComplete means in volume restore, all TiKV instances are started and up
+	RestoreTiKVComplete RestoreConditionType = "TikvComplete"
 	// RestoreComplete means the Restore has successfully executed and the
 	// backup data has been loaded into tidb cluster.
 	RestoreComplete RestoreConditionType = "Complete"
@@ -2341,6 +2382,13 @@ type RestoreSpec struct {
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
+	// FederalVolumeRestorePhase indicates which phase to execute in federal volume restore
+	// +optional
+	FederalVolumeRestorePhase FederalVolumeRestorePhase `json:"federalVolumeRestorePhase,omitempty"`
+	// VolumeAZ indicates which AZ the volume snapshots restore to.
+	// it is only valid for mode of volume-snapshot
+	// +optional
+	VolumeAZ string `json:"volumeAZ,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
@@ -2385,6 +2433,18 @@ type RestoreSpec struct {
 	// PriorityClassName of Restore Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
+
+// FederalVolumeRestorePhase represents a phase to execute in federal volume restore
+type FederalVolumeRestorePhase string
+
+const (
+	// FederalVolumeRestoreVolume means restore volumes of TiKV and start TiKV
+	FederalVolumeRestoreVolume FederalVolumeRestorePhase = "restore-volume"
+	// FederalVolumeRestoreData means restore data of TiKV to resolved TS
+	FederalVolumeRestoreData FederalVolumeRestorePhase = "restore-data"
+	// FederalVolumeRestoreFinish means restart TiKV and set recoveryMode true
+	FederalVolumeRestoreFinish FederalVolumeRestorePhase = "restore-finish"
+)
 
 // RestoreStatus represents the current status of a tidb cluster restore.
 type RestoreStatus struct {
@@ -2607,6 +2667,9 @@ type DMClusterSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // DMClusterStatus represents the current status of a dm cluster.
@@ -2672,6 +2735,11 @@ type MasterSpec struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:validation:XPreserveUnknownFields
 	Config *MasterConfigWraper `json:"config,omitempty"`
+
+	// Start up script version
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1"
+	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
 }
 
 type MasterServiceSpec struct {

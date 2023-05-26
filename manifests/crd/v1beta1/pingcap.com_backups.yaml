@@ -490,6 +490,8 @@ spec:
                 - name
                 type: object
               type: array
+            federalVolumeBackupPhase:
+              type: string
             from:
               properties:
                 host:
@@ -1076,8 +1078,6 @@ spec:
                                 type: object
                             type: object
                           type: array
-                      required:
-                      - sources
                       type: object
                     quobyte:
                       properties:

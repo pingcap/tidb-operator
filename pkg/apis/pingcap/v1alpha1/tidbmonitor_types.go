@@ -185,6 +185,9 @@ type TidbMonitorSpec struct {
 	// Optional: Defaults to UTC
 	// +optional
 	Timezone string `json:"timezone,omitempty"`
+
+	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
+	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 }
 
 // PrometheusReloaderSpec is the desired state of prometheus configuration reloader

@@ -270,6 +270,20 @@ bool
 </tr>
 <tr>
 <td>
+<code>federalVolumeBackupPhase</code></br>
+<em>
+<a href="#federalvolumebackupphase">
+FederalVolumeBackupPhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -564,6 +578,7 @@ BackupSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>BackupTemplate is the specification of the backup structure to get scheduled.</p>
 </td>
 </tr>
@@ -1073,6 +1088,17 @@ SuspendAction
 <p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -1248,6 +1274,33 @@ string
 </td>
 <td>
 <p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>federalVolumeRestorePhase</code></br>
+<em>
+<a href="#federalvolumerestorephase">
+FederalVolumeRestorePhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeRestorePhase indicates which phase to execute in federal volume restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAZ</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeAZ indicates which AZ the volume snapshots restore to.
+it is only valid for mode of volume-snapshot</p>
 </td>
 </tr>
 <tr>
@@ -2922,6 +2975,17 @@ string
 Optional: Defaults to UTC</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -3630,6 +3694,7 @@ BackupSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>BackupTemplate is the specification of the backup structure to get scheduled.</p>
 </td>
 </tr>
@@ -3953,6 +4018,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>LogStop indicates that will stop the log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>federalVolumeBackupPhase</code></br>
+<em>
+<a href="#federalvolumebackupphase">
+FederalVolumeBackupPhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
 </td>
 </tr>
 <tr>
@@ -6154,6 +6233,17 @@ SuspendAction
 <p>SuspendAction defines the suspend actions for all component.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="dmclusterstatus">DMClusterStatus</h3>
@@ -6891,6 +6981,22 @@ it takes effect only when set <code>spec.recoverFailover=false</code></p>
 </tr>
 </tbody>
 </table>
+<h3 id="federalvolumebackupphase">FederalVolumeBackupPhase</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>FederalVolumeBackupPhase represents a phase to execute in federal volume backup</p>
+</p>
+<h3 id="federalvolumerestorephase">FederalVolumeRestorePhase</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>FederalVolumeRestorePhase represents a phase to execute in federal volume restore</p>
+</p>
 <h3 id="filelogconfig">FileLogConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -8959,6 +9065,18 @@ MasterConfigWraper
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of dm-master-servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startUpScriptVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Start up script version</p>
 </td>
 </tr>
 </tbody>
@@ -13559,6 +13677,33 @@ string
 </td>
 <td>
 <p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>federalVolumeRestorePhase</code></br>
+<em>
+<a href="#federalvolumerestorephase">
+FederalVolumeRestorePhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeRestorePhase indicates which phase to execute in federal volume restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAZ</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeAZ indicates which AZ the volume snapshots restore to.
+it is only valid for mode of volume-snapshot</p>
 </td>
 </tr>
 <tr>
@@ -23882,6 +24027,17 @@ production.
 Optional: Defaults to false</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -24061,6 +24217,17 @@ When enabled, experimental TiDB Dashboard features will be available.
 These features are incomplete or not well tested. Suggest not to enable in
 production.
 Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
 </tbody>
@@ -24806,6 +24973,17 @@ string
 Optional: Defaults to UTC</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbmonitorstatus">TidbMonitorStatus</h3>
@@ -24968,6 +25146,17 @@ NGMonitoringSpec
 <p>NGMonitoring is spec of ng monitoring</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -25078,6 +25267,17 @@ NGMonitoringSpec
 </td>
 <td>
 <p>NGMonitoring is spec of ng monitoring</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>preferIPv6</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
 </tbody>

@@ -16,7 +16,10 @@ package v1
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 type CommonModel struct {
@@ -113,7 +116,7 @@ type TidbStartScriptModel struct {
 
 // pdStartScriptTpl is the pd start script
 // Note: changing this will cause a rolling-update of pd cluster
-var pdStartScriptTpl = template.Must(template.New("pd-start-script").Parse(`#!/bin/sh
+var pdStartScriptTplText = `#!/bin/sh
 
 # This script is used to start pd containers in kubernetes cluster
 
@@ -203,7 +206,20 @@ echo "starting pd-server ..."
 sleep $((RANDOM % 10))
 echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
-`))
+`
+
+func replacePDStartScriptCustomPorts(startScript string) string {
+	// `DefaultPDClientPort`/`DefaultPDPeerPort` may be changed when building the binary
+	if v1alpha1.DefaultPDClientPort != 2379 {
+		startScript = strings.ReplaceAll(startScript, ":2379", fmt.Sprintf(":%d", v1alpha1.DefaultPDClientPort))
+	}
+	if v1alpha1.DefaultPDPeerPort != 2380 {
+		startScript = strings.ReplaceAll(startScript, ":2380", fmt.Sprintf(":%d", v1alpha1.DefaultPDPeerPort))
+	}
+	return startScript
+}
+
+var pdStartScriptTpl = template.Must(template.New("pd-start-script").Parse(replacePDStartScriptCustomPorts(pdStartScriptTplText)))
 
 var checkDNSV1 string = `
 digRes=$(dig ${domain} A ${domain} AAAA +search +short)
@@ -231,7 +247,7 @@ type PDStartScriptModel struct {
 	CheckDomainScript string
 }
 
-var tikvStartScriptTpl = template.Must(template.New("tikv-start-script").Parse(`#!/bin/sh
+var tikvStartScriptTplText = `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
 
@@ -290,7 +306,20 @@ fi
 echo "starting tikv-server ..."
 echo "/tikv-server ${ARGS}"
 exec /tikv-server ${ARGS}
-`))
+`
+
+func replaceTiKVStartScriptCustomPorts(startScript string) string {
+	// `DefaultTiKVServerPort`/`DefaultTiKVStatusPort` may be changed when building the binary
+	if v1alpha1.DefaultTiKVServerPort != 20160 {
+		startScript = strings.ReplaceAll(startScript, ":20160", fmt.Sprintf(":%d", v1alpha1.DefaultTiKVServerPort))
+	}
+	if v1alpha1.DefaultTiKVStatusPort != 20180 {
+		startScript = strings.ReplaceAll(startScript, ":20180", fmt.Sprintf(":%d", v1alpha1.DefaultTiKVStatusPort))
+	}
+	return startScript
+}
+
+var tikvStartScriptTpl = template.Must(template.New("tikv-start-script").Parse(replaceTiKVStartScriptCustomPorts(tikvStartScriptTplText)))
 
 type TiKVStartScriptModel struct {
 	CommonModel
@@ -305,7 +334,7 @@ type TiKVStartScriptModel struct {
 
 // pumpStartScriptTpl is the template string of pump start script
 // Note: changing this will cause a rolling-update of pump cluster
-var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`{{ if .AcrossK8s }}
+var pumpStartScriptTplText = `{{ if .AcrossK8s }}
 pd_url="{{ .PDAddr }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}:10261"
@@ -332,7 +361,17 @@ set -euo pipefail
 if [ $? == 0 ]; then
     echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
     tail -f /dev/null
-fi`))
+fi`
+
+func replacePumpStartScriptCustomPorts(startScript string) string {
+	// `DefaultPumpPort` may be changed when building the binary
+	if v1alpha1.DefaultPumpPort != 8250 {
+		startScript = strings.ReplaceAll(startScript, ":8250", fmt.Sprintf(":%d", v1alpha1.DefaultPumpPort))
+	}
+	return startScript
+}
+
+var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(replacePumpStartScriptCustomPorts(pumpStartScriptTplText)))
 
 type PumpStartScriptModel struct {
 	CommonModel
@@ -507,14 +546,14 @@ then
 echo "waiting for dm-master cluster ready timeout" >&2
 exit 1
 fi
-
+{{ if eq .CheckDomainScript ""}}
 if nslookup ${domain} 2>/dev/null
 then
 echo "nslookup domain ${domain} success"
 break
 else
 echo "nslookup domain ${domain} failed" >&2
-fi
+fi {{- else}}{{.CheckDomainScript}}{{end}}
 done
 
 ARGS="--data-dir={{ .DataDir }} \
@@ -550,9 +589,21 @@ echo "/dm-master ${ARGS}"
 exec /dm-master ${ARGS}
 `))
 
+// TODO: refactor to confine the checking script within the package
+var DMMasterCheckDNSV1 string = `
+digRes=$(dig ${domain} A ${domain} AAAA +search +short 2>/dev/null)
+if [ -z "${digRes}" ]
+then
+echo "dig domain ${domain} failed" >&2
+else
+echo "dig domain ${domain} success"
+break
+fi`
+
 type DMMasterStartScriptModel struct {
-	Scheme  string
-	DataDir string
+	Scheme            string
+	DataDir           string
+	CheckDomainScript string
 }
 
 func RenderDMMasterStartScript(model *DMMasterStartScriptModel) (string, error) {

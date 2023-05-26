@@ -74,7 +74,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	)
 
 	if restore.Spec.BR == nil {
-		err = backuputil.ValidateRestore(restore, "")
+		err = backuputil.ValidateRestore(restore, "", false)
 	} else {
 		restoreNamespace = restore.GetNamespace()
 		if restore.Spec.BR.ClusterNamespace != "" {
@@ -94,7 +94,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		}
 
 		tikvImage := tc.TiKVImage()
-		err = backuputil.ValidateRestore(restore, tikvImage)
+		err = backuputil.ValidateRestore(restore, tikvImage, tc.Spec.AcrossK8s)
 	}
 
 	if err != nil {
@@ -134,8 +134,24 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		if !tc.PDAllMembersReady() {
 			return controller.RequeueErrorf("restore %s/%s: waiting for all PD members are ready in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 		}
-		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreDataComplete(restore) && !tc.AllTiKVsAreAvailable() {
-			return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
+
+		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreTiKVComplete(restore) {
+			if !tc.AllTiKVsAreAvailable() {
+				return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
+			} else {
+				return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+					Type:   v1alpha1.RestoreTiKVComplete,
+					Status: corev1.ConditionTrue,
+				}, nil)
+			}
+		}
+
+		if restore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreFinish {
+			if !v1alpha1.IsRestoreComplete(restore) {
+				return controller.RequeueErrorf("restore %s/%s: waiting for restore status complete in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
+			} else {
+				return nil
+			}
 		}
 	}
 
@@ -365,8 +381,8 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		return "", nil
 	}
 
-	if v1alpha1.IsRestoreDataComplete(r) {
-		klog.Infof("restore-manager prepares to deal with the phase DataComplete")
+	if r.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreFinish {
+		klog.Infof("restore-manager prepares to deal with the phase restore-finish")
 
 		// When restore is based on volume snapshot, we need to restart all TiKV pods
 		// after restore data is complete.
@@ -403,7 +419,7 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		return "", nil
 	}
 
-	if v1alpha1.IsRestoreVolumeComplete(r) {
+	if v1alpha1.IsRestoreVolumeComplete(r) && r.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreVolume {
 		klog.Infof("restore-manager prepares to deal with the phase VolumeComplete")
 
 		// TiKV volumes are ready, we can skip prepare restore metadata.
@@ -640,6 +656,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeVolumeSnapshot))
 		if !v1alpha1.IsRestoreVolumeComplete(restore) {
 			args = append(args, "--prepare")
+			if restore.Spec.VolumeAZ != "" {
+				args = append(args, fmt.Sprintf("--target-az=%s", restore.Spec.VolumeAZ))
+			}
 		}
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))
