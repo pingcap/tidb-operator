@@ -58,7 +58,16 @@ func (rm *restoreManager) Sync(volumeRestore *v1alpha1.VolumeRestore) error {
 		return rm.cleanVolumeRestore(volumeRestore)
 	}
 
-	return rm.syncRestore(volumeRestore)
+	if err := rm.syncRestore(volumeRestore); err != nil {
+		brFailedErr, ok := err.(*fedvolumebackup.BRDataPlaneFailedError)
+		if !ok {
+			return err
+		}
+
+		klog.Errorf("VolumeRestore %s/%s restore member failed, set status failed. err: %s", volumeRestore.Name, volumeRestore.Namespace, err.Error())
+		rm.setVolumeRestoreFailed(&volumeRestore.Status, brFailedErr.Reason, brFailedErr.Message)
+	}
+	return nil
 }
 
 // UpdateStatus updates the status for a VolumeRestore, include condition and status info.
@@ -90,9 +99,6 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	if rm.skipVolumeRestore(volumeRestore) {
 		return nil
 	}
-	if err := rm.checkFederalMembers(volumeRestore); err != nil {
-		return err
-	}
 
 	if !v1alpha1.IsVolumeRestoreRunning(volumeRestore) {
 		rm.setVolumeRestoreRunning(&volumeRestore.Status)
@@ -106,6 +112,10 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 
 	if err := rm.executeRestoreVolumePhase(ctx, volumeRestore, restoreMembers); err != nil {
 		return err
+	}
+	// restore members in data plane are created just now, wait for next loop.
+	if len(restoreMembers) == 0 {
+		return nil
 	}
 	if err := rm.waitRestoreVolumeComplete(volumeRestore, restoreMembers); err != nil {
 		return err
@@ -133,7 +143,10 @@ func (rm *restoreManager) listRestoreMembers(ctx context.Context, volumeRestore 
 	restoreMembers := make([]*volumeRestoreMember, 0, len(volumeRestore.Spec.Clusters))
 	for _, memberCluster := range volumeRestore.Spec.Clusters {
 		k8sClusterName := memberCluster.K8sClusterName
-		kubeClient := rm.deps.FedClientset[k8sClusterName]
+		kubeClient, ok := rm.deps.FedClientset[k8sClusterName]
+		if !ok {
+			return nil, controller.RequeueErrorf("not find kube client of cluster %s", memberCluster.K8sClusterName)
+		}
 		restoreName := rm.generateRestoreMemberName(volumeRestore.Name, k8sClusterName)
 		restoreMember, err := kubeClient.PingcapV1alpha1().Restores(memberCluster.TCNamespace).Get(ctx, restoreName, metav1.GetOptions{})
 		if err != nil {
@@ -180,13 +193,17 @@ func (rm *restoreManager) waitRestoreVolumeComplete(volumeRestore *v1alpha1.Volu
 		k8sClusterName := restoreMember.k8sClusterName
 		if pingcapv1alpha1.IsRestoreInvalid(restoreMember.restore) {
 			errMsg := fmt.Sprintf("restore member %s of cluster %s is invalid", restoreMemberName, k8sClusterName)
-			rm.setVolumeRestoreFailed(&volumeRestore.Status, reasonVolumeRestoreMemberInvalid, errMsg)
-			return controller.IgnoreErrorf(errMsg)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeRestoreMemberInvalid,
+				Message: errMsg,
+			}
 		}
 		if pingcapv1alpha1.IsRestoreFailed(restoreMember.restore) {
 			errMsg := fmt.Sprintf("restore member %s of cluster %s is failed", restoreMemberName, k8sClusterName)
-			rm.setVolumeRestoreFailed(&volumeRestore.Status, reasonVolumeRestoreMemberFailed, errMsg)
-			return controller.IgnoreErrorf(errMsg)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeRestoreMemberFailed,
+				Message: errMsg,
+			}
 		}
 
 		if !pingcapv1alpha1.IsRestoreTiKVComplete(restoreMember.restore) {
@@ -211,14 +228,18 @@ func (rm *restoreManager) executeRestoreDataPhase(ctx context.Context, volumeRes
 		commitTsStr := restoreMember.restore.Status.CommitTs
 		if commitTsStr == "" {
 			errMsg := fmt.Sprintf("commit ts in restore member %s of cluster %s is empty", restoreMemberName, k8sClusterName)
-			rm.setVolumeRestoreFailed(&volumeRestore.Status, reasonVolumeRestoreMemberResolvedTsInvalid, errMsg)
-			return controller.IgnoreErrorf(errMsg)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeRestoreMemberResolvedTsInvalid,
+				Message: errMsg,
+			}
 		}
 		resolvedTs, err := strconv.ParseInt(commitTsStr, 10, 64)
 		if err != nil {
 			errMsg := fmt.Sprintf("parse resolved ts %s to int64 in restore member %s of cluster %s error: %s", commitTsStr, restoreMemberName, k8sClusterName, err.Error())
-			rm.setVolumeRestoreFailed(&volumeRestore.Status, reasonVolumeRestoreMemberResolvedTsInvalid, errMsg)
-			return controller.IgnoreErrorf(errMsg)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeRestoreMemberResolvedTsInvalid,
+				Message: errMsg,
+			}
 		}
 
 		if minResolvedTs > resolvedTs {
@@ -246,8 +267,10 @@ func (rm *restoreManager) waitRestoreDataComplete(volumeRestore *v1alpha1.Volume
 
 		if pingcapv1alpha1.IsRestoreFailed(restoreMember.restore) {
 			errMsg := fmt.Sprintf("restore member %s of cluster %s is failed", restoreMemberName, k8sClusterName)
-			rm.setVolumeRestoreFailed(&volumeRestore.Status, reasonVolumeRestoreMemberFailed, errMsg)
-			return controller.IgnoreErrorf(errMsg)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeRestoreMemberFailed,
+				Message: errMsg,
+			}
 		}
 	}
 
@@ -278,8 +301,10 @@ func (rm *restoreManager) waitRestoreComplete(volumeRestore *v1alpha1.VolumeRest
 		k8sClusterName := restoreMember.k8sClusterName
 		if pingcapv1alpha1.IsRestoreFailed(restoreMember.restore) {
 			errMsg := fmt.Sprintf("restore member %s of cluster %s is failed", restoreMemberName, k8sClusterName)
-			rm.setVolumeRestoreFailed(&volumeRestore.Status, reasonVolumeRestoreMemberFailed, errMsg)
-			return controller.IgnoreErrorf(errMsg)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeRestoreMemberFailed,
+				Message: errMsg,
+			}
 		}
 		if !pingcapv1alpha1.IsRestoreComplete(restoreMember.restore) {
 			return controller.IgnoreErrorf("restore member %s of cluster %s is not complete, waiting", restoreMemberName, k8sClusterName)
@@ -289,23 +314,19 @@ func (rm *restoreManager) waitRestoreComplete(volumeRestore *v1alpha1.VolumeRest
 }
 
 func (rm *restoreManager) cleanVolumeRestore(volumeRestore *v1alpha1.VolumeRestore) error {
-	name := volumeRestore.Name
-	ns := volumeRestore.Namespace
 	ctx := context.Background()
-	for _, memberCluster := range volumeRestore.Spec.Clusters {
-		k8sClusterName := memberCluster.K8sClusterName
-		kubeClient, ok := rm.deps.FedClientset[k8sClusterName]
-		if !ok {
-			klog.Errorf("not find kube client of cluster %s when clean volume restore %s/%s", k8sClusterName, ns, name)
-			continue
-		}
+	restoreMembers, err := rm.listRestoreMembers(ctx, volumeRestore)
+	if err != nil {
+		return err
+	}
 
-		restoreMemberName := rm.generateRestoreMemberName(name, k8sClusterName)
-		err := kubeClient.PingcapV1alpha1().Restores(memberCluster.TCNamespace).Delete(ctx, restoreMemberName, metav1.DeleteOptions{})
+	for _, restoreMember := range restoreMembers {
+		k8sClusterName := restoreMember.k8sClusterName
+		restoreMemberName := restoreMember.restore.Name
+		restoreMemberNamespace := restoreMember.restore.Namespace
+		kubeClient := rm.deps.FedClientset[k8sClusterName]
+		err := kubeClient.PingcapV1alpha1().Restores(restoreMemberNamespace).Delete(ctx, restoreMemberName, metav1.DeleteOptions{})
 		if err != nil {
-			if errors.IsNotFound(err) {
-				continue
-			}
 			return controller.RequeueErrorf("delete restore member %s of cluster %s error: %s", restoreMemberName, k8sClusterName, err.Error())
 		}
 	}
@@ -347,17 +368,6 @@ func (rm *restoreManager) setVolumeRestoreCleaned(volumeRestoreStatus *v1alpha1.
 		Type:   v1alpha1.VolumeRestoreCleaned,
 		Status: corev1.ConditionTrue,
 	})
-}
-
-func (rm *restoreManager) checkFederalMembers(volumeRestore *v1alpha1.VolumeRestore) error {
-	for _, memberCluster := range volumeRestore.Spec.Clusters {
-		if _, ok := rm.deps.FedClientset[memberCluster.K8sClusterName]; !ok {
-			errMsg := fmt.Sprintf("not find kube client of cluster %s", memberCluster.K8sClusterName)
-			rm.setVolumeRestoreFailed(&volumeRestore.Status, reasonKubeConfigNotFound, errMsg)
-			return controller.IgnoreErrorf(errMsg)
-		}
-	}
-	return nil
 }
 
 func (rm *restoreManager) skipVolumeRestore(volumeRestore *v1alpha1.VolumeRestore) bool {
