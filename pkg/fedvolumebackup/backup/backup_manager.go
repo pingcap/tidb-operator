@@ -76,8 +76,7 @@ func (bm *backupManager) Sync(volumeBackup *v1alpha1.VolumeBackup) error {
 		} else {
 			klog.Errorf("data plane backup failed when sync backup, will teardown all the backups. err: %s", err.Error())
 		}
-	}
-	if !backupFinished {
+	} else if !backupFinished {
 		return nil
 	}
 
@@ -177,8 +176,7 @@ func (bm *backupManager) listAllBackupMembers(ctx context.Context, volumeBackup 
 		k8sClusterName := memberCluster.K8sClusterName
 		kubeClient, ok := bm.deps.FedClientset[memberCluster.K8sClusterName]
 		if !ok {
-			errMsg := fmt.Sprintf("not find kube client of cluster %s", memberCluster.K8sClusterName)
-			return nil, controller.RequeueErrorf(errMsg)
+			return nil, controller.RequeueErrorf("not find kube client of cluster %s", memberCluster.K8sClusterName)
 		}
 		backupMemberName := bm.generateBackupMemberName(volumeBackup.Name, memberCluster.K8sClusterName)
 		backupMember, err := kubeClient.PingcapV1alpha1().Backups(memberCluster.TCNamespace).Get(ctx, backupMemberName, metav1.GetOptions{})
