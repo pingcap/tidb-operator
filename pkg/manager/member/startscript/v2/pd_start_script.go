@@ -16,6 +16,7 @@ package v2
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -138,8 +139,16 @@ exec /pd-server ${ARGS}
 `
 )
 
+func replacePdStartScriptCustomPorts(startScript string) string {
+	// `DefaultPDPeerPort` may be changed when building the binary
+	if v1alpha1.DefaultPDPeerPort != 2380 {
+		startScript = strings.ReplaceAll(startScript, ":2380", fmt.Sprintf(":%d", v1alpha1.DefaultPDPeerPort))
+	}
+	return startScript
+}
+
 var pdStartScriptTpl = template.Must(
 	template.Must(
 		template.New("pd-start-script").Parse(pdStartSubScript),
-	).Parse(componentCommonScript + pdStartScript),
+	).Parse(componentCommonScript + replacePdStartScriptCustomPorts(pdStartScript)),
 )
