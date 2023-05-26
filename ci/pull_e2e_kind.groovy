@@ -80,7 +80,6 @@ spec:
       limits:
         cpu: <%= resources.limits.cpu %>
         memory: <%= resources.limits.memory %>
-        ephemeral-storage: <%= resources.limits.storage %>
     <% } %>
 <% } %>
     # kind needs /lib/modules and cgroups from the host
@@ -159,14 +158,14 @@ String buildPodYAML(Map m = [:]) {
 
 e2ePodResources = [
     requests: [
-        cpu: "3",
-        memory: "6Gi",
-        storage: "150Gi"
-    ],
-    limits: [
         cpu: "8",
         memory: "16Gi",
-        storage: "150Gi"
+        storage: "250Gi"
+    ],
+    limits: [
+        cpu: "16",
+        memory: "32Gi",
+        storage: "250Gi"
     ],
 ]
 
