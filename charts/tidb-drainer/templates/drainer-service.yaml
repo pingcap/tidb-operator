@@ -13,7 +13,7 @@ spec:
   clusterIP: None
   ports:
   - name: drainer
-    port: 8249
+    port: {{ .Values.port | default 8249 }}
   selector:
     app.kubernetes.io/name: {{ include "drainer.name" . }}
     app.kubernetes.io/instance: {{ .Values.clusterName }}

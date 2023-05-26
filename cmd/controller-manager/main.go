@@ -25,6 +25,7 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
@@ -75,6 +76,8 @@ func main() {
 	flag.VisitAll(func(flag *flag.Flag) {
 		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
+
+	logCustomPorts()
 
 	hostName, err := os.Hostname()
 	if err != nil {
@@ -270,4 +273,73 @@ func createHTTPServer() *http.Server {
 		Addr:    ":6060",
 		Handler: serverMux,
 	}
+}
+
+func logCustomPorts() {
+	if v1alpha1.DefaultTiDBServerPort != 4000 ||
+		v1alpha1.DefaultTiDBStatusPort != 10080 ||
+		v1alpha1.DefaultPDClientPort != 2379 ||
+		v1alpha1.DefaultPDPeerPort != 2380 ||
+		v1alpha1.DefaultTiKVServerPort != 20160 ||
+		v1alpha1.DefaultTiKVStatusPort != 20180 ||
+		v1alpha1.DefaultTiFlashTcpPort != 9000 ||
+		v1alpha1.DefaultTiFlashHttpPort != 8123 ||
+		v1alpha1.DefaultTiFlashFlashPort != 3930 ||
+		v1alpha1.DefaultTiFlashProxyPort != 20170 ||
+		v1alpha1.DefaultTiFlashMetricsPort != 8234 ||
+		v1alpha1.DefaultTiFlashProxyStatusPort != 20292 ||
+		v1alpha1.DefaultTiFlashInternalPort != 9009 ||
+		v1alpha1.DefaultPumpPort != 8250 ||
+		v1alpha1.DefaultDrainerPort != 8249 ||
+		v1alpha1.DefaultTiCDCPort != 8301 {
+		klog.Infof("running TiDB Operator with custom ports: %#v", CustomPorts{
+			TiDBServerPort: v1alpha1.DefaultTiDBServerPort,
+			TiDBStatusPort: v1alpha1.DefaultTiDBStatusPort,
+
+			PDClientPort: v1alpha1.DefaultPDClientPort,
+			PDPeerPort:   v1alpha1.DefaultPDPeerPort,
+
+			TiKVServerPort: v1alpha1.DefaultTiKVServerPort,
+			TiKVStatusPort: v1alpha1.DefaultTiKVStatusPort,
+
+			TiFlashTcpPort:         v1alpha1.DefaultTiFlashTcpPort,
+			TiFlashHttpPort:        v1alpha1.DefaultTiFlashHttpPort,
+			TiFlashFlashPort:       v1alpha1.DefaultTiFlashFlashPort,
+			TiFlashProxyPort:       v1alpha1.DefaultTiFlashProxyPort,
+			TiFlashMetricsPort:     v1alpha1.DefaultTiFlashMetricsPort,
+			TiFlashProxyStatusPort: v1alpha1.DefaultTiFlashProxyStatusPort,
+			TiFlashInternalPort:    v1alpha1.DefaultTiFlashInternalPort,
+
+			PumpPort: v1alpha1.DefaultPumpPort,
+
+			DrainerPort: v1alpha1.DefaultDrainerPort,
+
+			TiCDCPort: v1alpha1.DefaultTiCDCPort,
+		})
+	}
+}
+
+type CustomPorts struct {
+	TiDBServerPort int32
+	TiDBStatusPort int32
+
+	PDClientPort int32
+	PDPeerPort   int32
+
+	TiKVServerPort int32
+	TiKVStatusPort int32
+
+	TiFlashTcpPort         int32
+	TiFlashHttpPort        int32
+	TiFlashFlashPort       int32
+	TiFlashProxyPort       int32
+	TiFlashMetricsPort     int32
+	TiFlashProxyStatusPort int32
+	TiFlashInternalPort    int32
+
+	PumpPort int32
+
+	DrainerPort int32
+
+	TiCDCPort int32
 }
