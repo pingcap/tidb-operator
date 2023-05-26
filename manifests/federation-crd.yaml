@@ -1088,11 +1088,27 @@ spec:
     listKind: VolumeRestoreList
     plural: volumerestores
     shortNames:
-    - vrt
+    - vrf
     singular: volumerestore
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: The current status of the backup
+      jsonPath: .status.phase
+      name: Status
+      type: string
+    - description: The commit ts of the restore
+      jsonPath: .status.commitTs
+      name: CommitTS
+      type: string
+    - description: The time that volume restore federation takes
+      jsonPath: .status.timeTaken
+      name: TimeTaken
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         properties:
@@ -2009,6 +2025,8 @@ spec:
             type: object
           status:
             properties:
+              commitTs:
+                type: string
               conditions:
                 items:
                   properties:
@@ -2049,6 +2067,7 @@ spec:
         type: object
     served: true
     storage: true
+    subresources: {}
 status:
   acceptedNames:
     kind: ""

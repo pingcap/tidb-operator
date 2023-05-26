@@ -194,8 +194,6 @@ const (
 	VolumeBackupFailed VolumeBackupConditionType = "Failed"
 	// VolumeBackupCleaned means all the resources about VolumeBackup have cleaned
 	VolumeBackupCleaned VolumeBackupConditionType = "Cleaned"
-	// VolumeBackupCleanFailed means the VolumeBackup cleanup is failed
-	VolumeBackupCleanFailed VolumeBackupConditionType = "CleanFailed"
 )
 
 // +genclient
@@ -242,8 +240,12 @@ type VolumeBackupScheduleStatus struct {
 // VolumeRestore is the control script's spec
 //
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName="vrt"
+// +kubebuilder:resource:shortName="vrf"
 // +genclient:noStatus
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
+// +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the restore"
+// +kubebuilder:printcolumn:name="TimeTaken",type=string,JSONPath=`.status.timeTaken`,description="The time that volume restore federation takes"
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type VolumeRestore struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -343,6 +345,8 @@ type VolumeRestoreStatus struct {
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// TimeTaken is the time that volume restore federation takes, it is TimeCompleted - TimeStarted
 	TimeTaken string `json:"timeTaken,omitempty"`
+	// CommitTs is the snapshot time point of tidb cluster.
+	CommitTs string `json:"commitTs,omitempty"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
 	Phase VolumeRestoreConditionType `json:"phase,omitempty"`
 	// +nullable

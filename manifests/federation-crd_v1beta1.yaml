@@ -1086,16 +1086,33 @@ metadata:
   creationTimestamp: null
   name: volumerestores.federation.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    description: The current status of the backup
+    name: Status
+    type: string
+  - JSONPath: .status.commitTs
+    description: The commit ts of the restore
+    name: CommitTS
+    type: string
+  - JSONPath: .status.timeTaken
+    description: The time that volume restore federation takes
+    name: TimeTaken
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: federation.pingcap.com
   names:
     kind: VolumeRestore
     listKind: VolumeRestoreList
     plural: volumerestores
     shortNames:
-    - vrt
+    - vrf
     singular: volumerestore
   preserveUnknownFields: false
   scope: Namespaced
+  subresources: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -2012,6 +2029,8 @@ spec:
           type: object
         status:
           properties:
+            commitTs:
+              type: string
             conditions:
               items:
                 properties:

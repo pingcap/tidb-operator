@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -303,7 +304,7 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 
 func (bm *backupManager) setVolumeBackupComplete(volumeBackupStatus *v1alpha1.VolumeBackupStatus, backupMembers []*volumeBackupMember) error {
 	volumeBackupStatus.TimeCompleted = metav1.Now()
-	volumeBackupStatus.TimeTaken = volumeBackupStatus.TimeCompleted.Sub(volumeBackupStatus.TimeStarted.Time).String()
+	volumeBackupStatus.TimeTaken = volumeBackupStatus.TimeCompleted.Sub(volumeBackupStatus.TimeStarted.Time).Round(time.Second).String()
 	bm.setVolumeBackupSize(volumeBackupStatus, backupMembers)
 	if err := bm.setVolumeBackupCommitTs(volumeBackupStatus, backupMembers); err != nil {
 		return err
@@ -317,19 +318,10 @@ func (bm *backupManager) setVolumeBackupComplete(volumeBackupStatus *v1alpha1.Vo
 
 func (bm *backupManager) setVolumeBackupFailed(volumeBackupStatus *v1alpha1.VolumeBackupStatus, backupMembers []*volumeBackupMember, reason, message string) {
 	volumeBackupStatus.TimeCompleted = metav1.Now()
-	volumeBackupStatus.TimeTaken = volumeBackupStatus.TimeCompleted.Sub(volumeBackupStatus.TimeStarted.Time).String()
+	volumeBackupStatus.TimeTaken = volumeBackupStatus.TimeCompleted.Sub(volumeBackupStatus.TimeStarted.Time).Round(time.Second).String()
 	bm.setVolumeBackupSize(volumeBackupStatus, backupMembers)
 	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
 		Type:    v1alpha1.VolumeBackupFailed,
-		Status:  corev1.ConditionTrue,
-		Reason:  reason,
-		Message: message,
-	})
-}
-
-func (bm *backupManager) setVolumeBackupCleanFailed(volumeBackupStatus *v1alpha1.VolumeBackupStatus, reason, message string) {
-	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
-		Type:    v1alpha1.VolumeBackupCleanFailed,
 		Status:  corev1.ConditionTrue,
 		Reason:  reason,
 		Message: message,
