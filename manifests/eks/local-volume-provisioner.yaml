@@ -92,7 +92,7 @@ spec:
             name: disks
             mountPropagation: Bidirectional
       containers:
-        - image: "quay.io/external_storage/local-volume-provisioner:v2.3.4"
+        - image: "quay.io/external_storage/local-volume-provisioner:v2.5.0"
           name: provisioner
           securityContext:
             privileged: true
@@ -106,7 +106,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: JOB_CONTAINER_IMAGE
-            value: "quay.io/external_storage/local-volume-provisioner:v2.3.4"
+            value: "quay.io/external_storage/local-volume-provisioner:v2.5.0"
           resources:
             requests:
               cpu: 100m

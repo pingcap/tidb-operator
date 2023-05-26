@@ -60,7 +60,7 @@ const (
 	// DMMySQLSvcStsName is the upstream MySQL svc/sts name for DM E2E tests.
 	DMMySQLSvcStsName = "dm-mysql"
 	// DMMySQLImage is the upstream MySQL container image for DM E2E tests.
-	DMMySQLImage = "mysql:5.7"
+	DMMySQLImage = "mysql:8.0.33"
 	// DMMySQLReplicas is the upstream MySQL instance number for DM E2E	tests.
 	// We use replicas as different MySQL instances.
 	DMMySQLReplicas int32 = 2

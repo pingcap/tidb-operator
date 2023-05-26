@@ -123,6 +123,11 @@ endif
 e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}"
 
+AWS_CLI_ARCH := x86_64
+ifeq ($(GOARCH),arm64)
+	AWS_CLI_ARCH := aarch64
+endif
+
 ifeq ($(NO_BUILD),y)
 e2e-docker:
 	@echo "NO_BUILD=y, skip build for $@"
@@ -138,7 +143,7 @@ endif
 	cp -r charts/tidb-backup tests/images/e2e
 	cp -r charts/tidb-drainer tests/images/e2e
 	cp -r manifests tests/images/e2e
-	docker build -t "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
+	docker build -t "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) --build-arg=AWS_CLI_ARCH=$(AWS_CLI_ARCH) tests/images/e2e
 
 e2e-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/ginkgo github.com/onsi/ginkgo/ginkgo

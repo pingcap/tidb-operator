@@ -1,5 +1,7 @@
 FROM debian:buster-slim
 
+ARG TARGETARCH
+ARG AWS_CLI_ARCH
 ENV KUBECTL_VERSION=v1.20.2
 ENV HELM_VERSION=v3.11.0
 
@@ -10,16 +12,16 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get clean -y
 
-RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
+RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/${TARGETARCH}/kubectl \
     -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
-    curl https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz \
-    -o helm-${HELM_VERSION}-linux-amd64.tar.gz && \
-    tar -zxvf helm-${HELM_VERSION}-linux-amd64.tar.gz && \
-    mv linux-amd64/helm /usr/local/bin/helm && \
-    rm -rf linux-amd64 && \
-    rm helm-${HELM_VERSION}-linux-amd64.tar.gz
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    curl https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz \
+    -o helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz && \
+    tar -zxvf helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz && \
+    mv linux-${TARGETARCH}/helm /usr/local/bin/helm && \
+    rm -rf linux-${TARGETARCH} && \
+    rm helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_CLI_ARCH}.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
     ./aws/install && \
     rm -r aws awscliv2.zip
