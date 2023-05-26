@@ -290,7 +290,8 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			bm.setVolumeBackupFailed(&volumeBackup.Status, backupMembers, reasonVolumeBackupMemberFailed, errMsg)
-			return controller.IgnoreErrorf(errMsg)
+			klog.Errorf(errMsg)
+			return nil
 		}
 		if !pingcapv1alpha1.IsBackupComplete(backupMember.backup) {
 			return controller.IgnoreErrorf("backup member %s of cluster %s is not complete", backupMember.backup.Name, backupMember.k8sClusterName)
