@@ -33,10 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
 )
 
-const (
-	reasonKubeConfigNotFound       = "KubeConfigNotFound"
-	reasonVolumeBackupMemberFailed = "VolumeBackupMemberFailed"
-)
+const reasonVolumeBackupMemberFailed = "VolumeBackupMemberFailed"
 
 type backupManager struct {
 	deps *controller.BrFedDependencies
@@ -50,14 +47,51 @@ func NewBackupManager(deps *controller.BrFedDependencies) fedvolumebackup.Backup
 }
 
 func (bm *backupManager) Sync(volumeBackup *v1alpha1.VolumeBackup) error {
+	ns := volumeBackup.GetNamespace()
+	name := volumeBackup.GetName()
+	klog.Infof("sync VolumeBackup %s/%s", ns, name)
+
+	if bm.skipSync(volumeBackup) {
+		klog.Infof("skip VolumeBackup %s/%s", ns, name)
+		return nil
+	}
+
+	ctx := context.Background()
+	backupMembers, err := bm.listAllBackupMembers(ctx, volumeBackup)
+	if err != nil {
+		return err
+	}
+
 	// because a finalizer is installed on the VolumeBackup on creation, when the VolumeBackup is deleted,
 	// volumeBackup.DeletionTimestamp will be set, controller will be informed with an onUpdate event,
 	// this is the moment that we can do clean up work.
 	if volumeBackup.DeletionTimestamp != nil {
-		return bm.cleanVolumeBackup(volumeBackup)
+		return bm.cleanVolumeBackup(ctx, volumeBackup, backupMembers)
 	}
 
-	return bm.syncBackup(volumeBackup)
+	backupFinished, err := bm.runBackup(ctx, volumeBackup, backupMembers)
+	if err != nil {
+		if _, ok := err.(*fedvolumebackup.BRDataPlaneFailedError); !ok {
+			return err
+		} else {
+			klog.Errorf("data plane backup failed when sync backup, will teardown all the backups. err: %s", err.Error())
+		}
+	}
+	if !backupFinished {
+		return nil
+	}
+
+	memberUpdated, err := bm.teardownVolumeBackup(ctx, volumeBackup, backupMembers)
+	if err != nil {
+		return err
+	}
+	if memberUpdated {
+		return nil
+	}
+	if err := bm.waitVolumeBackupComplete(ctx, volumeBackup, backupMembers); err != nil {
+		return err
+	}
+	return nil
 }
 
 // UpdateStatus updates the status for a Backup, include condition and status info.
@@ -80,70 +114,35 @@ func (bm *backupManager) UpdateStatus(backup *v1alpha1.VolumeBackup, newStatus *
 	})
 }
 
-func (bm *backupManager) syncBackup(volumeBackup *v1alpha1.VolumeBackup) error {
-	ns := volumeBackup.GetNamespace()
-	name := volumeBackup.GetName()
-	klog.Infof("sync VolumeBackup %s/%s", ns, name)
-
+func (bm *backupManager) runBackup(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) (finished bool, err error) {
 	if !v1alpha1.IsVolumeBackupRunning(volumeBackup) {
 		bm.setVolumeBackupRunning(&volumeBackup.Status)
 	}
 
-	if bm.skipSync(volumeBackup) {
-		klog.Infof("skip VolumeBackup %s/%s", ns, name)
-		return nil
-	}
-
-	ctx := context.Background()
-	backupMembers, err := bm.listAllBackupMembers(ctx, volumeBackup)
-	if err != nil {
-		return err
-	}
-
 	if len(backupMembers) == 0 {
-		return bm.initializeVolumeBackup(ctx, volumeBackup)
+		return false, bm.initializeVolumeBackup(ctx, volumeBackup)
 	}
 
 	bm.updateVolumeBackupMembersToStatus(&volumeBackup.Status, backupMembers)
 	if err := bm.waitBackupMemberInitialized(ctx, volumeBackup, backupMembers); err != nil {
-		return err
+		return false, err
 	}
 
 	newMemberCreated, err := bm.executeVolumeBackup(ctx, volumeBackup, backupMembers)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if newMemberCreated {
-		return nil
+		return false, nil
 	}
 	if err := bm.waitVolumeSnapshotsComplete(ctx, volumeBackup, backupMembers); err != nil {
-		return err
+		return false, err
 	}
+	return true, nil
 
-	memberUpdated, err := bm.teardownVolumeBackup(ctx, volumeBackup, backupMembers)
-	if err != nil {
-		return err
-	}
-	if memberUpdated {
-		return nil
-	}
-	if err := bm.waitVolumeBackupComplete(ctx, volumeBackup, backupMembers); err != nil {
-		return err
-	}
-
-	if err := bm.setVolumeBackupComplete(&volumeBackup.Status, backupMembers); err != nil {
-		return err
-	}
-	return nil
 }
 
-func (bm *backupManager) cleanVolumeBackup(volumeBackup *v1alpha1.VolumeBackup) error {
-	ctx := context.Background()
-	backupMembers, err := bm.listAllBackupMembers(ctx, volumeBackup)
-	if err != nil {
-		return err
-	}
-
+func (bm *backupManager) cleanVolumeBackup(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) error {
 	if len(backupMembers) == 0 {
 		bm.setVolumeBackupCleaned(&volumeBackup.Status)
 		return nil
@@ -179,12 +178,7 @@ func (bm *backupManager) listAllBackupMembers(ctx context.Context, volumeBackup 
 		kubeClient, ok := bm.deps.FedClientset[memberCluster.K8sClusterName]
 		if !ok {
 			errMsg := fmt.Sprintf("not find kube client of cluster %s", memberCluster.K8sClusterName)
-			if volumeBackup.DeletionTimestamp == nil {
-				bm.setVolumeBackupFailed(&volumeBackup.Status, nil, reasonKubeConfigNotFound, errMsg)
-			} else {
-				bm.setVolumeBackupCleanFailed(&volumeBackup.Status, reasonKubeConfigNotFound, errMsg)
-			}
-			return nil, errors.New(errMsg)
+			return nil, controller.RequeueErrorf(errMsg)
 		}
 		backupMemberName := bm.generateBackupMemberName(volumeBackup.Name, memberCluster.K8sClusterName)
 		backupMember, err := kubeClient.PingcapV1alpha1().Backups(memberCluster.TCNamespace).Get(ctx, backupMemberName, metav1.GetOptions{})
@@ -192,7 +186,7 @@ func (bm *backupManager) listAllBackupMembers(ctx context.Context, volumeBackup 
 			if errors.IsNotFound(err) {
 				continue
 			}
-			return nil, fmt.Errorf("get backup %s from cluster %s error: %s", backupMemberName, k8sClusterName, err.Error())
+			return nil, controller.RequeueErrorf("get backup %s from cluster %s error: %s", backupMemberName, k8sClusterName, err.Error())
 		}
 		backupMembers = append(backupMembers, &volumeBackupMember{
 			backup:         backupMember,
@@ -204,17 +198,11 @@ func (bm *backupManager) listAllBackupMembers(ctx context.Context, volumeBackup 
 
 func (bm *backupManager) initializeVolumeBackup(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup) error {
 	initializeMember := volumeBackup.Spec.Clusters[0]
-	kubeClient, ok := bm.deps.FedClientset[initializeMember.K8sClusterName]
-	if !ok {
-		errMsg := fmt.Sprintf("not find kube client of cluster %s", initializeMember.K8sClusterName)
-		bm.setVolumeBackupFailed(&volumeBackup.Status, nil, reasonKubeConfigNotFound, errMsg)
-		return errors.New(errMsg)
-	}
-
+	kubeClient := bm.deps.FedClientset[initializeMember.K8sClusterName]
 	backupMember := bm.buildBackupMember(volumeBackup.Name, &initializeMember, &volumeBackup.Spec.Template, true)
 	backupMember, err := kubeClient.PingcapV1alpha1().Backups(backupMember.Namespace).Create(ctx, backupMember, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("create initialize backup member %s to cluster %s error: %s", backupMember.Name, initializeMember.K8sClusterName, err.Error())
+		return controller.RequeueErrorf("create initialize backup member %s to cluster %s error: %s", backupMember.Name, initializeMember.K8sClusterName, err.Error())
 	}
 	return nil
 }
@@ -226,8 +214,10 @@ func (bm *backupManager) waitBackupMemberInitialized(ctx context.Context, volume
 		}
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s initialize failed", backupMember.backup.Name, backupMember.k8sClusterName)
-			bm.setVolumeBackupFailed(&volumeBackup.Status, backupMembers, reasonVolumeBackupMemberFailed, errMsg)
-			return errors.New(errMsg)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeBackupMemberFailed,
+				Message: errMsg,
+			}
 		}
 	}
 	return controller.IgnoreErrorf("backup member is not initialized, waiting")
@@ -238,14 +228,9 @@ func (bm *backupManager) executeVolumeBackup(ctx context.Context, volumeBackup *
 	for _, backupMember := range backupMembers {
 		if backupMember.backup.Spec.FederalVolumeBackupPhase == pingcapv1alpha1.FederalVolumeBackupInitialize {
 			backupMember.backup.Spec.FederalVolumeBackupPhase = pingcapv1alpha1.FederalVolumeBackupExecute
-			kubeClient, ok := bm.deps.FedClientset[backupMember.k8sClusterName]
-			if !ok {
-				errMsg := fmt.Sprintf("not find kube client of cluster %s", backupMember.k8sClusterName)
-				bm.setVolumeBackupFailed(&volumeBackup.Status, backupMembers, reasonKubeConfigNotFound, errMsg)
-				return false, errors.New(errMsg)
-			}
+			kubeClient := bm.deps.FedClientset[backupMember.k8sClusterName]
 			if updatedBackup, err := kubeClient.PingcapV1alpha1().Backups(backupMember.backup.Namespace).Update(ctx, backupMember.backup, metav1.UpdateOptions{}); err != nil {
-				return false, fmt.Errorf("update backup member %s of cluster %s to execute phase error: %s", backupMember.backup.Name, backupMember.k8sClusterName, err.Error())
+				return false, controller.RequeueErrorf("update backup member %s of cluster %s to execute phase error: %s", backupMember.backup.Name, backupMember.k8sClusterName, err.Error())
 			} else {
 				backupMember.backup = updatedBackup
 			}
@@ -260,15 +245,10 @@ func (bm *backupManager) executeVolumeBackup(ctx context.Context, volumeBackup *
 			continue
 		}
 
-		kubeClient, ok := bm.deps.FedClientset[memberCluster.K8sClusterName]
-		if !ok {
-			errMsg := fmt.Sprintf("not find kube client of cluster %s", memberCluster.K8sClusterName)
-			bm.setVolumeBackupFailed(&volumeBackup.Status, backupMembers, reasonKubeConfigNotFound, errMsg)
-			return false, errors.New(errMsg)
-		}
+		kubeClient := bm.deps.FedClientset[memberCluster.K8sClusterName]
 		backupMember := bm.buildBackupMember(volumeBackup.Name, &memberCluster, &volumeBackup.Spec.Template, false)
 		if _, err := kubeClient.PingcapV1alpha1().Backups(memberCluster.TCNamespace).Create(ctx, backupMember, metav1.CreateOptions{}); err != nil {
-			return false, fmt.Errorf("create backup member %s to cluster %s error: %s", backupMember.Name, memberCluster.K8sClusterName, err.Error())
+			return false, controller.RequeueErrorf("create backup member %s to cluster %s error: %s", backupMember.Name, memberCluster.K8sClusterName, err.Error())
 		}
 		newMemberCreated = true
 	}
@@ -279,8 +259,10 @@ func (bm *backupManager) waitVolumeSnapshotsComplete(ctx context.Context, volume
 	for _, backupMember := range backupMembers {
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsVolumeBackupFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
-			bm.setVolumeBackupFailed(&volumeBackup.Status, backupMembers, reasonVolumeBackupMemberFailed, errMsg)
-			return errors.New(errMsg)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeBackupMemberFailed,
+				Message: errMsg,
+			}
 		}
 		if !pingcapv1alpha1.IsVolumeBackupComplete(backupMember.backup) {
 			return controller.IgnoreErrorf("backup member %s of cluster %s is not volume snapshots complete", backupMember.backup.Name, backupMember.k8sClusterName)
@@ -296,14 +278,9 @@ func (bm *backupManager) teardownVolumeBackup(ctx context.Context, volumeBackup 
 		}
 
 		backupMember.backup.Spec.FederalVolumeBackupPhase = pingcapv1alpha1.FederalVolumeBackupTeardown
-		kubeClient, ok := bm.deps.FedClientset[backupMember.k8sClusterName]
-		if !ok {
-			errMsg := fmt.Sprintf("not find kube client of cluster %s", backupMember.k8sClusterName)
-			bm.setVolumeBackupFailed(&volumeBackup.Status, backupMembers, reasonKubeConfigNotFound, errMsg)
-			return false, errors.New(errMsg)
-		}
+		kubeClient := bm.deps.FedClientset[backupMember.k8sClusterName]
 		if _, err := kubeClient.PingcapV1alpha1().Backups(backupMember.backup.Namespace).Update(ctx, backupMember.backup, metav1.UpdateOptions{}); err != nil {
-			return false, fmt.Errorf("update backup member %s of cluster %s to teardown phase error: %s", backupMember.backup.Name, backupMember.k8sClusterName, err.Error())
+			return false, controller.RequeueErrorf("update backup member %s of cluster %s to teardown phase error: %s", backupMember.backup.Name, backupMember.k8sClusterName, err.Error())
 		}
 		memberUpdated = true
 	}
@@ -315,13 +292,14 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			bm.setVolumeBackupFailed(&volumeBackup.Status, backupMembers, reasonVolumeBackupMemberFailed, errMsg)
-			return errors.New(errMsg)
+			return controller.IgnoreErrorf(errMsg)
 		}
 		if !pingcapv1alpha1.IsBackupComplete(backupMember.backup) {
 			return controller.IgnoreErrorf("backup member %s of cluster %s is not complete", backupMember.backup.Name, backupMember.k8sClusterName)
 		}
 	}
-	return nil
+
+	return bm.setVolumeBackupComplete(&volumeBackup.Status, backupMembers)
 }
 
 func (bm *backupManager) setVolumeBackupComplete(volumeBackupStatus *v1alpha1.VolumeBackupStatus, backupMembers []*volumeBackupMember) error {
@@ -426,7 +404,7 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 }
 
 func (bm *backupManager) skipSync(volumeBackup *v1alpha1.VolumeBackup) bool {
-	return v1alpha1.IsVolumeBackupComplete(volumeBackup) || v1alpha1.IsVolumeBackupFailed(volumeBackup)
+	return volumeBackup.DeletionTimestamp == nil && (v1alpha1.IsVolumeBackupComplete(volumeBackup) || v1alpha1.IsVolumeBackupFailed(volumeBackup))
 }
 
 func (bm *backupManager) generateBackupMemberName(volumeBackupName, k8sClusterName string) string {
