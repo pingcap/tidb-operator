@@ -578,8 +578,8 @@ func TestGetNewPumpHeadlessService(t *testing.T) {
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "pump",
-							Port:       8250,
-							TargetPort: intstr.FromInt(8250),
+							Port:       v1alpha1.DefaultPumpPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultPumpPort)),
 							Protocol:   corev1.ProtocolTCP,
 						},
 					},

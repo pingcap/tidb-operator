@@ -205,7 +205,7 @@ func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs [
 		clusterNamespace = backup.Namespace
 	}
 	args := make([]string, 0)
-	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.BR.Cluster, clusterNamespace))
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:%d", backup.Spec.BR.Cluster, clusterNamespace, v1alpha1.DefaultPDClientPort))
 	if bo.TLSCluster {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
