@@ -23,13 +23,14 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"k8s.io/klog/v2"
 )
 
 func buildUrl(tcName string, tlsEnabled bool) *url.URL {
 	url := &url.URL{
-		Host:   fmt.Sprintf("%s-pd:2379", tcName),
+		Host:   fmt.Sprintf("%s-pd:%d", tcName, v1alpha1.DefaultPDClientPort),
 		Scheme: "http",
 	}
 

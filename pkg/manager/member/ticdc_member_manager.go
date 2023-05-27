@@ -349,8 +349,8 @@ func getNewCDCHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "ticdc",
-					Port:       8301,
-					TargetPort: intstr.FromInt(int(8301)),
+					Port:       v1alpha1.DefaultTiCDCPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultTiCDCPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -375,7 +375,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 	stsLabels := labelTiCDC(tc)
 	stsName := controller.TiCDCMemberName(tcName)
 	podLabels := util.CombineStringMap(stsLabels, baseTiCDCSpec.Labels())
-	podAnnotations := util.CombineStringMap(baseTiCDCSpec.Annotations(), controller.AnnProm(8301, "/metrics"))
+	podAnnotations := util.CombineStringMap(baseTiCDCSpec.Annotations(), controller.AnnProm(v1alpha1.DefaultTiCDCPort, "/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCDCLabelVal)
 	headlessSvcName := controller.TiCDCPeerMemberName(tcName)
 
@@ -462,7 +462,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "ticdc",
-				ContainerPort: int32(8301),
+				ContainerPort: v1alpha1.DefaultTiCDCPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},

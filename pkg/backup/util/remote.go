@@ -215,7 +215,7 @@ type BatchDeleteObjectsResult struct {
 	Errors  []ObjectError
 }
 
-// BatchDeleteObjects delete mutli objects
+// BatchDeleteObjects delete multi objects
 //
 // Depending on storage type, it use function 'BatchDeleteObjectsOfS3' or 'BatchDeleteObjectsConcurrently'
 func (b *StorageBackend) BatchDeleteObjects(ctx context.Context, objs []*blob.ListObject, opt v1alpha1.BatchDeleteOption) *BatchDeleteObjectsResult {

@@ -419,7 +419,7 @@ func dashboardStartArgs(
 	clusterTLSEnable, mysqlTLSEnable, telemetry, experimental bool,
 	tc *v1alpha1.TidbCluster,
 ) []string {
-	pdAddress := fmt.Sprintf("%s.%s:2379", controller.PDMemberName(tc.Name), tc.Namespace)
+	pdAddress := fmt.Sprintf("%s.%s:%d", controller.PDMemberName(tc.Name), tc.Namespace, v1alpha1.DefaultPDClientPort)
 
 	base := []string{
 		"-h=0.0.0.0",

@@ -1,4 +1,9 @@
 LDFLAGS ?= $(shell ./hack/version.sh)
+LDFLAGS_PORTS ?= $(shell ./hack/custom-port.sh)
+ifeq ($(LDFLAGS_PORTS),)
+else
+LDFLAGS := $(LDFLAGS) $(LDFLAGS_PORTS)
+endif
 
 GOVER_MAJOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\1/")
 GOVER_MINOR := $(shell go version | sed -E -e "s/.*go([0-9]+)[.]([0-9]+).*/\2/")

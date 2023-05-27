@@ -17,9 +17,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
@@ -174,7 +176,7 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		if member.Name == podName || member.Name == strArr[0] {
 			continue
 		}
-		memberURL := strings.ReplaceAll(member.PeerUrls[0], ":2380", ":2379")
+		memberURL := strings.ReplaceAll(member.PeerUrls[0], fmt.Sprintf(":%d", v1alpha1.DefaultPDPeerPort), fmt.Sprintf(":%d", v1alpha1.DefaultPDClientPort))
 		membersArr = append(membersArr, memberURL)
 	}
 	delete(currentCluster.peers, podName)
@@ -290,7 +292,7 @@ func parsePDURL(pdURL string) pdEndpointURL {
 	pdEndpoint := pdEndpointURL{
 		scheme:       "",
 		pdMemberName: "",
-		pdMemberPort: "2379",
+		pdMemberPort: strconv.FormatInt(int64(v1alpha1.DefaultPDClientPort), 10),
 		tcName:       "",
 	}
 
