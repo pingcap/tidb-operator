@@ -24,7 +24,24 @@ properties([
         string(name: 'PR_ID', defaultValue: '', description: 'pull request ID, this will override GIT_REF if set, e.g. 1889'),
         string(name: 'GINKGO_NODES', defaultValue: env.DEFAULT_GINKGO_NODES, description: 'the number of ginkgo nodes'),
         string(name: 'E2E_ARGS', defaultValue: env.DEFAULT_E2E_ARGS, description: "e2e args, e.g. --ginkgo.focus='\\[Stability\\]'"),
-        string(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE, description: 'delete ns after test case fails')
+        string(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE, description: 'delete ns after test case fails'),
+
+        string(name: 'CUSTOM_PORT_TIDB_SERVER', defaultValue: '', description: 'custom component port: tidb server'),
+        string(name: 'CUSTOM_PORT_TIDB_STATUS', defaultValue: '', description: 'custom component port: tidb status'),
+        string(name: 'CUSTOM_PORT_PD_CLIENT', defaultValue: '', description: 'custom component port: pd client'),
+        string(name: 'CUSTOM_PORT_PD_PEER', defaultValue: '', description: 'custom component port: pd peer'),
+        string(name: 'CUSTOM_PORT_TIKV_SERVER', defaultValue: '', description: 'custom component port: tikv server'),
+        string(name: 'CUSTOM_PORT_TIKV_STATUS', defaultValue: '', description: 'custom component port: tikv status'),
+        string(name: 'CUSTOM_PORT_TIFLASH_TCP', defaultValue: '', description: 'custom component port: tiflash tcp'),
+        string(name: 'CUSTOM_PORT_TIFLASH_HTTP', defaultValue: '', description: 'custom component port: tiflash http'),
+        string(name: 'CUSTOM_PORT_TIFLASH_FLASH', defaultValue: '', description: 'custom component port: tiflash flash'),
+        string(name: 'CUSTOM_PORT_TIFLASH_PROXY', defaultValue: '', description: 'custom component port: tiflash proxy'),
+        string(name: 'CUSTOM_PORT_TIFLASH_METRICS', defaultValue: '', description: 'custom component port: tiflash metrics'),
+        string(name: 'CUSTOM_PORT_TIFLASH_PROXY_STATUS', defaultValue: '', description: 'custom component port: tiflash proxy status'),
+        string(name: 'CUSTOM_PORT_TIFLASH_INTERNAL_STATUS', defaultValue: '', description: 'custom component port: tiflash internal status'),
+        string(name: 'CUSTOM_PORT_PUMP', defaultValue: '', description: 'custom component port: pump'),
+        string(name: 'CUSTOM_PORT_DRAINER', defaultValue: '', description: 'custom component port: drainer'),
+        string(name: 'CUSTOM_PORT_TICDC', defaultValue: '', description: 'custom component port: ticdc')
     ])
 ])
 
@@ -63,7 +80,6 @@ spec:
       limits:
         cpu: <%= resources.limits.cpu %>
         memory: <%= resources.limits.memory %>
-        ephemeral-storage: <%= resources.limits.storage %>
     <% } %>
 <% } %>
     # kind needs /lib/modules and cgroups from the host
@@ -100,8 +116,7 @@ spec:
   - name: kind-data-dir
     emptyDir: {}
   - name: etcd-data-dir
-    emptyDir:
-      medium: Memory
+    emptyDir: {}
   tolerations:
   - effect: NoSchedule
     key: tidb-operator
@@ -130,14 +145,14 @@ String buildPodYAML(Map m = [:]) {
 
 e2ePodResources = [
     requests: [
-        cpu: "3",
-        memory: "6Gi",
-        storage: "150Gi"
-    ],
-    limits: [
         cpu: "8",
         memory: "16Gi",
-        storage: "150Gi"
+        storage: "250Gi"
+    ],
+    limits: [
+        cpu: "16",
+        memory: "32Gi",
+        storage: "250Gi"
     ],
 ]
 
@@ -241,6 +256,23 @@ try {
         GIT_REF = env.ghprbActualCommit
     }
 
+    def CUSTOM_PORT_TIDB_SERVER = params.CUSTOM_PORT_TIDB_SERVER
+    def CUSTOM_PORT_TIDB_STATUS = params.CUSTOM_PORT_TIDB_STATUS
+    def CUSTOM_PORT_PD_CLIENT = params.CUSTOM_PORT_PD_CLIENT
+    def CUSTOM_PORT_PD_PEER = params.CUSTOM_PORT_PD_PEER
+    def CUSTOM_PORT_TIKV_SERVER = params.CUSTOM_PORT_TIKV_SERVER
+    def CUSTOM_PORT_TIKV_STATUS = params.CUSTOM_PORT_TIKV_STATUS
+    def CUSTOM_PORT_TIFLASH_TCP = params.CUSTOM_PORT_TIFLASH_TCP
+    def CUSTOM_PORT_TIFLASH_HTTP = params.CUSTOM_PORT_TIFLASH_HTTP
+    def CUSTOM_PORT_TIFLASH_FLASH = params.CUSTOM_PORT_TIFLASH_FLASH
+    def CUSTOM_PORT_TIFLASH_PROXY = params.CUSTOM_PORT_TIFLASH_PROXY
+    def CUSTOM_PORT_TIFLASH_METRICS = params.CUSTOM_PORT_TIFLASH_METRICS
+    def CUSTOM_PORT_TIFLASH_PROXY_STATUS = params.CUSTOM_PORT_TIFLASH_PROXY_STATUS
+    def CUSTOM_PORT_TIFLASH_INTERNAL_STATUS = params.CUSTOM_PORT_TIFLASH_INTERNAL_STATUS
+    def CUSTOM_PORT_PUMP = params.CUSTOM_PORT_PUMP
+    def CUSTOM_PORT_DRAINER = params.CUSTOM_PORT_DRAINER
+    def CUSTOM_PORT_TICDC = params.CUSTOM_PORT_TICDC
+
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
@@ -321,6 +353,22 @@ try {
                             echo "info: building"
                             echo "info: patch charts and golang code to enable coverage profile"
                             ./hack/e2e-patch-codecov.sh
+                            export CUSTOM_PORT_TIDB_SERVER=${CUSTOM_PORT_TIDB_SERVER}
+                            export CUSTOM_PORT_TIDB_STATUS=${CUSTOM_PORT_TIDB_STATUS}
+                            export CUSTOM_PORT_PD_CLIENT=${CUSTOM_PORT_PD_CLIENT}
+                            export CUSTOM_PORT_PD_PEER=${CUSTOM_PORT_PD_PEER}
+                            export CUSTOM_PORT_TIKV_SERVER=${CUSTOM_PORT_TIKV_SERVER}
+                            export CUSTOM_PORT_TIKV_STATUS=${CUSTOM_PORT_TIKV_STATUS}
+                            export CUSTOM_PORT_TIFLASH_TCP=${CUSTOM_PORT_TIFLASH_TCP}
+                            export CUSTOM_PORT_TIFLASH_HTTP=${CUSTOM_PORT_TIFLASH_HTTP}
+                            export CUSTOM_PORT_TIFLASH_FLASH=${CUSTOM_PORT_TIFLASH_FLASH}
+                            export CUSTOM_PORT_TIFLASH_PROXY=${CUSTOM_PORT_TIFLASH_PROXY}
+                            export CUSTOM_PORT_TIFLASH_METRICS=${CUSTOM_PORT_TIFLASH_METRICS}
+                            export CUSTOM_PORT_TIFLASH_PROXY_STATUS=${CUSTOM_PORT_TIFLASH_PROXY_STATUS}
+                            export CUSTOM_PORT_TIFLASH_INTERNAL_STATUS=${CUSTOM_PORT_TIFLASH_INTERNAL_STATUS}
+                            export CUSTOM_PORT_PUMP=${CUSTOM_PORT_PUMP}
+                            export CUSTOM_PORT_DRAINER=${CUSTOM_PORT_DRAINER}
+                            export CUSTOM_PORT_TICDC=${CUSTOM_PORT_TICDC}
                             E2E=y make build e2e-build
                             make gocovmerge
                             """

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
@@ -70,7 +71,7 @@ func tikvPodClientKey(schema, namespace, clusterName, podName string) string {
 
 // TiKVPodClientURL builds the url of tikv pod client
 func TiKVPodClientURL(namespace, clusterName, podName, scheme string) string {
-	return fmt.Sprintf("%s://%s.%s-tikv-peer.%s:20180", scheme, podName, clusterName, namespace)
+	return fmt.Sprintf("%s://%s.%s-tikv-peer.%s:%d", scheme, podName, clusterName, namespace, v1alpha1.DefaultTiKVStatusPort)
 }
 
 // FakeTiKVControl implements a fake version of TiKVControlInterface.

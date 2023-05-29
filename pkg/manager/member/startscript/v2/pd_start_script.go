@@ -16,6 +16,7 @@ package v2
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -55,13 +56,13 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.DataDir = filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir)
 
-	m.PeerURL = fmt.Sprintf("%s://0.0.0.0:2380", tc.Scheme())
+	m.PeerURL = fmt.Sprintf("%s://0.0.0.0:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
 
-	m.AdvertisePeerURL = fmt.Sprintf("%s://${PD_DOMAIN}:2380", tc.Scheme())
+	m.AdvertisePeerURL = fmt.Sprintf("%s://${PD_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
 
-	m.ClientURL = fmt.Sprintf("%s://0.0.0.0:2379", tc.Scheme())
+	m.ClientURL = fmt.Sprintf("%s://0.0.0.0:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 
-	m.AdvertiseClientURL = fmt.Sprintf("%s://${PD_DOMAIN}:2379", tc.Scheme())
+	m.AdvertiseClientURL = fmt.Sprintf("%s://${PD_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 
 	m.DiscoveryAddr = fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS)
 
@@ -138,8 +139,16 @@ exec /pd-server ${ARGS}
 `
 )
 
+func replacePdStartScriptCustomPorts(startScript string) string {
+	// `DefaultPDPeerPort` may be changed when building the binary
+	if v1alpha1.DefaultPDPeerPort != 2380 {
+		startScript = strings.ReplaceAll(startScript, ":2380", fmt.Sprintf(":%d", v1alpha1.DefaultPDPeerPort))
+	}
+	return startScript
+}
+
 var pdStartScriptTpl = template.Must(
 	template.Must(
 		template.New("pd-start-script").Parse(pdStartSubScript),
-	).Parse(componentCommonScript + pdStartScript),
+	).Parse(componentCommonScript + replacePdStartScriptCustomPorts(pdStartScript)),
 )

@@ -80,9 +80,6 @@ const (
 	// the service port for client requests to DM-master.
 	dmMasterSvcPort = uint16(8261)
 
-	// the service port for client requests to TiDB.
-	dmTiDBSvcPort = uint16(v1alpha1.DefaultTiDBServicePort)
-
 	// PK steps for generated data between MySQL tables.
 	dmPKStepForTable = 10000
 
@@ -91,6 +88,9 @@ const (
 )
 
 var (
+	// the service port for client requests to TiDB.
+	dmTiDBSvcPort = uint16(v1alpha1.DefaultTiDBServerPort)
+
 	dmMySQLLabels = map[string]string{
 		label.NameLabelKey:      DMLabelName,
 		label.ComponentLabelKey: "mysql",
@@ -213,7 +213,7 @@ timezone: "UTC"
 
 target-database:
   host: "dm-tidb-tidb.dm-tidb"
-  port: 4000
+  port: %d # replace this with the real TiDB port
   user: "root"
   password: ""
 
@@ -240,7 +240,7 @@ timezone: "UTC"
 
 target-database:
   host: "dm-tidb-tidb.dm-tidb"
-  port: 4000
+  port: %d # replace this with the real TiDB port
   user: "root"
   password: ""
 
@@ -569,7 +569,7 @@ func StartDMTask(fw portforward.PortForward, ns, masterSvcName, taskConf, errSub
 	}
 
 	var req = Req{
-		Task: fmt.Sprintf(taskConf, DMTaskName(ns), DMTaskName(ns)),
+		Task: fmt.Sprintf(taskConf, DMTaskName(ns), v1alpha1.DefaultTiDBServerPort, DMTaskName(ns)),
 	}
 	data, err := json.Marshal(req)
 	if err != nil {

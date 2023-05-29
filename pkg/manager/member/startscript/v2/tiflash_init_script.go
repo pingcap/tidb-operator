@@ -34,7 +34,7 @@ func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	if tc.AcrossK8s() {
 		m.AcrossK8s = &AcrossK8sScriptModel{
-			PDAddr:        fmt.Sprintf("%s://%s:2379", tc.Scheme(), controller.PDMemberName(tcName)),
+			PDAddr:        fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
 			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
 		}
 	}

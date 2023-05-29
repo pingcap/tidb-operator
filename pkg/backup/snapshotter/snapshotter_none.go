@@ -41,3 +41,5 @@ func (s *NoneSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID stri
 func (s *NoneSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error) {
 	return "", nil
 }
+
+func (s *NoneSnapshotter) ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume) {}
