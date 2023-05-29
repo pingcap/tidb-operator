@@ -74,7 +74,7 @@ func (bm *backupManager) Sync(volumeBackup *v1alpha1.VolumeBackup) error {
 		if _, ok := err.(*fedvolumebackup.BRDataPlaneFailedError); !ok {
 			return err
 		} else {
-			klog.Errorf("data plane backup failed when sync backup, will teardown all the backups. err: %s", err.Error())
+			klog.Errorf("VolumeBackup %s/%s data plane backup failed when sync backup, will teardown all the backups. err: %s", ns, name, err.Error())
 		}
 	} else if !backupFinished {
 		return nil
@@ -290,7 +290,7 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			bm.setVolumeBackupFailed(&volumeBackup.Status, backupMembers, reasonVolumeBackupMemberFailed, errMsg)
-			klog.Errorf(errMsg)
+			klog.Errorf("VolumeBackup %s/%s failed, err: %s", volumeBackup.Namespace, volumeBackup.Name, errMsg)
 			return nil
 		}
 		if !pingcapv1alpha1.IsBackupComplete(backupMember.backup) {
@@ -321,15 +321,6 @@ func (bm *backupManager) setVolumeBackupFailed(volumeBackupStatus *v1alpha1.Volu
 	bm.setVolumeBackupSize(volumeBackupStatus, backupMembers)
 	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
 		Type:    v1alpha1.VolumeBackupFailed,
-		Status:  corev1.ConditionTrue,
-		Reason:  reason,
-		Message: message,
-	})
-}
-
-func (bm *backupManager) setVolumeBackupCleanFailed(volumeBackupStatus *v1alpha1.VolumeBackupStatus, reason, message string) {
-	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
-		Type:    v1alpha1.VolumeBackupCleanFailed,
 		Status:  corev1.ConditionTrue,
 		Reason:  reason,
 		Message: message,

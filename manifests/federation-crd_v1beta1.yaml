@@ -34,7 +34,7 @@ spec:
     listKind: VolumeBackupList
     plural: volumebackups
     shortNames:
-    - vbf
+    - vbk
     singular: volumebackup
   preserveUnknownFields: false
   scope: Namespaced
