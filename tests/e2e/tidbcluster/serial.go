@@ -62,8 +62,8 @@ import (
 )
 
 const (
-	OperatorLatestVersion    string = "v1.3.6"
-	OperatorPrevMajorVersion string = "v1.2.7"
+	OperatorLatestVersion    string = "v1.4.4"
+	OperatorPrevMajorVersion string = "v1.3.10"
 )
 
 // Serial specs describe tests which cannot run in parallel.
