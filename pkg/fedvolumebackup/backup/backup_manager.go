@@ -156,7 +156,7 @@ func (bm *backupManager) cleanVolumeBackup(ctx context.Context, volumeBackup *v1
 		kubeClient := bm.deps.FedClientset[backupMember.k8sClusterName]
 		if err := kubeClient.PingcapV1alpha1().Backups(backupMember.backup.Namespace).
 			Delete(ctx, backupMember.backup.Name, metav1.DeleteOptions{}); err != nil {
-			return fmt.Errorf("delete backup member %s of cluster %s error: %s", backupMember.backup.Name, backupMember.k8sClusterName, err.Error())
+			return controller.RequeueErrorf("delete backup member %s of cluster %s error: %s", backupMember.backup.Name, backupMember.k8sClusterName, err.Error())
 		}
 	}
 	return nil
@@ -409,7 +409,9 @@ type volumeBackupMember struct {
 var _ fedvolumebackup.BackupManager = &backupManager{}
 
 type FakeBackupManager struct {
-	err error
+	err           error
+	updateStatus  bool
+	statusUpdated bool
 }
 
 func NewFakeBackupManager() *FakeBackupManager {
@@ -420,13 +422,28 @@ func (m *FakeBackupManager) SetSyncError(err error) {
 	m.err = err
 }
 
-func (m *FakeBackupManager) Sync(_ *v1alpha1.VolumeBackup) error {
+func (m *FakeBackupManager) SetUpdateStatus() {
+	m.updateStatus = true
+}
+
+func (m *FakeBackupManager) Sync(volumeBackup *v1alpha1.VolumeBackup) error {
+	if m.updateStatus {
+		volumeBackup.Status.Conditions = append(volumeBackup.Status.Conditions, v1alpha1.VolumeBackupCondition{
+			Type:   v1alpha1.VolumeBackupComplete,
+			Status: corev1.ConditionTrue,
+		})
+	}
 	return m.err
 }
 
 // UpdateStatus updates the status for a Backup, include condition and status info.
 func (m *FakeBackupManager) UpdateStatus(_ *v1alpha1.VolumeBackup, newStatus *v1alpha1.VolumeBackupStatus) error {
+	m.statusUpdated = true
 	return nil
+}
+
+func (m *FakeBackupManager) IsStatusUpdated() bool {
+	return m.statusUpdated
 }
 
 var _ fedvolumebackup.BackupManager = &FakeBackupManager{}
