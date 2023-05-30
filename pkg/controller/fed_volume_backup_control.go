@@ -31,7 +31,7 @@ import (
 	listers "github.com/pingcap/tidb-operator/pkg/client/federation/listers/pingcap/v1alpha1"
 )
 
-// FedVolumeBackupControlInterface manages federaton VolumeBackups used in VolumeBackupSchedule
+// FedVolumeBackupControlInterface manages federation VolumeBackups used in VolumeBackupSchedule
 type FedVolumeBackupControlInterface interface {
 	CreateVolumeBackup(backup *v1alpha1.VolumeBackup) (*v1alpha1.VolumeBackup, error)
 	DeleteVolumeBackup(backup *v1alpha1.VolumeBackup) error
@@ -108,14 +108,16 @@ type FakeFedVolumeBackupControl struct {
 	volumeBackupLister        listers.VolumeBackupLister
 	volumeBackupIndexer       cache.Indexer
 	createVolumeBackupTracker RequestTracker
+	updateVolumeBackupTracker RequestTracker
 	deleteVolumeBackupTracker RequestTracker
 }
 
-// NewFakeBackupControl returns a FakeBackupControl
+// NewFakeFedVolumeBackupControl returns a FakeFedVolumeBackupControl
 func NewFakeFedVolumeBackupControl(volumeBackupInformer informers.VolumeBackupInformer) *FakeFedVolumeBackupControl {
 	return &FakeFedVolumeBackupControl{
 		volumeBackupInformer.Lister(),
 		volumeBackupInformer.Informer().GetIndexer(),
+		RequestTracker{},
 		RequestTracker{},
 		RequestTracker{},
 	}
@@ -124,6 +126,11 @@ func NewFakeFedVolumeBackupControl(volumeBackupInformer informers.VolumeBackupIn
 // SetCreateVolumeBackupError sets the error attributes of createVolumeBackupTracker
 func (fbc *FakeFedVolumeBackupControl) SetCreateVolumeBackupError(err error, after int) {
 	fbc.createVolumeBackupTracker.SetError(err).SetAfter(after)
+}
+
+// SetUpdateVolumeBackupError sets the error attributes of createVolumeBackupTracker
+func (fbc *FakeFedVolumeBackupControl) SetUpdateVolumeBackupError(err error, after int) {
+	fbc.updateVolumeBackupTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeleteVolumeBackupError sets the error attributes of deleteVolumeBackupTracker

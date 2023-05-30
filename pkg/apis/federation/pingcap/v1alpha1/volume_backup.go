@@ -88,6 +88,12 @@ func IsVolumeBackupRunning(volumeBackup *VolumeBackup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsBackupPrepared returns true if VolumeBackup is running
+func IsBackupPrepared(volumeBackup *VolumeBackup) bool {
+	_, condition := GetVolumeBackupCondition(&volumeBackup.Status, VolumeBackupPrepared)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsVolumeBackupComplete returns true if VolumeBackup is complete
 func IsVolumeBackupComplete(volumeBackup *VolumeBackup) bool {
 	_, condition := GetVolumeBackupCondition(&volumeBackup.Status, VolumeBackupComplete)

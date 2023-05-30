@@ -186,6 +186,8 @@ type VolumeBackupConditionType string
 const (
 	// VolumeBackupInvalid means the VolumeBackup is invalid
 	VolumeBackupInvalid VolumeBackupConditionType = "Invalid"
+	// VolumeBackupPrepared means the VolumeBackup preparation is done
+	VolumeBackupPrepared VolumeBackupConditionType = "Prepared"
 	// VolumeBackupRunning means the VolumeBackup is running
 	VolumeBackupRunning VolumeBackupConditionType = "Running"
 	// VolumeBackupComplete means all the backups in data plane are complete and the VolumeBackup is complete
@@ -196,8 +198,6 @@ const (
 	VolumeBackupCleaned VolumeBackupConditionType = "Cleaned"
 	// VolumeBackupCleanFailed means the VolumeBackup cleanup is failed
 	VolumeBackupCleanFailed VolumeBackupConditionType = "CleanFailed"
-	// VolumeBackupPrepared means the VolumeBackup is prepared
-	VolumeBackupPrepared VolumeBackupConditionType = "Prepared"
 )
 
 // +genclient
@@ -206,8 +206,14 @@ const (
 // VolumeBackupSchedule is the control script's spec
 //
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName="vbks"
+// +kubebuilder:resource:shortName="vbfs"
 // +genclient:noStatus
+// +kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule`,description="The cron format string used for backup scheduling"
+// +kubebuilder:printcolumn:name="MaxBackups",type=integer,JSONPath=`.spec.maxBackups`,description="The max number of backups we want to keep"
+// +kubebuilder:printcolumn:name="MaxReservedTime",type=string,JSONPath=`.spec.maxReservedTime`,description="How long backups we want to keep"
+// +kubebuilder:printcolumn:name="LastBackup",type=string,JSONPath=`.status.lastBackup`,description="The last backup CR name",priority=1
+// +kubebuilder:printcolumn:name="LastBackupTime",type=date,JSONPath=`.status.lastBackupTime`,description="The last time the backup was successfully created",priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type VolumeBackupSchedule struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -232,10 +238,29 @@ type VolumeBackupScheduleList struct {
 // VolumeBackupScheduleSpec describes the attributes that a user creates on a volume backup schedule.
 // +k8s:openapi-gen=true
 type VolumeBackupScheduleSpec struct {
+	// Schedule specifies the cron string used for backup scheduling.
+	Schedule string `json:"schedule"`
+	// Pause means paused backupSchedule
+	Pause bool `json:"pause,omitempty"`
+	// MaxBackups is to specify how many backups we want to keep
+	// 0 is magic number to indicate un-limited backups.
+	// if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
+	// and MaxBackups is ignored.
+	MaxBackups *int32 `json:"maxBackups,omitempty"`
+	// MaxReservedTime is to specify how long backups we want to keep.
+	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
+	// BackupTemplate is the specification of the volume backup structure to get scheduled.
+	BackupTemplate VolumeBackupSpec `json:"backupTemplate"`
 }
 
 // VolumeBackupScheduleStatus represents the current status of a volume backup schedule.
 type VolumeBackupScheduleStatus struct {
+	// LastBackup represents the last backup.
+	LastBackup string `json:"lastBackup,omitempty"`
+	// LastBackupTime represents the last time the backup was successfully created.
+	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
+	// AllBackupCleanTime represents the time when all backup entries are cleaned up
+	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime,omitempty"`
 }
 
 // +genclient

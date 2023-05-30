@@ -14,8 +14,17 @@
 package backupschedule
 
 import (
+	"fmt"
+	"sort"
 	"time"
 
+	perrors "github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/robfig/cron"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
@@ -38,13 +47,304 @@ func NewBackupScheduleManager(deps *controller.BrFedDependencies) fedvolumebacku
 	}
 }
 
-func (bm *backupScheduleManager) Sync(volumeBackupSchedule *v1alpha1.VolumeBackupSchedule) error {
-	ns := volumeBackupSchedule.GetNamespace()
-	name := volumeBackupSchedule.GetName()
-	// TODO(federation): implement the main logic of backupSchedule
-	klog.Infof("sync VolumeBackupSchedule %s/%s", ns, name)
+func (bm *backupScheduleManager) Sync(vbs *v1alpha1.VolumeBackupSchedule) error {
+	defer bm.backupGC(vbs)
 
+	if vbs.Spec.Pause {
+		return controller.IgnoreErrorf("backupSchedule %s/%s has been paused", vbs.GetNamespace(), vbs.GetName())
+	}
+
+	if err := bm.canPerformNextBackup(vbs); err != nil {
+		return err
+	}
+
+	scheduledTime, err := getLastScheduledTime(vbs, bm.now)
+	if scheduledTime == nil {
+		return err
+	}
+
+	// TODO: do we need to delete last backup job also?
+	backup, err := createBackup(bm.deps.FedVolumeBackupControl, vbs, *scheduledTime)
+	if err != nil {
+		return err
+	}
+
+	vbs.Status.LastBackup = backup.GetName()
+	vbs.Status.LastBackupTime = &metav1.Time{Time: *scheduledTime}
+	vbs.Status.AllBackupCleanTime = nil
 	return nil
+}
+
+// getLastScheduledTime return the newest time need to be scheduled according last backup time.
+// the return time is not before now and return nil if there's no such time.
+func getLastScheduledTime(vbs *v1alpha1.VolumeBackupSchedule, nowFn nowFn) (*time.Time, error) {
+	ns := vbs.GetNamespace()
+	bsName := vbs.GetName()
+
+	sched, err := cron.ParseStandard(vbs.Spec.Schedule)
+	if err != nil {
+		return nil, fmt.Errorf("parse backup schedule %s/%s cron format %s failed, err: %v", ns, bsName, vbs.Spec.Schedule, err)
+	}
+
+	var earliestTime time.Time
+	if vbs.Status.LastBackupTime != nil {
+		earliestTime = vbs.Status.LastBackupTime.Time
+	} else if vbs.Status.AllBackupCleanTime != nil {
+		// Recovery from a long paused backup schedule may cause problem like "incorrect clock",
+		// so we introduce AllBackupCleanTime field to solve this problem.
+		earliestTime = vbs.Status.AllBackupCleanTime.Time
+	} else {
+		// If none found, then this is either a recently created backupSchedule,
+		// or the backupSchedule status info was somehow lost,
+		// or that we have started a backup, but have not update backupSchedule status yet
+		// (distributed systems can have arbitrary delays).
+		// In any case, use the creation time of the backupSchedule as last known start time.
+		earliestTime = vbs.ObjectMeta.CreationTimestamp.Time
+	}
+
+	now := nowFn()
+	if earliestTime.After(now) {
+		// timestamp fallback, waiting for the next backup schedule period
+		klog.Errorf("backup schedule %s/%s timestamp fallback, lastBackupTime: %s, now: %s",
+			ns, bsName, earliestTime.Format(time.RFC3339), now.Format(time.RFC3339))
+		return nil, nil
+	}
+
+	var scheduledTimes []time.Time
+	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
+		scheduledTimes = append(scheduledTimes, t)
+		// If there is a bug somewhere, or incorrect clock
+		// on controller's server or apiservers (for setting creationTimestamp)
+		// then there could be so many missed start times (it could be off
+		// by decades or more), that it would eat up all the CPU and memory
+		// of this controller. In that case, we want to not try to list
+		// all the missed start times.
+		//
+		// I've somewhat arbitrarily picked 100, as more than 80,
+		// but less than "lots".
+		if len(scheduledTimes) > 100 {
+			// We can't get the last backup schedule time
+			if vbs.Status.LastBackupTime == nil && vbs.Status.AllBackupCleanTime != nil {
+				// Recovery backup schedule from pause status, should refresh AllBackupCleanTime to avoid unschedulable problem
+				vbs.Status.AllBackupCleanTime = &metav1.Time{Time: nowFn()}
+				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", ns, bsName)
+			}
+			klog.Error("Too many missed start backup schedule time (> 100). Check the clock.")
+			return nil, nil
+		}
+	}
+
+	if len(scheduledTimes) == 0 {
+		klog.V(4).Infof("unmet backup schedule %s/%s start time, waiting for the next backup schedule period", ns, bsName)
+		return nil, nil
+	}
+	scheduledTime := scheduledTimes[len(scheduledTimes)-1]
+	return &scheduledTime, nil
+}
+
+func buildBackup(vbs *v1alpha1.VolumeBackupSchedule, timestamp time.Time) *v1alpha1.VolumeBackup {
+	ns := vbs.GetNamespace()
+	bsName := vbs.GetName()
+
+	backupSpec := *vbs.Spec.BackupTemplate.DeepCopy()
+
+	bsLabel := util.CombineStringMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), vbs.Labels)
+	backup := &v1alpha1.VolumeBackup{
+		Spec: backupSpec,
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   ns,
+			Name:        vbs.GetBackupCRDName(timestamp),
+			Labels:      bsLabel,
+			Annotations: vbs.Annotations,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetFedVolumeBackupScheduleOwnerRef(vbs),
+			},
+		},
+	}
+
+	return backup
+}
+
+func createBackup(bkController controller.FedVolumeBackupControlInterface, vbs *v1alpha1.VolumeBackupSchedule, timestamp time.Time) (*v1alpha1.VolumeBackup, error) {
+	bk := buildBackup(vbs, timestamp)
+	return bkController.CreateVolumeBackup(bk)
+}
+
+func (bm *backupScheduleManager) canPerformNextBackup(vbs *v1alpha1.VolumeBackupSchedule) error {
+	ns := vbs.GetNamespace()
+	bsName := vbs.GetName()
+
+	backup, err := bm.deps.VolumeBackupLister.VolumeBackups(ns).Get(vbs.Status.LastBackup)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, vbs.Status.LastBackup, err)
+	}
+
+	if v1alpha1.IsVolumeBackupComplete(backup) {
+		return nil
+	}
+	// If the last backup is in a failed state, but it is not scheduled yet,
+	// skip this sync round of the backup schedule and waiting the last backup.
+	return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, vbs.Status.LastBackup)
+}
+
+func (bm *backupScheduleManager) backupGC(vbs *v1alpha1.VolumeBackupSchedule) {
+	ns := vbs.GetNamespace()
+	bsName := vbs.GetName()
+
+	// if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred.
+	if vbs.Spec.MaxReservedTime != nil {
+		bm.backupGCByMaxReservedTime(vbs)
+		return
+	}
+
+	if vbs.Spec.MaxBackups != nil && *vbs.Spec.MaxBackups > 0 {
+		bm.backupGCByMaxBackups(vbs)
+		return
+	}
+	klog.Warningf("backup schedule %s/%s does not set backup gc policy", ns, bsName)
+}
+
+func (bm *backupScheduleManager) backupGCByMaxReservedTime(vbs *v1alpha1.VolumeBackupSchedule) {
+	ns := vbs.GetNamespace()
+	bsName := vbs.GetName()
+
+	reservedTime, err := time.ParseDuration(*vbs.Spec.MaxReservedTime)
+	if err != nil {
+		klog.Errorf("backup schedule %s/%s, invalid MaxReservedTime %s", ns, bsName, *vbs.Spec.MaxReservedTime)
+		return
+	}
+
+	backupsList, err := bm.getBackupList(vbs)
+	if err != nil {
+		klog.Errorf("backupGCByMaxReservedTime, err: %s", err)
+		return
+	}
+
+	ascBackups := sortSnapshotBackups(backupsList)
+	if len(ascBackups) == 0 {
+		return
+	}
+
+	var expiredBackups []*v1alpha1.VolumeBackup
+
+	expiredBackups, err = calculateExpiredBackups(ascBackups, reservedTime)
+	if err != nil {
+		klog.Errorf("caculate expired backups without log backup, err: %s", err)
+		return
+	}
+
+	for _, backup := range expiredBackups {
+		// delete the expired backup
+		if err = bm.deps.FedVolumeBackupControl.DeleteVolumeBackup(backup); err != nil {
+			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+			return
+		}
+		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+	}
+
+	if len(expiredBackups) == len(backupsList) && len(expiredBackups) > 0 {
+		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
+		bm.resetLastBackup(vbs)
+	}
+}
+
+// sortSnapshotBackups return snapshot backups to be GCed order by create time asc
+func sortSnapshotBackups(backupsList []*v1alpha1.VolumeBackup) []*v1alpha1.VolumeBackup {
+	var ascBackupList = make([]*v1alpha1.VolumeBackup, 0)
+
+	for _, backup := range backupsList {
+		// the backup status CommitTs will be empty after created. without this, all newly created backups will be GC'ed
+		if v1alpha1.IsVolumeBackupRunning(backup) || v1alpha1.IsBackupPrepared(backup) {
+			continue
+		}
+		ascBackupList = append(ascBackupList, backup)
+	}
+
+	sort.Slice(ascBackupList, func(i, j int) bool {
+		return ascBackupList[i].CreationTimestamp.Unix() < ascBackupList[j].CreationTimestamp.Unix()
+	})
+	return ascBackupList
+}
+
+func calculateExpiredBackups(backupsList []*v1alpha1.VolumeBackup, reservedTime time.Duration) ([]*v1alpha1.VolumeBackup, error) {
+	expiredTS := config.TSToTSO(time.Now().Add(-1 * reservedTime).Unix())
+	i := 0
+	for ; i < len(backupsList); i++ {
+		startTS, err := config.ParseTSString(backupsList[i].Status.CommitTs)
+		if err != nil {
+			return nil, perrors.Annotatef(err, "parse start tso: %s", backupsList[i].Status.CommitTs)
+		}
+		if startTS >= expiredTS {
+			break
+		}
+	}
+	return backupsList[:i], nil
+}
+
+func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.VolumeBackupSchedule) ([]*v1alpha1.VolumeBackup, error) {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
+	backupLabels := label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName)
+	selector, err := backupLabels.Selector()
+	if err != nil {
+		return nil, fmt.Errorf("generate backup schedule %s/%s label selector failed, err: %v", ns, bsName, err)
+	}
+	backupsList, err := bm.deps.VolumeBackupLister.VolumeBackups(ns).List(selector)
+	if err != nil {
+		return nil, fmt.Errorf("get backup schedule %s/%s backup list failed, selector: %s, err: %v", ns, bsName, selector, err)
+	}
+
+	return backupsList, nil
+}
+
+func (bm *backupScheduleManager) backupGCByMaxBackups(vbs *v1alpha1.VolumeBackupSchedule) {
+	ns := vbs.GetNamespace()
+	bsName := vbs.GetName()
+
+	backupsList, err := bm.getBackupList(vbs)
+	if err != nil {
+		klog.Errorf("backupGCByMaxBackups failed, err: %s", err)
+		return
+	}
+
+	sort.Sort(byCreateTimeDesc(backupsList))
+
+	var deleteCount int
+	for i, backup := range backupsList {
+		if i < int(*vbs.Spec.MaxBackups) {
+			continue
+		}
+		// delete the backup
+		if err := bm.deps.FedVolumeBackupControl.DeleteVolumeBackup(backup); err != nil {
+			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+			return
+		}
+		deleteCount += 1
+		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+	}
+
+	if deleteCount == len(backupsList) && deleteCount > 0 {
+		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
+		bm.resetLastBackup(vbs)
+	}
+}
+
+func (bm *backupScheduleManager) resetLastBackup(vbs *v1alpha1.VolumeBackupSchedule) {
+	vbs.Status.LastBackupTime = nil
+	vbs.Status.LastBackup = ""
+	vbs.Status.AllBackupCleanTime = &metav1.Time{Time: bm.now()}
+}
+
+type byCreateTimeDesc []*v1alpha1.VolumeBackup
+
+func (b byCreateTimeDesc) Len() int      { return len(b) }
+func (b byCreateTimeDesc) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b byCreateTimeDesc) Less(i, j int) bool {
+	return b[j].ObjectMeta.CreationTimestamp.Before(&b[i].ObjectMeta.CreationTimestamp)
 }
 
 var _ fedvolumebackup.BackupScheduleManager = &backupScheduleManager{}
