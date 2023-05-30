@@ -14,10 +14,11 @@
 package fedvolumebackupschedule
 
 import (
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
@@ -31,24 +32,41 @@ type ControlInterface interface {
 	UpdateBackupSchedule(volumeBackupSchedule *v1alpha1.VolumeBackupSchedule) error
 }
 
-// NewDefaultVolumeBackupScheduleControl returns a new instance of the default VolumeBackupSchedue ControlInterface implementation.
+// NewDefaultVolumeBackupScheduleControl returns a new instance of the default VolumeBackupSchedule ControlInterface implementation.
 func NewDefaultVolumeBackupScheduleControl(
-	cli versioned.Interface,
+	statusUpdater controller.VolumeBackupScheduleStatusUpdaterInterface,
 	backupScheduleManager fedvolumebackup.BackupScheduleManager) ControlInterface {
 	return &defaultBackupScheduleControl{
-		cli,
+		statusUpdater,
 		backupScheduleManager,
 	}
 }
 
 type defaultBackupScheduleControl struct {
-	cli       versioned.Interface
-	bsManager fedvolumebackup.BackupScheduleManager
+	statusUpdater controller.VolumeBackupScheduleStatusUpdaterInterface
+	bsManager     fedvolumebackup.BackupScheduleManager
 }
 
 // UpdateBackupSchedule executes the core logic loop for a VolumeBackupSchedule.
-func (c *defaultBackupScheduleControl) UpdateBackupSchedule(volumeBackupSchedule *v1alpha1.VolumeBackupSchedule) error {
-	return c.bsManager.Sync(volumeBackupSchedule)
+func (c *defaultBackupScheduleControl) UpdateBackupSchedule(vbs *v1alpha1.VolumeBackupSchedule) error {
+	var errs []error
+	oldStatus := vbs.Status.DeepCopy()
+
+	if err := c.updateBackupSchedule(vbs); err != nil {
+		errs = append(errs, err)
+	}
+	if apiequality.Semantic.DeepEqual(&vbs.Status, oldStatus) {
+		return errorutils.NewAggregate(errs)
+	}
+	if err := c.statusUpdater.UpdateBackupScheduleStatus(vbs.DeepCopy(), &vbs.Status, oldStatus); err != nil {
+		errs = append(errs, err)
+	}
+
+	return errorutils.NewAggregate(errs)
+}
+
+func (c *defaultBackupScheduleControl) updateBackupSchedule(vbs *v1alpha1.VolumeBackupSchedule) error {
+	return c.bsManager.Sync(vbs)
 }
 
 var _ ControlInterface = &defaultBackupScheduleControl{}

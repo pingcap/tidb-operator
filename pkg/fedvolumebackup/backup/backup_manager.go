@@ -120,20 +120,6 @@ func (bm *backupManager) runBackup(ctx context.Context, volumeBackup *v1alpha1.V
 		bm.setVolumeBackupRunning(&volumeBackup.Status)
 	}
 
-<<<<<<< HEAD
-=======
-	if bm.skipSync(volumeBackup) {
-		klog.Infof("skip VolumeBackup %s/%s", ns, name)
-		return nil
-	}
-
-	ctx := context.Background()
-	backupMembers, err := bm.listAllBackupMembers(ctx, volumeBackup)
-	if err != nil {
-		return err
-	}
-
->>>>>>> 7d84cf89e (br: update backup member to status)
 	if len(backupMembers) == 0 {
 		return false, bm.initializeVolumeBackup(ctx, volumeBackup)
 	}
@@ -182,6 +168,14 @@ func (bm *backupManager) setVolumeBackupRunning(volumeBackupStatus *v1alpha1.Vol
 	volumeBackupStatus.TimeStarted = metav1.Now()
 	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
 		Type:   v1alpha1.VolumeBackupRunning,
+		Status: corev1.ConditionTrue,
+	})
+}
+
+func (bm *backupManager) setVolumeBackupPrepared(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
+	volumeBackupStatus.TimeStarted = metav1.Now()
+	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupPrepared,
 		Status: corev1.ConditionTrue,
 	})
 }
@@ -356,14 +350,6 @@ func (bm *backupManager) setVolumeBackupCleaned(volumeBackupStatus *v1alpha1.Vol
 	})
 }
 
-func (bm *backupManager) setVolumeBackupPrepared(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
-	volumeBackupStatus.TimeStarted = metav1.Now()
-	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
-		Type:   v1alpha1.VolumeBackupPrepared,
-		Status: corev1.ConditionTrue,
-	})
-}
-
 func (bm *backupManager) setVolumeBackupSize(volumeBackupStatus *v1alpha1.VolumeBackupStatus, backupMembers []*volumeBackupMember) {
 	var totalBackupSize int64
 	for _, backupMember := range backupMembers {
@@ -425,11 +411,7 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 }
 
 func (bm *backupManager) skipSync(volumeBackup *v1alpha1.VolumeBackup) bool {
-<<<<<<< HEAD
 	return volumeBackup.DeletionTimestamp == nil && (v1alpha1.IsVolumeBackupComplete(volumeBackup) || v1alpha1.IsVolumeBackupFailed(volumeBackup))
-=======
-	return v1alpha1.IsVolumeBackupComplete(volumeBackup) || v1alpha1.IsVolumeBackupFailed(volumeBackup)
->>>>>>> 7d84cf89e (br: update backup member to status)
 }
 
 func (bm *backupManager) generateBackupMemberName(volumeBackupName, k8sClusterName string) string {
