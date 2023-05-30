@@ -15,12 +15,12 @@ package backup
 
 import (
 	"context"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"testing"
 
 	"github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
 	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -141,7 +141,7 @@ func (h *helper) setDataPlaneInitialized(ctx context.Context) {
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.VolumeBackupInitialized,
 	})
-	backupMember1, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 }
 
@@ -152,52 +152,57 @@ func (h *helper) setDataPlaneVolumeComplete(ctx context.Context) {
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.VolumeBackupComplete,
 	})
-	backupMember1, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 
 	backupMember2, err := h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).Get(ctx, h.backupMemberName2, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
 	pingcapv1alpha1.UpdateBackupCondition(&backupMember2.Status, &pingcapv1alpha1.BackupCondition{
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.VolumeBackupComplete,
 	})
-	backupMember2, err = h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).UpdateStatus(ctx, backupMember2, metav1.UpdateOptions{})
+	_, err = h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).UpdateStatus(ctx, backupMember2, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 
 	backupMember3, err := h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).Get(ctx, h.backupMemberName3, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
 	pingcapv1alpha1.UpdateBackupCondition(&backupMember3.Status, &pingcapv1alpha1.BackupCondition{
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.VolumeBackupComplete,
 	})
-	backupMember3, err = h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).UpdateStatus(ctx, backupMember3, metav1.UpdateOptions{})
+	_, err = h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).UpdateStatus(ctx, backupMember3, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 }
 
 func (h *helper) setDataPlaneComplete(ctx context.Context) {
 	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
 	pingcapv1alpha1.UpdateBackupCondition(&backupMember1.Status, &pingcapv1alpha1.BackupCondition{
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.BackupComplete,
 	})
 	backupMember1.Status.CommitTs = "123"
-	backupMember1, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 
 	backupMember2, err := h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).Get(ctx, h.backupMemberName2, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
 	pingcapv1alpha1.UpdateBackupCondition(&backupMember2.Status, &pingcapv1alpha1.BackupCondition{
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.BackupComplete,
 	})
 	backupMember2.Status.CommitTs = "124"
-	backupMember2, err = h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).UpdateStatus(ctx, backupMember2, metav1.UpdateOptions{})
+	_, err = h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).UpdateStatus(ctx, backupMember2, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 
 	backupMember3, err := h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).Get(ctx, h.backupMemberName3, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
 	pingcapv1alpha1.UpdateBackupCondition(&backupMember3.Status, &pingcapv1alpha1.BackupCondition{
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.BackupComplete,
 	})
 	backupMember3.Status.CommitTs = "125"
-	backupMember3, err = h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).UpdateStatus(ctx, backupMember3, metav1.UpdateOptions{})
+	_, err = h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).UpdateStatus(ctx, backupMember3, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 }
 
@@ -208,7 +213,7 @@ func (h *helper) setDataPlaneInitializeFailed(ctx context.Context) {
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.VolumeBackupInitializeFailed,
 	})
-	backupMember1, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 }
 
@@ -219,7 +224,7 @@ func (h *helper) setDataPlaneVolumeFailed(ctx context.Context) {
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.VolumeBackupFailed,
 	})
-	backupMember1, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 }
 
@@ -230,7 +235,7 @@ func (h *helper) setDataPlaneFailed(ctx context.Context) {
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.BackupFailed,
 	})
-	backupMember1, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 }
 
