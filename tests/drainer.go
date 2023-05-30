@@ -19,9 +19,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
+	"strconv"
 	"strings"
 	"text/template"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -100,7 +102,10 @@ func (oa *OperatorActions) DeployDrainer(info *DrainerConfig, source *DrainerSou
 		return err
 	}
 
-	override := map[string]string{}
+	override := map[string]string{
+		"port":         strconv.FormatInt(int64(v1alpha1.DefaultDrainerPort), 10),
+		"pdClientPort": strconv.FormatInt(int64(v1alpha1.DefaultPDClientPort), 10),
+	}
 	if len(oa.cfg.AdditionalDrainerVersion) > 0 {
 		override["clusterVersion"] = oa.cfg.AdditionalDrainerVersion
 	}
