@@ -88,6 +88,7 @@ func (bo *Options) backupData(
 		// Currently, we only support aws ebs volume snapshot.
 		specificArgs = append(specificArgs, "--type=aws-ebs")
 		specificArgs = append(specificArgs, fmt.Sprintf("--volume-file=%s", localCSBFile))
+		specificArgs = append(specificArgs, "--operator-paused-gc-and-scheduler=true")
 		logCallback = func(line string) {
 			if strings.Contains(line, successTag) {
 				extract := strings.Split(line, successTag)[1]

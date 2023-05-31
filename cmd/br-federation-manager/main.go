@@ -218,13 +218,13 @@ func main() {
 	klog.Infof("br-federation-manager exited")
 }
 
-func initFederationKubeClients(cliCfg *controller.BrFedCLIConfig) (map[string]*fedversioned.Clientset, error) {
+func initFederationKubeClients(cliCfg *controller.BrFedCLIConfig) (map[string]fedversioned.Interface, error) {
 	files, err := os.ReadDir(cliCfg.FederationKubeConfigPath)
 	if err != nil {
 		return nil, err
 	}
 
-	clients := make(map[string]*fedversioned.Clientset)
+	clients := make(map[string]fedversioned.Interface)
 	for _, f := range files {
 		if f.IsDir() || f.Name() == "..data" {
 			continue

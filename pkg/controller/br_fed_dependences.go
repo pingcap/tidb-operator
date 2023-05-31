@@ -18,16 +18,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
 	fedversioned "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	fedfake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/federation/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
+)
+
+const (
+	FakeDataPlaneName1 = "dataplane-1"
+	FakeDataPlaneName2 = "dataplane-2"
+	FakeDataPlaneName3 = "dataplane-3"
 )
 
 type BrFedControls struct {
@@ -58,12 +69,12 @@ type BrFedDependencies struct {
 	BrFedControls
 
 	// FedClientset is the clientset for the federation clusters
-	FedClientset map[string]*fedversioned.Clientset
+	FedClientset map[string]fedversioned.Interface
 }
 
 // NewBrFedDependencies is used to construct the dependencies
 func NewBrFedDependencies(cliCfg *BrFedCLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface,
-	genericCli client.Client, fedClientset map[string]*fedversioned.Clientset) *BrFedDependencies {
+	genericCli client.Client, fedClientset map[string]fedversioned.Interface) *BrFedDependencies {
 	tweakListOptionsFunc := func(options *metav1.ListOptions) {
 		if len(options.LabelSelector) > 0 {
 			options.LabelSelector += ",app.kubernetes.io/managed-by=tidb-operator"
@@ -90,6 +101,34 @@ func NewBrFedDependencies(cliCfg *BrFedCLIConfig, clientset versioned.Interface,
 	return deps
 }
 
+func NewFakeBrFedDependencies() *BrFedDependencies {
+	cli := fake.NewSimpleClientset()
+	kubeCli := kubefake.NewSimpleClientset()
+	genCli := controllerfake.NewFakeClientWithScheme(scheme.Scheme)
+	cliCfg := DefaultBrFedCLIConfig()
+	informerFactory := informers.NewSharedInformerFactory(cli, 0)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+	labelFilterKubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+	recorder := record.NewFakeRecorder(100)
+
+	kubeCli.Fake.Resources = append(kubeCli.Fake.Resources, &metav1.APIResourceList{
+		GroupVersion: "networking.k8s.io/v1",
+		APIResources: []metav1.APIResource{
+			{
+				Name: "ingresses",
+			},
+		},
+	})
+	fedClientset := make(map[string]fedversioned.Interface, 3)
+	fedClientset[FakeDataPlaneName1] = fedfake.NewSimpleClientset()
+	fedClientset[FakeDataPlaneName2] = fedfake.NewSimpleClientset()
+	fedClientset[FakeDataPlaneName3] = fedfake.NewSimpleClientset()
+
+	deps := newBrFedDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder, fedClientset)
+	deps.BrFedControls = newFakeBrFedControls(informerFactory)
+	return deps
+}
+
 func newBrFedDependencies(
 	cliCfg *BrFedCLIConfig,
 	clientset versioned.Interface,
@@ -99,7 +138,7 @@ func newBrFedDependencies(
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	labelFilterKubeInformerFactory kubeinformers.SharedInformerFactory,
 	recorder record.EventRecorder,
-	fedClientset map[string]*fedversioned.Clientset) *BrFedDependencies {
+	fedClientset map[string]fedversioned.Interface) *BrFedDependencies {
 	return &BrFedDependencies{
 		CLIConfig:                      cliCfg,
 		Clientset:                      clientset,
@@ -129,5 +168,11 @@ func newRealBrFedControls(
 	recorder record.EventRecorder) BrFedControls {
 	return BrFedControls{
 		FedVolumeBackupControl: NewRealFedVolumeBackupControl(clientset, recorder),
+	}
+}
+
+func newFakeBrFedControls(informerFactory informers.SharedInformerFactory) BrFedControls {
+	return BrFedControls{
+		FedVolumeBackupControl: NewFakeFedVolumeBackupControl(informerFactory.Federation().V1alpha1().VolumeBackups()),
 	}
 }

@@ -366,8 +366,12 @@ func (c *Controller) retryAfterFailureDetected(backup *v1alpha1.Backup, reason, 
 
 	// not snapshot backup, just mark as failed
 	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+		conditionType := v1alpha1.BackupFailed
+		if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+			conditionType = v1alpha1.VolumeBackupFailed
+		}
 		err = c.control.UpdateStatus(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    conditionType,
 			Status:  corev1.ConditionTrue,
 			Reason:  "AlreadyFailed",
 			Message: fmt.Sprintf("reason %s, original reason %s", reason, originalReason),
