@@ -14,7 +14,7 @@ spec:
     listKind: VolumeBackupList
     plural: volumebackups
     shortNames:
-    - vbk
+    - vbf
     singular: volumebackup
   scope: Namespaced
   versions:
