@@ -47,7 +47,7 @@ func TestRestoreControlUpdateRestore(t *testing.T) {
 		volumeRestore := newVolumeRestore()
 
 		if !c.newRestore {
-			volumeRestore.Finalizers = append(volumeRestore.Finalizers, label.BackupProtectionFinalizer)
+			volumeRestore.Finalizers = append(volumeRestore.Finalizers, label.VolumeRestoreFederationFinalizer)
 		}
 		if c.cleanedRestore {
 			volumeRestore.DeletionTimestamp = &metav1.Time{Time: time.Now()}

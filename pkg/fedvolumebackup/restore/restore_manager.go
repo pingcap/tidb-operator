@@ -34,7 +34,6 @@ import (
 )
 
 const (
-	reasonKubeConfigNotFound                   = "KubeConfigNotFound"
 	reasonVolumeRestoreMemberFailed            = "VolumeRestoreMemberFailed"
 	reasonVolumeRestoreMemberInvalid           = "VolumeRestoreMemberInvalid"
 	reasonVolumeRestoreMemberResolvedTsInvalid = "VolumeRestoreMemberResolvedTsInvalid"
@@ -102,6 +101,7 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	}
 
 	if !v1alpha1.IsVolumeRestoreRunning(volumeRestore) {
+		klog.Infof("VolumeRestore %s/%s set status running", ns, name)
 		rm.setVolumeRestoreRunning(&volumeRestore.Status)
 	}
 
@@ -147,6 +147,7 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 		return err
 	}
 
+	klog.Infof("VolumeRestore %s/%s restore complete", ns, name)
 	rm.setVolumeRestoreComplete(&volumeRestore.Status, restoreMembers)
 	return nil
 }
@@ -196,6 +197,7 @@ func (rm *restoreManager) executeRestoreVolumePhase(ctx context.Context, volumeR
 			return false, fmt.Errorf("create restore member %s to cluster %s error: %s", restoreMember.Name, k8sClusterName, err.Error())
 		}
 		memberCreated = true
+		klog.Infof("VolumeRestore %s/%s create restore member %s successfully", volumeRestore.Namespace, volumeRestore.Name, restoreMember.Name)
 	}
 	return
 }
@@ -268,6 +270,7 @@ func (rm *restoreManager) executeRestoreDataPhase(ctx context.Context, volumeRes
 		return false, controller.RequeueErrorf("update FederalVolumeRestorePhase to restore-data in restore member %s of cluster %s error: %s", minResolvedTsMember.restore.Name, minResolvedTsMember.k8sClusterName, err.Error())
 	}
 	memberUpdated = true
+	klog.Infof("VolumeRestore %s/%s update restore member %s to restore data", volumeRestore.Namespace, volumeRestore.Name, restoreCR.Name)
 	return
 }
 
@@ -297,7 +300,6 @@ func (rm *restoreManager) executeRestoreFinishPhase(ctx context.Context, volumeR
 			continue
 		}
 
-		memberUpdated = true
 		restoreMemberName := restoreMember.restore.Name
 		k8sClusterName := restoreMember.k8sClusterName
 		restoreCR := restoreMember.restore.DeepCopy()
@@ -306,6 +308,8 @@ func (rm *restoreManager) executeRestoreFinishPhase(ctx context.Context, volumeR
 		if _, err := kubeClient.PingcapV1alpha1().Restores(restoreCR.Namespace).Update(ctx, restoreCR, metav1.UpdateOptions{}); err != nil {
 			return false, controller.RequeueErrorf("update FederalVolumeRestorePhase to restore-finish in restore member %s of cluster %s error: %s", restoreMemberName, k8sClusterName, err.Error())
 		}
+		memberUpdated = true
+		klog.Infof("VolumeRestore %s/%s update restore member %s to restore finish", volumeRestore.Namespace, volumeRestore.Name, restoreCR.Name)
 	}
 	return
 }
@@ -406,8 +410,8 @@ func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberClu
 			Mode:                      pingcapv1alpha1.RestoreModeVolumeSnapshot,
 			Type:                      pingcapv1alpha1.BackupTypeFull,
 			FederalVolumeRestorePhase: pingcapv1alpha1.FederalVolumeRestoreVolume,
-			StorageProvider:           memberCluster.Backup.StorageProvider,
-			ResourceRequirements:      template.ResourceRequirements,
+			StorageProvider:           *memberCluster.Backup.StorageProvider.DeepCopy(),
+			ResourceRequirements:      *template.ResourceRequirements.DeepCopy(),
 			Env:                       template.Env,
 			VolumeAZ:                  memberCluster.AZName,
 			BR:                        template.BR.ToBRMemberConfig(memberCluster.TCName, memberCluster.TCNamespace),
