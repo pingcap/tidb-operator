@@ -135,8 +135,13 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 		return err
 	}
 
-	if err := rm.executeRestoreFinishPhase(ctx, volumeRestore, restoreMembers); err != nil {
+	memberUpdated, err = rm.executeRestoreFinishPhase(ctx, volumeRestore, restoreMembers)
+	if err != nil {
 		return err
+	}
+	// just execute restore finish phase, wait for next loop.
+	if memberUpdated {
+		return nil
 	}
 	if err := rm.waitRestoreComplete(volumeRestore, restoreMembers); err != nil {
 		return err
@@ -286,22 +291,23 @@ func (rm *restoreManager) waitRestoreDataComplete(volumeRestore *v1alpha1.Volume
 	return controller.IgnoreErrorf("restore member is not restore data complete, waiting")
 }
 
-func (rm *restoreManager) executeRestoreFinishPhase(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) error {
+func (rm *restoreManager) executeRestoreFinishPhase(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) (memberUpdated bool, err error) {
 	for _, restoreMember := range restoreMembers {
 		if restoreMember.restore.Spec.FederalVolumeRestorePhase == pingcapv1alpha1.FederalVolumeRestoreFinish {
 			continue
 		}
 
+		memberUpdated = true
 		restoreMemberName := restoreMember.restore.Name
 		k8sClusterName := restoreMember.k8sClusterName
 		restoreCR := restoreMember.restore.DeepCopy()
 		restoreCR.Spec.FederalVolumeRestorePhase = pingcapv1alpha1.FederalVolumeRestoreFinish
 		kubeClient := rm.deps.FedClientset[k8sClusterName]
 		if _, err := kubeClient.PingcapV1alpha1().Restores(restoreCR.Namespace).Update(ctx, restoreCR, metav1.UpdateOptions{}); err != nil {
-			return controller.RequeueErrorf("update FederalVolumeRestorePhase to restore-finish in restore member %s of cluster %s error: %s", restoreMemberName, k8sClusterName, err.Error())
+			return false, controller.RequeueErrorf("update FederalVolumeRestorePhase to restore-finish in restore member %s of cluster %s error: %s", restoreMemberName, k8sClusterName, err.Error())
 		}
 	}
-	return nil
+	return
 }
 
 func (rm *restoreManager) waitRestoreComplete(volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) error {
@@ -427,7 +433,9 @@ type volumeRestoreMember struct {
 var _ fedvolumebackup.RestoreManager = &restoreManager{}
 
 type FakeRestoreManager struct {
-	err error
+	err           error
+	updateStatus  bool
+	statusUpdated bool
 }
 
 func NewFakeRestoreManager() *FakeRestoreManager {
@@ -438,13 +446,28 @@ func (m *FakeRestoreManager) SetSyncError(err error) {
 	m.err = err
 }
 
-func (m *FakeRestoreManager) Sync(_ *v1alpha1.VolumeRestore) error {
+func (m *FakeRestoreManager) SetUpdateStatus() {
+	m.updateStatus = true
+}
+
+func (m *FakeRestoreManager) Sync(volumeRestore *v1alpha1.VolumeRestore) error {
+	if m.updateStatus {
+		v1alpha1.UpdateVolumeRestoreCondition(&volumeRestore.Status, &v1alpha1.VolumeRestoreCondition{
+			Type:   v1alpha1.VolumeRestoreComplete,
+			Status: corev1.ConditionTrue,
+		})
+	}
 	return m.err
 }
 
 // UpdateStatus updates the status for a VolumeRestore, include condition and status info.
 func (m *FakeRestoreManager) UpdateStatus(volumeRestore *v1alpha1.VolumeRestore, newStatus *v1alpha1.VolumeRestoreStatus) error {
+	m.statusUpdated = true
 	return nil
+}
+
+func (m *FakeRestoreManager) IsStatusUpdated() bool {
+	return m.statusUpdated
 }
 
 var _ fedvolumebackup.RestoreManager = &FakeRestoreManager{}

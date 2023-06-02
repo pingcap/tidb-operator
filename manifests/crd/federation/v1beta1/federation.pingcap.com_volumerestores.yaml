@@ -30,7 +30,7 @@ spec:
     listKind: VolumeRestoreList
     plural: volumerestores
     shortNames:
-    - vrf
+    - vrt
     singular: volumerestore
   preserveUnknownFields: false
   scope: Namespaced
@@ -925,8 +925,6 @@ spec:
                         x-kubernetes-int-or-string: true
                       type: object
                   type: object
-                restoredTs:
-                  type: string
                 serviceAccount:
                   type: string
                 tolerations:

@@ -14,7 +14,7 @@ spec:
     listKind: VolumeBackupList
     plural: volumebackups
     shortNames:
-    - vbf
+    - vbk
     singular: volumebackup
   scope: Namespaced
   versions:
@@ -1088,7 +1088,7 @@ spec:
     listKind: VolumeRestoreList
     plural: volumerestores
     shortNames:
-    - vrf
+    - vrt
     singular: volumerestore
   scope: Namespaced
   versions:
@@ -1999,8 +1999,6 @@ spec:
                           x-kubernetes-int-or-string: true
                         type: object
                     type: object
-                  restoredTs:
-                    type: string
                   serviceAccount:
                     type: string
                   tolerations:

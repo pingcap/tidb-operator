@@ -620,13 +620,6 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeRestoreMemberSpec(ref common.
 							},
 						},
 					},
-					"restoredTs": {
-						SchemaProps: spec.SchemaProps{
-							Description: "RestoredTS is the volume restored ts, it is from CommitTs of volume backup status",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"br": {
 						SchemaProps: spec.SchemaProps{
 							Description: "BRConfig is the configs for BR",

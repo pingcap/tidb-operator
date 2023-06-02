@@ -1162,17 +1162,6 @@ Note that the following builtin env vars will be overwritten by values set here
 </tr>
 <tr>
 <td>
-<code>restoredTs</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>RestoredTS is the volume restored ts, it is from CommitTs of volume backup status</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>br</code></br>
 <em>
 <a href="#brconfig">

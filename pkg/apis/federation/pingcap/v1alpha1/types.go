@@ -25,7 +25,7 @@ import (
 // VolumeBackup is the control script's spec
 //
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName="vbf"
+// +kubebuilder:resource:shortName="vbk"
 // +genclient:noStatus
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
@@ -240,7 +240,7 @@ type VolumeBackupScheduleStatus struct {
 // VolumeRestore is the control script's spec
 //
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName="vrf"
+// +kubebuilder:resource:shortName="vrt"
 // +genclient:noStatus
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the restore"
@@ -312,8 +312,6 @@ type VolumeRestoreMemberSpec struct {
 	// - BR_LOG_TO_TERM
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
-	// RestoredTS is the volume restored ts, it is from CommitTs of volume backup status
-	RestoredTs string `json:"restoredTs,omitempty"`
 	// BRConfig is the configs for BR
 	BR          *BRConfig           `json:"br,omitempty"`
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
@@ -371,5 +369,5 @@ const (
 	VolumeRestoreRunning  VolumeRestoreConditionType = "running"
 	VolumeRestoreComplete VolumeRestoreConditionType = "complete"
 	VolumeRestoreFailed   VolumeRestoreConditionType = "failed"
-	VolumeRestoreCleaned  VolumeRestoreConditionType = "Cleaned"
+	VolumeRestoreCleaned  VolumeRestoreConditionType = "cleaned"
 )
