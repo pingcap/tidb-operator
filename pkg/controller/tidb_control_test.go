@@ -334,6 +334,26 @@ func getTidbCluster() *v1alpha1.TidbCluster {
 	}
 }
 
+func getTidbClusterWithClusterDomain(
+	clusterDomain string,
+) *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "TidbCluster",
+			APIVersion: "pingcap.com/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: corev1.NamespaceDefault,
+			UID:       types.UID("test"),
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			TiDB:          &v1alpha1.TiDBSpec{},
+			ClusterDomain: clusterDomain,
+		},
+	}
+}
+
 func fakeSecret(fakeClient *fake.Clientset) {
 	fakeClient.AddReactor("get", "secrets", func(action core.Action) (bool, runtime.Object, error) {
 		return true, &corev1.Secret{

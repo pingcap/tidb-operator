@@ -175,6 +175,58 @@ func TestTiCDCControllerResignOwner(t *testing.T) {
 	}
 }
 
+func TestTiCDCControllerDrainCaptureMultiClusters(t *testing.T) {
+	g := NewGomegaWithT(t)
+	cdc := defaultTiCDCControl{}
+	tcCd1 := getTidbClusterWithClusterDomain("cluster.1")
+	tcCd2 := getTidbClusterWithClusterDomain("cluster.2")
+
+	handlers := map[string]func(http.ResponseWriter, *http.Request){
+		"/api/v1/captures": func(w http.ResponseWriter, req *http.Request) {
+			cp := []captureInfo{{
+				ID:            "cluster-1-capture-server",
+				AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tcCd1, 1),
+				IsOwner:       true,
+			}, {
+				ID:            "cluster-2-capture-server",
+				AdvertiseAddr: getCaptureAdvertiseAddressPrefix(tcCd2, 1),
+				IsOwner:       false,
+			}}
+			payload, err := json.Marshal(cp)
+			g.Expect(err).Should(BeNil())
+			fmt.Fprint(w, string(payload))
+		},
+		"/api/v1/captures/drain": func(w http.ResponseWriter, req *http.Request) {
+			body, err := io.ReadAll(req.Body)
+			g.Expect(err).Should(BeNil())
+			var reqPayload drainCaptureRequest
+			err = json.Unmarshal(body, &reqPayload)
+			g.Expect(err).Should(BeNil())
+			g.Expect(reqPayload.CaptureID).Should(
+				Equal("cluster-2-capture-server"),
+			)
+
+			payload, err := json.Marshal(
+				drainCaptureResp{CurrentTableCount: 1},
+			)
+			g.Expect(err).Should(BeNil())
+			fmt.Fprint(w, string(payload))
+		},
+	}
+
+	mux := http.NewServeMux()
+	svr := httptest.NewServer(mux)
+	for p, h := range handlers {
+		mux.HandleFunc(p, h)
+	}
+	cdc.testURL = svr.URL
+	count, retry, err := cdc.DrainCapture(tcCd2, 1)
+	g.Expect(count).Should(Equal(1))
+	g.Expect(err).Should(BeNil())
+	g.Expect(retry).Should(BeFalse())
+	svr.Close()
+}
+
 func TestTiCDCControllerDrainCapture(t *testing.T) {
 	g := NewGomegaWithT(t)
 
