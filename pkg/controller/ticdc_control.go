@@ -281,7 +281,14 @@ func getCaptureAdvertiseAddressPrefix(tc *v1alpha1.TidbCluster, ordinal int32) s
 	ns := tc.GetNamespace()
 	hostName := fmt.Sprintf("%s-%d", TiCDCMemberName(tcName), ordinal)
 
-	return fmt.Sprintf("%s.%s.%s", hostName, TiCDCPeerMemberName(tcName), ns)
+	prefix := fmt.Sprintf("%s.%s.%s", hostName, TiCDCPeerMemberName(tcName), ns)
+	if len(tc.Spec.ClusterDomain) > 0 {
+		// When setting up TiCDC across multiple Kubernetes clusters,
+		// it is important to consider the cluster domain if two CDC pods
+		// share the same in-cluster dns name (without cluster domain).
+		prefix = fmt.Sprintf("%s.%s", prefix, tc.Spec.ClusterDomain)
+	}
+	return prefix
 }
 
 func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, bool, error) {
