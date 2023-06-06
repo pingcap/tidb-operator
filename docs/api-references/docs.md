@@ -2488,6 +2488,20 @@ string
 Optional: Defaults to nil</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tolerations of the TiDB initializer Pod</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -24446,6 +24460,20 @@ string
 <em>(Optional)</em>
 <p>TLSClientSecretName is the name of secret which stores tidb server client certificate
 Optional: Defaults to nil</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tolerations of the TiDB initializer Pod</p>
 </td>
 </tr>
 </tbody>
