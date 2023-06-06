@@ -1,0 +1,30 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+approvers:
+  # kubernetes-maintainers:
+  - azurezyq
+  - charleszheng44
+  - csuzhangxc
+  - grovecai
+  - hanlins
+  - KanShiori
+  - liubog2008
+  # kubernetes-committers:
+  - WangLe1321
+  - tennix
+  - shuijing198799
+  - sdojjy
+  - mikechengwei
+  - LinuxGit
+  - KanShiori
+  - handlerww
+  - gozssky
+  - fengou1
+  - Ehco1996
+  - dragonly
+  - BornChanger
+reviewers:
+  # kubernetes-reviewers:
+  - howardlau1999
+  - KanShiori
+  - lichunzhu
+  - shonge
