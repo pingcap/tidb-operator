@@ -63,8 +63,24 @@ func TestTiKVPodSync(t *testing.T) {
 	kvClient := &kvClient{}
 	fakeTiKVControl.SetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, kvClient)
 	c := NewPodController(deps)
-	c.testPDClient = pdapi.NewFakePDClient()
+	pdClient := pdapi.NewFakePDClient()
+	c.testPDClient = pdClient
 	c.recheckLeaderCountDuration = time.Millisecond * 100
+	c.recheckClusterStableDuration = time.Millisecond * 100
+	var tikvStatus atomic.Value
+	tikvStatus.Store(v1alpha1.TiKVStateDown)
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+		storesInfo := &pdapi.StoresInfo{
+			Stores: []*pdapi.StoreInfo{
+				{
+					Store: &pdapi.MetaStore{
+						StateName: tikvStatus.Load().(string),
+					},
+				},
+			},
+		}
+		return storesInfo, nil
+	})
 
 	stop := make(chan struct{})
 	go func() {
@@ -101,7 +117,21 @@ func TestTiKVPodSync(t *testing.T) {
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string)
 	}
+
+	// add expired annotation
 	pod.Annotations[v1alpha1.EvictLeaderAnnKey] = v1alpha1.EvictLeaderValueDeletePod
+	pod.Annotations[v1alpha1.TiKVEvictLeaderExpirationTimeAnnKey] = metav1.Now().Time.Add(-time.Minute).UTC().Format(time.RFC3339)
+	pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{})
+	g.Expect(err).Should(Succeed())
+
+	g.Consistently(func() int {
+		stat := c.getPodStat(pod)
+		return stat.observeAnnotationCounts
+	}, time.Second*5, interval).Should(Equal(0), "should not observe pod annotation as it is added expired")
+
+	// add annotation w/o expiration
+	pod.Annotations[v1alpha1.EvictLeaderAnnKey] = v1alpha1.EvictLeaderValueDeletePod
+	delete(pod.Annotations, v1alpha1.TiKVEvictLeaderExpirationTimeAnnKey)
 	pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{})
 	g.Expect(err).Should(Succeed())
 
@@ -114,10 +144,17 @@ func TestTiKVPodSync(t *testing.T) {
 	g.Expect(err).Should(Succeed())
 
 	atomic.StoreInt32(&kvClient.leaderCount, 0)
+
+	g.Consistently(func() bool {
+		_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+		return err == nil
+	}, time.Second*5, interval).Should(BeTrue(), "should not delete pod while cluster is unstable")
+
+	tikvStatus.Store(v1alpha1.TiKVStateUp)
 	g.Eventually(func() bool {
 		_, err := deps.KubeClientset.CoreV1().Pods(tc.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 		return errors.IsNotFound(err)
-	}, timeout, interval).Should(BeTrue(), "should delete pod if leader count is 0")
+	}, timeout, interval).Should(BeTrue(), "should delete pod if leader count is 0 and cluster is stable")
 
 	pod = newTiKVPod(tc)
 	pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
@@ -142,6 +179,7 @@ func TestPDPodSync(t *testing.T) {
 		target              int
 		deleteAfterTransfer bool
 		shouldTransfer      bool
+		expirationTime      time.Time
 	}{
 		{
 			name:                "transfer leader only",
@@ -174,7 +212,7 @@ func TestPDPodSync(t *testing.T) {
 			shouldTransfer:      true,
 		},
 		{
-			name:                "not enough quorum",
+			name:                "one pd is unhealthy",
 			replicas:            3,
 			phase:               v1alpha1.NormalPhase,
 			leader:              0,
@@ -192,6 +230,38 @@ func TestPDPodSync(t *testing.T) {
 			target:              0,
 			deleteAfterTransfer: true,
 			shouldTransfer:      false,
+		},
+		{
+			name:                "no expiration annotation",
+			replicas:            3,
+			phase:               v1alpha1.NormalPhase,
+			leader:              0,
+			failed:              nil,
+			target:              0,
+			deleteAfterTransfer: true,
+			shouldTransfer:      true,
+		},
+		{
+			name:                "expiration annotation in the future",
+			replicas:            3,
+			phase:               v1alpha1.NormalPhase,
+			leader:              0,
+			failed:              nil,
+			target:              0,
+			deleteAfterTransfer: true,
+			shouldTransfer:      true,
+			expirationTime:      metav1.Now().Time.Add(time.Hour),
+		},
+		{
+			name:                "expiration annotation in the past",
+			replicas:            3,
+			phase:               v1alpha1.NormalPhase,
+			leader:              0,
+			failed:              nil,
+			target:              0,
+			deleteAfterTransfer: true,
+			shouldTransfer:      false,
+			expirationTime:      metav1.Now().Time.Add(-time.Minute),
 		},
 	}
 
@@ -239,13 +309,27 @@ func TestPDPodSync(t *testing.T) {
 				},
 				Members: make(map[string]v1alpha1.PDMember),
 			}
+			healths := make([]pdapi.MemberHealth, c.replicas)
 			for i := 0; i < c.replicas; i++ {
 				member := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), i)
 				tc.Status.PD.Members[member] = v1alpha1.PDMember{
 					Name:   member,
 					Health: true,
 				}
+				health := true
+				for _, failed := range c.failed {
+					if i == failed {
+						health = false
+					}
+				}
+				healths[i] = pdapi.MemberHealth{
+					Name:   member,
+					Health: health,
+				}
 			}
+			pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+				return &pdapi.HealthInfo{Healths: healths}, nil
+			})
 			for _, i := range c.failed {
 				member := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), i)
 				tc.Status.PD.Members[member] = v1alpha1.PDMember{
@@ -284,6 +368,10 @@ func TestPDPodSync(t *testing.T) {
 			} else {
 				pod.Annotations[v1alpha1.PDLeaderTransferAnnKey] = v1alpha1.TransferLeaderValueNone
 			}
+			if !c.expirationTime.IsZero() {
+				pod.Annotations[v1alpha1.PDLeaderTransferExpirationTimeAnnKey] = c.expirationTime.Format(time.RFC3339)
+			}
+
 			pod, err = deps.KubeClientset.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
 			g.Expect(err).NotTo(HaveOccurred())
 

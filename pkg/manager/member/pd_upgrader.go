@@ -19,11 +19,17 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+)
+
+const (
+	// set this PD clustre annotation to true to fail cluster upgrade if PD loose the quorum during one pod restart
+	annoKeyPDPeersCheck = "tidb.pingcap.com/pd-check-quorum-before-upgrade"
 )
 
 type pdUpgrader struct {
@@ -102,10 +108,22 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 			continue
 		}
 
+		// verify that no peers are unhealthy during restart
+		if unstableReason := u.isPDPeersStable(tc); unstableReason != "" {
+			return controller.RequeueErrorf("Peer PDs is unstable: %s", unstableReason)
+		}
+
 		return u.upgradePDPod(tc, i, newSet)
 	}
 
 	return nil
+}
+
+func (u *pdUpgrader) isPDPeersStable(tc *v1alpha1.TidbCluster) string {
+	if check, ok := tc.Annotations[annoKeyPDPeersCheck]; ok && check == "true" {
+		return pdapi.IsPDStable(controller.GetPDClient(u.deps.PDControl, tc))
+	}
+	return ""
 }
 
 func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
