@@ -42,6 +42,21 @@ const (
 	TiKVConfigEncryptionMasterKeyId = "security.encryption.master-key.key-id"
 )
 
+const warmUpVolumeTemplate = `mountPaths=(%s)
+volumeNames=(%s)
+volumeSizes=(%s)
+i=0
+for mountPath in ${mountPaths[*]}
+do deviceName=$(lsblk | grep $mountPath | awk '{print $1}')
+if [ -z $deviceName ]
+then echo "not found device of mounted path $mountPath"
+continue
+fi
+echo "start warm up device $deviceName with mounted path $mountPath"
+fio --rw=read --bs=1M --iodepth=32 --ioengine=libaio --name=initialize-${volumeNames[$i]} --filename=/dev/$deviceName --size=${volumeSizes[$i]}
+i=$[i+1]
+done`
+
 type restoreManager struct {
 	deps          *controller.Dependencies
 	statusUpdater controller.RestoreConditionUpdaterInterface
@@ -136,6 +151,10 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		}
 
 		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreTiKVComplete(restore) {
+			if !v1alpha1.IsRestoreWarmUpStarted(restore) {
+				return rm.warmUpTiKVVolumes(restore, tc)
+			}
+
 			if !tc.AllTiKVsAreAvailable() {
 				return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 			} else {
@@ -188,6 +207,15 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 					Status: corev1.ConditionTrue,
 				}, nil)
 			}
+
+			if !v1alpha1.IsRestoreWarmUpComplete(restore) {
+				return rm.waitWarmUpJobsFinished(restore)
+			}
+
+			return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:   v1alpha1.RestoreTiKVComplete,
+				Status: corev1.ConditionTrue,
+			}, nil)
 		}
 
 		if restore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreFinish {
@@ -879,6 +907,185 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	}
 
 	return job, "", nil
+}
+
+func (rm *restoreManager) warmUpTiKVVolumes(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
+	warmUpImage := "wangle1321/fio:amazonlinux-20230606"
+	// TODO: add codes below after test
+	/*if !r.Spec.WarmUp {
+		return nil
+	}
+	if r.Spec.WarmUpImage != "" {
+		warmUpImage = r.Spec.WarmUpImage
+	}*/
+
+	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
+	if err != nil {
+		return err
+	}
+	pods, err := rm.deps.PodLister.Pods(tc.Namespace).List(sel)
+	if err != nil {
+		return err
+	}
+	if int32(len(pods)) != tc.Spec.TiKV.Replicas {
+		return fmt.Errorf("wait all TiKV pods started to warm up volumes")
+	}
+	for _, pod := range pods {
+		if pod.Status.Phase != corev1.PodRunning {
+			return fmt.Errorf("wait TiKV pod %s/%s running", pod.Namespace, pod.Name)
+		}
+	}
+
+	tikvMountPaths := []string{constants.TiKVDataVolumeMountPath}
+	for _, vol := range tc.Spec.TiKV.StorageVolumes {
+		tikvMountPaths = append(tikvMountPaths, vol.MountPath)
+	}
+	for _, pod := range pods {
+		ns, podName := pod.Namespace, pod.Name
+		warmUpJobName := fmt.Sprintf("%s-warm-up")
+		_, err := rm.deps.JobLister.Jobs(ns).Get(warmUpJobName)
+		if err == nil {
+			klog.Infof("Restore %s/%s warmup job %s/%s of tikv pod %s/%s exists, pass it", r.Namespace, r.Name, ns, warmUpJobName, ns, podName)
+			continue
+		} else if !errors.IsNotFound(err) {
+			return fmt.Errorf("get warm up job %s/%s of tikv pod %s/%s error: %s", ns, warmUpJobName, ns, podName, err.Error())
+		}
+
+		warmUpJob, err := rm.makeWarmUpJob(r, pod, tikvMountPaths, warmUpJobName, warmUpImage)
+		if err != nil {
+			return err
+		}
+		if err = rm.deps.JobControl.CreateJob(r, warmUpJob); err != nil {
+			return err
+		}
+		klog.Infof("Restore %s/%s creates warmup job %s/%s for tikv pod %s/%s successfully", r.Namespace, r.Name, ns, warmUpJobName, ns, podName)
+	}
+
+	return rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+		Type:   v1alpha1.RestoreWarmUpStarted,
+		Status: corev1.ConditionTrue,
+	}, nil)
+}
+
+func (rm *restoreManager) makeWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod, warmUpPaths []string, warmUpJobName, warmUpImage string) (*batchv1.Job, error) {
+	ns, podName := tikvPod.Namespace, tikvPod.Name
+	var tikvContainer *corev1.Container
+	for _, container := range tikvPod.Spec.Containers {
+		if container.Name == v1alpha1.TiKVMemberType.String() {
+			tikvContainer = container.DeepCopy()
+			break
+		}
+	}
+	if tikvContainer == nil {
+		return nil, fmt.Errorf("not found TiKV container in pod %s/%s", ns, podName)
+	}
+
+	warmUpVolumeMounts := make([]corev1.VolumeMount, 0, len(warmUpPaths))
+	for _, mountPath := range warmUpPaths {
+		for _, volumeMount := range tikvContainer.VolumeMounts {
+			if volumeMount.MountPath == mountPath {
+				warmUpVolumeMounts = append(warmUpVolumeMounts, *volumeMount.DeepCopy())
+				break
+			}
+		}
+	}
+
+	warmUpVolumes := make([]corev1.Volume, 0, len(warmUpVolumeMounts))
+	for _, volumeMount := range warmUpVolumeMounts {
+		for _, volume := range tikvPod.Spec.Volumes {
+			if volumeMount.Name == volume.Name {
+				warmUpVolumes = append(warmUpVolumes, *volume.DeepCopy())
+				break
+			}
+		}
+	}
+
+	warmUpVolumeNames := make([]string, 0, len(warmUpVolumeMounts))
+	for _, volumeMount := range warmUpVolumeMounts {
+		warmUpVolumeNames = append(warmUpVolumeNames, volumeMount.Name)
+	}
+	warmUpVolumeSizes := make([]string, 0, len(warmUpVolumes))
+	for _, volume := range warmUpVolumes {
+		if volume.PersistentVolumeClaim == nil {
+			return nil, fmt.Errorf("not found pvc in volume %s when warm up tikv pod %s/%s", volume.Name, ns, podName)
+		}
+		pvcName := volume.PersistentVolumeClaim.ClaimName
+		pvc, err := rm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+		if err != nil {
+			return nil, fmt.Errorf("get pvc %s/%s of tikv pod %s/%s error: %s", ns, pvcName, ns, podName, err.Error())
+		}
+		storageQuantity := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+		warmUpVolumeSizes = append(warmUpVolumeSizes, storageQuantity.String())
+	}
+	if len(warmUpPaths) != len(warmUpVolumeNames) || len(warmUpPaths) != len(warmUpVolumeSizes) {
+		return nil, fmt.Errorf("lengths of mounted paths %v and volumes %v and sizes %v in tikv pod %s/%s are not equal", warmUpPaths, warmUpVolumeNames, warmUpVolumeSizes, ns, podName)
+	}
+
+	fioCommand := fmt.Sprintf(warmUpVolumeTemplate, strings.Join(warmUpPaths, " "), strings.Join(warmUpVolumeNames, " "), strings.Join(warmUpVolumeSizes, " "))
+	fioCommand = strings.ReplaceAll(fioCommand, "\n", "; ")
+	warmUpPod := &corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			Volumes:       warmUpVolumes,
+			RestartPolicy: corev1.RestartPolicyNever,
+			NodeName:      tikvPod.Spec.NodeName,
+			Containers: []corev1.Container{
+				{
+					Name:            "warm-up",
+					Image:           warmUpImage,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command:         []string{"/bin/sh"},
+					Args:            []string{"-c", fioCommand},
+					VolumeMounts:    warmUpVolumeMounts,
+				},
+			},
+		},
+	}
+
+	jobLabel := label.NewRestore().RestoreWarmUpJob().Restore(r.Name)
+	jobLabel[label.RestoreWarmUpLabelKey] = podName
+	warmUpJob := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      warmUpJobName,
+			Namespace: ns,
+			Labels:    jobLabel,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetRestoreOwnerRef(r),
+			},
+		},
+		Spec: batchv1.JobSpec{
+			Template:     *warmUpPod,
+			BackoffLimit: pointer.Int32Ptr(0),
+		},
+	}
+	return warmUpJob, nil
+}
+
+func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
+	sel, err := label.NewRestore().RestoreWarmUpJob().Restore(r.Name).Selector()
+	if err != nil {
+		return err
+	}
+
+	jobs, err := rm.deps.JobLister.List(sel)
+	if err != nil {
+		return err
+	}
+	for _, job := range jobs {
+		jobFinished := false
+		for _, condition := range job.Status.Conditions {
+			if condition.Type == batchv1.JobFailed || condition.Type == batchv1.JobComplete {
+				jobFinished = true
+			}
+		}
+		if !jobFinished {
+			return fmt.Errorf("wait warmup job %s/%s finished", job.Namespace, job.Name)
+		}
+	}
+
+	return rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+		Type:   v1alpha1.RestoreWarmUpComplete,
+		Status: corev1.ConditionTrue,
+	}, nil)
 }
 
 func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (string, error) {
