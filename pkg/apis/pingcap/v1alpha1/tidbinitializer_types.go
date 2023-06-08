@@ -99,6 +99,10 @@ type TidbInitializerSpec struct {
 	// Optional: Defaults to nil
 	// +optional
 	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// Tolerations of the TiDB initializer Pod
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // +k8s:openapi-gen=true
