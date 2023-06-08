@@ -19587,6 +19587,8 @@ spec:
                   type: string
                 serviceAccount:
                   type: string
+                sslDisableTiDB:
+                  type: boolean
                 statefulSetUpdateStrategy:
                   type: string
                 storageClassName:
