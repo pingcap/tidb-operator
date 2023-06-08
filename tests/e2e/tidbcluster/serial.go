@@ -135,7 +135,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				ReleaseName:       "operator",
 				Image:             cfg.OperatorImage,
 				Tag:               cfg.OperatorTag,
-				SchedulerImage:    "k8s.gcr.io/kube-scheduler",
+				SchedulerImage:    "registry.k8s.io/kube-scheduler",
 				LogLevel:          "4",
 				ImagePullPolicy:   v1.PullIfNotPresent,
 				TestMode:          true,
@@ -231,7 +231,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				ReleaseName:               "operator",
 				Image:                     cfg.OperatorImage,
 				Tag:                       cfg.OperatorTag,
-				SchedulerImage:            "k8s.gcr.io/kube-scheduler",
+				SchedulerImage:            "registry.k8s.io/kube-scheduler",
 				LogLevel:                  "4",
 				ImagePullPolicy:           v1.PullIfNotPresent,
 				TestMode:                  true,
@@ -550,7 +550,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				Tag:             cfg.OperatorTag,
 				ImagePullPolicy: v1.PullIfNotPresent,
 				Selector:        []string{"version=new"},
-				//FIXME: AppendReleaseSuffix: true,
+				// FIXME: AppendReleaseSuffix: true,
 			}
 			oa.DeployOperatorOrDie(ocfg2)
 			log.Logf("Finished deploying TiDB Operator 2 with --selector=version=new")
