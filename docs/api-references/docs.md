@@ -22592,6 +22592,17 @@ int32
 </tr>
 <tr>
 <td>
+<code>sslDisableTiDB</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Whether disable SSL connection between tiproxy and TiDB server</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tlsClientSecretName</code></br>
 <em>
 string
