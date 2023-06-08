@@ -49,7 +49,7 @@ volumeNames=(%s)
 volumeSizes=(%s)
 i=0
 for mountPath in ${mountPaths[*]}
-do deviceName=$(lsblk | grep $mountPath | awk '{print $1}')
+do deviceName=$(lsblk -no NAME,MOUNTPOINT -r | awk -v path=$mountPath '$2 == path {print $1}')
 if [ -z $deviceName ]
 then echo "not found device of mounted path $mountPath"
 continue
