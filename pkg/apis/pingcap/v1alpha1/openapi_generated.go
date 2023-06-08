@@ -13070,6 +13070,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 							Format:      "int32",
 						},
 					},
+					"sslDisableTiDB": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether disable SSL connection between tiproxy and TiDB server",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"tlsClientSecretName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TLSClientSecretName is the name of secret which stores tidb server client certificate used by TiProxy to check health status.",

@@ -774,6 +774,9 @@ type TiProxySpec struct {
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
 
+	// Whether disable SSL connection between tiproxy and TiDB server
+	SSLDisableTiDB bool `json:"sslDisableTiDB,omitempty"`
+
 	// TLSClientSecretName is the name of secret which stores tidb server client certificate
 	// used by TiProxy to check health status.
 	// +optional
