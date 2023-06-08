@@ -19,6 +19,7 @@ import (
 
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -58,6 +59,11 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return c
 }
 
+// Name returns the name of the controller
+func (c *Controller) Name() string {
+	return "tidbmonitor"
+}
+
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
@@ -80,6 +86,9 @@ func (c *Controller) worker() {
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
 func (c *Controller) processNextWorkItem() bool {
+	metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(1)
+	defer metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(-1)
+
 	key, quit := c.queue.Get()
 	if quit {
 		return false
@@ -101,7 +110,9 @@ func (c *Controller) processNextWorkItem() bool {
 func (c *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished syncing TidbMonitor %q (%v)", key, time.Since(startTime))
+		duration := time.Since(startTime)
+		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+		klog.V(4).Infof("Finished syncing TidbMonitor %q (%v)", key, duration)
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
