@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -105,6 +106,11 @@ func (c *PodController) enqueuePod(obj interface{}) {
 	c.queue.Add(key)
 }
 
+// Name returns the name of the PodController.
+func (c *PodController) Name() string {
+	return "tidbcluster-pod"
+}
+
 // Run the controller.
 func (c *PodController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
@@ -129,6 +135,9 @@ func (c *PodController) worker() {
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
 func (c *PodController) processNextWorkItem() bool {
+	metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(1)
+	defer metrics.ActiveWorkers.WithLabelValues(c.Name()).Add(-1)
+
 	key, quit := c.queue.Get()
 	if quit {
 		return false
@@ -191,7 +200,9 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 
 	startTime := time.Now()
 	defer func() {
-		klog.V(4).Infof("Finished syncing TidbCluster pod %q (%v)", key, time.Since(startTime))
+		duration := time.Since(startTime)
+		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+		klog.V(4).Infof("Finished syncing TidbCluster pod %q (%v)", key, duration)
 	}()
 
 	component := pod.Labels[label.ComponentLabelKey]

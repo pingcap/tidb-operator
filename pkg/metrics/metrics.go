@@ -23,8 +23,6 @@ const (
 	LabelName      = "name"
 	LabelComponent = "component"
 )
-<<<<<<< HEAD
-=======
 
 var (
 	// ReconcileTotal is a prometheus counter metrics which holds the total
@@ -79,4 +77,3 @@ func init() {
 		ClusterUpdateErrors,
 	)
 }
->>>>>>> d1fca5def (Add error metrics for TidbCluster (#4952))

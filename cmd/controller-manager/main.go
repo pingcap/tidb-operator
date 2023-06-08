@@ -153,10 +153,15 @@ func main() {
 		// Define some nested types to simplify the codebase
 		type Controller interface {
 			Run(int, <-chan struct{})
+			Name() string
 		}
 		type InformerFactory interface {
 			Start(stopCh <-chan struct{})
 			WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
+		}
+
+		initMetrics := func(c Controller) {
+			metrics.ActiveWorkers.WithLabelValues(c.Name()).Set(0)
 		}
 
 		// Initialize all controllers
@@ -195,6 +200,7 @@ func main() {
 		// Start syncLoop for all controllers
 		for _, controller := range controllers {
 			c := controller
+			initMetrics(c)
 			go wait.Forever(func() { c.Run(cliCfg.Workers, ctx.Done()) }, cliCfg.WaitDuration)
 		}
 	}
