@@ -111,19 +111,22 @@ func TestObserveVolumeStatus(t *testing.T) {
 
 				desiredVolumes := []DesiredVolume{
 					{
-						Name:         "vol1",
-						Size:         resource.MustParse(desiredSize),
-						StorageClass: newStorageClass(desiredSC, true),
+						Name:             "vol1",
+						Size:             resource.MustParse(desiredSize),
+						StorageClass:     newStorageClass(desiredSC, true),
+						StorageClassName: &desiredSC,
 					},
 					{
-						Name:         "vol2",
-						Size:         resource.MustParse(desiredSize),
-						StorageClass: newStorageClass(desiredSC, true),
+						Name:             "vol2",
+						Size:             resource.MustParse(desiredSize),
+						StorageClass:     newStorageClass(desiredSC, true),
+						StorageClassName: &desiredSC,
 					},
 					{
-						Name:         "vol3",
-						Size:         resource.MustParse(desiredSize),
-						StorageClass: newStorageClass(desiredSC, true),
+						Name:             "vol3",
+						Size:             resource.MustParse(desiredSize),
+						StorageClass:     newStorageClass(desiredSC, true),
+						StorageClassName: &desiredSC,
 					},
 				}
 				pvm.GetActualVolumesFunc = func(pod *corev1.Pod, vs []DesiredVolume) ([]ActualVolume, error) {
