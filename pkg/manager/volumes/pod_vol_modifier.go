@@ -52,7 +52,7 @@ type DesiredVolume struct {
 }
 
 // get storage class name from tc
-// it may return empty because sc is unset or no permission to verify the existance of sc
+// it may return empty because sc is unset or no permission to verify the existence of sc
 func (v *DesiredVolume) GetStorageClassName() string {
 	if v.StorageClassName == nil {
 		return ""
