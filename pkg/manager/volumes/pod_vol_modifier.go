@@ -509,7 +509,7 @@ func (p *podVolModifier) modifyPVCAnnoStatus(ctx context.Context, vol *ActualVol
 }
 
 func (p *podVolModifier) modifyVolume(ctx context.Context, vol *ActualVolume) (bool, error) {
-	m := p.getVolumeModifier(vol.Desired.StorageClass)
+	m := p.getVolumeModifier(vol.StorageClass, vol.Desired.StorageClass)
 	if m == nil {
 		// skip modifying volume by delegation.VolumeModifier
 		return false, nil
@@ -521,11 +521,16 @@ func (p *podVolModifier) modifyVolume(ctx context.Context, vol *ActualVolume) (b
 	return m.ModifyVolume(ctx, pvc, vol.PV, vol.Desired.StorageClass)
 }
 
-func (p *podVolModifier) getVolumeModifier(sc *storagev1.StorageClass) delegation.VolumeModifier {
-	if sc == nil {
+func (p *podVolModifier) getVolumeModifier(actualSc, desiredSc *storagev1.StorageClass) delegation.VolumeModifier {
+	if actualSc == nil || desiredSc == nil {
 		return nil
 	}
-	return p.modifiers[sc.Provisioner]
+	// sc is not changed
+	if actualSc.Name == desiredSc.Name {
+		return nil
+	}
+
+	return p.modifiers[desiredSc.Provisioner]
 }
 
 func isLeaderEvictedOrTimeout(tc *v1alpha1.TidbCluster, pod *corev1.Pod) bool {

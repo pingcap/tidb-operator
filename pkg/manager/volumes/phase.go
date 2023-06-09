@@ -82,7 +82,7 @@ func (p *podVolModifier) getVolumePhase(vol *ActualVolume) VolumePhase {
 		return VolumePhaseModified
 	}
 
-	if p.waitForNextTime(vol.PVC, vol.Desired.StorageClass) {
+	if p.waitForNextTime(vol.PVC, vol.StorageClass, vol.Desired.StorageClass) {
 		return VolumePhasePending
 	}
 
@@ -120,17 +120,19 @@ func (p *podVolModifier) validate(vol *ActualVolume) error {
 			return fmt.Errorf("volume expansion is not supported by storageclass %s", vol.StorageClass.Name)
 		}
 	}
-	m := p.getVolumeModifier(vol.Desired.StorageClass)
+
+	m := p.getVolumeModifier(vol.StorageClass, vol.Desired.StorageClass)
 	if m == nil {
 		return nil
 	}
-	desiredPVC := vol.PVC.DeepCopy()
-	desiredPVC.Spec.Resources.Requests[corev1.ResourceStorage] = desired
 
 	// if no pv permission but have sc permission: cannot change sc
 	if isStorageClassChanged(vol.GetStorageClassName(), vol.Desired.GetStorageClassName()) && vol.PV == nil {
 		return fmt.Errorf("cannot change storage class (%s to %s), because there is no permission to get persistent volume", vol.GetStorageClassName(), vol.Desired.GetStorageClassName())
 	}
+
+	desiredPVC := vol.PVC.DeepCopy()
+	desiredPVC.Spec.Resources.Requests[corev1.ResourceStorage] = desired
 
 	return m.Validate(vol.PVC, desiredPVC, vol.StorageClass, vol.Desired.StorageClass)
 }
@@ -142,7 +144,7 @@ func isPVCRevisionChanged(pvc *corev1.PersistentVolumeClaim) bool {
 	return specRevision != statusRevision
 }
 
-func (p *podVolModifier) waitForNextTime(pvc *corev1.PersistentVolumeClaim, sc *storagev1.StorageClass) bool {
+func (p *podVolModifier) waitForNextTime(pvc *corev1.PersistentVolumeClaim, actualSc, desciredSc *storagev1.StorageClass) bool {
 	str, ok := pvc.Annotations[annoKeyPVCLastTransitionTimestamp]
 	if !ok {
 		return false
@@ -153,7 +155,7 @@ func (p *podVolModifier) waitForNextTime(pvc *corev1.PersistentVolumeClaim, sc *
 	}
 	d := time.Since(timestamp)
 
-	m := p.getVolumeModifier(sc)
+	m := p.getVolumeModifier(actualSc, desciredSc)
 
 	waitDur := defaultModifyWaitingDuration
 	if m != nil {
