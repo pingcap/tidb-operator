@@ -43,6 +43,11 @@ func newTestPVCForGetVolumePhase(size string, sc *string, annotations map[string
 			},
 			StorageClassName: sc,
 		},
+		Status: corev1.PersistentVolumeClaimStatus{
+			Capacity: corev1.ResourceList{
+				corev1.ResourceStorage: q,
+			},
+		},
 	}
 }
 
@@ -169,13 +174,22 @@ func TestGetVolumePhase(t *testing.T) {
 			expected: VolumePhasePreparing,
 		},
 		{
-			desc:  "invalid sc",
+			desc:  "sc is not set",
 			pvc:   newTestPVCForGetVolumePhase(oldSize, &oldScName, nil),
 			oldSc: newStorageClassForGetVolumePhase(oldScName, "ebs.csi.aws.com", true),
 			sc:    nil,
 			size:  oldSize,
 
-			expected: VolumePhaseCannotModify,
+			expected: VolumePhaseModified,
+		},
+		{
+			desc:  "sc is not set, but size is changed",
+			pvc:   newTestPVCForGetVolumePhase(oldSize, &oldScName, nil),
+			oldSc: newStorageClassForGetVolumePhase(oldScName, "ebs.csi.aws.com", true),
+			sc:    nil,
+			size:  newSize,
+
+			expected: VolumePhasePreparing,
 		},
 		{
 			desc:  "invalid size",
@@ -217,14 +231,22 @@ func TestGetVolumePhase(t *testing.T) {
 		actual := ActualVolume{
 			PVC:          c.pvc,
 			StorageClass: c.oldSc,
+			PV: &corev1.PersistentVolume{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test",
+				},
+			},
 		}
 		if !c.noDesired {
 			actual.Desired = &DesiredVolume{
 				StorageClass: c.sc,
 				Size:         resource.MustParse(c.size),
 			}
+			if c.sc != nil {
+				actual.Desired.StorageClassName = &c.sc.Name
+			}
 		}
 		phase := pvm.getVolumePhase(&actual)
-		g.Expect(phase).Should(Equal(c.expected), c.desc)
+		g.Expect(phase.String()).Should(Equal(c.expected.String()), c.desc)
 	}
 }

@@ -15,6 +15,7 @@ package volumes
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -80,17 +81,18 @@ func TestModify(t *testing.T) {
 	oldSize := "10Gi"
 	newSize := "20Gi"
 	oldSc := "old"
-	// newSc := "new"
+	newSc := "new"
 
 	provisioner := "test"
 
 	cases := []struct {
 		desc string
 
-		pvc  *corev1.PersistentVolumeClaim
-		pv   *corev1.PersistentVolume
-		sc   *storagev1.StorageClass
-		size string
+		pvc   *corev1.PersistentVolumeClaim
+		pv    *corev1.PersistentVolume
+		oldSc *storagev1.StorageClass
+		sc    *storagev1.StorageClass
+		size  string
 
 		isModifyVolumeFinished bool
 
@@ -98,44 +100,23 @@ func TestModify(t *testing.T) {
 		expectedHasErr bool
 	}{
 		{
-			desc: "volume is not changed",
-			pvc:  newTestPVCForModify(&oldSc, oldSize, oldSize, nil),
-			pv:   newTestPVForModify(),
-			sc:   newTestSCForModify(oldSc, provisioner),
-			size: oldSize,
+			desc:  "volume is not changed",
+			pvc:   newTestPVCForModify(&oldSc, oldSize, oldSize, nil),
+			pv:    newTestPVForModify(),
+			oldSc: newTestSCForModify(oldSc, provisioner),
+			sc:    newTestSCForModify(oldSc, provisioner),
+			size:  oldSize,
 
 			expectedPVC: newTestPVCForModify(&oldSc, oldSize, oldSize, nil),
 		},
 		{
-			desc: "volume size is changed, and revision has not been upgraded",
+			desc: "only volume size is changed",
 
-			pvc:  newTestPVCForModify(&oldSc, oldSize, oldSize, nil),
-			pv:   newTestPVForModify(),
-			sc:   newTestSCForModify(oldSc, provisioner),
-			size: newSize,
-
-			isModifyVolumeFinished: false,
-
-			expectedPVC: newTestPVCForModify(&oldSc, oldSize, oldSize, map[string]string{
-				annoKeyPVCSpecRevision:     "1",
-				annoKeyPVCSpecStorageClass: oldSc,
-				annoKeyPVCSpecStorageSize:  newSize,
-			}),
-			expectedHasErr: true,
-		},
-		{
-			desc: "volume size is changed, and delegate modification is finished",
-
-			pvc: newTestPVCForModify(&oldSc, oldSize, oldSize, map[string]string{
-				annoKeyPVCSpecRevision:     "1",
-				annoKeyPVCSpecStorageClass: oldSc,
-				annoKeyPVCSpecStorageSize:  newSize,
-			}),
-			pv:   newTestPVForModify(),
-			sc:   newTestSCForModify(oldSc, provisioner),
-			size: newSize,
-
-			isModifyVolumeFinished: true,
+			pvc:   newTestPVCForModify(&oldSc, oldSize, oldSize, nil),
+			pv:    newTestPVForModify(),
+			oldSc: newTestSCForModify(oldSc, provisioner),
+			sc:    newTestSCForModify(oldSc, provisioner),
+			size:  newSize,
 
 			expectedPVC: newTestPVCForModify(&oldSc, newSize, oldSize, map[string]string{
 				annoKeyPVCSpecRevision:     "1",
@@ -145,25 +126,66 @@ func TestModify(t *testing.T) {
 			expectedHasErr: true,
 		},
 		{
-			desc: "volume size is changed, and fs resize is finished",
+			desc: "volume is changed, and revision has not been upgraded",
+
+			pvc:   newTestPVCForModify(&oldSc, oldSize, oldSize, nil),
+			pv:    newTestPVForModify(),
+			oldSc: newTestSCForModify(oldSc, provisioner),
+			sc:    newTestSCForModify(newSc, provisioner),
+			size:  newSize,
+
+			isModifyVolumeFinished: false,
+
+			expectedPVC: newTestPVCForModify(&oldSc, oldSize, oldSize, map[string]string{
+				annoKeyPVCSpecRevision:     "1",
+				annoKeyPVCSpecStorageClass: newSc,
+				annoKeyPVCSpecStorageSize:  newSize,
+			}),
+			expectedHasErr: true,
+		},
+		{
+			desc: "volume is changed, and delegate modification is finished",
+
+			pvc: newTestPVCForModify(&oldSc, oldSize, oldSize, map[string]string{
+				annoKeyPVCSpecRevision:     "1",
+				annoKeyPVCSpecStorageClass: newSc,
+				annoKeyPVCSpecStorageSize:  newSize,
+			}),
+			pv:    newTestPVForModify(),
+			oldSc: newTestSCForModify(oldSc, provisioner),
+			sc:    newTestSCForModify(newSc, provisioner),
+			size:  newSize,
+
+			isModifyVolumeFinished: true,
+
+			expectedPVC: newTestPVCForModify(&oldSc, newSize, oldSize, map[string]string{
+				annoKeyPVCSpecRevision:     "1",
+				annoKeyPVCSpecStorageClass: newSc,
+				annoKeyPVCSpecStorageSize:  newSize,
+			}),
+			expectedHasErr: true,
+		},
+		{
+			desc: "volume is changed, and fs resize is finished",
 
 			pvc: newTestPVCForModify(&oldSc, newSize, newSize, map[string]string{
 				annoKeyPVCSpecRevision:     "1",
-				annoKeyPVCSpecStorageClass: oldSc,
+				annoKeyPVCSpecStorageClass: newSc,
 				annoKeyPVCSpecStorageSize:  newSize,
 			}),
-			pv:   newTestPVForModify(),
-			sc:   newTestSCForModify(oldSc, provisioner),
-			size: newSize,
+			pv:    newTestPVForModify(),
+			oldSc: newTestSCForModify(oldSc, provisioner),
+			sc:    newTestSCForModify(newSc, provisioner),
+			size:  newSize,
 
 			isModifyVolumeFinished: true,
 
 			expectedPVC: newTestPVCForModify(&oldSc, newSize, newSize, map[string]string{
 				annoKeyPVCSpecRevision:       "1",
-				annoKeyPVCSpecStorageClass:   oldSc,
+				annoKeyPVCSpecStorageClass:   newSc,
 				annoKeyPVCSpecStorageSize:    newSize,
 				annoKeyPVCStatusRevision:     "1",
-				annoKeyPVCStatusStorageClass: oldSc,
+				annoKeyPVCStatusStorageClass: newSc,
 				annoKeyPVCStatusStorageSize:  newSize,
 			}),
 		},
@@ -189,6 +211,7 @@ func TestModify(t *testing.T) {
 		m := delegation.NewMockVolumeModifier(provisioner, time.Hour)
 
 		m.ModifyVolumeFunc = func(_ context.Context, pvc *corev1.PersistentVolumeClaim, pv *corev1.PersistentVolume, sc *storagev1.StorageClass) (bool, error) {
+			fmt.Println("call modify volume")
 			return !c.isModifyVolumeFinished, nil
 		}
 
@@ -206,13 +229,14 @@ func TestModify(t *testing.T) {
 
 		actual := ActualVolume{
 			Desired: &DesiredVolume{
-				Name:         "test",
-				Size:         resource.MustParse(c.size),
-				StorageClass: c.sc,
+				Name:             "test",
+				Size:             resource.MustParse(c.size),
+				StorageClass:     c.sc,
+				StorageClassName: &c.sc.Name,
 			},
 			PVC:          c.pvc,
 			PV:           c.pv,
-			StorageClass: c.sc,
+			StorageClass: c.oldSc,
 		}
 
 		phase := pvm.getVolumePhase(&actual)
