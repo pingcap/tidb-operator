@@ -303,6 +303,11 @@ kubeadmConfigPatches:
     v: "4"
   controllerManagerExtraArgs:
     v: "4"
+- |
+  kind: ClusterConfiguration
+  apiVersion: kubeadm.k8s.io/v1beta2
+  networking:
+    dnsDomain: "cluster.local"
 EOF
     if [ -n "$DOCKER_IO_MIRROR" -o -n "$GCR_IO_MIRROR" -o -n "$K8S_GCR_IO_MIRROR" -o -n "$QUAY_IO_MIRROR" ]; then
 cat <<EOF >> $tmpfile
