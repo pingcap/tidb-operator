@@ -42,16 +42,22 @@ type PodVolumeModifier interface {
 }
 
 type DesiredVolume struct {
-	Name         v1alpha1.StorageVolumeName
-	Size         resource.Quantity
+	Name v1alpha1.StorageVolumeName
+	Size resource.Quantity
+	// it may be nil if there is no permission to get storage class
 	StorageClass *storagev1.StorageClass
+	// it is sc name specified by user
+	// the sc may not exist
+	StorageClassName *string
 }
 
+// get storage class name from tc
+// it may return empty because sc is unset or no permission to verify the existance of sc
 func (v *DesiredVolume) GetStorageClassName() string {
-	if v.StorageClass == nil {
+	if v.StorageClassName == nil {
 		return ""
 	}
-	return v.StorageClass.Name
+	return *v.StorageClassName
 }
 
 func (v *DesiredVolume) GetStorageSize() resource.Quantity {
@@ -59,22 +65,18 @@ func (v *DesiredVolume) GetStorageSize() resource.Quantity {
 }
 
 type ActualVolume struct {
-	Desired      *DesiredVolume
-	PVC          *corev1.PersistentVolumeClaim
-	PV           *corev1.PersistentVolume
+	Desired *DesiredVolume
+	PVC     *corev1.PersistentVolumeClaim
+	Phase   VolumePhase
+	// it may be nil if there is no permission to get pvc
+	PV *corev1.PersistentVolume
+	// it may be nil if there is no permission to get storage class
 	StorageClass *storagev1.StorageClass
-	Phase        VolumePhase
 }
 
+// get storage class name from current pvc
 func (v *ActualVolume) GetStorageClassName() string {
-	sc := ignoreNil(v.PVC.Spec.StorageClassName)
-
-	scAnno, ok := v.PVC.Annotations[annoKeyPVCStatusStorageClass]
-	if ok {
-		sc = scAnno
-	}
-
-	return sc
+	return getStorageClassNameFromPVC(v.PVC)
 }
 
 func (v *ActualVolume) GetStorageSize() resource.Quantity {
@@ -162,55 +164,39 @@ func (p *podVolModifier) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha1
 	scLister := p.deps.StorageClassLister
 
 	storageVolumes := []v1alpha1.StorageVolume{}
-	var defaultSc *storagev1.StorageClass
+	var defaultScName *string
 	switch mt {
 	case v1alpha1.TiProxyMemberType:
-		sc, err := getStorageClass(tc.Spec.TiProxy.StorageClassName, scLister)
-		if err != nil {
-			return nil, err
-		}
-		defaultSc = sc
+		defaultScName = tc.Spec.TiProxy.StorageClassName
 		d := DesiredVolume{
-			Name:         v1alpha1.GetStorageVolumeName("", mt),
-			Size:         getStorageSize(tc.Spec.TiProxy.Requests),
-			StorageClass: sc,
+			Name:             v1alpha1.GetStorageVolumeName("", mt),
+			Size:             getStorageSize(tc.Spec.TiProxy.Requests),
+			StorageClassName: defaultScName,
 		}
 		desiredVolumes = append(desiredVolumes, d)
 
 		storageVolumes = tc.Spec.TiProxy.StorageVolumes
 	case v1alpha1.PDMemberType:
-		sc, err := getStorageClass(tc.Spec.PD.StorageClassName, scLister)
-		if err != nil {
-			return nil, err
-		}
-		defaultSc = sc
+		defaultScName = tc.Spec.PD.StorageClassName
 		d := DesiredVolume{
-			Name:         v1alpha1.GetStorageVolumeName("", mt),
-			Size:         getStorageSize(tc.Spec.PD.Requests),
-			StorageClass: sc,
+			Name:             v1alpha1.GetStorageVolumeName("", mt),
+			Size:             getStorageSize(tc.Spec.PD.Requests),
+			StorageClassName: defaultScName,
 		}
 		desiredVolumes = append(desiredVolumes, d)
 
 		storageVolumes = tc.Spec.PD.StorageVolumes
 
 	case v1alpha1.TiDBMemberType:
-		sc, err := getStorageClass(tc.Spec.TiDB.StorageClassName, scLister)
-		if err != nil {
-			return nil, err
-		}
-		defaultSc = sc
+		defaultScName = tc.Spec.TiDB.StorageClassName
 		storageVolumes = tc.Spec.TiDB.StorageVolumes
 
 	case v1alpha1.TiKVMemberType:
-		sc, err := getStorageClass(tc.Spec.TiKV.StorageClassName, scLister)
-		if err != nil {
-			return nil, err
-		}
-		defaultSc = sc
+		defaultScName = tc.Spec.TiKV.StorageClassName
 		d := DesiredVolume{
-			Name:         v1alpha1.GetStorageVolumeName("", mt),
-			Size:         getStorageSize(tc.Spec.TiKV.Requests),
-			StorageClass: sc,
+			Name:             v1alpha1.GetStorageVolumeName("", mt),
+			Size:             getStorageSize(tc.Spec.TiKV.Requests),
+			StorageClassName: defaultScName,
 		}
 		desiredVolumes = append(desiredVolumes, d)
 
@@ -218,36 +204,24 @@ func (p *podVolModifier) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha1
 
 	case v1alpha1.TiFlashMemberType:
 		for i, claim := range tc.Spec.TiFlash.StorageClaims {
-			sc, err := getStorageClass(claim.StorageClassName, scLister)
-			if err != nil {
-				return nil, err
-			}
 			d := DesiredVolume{
-				Name:         v1alpha1.GetStorageVolumeNameForTiFlash(i),
-				Size:         getStorageSize(claim.Resources.Requests),
-				StorageClass: sc,
+				Name:             v1alpha1.GetStorageVolumeNameForTiFlash(i),
+				Size:             getStorageSize(claim.Resources.Requests),
+				StorageClassName: claim.StorageClassName,
 			}
 			desiredVolumes = append(desiredVolumes, d)
 		}
 
 	case v1alpha1.TiCDCMemberType:
-		sc, err := getStorageClass(tc.Spec.TiCDC.StorageClassName, scLister)
-		if err != nil {
-			return nil, err
-		}
-		defaultSc = sc
+		defaultScName = tc.Spec.TiCDC.StorageClassName
 		storageVolumes = tc.Spec.TiCDC.StorageVolumes
 
 	case v1alpha1.PumpMemberType:
-		sc, err := getStorageClass(tc.Spec.Pump.StorageClassName, scLister)
-		if err != nil {
-			return nil, err
-		}
-		defaultSc = sc
+		defaultScName = tc.Spec.Pump.StorageClassName
 		d := DesiredVolume{
-			Name:         v1alpha1.GetStorageVolumeName("", mt),
-			Size:         getStorageSize(tc.Spec.Pump.Requests),
-			StorageClass: sc,
+			Name:             v1alpha1.GetStorageVolumeName("", mt),
+			Size:             getStorageSize(tc.Spec.Pump.Requests),
+			StorageClassName: defaultScName,
 		}
 		desiredVolumes = append(desiredVolumes, d)
 	default:
@@ -256,23 +230,31 @@ func (p *podVolModifier) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha1
 
 	for _, sv := range storageVolumes {
 		if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
-			sc, err := getStorageClass(sv.StorageClassName, scLister)
-			if err != nil {
-				return nil, err
-			}
-			if sc == nil {
-				sc = defaultSc
-			}
 			d := DesiredVolume{
-				Name:         v1alpha1.GetStorageVolumeName(sv.Name, mt),
-				Size:         quantity,
-				StorageClass: sc,
+				Name:             v1alpha1.GetStorageVolumeName(sv.Name, mt),
+				Size:             quantity,
+				StorageClassName: sv.StorageClassName,
+			}
+			if d.StorageClassName == nil {
+				d.StorageClassName = defaultScName
 			}
 
 			desiredVolumes = append(desiredVolumes, d)
 
 		} else {
 			klog.Warningf("StorageVolume %q in %s/%s .spec.%s is invalid", sv.Name, tc.GetNamespace(), tc.GetName(), mt)
+		}
+	}
+
+	if scLister != nil {
+		for i := range desiredVolumes {
+			if desiredVolumes[i].StorageClassName != nil {
+				sc, err := getStorageClass(desiredVolumes[i].StorageClassName, scLister)
+				if err != nil {
+					return nil, fmt.Errorf("cannot get sc %s", *desiredVolumes[i].StorageClassName)
+				}
+				desiredVolumes[i].StorageClass = sc
+			}
 		}
 	}
 
@@ -309,18 +291,16 @@ func (p *podVolModifier) getBoundPVFromPVC(pvc *corev1.PersistentVolumeClaim) (*
 }
 
 func (p *podVolModifier) getStorageClassFromPVC(pvc *corev1.PersistentVolumeClaim) (*storagev1.StorageClass, error) {
-	sc := ignoreNil(pvc.Spec.StorageClassName)
-
-	scAnno, ok := pvc.Annotations[annoKeyPVCStatusStorageClass]
-	if ok {
-		sc = scAnno
-	}
-
-	if sc == "" {
+	scName := getStorageClassNameFromPVC(pvc)
+	if p.deps.StorageClassLister == nil {
+		klog.V(4).Infof("StorageClass is unavailable, skip getting StorageClass for %s. This may be caused by no relevant permissions", scName)
 		return nil, nil
 	}
+	if scName == "" {
+		return nil, fmt.Errorf("StorageClass of pvc %s is not set", pvc.Name)
+	}
 
-	return p.deps.StorageClassLister.Get(sc)
+	return p.deps.StorageClassLister.Get(scName)
 }
 
 func (p *podVolModifier) getPVC(ns string, vol *corev1.Volume) (*corev1.PersistentVolumeClaim, error) {
@@ -375,7 +355,11 @@ func (p *podVolModifier) NewActualVolumeOfPod(vs []DesiredVolume, ns string, vol
 		return nil, err
 	}
 
+	// no desired volume, it may be a volume which is unmanaged by operator
 	desired := getDesiredVolumeByName(vs, v1alpha1.StorageVolumeName(vol.Name))
+	if desired == nil {
+		return nil, nil
+	}
 
 	actual := ActualVolume{
 		Desired:      desired,
@@ -412,7 +396,7 @@ func upgradeRevision(pvc *corev1.PersistentVolumeClaim) {
 func isPVCSpecMatched(pvc *corev1.PersistentVolumeClaim, scName string, size resource.Quantity) bool {
 	isChanged := false
 	oldSc := pvc.Annotations[annoKeyPVCSpecStorageClass]
-	if oldSc != scName {
+	if scName != "" && oldSc != scName {
 		isChanged = true
 	}
 
@@ -435,7 +419,9 @@ func snapshotStorageClassAndSize(pvc *corev1.PersistentVolumeClaim, scName strin
 		pvc.Annotations = map[string]string{}
 	}
 
-	pvc.Annotations[annoKeyPVCSpecStorageClass] = scName
+	if scName != "" {
+		pvc.Annotations[annoKeyPVCSpecStorageClass] = scName
+	}
 	pvc.Annotations[annoKeyPVCSpecStorageSize] = size.String()
 
 	return isChanged
@@ -454,10 +440,7 @@ func (p *podVolModifier) modifyPVCAnnoSpec(ctx context.Context, vol *ActualVolum
 	pvc := vol.PVC.DeepCopy()
 
 	size := vol.Desired.Size
-	scName := ""
-	if vol.Desired.StorageClass != nil {
-		scName = vol.Desired.StorageClass.Name
-	}
+	scName := vol.Desired.GetStorageClassName()
 
 	isChanged := snapshotStorageClassAndSize(pvc, scName, size)
 	if isChanged {
@@ -510,7 +493,9 @@ func (p *podVolModifier) modifyPVCAnnoStatus(ctx context.Context, vol *ActualVol
 	}
 
 	pvc.Annotations[annoKeyPVCStatusRevision] = pvc.Annotations[annoKeyPVCSpecRevision]
-	pvc.Annotations[annoKeyPVCStatusStorageClass] = pvc.Annotations[annoKeyPVCSpecStorageClass]
+	if scName := pvc.Annotations[annoKeyPVCSpecStorageClass]; scName != "" {
+		pvc.Annotations[annoKeyPVCStatusStorageClass] = scName
+	}
 	pvc.Annotations[annoKeyPVCStatusStorageSize] = pvc.Annotations[annoKeyPVCSpecStorageSize]
 
 	updated, err := p.deps.KubeClientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Update(ctx, pvc, metav1.UpdateOptions{})
@@ -537,6 +522,9 @@ func (p *podVolModifier) modifyVolume(ctx context.Context, vol *ActualVolume) (b
 }
 
 func (p *podVolModifier) getVolumeModifier(sc *storagev1.StorageClass) delegation.VolumeModifier {
+	if sc == nil {
+		return nil
+	}
 	return p.modifiers[sc.Provisioner]
 }
 
@@ -564,4 +552,15 @@ func isLeaderEvictedOrTimeout(tc *v1alpha1.TidbCluster, pod *corev1.Pod) bool {
 	}
 
 	return false
+}
+
+func getStorageClassNameFromPVC(pvc *corev1.PersistentVolumeClaim) string {
+	sc := ignoreNil(pvc.Spec.StorageClassName)
+
+	scAnno, ok := pvc.Annotations[annoKeyPVCStatusStorageClass]
+	if ok && scAnno != "" {
+		sc = scAnno
+	}
+
+	return sc
 }

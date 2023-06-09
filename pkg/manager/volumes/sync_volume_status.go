@@ -87,6 +87,16 @@ func observeVolumeStatus(pvm PodVolumeModifier, pods []*v1.Pod, desiredVolumes [
 			actualCap := volume.GetStorageSize()
 			desiredSC := volume.Desired.GetStorageClassName()
 			actualSC := volume.GetStorageClassName()
+			scCannotChange := false
+
+			if desiredSC == "" {
+				// sc is unset
+				desiredSC = actualSC
+			} else if volume.Desired.StorageClass == nil {
+				// sc don't exist or no permission to get sc
+				desiredSC = "<unknown>"
+				scCannotChange = true
+			}
 
 			status, exist := observedStatus[volName]
 			if !exist {
@@ -100,6 +110,9 @@ func observeVolumeStatus(pvm PodVolumeModifier, pods []*v1.Pod, desiredVolumes [
 					ModifiedCapacity: desiredCap,
 					// CurrentStorageClass is default to same as desired storage class, and maybe changed later if any
 					// volume is modifying.
+					// FIXME: CurrentStorageClass may not only one sc in some situations,
+					// e.g. tikv-0 uses sc aaa, tikv-1 uses sc bbb
+					// TODO: maybe change it to an array field ?
 					CurrentStorageClass:  desiredSC,
 					ModifiedStorageClass: desiredSC,
 				}
@@ -109,7 +122,10 @@ func observeVolumeStatus(pvm PodVolumeModifier, pods []*v1.Pod, desiredVolumes [
 			status.BoundCount++
 			capModified := actualCap.Cmp(desiredCap) == 0
 			scModified := actualSC == desiredSC
-			if capModified && scModified {
+			if scCannotChange {
+				status.CurrentStorageClass = actualSC
+			}
+			if capModified && (scModified || scCannotChange) {
 				status.ModifiedCount++
 			} else {
 				status.CurrentCount++
@@ -120,7 +136,6 @@ func observeVolumeStatus(pvm PodVolumeModifier, pods []*v1.Pod, desiredVolumes [
 					status.CurrentStorageClass = actualSC
 				}
 			}
-
 		}
 	}
 
