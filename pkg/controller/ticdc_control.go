@@ -286,7 +286,7 @@ func getCaptureAdvertiseAddressPrefix(tc *v1alpha1.TidbCluster, ordinal int32) s
 		// When setting up TiCDC across multiple Kubernetes clusters,
 		// it is important to consider the cluster domain if two CDC pods
 		// share the same in-cluster dns name (without cluster domain).
-		prefix = fmt.Sprintf("%s.%s", prefix, tc.Spec.ClusterDomain)
+		prefix = fmt.Sprintf("%s.svc.%s", prefix, tc.Spec.ClusterDomain)
 	}
 	return prefix
 }
