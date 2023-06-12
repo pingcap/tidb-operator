@@ -154,7 +154,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreTiKVComplete(restore) {
 			if !v1alpha1.IsRestoreWarmUpStarted(restore) {
-				return rm.warmUpTiKVVolumes2(restore, tc)
+				return rm.warmUpTiKVVolumesSync(restore, tc)
 			}
 			if !v1alpha1.IsRestoreWarmUpComplete(restore) {
 				return rm.waitWarmUpJobsFinished(restore)
@@ -841,7 +841,7 @@ type pvcInfo struct {
 	number     int
 }
 
-func (rm *restoreManager) warmUpTiKVVolumes2(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
+func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
 	warmUpImage := "wangle1321/fio:amazonlinux-20230606"
 	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
 	if err != nil {
@@ -900,7 +900,7 @@ func (rm *restoreManager) warmUpTiKVVolumes2(r *v1alpha1.Restore, tc *v1alpha1.T
 	}, nil)
 }
 
-func (rm *restoreManager) warmUpTiKVVolumes(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
+func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
 	warmUpImage := "wangle1321/fio:amazonlinux-20230606"
 	// TODO: add codes below after test
 	/*if !r.Spec.WarmUp {
@@ -914,14 +914,14 @@ func (rm *restoreManager) warmUpTiKVVolumes(r *v1alpha1.Restore, tc *v1alpha1.Ti
 	if err != nil {
 		return err
 	}
-	pods, err := rm.deps.PodLister.Pods(tc.Namespace).List(sel)
+	tikvPods, err := rm.deps.PodLister.Pods(tc.Namespace).List(sel)
 	if err != nil {
 		return err
 	}
-	if int32(len(pods)) != tc.Spec.TiKV.Replicas {
+	if int32(len(tikvPods)) != tc.Spec.TiKV.Replicas {
 		return fmt.Errorf("wait all TiKV pods started to warm up volumes")
 	}
-	for _, pod := range pods {
+	for _, pod := range tikvPods {
 		if pod.Status.Phase != corev1.PodRunning {
 			return fmt.Errorf("wait TiKV pod %s/%s running", pod.Namespace, pod.Name)
 		}
@@ -931,7 +931,7 @@ func (rm *restoreManager) warmUpTiKVVolumes(r *v1alpha1.Restore, tc *v1alpha1.Ti
 	for _, vol := range tc.Spec.TiKV.StorageVolumes {
 		tikvMountPaths = append(tikvMountPaths, vol.MountPath)
 	}
-	for _, pod := range pods {
+	for _, pod := range tikvPods {
 		ns, podName := pod.Namespace, pod.Name
 		warmUpJobName := fmt.Sprintf("%s-warm-up", podName)
 		_, err := rm.deps.JobLister.Jobs(ns).Get(warmUpJobName)
@@ -1012,6 +1012,9 @@ func (rm *restoreManager) makeWarmUpJob2(r *v1alpha1.Restore, tc *v1alpha1.TidbC
 					Command:         []string{"/bin/sh"},
 					Args:            []string{"-c", fioCommand},
 					VolumeMounts:    podVolumeMounts,
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: pointer.BoolPtr(true),
+					},
 				},
 			},
 		},
@@ -1104,6 +1107,9 @@ func (rm *restoreManager) makeWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod
 					Command:         []string{"/bin/sh"},
 					Args:            []string{"-c", fioCommand},
 					VolumeMounts:    warmUpVolumeMounts,
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: pointer.BoolPtr(true),
+					},
 				},
 			},
 		},
