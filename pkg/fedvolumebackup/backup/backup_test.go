@@ -73,7 +73,7 @@ func newHelper(t *testing.T, backupName, backupNamespace string) *helper {
 
 func (h *helper) createVolumeBackup(ctx context.Context) *v1alpha1.VolumeBackup {
 	volumeBackup := generateVolumeBackup(h.backupName, h.backupNamespace)
-	_, err := h.deps.Clientset.FederationV1alpha1().VolumeBackups(h.backupNamespace).Create(ctx, volumeBackup, metav1.CreateOptions{})
+	volumeBackup, err := h.deps.Clientset.FederationV1alpha1().VolumeBackups(h.backupNamespace).Create(ctx, volumeBackup, metav1.CreateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 	h.g.Expect(volumeBackup.Status.TimeStarted.Unix() < 0).To(gomega.BeTrue())
 	h.g.Expect(volumeBackup.Status.TimeCompleted.Unix() < 0).To(gomega.BeTrue())
