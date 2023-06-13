@@ -155,7 +155,7 @@ encoded_domain_url=` + "`" + `echo ${domain}:2380 | base64 | tr "\n" " " | sed "
 	`
 elapseTime=0
 period=1
-threshold=30
+threshold={{ .PDStartTimeout }} 
 while true; do
 sleep ${period}
 elapseTime=$(( elapseTime+period ))
@@ -245,6 +245,7 @@ type PDStartScriptModel struct {
 	Scheme            string
 	DataDir           string
 	CheckDomainScript string
+	StartTimeout      int
 }
 
 var tikvStartScriptTplText = `#!/bin/sh
