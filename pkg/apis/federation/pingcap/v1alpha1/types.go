@@ -25,7 +25,7 @@ import (
 // VolumeBackup is the control script's spec
 //
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName="vbf"
+// +kubebuilder:resource:shortName="vbk"
 // +genclient:noStatus
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
@@ -186,8 +186,6 @@ type VolumeBackupConditionType string
 const (
 	// VolumeBackupInvalid means the VolumeBackup is invalid
 	VolumeBackupInvalid VolumeBackupConditionType = "Invalid"
-	// VolumeBackupPrepared means the VolumeBackup preparation is done
-	VolumeBackupPrepared VolumeBackupConditionType = "Prepared"
 	// VolumeBackupRunning means the VolumeBackup is running
 	VolumeBackupRunning VolumeBackupConditionType = "Running"
 	// VolumeBackupComplete means all the backups in data plane are complete and the VolumeBackup is complete
@@ -206,7 +204,7 @@ const (
 // VolumeBackupSchedule is the control script's spec
 //
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName="vbfs"
+// +kubebuilder:resource:shortName="vbks"
 // +genclient:noStatus
 // +kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule`,description="The cron format string used for backup scheduling"
 // +kubebuilder:printcolumn:name="MaxBackups",type=integer,JSONPath=`.spec.maxBackups`,description="The max number of backups we want to keep"

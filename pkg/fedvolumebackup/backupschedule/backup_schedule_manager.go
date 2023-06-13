@@ -182,10 +182,9 @@ func (bm *backupScheduleManager) canPerformNextBackup(vbs *v1alpha1.VolumeBackup
 		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, vbs.Status.LastBackup, err)
 	}
 
-	if v1alpha1.IsVolumeBackupComplete(backup) {
+	if v1alpha1.IsVolumeBackupComplete(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
 		return nil
 	}
-	// If the last backup is in a failed state, but it is not scheduled yet,
 	// skip this sync round of the backup schedule and waiting the last backup.
 	return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, vbs.Status.LastBackup)
 }
@@ -257,7 +256,7 @@ func sortSnapshotBackups(backupsList []*v1alpha1.VolumeBackup) []*v1alpha1.Volum
 
 	for _, backup := range backupsList {
 		// the backup status CommitTs will be empty after created. without this, all newly created backups will be GC'ed
-		if v1alpha1.IsVolumeBackupRunning(backup) || v1alpha1.IsBackupPrepared(backup) {
+		if v1alpha1.IsVolumeBackupRunning(backup) {
 			continue
 		}
 		ascBackupList = append(ascBackupList, backup)
@@ -361,8 +360,15 @@ func (m *FakeBackupScheduleManager) SetSyncError(err error) {
 	m.err = err
 }
 
-func (m *FakeBackupScheduleManager) Sync(_ *v1alpha1.VolumeBackupSchedule) error {
-	return m.err
+func (m *FakeBackupScheduleManager) Sync(vbs *v1alpha1.VolumeBackupSchedule) error {
+	if m.err != nil {
+		return m.err
+	}
+	if vbs.Status.LastBackupTime != nil {
+		// simulate status update
+		vbs.Status.LastBackupTime = &metav1.Time{Time: vbs.Status.LastBackupTime.Add(1 * time.Hour)}
+	}
+	return nil
 }
 
 var _ fedvolumebackup.BackupScheduleManager = &FakeBackupScheduleManager{}

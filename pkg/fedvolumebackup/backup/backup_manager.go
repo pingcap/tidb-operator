@@ -172,14 +172,6 @@ func (bm *backupManager) setVolumeBackupRunning(volumeBackupStatus *v1alpha1.Vol
 	})
 }
 
-func (bm *backupManager) setVolumeBackupPrepared(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
-	volumeBackupStatus.TimeStarted = metav1.Now()
-	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
-		Type:   v1alpha1.VolumeBackupPrepared,
-		Status: corev1.ConditionTrue,
-	})
-}
-
 func (bm *backupManager) listAllBackupMembers(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup) ([]*volumeBackupMember, error) {
 	backupMembers := make([]*volumeBackupMember, 0, len(volumeBackup.Spec.Clusters))
 	for _, memberCluster := range volumeBackup.Spec.Clusters {

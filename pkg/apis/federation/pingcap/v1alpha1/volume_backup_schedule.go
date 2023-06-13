@@ -20,6 +20,6 @@ import (
 	constants "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
-func (vbfs *VolumeBackupSchedule) GetBackupCRDName(timestamp time.Time) string {
-	return fmt.Sprintf("%s-%s", vbfs.GetName(), timestamp.UTC().Format(constants.BackupNameTimeFormat))
+func (vbks *VolumeBackupSchedule) GetBackupCRDName(timestamp time.Time) string {
+	return fmt.Sprintf("%s-%s", vbks.GetName(), timestamp.UTC().Format(constants.BackupNameTimeFormat))
 }
