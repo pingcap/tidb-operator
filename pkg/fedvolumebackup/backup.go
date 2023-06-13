@@ -29,8 +29,8 @@ type BackupManager interface {
 type RestoreManager interface {
 	// Sync	implements the logic for syncing VolumeRestore.
 	Sync(volumeRestore *v1alpha1.VolumeRestore) error
-	// UpdateCondition updates the condition for a VolumeRestore.
-	UpdateCondition(volumeRestore *v1alpha1.VolumeRestore, condition *v1alpha1.VolumeRestoreCondition) error
+	// UpdateStatus updates the status for a VolumeRestore, include condition and status info.
+	UpdateStatus(volumeRestore *v1alpha1.VolumeRestore, newStatus *v1alpha1.VolumeRestoreStatus) error
 }
 
 // BackupScheduleManager implements the logic for manage federation VolumeBackupSchedule.
