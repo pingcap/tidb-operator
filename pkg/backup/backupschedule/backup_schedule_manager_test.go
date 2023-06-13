@@ -234,7 +234,7 @@ func TestBuildBackup(t *testing.T) {
 	}
 }
 
-func TestCaculateExpiredBackupsWithLogBackup(t *testing.T) {
+func TestCalculateExpiredBackupsWithLogBackup(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testCase struct {
 		backups                   []*v1alpha1.Backup

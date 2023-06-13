@@ -108,7 +108,6 @@ type FakeFedVolumeBackupControl struct {
 	volumeBackupLister        listers.VolumeBackupLister
 	volumeBackupIndexer       cache.Indexer
 	createVolumeBackupTracker RequestTracker
-	updateVolumeBackupTracker RequestTracker
 	deleteVolumeBackupTracker RequestTracker
 }
 
@@ -119,18 +118,12 @@ func NewFakeFedVolumeBackupControl(volumeBackupInformer informers.VolumeBackupIn
 		volumeBackupInformer.Informer().GetIndexer(),
 		RequestTracker{},
 		RequestTracker{},
-		RequestTracker{},
 	}
 }
 
 // SetCreateVolumeBackupError sets the error attributes of createVolumeBackupTracker
 func (fbc *FakeFedVolumeBackupControl) SetCreateVolumeBackupError(err error, after int) {
 	fbc.createVolumeBackupTracker.SetError(err).SetAfter(after)
-}
-
-// SetUpdateVolumeBackupError sets the error attributes of createVolumeBackupTracker
-func (fbc *FakeFedVolumeBackupControl) SetUpdateVolumeBackupError(err error, after int) {
-	fbc.updateVolumeBackupTracker.SetError(err).SetAfter(after)
 }
 
 // SetDeleteVolumeBackupError sets the error attributes of deleteVolumeBackupTracker

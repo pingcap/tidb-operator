@@ -14,7 +14,7 @@ spec:
     listKind: VolumeBackupScheduleList
     plural: volumebackupschedules
     shortNames:
-    - vbfs
+    - vbks
     singular: volumebackupschedule
   scope: Namespaced
   versions:
