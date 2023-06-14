@@ -91,7 +91,6 @@ func TestManager(t *testing.T) {
 	for i := -9; i <= 0; i++ {
 		t.Log("loop id ", i)
 		m.now = func() time.Time { return now.AddDate(0, 0, i) }
-		time.Sleep(1 * time.Second)
 		err = m.Sync(bs)
 		g.Expect(err).Should(BeNil())
 		bks := helper.checkBacklist(bs.Namespace, i+10)
@@ -103,7 +102,6 @@ func TestManager(t *testing.T) {
 				Type:   v1alpha1.VolumeBackupComplete,
 				Status: v1.ConditionTrue,
 			})
-			//deps.Clientset.FederationV1alpha1().VolumeBackups(bk.Namespace).Update(context.TODO(), bk, metav1.UpdateOptions{})
 
 			if changed {
 				bk.CreationTimestamp = metav1.Time{Time: m.now()}
