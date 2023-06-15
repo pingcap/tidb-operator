@@ -32,6 +32,7 @@ var (
 		AdvancedStatefulSet: false,
 		AutoScaling:         false,
 		VolumeModifying:     false,
+		VolumeReplacing:     false,
 	}
 	// DefaultFeatureGate is a shared global FeatureGate.
 	DefaultFeatureGate FeatureGate = NewDefaultFeatureGate()
@@ -50,6 +51,9 @@ const (
 	// VolumeModifying controls whether allow to modify volumes
 	// NOTE: volume resize is always allowed even if this feature is disabled
 	VolumeModifying string = "VolumeModifying"
+
+	// VolumeReplacing controls whether to replace whole volumes by deleting and recreating on changes.
+	VolumeReplacing string = "VolumeReplacing"
 )
 
 type FeatureGate interface {
