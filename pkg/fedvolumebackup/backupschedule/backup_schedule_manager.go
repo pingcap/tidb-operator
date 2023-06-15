@@ -15,7 +15,9 @@ package backupschedule
 
 import (
 	"fmt"
+	"path"
 	"sort"
+	"strings"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -28,6 +30,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
+	nonfebv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
 )
@@ -63,7 +66,6 @@ func (bm *backupScheduleManager) Sync(vbs *v1alpha1.VolumeBackupSchedule) error 
 		return err
 	}
 
-	// TODO: do we need to delete last backup job also?
 	backup, err := createBackup(bm.deps.FedVolumeBackupControl, vbs, *scheduledTime)
 	if err != nil {
 		return err
@@ -149,6 +151,31 @@ func buildBackup(vbs *v1alpha1.VolumeBackupSchedule, timestamp time.Time) *v1alp
 	backupSpec := *vbs.Spec.BackupTemplate.DeepCopy()
 
 	bsLabel := util.CombineStringMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), vbs.Labels)
+
+	if backupSpec.Template.BR == nil {
+		klog.Errorf("Information on BR missing in template")
+		return nil
+	}
+
+	var pdAddress, clusterNamespace string
+	if backupSpec.Template.BR.ClusterNamespace == "" {
+		clusterNamespace = ns
+	} else {
+		clusterNamespace = backupSpec.Template.BR.ClusterNamespace
+	}
+	pdAddress = fmt.Sprintf("%s-pd.%s:%d", backupSpec.Template.BR.Cluster, clusterNamespace, nonfebv1alpha1.DefaultPDClientPort)
+
+	backupPrefix := strings.ReplaceAll(pdAddress, ":", "-") + "-" + timestamp.UTC().Format(nonfebv1alpha1.BackupNameTimeFormat)
+	if backupSpec.Template.S3 != nil {
+		backupSpec.Template.S3.Prefix = path.Join(backupSpec.Template.S3.Prefix, backupPrefix)
+	} else {
+		klog.Errorf("Information on S3 missing in template")
+		return nil
+	}
+
+	if vbs.Spec.BackupTemplate.Template.ImagePullSecrets != nil {
+		backupSpec.Template.ImagePullSecrets = vbs.Spec.BackupTemplate.Template.ImagePullSecrets
+	}
 	backup := &v1alpha1.VolumeBackup{
 		Spec: backupSpec,
 		ObjectMeta: metav1.ObjectMeta{
@@ -162,11 +189,17 @@ func buildBackup(vbs *v1alpha1.VolumeBackupSchedule, timestamp time.Time) *v1alp
 		},
 	}
 
+	klog.V(4).Infof("created backup is [%v], at time %v", backup, timestamp)
+
 	return backup
 }
 
 func createBackup(bkController controller.FedVolumeBackupControlInterface, vbs *v1alpha1.VolumeBackupSchedule, timestamp time.Time) (*v1alpha1.VolumeBackup, error) {
 	bk := buildBackup(vbs, timestamp)
+	if bk == nil {
+		return nil, controller.IgnoreErrorf("Invalid backup template for volume backup schedule [%s], BR or S3 information missing", vbs.GetName())
+	}
+
 	return bkController.CreateVolumeBackup(bk)
 }
 

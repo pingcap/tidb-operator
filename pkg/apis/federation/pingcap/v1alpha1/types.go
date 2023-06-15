@@ -95,7 +95,8 @@ type VolumeBackupMemberSpec struct {
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// BRConfig is the configs for BR
-	BR                              *BRConfig `json:"br,omitempty"`
+	BR *BRConfig `json:"br,omitempty"`
+	// StorageProvider configures where and how backups should be stored.
 	pingcapv1alpha1.StorageProvider `json:",inline"`
 	Tolerations                     []corev1.Toleration `json:"tolerations,omitempty"`
 	// ToolImage specifies the tool image used in `Backup`, which supports BR.
@@ -117,6 +118,10 @@ type VolumeBackupMemberSpec struct {
 // BRConfig contains config for BR
 // +k8s:openapi-gen=true
 type BRConfig struct {
+	// ClusterName of backup/restore cluster
+	Cluster string `json:"cluster"`
+	// Namespace of backup/restore cluster
+	ClusterNamespace string `json:"clusterNamespace,omitempty"`
 	// Concurrency is the size of thread pool on each node that execute the backup task
 	Concurrency *uint32 `json:"concurrency,omitempty"`
 	// CheckRequirements specifies whether to check requirements
