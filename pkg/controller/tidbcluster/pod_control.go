@@ -16,6 +16,7 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -53,9 +54,10 @@ type PodController struct {
 	podStats   map[string]stat
 
 	// only set in test
-	testPDClient                 pdapi.PDClient
-	recheckLeaderCountDuration   time.Duration
-	recheckClusterStableDuration time.Duration
+	testPDClient                  pdapi.PDClient
+	recheckLeaderCountDuration    time.Duration
+	recheckClusterStableDuration  time.Duration
+	recheckStoreTombstoneDuration time.Duration
 }
 
 // NewPodController create a PodController.
@@ -66,9 +68,10 @@ func NewPodController(deps *controller.Dependencies) *PodController {
 			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
 			"tidbcluster pods",
 		),
-		podStats:                     make(map[string]stat),
-		recheckLeaderCountDuration:   time.Second * 15,
-		recheckClusterStableDuration: time.Minute * 1,
+		podStats:                      make(map[string]stat),
+		recheckLeaderCountDuration:    time.Second * 15,
+		recheckClusterStableDuration:  time.Minute * 1,
+		recheckStoreTombstoneDuration: time.Second * 15,
 	}
 
 	podsInformer := deps.KubeInformerFactory.Core().V1().Pods()
@@ -287,6 +290,14 @@ func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1al
 }
 
 func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	result, err := c.syncTiKVPodForEviction(ctx, pod, tc)
+	if err != nil || result.Requeue || result.RequeueAfter > 0 {
+		return result, err
+	}
+	return c.syncTiKVPodForReplaceDisk(ctx, pod, tc)
+}
+
+func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
 	key, value, ok := needEvictLeader(pod)
 
 	if ok {
@@ -427,6 +438,91 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		}
 	}
 
+	return reconcile.Result{}, nil
+}
+func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	//TODO(anish): remove extra debug logs before PR.
+	value, exist := pod.Annotations[v1alpha1.ReplaceDiskAnnKey]
+	if exist {
+		if value != v1alpha1.ReplaceDiskValueTrue {
+			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceDiskAnnKey, pod.Namespace, pod.Name)
+			return reconcile.Result{}, nil
+		}
+		pdClient := c.getPDClient(tc)
+		storeID, err := member.TiKVStoreIDFromStatus(tc, pod.Name)
+		if err != nil {
+			storeIDStr, exist := pod.Labels[label.StoreIDLabelKey]
+			if !exist {
+				return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status or label for pod %s/%s", pod.Namespace, pod.Name)
+			}
+			storeID, err = strconv.ParseUint(storeIDStr, 10, 64)
+			if err != nil {
+				return reconcile.Result{}, perrors.Annotatef(err, "Could not parse storeId (%s) from label for pod %s/%s", storeIDStr, pod.Namespace, pod.Name)
+			}
+		}
+		storeInfo, err := pdClient.GetStore(storeID)
+		if err != nil {
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store info from pd for storeid %d pod %s/%s", storeID, pod.Namespace, pod.Name)
+		}
+		klog.Infof("Pod %s/%s marked for deletion with storeid %d", pod.Namespace, pod.Name, storeID)
+		if storeInfo.Store.StateName == v1alpha1.TiKVStateUp {
+			// 1. Delete store
+			klog.Infof("storeid %d is Up, deleting...", storeID)
+			pdClient.DeleteStore(storeID)
+			return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
+		} else if storeInfo.Store.StateName == v1alpha1.TiKVStateOffline {
+			// 2. Wait for Tombstone
+			klog.Infof("storeid %d is Offline, waiting for tombstone...", storeID)
+			return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
+		} else if storeInfo.Store.StateName == v1alpha1.TiKVStateTombstone {
+			// 3. Delete PVCs
+			klog.Infof("storeid %d is Tombstone!, going thru PVCs", storeID)
+			var pvcs []*corev1.PersistentVolumeClaim = nil
+			for _, vol := range pod.Spec.Volumes {
+				klog.Infof("Vol %s ", vol.Name)
+				if vol.PersistentVolumeClaim != nil {
+					pvc, err := c.deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(vol.PersistentVolumeClaim.ClaimName)
+					if err != nil {
+						klog.Warningf("Vol %s, claim %s did not find pvc: %s", vol.Name, vol.PersistentVolumeClaim.ClaimName, err)
+						continue // Skip missing (deleted?) pvc.
+					}
+					if pvc.DeletionTimestamp != nil {
+						klog.Warningf("pvc %s already marked for deletion %s", pvc.Name, pvc.DeletionTimestamp)
+						continue // already marked for deletion.
+					}
+					pvcs = append(pvcs, pvc)
+				}
+			}
+			if pvcs != nil {
+				// Delete any PVCs not yet deleted.
+				var anyErr error = nil
+				for _, pvc := range pvcs {
+					err = c.deps.PVCControl.DeletePVC(tc, pvc)
+					klog.Infof("Deleting pvc: %s", pvc.Name)
+					if err != nil {
+						klog.Infof("Deleting pvc: %s | GOT ERROR: %s", pvc.Name, err)
+						anyErr = err
+					}
+				}
+				// Requeue next iteration, to verify pvc marked for deletion before moving on to pod deletion.
+				return reconcile.Result{Requeue: true}, anyErr
+			}
+			// 4. Delete pod
+			if pod.DeletionTimestamp != nil {
+				// Already marked for deletion, wait for it to delete.
+				klog.Infof("Pod already marked for deletiong, not re-deleting: %s", pod.Name)
+				return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+			}
+			klog.Infof("NO PVCS, Deleting pod: %s", pod.Name)
+			err := c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
+			if err != nil && !errors.IsNotFound(err) {
+				return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
+			}
+		} else {
+			return reconcile.Result{}, perrors.Annotatef(err, "Cannot replace disk when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
+		}
+	}
+	klog.Infof("No label on pod, nothing to do for disk: %s", pod.Name)
 	return reconcile.Result{}, nil
 }
 
