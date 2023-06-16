@@ -37,6 +37,8 @@ const (
 var (
 	// the first version that tiflash change default config
 	tiflashEqualOrGreaterThanV540, _ = cmpver.NewConstraint(cmpver.GreaterOrEqual, "v5.4.0")
+	// the first version that tiflash discards http and tcp ports.
+	tiflashEqualOrGreaterThanV710, _ = cmpver.NewConstraint(cmpver.GreaterOrEqual, "v7.1.0")
 )
 
 func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container, error) {
@@ -161,8 +163,11 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		common.SetIfNil("tmp_path", "/data0/tmp")
 
 		// port
-		common.SetIfNil("tcp_port", int64(v1alpha1.DefaultTiFlashTcpPort))
-		common.SetIfNil("http_port", int64(v1alpha1.DefaultTiFlashHttpPort))
+		version := tc.TiFlashVersion()
+		if ok, err := tiflashEqualOrGreaterThanV710.Check(version); err == nil && !ok {
+			common.SetIfNil("tcp_port", int64(v1alpha1.DefaultTiFlashTcpPort))
+			common.SetIfNil("http_port", int64(v1alpha1.DefaultTiFlashHttpPort))
+		}
 
 		// flash
 		tidbStatusAddr := fmt.Sprintf("%s.%s.svc:%d", controller.TiDBMemberName(name), ns, v1alpha1.DefaultTiDBStatusPort)
