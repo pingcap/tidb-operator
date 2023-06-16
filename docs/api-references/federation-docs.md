@@ -619,6 +619,7 @@ github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider
 <p>
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
+<p>StorageProvider configures where and how backups should be stored.</p>
 </td>
 </tr>
 <tr>

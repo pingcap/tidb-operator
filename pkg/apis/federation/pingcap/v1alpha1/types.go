@@ -118,10 +118,6 @@ type VolumeBackupMemberSpec struct {
 // BRConfig contains config for BR
 // +k8s:openapi-gen=true
 type BRConfig struct {
-	// ClusterName of backup/restore cluster
-	Cluster string `json:"cluster"`
-	// Namespace of backup/restore cluster
-	ClusterNamespace string `json:"clusterNamespace,omitempty"`
 	// Concurrency is the size of thread pool on each node that execute the backup task
 	Concurrency *uint32 `json:"concurrency,omitempty"`
 	// CheckRequirements specifies whether to check requirements
@@ -210,7 +206,6 @@ const (
 //
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="vbks"
-// +genclient:noStatus
 // +kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule`,description="The cron format string used for backup scheduling"
 // +kubebuilder:printcolumn:name="MaxBackups",type=integer,JSONPath=`.spec.maxBackups`,description="The max number of backups we want to keep"
 // +kubebuilder:printcolumn:name="MaxReservedTime",type=string,JSONPath=`.spec.maxReservedTime`,description="How long backups we want to keep"
@@ -223,23 +218,22 @@ type VolumeBackupSchedule struct {
 	metav1.ObjectMeta `json:"metadata"`
 
 	Spec VolumeBackupScheduleSpec `json:"spec"`
-
 	// +k8s:openapi-gen=false
 	Status VolumeBackupScheduleStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// VolumeBackupScheduleList is VolumeBackupSchedule list
 // +k8s:openapi-gen=true
+// VolumeBackupScheduleList is VolumeBackupSchedule list
 type VolumeBackupScheduleList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []VolumeBackupSchedule `json:"items"`
 }
 
-// VolumeBackupScheduleSpec describes the attributes that a user creates on a volume backup schedule.
 // +k8s:openapi-gen=true
+// VolumeBackupScheduleSpec describes the attributes that a user creates on a volume backup schedule.
 type VolumeBackupScheduleSpec struct {
 	// Schedule specifies the cron string used for backup scheduling.
 	Schedule string `json:"schedule"`
