@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"path"
 	"sort"
-	"strings"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -157,17 +156,8 @@ func buildBackup(vbs *v1alpha1.VolumeBackupSchedule, timestamp time.Time) *v1alp
 		return nil
 	}
 
-	var pdAddress, clusterNamespace string
-	if backupSpec.Template.BR.ClusterNamespace == "" {
-		clusterNamespace = ns
-	} else {
-		clusterNamespace = backupSpec.Template.BR.ClusterNamespace
-	}
-	pdAddress = fmt.Sprintf("%s-pd.%s:%d", backupSpec.Template.BR.Cluster, clusterNamespace, nonfebv1alpha1.DefaultPDClientPort)
-
-	backupPrefix := strings.ReplaceAll(pdAddress, ":", "-") + "-" + timestamp.UTC().Format(nonfebv1alpha1.BackupNameTimeFormat)
 	if backupSpec.Template.S3 != nil {
-		backupSpec.Template.S3.Prefix = path.Join(backupSpec.Template.S3.Prefix, backupPrefix)
+		backupSpec.Template.S3.Prefix = path.Join(backupSpec.Template.S3.Prefix, "-"+timestamp.UTC().Format(nonfebv1alpha1.BackupNameTimeFormat))
 	} else {
 		klog.Errorf("Information on S3 missing in template")
 		return nil
