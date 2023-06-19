@@ -140,6 +140,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 	if tc.Spec.PreferIPv6 {
 		listenHost = listenHostForIPv6
 	}
+	version := tc.TiFlashVersion()
 
 	// common
 	{
@@ -163,7 +164,6 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		common.SetIfNil("tmp_path", "/data0/tmp")
 
 		// port
-		version := tc.TiFlashVersion()
 		if ok, err := tiflashEqualOrGreaterThanV710.Check(version); err == nil && !ok {
 			common.SetIfNil("tcp_port", int64(v1alpha1.DefaultTiFlashTcpPort))
 			common.SetIfNil("http_port", int64(v1alpha1.DefaultTiFlashHttpPort))
@@ -229,8 +229,10 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		common.Set("security.ca_path", path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
 		common.Set("security.cert_path", path.Join(tiflashCertPath, corev1.TLSCertKey))
 		common.Set("security.key_path", path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
-		common.SetIfNil("tcp_port_secure", int64(v1alpha1.DefaultTiFlashTcpPort))
-		common.SetIfNil("https_port", int64(v1alpha1.DefaultTiFlashHttpPort))
+		if ok, err := tiflashEqualOrGreaterThanV710.Check(version); err == nil && !ok {
+			common.SetIfNil("tcp_port_secure", int64(v1alpha1.DefaultTiFlashTcpPort))
+			common.SetIfNil("https_port", int64(v1alpha1.DefaultTiFlashHttpPort))
+		}
 		common.Del("http_port")
 		common.Del("tcp_port")
 
