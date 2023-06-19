@@ -1870,7 +1870,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					expectCfg := v1alpha1.NewTiFlashConfig()
 					outputCfg.Common.UnmarshalTOML(commonCfgData)
 					outputCfg.Proxy.UnmarshalTOML(proxyCfgData)
-					expectCfg.Common.UnmarshalTOML([]byte(testcase.expectCommonCfg))
+					expectCfg.Common.UnmarshalTOML([]byte(expectCommonCfg))
 					expectCfg.Proxy.UnmarshalTOML([]byte(testcase.expectProxyCfg))
 
 					diff := cmp.Diff(outputCfg.Common.Inner(), expectCfg.Common.Inner())
