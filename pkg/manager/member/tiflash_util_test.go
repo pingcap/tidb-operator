@@ -1838,6 +1838,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				tc.Name = "test"
 				tc.Namespace = "default"
 				tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{}
+				tc.Spec.TiFlash.BaseImage = "pingcap/tiflash"
 
 				if testcase.setTC != nil {
 					testcase.setTC(tc)
@@ -1848,7 +1849,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 
 					expectCommonCfg := testcase.expectCommonCfg
 					if ok, err := tiflashEqualOrGreaterThanV710.Check(version); err == nil && !ok {
-						if tc.Spec.TLSCluster.Enabled {
+						if tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled {
 							expectCommonCfg = `
 							https_port = 8123
 							tcp_port_secure = 9000` + expectCommonCfg
