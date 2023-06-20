@@ -291,6 +291,21 @@ func sortSnapshotBackups(backupsList []*v1alpha1.VolumeBackup) []*v1alpha1.Volum
 	return ascBackupList
 }
 
+// sortAllSnapshotBackups return all snapshot backups order by create time asc
+// it's for test only now
+func sortAllSnapshotBackups(backupsList []*v1alpha1.VolumeBackup) []*v1alpha1.VolumeBackup {
+	var ascBackupList = make([]*v1alpha1.VolumeBackup, 0)
+
+	for _, backup := range backupsList {
+		ascBackupList = append(ascBackupList, backup)
+	}
+
+	sort.Slice(ascBackupList, func(i, j int) bool {
+		return ascBackupList[i].CreationTimestamp.Unix() < ascBackupList[j].CreationTimestamp.Unix()
+	})
+	return ascBackupList
+}
+
 func calculateExpiredBackups(backupsList []*v1alpha1.VolumeBackup, reservedTime time.Duration) ([]*v1alpha1.VolumeBackup, error) {
 	expiredTS := config.TSToTSO(time.Now().Add(-1 * reservedTime).Unix())
 	i := 0
