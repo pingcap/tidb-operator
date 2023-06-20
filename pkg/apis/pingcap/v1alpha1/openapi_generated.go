@@ -13070,9 +13070,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 							Format:      "int32",
 						},
 					},
-					"sslDisableTiDB": {
+					"sslEnableTiDB": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether disable SSL connection between tiproxy and TiDB server",
+							Description: "Whether enable SSL connection between tiproxy and TiDB server",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
