@@ -191,8 +191,8 @@ func GetFedVolumeBackupScheduleOwnerRef(vbks *fedv1alpha1.VolumeBackupSchedule) 
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
-		APIVersion:         backupScheduleControllerKind.GroupVersion().String(),
-		Kind:               backupScheduleControllerKind.Kind,
+		APIVersion:         FedVolumeBackupScheduleControllerKind.GroupVersion().String(),
+		Kind:               FedVolumeBackupScheduleControllerKind.Kind,
 		Name:               vbks.GetName(),
 		UID:                vbks.GetUID(),
 		Controller:         &controller,
