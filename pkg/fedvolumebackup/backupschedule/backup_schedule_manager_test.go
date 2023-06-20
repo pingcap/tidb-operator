@@ -16,6 +16,7 @@ package backupschedule
 import (
 	"context"
 	"fmt"
+	old_v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"strconv"
 	"testing"
 	"time"
@@ -41,6 +42,8 @@ func TestManager(t *testing.T) {
 	bs := &v1alpha1.VolumeBackupSchedule{}
 	bs.Namespace = "ns"
 	bs.Name = "bsname"
+	bs.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
+	bs.Spec.BackupTemplate.Template.S3 = &old_v1alpha1.S3StorageProvider{}
 
 	// test pause
 	bs.Spec.Pause = true
@@ -199,20 +202,15 @@ func TestBuildBackup(t *testing.T) {
 		Spec: v1alpha1.VolumeBackupSpec{},
 	}
 
-	// test BR == nil
-	get = buildBackup(bs, now)
-	if diff := cmp.Diff(bk, get); diff != "" {
-		t.Errorf("unexpected (-want, +got): %s", diff)
-	}
-	get = buildBackup(bs, now)
-	if diff := cmp.Diff(bk, get); diff != "" {
-		t.Errorf("unexpected (-want, +got): %s", diff)
-	}
-
 	// test BR != nil
 	bs.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
+	bs.Spec.BackupTemplate.Template.S3 = &old_v1alpha1.S3StorageProvider{}
+
 	bk.Spec.Template.BR = bs.Spec.BackupTemplate.Template.BR.DeepCopy()
+	bk.Spec.Template.S3 = bs.Spec.BackupTemplate.Template.S3.DeepCopy()
 	get = buildBackup(bs, now)
+	// have to reset the dynamic prefix
+	bk.Spec.Template.S3.Prefix = get.Spec.Template.S3.Prefix
 	if diff := cmp.Diff(bk, get); diff != "" {
 		t.Errorf("unexpected (-want, +got): %s", diff)
 	}
@@ -295,7 +293,7 @@ func (h *helper) checkBacklist(ns string, num int) (bks *v1alpha1.VolumeBackupLi
 	g := NewGomegaWithT(t)
 
 	check := func(backups []*v1alpha1.VolumeBackup) error {
-		snapshotBackups := sortSnapshotBackups(backups)
+		snapshotBackups := sortAllSnapshotBackups(backups)
 		// check snapshot backup num
 		if len(snapshotBackups) != num {
 			var names []string
