@@ -254,7 +254,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(vbs *v1alpha1.VolumeB
 
 	expiredBackups, err = calculateExpiredBackups(ascBackups, reservedTime)
 	if err != nil {
-		klog.Errorf("caculate expired backups without log backup, err: %s", err)
+		klog.Errorf("calculate expired backups without log backup, err: %s", err)
 		return
 	}
 
@@ -278,8 +278,8 @@ func sortSnapshotBackups(backupsList []*v1alpha1.VolumeBackup) []*v1alpha1.Volum
 	var ascBackupList = make([]*v1alpha1.VolumeBackup, 0)
 
 	for _, backup := range backupsList {
-		// the backup status CommitTs will be empty after created. without this, all newly created backups will be GC'ed
-		if v1alpha1.IsVolumeBackupRunning(backup) {
+		// Only try to GC Completed or Failed VolumeBackup
+		if !(v1alpha1.IsVolumeBackupFailed(backup) || v1alpha1.IsVolumeBackupComplete(backup)) {
 			continue
 		}
 		ascBackupList = append(ascBackupList, backup)
