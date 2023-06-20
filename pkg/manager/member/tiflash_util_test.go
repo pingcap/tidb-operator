@@ -1511,8 +1511,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.TiFlash.Config = nil
 				},
 				expectCommonCfg: `
-					http_port = 8123
-					tcp_port = 9000
 					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
@@ -1549,8 +1547,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 				},
 				expectCommonCfg: `
-					https_port = 8123
-					tcp_port_secure = 9000
 					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
@@ -1598,8 +1594,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 				},
 				expectCommonCfg: `
-					https_port = 8123
-					tcp_port_secure = 9000
 					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
@@ -1653,8 +1647,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 
 				},
 				expectCommonCfg: `
-					http_port = 8123
-					tcp_port = 9000
 					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
@@ -1693,8 +1685,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.Cluster = &v1alpha1.TidbClusterRef{Name: "cluster-1", Namespace: "default"}
 				},
 				expectCommonCfg: `
-					http_port = 8123
-					tcp_port = 9000
 					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
@@ -1731,8 +1721,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.AcrossK8s = true
 				},
 				expectCommonCfg: `
-					http_port = 8123
-					tcp_port = 9000
 					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
@@ -1772,8 +1760,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.AcrossK8s = true
 				},
 				expectCommonCfg: `
-					http_port = 8123
-					tcp_port = 9000
 					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
@@ -1813,8 +1799,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.AcrossK8s = true
 				},
 				expectCommonCfg: `
-					http_port = 8123
-					tcp_port = 9000
 					tmp_path = "/data0/tmp"
 					[flash]
 					  service_addr = "0.0.0.0:3930"
@@ -1854,29 +1838,47 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				tc.Name = "test"
 				tc.Namespace = "default"
 				tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{}
+				tc.Spec.TiFlash.BaseImage = "pingcap/tiflash"
 
 				if testcase.setTC != nil {
 					testcase.setTC(tc)
 				}
 
-				cfg := getTiFlashConfigV2(tc)
+				for _, version := range []string{"v7.0.0", "v7.1.0"} {
+					tc.Spec.Version = version
 
-				commonCfgData, err := cfg.Common.MarshalTOML()
-				g.Expect(err).Should(Succeed())
-				proxyCfgData, err := cfg.Proxy.MarshalTOML()
-				g.Expect(err).Should(Succeed())
+					expectCommonCfg := testcase.expectCommonCfg
+					if ok, err := tiflashEqualOrGreaterThanV710.Check(version); err == nil && !ok {
+						if tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled {
+							expectCommonCfg = `
+							https_port = 8123
+							tcp_port_secure = 9000` + expectCommonCfg
+						} else {
+							expectCommonCfg = `
+							http_port = 8123
+							tcp_port = 9000` + expectCommonCfg
+						}
+					}
 
-				outputCfg := v1alpha1.NewTiFlashConfig()
-				expectCfg := v1alpha1.NewTiFlashConfig()
-				outputCfg.Common.UnmarshalTOML(commonCfgData)
-				outputCfg.Proxy.UnmarshalTOML(proxyCfgData)
-				expectCfg.Common.UnmarshalTOML([]byte(testcase.expectCommonCfg))
-				expectCfg.Proxy.UnmarshalTOML([]byte(testcase.expectProxyCfg))
+					cfg := getTiFlashConfigV2(tc)
 
-				diff := cmp.Diff(outputCfg.Common.Inner(), expectCfg.Common.Inner())
-				g.Expect(diff).Should(BeEmpty())
-				diff = cmp.Diff(outputCfg.Proxy.Inner(), expectCfg.Proxy.Inner())
-				g.Expect(diff).Should(BeEmpty())
+					commonCfgData, err := cfg.Common.MarshalTOML()
+					g.Expect(err).Should(Succeed())
+					proxyCfgData, err := cfg.Proxy.MarshalTOML()
+					g.Expect(err).Should(Succeed())
+
+					outputCfg := v1alpha1.NewTiFlashConfig()
+					expectCfg := v1alpha1.NewTiFlashConfig()
+					outputCfg.Common.UnmarshalTOML(commonCfgData)
+					outputCfg.Proxy.UnmarshalTOML(proxyCfgData)
+					expectCfg.Common.UnmarshalTOML([]byte(expectCommonCfg))
+					expectCfg.Proxy.UnmarshalTOML([]byte(testcase.expectProxyCfg))
+
+					diff := cmp.Diff(outputCfg.Common.Inner(), expectCfg.Common.Inner())
+					g.Expect(diff).Should(BeEmpty())
+					diff = cmp.Diff(outputCfg.Proxy.Inner(), expectCfg.Proxy.Inner())
+					g.Expect(diff).Should(BeEmpty())
+				}
 			})
 		}
 	})
