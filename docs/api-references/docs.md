@@ -22592,13 +22592,13 @@ int32
 </tr>
 <tr>
 <td>
-<code>sslDisableTiDB</code></br>
+<code>sslEnableTiDB</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
-<p>Whether disable SSL connection between tiproxy and TiDB server</p>
+<p>Whether enable SSL connection between tiproxy and TiDB server</p>
 </td>
 </tr>
 <tr>
