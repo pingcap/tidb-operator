@@ -220,7 +220,8 @@ func (p *pvcModifier) isStatefulSetSynced(ctx *componentVolumeContext, sts *apps
 }
 
 func isStorageClassMatched(sc *storagev1.StorageClass, scName string) bool {
-	if sc == nil && scName == "" {
+	if sc == nil {
+		// cannot get sc or sc is unset
 		return true
 	}
 	if sc.Name == scName {
