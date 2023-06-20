@@ -377,7 +377,7 @@ spec:
     ## ImagePullPolicy of initializer.
     # imagePullPolicy: IfNotPresent
     ## Initializer version.
-    version: v6.5.0
+    version: v7.1.0
 
     ## Describes the compute resource requirements and limits of initializer.
     ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/

@@ -7,7 +7,7 @@ metadata:
   name: basic-heterogeneous
 spec:
   configUpdateStrategy: RollingUpdate
-  version: v6.5.0
+  version: v7.1.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
