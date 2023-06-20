@@ -24,7 +24,7 @@ variable "node_locations" {
 
 variable "tidb_version" {
   description = "TiDB version"
-  default     = "v6.5.0"
+  default     = "v7.1.0"
 }
 
 variable "tidb_operator_version" {

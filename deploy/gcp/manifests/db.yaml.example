@@ -5,7 +5,7 @@ metadata:
 spec:
   helper:
     image: busybox:1.34.1
-  version: v6.5.0
+  version: v7.1.0
   timezone: UTC
   pvReclaimPolicy: Retain
   schedulerName: tidb-scheduler

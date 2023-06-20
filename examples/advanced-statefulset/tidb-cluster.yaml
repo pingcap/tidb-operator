@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: asts
 spec:
-  version: v6.5.0
+  version: v7.1.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
