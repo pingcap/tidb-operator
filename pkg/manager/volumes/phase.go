@@ -99,17 +99,8 @@ func (p *podVolModifier) validate(vol *ActualVolume) error {
 	if vol.Desired == nil {
 		return fmt.Errorf("can't match desired volume")
 	}
-<<<<<<< HEAD
-	if vol.Desired.StorageClass == nil {
-		// TODO: support default storage class
-		return fmt.Errorf("can't change storage class to the default one")
-	}
-	desired := vol.Desired.Size
-	actual := getStorageSize(vol.PVC.Spec.Resources.Requests)
-=======
 	desired := vol.Desired.GetStorageSize()
 	actual := vol.GetStorageSize()
->>>>>>> 0015c826d (fix(volume): fix panic bug when enable ModifyVolume feature (#5058))
 	result := desired.Cmp(actual)
 	switch {
 	case result == 0:
