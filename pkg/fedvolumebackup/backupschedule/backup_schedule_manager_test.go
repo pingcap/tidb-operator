@@ -16,7 +16,7 @@ package backupschedule
 import (
 	"context"
 	"fmt"
-	old_v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	oldv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"strconv"
 	"testing"
 	"time"
@@ -43,7 +43,7 @@ func TestManager(t *testing.T) {
 	bs.Namespace = "ns"
 	bs.Name = "bsname"
 	bs.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
-	bs.Spec.BackupTemplate.Template.S3 = &old_v1alpha1.S3StorageProvider{}
+	bs.Spec.BackupTemplate.Template.S3 = &oldv1alpha1.S3StorageProvider{}
 
 	// test pause
 	bs.Spec.Pause = true
@@ -204,7 +204,7 @@ func TestBuildBackup(t *testing.T) {
 
 	// test BR != nil
 	bs.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
-	bs.Spec.BackupTemplate.Template.S3 = &old_v1alpha1.S3StorageProvider{}
+	bs.Spec.BackupTemplate.Template.S3 = &oldv1alpha1.S3StorageProvider{}
 
 	bk.Spec.Template.BR = bs.Spec.BackupTemplate.Template.BR.DeepCopy()
 	bk.Spec.Template.S3 = bs.Spec.BackupTemplate.Template.S3.DeepCopy()
