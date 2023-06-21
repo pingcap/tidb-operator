@@ -55,7 +55,7 @@ then echo "not found device of mounted path $mountPath"
 continue
 fi
 echo "start warm up device $deviceName with mounted path $mountPath"
-fio --rw=read --bs=1M --iodepth=16 --ioengine=libaio --direct=1 --name=initialize-${volumeNames[$i]} --numjobs=10 --offset=0% --offset_increment=10% --size=10% --thread=1 --filename=/dev/$deviceName}
+fio --rw=read --bs=256K --iodepth=128 --ioengine=libaio --name=initialize-${volumeNames[$i]} --numjobs=32 --offset=0%% --offset_increment=3%% --size=3%% --thread=1 --filename=/dev/$deviceName
 i=$[i+1]
 done`
 
@@ -1200,7 +1200,7 @@ func (rm *restoreManager) makeWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod
 					Name:            "warm-up",
 					Image:           warmUpImage,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Command:         []string{"/bin/sh"},
+					Command:         []string{"/bin/bash"},
 					Args:            []string{"-c", fioCommand},
 					VolumeMounts:    warmUpVolumeMounts,
 					SecurityContext: &corev1.SecurityContext{
