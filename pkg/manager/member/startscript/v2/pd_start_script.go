@@ -80,14 +80,13 @@ const (
 	pdStartScript = `
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN={{ .PDDomain }}
-threshold={{ .PDStartTimeout }} 
 
 elapseTime=0
 period=1
+threshold={{ .PDStartTimeout }} 
 while true; do
     sleep ${period}
     elapseTime=$(( elapseTime+period ))
-	echo "waiting threshold for pd ${threshold}" 
 
     if [[ ${elapseTime} -ge ${threshold} ]]; then
         echo "waiting for pd cluster ready timeout" >&2
