@@ -55,7 +55,7 @@ then echo "not found device of mounted path $mountPath"
 continue
 fi
 echo "start warm up device $deviceName with mounted path $mountPath"
-fio --rw=read --bs=1M --iodepth=32 --ioengine=libaio --name=initialize-${volumeNames[$i]} --filename=/dev/$deviceName --size=${volumeSizes[$i]}
+fio --rw=read --bs=1M --iodepth=16 --ioengine=libaio --direct=1 --name=initialize-${volumeNames[$i]} --numjobs=10 --offset=0% --offset_increment=10% --size=10% --thread=1 --filename=/dev/$deviceName}
 i=$[i+1]
 done`
 
@@ -152,13 +152,17 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			return controller.RequeueErrorf("restore %s/%s: waiting for all PD members are ready in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 		}
 
+		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreWarmUpStarted(restore) {
+			return rm.warmUpTiKVVolumesAsync(restore, tc)
+		}
+
 		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreTiKVComplete(restore) {
-			if !v1alpha1.IsRestoreWarmUpStarted(restore) {
+			/*if !v1alpha1.IsRestoreWarmUpStarted(restore) {
 				return rm.warmUpTiKVVolumesSync(restore, tc)
 			}
 			if !v1alpha1.IsRestoreWarmUpComplete(restore) {
 				return rm.waitWarmUpJobsFinished(restore)
-			}
+			}*/
 
 			if !tc.AllTiKVsAreAvailable() {
 				return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
@@ -454,7 +458,7 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		if _, ok := tc.Annotations[label.AnnTiKVVolumesReadyKey]; ok {
 			return "", nil
 		}
-		if v1alpha1.IsRestoreWarmUpComplete(r) {
+		/*if v1alpha1.IsRestoreWarmUpComplete(r) {
 			restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
 			if len(tc.GetAnnotations()) == 0 {
 				tc.Annotations = make(map[string]string)
@@ -467,7 +471,7 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		}
 		if v1alpha1.IsRestoreWarmUpStarted(r) {
 			return "", nil
-		}
+		}*/
 
 		s, reason, err := snapshotter.NewSnapshotterForRestore(r.Spec.Mode, rm.deps)
 		if err != nil {
@@ -482,6 +486,15 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 
 		if reason, err := s.PrepareRestoreMetadata(r, csb); err != nil {
 			return reason, err
+		}
+
+		restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
+		if len(tc.GetAnnotations()) == 0 {
+			tc.Annotations = make(map[string]string)
+		}
+		tc.Annotations[label.AnnTiKVVolumesReadyKey] = restoreMark
+		if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
+			return "AddTCAnnWaitTiKVFailed", err
 		}
 		return "", nil
 	}
