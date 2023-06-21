@@ -16,10 +16,11 @@ package backupschedule
 import (
 	"context"
 	"fmt"
-	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"strconv"
 	"testing"
 	"time"
+
+	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
