@@ -295,10 +295,7 @@ func sortSnapshotBackups(backupsList []*v1alpha1.VolumeBackup) []*v1alpha1.Volum
 // it's for test only now
 func sortAllSnapshotBackups(backupsList []*v1alpha1.VolumeBackup) []*v1alpha1.VolumeBackup {
 	var ascBackupList = make([]*v1alpha1.VolumeBackup, 0)
-
-	for _, backup := range backupsList {
-		ascBackupList = append(ascBackupList, backup)
-	}
+	ascBackupList = append(ascBackupList, backupsList...)
 
 	sort.Slice(ascBackupList, func(i, j int) bool {
 		return ascBackupList[i].CreationTimestamp.Unix() < ascBackupList[j].CreationTimestamp.Unix()
