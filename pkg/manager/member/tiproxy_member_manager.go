@@ -134,7 +134,7 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 		cfgWrapper.Set("security.server-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
 		cfgWrapper.Set("security.server-tls.skip-ca", true)
 
-		if !tc.SkipTLSWhenConnectTiDB() {
+		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
 			if tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
 				cfgWrapper.Set("security.sql-tls.skip-ca", true)
 			} else {
@@ -440,7 +440,7 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 			},
 		})
 
-		if !tc.SkipTLSWhenConnectTiDB() {
+		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
 			volMounts = append(volMounts, corev1.VolumeMount{
 				Name: "tidb-client-tls", ReadOnly: true, MountPath: tiproxySQLPath,
 			})

@@ -34189,6 +34189,8 @@ spec:
                   type: string
                 serviceAccount:
                   type: string
+                sslEnableTiDB:
+                  type: boolean
                 statefulSetUpdateStrategy:
                   type: string
                 storageClassName:
@@ -38306,6 +38308,22 @@ spec:
               type: string
             tlsClientSecretName:
               type: string
+            tolerations:
+              items:
+                properties:
+                  effect:
+                    type: string
+                  key:
+                    type: string
+                  operator:
+                    type: string
+                  tolerationSeconds:
+                    format: int64
+                    type: integer
+                  value:
+                    type: string
+                type: object
+              type: array
           required:
           - cluster
           - image
