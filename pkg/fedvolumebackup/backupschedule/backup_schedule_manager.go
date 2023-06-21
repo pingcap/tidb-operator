@@ -29,7 +29,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
-	nonfebv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
 )
@@ -157,7 +157,7 @@ func buildBackup(vbs *v1alpha1.VolumeBackupSchedule, timestamp time.Time) *v1alp
 	}
 
 	if backupSpec.Template.S3 != nil {
-		backupSpec.Template.S3.Prefix = path.Join(backupSpec.Template.S3.Prefix, "-"+timestamp.UTC().Format(nonfebv1alpha1.BackupNameTimeFormat))
+		backupSpec.Template.S3.Prefix = path.Join(backupSpec.Template.S3.Prefix, "-"+timestamp.UTC().Format(pingcapv1alpha1.BackupNameTimeFormat))
 	} else {
 		klog.Errorf("Information on S3 missing in template")
 		return nil
