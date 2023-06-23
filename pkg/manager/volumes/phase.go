@@ -77,44 +77,55 @@ func (p *podVolModifier) getVolumePhase(vol *ActualVolume) VolumePhase {
 		return VolumePhaseModified
 	}
 
-	if p.waitForNextTime(vol.PVC, vol.Desired.StorageClass) {
+	if p.waitForNextTime(vol.PVC, vol.StorageClass, vol.Desired.StorageClass) {
 		return VolumePhasePending
 	}
 
 	return VolumePhasePreparing
 }
 
-func isVolumeExpansionSupported(sc *storagev1.StorageClass) bool {
-	if sc.AllowVolumeExpansion == nil {
-		return false
+func isVolumeExpansionSupported(sc *storagev1.StorageClass) (bool, error) {
+	if sc == nil {
+		// always assume expansion is supported
+		return true, fmt.Errorf("expansion cap of volume is unknown")
 	}
-	return *sc.AllowVolumeExpansion
+	if sc.AllowVolumeExpansion == nil {
+		return false, nil
+	}
+	return *sc.AllowVolumeExpansion, nil
 }
 
 func (p *podVolModifier) validate(vol *ActualVolume) error {
 	if vol.Desired == nil {
 		return fmt.Errorf("can't match desired volume")
 	}
-	if vol.Desired.StorageClass == nil {
-		// TODO: support default storage class
-		return fmt.Errorf("can't change storage class to the default one")
-	}
-	desired := vol.Desired.Size
-	actual := getStorageSize(vol.PVC.Spec.Resources.Requests)
+	desired := vol.Desired.GetStorageSize()
+	actual := vol.GetStorageSize()
 	result := desired.Cmp(actual)
 	switch {
 	case result == 0:
 	case result < 0:
 		return fmt.Errorf("can't shrunk size from %s to %s", &actual, &desired)
 	case result > 0:
-		if !isVolumeExpansionSupported(vol.StorageClass) {
+		supported, err := isVolumeExpansionSupported(vol.StorageClass)
+		if err != nil {
+			klog.Warningf("volume expansion of storage class %s may be not supported, but it will be tried", vol.GetStorageClassName())
+		}
+		if !supported {
 			return fmt.Errorf("volume expansion is not supported by storageclass %s", vol.StorageClass.Name)
 		}
 	}
-	m := p.getVolumeModifier(vol.Desired.StorageClass)
+
+	m := p.getVolumeModifier(vol.StorageClass, vol.Desired.StorageClass)
 	if m == nil {
 		return nil
 	}
+
+	// if no pv permission but have sc permission: cannot change sc
+	if isStorageClassChanged(vol.GetStorageClassName(), vol.Desired.GetStorageClassName()) && vol.PV == nil {
+		return fmt.Errorf("cannot change storage class (%s to %s), because there is no permission to get persistent volume", vol.GetStorageClassName(), vol.Desired.GetStorageClassName())
+	}
+
 	desiredPVC := vol.PVC.DeepCopy()
 	desiredPVC.Spec.Resources.Requests[corev1.ResourceStorage] = desired
 
@@ -128,7 +139,7 @@ func isPVCRevisionChanged(pvc *corev1.PersistentVolumeClaim) bool {
 	return specRevision != statusRevision
 }
 
-func (p *podVolModifier) waitForNextTime(pvc *corev1.PersistentVolumeClaim, sc *storagev1.StorageClass) bool {
+func (p *podVolModifier) waitForNextTime(pvc *corev1.PersistentVolumeClaim, actualSc, desciredSc *storagev1.StorageClass) bool {
 	str, ok := pvc.Annotations[annoKeyPVCLastTransitionTimestamp]
 	if !ok {
 		return false
@@ -139,7 +150,7 @@ func (p *podVolModifier) waitForNextTime(pvc *corev1.PersistentVolumeClaim, sc *
 	}
 	d := time.Since(timestamp)
 
-	m := p.getVolumeModifier(sc)
+	m := p.getVolumeModifier(actualSc, desciredSc)
 
 	waitDur := defaultModifyWaitingDuration
 	if m != nil {
@@ -156,23 +167,14 @@ func (p *podVolModifier) waitForNextTime(pvc *corev1.PersistentVolumeClaim, sc *
 
 func needModify(pvc *corev1.PersistentVolumeClaim, desired *DesiredVolume) bool {
 	size := desired.Size
-	scName := ""
-	if desired.StorageClass != nil {
-		scName = desired.StorageClass.Name
-	}
+	scName := desired.GetStorageClassName()
 
 	return isPVCStatusMatched(pvc, scName, size)
 }
 
 func isPVCStatusMatched(pvc *corev1.PersistentVolumeClaim, scName string, size resource.Quantity) bool {
-	isChanged := false
-	oldSc, ok := pvc.Annotations[annoKeyPVCStatusStorageClass]
-	if !ok {
-		oldSc = ignoreNil(pvc.Spec.StorageClassName)
-	}
-	if oldSc != scName {
-		isChanged = true
-	}
+	oldSc := getStorageClassNameFromPVC(pvc)
+	isChanged := isStorageClassChanged(oldSc, scName)
 
 	oldSize, ok := pvc.Annotations[annoKeyPVCStatusStorageSize]
 	if !ok {
@@ -187,4 +189,11 @@ func isPVCStatusMatched(pvc *corev1.PersistentVolumeClaim, scName string, size r
 	}
 
 	return isChanged
+}
+
+func isStorageClassChanged(pre, cur string) bool {
+	if cur != "" && pre != cur {
+		return true
+	}
+	return false
 }
