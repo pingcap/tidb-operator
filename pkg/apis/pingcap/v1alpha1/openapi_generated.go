@@ -6177,6 +6177,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"startTimeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timeout threshold when pd get started",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},

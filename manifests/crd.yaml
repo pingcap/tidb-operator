@@ -19683,6 +19683,9 @@ spec:
                     type: object
                   serviceAccount:
                     type: string
+                  startTimeout:
+                    default: 30
+                    type: integer
                   startUpScriptVersion:
                     enum:
                     - ""
