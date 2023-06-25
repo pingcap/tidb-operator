@@ -83,7 +83,7 @@ PD_DOMAIN={{ .PDDomain }}
 
 elapseTime=0
 period=1
-threshold={{ .PDStartTimeout }} 
+threshold={{ .PDStartTimeout }}
 while true; do
     sleep ${period}
     elapseTime=$(( elapseTime+period ))
