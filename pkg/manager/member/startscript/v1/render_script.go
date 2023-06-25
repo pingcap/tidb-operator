@@ -63,9 +63,9 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
-		Scheme:       tc.Scheme(),
-		DataDir:      filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir),
-		StartTimeout: tc.Spec.PD.StartTimeout,
+		Scheme:         tc.Scheme(),
+		DataDir:        filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+		PDStartTimeout: tc.Spec.PD.StartTimeout,
 	}
 	if tc.Spec.PD.StartUpScriptVersion == "v1" {
 		model.CheckDomainScript = checkDNSV1
