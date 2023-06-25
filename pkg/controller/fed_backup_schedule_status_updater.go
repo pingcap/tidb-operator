@@ -58,7 +58,7 @@ func (u *realVolumeBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		_, updateErr := u.deps.Clientset.FederationV1alpha1().VolumeBackupSchedules(ns).Update(context.TODO(), bs, metav1.UpdateOptions{})
 		if updateErr == nil {
-			klog.Infof("BackupSchedule: [%s/%s] updated successfully", ns, bsName)
+			klog.Infof("VolumeBackupSchedule: [%s/%s] updated successfully", ns, bsName)
 			return nil
 		}
 		if updated, err := u.deps.VolumeBackupScheduleLister.VolumeBackupSchedules(ns).Get(bsName); err == nil {
