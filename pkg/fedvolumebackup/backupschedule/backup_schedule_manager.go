@@ -345,10 +345,11 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(vbs *v1alpha1.VolumeBackup
 		return
 	}
 
-	sort.Sort(byCreateTimeDesc(backupsList))
+	//sort.Sort(byCreateTimeDesc(backupsList))
+	ascBackups := sortSnapshotBackups(backupsList)
 
 	var deleteCount int
-	for i, backup := range backupsList {
+	for i, backup := range ascBackups {
 		if i < int(*vbs.Spec.MaxBackups) {
 			continue
 		}
@@ -361,7 +362,7 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(vbs *v1alpha1.VolumeBackup
 		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 	}
 
-	if deleteCount == len(backupsList) && deleteCount > 0 {
+	if deleteCount == len(ascBackups) && deleteCount > 0 {
 		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
 		bm.resetLastBackup(vbs)
 	}
@@ -371,14 +372,6 @@ func (bm *backupScheduleManager) resetLastBackup(vbs *v1alpha1.VolumeBackupSched
 	vbs.Status.LastBackupTime = nil
 	vbs.Status.LastBackup = ""
 	vbs.Status.AllBackupCleanTime = &metav1.Time{Time: bm.now()}
-}
-
-type byCreateTimeDesc []*v1alpha1.VolumeBackup
-
-func (b byCreateTimeDesc) Len() int      { return len(b) }
-func (b byCreateTimeDesc) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
-func (b byCreateTimeDesc) Less(i, j int) bool {
-	return b[j].ObjectMeta.CreationTimestamp.Before(&b[i].ObjectMeta.CreationTimestamp)
 }
 
 var _ fedvolumebackup.BackupScheduleManager = &backupScheduleManager{}
