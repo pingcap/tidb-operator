@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -44,7 +45,7 @@ const (
 	TiKVConfigEncryptionMasterKeyId = "security.encryption.master-key.key-id"
 )
 
-const warmUpVolumeTemplate = `mountPaths=(%s)
+const warmUpVolumeTemplate2 = `mountPaths=(%s)
 volumeNames=(%s)
 volumeSizes=(%s)
 i=0
@@ -58,6 +59,10 @@ echo "start warm up device $deviceName with mounted path $mountPath"
 fio --rw=read --bs=256K --iodepth=128 --ioengine=libaio --name=initialize-${volumeNames[$i]} --numjobs=32 --offset=0%% --offset_increment=3%% --size=3%% --thread=1 --filename=/dev/$deviceName
 i=$[i+1]
 done`
+
+const warmUpVolumeTemplate = `deviceName=$(lsblk -no NAME,MOUNTPOINT -r | awk -v path=%s '$2 == path {print $1}')
+echo "start warm up device $deviceName with mounted path %s"
+fio --rw=read --bs=256K --iodepth=128 --ioengine=libaio --name=initialize-%s --numjobs=32 --offset=0%% --offset_increment=3%% --size=3%% --thread=1 --filename=/dev/$deviceName`
 
 type restoreManager struct {
 	deps          *controller.Dependencies
@@ -938,7 +943,7 @@ type pvcInfo struct {
 }
 
 func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
-	warmUpImage := "wangle1321/fio:amazonlinux-20230606"
+	warmUpImage := "wangle1321/fio:alpine-20230626"
 	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
 	if err != nil {
 		return err
@@ -997,7 +1002,7 @@ func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *v1alpha
 }
 
 func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
-	warmUpImage := "wangle1321/fio:amazonlinux-20230606"
+	warmUpImage := "wangle1321/fio:alpine-20230626"
 	// TODO: add codes below after test
 	/*if !r.Spec.WarmUp {
 		return nil
@@ -1059,7 +1064,6 @@ func (rm *restoreManager) makeWarmUpJob2(r *v1alpha1.Restore, tc *v1alpha1.TidbC
 	podVolumeMounts := make([]corev1.VolumeMount, 0, len(pvcs))
 	warmUpVolumeNames := make([]string, 0, len(pvcs))
 	warmUpPaths := make([]string, 0, len(pvcs))
-	warmUpVolumeSizes := make([]string, 0, len(pvcs))
 	for _, pvc := range pvcs {
 		podVolumes = append(podVolumes, corev1.Volume{
 			Name: pvc.volumeName,
@@ -1078,8 +1082,6 @@ func (rm *restoreManager) makeWarmUpJob2(r *v1alpha1.Restore, tc *v1alpha1.TidbC
 
 		warmUpVolumeNames = append(warmUpVolumeNames, pvc.volumeName)
 		warmUpPaths = append(warmUpPaths, mountPath)
-		storageQuantity := pvc.pvc.Spec.Resources.Requests[corev1.ResourceStorage]
-		warmUpVolumeSizes = append(warmUpVolumeSizes, storageQuantity.String())
 	}
 
 	nodeSelector := make(map[string]string, len(tc.Spec.TiKV.NodeSelector))
@@ -1091,8 +1093,13 @@ func (rm *restoreManager) makeWarmUpJob2(r *v1alpha1.Restore, tc *v1alpha1.TidbC
 		tolerations = append(tolerations, *toleration.DeepCopy())
 	}
 
-	fioCommand := fmt.Sprintf(warmUpVolumeTemplate, strings.Join(warmUpPaths, " "), strings.Join(warmUpVolumeNames, " "), strings.Join(warmUpVolumeSizes, " "))
-	fioCommand = strings.ReplaceAll(fioCommand, "\n", "; ")
+	fioCommands := make([]string, 0, len(warmUpPaths))
+	for i := range warmUpPaths {
+		fioSubCommand := fmt.Sprintf(warmUpVolumeTemplate, warmUpPaths[i], warmUpPaths[i], warmUpVolumeNames[i])
+		fioCommands = append(fioCommands, strings.ReplaceAll(fioSubCommand, "\n", "; "))
+	}
+	fioCommand := strings.Join(fioCommands, "; ")
+
 	warmUpPod := &corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
 			Volumes:       podVolumes,
@@ -1105,8 +1112,8 @@ func (rm *restoreManager) makeWarmUpJob2(r *v1alpha1.Restore, tc *v1alpha1.TidbC
 					Name:            "warm-up",
 					Image:           warmUpImage,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Command:         []string{"/bin/sh"},
-					Args:            []string{"-c", fioCommand},
+					Command:         []string{"/bin/sh", "-c"},
+					Args:            []string{fioCommand},
 					VolumeMounts:    podVolumeMounts,
 					SecurityContext: &corev1.SecurityContext{
 						Privileged: pointer.BoolPtr(true),
@@ -1150,7 +1157,7 @@ func (rm *restoreManager) makeWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod
 	warmUpVolumeMounts := make([]corev1.VolumeMount, 0, len(warmUpPaths))
 	for _, mountPath := range warmUpPaths {
 		for _, volumeMount := range tikvContainer.VolumeMounts {
-			if volumeMount.MountPath == mountPath {
+			if strings.TrimRight(volumeMount.MountPath, string(filepath.Separator)) == strings.TrimRight(mountPath, string(filepath.Separator)) {
 				warmUpVolumeMounts = append(warmUpVolumeMounts, *volumeMount.DeepCopy())
 				break
 			}
@@ -1171,25 +1178,17 @@ func (rm *restoreManager) makeWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod
 	for _, volumeMount := range warmUpVolumeMounts {
 		warmUpVolumeNames = append(warmUpVolumeNames, volumeMount.Name)
 	}
-	warmUpVolumeSizes := make([]string, 0, len(warmUpVolumes))
-	for _, volume := range warmUpVolumes {
-		if volume.PersistentVolumeClaim == nil {
-			return nil, fmt.Errorf("not found pvc in volume %s when warm up tikv pod %s/%s", volume.Name, ns, podName)
-		}
-		pvcName := volume.PersistentVolumeClaim.ClaimName
-		pvc, err := rm.deps.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
-		if err != nil {
-			return nil, fmt.Errorf("get pvc %s/%s of tikv pod %s/%s error: %s", ns, pvcName, ns, podName, err.Error())
-		}
-		storageQuantity := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
-		warmUpVolumeSizes = append(warmUpVolumeSizes, storageQuantity.String())
-	}
-	if len(warmUpPaths) != len(warmUpVolumeNames) || len(warmUpPaths) != len(warmUpVolumeSizes) {
-		return nil, fmt.Errorf("lengths of mounted paths %v and volumes %v and sizes %v in tikv pod %s/%s are not equal", warmUpPaths, warmUpVolumeNames, warmUpVolumeSizes, ns, podName)
+	if len(warmUpPaths) != len(warmUpVolumeNames) {
+		return nil, fmt.Errorf("lengths of mounted paths %v and volumes %v in tikv pod %s/%s are not equal", warmUpPaths, warmUpVolumeNames, ns, podName)
 	}
 
-	fioCommand := fmt.Sprintf(warmUpVolumeTemplate, strings.Join(warmUpPaths, " "), strings.Join(warmUpVolumeNames, " "), strings.Join(warmUpVolumeSizes, " "))
-	fioCommand = strings.ReplaceAll(fioCommand, "\n", "; ")
+	fioCommands := make([]string, 0, len(warmUpPaths))
+	for i := range warmUpPaths {
+		fioSubCommand := fmt.Sprintf(warmUpVolumeTemplate, warmUpPaths[i], warmUpPaths[i], warmUpVolumeNames[i])
+		fioCommands = append(fioCommands, strings.ReplaceAll(fioSubCommand, "\n", "; "))
+	}
+	fioCommand := strings.Join(fioCommands, "; ")
+
 	warmUpPod := &corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
 			Volumes:       warmUpVolumes,
@@ -1200,8 +1199,8 @@ func (rm *restoreManager) makeWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod
 					Name:            "warm-up",
 					Image:           warmUpImage,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Command:         []string{"/bin/bash"},
-					Args:            []string{"-c", fioCommand},
+					Command:         []string{"/bin/sh", "-c"},
+					Args:            []string{fioCommand},
 					VolumeMounts:    warmUpVolumeMounts,
 					SecurityContext: &corev1.SecurityContext{
 						Privileged: pointer.BoolPtr(true),
