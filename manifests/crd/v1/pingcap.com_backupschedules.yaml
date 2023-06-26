@@ -27,6 +27,10 @@ spec:
       jsonPath: .spec.maxBackups
       name: MaxBackups
       type: integer
+    - description: How long backups we want to keep
+      jsonPath: .spec.maxReservedTime
+      name: MaxReservedTime
+      type: string
     - description: The last backup CR name
       jsonPath: .status.lastBackup
       name: LastBackup
@@ -2705,7 +2709,7 @@ spec:
               storageSize:
                 type: string
             required:
-            - logBackupTemplate
+            - backupTemplate
             - schedule
             type: object
           status:

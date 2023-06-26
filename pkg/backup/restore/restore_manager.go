@@ -231,7 +231,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 }
 
 // read cluster meta from external storage since k8s size limitation on annotation/configMap
-// after volume retore job complete, br output a meta file for controller to reconfig the tikvs
+// after volume restore job complete, br output a meta file for controller to reconfig the tikvs
 // since the meta file may big, so we use remote storage as bridge to pass it from restore manager to controller
 func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore) (*snapshotter.CloudSnapBackup, string, error) {
 	// since the restore meta is small (~5M), assume 1 minutes is enough

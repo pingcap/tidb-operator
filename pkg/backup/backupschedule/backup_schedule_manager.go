@@ -70,6 +70,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	}
 
 	// delete the last backup job for release the backup PVC
+
 	if err := bm.deleteLastBackupJob(bs); err != nil {
 		return nil
 	}
@@ -373,7 +374,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 			return
 		}
 	} else {
-		expiredBackups, err = caculateExpiredBackups(ascBackups, reservedTime)
+		expiredBackups, err = calculateExpiredBackups(ascBackups, reservedTime)
 		if err != nil {
 			klog.Errorf("caculate expired backups without log backup, err: %s", err)
 			return
@@ -404,7 +405,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 	}
 }
 
-// separateSnapshotBackupsAndLogBackup return snapot backups ordry by create time asc and log backup
+// separateSnapshotBackupsAndLogBackup return snapshot backups order by create time asc and log backup
 func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1alpha1.Backup, *v1alpha1.Backup) {
 	var (
 		ascBackupList = make([]*v1alpha1.Backup, 0)
@@ -479,7 +480,7 @@ func calExpiredBackupsAndLogBackup(backupsList []*v1alpha1.Backup, logBackup *v1
 	return expiredBackups, truncateTSO, nil
 }
 
-func caculateExpiredBackups(backupsList []*v1alpha1.Backup, reservedTime time.Duration) ([]*v1alpha1.Backup, error) {
+func calculateExpiredBackups(backupsList []*v1alpha1.Backup, reservedTime time.Duration) ([]*v1alpha1.Backup, error) {
 	expiredTS := config.TSToTSO(time.Now().Add(-1 * reservedTime).Unix())
 	i := 0
 	for ; i < len(backupsList); i++ {

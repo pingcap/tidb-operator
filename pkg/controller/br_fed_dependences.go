@@ -90,6 +90,46 @@ func NewBrFedDependencies(cliCfg *BrFedCLIConfig, clientset versioned.Interface,
 	return deps
 }
 
+<<<<<<< HEAD
+=======
+// NewSimpleFedClientDependencies returns a dependencies using NewSimpleClientset useful for testing.
+func NewSimpleFedClientDependencies() *BrFedDependencies {
+	deps := NewFakeBrFedDependencies()
+
+	// TODO make all controller use real controller with simple client.
+	deps.FedVolumeBackupControl = NewRealFedVolumeBackupControl(deps.Clientset, deps.Recorder)
+	return deps
+}
+
+func NewFakeBrFedDependencies() *BrFedDependencies {
+	cli := fake.NewSimpleClientset()
+	kubeCli := kubefake.NewSimpleClientset()
+	genCli := controllerfake.NewFakeClientWithScheme(scheme.Scheme)
+	cliCfg := DefaultBrFedCLIConfig()
+	informerFactory := informers.NewSharedInformerFactory(cli, 0)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+	labelFilterKubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+	recorder := record.NewFakeRecorder(100)
+
+	kubeCli.Fake.Resources = append(kubeCli.Fake.Resources, &metav1.APIResourceList{
+		GroupVersion: "networking.k8s.io/v1",
+		APIResources: []metav1.APIResource{
+			{
+				Name: "ingresses",
+			},
+		},
+	})
+	fedClientset := make(map[string]fedversioned.Interface, 3)
+	fedClientset[FakeDataPlaneName1] = fedfake.NewSimpleClientset()
+	fedClientset[FakeDataPlaneName2] = fedfake.NewSimpleClientset()
+	fedClientset[FakeDataPlaneName3] = fedfake.NewSimpleClientset()
+
+	deps := newBrFedDependencies(cliCfg, cli, kubeCli, genCli, informerFactory, kubeInformerFactory, labelFilterKubeInformerFactory, recorder, fedClientset)
+	deps.BrFedControls = newFakeBrFedControls(informerFactory)
+	return deps
+}
+
+>>>>>>> 9ae7cc6b0 (Fed backup schedule (#5036))
 func newBrFedDependencies(
 	cliCfg *BrFedCLIConfig,
 	clientset versioned.Interface,

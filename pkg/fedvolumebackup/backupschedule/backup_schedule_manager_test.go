@@ -20,11 +20,12 @@ import (
 	"testing"
 	"time"
 
+	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,9 +40,11 @@ func TestManager(t *testing.T) {
 	deps := helper.deps
 	m := NewBackupScheduleManager(deps).(*backupScheduleManager)
 	var err error
-	bs := &v1alpha1.BackupSchedule{}
+	bs := &v1alpha1.VolumeBackupSchedule{}
 	bs.Namespace = "ns"
 	bs.Name = "bsname"
+	bs.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
+	bs.Spec.BackupTemplate.Template.S3 = &pingcapv1alpha1.S3StorageProvider{}
 
 	// test pause
 	bs.Spec.Pause = true
@@ -58,11 +61,11 @@ func TestManager(t *testing.T) {
 	g.Expect(err).Should(BeNil())
 
 	// test backup complete
-	bk := &v1alpha1.Backup{}
+	bk := &v1alpha1.VolumeBackup{}
 	bk.Namespace = bs.Namespace
 	bk.Name = bs.Status.LastBackup
-	bk.Status.Conditions = append(bk.Status.Conditions, v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupComplete,
+	bk.Status.Conditions = append(bk.Status.Conditions, v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupComplete,
 		Status: v1.ConditionTrue,
 	})
 	helper.createBackup(bk)
@@ -70,15 +73,15 @@ func TestManager(t *testing.T) {
 	g.Expect(err).Should(BeNil())
 	helper.deleteBackup(bk)
 
-	// test last backup failed state and not scheduled yet
+	// test last backup failed state
 	bk.Status.Conditions = nil
-	bk.Status.Conditions = append(bk.Status.Conditions, v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupFailed,
+	bk.Status.Conditions = append(bk.Status.Conditions, v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupFailed,
 		Status: v1.ConditionTrue,
 	})
 	helper.createBackup(bk)
 	err = m.canPerformNextBackup(bs)
-	g.Expect(err).Should(BeAssignableToTypeOf(&controller.RequeueError{}))
+	g.Expect(err).Should(BeNil())
 	helper.deleteBackup(bk)
 
 	t.Log("start test normal Sync")
@@ -94,20 +97,23 @@ func TestManager(t *testing.T) {
 		m.now = func() time.Time { return now.AddDate(0, 0, i) }
 		err = m.Sync(bs)
 		g.Expect(err).Should(BeNil())
-		bks := helper.checkBacklist(bs.Namespace, i+10, false)
+		bks := helper.checkBacklist(bs.Namespace, i+10)
 		// complete the backup created
 		for i := range bks.Items {
-			bk := bks.Items[i]
-			changed := v1alpha1.UpdateBackupCondition(&bk.Status, &v1alpha1.BackupCondition{
-				Type:   v1alpha1.BackupComplete,
+			bk := bks.Items[i].DeepCopy()
+			changed := !v1alpha1.IsVolumeBackupComplete(bk)
+			v1alpha1.UpdateVolumeBackupCondition(&bk.Status, &v1alpha1.VolumeBackupCondition{
+				Type:   v1alpha1.VolumeBackupComplete,
 				Status: v1.ConditionTrue,
 			})
+
 			if changed {
 				bk.CreationTimestamp = metav1.Time{Time: m.now()}
 				bk.Status.CommitTs = getTSOStr(m.now().Add(10 * time.Minute).Unix())
 				t.Log("complete backup: ", bk.Name)
-				helper.updateBackup(&bk)
+				helper.updateBackup(bk)
 			}
+
 			g.Expect(err).Should(BeNil())
 		}
 	}
@@ -117,34 +123,22 @@ func TestManager(t *testing.T) {
 	bs.Spec.MaxBackups = pointer.Int32Ptr(5)
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 5, false)
+	helper.checkBacklist(bs.Namespace, 5)
 
 	t.Log("test setting MaxReservedTime")
 	bs.Spec.MaxBackups = nil
 	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 3, false)
-
-	t.Log("test has log backup")
-	bs.Spec.LogBackupTemplate = &v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog}
-	logBackup := buildLogBackup(bs, now.Add(-72*time.Hour))
-	logBackup.Status.CommitTs = getTSOStr(now.Add(-72 * time.Hour).Unix())
-	logBackup.Status.LogCheckpointTs = getTSOStr(now.Unix())
-	helper.createBackup(logBackup)
-	bs.Status.LogBackup = &logBackup.Name
-	bs.Spec.MaxReservedTime = pointer.StringPtr("23h")
-	err = m.Sync(bs)
-	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 2, true)
+	helper.checkBacklist(bs.Namespace, 3)
 }
 
 func TestGetLastScheduledTime(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	bs := &v1alpha1.BackupSchedule{
-		Spec: v1alpha1.BackupScheduleSpec{},
-		Status: v1alpha1.BackupScheduleStatus{
+	bs := &v1alpha1.VolumeBackupSchedule{
+		Spec: v1alpha1.VolumeBackupScheduleSpec{},
+		Status: v1alpha1.VolumeBackupScheduleStatus{
 			LastBackupTime: &metav1.Time{},
 		},
 	}
@@ -184,12 +178,12 @@ func TestGetLastScheduledTime(t *testing.T) {
 
 func TestBuildBackup(t *testing.T) {
 	now := time.Now()
-	var get *v1alpha1.Backup
+	var get *v1alpha1.VolumeBackup
 
 	// build BackupSchedule template
-	bs := &v1alpha1.BackupSchedule{
-		Spec: v1alpha1.BackupScheduleSpec{},
-		Status: v1alpha1.BackupScheduleStatus{
+	bs := &v1alpha1.VolumeBackupSchedule{
+		Spec: v1alpha1.VolumeBackupScheduleSpec{},
+		Status: v1alpha1.VolumeBackupScheduleStatus{
 			LastBackupTime: &metav1.Time{},
 		},
 	}
@@ -197,51 +191,38 @@ func TestBuildBackup(t *testing.T) {
 	bs.Name = "bsname"
 
 	// build Backup template
-	bk := &v1alpha1.Backup{
+	bk := &v1alpha1.VolumeBackup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: bs.Namespace,
 			Name:      bs.GetBackupCRDName(now),
 			Labels:    label.NewBackupSchedule().Instance(bs.Name).BackupSchedule(bs.Name).Labels(),
 			OwnerReferences: []metav1.OwnerReference{
-				controller.GetBackupScheduleOwnerRef(bs),
+				controller.GetFedVolumeBackupScheduleOwnerRef(bs),
 			},
 		},
-		Spec: v1alpha1.BackupSpec{
-			StorageSize: constants.DefaultStorageSize,
-		},
-	}
-
-	// test BR == nil
-	get = buildBackup(bs, now)
-	if diff := cmp.Diff(bk, get); diff != "" {
-		t.Errorf("unexpected (-want, +got): %s", diff)
-	}
-	// should keep StorageSize from BackupSchedule
-	bs.Spec.StorageSize = "9527G"
-	bk.Spec.StorageSize = bs.Spec.StorageSize
-	get = buildBackup(bs, now)
-	if diff := cmp.Diff(bk, get); diff != "" {
-		t.Errorf("unexpected (-want, +got): %s", diff)
+		Spec: v1alpha1.VolumeBackupSpec{},
 	}
 
 	// test BR != nil
-	bs.Spec.BackupTemplate.BR = &v1alpha1.BRConfig{}
-	bk.Spec.BR = bs.Spec.BackupTemplate.BR.DeepCopy()
-	bk.Spec.StorageSize = "" // no use for BR
+	bs.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
+	bs.Spec.BackupTemplate.Template.S3 = &pingcapv1alpha1.S3StorageProvider{}
+
+	bk.Spec.Template.BR = bs.Spec.BackupTemplate.Template.BR.DeepCopy()
+	bk.Spec.Template.S3 = bs.Spec.BackupTemplate.Template.S3.DeepCopy()
 	get = buildBackup(bs, now)
+	// have to reset the dynamic prefix
+	bk.Spec.Template.S3.Prefix = get.Spec.Template.S3.Prefix
 	if diff := cmp.Diff(bk, get); diff != "" {
 		t.Errorf("unexpected (-want, +got): %s", diff)
 	}
 }
 
-func TestCalculateExpiredBackupsWithLogBackup(t *testing.T) {
+func TestCalculateExpiredBackups(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testCase struct {
-		backups                   []*v1alpha1.Backup
-		logBackup                 *v1alpha1.Backup
+		backups                   []*v1alpha1.VolumeBackup
 		reservedTime              time.Duration
 		expectedDeleteBackupCount int
-		expectedTruncateTS        uint64
 	}
 
 	var (
@@ -250,100 +231,45 @@ func TestCalculateExpiredBackupsWithLogBackup(t *testing.T) {
 		last1Day  = now.Add(-time.Hour * 24 * 1).Unix()
 		last2Day  = now.Add(-time.Hour * 24 * 2).Unix()
 		last3Day  = now.Add(-time.Hour * 24 * 3).Unix()
-		last4Day  = now.Add(-time.Hour * 24 * 4).Unix()
 	)
 
 	testCases := []*testCase{
-		// no backup should be deleted and log backup just start, no commit ts/checkpoint ts
+		// no backup should be deleted
 		{
-			backups: []*v1alpha1.Backup{
+			backups: []*v1alpha1.VolumeBackup{
 				fakeBackup(&last10Min),
 			},
-			logBackup:                 fakeLogBackup(nil, nil),
 			reservedTime:              24 * time.Hour,
 			expectedDeleteBackupCount: 0,
-			expectedTruncateTS:        0,
 		},
-		// backup should be delete and log backup just start, no commit ts/checkpoint ts
+		// 2 backup should be deleted
 		{
-			backups: []*v1alpha1.Backup{
+			backups: []*v1alpha1.VolumeBackup{
 				fakeBackup(&last3Day),
 				fakeBackup(&last2Day),
 				fakeBackup(&last1Day),
 				fakeBackup(&last10Min),
 			},
-			logBackup:                 fakeLogBackup(&last10Min, nil),
-			reservedTime:              24 * time.Hour,
-			expectedDeleteBackupCount: 1,
-			expectedTruncateTS:        0,
-		},
-		// no backup should be deleted, has log backup
-		{
-			backups: []*v1alpha1.Backup{
-				fakeBackup(&last3Day),
-				fakeBackup(&last1Day),
-			},
-			logBackup:                 fakeLogBackup(&last4Day, &last10Min),
-			reservedTime:              24 * time.Hour,
-			expectedDeleteBackupCount: 0,
-			expectedTruncateTS:        0,
-		},
-		// 1 backup should be deleted, no log backup should be truncated
-		{
-			backups: []*v1alpha1.Backup{
-				fakeBackup(&last3Day),
-				fakeBackup(&last2Day),
-				fakeBackup(&last1Day),
-			},
-			logBackup:                 fakeLogBackup(&last1Day, &last10Min),
-			reservedTime:              24 * time.Hour,
-			expectedDeleteBackupCount: 1,
-			expectedTruncateTS:        0,
-		},
-		// 2 backup should be deleted, no log backup should be truncated
-		{
-			backups: []*v1alpha1.Backup{
-				fakeBackup(&last4Day),
-				fakeBackup(&last3Day),
-				fakeBackup(&last2Day),
-				fakeBackup(&last1Day),
-			},
-			logBackup:                 fakeLogBackup(&last1Day, &last10Min),
 			reservedTime:              24 * time.Hour,
 			expectedDeleteBackupCount: 2,
-			expectedTruncateTS:        0,
-		},
-		// 2 backup should be deleted, has log backup should be truncated
-		{
-			backups: []*v1alpha1.Backup{
-				fakeBackup(&last4Day),
-				fakeBackup(&last3Day),
-				fakeBackup(&last2Day),
-				fakeBackup(&last1Day),
-			},
-			logBackup:                 fakeLogBackup(&last3Day, &last10Min),
-			reservedTime:              24 * time.Hour,
-			expectedDeleteBackupCount: 2,
-			expectedTruncateTS:        getTSO(last2Day),
 		},
 	}
 
 	for _, tc := range testCases {
-		deletedBackups, truncateTS, err := calExpiredBackupsAndLogBackup(tc.backups, tc.logBackup, tc.reservedTime)
+		deletedBackups, err := calculateExpiredBackups(tc.backups, tc.reservedTime)
 		g.Expect(err).Should(BeNil())
 		g.Expect(len(deletedBackups)).Should(Equal(tc.expectedDeleteBackupCount))
-		g.Expect(truncateTS).Should(Equal(tc.expectedTruncateTS))
 	}
 }
 
 type helper struct {
 	t    *testing.T
-	deps *controller.Dependencies
+	deps *controller.BrFedDependencies
 	stop chan struct{}
 }
 
 func newHelper(t *testing.T) *helper {
-	deps := controller.NewSimpleClientDependencies()
+	deps := controller.NewSimpleFedClientDependencies()
 	stop := make(chan struct{})
 	deps.InformerFactory.Start(stop)
 	deps.KubeInformerFactory.Start(stop)
@@ -362,13 +288,13 @@ func (h *helper) close() {
 }
 
 // check for exists num Backup and return the exists backups "BackupList".
-func (h *helper) checkBacklist(ns string, num int, checkLogBackupTruncate bool) (bks *v1alpha1.BackupList) {
+func (h *helper) checkBacklist(ns string, num int) (bks *v1alpha1.VolumeBackupList) {
 	t := h.t
 	deps := h.deps
 	g := NewGomegaWithT(t)
 
-	check := func(backups []*v1alpha1.Backup) error {
-		snapshotBackups, logBackup := separateSnapshotBackupsAndLogBackup(backups)
+	check := func(backups []*v1alpha1.VolumeBackup) error {
+		snapshotBackups := sortAllSnapshotBackups(backups)
 		// check snapshot backup num
 		if len(snapshotBackups) != num {
 			var names []string
@@ -377,19 +303,9 @@ func (h *helper) checkBacklist(ns string, num int, checkLogBackupTruncate bool) 
 			}
 			return fmt.Errorf("there %d backup, but should be %d, cur backups: %v", len(snapshotBackups), num, names)
 		}
-		if !checkLogBackupTruncate {
-			return nil
-		}
-		// check has log backup
-		if logBackup == nil {
-			return fmt.Errorf("there is no log backup, but should have")
-		}
 		// check truncateTSO, it should equal the earliest snapshot backup after gc
 		if len(snapshotBackups) == 0 {
 			return fmt.Errorf("there should have snapshot backup if need check log backup truncate tso")
-		}
-		if logBackup.Status.LogSuccessTruncateUntil != snapshotBackups[0].Spec.CommitTs {
-			return fmt.Errorf("log backup truncate tso should be %s, but cur is %s", snapshotBackups[0].Spec.CommitTs, logBackup.Status.LogSuccessTruncateUntil)
 		}
 		return nil
 	}
@@ -397,7 +313,7 @@ func (h *helper) checkBacklist(ns string, num int, checkLogBackupTruncate bool) 
 	t.Helper()
 	g.Eventually(func() error {
 		var err error
-		bks, err = deps.Clientset.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
+		bks, err = deps.Clientset.FederationV1alpha1().VolumeBackups(ns).List(context.TODO(), metav1.ListOptions{})
 		g.Expect(err).Should(BeNil())
 		backups := convertToBackupPtrList(bks.Items)
 		return check(backups)
@@ -405,7 +321,7 @@ func (h *helper) checkBacklist(ns string, num int, checkLogBackupTruncate bool) 
 
 	g.Eventually(func() error {
 		var err error
-		backups, err := deps.BackupLister.Backups(ns).List(labels.Everything())
+		backups, err := deps.VolumeBackupLister.VolumeBackups(ns).List(labels.Everything())
 		g.Expect(err).Should(BeNil())
 		return check(backups)
 	}, time.Second*30).Should(BeNil())
@@ -413,23 +329,47 @@ func (h *helper) checkBacklist(ns string, num int, checkLogBackupTruncate bool) 
 	return
 }
 
-func convertToBackupPtrList(backups []v1alpha1.Backup) []*v1alpha1.Backup {
-	backupPtrs := make([]*v1alpha1.Backup, 0)
+func convertToBackupPtrList(backups []v1alpha1.VolumeBackup) []*v1alpha1.VolumeBackup {
+	backupPtrs := make([]*v1alpha1.VolumeBackup, 0)
 	for i := 0; i < len(backups); i++ {
 		backupPtrs = append(backupPtrs, &backups[i])
 	}
 	return backupPtrs
 }
 
-func (h *helper) updateBackup(bk *v1alpha1.Backup) {
+func (h *helper) createBackup(bk *v1alpha1.VolumeBackup) {
 	t := h.t
 	deps := h.deps
 	g := NewGomegaWithT(t)
-	_, err := deps.Clientset.PingcapV1alpha1().Backups(bk.Namespace).Update(context.TODO(), bk, metav1.UpdateOptions{})
+	_, err := deps.Clientset.FederationV1alpha1().VolumeBackups(bk.Namespace).Create(context.TODO(), bk, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+	g.Eventually(func() error {
+		_, err := deps.VolumeBackupLister.VolumeBackups(bk.Namespace).Get(bk.Name)
+		return err
+	}, time.Second*10).Should(BeNil())
+}
+
+func (h *helper) deleteBackup(bk *v1alpha1.VolumeBackup) {
+	t := h.t
+	deps := h.deps
+	g := NewGomegaWithT(t)
+	err := deps.Clientset.FederationV1alpha1().VolumeBackups(bk.Namespace).Delete(context.TODO(), bk.Name, metav1.DeleteOptions{})
+	g.Expect(err).Should(BeNil())
+	g.Eventually(func() error {
+		_, err := deps.VolumeBackupLister.VolumeBackups(bk.Namespace).Get(bk.Name)
+		return err
+	}, time.Second*10).ShouldNot(BeNil())
+}
+
+func (h *helper) updateBackup(bk *v1alpha1.VolumeBackup) {
+	t := h.t
+	deps := h.deps
+	g := NewGomegaWithT(t)
+	_, err := deps.Clientset.FederationV1alpha1().VolumeBackups(bk.Namespace).Update(context.TODO(), bk, metav1.UpdateOptions{})
 	g.Expect(err).Should(BeNil())
 
 	g.Eventually(func() error {
-		get, err := deps.BackupLister.Backups(bk.Namespace).Get(bk.Name)
+		get, err := deps.VolumeBackupLister.VolumeBackups(bk.Namespace).Get(bk.Name)
 		if err != nil {
 			return err
 		}
@@ -443,50 +383,13 @@ func (h *helper) updateBackup(bk *v1alpha1.Backup) {
 	}, time.Second*10).Should(BeNil())
 }
 
-func (h *helper) createBackup(bk *v1alpha1.Backup) {
-	t := h.t
-	deps := h.deps
-	g := NewGomegaWithT(t)
-	_, err := deps.Clientset.PingcapV1alpha1().Backups(bk.Namespace).Create(context.TODO(), bk, metav1.CreateOptions{})
-	g.Expect(err).Should(BeNil())
-	g.Eventually(func() error {
-		_, err := deps.BackupLister.Backups(bk.Namespace).Get(bk.Name)
-		return err
-	}, time.Second*10).Should(BeNil())
-}
-
-func (h *helper) deleteBackup(bk *v1alpha1.Backup) {
-	t := h.t
-	deps := h.deps
-	g := NewGomegaWithT(t)
-	err := deps.Clientset.PingcapV1alpha1().Backups(bk.Namespace).Delete(context.TODO(), bk.Name, metav1.DeleteOptions{})
-	g.Expect(err).Should(BeNil())
-	g.Eventually(func() error {
-		_, err := deps.BackupLister.Backups(bk.Namespace).Get(bk.Name)
-		return err
-	}, time.Second*10).ShouldNot(BeNil())
-}
-
-func fakeBackup(ts *int64) *v1alpha1.Backup {
-	backup := &v1alpha1.Backup{}
+func fakeBackup(ts *int64) *v1alpha1.VolumeBackup {
+	backup := &v1alpha1.VolumeBackup{}
 	if ts == nil {
 		return backup
 	}
 	backup.Status.CommitTs = getTSOStr(*ts)
 	return backup
-}
-
-func fakeLogBackup(startTS, checkPointTS *int64) *v1alpha1.Backup {
-	logBackup := &v1alpha1.Backup{}
-	if startTS == nil {
-		return logBackup
-	}
-	logBackup.Status.CommitTs = getTSOStr(*startTS)
-	if checkPointTS == nil {
-		return logBackup
-	}
-	logBackup.Status.LogCheckpointTs = getTSOStr(*checkPointTS)
-	return logBackup
 }
 
 func getTSOStr(ts int64) string {
