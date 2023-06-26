@@ -419,8 +419,49 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeBackupScheduleSpec(ref common
 			SchemaProps: spec.SchemaProps{
 				Description: "VolumeBackupScheduleSpec describes the attributes that a user creates on a volume backup schedule.",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"schedule": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Schedule specifies the cron string used for backup scheduling.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"pause": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Pause means paused backupSchedule",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"maxBackups": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxBackups is to specify how many backups we want to keep 0 is magic number to indicate un-limited backups. if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred and MaxBackups is ignored.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"maxReservedTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxReservedTime is to specify how long backups we want to keep.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"backupTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BackupTemplate is the specification of the volume backup structure to get scheduled.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1.VolumeBackupSpec"),
+						},
+					},
+				},
+				Required: []string{"schedule", "backupTemplate"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1.VolumeBackupSpec"},
 	}
 }
 

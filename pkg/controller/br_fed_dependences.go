@@ -101,6 +101,15 @@ func NewBrFedDependencies(cliCfg *BrFedCLIConfig, clientset versioned.Interface,
 	return deps
 }
 
+// NewSimpleFedClientDependencies returns a dependencies using NewSimpleClientset useful for testing.
+func NewSimpleFedClientDependencies() *BrFedDependencies {
+	deps := NewFakeBrFedDependencies()
+
+	// TODO make all controller use real controller with simple client.
+	deps.FedVolumeBackupControl = NewRealFedVolumeBackupControl(deps.Clientset, deps.Recorder)
+	return deps
+}
+
 func NewFakeBrFedDependencies() *BrFedDependencies {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()

@@ -45,7 +45,7 @@ type Controller struct {
 func NewController(deps *controller.BrFedDependencies) *Controller {
 	c := &Controller{
 		deps:    deps,
-		control: NewDefaultVolumeBackupScheduleControl(deps.Clientset, backupschedule.NewBackupScheduleManager(deps)),
+		control: NewDefaultVolumeBackupScheduleControl(controller.NewRealVolumeBackupScheduleStatusUpdater(deps), backupschedule.NewBackupScheduleManager(deps)),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
 			"volumeBackupSchedule",

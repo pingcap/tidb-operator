@@ -945,7 +945,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"schedule", "logBackupTemplate"},
+				Required: []string{"schedule", "backupTemplate"},
 			},
 		},
 		Dependencies: []string{
