@@ -37,6 +37,7 @@ type VolumeBackupSchedulesGetter interface {
 type VolumeBackupScheduleInterface interface {
 	Create(ctx context.Context, volumeBackupSchedule *v1alpha1.VolumeBackupSchedule, opts v1.CreateOptions) (*v1alpha1.VolumeBackupSchedule, error)
 	Update(ctx context.Context, volumeBackupSchedule *v1alpha1.VolumeBackupSchedule, opts v1.UpdateOptions) (*v1alpha1.VolumeBackupSchedule, error)
+	UpdateStatus(ctx context.Context, volumeBackupSchedule *v1alpha1.VolumeBackupSchedule, opts v1.UpdateOptions) (*v1alpha1.VolumeBackupSchedule, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.VolumeBackupSchedule, error)
@@ -125,6 +126,22 @@ func (c *volumeBackupSchedules) Update(ctx context.Context, volumeBackupSchedule
 		Namespace(c.ns).
 		Resource("volumebackupschedules").
 		Name(volumeBackupSchedule.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(volumeBackupSchedule).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *volumeBackupSchedules) UpdateStatus(ctx context.Context, volumeBackupSchedule *v1alpha1.VolumeBackupSchedule, opts v1.UpdateOptions) (result *v1alpha1.VolumeBackupSchedule, err error) {
+	result = &v1alpha1.VolumeBackupSchedule{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("volumebackupschedules").
+		Name(volumeBackupSchedule.Name).
+		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(volumeBackupSchedule).
 		Do(ctx).
