@@ -514,6 +514,10 @@ type PDSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1"
 	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
+
+	// Timeout threshold when pd get started
+	// +kubebuilder:default=30
+	StartTimeout int `json:"startTimeout,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
