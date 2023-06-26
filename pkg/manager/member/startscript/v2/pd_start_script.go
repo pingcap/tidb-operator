@@ -67,7 +67,7 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.DiscoveryAddr = fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS)
 
-	m.PDStartTimeout = tc.Spec.PD.StartTimeout
+	m.PDStartTimeout = tc.PDStartTimeout()
 
 	return renderTemplateFunc(pdStartScriptTpl, m)
 }

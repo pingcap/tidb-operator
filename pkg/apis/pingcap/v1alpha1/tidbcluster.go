@@ -43,6 +43,7 @@ const (
 	// defaultTiCDCGracefulShutdownTimeout is the timeout limit of graceful
 	// shutdown a TiCDC pod.
 	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
+	defaultPDStartTimeout               = 30
 
 	// the latest version
 	versionLatest = "latest"
@@ -1249,4 +1250,11 @@ func (tc *TidbCluster) StartScriptVersion() StartScriptVersion {
 	default:
 		return StartScriptV1
 	}
+}
+
+func (tc *TidbCluster) PDStartTimeout() int {
+	if tc.Spec.PD != nil && tc.Spec.PD.StartTimeout != 0 {
+		return tc.Spec.PD.StartTimeout
+	}
+	return defaultPDStartTimeout
 }
