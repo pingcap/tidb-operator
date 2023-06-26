@@ -11457,6 +11457,17 @@ string
 <p>Start up script version</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>startTimeout</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Timeout threshold when pd get started</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>

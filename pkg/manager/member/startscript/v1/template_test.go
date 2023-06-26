@@ -1227,7 +1227,9 @@ exec /pd-server ${ARGS}
 
 			tc := &v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: &v1alpha1.PDSpec{},
+					PD: &v1alpha1.PDSpec{
+						StartTimeout: 30,
+					},
 				},
 			}
 			tc.Name = "test-pd"
