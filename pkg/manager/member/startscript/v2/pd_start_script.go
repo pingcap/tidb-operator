@@ -35,6 +35,7 @@ type PDStartScriptModel struct {
 	AdvertiseClientURL string
 	DiscoveryAddr      string
 	ExtraArgs          string
+	PDStartTimeout     int
 }
 
 // RenderPDStartScript renders PD start script from TidbCluster
@@ -66,6 +67,8 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.DiscoveryAddr = fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS)
 
+	m.PDStartTimeout = tc.Spec.PD.StartTimeout
+
 	return renderTemplateFunc(pdStartScriptTpl, m)
 }
 
@@ -80,7 +83,7 @@ PD_DOMAIN={{ .PDDomain }}
 
 elapseTime=0
 period=1
-threshold=30
+threshold={{ .PDStartTimeout }}
 while true; do
     sleep ${period}
     elapseTime=$(( elapseTime+period ))
