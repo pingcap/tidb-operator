@@ -174,33 +174,26 @@ func needModify(pvc *corev1.PersistentVolumeClaim, desired *DesiredVolume) bool 
 	size := desired.Size
 	scName := desired.GetStorageClassName()
 
-	return isPVCStatusNotMatched(pvc, scName, size)
+	return isPVCStatusMatched(pvc, scName, size)
 }
 
-func isPVCStatusNotMatched(pvc *corev1.PersistentVolumeClaim, scName string, size resource.Quantity) bool {
+func isPVCStatusMatched(pvc *corev1.PersistentVolumeClaim, scName string, size resource.Quantity) bool {
 	oldSc := getStorageClassNameFromPVC(pvc)
-	notMatched := isStorageClassChanged(oldSc, scName)
+	isChanged := isStorageClassChanged(oldSc, scName)
 
-	if isPVCSizeStatusNotMatched(pvc, size) {
-		notMatched = true
-	}
-	if notMatched {
-		klog.Infof("volume %s/%s is changed, sc (%s => %s), size (%s => %s)", pvc.Namespace, pvc.Name, oldSc, scName, oldSize, size.String())
-	}
-
-	return notMatched
-}
-
-func isPVCSizeStatusNotMatched(pvc *corev1.PersistentVolumeClaim, size resource.Quantity) bool {
 	oldSize, ok := pvc.Annotations[annoKeyPVCStatusStorageSize]
 	if !ok {
 		quantity := getStorageSize(pvc.Spec.Resources.Requests)
 		oldSize = quantity.String()
 	}
 	if oldSize != size.String() {
-		return true
+		isChanged = true
 	}
-	return false
+	if isChanged {
+		klog.Infof("volume %s/%s is changed, sc (%s => %s), size (%s => %s)", pvc.Namespace, pvc.Name, oldSc, scName, oldSize, size.String())
+	}
+
+	return isChanged
 }
 
 func isStorageClassChanged(pre, cur string) bool {
