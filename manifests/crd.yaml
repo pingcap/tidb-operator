@@ -14305,6 +14305,10 @@ spec:
                 type: boolean
               volumeAZ:
                 type: string
+              warmup:
+                type: string
+              warmupImage:
+                type: string
             type: object
           status:
             properties:

@@ -1235,6 +1235,30 @@ string
 <p>PriorityClassName of Restore Job Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>warmup</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreWarmupMode
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Warmup represents whether to initialize TiKV volumes after volume snapshot restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>warmupImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WarmupImage represents using what image to initialize TiKV volumes</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="volumerestorespec">VolumeRestoreSpec</h3>

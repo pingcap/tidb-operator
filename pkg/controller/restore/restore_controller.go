@@ -159,6 +159,13 @@ func (c *Controller) updateRestore(cur interface{}) {
 	}
 
 	if v1alpha1.IsRestoreComplete(newRestore) {
+		if newRestore.Spec.Warmup == v1alpha1.RestoreWarmupModeASync {
+			if !v1alpha1.IsRestoreWarmUpComplete(newRestore) {
+				c.enqueueRestore(newRestore)
+				return
+			}
+		}
+
 		klog.V(4).Infof("restore %s/%s is Complete, skipping.", ns, name)
 		return
 	}

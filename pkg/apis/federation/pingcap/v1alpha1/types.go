@@ -327,6 +327,12 @@ type VolumeRestoreMemberSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// PriorityClassName of Restore Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+	// Warmup represents whether to initialize TiKV volumes after volume snapshot restore
+	// +optional
+	Warmup pingcapv1alpha1.RestoreWarmupMode `json:"warmup,omitempty"`
+	// WarmupImage represents using what image to initialize TiKV volumes
+	// +optional
+	WarmupImage string `json:"warmupImage,omitempty"`
 }
 
 type VolumeRestoreMemberBackupInfo struct {

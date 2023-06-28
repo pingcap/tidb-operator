@@ -64,6 +64,8 @@ const warmUpVolumeTemplate = `deviceName=$(lsblk -no NAME,MOUNTPOINT -r | awk -v
 echo "start warm up device $deviceName with mounted path %s"
 fio --rw=read --bs=256K --iodepth=128 --ioengine=libaio --name=initialize-%s --numjobs=32 --offset=0%% --offset_increment=3%% --size=3%% --thread=1 --filename=/dev/$deviceName`
 
+const defaultWarmUpImage = "wangle1321/fio:juncen-2023062902"
+
 type restoreManager struct {
 	deps          *controller.Dependencies
 	statusUpdater controller.RestoreConditionUpdaterInterface
@@ -157,17 +159,19 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			return controller.RequeueErrorf("restore %s/%s: waiting for all PD members are ready in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 		}
 
-		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreWarmUpStarted(restore) {
-			return rm.warmUpTiKVVolumesAsync(restore, tc)
-		}
-
 		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreTiKVComplete(restore) {
-			/*if !v1alpha1.IsRestoreWarmUpStarted(restore) {
-				return rm.warmUpTiKVVolumesSync(restore, tc)
+			if isWarmUpSync(restore) {
+				if !v1alpha1.IsRestoreWarmUpStarted(restore) {
+					return rm.warmUpTiKVVolumesSync(restore, tc)
+				}
+				if !v1alpha1.IsRestoreWarmUpComplete(restore) {
+					return rm.waitWarmUpJobsFinished(restore)
+				}
+			} else if isWarmUpAsync(restore) {
+				if !v1alpha1.IsRestoreWarmUpStarted(restore) {
+					return rm.warmUpTiKVVolumesAsync(restore, tc)
+				}
 			}
-			if !v1alpha1.IsRestoreWarmUpComplete(restore) {
-				return rm.waitWarmUpJobsFinished(restore)
-			}*/
 
 			if !tc.AllTiKVsAreAvailable() {
 				return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
@@ -179,6 +183,12 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}, nil)
 		}
 
+		if isWarmUpAsync(restore) && !v1alpha1.IsRestoreWarmUpComplete(restore) {
+			if err := rm.waitWarmUpJobsFinished(restore); err != nil {
+				return err
+			}
+		}
+
 		if v1alpha1.IsRestoreTiKVComplete(restore) && restore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreVolume {
 			return nil
 		}
@@ -186,9 +196,8 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		if restore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreFinish {
 			if !v1alpha1.IsRestoreComplete(restore) {
 				return controller.RequeueErrorf("restore %s/%s: waiting for restore status complete in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
-			} else {
-				return nil
 			}
+			return nil
 		}
 	}
 
@@ -463,20 +472,15 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		if _, ok := tc.Annotations[label.AnnTiKVVolumesReadyKey]; ok {
 			return "", nil
 		}
-		/*if v1alpha1.IsRestoreWarmUpComplete(r) {
-			restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
-			if len(tc.GetAnnotations()) == 0 {
-				tc.Annotations = make(map[string]string)
+
+		if isWarmUpSync(r) {
+			if v1alpha1.IsRestoreWarmUpComplete(r) {
+				return rm.startTiKV(r, tc)
 			}
-			tc.Annotations[label.AnnTiKVVolumesReadyKey] = restoreMark
-			if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
-				return "AddTCAnnWaitTiKVFailed", err
+			if v1alpha1.IsRestoreWarmUpStarted(r) {
+				return "", nil
 			}
-			return "", nil
 		}
-		if v1alpha1.IsRestoreWarmUpStarted(r) {
-			return "", nil
-		}*/
 
 		s, reason, err := snapshotter.NewSnapshotterForRestore(r.Spec.Mode, rm.deps)
 		if err != nil {
@@ -492,18 +496,25 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		if reason, err := s.PrepareRestoreMetadata(r, csb); err != nil {
 			return reason, err
 		}
-
-		restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
-		if len(tc.GetAnnotations()) == 0 {
-			tc.Annotations = make(map[string]string)
+		klog.Infof("Restore %s/%s prepare restore metadata finished", r.Namespace, r.Name)
+		if !isWarmUpSync(r) {
+			return rm.startTiKV(r, tc)
 		}
-		tc.Annotations[label.AnnTiKVVolumesReadyKey] = restoreMark
-		if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
-			return "AddTCAnnWaitTiKVFailed", err
-		}
-		return "", nil
 	}
 
+	return "", nil
+}
+
+func (rm *restoreManager) startTiKV(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (reason string, err error) {
+	restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
+	if len(tc.GetAnnotations()) == 0 {
+		tc.Annotations = make(map[string]string)
+	}
+	tc.Annotations[label.AnnTiKVVolumesReadyKey] = restoreMark
+	if _, err := rm.deps.TiDBClusterControl.Update(tc); err != nil {
+		return "AddTCAnnWaitTiKVFailed", err
+	}
+	klog.Infof("Restore %s/%s start TiKV", r.Namespace, r.Name)
 	return "", nil
 }
 
@@ -860,12 +871,17 @@ type pvcInfo struct {
 }
 
 func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
-	warmUpImage := "wangle1321/fio:alpine-20230626"
+	klog.Infof("Restore %s/%s start to warm up TiKV synchronously", r.Namespace, r.Name)
+	warmUpImage := defaultWarmUpImage
+	if r.Spec.WarmupImage != "" {
+		warmUpImage = r.Spec.WarmupImage
+	}
+	ns := tc.Namespace
 	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
 	if err != nil {
 		return err
 	}
-	pvcs, err := rm.deps.PVCLister.List(sel)
+	pvcs, err := rm.deps.PVCLister.PersistentVolumeClaims(ns).List(sel)
 	if err != nil {
 		return err
 	}
@@ -890,10 +906,14 @@ func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *v1alpha
 			volumeName: volumeName,
 			number:     number,
 		})
+		klog.Infof("Restore %s/%s warmup get pvc %s/%s", r.Namespace, r.Name, pvc.Namespace, pvc.Name)
 	}
 
-	ns := tc.Namespace
+	volumesCount := len(tc.Spec.TiKV.StorageVolumes) + 1
 	for number, podPVCs := range pvcInfoMap {
+		if len(podPVCs) != volumesCount {
+			return fmt.Errorf("expected pvc count %d, got pvc count %d, not equal", volumesCount, len(podPVCs))
+		}
 		warmUpJobName := fmt.Sprintf("%s-%d-warm-up", stsName, number)
 		_, err := rm.deps.JobLister.Jobs(ns).Get(warmUpJobName)
 		if err == nil {
@@ -903,7 +923,7 @@ func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *v1alpha
 			return fmt.Errorf("get warm up job %s/%s error: %s", ns, warmUpJobName, err.Error())
 		}
 
-		warmUpJob, err := rm.makeWarmUpJob2(r, tc, podPVCs, warmUpJobName, warmUpImage)
+		warmUpJob, err := rm.makeSyncWarmUpJob(r, tc, podPVCs, warmUpJobName, warmUpImage)
 		if err != nil {
 			return err
 		}
@@ -919,14 +939,11 @@ func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *v1alpha
 }
 
 func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
-	warmUpImage := "wangle1321/fio:alpine-20230626"
-	// TODO: add codes below after test
-	/*if !r.Spec.WarmUp {
-		return nil
+	klog.Infof("Restore %s/%s start to warm up TiKV asynchronously", r.Namespace, r.Name)
+	warmUpImage := defaultWarmUpImage
+	if r.Spec.WarmupImage != "" {
+		warmUpImage = r.Spec.WarmupImage
 	}
-	if r.Spec.WarmUpImage != "" {
-		warmUpImage = r.Spec.WarmUpImage
-	}*/
 
 	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
 	if err != nil {
@@ -960,7 +977,7 @@ func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alph
 			return fmt.Errorf("get warm up job %s/%s of tikv pod %s/%s error: %s", ns, warmUpJobName, ns, podName, err.Error())
 		}
 
-		warmUpJob, err := rm.makeWarmUpJob(r, pod, tikvMountPaths, warmUpJobName, warmUpImage)
+		warmUpJob, err := rm.makeAsyncWarmUpJob(r, pod, tikvMountPaths, warmUpJobName, warmUpImage)
 		if err != nil {
 			return err
 		}
@@ -976,11 +993,9 @@ func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alph
 	}, nil)
 }
 
-func (rm *restoreManager) makeWarmUpJob2(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster, pvcs []*pvcInfo, warmUpJobName, warmUpImage string) (*batchv1.Job, error) {
+func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster, pvcs []*pvcInfo, warmUpJobName, warmUpImage string) (*batchv1.Job, error) {
 	podVolumes := make([]corev1.Volume, 0, len(pvcs))
 	podVolumeMounts := make([]corev1.VolumeMount, 0, len(pvcs))
-	warmUpVolumeNames := make([]string, 0, len(pvcs))
-	warmUpPaths := make([]string, 0, len(pvcs))
 	for _, pvc := range pvcs {
 		podVolumes = append(podVolumes, corev1.Volume{
 			Name: pvc.volumeName,
@@ -996,9 +1011,6 @@ func (rm *restoreManager) makeWarmUpJob2(r *v1alpha1.Restore, tc *v1alpha1.TidbC
 			Name:      pvc.volumeName,
 			MountPath: mountPath,
 		})
-
-		warmUpVolumeNames = append(warmUpVolumeNames, pvc.volumeName)
-		warmUpPaths = append(warmUpPaths, mountPath)
 	}
 
 	nodeSelector := make(map[string]string, len(tc.Spec.TiKV.NodeSelector))
@@ -1010,12 +1022,26 @@ func (rm *restoreManager) makeWarmUpJob2(r *v1alpha1.Restore, tc *v1alpha1.TidbC
 		tolerations = append(tolerations, *toleration.DeepCopy())
 	}
 
-	fioCommands := make([]string, 0, len(warmUpPaths))
+	/*fioCommands := make([]string, 0, len(warmUpPaths))
 	for i := range warmUpPaths {
 		fioSubCommand := fmt.Sprintf(warmUpVolumeTemplate, warmUpPaths[i], warmUpPaths[i], warmUpVolumeNames[i])
 		fioCommands = append(fioCommands, strings.ReplaceAll(fioSubCommand, "\n", "; "))
 	}
-	fioCommand := strings.Join(fioCommands, "; ")
+	fioCommand := strings.Join(fioCommands, "; ")*/
+	filesArg := fmt.Sprintf("--files %s", constants.TiKVDataVolumeMountPath)
+	args := []string{filesArg}
+
+	fioPaths := make([]string, 0, len(podVolumeMounts))
+	for _, volumeMount := range podVolumeMounts {
+		if volumeMount.MountPath == constants.TiKVDataVolumeMountPath {
+			continue
+		}
+		fioPaths = append(fioPaths, volumeMount.MountPath)
+	}
+	if len(fioPaths) > 0 {
+		blockArg := fmt.Sprintf("--block %s", strings.Join(fioPaths, " "))
+		args = append(args, blockArg)
+	}
 
 	warmUpPod := &corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
@@ -1029,8 +1055,8 @@ func (rm *restoreManager) makeWarmUpJob2(r *v1alpha1.Restore, tc *v1alpha1.TidbC
 					Name:            "warm-up",
 					Image:           warmUpImage,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{fioCommand},
+					Command:         []string{"/warmup_steps"},
+					Args:            args,
 					VolumeMounts:    podVolumeMounts,
 					SecurityContext: &corev1.SecurityContext{
 						Privileged: pointer.BoolPtr(true),
@@ -1058,7 +1084,7 @@ func (rm *restoreManager) makeWarmUpJob2(r *v1alpha1.Restore, tc *v1alpha1.TidbC
 	return warmUpJob, nil
 }
 
-func (rm *restoreManager) makeWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod, warmUpPaths []string, warmUpJobName, warmUpImage string) (*batchv1.Job, error) {
+func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod, warmUpPaths []string, warmUpJobName, warmUpImage string) (*batchv1.Job, error) {
 	ns, podName := tikvPod.Namespace, tikvPod.Name
 	var tikvContainer *corev1.Container
 	for _, container := range tikvPod.Spec.Containers {
@@ -1091,20 +1117,35 @@ func (rm *restoreManager) makeWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod
 		}
 	}
 
-	warmUpVolumeNames := make([]string, 0, len(warmUpVolumeMounts))
+	/*warmUpVolumeNames := make([]string, 0, len(warmUpVolumeMounts))
 	for _, volumeMount := range warmUpVolumeMounts {
 		warmUpVolumeNames = append(warmUpVolumeNames, volumeMount.Name)
 	}
 	if len(warmUpPaths) != len(warmUpVolumeNames) {
 		return nil, fmt.Errorf("lengths of mounted paths %v and volumes %v in tikv pod %s/%s are not equal", warmUpPaths, warmUpVolumeNames, ns, podName)
-	}
+	}*/
 
-	fioCommands := make([]string, 0, len(warmUpPaths))
+	/*fioCommands := make([]string, 0, len(warmUpPaths))
 	for i := range warmUpPaths {
 		fioSubCommand := fmt.Sprintf(warmUpVolumeTemplate, warmUpPaths[i], warmUpPaths[i], warmUpVolumeNames[i])
 		fioCommands = append(fioCommands, strings.ReplaceAll(fioSubCommand, "\n", "; "))
 	}
-	fioCommand := strings.Join(fioCommands, "; ")
+	fioCommand := strings.Join(fioCommands, "; ")*/
+
+	filesArg := fmt.Sprintf("--files %s", constants.TiKVDataVolumeMountPath)
+	args := []string{filesArg}
+
+	fioPaths := make([]string, 0, len(warmUpPaths))
+	for _, warmUpPath := range warmUpPaths {
+		if warmUpPath == constants.TiKVDataVolumeMountPath {
+			continue
+		}
+		fioPaths = append(fioPaths, warmUpPath)
+	}
+	if len(fioPaths) > 0 {
+		blockArg := fmt.Sprintf("--block %s", strings.Join(fioPaths, " "))
+		args = append(args, blockArg)
+	}
 
 	warmUpPod := &corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
@@ -1116,8 +1157,8 @@ func (rm *restoreManager) makeWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod
 					Name:            "warm-up",
 					Image:           warmUpImage,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{fioCommand},
+					Command:         []string{"/warmup_steps"},
+					Args:            args,
 					VolumeMounts:    warmUpVolumeMounts,
 					SecurityContext: &corev1.SecurityContext{
 						Privileged: pointer.BoolPtr(true),
@@ -1147,6 +1188,10 @@ func (rm *restoreManager) makeWarmUpJob(r *v1alpha1.Restore, tikvPod *corev1.Pod
 }
 
 func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
+	if r.Spec.Warmup == "" {
+		return nil
+	}
+
 	sel, err := label.NewRestore().RestoreWarmUpJob().Restore(r.Name).Selector()
 	if err != nil {
 		return err
@@ -1164,6 +1209,9 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 			}
 		}
 		if !jobFinished {
+			if isWarmUpAsync(r) {
+				return nil
+			}
 			return fmt.Errorf("wait warmup job %s/%s finished", job.Namespace, job.Name)
 		}
 	}
@@ -1219,6 +1267,14 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 		return "PVCStorageSizeTooSmall", fmt.Errorf("%s/%s's restore pvc %s's storage size %s is less than expected storage size %s, please delete old pvc to continue", ns, name, pvc.GetName(), pvcRs.String(), rs.String())
 	}
 	return "", nil
+}
+
+func isWarmUpSync(r *v1alpha1.Restore) bool {
+	return r.Spec.Warmup == v1alpha1.RestoreWarmupModeSync
+}
+
+func isWarmUpAsync(r *v1alpha1.Restore) bool {
+	return r.Spec.Warmup == v1alpha1.RestoreWarmupModeASync
 }
 
 var _ backup.RestoreManager = &restoreManager{}

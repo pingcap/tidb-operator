@@ -1473,6 +1473,32 @@ For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${
 </tr>
 <tr>
 <td>
+<code>warmup</code></br>
+<em>
+<a href="#restorewarmupmode">
+RestoreWarmupMode
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Warmup represents whether to initialize TiKV volumes after volume snapshot restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>warmupImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WarmupImage represents using what image to initialize TiKV volumes</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#podsecuritycontext-v1-core">
@@ -13890,6 +13916,32 @@ For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${
 </tr>
 <tr>
 <td>
+<code>warmup</code></br>
+<em>
+<a href="#restorewarmupmode">
+RestoreWarmupMode
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Warmup represents whether to initialize TiKV volumes after volume snapshot restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>warmupImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WarmupImage represents using what image to initialize TiKV volumes</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#podsecuritycontext-v1-core">
@@ -14008,6 +14060,14 @@ RestoreConditionType
 </tr>
 </tbody>
 </table>
+<h3 id="restorewarmupmode">RestoreWarmupMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>RestoreWarmupMode represents when to initialize TiKV volumes</p>
+</p>
 <h3 id="s3storageprovider">S3StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
