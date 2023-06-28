@@ -16,12 +16,9 @@ package volumes
 import (
 	"context"
 	"fmt"
-	"sort"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,34 +49,17 @@ type PVCModifierInterface interface {
 }
 
 type pvcModifier struct {
-	deps *controller.Dependencies
-	sf   *selectorFactory
-	pm   PodVolumeModifier
+	deps  *controller.Dependencies
+	pm    PodVolumeModifier
+	utils *volCompareUtils
 }
 
 func NewPVCModifier(deps *controller.Dependencies) PVCModifierInterface {
 	return &pvcModifier{
-		deps: deps,
-		sf:   MustNewSelectorFactory(),
-		pm:   NewPodVolumeModifier(deps),
+		deps:  deps,
+		pm:    NewPodVolumeModifier(deps),
+		utils: newVolCompareUtils(deps),
 	}
-}
-
-type componentVolumeContext struct {
-	context.Context
-	tc     *v1alpha1.TidbCluster
-	status v1alpha1.ComponentStatus
-
-	shouldEvict bool
-
-	pods []*corev1.Pod
-	sts  *appsv1.StatefulSet
-
-	desiredVolumes []DesiredVolume
-}
-
-func (c *componentVolumeContext) ComponentID() string {
-	return fmt.Sprintf("%s/%s:%s", c.tc.GetNamespace(), c.tc.GetName(), c.status.MemberType())
 }
 
 func (p *pvcModifier) Sync(tc *v1alpha1.TidbCluster) error {
@@ -87,7 +67,7 @@ func (p *pvcModifier) Sync(tc *v1alpha1.TidbCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
-		ctx, err := p.buildContextForTC(tc, comp)
+		ctx, err := p.utils.BuildContextForTC(tc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by modifier for %s/%s:%s failed: %w", tc.Namespace, tc.Name, comp.MemberType(), err))
 			continue
@@ -114,74 +94,6 @@ func ignoreNil(s *string) string {
 	return *s
 }
 
-func (p *pvcModifier) buildContextForTC(tc *v1alpha1.TidbCluster, status v1alpha1.ComponentStatus) (*componentVolumeContext, error) {
-	comp := status.MemberType()
-
-	ctx := &componentVolumeContext{
-		Context: context.TODO(),
-		tc:      tc,
-		status:  status,
-	}
-
-	vs, err := p.pm.GetDesiredVolumes(tc, comp)
-	if err != nil {
-		return nil, err
-	}
-	ctx.desiredVolumes = vs
-
-	sts, err := p.getStsOfComponent(tc, comp)
-	if err != nil {
-		return nil, err
-	}
-
-	pods, err := p.getPodsOfComponent(tc, comp)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx.pods = pods
-	ctx.sts = sts
-	ctx.shouldEvict = comp == v1alpha1.TiKVMemberType
-
-	return ctx, nil
-}
-
-func (p *pvcModifier) getPodsOfComponent(tc *v1alpha1.TidbCluster, mt v1alpha1.MemberType) ([]*corev1.Pod, error) {
-	selector, err := p.sf.NewSelector(tc.GetInstanceName(), mt)
-	if err != nil {
-		return nil, err
-	}
-
-	ns := tc.GetNamespace()
-
-	pods, err := p.deps.PodLister.Pods(ns).List(selector)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list Pods: %w", err)
-	}
-
-	sort.Slice(pods, func(i, k int) bool {
-		a, b := pods[i].Name, pods[k].Name
-		if len(a) != len(b) {
-			return len(a) < len(b)
-		}
-		return a < b
-	})
-
-	return pods, nil
-}
-
-func (p *pvcModifier) getStsOfComponent(cluster v1alpha1.Cluster, mt v1alpha1.MemberType) (*appsv1.StatefulSet, error) {
-	ns := cluster.GetNamespace()
-	stsName := controller.MemberName(cluster.GetName(), mt)
-
-	sts, err := p.deps.StatefulSetLister.StatefulSets(ns).Get(stsName)
-	if err != nil {
-		return nil, fmt.Errorf("get sts %s/%s failed: %w", ns, stsName, err)
-	}
-
-	return sts, nil
-}
-
 func (p *pvcModifier) modifyVolumes(ctx *componentVolumeContext) error {
 	if ctx.status.GetPhase() != v1alpha1.NormalPhase {
 		return fmt.Errorf("component phase is not Normal")
@@ -198,44 +110,11 @@ func (p *pvcModifier) modifyVolumes(ctx *componentVolumeContext) error {
 	return nil
 }
 
-func (p *pvcModifier) isStatefulSetSynced(ctx *componentVolumeContext, sts *appsv1.StatefulSet) (bool, error) {
-	for _, volTemplate := range sts.Spec.VolumeClaimTemplates {
-		volName := v1alpha1.StorageVolumeName(volTemplate.Name)
-		size := getStorageSize(volTemplate.Spec.Resources.Requests)
-		desired := getDesiredVolumeByName(ctx.desiredVolumes, volName)
-		if desired == nil {
-			klog.Warningf("volume %s in sts for cluster %s dose not exist in desired volumes", volName, ctx.ComponentID())
-			continue
-		}
-		if size.Cmp(desired.Size) != 0 {
-			return false, nil
-		}
-		scName := volTemplate.Spec.StorageClassName
-		if !isStorageClassMatched(desired.StorageClass, ignoreNil(scName)) {
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-func isStorageClassMatched(sc *storagev1.StorageClass, scName string) bool {
-	if sc == nil {
-		// cannot get sc or sc is unset
-		return true
-	}
-	if sc.Name == scName {
-		return true
-	}
-
-	return false
-}
-
 func (p *pvcModifier) tryToRecreateSTS(ctx *componentVolumeContext) error {
 	ns := ctx.sts.Namespace
 	name := ctx.sts.Name
 
-	isSynced, err := p.isStatefulSetSynced(ctx, ctx.sts)
+	isSynced, err := p.utils.IsStatefulSetSynced(ctx, ctx.sts)
 	if err != nil {
 		return err
 	}

@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errutil "k8s.io/apimachinery/pkg/util/errors"
-	storagelister "k8s.io/client-go/listers/storage/v1"
 	klog "k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -40,29 +39,6 @@ type PodVolumeModifier interface {
 
 	ShouldModify(actual []ActualVolume) bool
 	Modify(actual []ActualVolume) error
-}
-
-type DesiredVolume struct {
-	Name v1alpha1.StorageVolumeName
-	Size resource.Quantity
-	// it may be nil if there is no permission to get storage class
-	StorageClass *storagev1.StorageClass
-	// it is sc name specified by user
-	// the sc may not exist
-	StorageClassName *string
-}
-
-// get storage class name from tc
-// it may return empty because sc is unset or no permission to verify the existence of sc
-func (v *DesiredVolume) GetStorageClassName() string {
-	if v.StorageClassName == nil {
-		return ""
-	}
-	return *v.StorageClassName
-}
-
-func (v *DesiredVolume) GetStorageSize() resource.Quantity {
-	return v.Size
 }
 
 type ActualVolume struct {
@@ -85,14 +61,15 @@ func (v *ActualVolume) GetStorageSize() resource.Quantity {
 }
 
 type podVolModifier struct {
-	deps *controller.Dependencies
-
+	deps      *controller.Dependencies
+	utils     *volCompareUtils
 	modifiers map[string]delegation.VolumeModifier
 }
 
 func NewPodVolumeModifier(deps *controller.Dependencies) PodVolumeModifier {
 	m := &podVolModifier{
 		deps:      deps,
+		utils:     newVolCompareUtils(deps),
 		modifiers: map[string]delegation.VolumeModifier{},
 	}
 	if features.DefaultFeatureGate.Enabled(features.VolumeModifying) {
@@ -164,160 +141,8 @@ func (p *podVolModifier) Modify(actual []ActualVolume) error {
 
 // TODO: it should be refactored
 func (p *podVolModifier) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha1.MemberType) ([]DesiredVolume, error) {
-	desiredVolumes := []DesiredVolume{}
-	scLister := p.deps.StorageClassLister
-
-	storageVolumes := []v1alpha1.StorageVolume{}
-	var defaultScName *string
-	switch mt {
-	case v1alpha1.TiProxyMemberType:
-		defaultScName = tc.Spec.TiProxy.StorageClassName
-		d := DesiredVolume{
-			Name:             v1alpha1.GetStorageVolumeName("", mt),
-			Size:             getStorageSize(tc.Spec.TiProxy.Requests),
-			StorageClassName: defaultScName,
-		}
-		desiredVolumes = append(desiredVolumes, d)
-
-		storageVolumes = tc.Spec.TiProxy.StorageVolumes
-	case v1alpha1.PDMemberType:
-		defaultScName = tc.Spec.PD.StorageClassName
-		d := DesiredVolume{
-			Name:             v1alpha1.GetStorageVolumeName("", mt),
-			Size:             getStorageSize(tc.Spec.PD.Requests),
-			StorageClassName: defaultScName,
-		}
-		desiredVolumes = append(desiredVolumes, d)
-
-		storageVolumes = tc.Spec.PD.StorageVolumes
-
-	case v1alpha1.TiDBMemberType:
-		defaultScName = tc.Spec.TiDB.StorageClassName
-		storageVolumes = tc.Spec.TiDB.StorageVolumes
-
-	case v1alpha1.TiKVMemberType:
-		defaultScName = tc.Spec.TiKV.StorageClassName
-		d := DesiredVolume{
-			Name:             v1alpha1.GetStorageVolumeName("", mt),
-			Size:             getStorageSize(tc.Spec.TiKV.Requests),
-			StorageClassName: defaultScName,
-		}
-		desiredVolumes = append(desiredVolumes, d)
-
-		storageVolumes = tc.Spec.TiKV.StorageVolumes
-
-	case v1alpha1.TiFlashMemberType:
-		for i, claim := range tc.Spec.TiFlash.StorageClaims {
-			d := DesiredVolume{
-				Name:             v1alpha1.GetStorageVolumeNameForTiFlash(i),
-				Size:             getStorageSize(claim.Resources.Requests),
-				StorageClassName: claim.StorageClassName,
-			}
-			desiredVolumes = append(desiredVolumes, d)
-		}
-
-	case v1alpha1.TiCDCMemberType:
-		defaultScName = tc.Spec.TiCDC.StorageClassName
-		storageVolumes = tc.Spec.TiCDC.StorageVolumes
-
-	case v1alpha1.PumpMemberType:
-		defaultScName = tc.Spec.Pump.StorageClassName
-		d := DesiredVolume{
-			Name:             v1alpha1.GetStorageVolumeName("", mt),
-			Size:             getStorageSize(tc.Spec.Pump.Requests),
-			StorageClassName: defaultScName,
-		}
-		desiredVolumes = append(desiredVolumes, d)
-	default:
-		return nil, fmt.Errorf("unsupported member type %s", mt)
-	}
-
-	for _, sv := range storageVolumes {
-		if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
-			d := DesiredVolume{
-				Name:             v1alpha1.GetStorageVolumeName(sv.Name, mt),
-				Size:             quantity,
-				StorageClassName: sv.StorageClassName,
-			}
-			if d.StorageClassName == nil {
-				d.StorageClassName = defaultScName
-			}
-
-			desiredVolumes = append(desiredVolumes, d)
-
-		} else {
-			klog.Warningf("StorageVolume %q in %s/%s .spec.%s is invalid", sv.Name, tc.GetNamespace(), tc.GetName(), mt)
-		}
-	}
-
-	if scLister != nil {
-		for i := range desiredVolumes {
-			if desiredVolumes[i].StorageClassName != nil {
-				sc, err := getStorageClass(desiredVolumes[i].StorageClassName, scLister)
-				if err != nil {
-					return nil, fmt.Errorf("cannot get sc %s", *desiredVolumes[i].StorageClassName)
-				}
-				desiredVolumes[i].StorageClass = sc
-			}
-		}
-	}
-
-	return desiredVolumes, nil
-}
-
-func getStorageClass(name *string, scLister storagelister.StorageClassLister) (*storagev1.StorageClass, error) {
-	if name == nil {
-		return nil, nil
-	}
-	return scLister.Get(*name)
-}
-
-func getDesiredVolumeByName(vs []DesiredVolume, name v1alpha1.StorageVolumeName) *DesiredVolume {
-	for i := range vs {
-		v := &vs[i]
-		if v.Name == name {
-			return v
-		}
-	}
-
-	return nil
-}
-
-func (p *podVolModifier) getBoundPVFromPVC(pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolume, error) {
-	if p.deps.PVLister == nil {
-		klog.V(4).Infof("Persistent volumes lister is unavailable, skip getting PV for %s. This may be caused by no relevant permissions", pvc.Spec.VolumeName)
-		return nil, nil
-	}
-
-	name := pvc.Spec.VolumeName
-
-	return p.deps.PVLister.Get(name)
-}
-
-func (p *podVolModifier) getStorageClassFromPVC(pvc *corev1.PersistentVolumeClaim) (*storagev1.StorageClass, error) {
-	scName := getStorageClassNameFromPVC(pvc)
-	if p.deps.StorageClassLister == nil {
-		klog.V(4).Infof("StorageClass is unavailable, skip getting StorageClass for %s. This may be caused by no relevant permissions", scName)
-		return nil, nil
-	}
-	if scName == "" {
-		return nil, fmt.Errorf("StorageClass of pvc %s is not set", pvc.Name)
-	}
-
-	return p.deps.StorageClassLister.Get(scName)
-}
-
-func (p *podVolModifier) getPVC(ns string, vol *corev1.Volume) (*corev1.PersistentVolumeClaim, error) {
-	if vol.PersistentVolumeClaim == nil {
-		return nil, nil
-	}
-
-	pvc, err := p.deps.PVCLister.PersistentVolumeClaims(ns).Get(vol.PersistentVolumeClaim.ClaimName)
-	if err != nil {
-		return nil, err
-	}
-
-	return pvc, nil
+	// pass-thru to expose from utils directly.
+	return p.utils.GetDesiredVolumes(tc, mt)
 }
 
 func (p *podVolModifier) GetActualVolumes(pod *corev1.Pod, vs []DesiredVolume) ([]ActualVolume, error) {
@@ -340,7 +165,7 @@ func (p *podVolModifier) GetActualVolumes(pod *corev1.Pod, vs []DesiredVolume) (
 }
 
 func (p *podVolModifier) NewActualVolumeOfPod(vs []DesiredVolume, ns string, vol *corev1.Volume) (*ActualVolume, error) {
-	pvc, err := p.getPVC(ns, vol)
+	pvc, err := p.utils.getPVC(ns, vol)
 	if err != nil {
 		return nil, err
 	}
@@ -349,12 +174,12 @@ func (p *podVolModifier) NewActualVolumeOfPod(vs []DesiredVolume, ns string, vol
 	}
 
 	// TODO: fix the case when pvc is pending
-	pv, err := p.getBoundPVFromPVC(pvc)
+	pv, err := p.utils.getBoundPVFromPVC(pvc)
 	if err != nil {
 		return nil, err
 	}
 
-	sc, err := p.getStorageClassFromPVC(pvc)
+	sc, err := p.utils.getStorageClassFromPVC(pvc)
 	if err != nil {
 		return nil, err
 	}
