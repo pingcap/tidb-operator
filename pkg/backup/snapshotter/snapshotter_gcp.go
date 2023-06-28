@@ -32,9 +32,9 @@ type GCPSnapshotter struct {
 }
 
 func (s *GCPSnapshotter) Init(deps *controller.Dependencies, conf map[string]string) error {
-	s.BaseSnapshotter.Init(deps, conf)
+	err := s.BaseSnapshotter.Init(deps, conf)
 	s.volRegexp = regexp.MustCompile(`^projects\/[^\/]+\/(zones|regions)\/[^\/]+\/disks\/[^\/]+$`)
-	return nil
+	return err
 }
 
 func (s *GCPSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, error) {
