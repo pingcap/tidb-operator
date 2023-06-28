@@ -327,7 +327,12 @@ func volumesSizeNeedModify(actual []ActualVolume) bool {
 			continue
 		}
 		// check with status, return need to modify if the size is modifying
-		if isPVCSizeStatusNotMatched(vol.PVC, vol.Desired.Size) {
+		oldSize, ok := vol.PVC.Annotations[annoKeyPVCStatusStorageSize]
+		if !ok {
+			quantity := getStorageSize(vol.PVC.Spec.Resources.Requests)
+			oldSize = quantity.String()
+		}
+		if oldSize != vol.Desired.Size.String() {
 			return true
 		}
 	}
