@@ -2453,12 +2453,12 @@ type RestoreSpec struct {
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
 	TableFilter []string `json:"tableFilter,omitempty"`
-	// ImagePullSecrets represents whether to initialize TiKV volumes after volume snapshot restore
+	// Warmup represents whether to initialize TiKV volumes after volume snapshot restore
 	// +optional
-	WarmUp bool `json:"warmUp,omitempty"`
-	// ImagePullSecrets represents using what image to initialize TiKV volumes
+	Warmup RestoreWarmupMode `json:"warmup,omitempty"`
+	// WarmupImage represents using what image to initialize TiKV volumes
 	// +optional
-	WarmUpImage string `json:"warmUpImage,omitempty"`
+	WarmupImage string `json:"warmupImage,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional
@@ -2478,6 +2478,16 @@ const (
 	FederalVolumeRestoreData FederalVolumeRestorePhase = "restore-data"
 	// FederalVolumeRestoreFinish means restart TiKV and set recoveryMode true
 	FederalVolumeRestoreFinish FederalVolumeRestorePhase = "restore-finish"
+)
+
+// RestoreWarmupMode represents when to initialize TiKV volumes
+type RestoreWarmupMode string
+
+const (
+	// RestoreWarmupModeSync means initialize TiKV volumes before TiKV starts
+	RestoreWarmupModeSync RestoreWarmupMode = "sync"
+	// RestoreWarmupModeASync means initialize TiKV volumes after restore complete
+	RestoreWarmupModeASync RestoreWarmupMode = "async"
 )
 
 // RestoreStatus represents the current status of a tidb cluster restore.
