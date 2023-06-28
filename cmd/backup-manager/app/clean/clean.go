@@ -135,7 +135,7 @@ func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta) error {
 	return nil
 }
 
-// cleanBRRemoteBackupData clean the backup data from remote
+// CleanBRRemoteBackupData clean the backup data from remote
 func (bo *Options) CleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1.Backup) error {
 	opt := backup.GetCleanOption()
 

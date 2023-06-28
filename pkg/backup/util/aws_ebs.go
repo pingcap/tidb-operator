@@ -105,7 +105,7 @@ type EC2Session struct {
 	concurrency uint
 }
 
-type VolumeAZs map[string]string
+type TagMap map[string]string
 
 func NewEC2Session(concurrency uint) (*EC2Session, error) {
 	// aws-sdk has builtin exponential backoff retry mechanism, see:
@@ -146,6 +146,40 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 
 	if err := eg.Wait(); err != nil {
 		klog.Errorf("failed to delete snapshots error=%s, already delete=%d", err, deletedCnt.Load())
+		return err
+	}
+	return nil
+}
+
+func (e *EC2Session) AddTags(resourcesTags map[string]TagMap) error {
+
+	eg := new(errgroup.Group)
+	for resourceID := range resourcesTags {
+		tagMap := resourcesTags[resourceID]
+		var tags []*ec2.Tag
+		for tag := range tagMap {
+			value := tagMap[tag]
+			tags = append(tags, &ec2.Tag{Key: &tag, Value: &value})
+
+			// Create the input for adding the tag
+			input := &ec2.CreateTagsInput{
+				Resources: []*string{aws.String(resourceID)},
+				Tags:      tags,
+			}
+
+			eg.Go(func() error {
+				_, err := e.EC2.CreateTags(input)
+				if err != nil {
+					klog.Errorf("failed to create tags for resource id=%s", resourceID, err)
+					return err
+				}
+				return nil
+			})
+		}
+	}
+
+	if err := eg.Wait(); err != nil {
+		klog.Errorf("failed to create tags for all resources")
 		return err
 	}
 	return nil

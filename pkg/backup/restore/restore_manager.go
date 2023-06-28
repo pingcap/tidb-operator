@@ -139,6 +139,50 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			if !tc.AllTiKVsAreAvailable() {
 				return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 			} else {
+				sel, err := label.New().Instance(tc.Name).TiKV().Selector()
+				if err != nil {
+					rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+						Type:    v1alpha1.RestoreRetryFailed,
+						Status:  corev1.ConditionTrue,
+						Reason:  "BuildTiKVSelectorFailed",
+						Message: err.Error(),
+					}, nil)
+					return err
+				}
+
+				pvs, err := rm.deps.PVLister.List(sel)
+				if err != nil {
+					rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+						Type:    v1alpha1.RestoreRetryFailed,
+						Status:  corev1.ConditionTrue,
+						Reason:  "ListTiKVPodsFailed",
+						Message: err.Error(),
+					}, nil)
+					return err
+				}
+
+				s, reason, err := snapshotter.NewSnapshotterForRestore(restore.Spec.Mode, rm.deps)
+				if err != nil {
+					rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+						Type:    v1alpha1.RestoreRetryFailed,
+						Status:  corev1.ConditionTrue,
+						Reason:  reason,
+						Message: err.Error(),
+					}, nil)
+					return err
+				}
+
+				err = s.AddVolumeTags(pvs)
+				if err != nil {
+					rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+						Type:    v1alpha1.RestoreRetryFailed,
+						Status:  corev1.ConditionTrue,
+						Reason:  "AddVolumeTagFailed",
+						Message: err.Error(),
+					}, nil)
+					return err
+				}
+
 				return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 					Type:   v1alpha1.RestoreTiKVComplete,
 					Status: corev1.ConditionTrue,
