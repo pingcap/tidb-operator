@@ -284,15 +284,21 @@ func (p *pvcModifier) tryToModifyPVC(ctx *componentVolumeContext) error {
 			// try to evict leader if need to modify
 			isEvicted := isLeaderEvictedOrTimeout(ctx.tc, pod)
 			if !isEvicted {
-				if ensureTiKVLeaderEvictionCondition(ctx.tc, metav1.ConditionTrue) {
-					// return to sync tc
-					return fmt.Errorf("try to evict leader for tidbcluster %s/%s", ctx.tc.Namespace, ctx.tc.Name)
-				}
-				if err := p.evictLeader(ctx.tc, pod); err != nil {
-					return err
-				}
+				// do not evict leader when resizing PVC (increasing size)
+				// as if the storage size is not enough, the leader eviction will be blocked (never finished)
+				if !volumesSizeChanged(actual) {
+					if ensureTiKVLeaderEvictionCondition(ctx.tc, metav1.ConditionTrue) {
+						// return to sync tc
+						return fmt.Errorf("try to evict leader for tidbcluster %s/%s", ctx.tc.Namespace, ctx.tc.Name)
+					}
+					if err := p.evictLeader(ctx.tc, pod); err != nil {
+						return err
+					}
 
-				return fmt.Errorf("wait for leader eviction of %s/%s completed", pod.Namespace, pod.Name)
+					return fmt.Errorf("wait for leader eviction of %s/%s completed", pod.Namespace, pod.Name)
+				} else {
+					klog.Infof("skip evicting leader for %s/%s as the storage size is changing", pod.Namespace, pod.Name)
+				}
 			}
 		}
 
@@ -313,6 +319,18 @@ func (p *pvcModifier) tryToModifyPVC(ctx *componentVolumeContext) error {
 	}
 
 	return nil
+}
+
+func volumesSizeChanged(actual []ActualVolume) bool {
+	for _, vol := range actual {
+		if vol.PVC == nil || vol.Desired == nil {
+			continue
+		}
+		if isPVCSizeChanged(vol.PVC, vol.Desired.Size) {
+			return true
+		}
+	}
+	return false
 }
 
 func ensureTiKVLeaderEvictionCondition(tc *v1alpha1.TidbCluster, status metav1.ConditionStatus) bool {

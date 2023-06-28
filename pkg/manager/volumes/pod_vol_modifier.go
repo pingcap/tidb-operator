@@ -394,22 +394,24 @@ func upgradeRevision(pvc *corev1.PersistentVolumeClaim) {
 }
 
 func isPVCSpecMatched(pvc *corev1.PersistentVolumeClaim, scName string, size resource.Quantity) bool {
-	isChanged := false
 	oldSc := pvc.Annotations[annoKeyPVCSpecStorageClass]
 	if scName != "" && oldSc != scName {
-		isChanged = true
+		return true
 	}
 
+	return isPVCSizeChanged(pvc, size)
+}
+
+func isPVCSizeChanged(pvc *corev1.PersistentVolumeClaim, size resource.Quantity) bool {
 	oldSize, ok := pvc.Annotations[annoKeyPVCSpecStorageSize]
 	if !ok {
 		quantity := getStorageSize(pvc.Spec.Resources.Requests)
 		oldSize = quantity.String()
 	}
 	if oldSize != size.String() {
-		isChanged = true
+		return true
 	}
-
-	return isChanged
+	return false
 }
 
 func snapshotStorageClassAndSize(pvc *corev1.PersistentVolumeClaim, scName string, size resource.Quantity) bool {
