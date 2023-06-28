@@ -20,7 +20,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errutil "k8s.io/apimachinery/pkg/util/errors"
 	klog "k8s.io/klog/v2"
@@ -83,17 +82,6 @@ func (p *pvcModifier) Sync(tc *v1alpha1.TidbCluster) error {
 	return errutil.NewAggregate(errs)
 }
 
-func getStorageSize(r corev1.ResourceList) resource.Quantity {
-	return r[corev1.ResourceStorage]
-}
-
-func ignoreNil(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
 func (p *pvcModifier) modifyVolumes(ctx *componentVolumeContext) error {
 	if ctx.status.GetPhase() != v1alpha1.NormalPhase {
 		return fmt.Errorf("component phase is not Normal")
@@ -114,7 +102,8 @@ func (p *pvcModifier) tryToRecreateSTS(ctx *componentVolumeContext) error {
 	ns := ctx.sts.Namespace
 	name := ctx.sts.Name
 
-	isSynced, err := p.utils.IsStatefulSetSynced(ctx, ctx.sts)
+	// Modifier does not support new volumes, trigger error if so and return.
+	isSynced, err := p.utils.IsStatefulSetSynced(ctx, ctx.sts, true)
 	if err != nil {
 		return err
 	}

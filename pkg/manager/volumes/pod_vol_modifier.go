@@ -164,6 +164,30 @@ func (p *podVolModifier) GetActualVolumes(pod *corev1.Pod, vs []DesiredVolume) (
 	return vols, nil
 }
 
+func (p *podVolModifier) getBoundPVFromPVC(pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolume, error) {
+	if p.deps.PVLister == nil {
+		klog.V(4).Infof("Persistent volumes lister is unavailable, skip getting PV for %s. This may be caused by no relevant permissions", pvc.Spec.VolumeName)
+		return nil, nil
+	}
+
+	name := pvc.Spec.VolumeName
+
+	return p.deps.PVLister.Get(name)
+}
+
+func (p *podVolModifier) getStorageClassFromPVC(pvc *corev1.PersistentVolumeClaim) (*storagev1.StorageClass, error) {
+	scName := getStorageClassNameFromPVC(pvc)
+	if p.deps.StorageClassLister == nil {
+		klog.V(4).Infof("StorageClass is unavailable, skip getting StorageClass for %s. This may be caused by no relevant permissions", scName)
+		return nil, nil
+	}
+	if scName == "" {
+		return nil, fmt.Errorf("StorageClass of pvc %s is not set", pvc.Name)
+	}
+
+	return p.deps.StorageClassLister.Get(scName)
+}
+
 func (p *podVolModifier) NewActualVolumeOfPod(vs []DesiredVolume, ns string, vol *corev1.Volume) (*ActualVolume, error) {
 	pvc, err := p.utils.getPVC(ns, vol)
 	if err != nil {
@@ -174,12 +198,12 @@ func (p *podVolModifier) NewActualVolumeOfPod(vs []DesiredVolume, ns string, vol
 	}
 
 	// TODO: fix the case when pvc is pending
-	pv, err := p.utils.getBoundPVFromPVC(pvc)
+	pv, err := p.getBoundPVFromPVC(pvc)
 	if err != nil {
 		return nil, err
 	}
 
-	sc, err := p.utils.getStorageClassFromPVC(pvc)
+	sc, err := p.getStorageClassFromPVC(pvc)
 	if err != nil {
 		return nil, err
 	}

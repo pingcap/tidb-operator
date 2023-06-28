@@ -14,6 +14,7 @@
 package tidbcluster
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/features"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -52,6 +53,7 @@ func NewDefaultTidbClusterControl(
 	pvcCleaner member.PVCCleanerInterface,
 	// pvcResizer member.PVCResizerInterface,
 	pvcModifier volumes.PVCModifierInterface,
+	pvcReplacer volumes.PVCReplacerInterface,
 	pumpMemberManager manager.Manager,
 	tiflashMemberManager manager.Manager,
 	ticdcMemberManager manager.Manager,
@@ -70,6 +72,7 @@ func NewDefaultTidbClusterControl(
 		orphanPodsCleaner:        orphanPodsCleaner,
 		pvcCleaner:               pvcCleaner,
 		pvcModifier:              pvcModifier,
+		pvcReplacer:              pvcReplacer,
 		pumpMemberManager:        pumpMemberManager,
 		tiflashMemberManager:     tiflashMemberManager,
 		ticdcMemberManager:       ticdcMemberManager,
@@ -91,6 +94,7 @@ type defaultTidbClusterControl struct {
 	orphanPodsCleaner        member.OrphanPodsCleaner
 	pvcCleaner               member.PVCCleanerInterface
 	pvcModifier              volumes.PVCModifierInterface
+	pvcReplacer              volumes.PVCReplacerInterface
 	pumpMemberManager        manager.Manager
 	tiflashMemberManager     manager.Manager
 	ticdcMemberManager       manager.Manager
@@ -172,6 +176,13 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	if err := c.discoveryManager.Reconcile(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "discovery").Inc()
 		return err
+	}
+
+	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) {
+		if err := c.pvcReplacer.UpdateStatus(tc); err != nil {
+			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_replacer_updatestatus").Inc()
+			return err
+		}
 	}
 
 	// works that should be done to make the pd cluster current state match the desired state:

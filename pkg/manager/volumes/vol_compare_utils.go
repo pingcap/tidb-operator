@@ -16,6 +16,7 @@ package volumes
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/errors"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	storagelister "k8s.io/client-go/listers/storage/v1"
@@ -148,14 +149,22 @@ func (u *volCompareUtils) getStsOfComponent(cluster v1alpha1.Cluster, mt v1alpha
 	return sts, nil
 }
 
-func (u *volCompareUtils) IsStatefulSetSynced(ctx *componentVolumeContext, sts *appsv1.StatefulSet) (bool, error) {
+func (u *volCompareUtils) IsStatefulSetSynced(ctx *componentVolumeContext, sts *appsv1.StatefulSet, errOnNewVol bool) (bool, error) {
+	var newVolErr error = nil
 	for _, volTemplate := range sts.Spec.VolumeClaimTemplates {
 		volName := v1alpha1.StorageVolumeName(volTemplate.Name)
 		size := getStorageSize(volTemplate.Spec.Resources.Requests)
 		desired := getDesiredVolumeByName(ctx.desiredVolumes, volName)
 		if desired == nil {
-			klog.Warningf("volume %s in sts for cluster %s dose not exist in desired volumes", volName, ctx.ComponentID())
-			continue
+			// TODO: verify behaviour is correctly intended, this was previously being ignored. Now explicit error in
+			// pvc modifier..
+			errStr := fmt.Sprintf("volume %s in sts for cluster %s does not exist in desired volumes", volName, ctx.ComponentID())
+			if errOnNewVol {
+				newVolErr = errors.New(errStr)
+			} else {
+				klog.Warningf(errStr)
+			}
+			return false, newVolErr
 		}
 		if size.Cmp(desired.Size) != 0 {
 			return false, nil
@@ -165,7 +174,55 @@ func (u *volCompareUtils) IsStatefulSetSynced(ctx *componentVolumeContext, sts *
 			return false, nil
 		}
 	}
+	// TODO: verify new behaviour is fine with pvc_modifier, previously number of volumes not checked.
+	if len(sts.Spec.VolumeClaimTemplates) != len(ctx.desiredVolumes) {
+		errStr := fmt.Sprintf("Number of volumes mismatch desired %d vs sts %d for cluster %s", len(ctx.desiredVolumes), len(sts.Spec.VolumeClaimTemplates), ctx.ComponentID())
+		if errOnNewVol {
+			newVolErr = errors.New(errStr)
+		} else {
+			klog.Warningf(errStr)
+		}
+		return false, newVolErr
+	}
 
+	return true, nil
+}
+
+func (u *volCompareUtils) IsPodSyncedForReplacement(ctx *componentVolumeContext, pod *corev1.Pod) (bool, error) {
+	// Does not check underlying StorageClass for modifications, only matches PVC specs for use by pvc replacer.
+	ns := pod.Namespace
+	podPvcCount := 0
+	for i := range pod.Spec.Volumes {
+		vol := &pod.Spec.Volumes[i]
+		pvc, err := u.getPVC(ns, vol)
+		if err != nil {
+			return false, err
+		}
+		if pvc == nil {
+			continue // Not a PVC don't compare.
+		}
+		podPvcCount++
+		desired := getDesiredVolumeByName(ctx.desiredVolumes, v1alpha1.StorageVolumeName(vol.Name))
+		if desired == nil {
+			// Extra un-desired volume in pod, needs to be removed.
+			return false, nil
+		}
+		desiredScName := desired.GetStorageClassName()
+		// If desired sc name is unspecified , any sc used by pvc is okay. (Default storage class).
+		if desiredScName != "" && ignoreNil(pvc.Spec.StorageClassName) != desiredScName {
+			// StorageClass change. Note: not checking underlying storage class of PV.
+			return false, nil
+		}
+		pvcQuantity := getStorageSize(pvc.Spec.Resources.Requests)
+		if pvcQuantity.Cmp(desired.Size) != 0 {
+			// Sizes don't match.
+			return false, nil
+		}
+	}
+	if podPvcCount != len(ctx.desiredVolumes) {
+		// Mismatched number of volumes between desired & pod.
+		return false, nil
+	}
 	return true, nil
 }
 
@@ -302,28 +359,15 @@ func getDesiredVolumeByName(vs []DesiredVolume, name v1alpha1.StorageVolumeName)
 	return nil
 }
 
-func (u *volCompareUtils) getBoundPVFromPVC(pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolume, error) {
-	if u.deps.PVLister == nil {
-		klog.V(4).Infof("Persistent volumes lister is unavailable, skip getting PV for %s. This may be caused by no relevant permissions", pvc.Spec.VolumeName)
-		return nil, nil
-	}
-
-	name := pvc.Spec.VolumeName
-
-	return u.deps.PVLister.Get(name)
+func getStorageSize(r corev1.ResourceList) resource.Quantity {
+	return r[corev1.ResourceStorage]
 }
 
-func (u *volCompareUtils) getStorageClassFromPVC(pvc *corev1.PersistentVolumeClaim) (*storagev1.StorageClass, error) {
-	scName := getStorageClassNameFromPVC(pvc)
-	if u.deps.StorageClassLister == nil {
-		klog.V(4).Infof("StorageClass is unavailable, skip getting StorageClass for %s. This may be caused by no relevant permissions", scName)
-		return nil, nil
+func ignoreNil(s *string) string {
+	if s == nil {
+		return ""
 	}
-	if scName == "" {
-		return nil, fmt.Errorf("StorageClass of pvc %s is not set", pvc.Name)
-	}
-
-	return u.deps.StorageClassLister.Get(scName)
+	return *s
 }
 
 func (u *volCompareUtils) getPVC(ns string, vol *corev1.Volume) (*corev1.PersistentVolumeClaim, error) {

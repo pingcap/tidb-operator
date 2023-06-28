@@ -35,11 +35,18 @@ tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.6.0-alpha.3
 #   VolumeModifying (default false)
 #     If enabled, tidb-operator support to increase the size or performance of volumes
 #     for specific volume provisioner.
-features: []
+#
+#   VolumeReplacing (default false)
+#     If enabled, tidb-operator support generic volume changes (size, storageclass & number of volumes)
+#     by deleting old pod + pvc completely and replacing with new pods/PVCs.
+#
+# TODO (anish) : remove before PR.
+features: [VolumeReplacing=true]
 # - AdvancedStatefulSet=false
 # - StableScheduling=true
 # - AutoScaling=false
 # - VolumeModifying=false
+# - VolumeReplacing=false
 
 appendReleaseSuffix: false
 
