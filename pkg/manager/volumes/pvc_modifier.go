@@ -286,7 +286,7 @@ func (p *pvcModifier) tryToModifyPVC(ctx *componentVolumeContext) error {
 			if !isEvicted {
 				// do not evict leader when resizing PVC (increasing size)
 				// as if the storage size is not enough, the leader eviction will be blocked (never finished)
-				if !volumesSizeChanged(actual) {
+				if !volumesSizeNeedModify(actual) {
 					if ensureTiKVLeaderEvictionCondition(ctx.tc, metav1.ConditionTrue) {
 						// return to sync tc
 						return fmt.Errorf("try to evict leader for tidbcluster %s/%s", ctx.tc.Namespace, ctx.tc.Name)
@@ -321,12 +321,13 @@ func (p *pvcModifier) tryToModifyPVC(ctx *componentVolumeContext) error {
 	return nil
 }
 
-func volumesSizeChanged(actual []ActualVolume) bool {
+func volumesSizeNeedModify(actual []ActualVolume) bool {
 	for _, vol := range actual {
 		if vol.PVC == nil || vol.Desired == nil {
 			continue
 		}
-		if isPVCSizeChanged(vol.PVC, vol.Desired.Size) {
+		// check with status, return need to modify if the size is modifying
+		if isPVCSizeStatusNotMatched(vol.PVC, vol.Desired.Size) {
 			return true
 		}
 	}
