@@ -36609,6 +36609,8 @@ spec:
                           type: object
                       type: object
                     type: object
+                  volReplaceInProgress:
+                    type: boolean
                   volumes:
                     additionalProperties:
                       properties:
@@ -37067,6 +37069,8 @@ spec:
                     required:
                     - replicas
                     type: object
+                  volReplaceInProgress:
+                    type: boolean
                   volumes:
                     additionalProperties:
                       properties:
@@ -37570,6 +37574,8 @@ spec:
                       - state
                       type: object
                     type: object
+                  volReplaceInProgress:
+                    type: boolean
                   volumes:
                     additionalProperties:
                       properties:

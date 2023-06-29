@@ -39,6 +39,7 @@ tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.6.0-alpha.3
 #   VolumeReplacing (default false)
 #     If enabled, tidb-operator support generic volume changes (size, storageclass & number of volumes)
 #     by deleting old pod + pvc completely and replacing with new pods/PVCs.
+#     pd, tikv, tidb supported.
 #
 # TODO (anish) : remove before PR.
 features: [VolumeReplacing=true]

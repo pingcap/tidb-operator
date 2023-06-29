@@ -69,6 +69,8 @@ type ComponentStatus interface {
 	RemoveCondition(conditionType string)
 	// SetStatefulSet sets the `status.statefulset`
 	SetStatefulSet(sts *appsv1.StatefulSetStatus)
+	// sets the status.VolReplaceInProgress
+	SetVolReplaceInProgress(status bool)
 }
 
 func (tc *TidbCluster) AllComponentStatus() []ComponentStatus {
@@ -172,6 +174,9 @@ func (s *PDStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *PDStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *PDStatus) SetVolReplaceInProgress(status bool) {
+	s.VolReplaceInProgress = status
+}
 
 func (s *TiKVStatus) MemberType() MemberType {
 	return TiKVMemberType
@@ -219,6 +224,9 @@ func (s *TiKVStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *TiKVStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *TiKVStatus) SetVolReplaceInProgress(status bool) {
+	s.VolReplaceInProgress = status
+}
 
 func (s *TiDBStatus) MemberType() MemberType {
 	return TiDBMemberType
@@ -263,6 +271,9 @@ func (s *TiDBStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 }
 func (s *TiDBStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
+}
+func (s *TiDBStatus) SetVolReplaceInProgress(status bool) {
+	s.VolReplaceInProgress = status
 }
 
 func (s *PumpStatus) MemberType() MemberType {
@@ -309,6 +320,7 @@ func (s *PumpStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *PumpStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *PumpStatus) SetVolReplaceInProgress(status bool) {}
 
 func (s *TiFlashStatus) MemberType() MemberType {
 	return TiFlashMemberType
@@ -356,6 +368,7 @@ func (s *TiFlashStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *TiFlashStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *TiFlashStatus) SetVolReplaceInProgress(status bool) {}
 
 func (s *TiCDCStatus) MemberType() MemberType {
 	return TiCDCMemberType
@@ -403,6 +416,7 @@ func (s *TiCDCStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *TiCDCStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *TiCDCStatus) SetVolReplaceInProgress(status bool) {}
 
 func (s *MasterStatus) MemberType() MemberType {
 	return DMMasterMemberType
@@ -450,6 +464,7 @@ func (s *MasterStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *MasterStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *MasterStatus) SetVolReplaceInProgress(status bool) {}
 
 func (s *WorkerStatus) MemberType() MemberType {
 	return DMWorkerMemberType
@@ -497,6 +512,8 @@ func (s *WorkerStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *WorkerStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *WorkerStatus) SetVolReplaceInProgress(status bool) {}
+
 func (s *TiProxyStatus) MemberType() MemberType {
 	return TiProxyMemberType
 }
@@ -543,3 +560,4 @@ func (s *TiProxyStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *TiProxyStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *TiProxyStatus) SetVolReplaceInProgress(status bool) {}

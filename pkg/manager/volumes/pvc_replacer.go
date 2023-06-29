@@ -45,7 +45,6 @@ func (p *pvcReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
-		isVolReplacing := false
 		ctx, err := p.utils.BuildContextForTC(tc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by replacer for %s/%s:%s failed: %w", tc.Namespace, tc.Name, comp.MemberType(), err))
@@ -57,8 +56,8 @@ func (p *pvcReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
 		}
 		if !isSynced {
 			klog.Infof("Statefulset not synced for volumes! %s/%s for component %s", ctx.sts.Namespace, ctx.sts.Name, ctx.ComponentID())
-			isVolReplacing = true
-			// mark status and continue?
+			comp.SetVolReplaceInProgress(true)
+			continue
 		}
 		for _, pod := range ctx.pods {
 			podSynced, err := p.utils.IsPodSyncedForReplacement(ctx, pod)
@@ -68,12 +67,11 @@ func (p *pvcReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
 			}
 			if !podSynced {
 				klog.Infof("Pod not synced for volumes! %s/%s for component %s", pod.Namespace, pod.Name, ctx.ComponentID())
-				isVolReplacing = true
+				comp.SetVolReplaceInProgress(true)
 				//break
 			}
 		}
-		// TODO: mark status
-		klog.Infof("Marking vol replacing status for %s as %t", ctx.ComponentID(), isVolReplacing)
+		comp.SetVolReplaceInProgress(false)
 	}
 
 	return errutil.NewAggregate(errs)
