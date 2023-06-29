@@ -155,27 +155,28 @@ func (e *EC2Session) AddTags(resourcesTags map[string]TagMap) error {
 
 	eg := new(errgroup.Group)
 	for resourceID := range resourcesTags {
+		id := resourceID
 		tagMap := resourcesTags[resourceID]
 		var tags []*ec2.Tag
 		for tag := range tagMap {
 			value := tagMap[tag]
 			tags = append(tags, &ec2.Tag{Key: &tag, Value: &value})
-
-			// Create the input for adding the tag
-			input := &ec2.CreateTagsInput{
-				Resources: []*string{aws.String(resourceID)},
-				Tags:      tags,
-			}
-
-			eg.Go(func() error {
-				_, err := e.EC2.CreateTags(input)
-				if err != nil {
-					klog.Errorf("failed to create tags for resource id=%s", resourceID, err)
-					return err
-				}
-				return nil
-			})
 		}
+
+		// Create the input for adding the tag
+		input := &ec2.CreateTagsInput{
+			Resources: []*string{aws.String(id)},
+			Tags:      tags,
+		}
+
+		eg.Go(func() error {
+			_, err := e.EC2.CreateTags(input)
+			if err != nil {
+				klog.Errorf("failed to create tags for resource id=%s", id, err)
+				return err
+			}
+			return nil
+		})
 	}
 
 	if err := eg.Wait(); err != nil {
