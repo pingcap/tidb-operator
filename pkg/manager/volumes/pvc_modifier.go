@@ -340,7 +340,6 @@ func skipEvictLeaderForSizeModify(actual []ActualVolume) bool {
 		// not modified by the PVC modifier before (without status size annotation)
 		quantity := vol.GetStorageSize()
 		statusSize := quantity.String()
-		klog.Infof("volume %s/%s: phase %s, old size %s, new size %s", vol.PVC.Namespace, vol.PVC.Name, vol.Phase, statusSize, vol.Desired.Size.String())
 		if statusSize == vol.Desired.Size.String() {
 			// special case: skip evict leader (again) as the PVC is in modfiying phase (and the status size annotation is not set yet)
 			if vol.Phase == VolumePhaseModifying {
