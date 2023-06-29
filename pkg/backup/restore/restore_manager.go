@@ -155,7 +155,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 					rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 						Type:    v1alpha1.RestoreRetryFailed,
 						Status:  corev1.ConditionTrue,
-						Reason:  "ListTiKVPodsFailed",
+						Reason:  "ListPVsFailed",
 						Message: err.Error(),
 					}, nil)
 					return err
