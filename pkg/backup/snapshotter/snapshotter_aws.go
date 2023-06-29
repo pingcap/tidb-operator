@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -27,10 +28,8 @@ import (
 
 const (
 	CloudAPIConcurrency = 8
-	SourcePodNameKey    = "tidb.pingcap.com/pod-name"
-
-	PVCTagKey = "CSIVolumeName"
-	PodTagKey = "kubernetes.io/created-for/pvc/name"
+	PVCTagKey           = "CSIVolumeName"
+	PodTagKey           = "kubernetes.io/created-for/pvc/name"
 )
 
 // AWSSnapshotter is the snapshotter for creating snapshots from volumes (during a backup)
@@ -103,7 +102,7 @@ func (s *AWSSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
 	resourcesTags := make(map[string]util.TagMap)
 
 	for _, pv := range pvs {
-		podName := pv.GetAnnotations()[SourcePodNameKey]
+		podName := pv.GetAnnotations()[label.AnnPodNameKey]
 		pvcName := pv.GetName()
 		volId := pv.Spec.CSI.VolumeHandle
 

@@ -172,7 +172,7 @@ func (e *EC2Session) AddTags(resourcesTags map[string]TagMap) error {
 		eg.Go(func() error {
 			_, err := e.EC2.CreateTags(input)
 			if err != nil {
-				klog.Errorf("failed to create tags for resource id=%s", id, err)
+				klog.Errorf("failed to create tags for resource id=%s, %v", id, err)
 				return err
 			}
 			return nil
