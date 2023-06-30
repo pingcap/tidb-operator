@@ -16996,7 +16996,7 @@ string
 <p>BootstrapSQLConfigMapName is the name of the ConfigMap which contains the bootstrap SQL file with the key <code>bootstrap-sql</code>,
 which will only be executed when a TiDB cluster bootstrap on the first time.
 The field should be set ONLY when create a TC, since it only take effect on the first time bootstrap.
-Only v6.6.0+ supports this feature.</p>
+Only v6.5.1+ supports this feature.</p>
 </td>
 </tr>
 </tbody>
