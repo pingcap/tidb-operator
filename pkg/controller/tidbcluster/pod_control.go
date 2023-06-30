@@ -453,6 +453,11 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 		if err != nil {
 			storeIDStr, exist := pod.Labels[label.StoreIDLabelKey]
 			if !exist {
+				// TODO: sometimes we can end up here when store is tombstone, but status nor label has store-id labelled.
+				// Likely due to deleting store before pod label got a chance to be applied.
+				// Made these changes:
+				//   * moved metamanager sync above member sync so that label can be updated without being blocked
+				//   * both here & in tikv_scaler before deleting a store, check that label is not empty before deleting.
 				return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status or label for pod %s/%s", pod.Namespace, pod.Name)
 			}
 			storeID, err = strconv.ParseUint(storeIDStr, 10, 64)
@@ -460,12 +465,19 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 				return reconcile.Result{}, perrors.Annotatef(err, "Could not parse storeId (%s) from label for pod %s/%s", storeIDStr, pod.Namespace, pod.Name)
 			}
 		}
+		if pod.Labels[label.StoreIDLabelKey] == "" {
+			return reconcile.Result{Requeue: true}, fmt.Errorf("StoreID not yet updated on pod label")
+		}
 		storeInfo, err := pdClient.GetStore(storeID)
 		if err != nil {
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store info from pd for storeid %d pod %s/%s", storeID, pod.Namespace, pod.Name)
 		}
 		klog.Infof("Pod %s/%s marked for deletion with storeid %d", pod.Namespace, pod.Name, storeID)
 		if storeInfo.Store.StateName == v1alpha1.TiKVStateUp {
+			if !tc.TiKVAllStoresReady() {
+				klog.Infof("All Tikv Stores not yet ready, waiting before deleting store %d for %s pod %s/%s", storeID, pod.Namespace, pod.Name)
+				return reconcile.Result{Requeue: true}, nil
+			}
 			// 1. Delete store
 			klog.Infof("storeid %d is Up, deleting...", storeID)
 			pdClient.DeleteStore(storeID)
@@ -479,7 +491,6 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 			klog.Infof("storeid %d is Tombstone!, going thru PVCs", storeID)
 			var pvcs []*corev1.PersistentVolumeClaim = nil
 			for _, vol := range pod.Spec.Volumes {
-				klog.Infof("Vol %s ", vol.Name)
 				if vol.PersistentVolumeClaim != nil {
 					pvc, err := c.deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(vol.PersistentVolumeClaim.ClaimName)
 					if err != nil {
@@ -510,7 +521,7 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 			// 4. Delete pod
 			if pod.DeletionTimestamp != nil {
 				// Already marked for deletion, wait for it to delete.
-				klog.Infof("Pod already marked for deletiong, not re-deleting: %s", pod.Name)
+				klog.Infof("Pod already marked for deletion, not re-deleting: %s", pod.Name)
 				return reconcile.Result{RequeueAfter: RequeueInterval}, nil
 			}
 			klog.Infof("NO PVCS, Deleting pod: %s", pod.Name)

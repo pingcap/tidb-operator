@@ -191,6 +191,9 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State
+			if pod.Labels[label.StoreIDLabelKey] == "" {
+				return deletedUpStore, fmt.Errorf("StoreID not yet updated on pod label")
+			}
 			id, err := strconv.ParseUint(store.ID, 10, 64)
 			if err != nil {
 				return deletedUpStore, err

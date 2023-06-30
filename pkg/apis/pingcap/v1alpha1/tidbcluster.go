@@ -615,7 +615,11 @@ func (tc *TidbCluster) TiKVStsDesiredReplicas() int32 {
 	if tc.Spec.TiKV == nil {
 		return 0
 	}
-	return tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores))
+	var spareReplaceReplicas int32 = 0
+	if tc.Status.TiKV.VolReplaceInProgress {
+		spareReplaceReplicas = 1
+	}
+	return tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores)) + spareReplaceReplicas
 }
 
 func (tc *TidbCluster) TiKVStsActualReplicas() int32 {

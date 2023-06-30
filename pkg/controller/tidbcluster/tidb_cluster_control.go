@@ -185,6 +185,15 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
+	// syncing the labels from Pod to PVC and PV, these labels include:
+	//   - label.StoreIDLabelKey
+	//   - label.MemberIDLabelKey
+	//   - label.NamespaceLabelKey
+	if err := c.metaManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "meta").Inc()
+		return err
+	}
+
 	// works that should be done to make the pd cluster current state match the desired state:
 	//   - create or update the pd service
 	//   - create or update the pd headless service
@@ -271,15 +280,6 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	// syncing the labels from Pod to PVC and PV, these labels include:
-	//   - label.StoreIDLabelKey
-	//   - label.MemberIDLabelKey
-	//   - label.NamespaceLabelKey
-	if err := c.metaManager.Sync(tc); err != nil {
-		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "meta").Inc()
-		return err
-	}
-
 	// cleaning the pod scheduling annotation for pd and tikv
 	pvcSkipReasons, err := c.pvcCleaner.Clean(tc)
 	if err != nil {
@@ -296,6 +296,14 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	if err := c.pvcModifier.Sync(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_modifier").Inc()
 		return err
+	}
+
+	// Replace volumes if necessary
+	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) {
+		if err := c.pvcReplacer.Sync(tc); err != nil {
+			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_replacer_sync").Inc()
+			return err
+		}
 	}
 
 	// syncing the some tidbcluster status attributes

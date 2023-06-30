@@ -266,6 +266,16 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
+	if tc.Status.TiKV.VolReplaceInProgress {
+		// Volume Replace in Progress, so do not make any changes to Sts spec, overwrite with old pod spec
+		//config as we are not ready to upgrade yet.
+		_, podSpec, err := GetLastAppliedConfig(oldSet)
+		if err != nil {
+			return err
+		}
+		newSet.Spec.Template.Spec = *podSpec
+	}
+
 	if !templateEqual(newSet, oldSet) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		if err := m.upgrader.Upgrade(tc, oldSet, newSet); err != nil {
 			return err
@@ -677,7 +687,9 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if baseTiKVSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+	if tc.Status.TiKV.VolReplaceInProgress {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else if baseTiKVSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType

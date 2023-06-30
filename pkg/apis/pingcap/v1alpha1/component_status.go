@@ -51,6 +51,8 @@ type ComponentStatus interface {
 	//
 	// NOTE: change the return will modify the status.
 	GetStatefulSet() *appsv1.StatefulSetStatus
+	// gets the status.VolReplaceInProgress
+	GetVolReplaceInProgress() bool
 
 	// SetSynced set the `status.synced` field of the component
 	//
@@ -146,6 +148,9 @@ func (s *PDStatus) GetConditions() []metav1.Condition {
 func (s *PDStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
 }
+func (s *PDStatus) GetVolReplaceInProgress() bool {
+	return s.VolReplaceInProgress
+}
 func (s *PDStatus) SetSynced(synced bool) {
 	s.Synced = synced
 }
@@ -195,6 +200,9 @@ func (s *TiKVStatus) GetConditions() []metav1.Condition {
 }
 func (s *TiKVStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *TiKVStatus) GetVolReplaceInProgress() bool {
+	return s.VolReplaceInProgress
 }
 func (s *TiKVStatus) SetSynced(synced bool) {
 	s.Synced = synced
@@ -246,6 +254,9 @@ func (s *TiDBStatus) GetConditions() []metav1.Condition {
 func (s *TiDBStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
 }
+func (s *TiDBStatus) GetVolReplaceInProgress() bool {
+	return s.VolReplaceInProgress
+}
 func (s *TiDBStatus) SetSynced(synced bool) {}
 func (s *TiDBStatus) SetCondition(newCondition metav1.Condition) {
 	if s.Conditions == nil {
@@ -294,6 +305,9 @@ func (s *PumpStatus) GetConditions() []metav1.Condition {
 func (s *PumpStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
 }
+func (s *PumpStatus) GetVolReplaceInProgress() bool {
+	return false
+}
 func (s *PumpStatus) SetSynced(synced bool) {}
 func (s *PumpStatus) SetCondition(newCondition metav1.Condition) {
 	if s.Conditions == nil {
@@ -339,6 +353,9 @@ func (s *TiFlashStatus) GetConditions() []metav1.Condition {
 }
 func (s *TiFlashStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *TiFlashStatus) GetVolReplaceInProgress() bool {
+	return false
 }
 func (s *TiFlashStatus) SetSynced(synced bool) {
 	s.Synced = synced
@@ -388,6 +405,9 @@ func (s *TiCDCStatus) GetConditions() []metav1.Condition {
 func (s *TiCDCStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
 }
+func (s *TiCDCStatus) GetVolReplaceInProgress() bool {
+	return false
+}
 func (s *TiCDCStatus) SetSynced(synced bool) {
 	s.Synced = synced
 }
@@ -435,6 +455,9 @@ func (s *MasterStatus) GetConditions() []metav1.Condition {
 }
 func (s *MasterStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *MasterStatus) GetVolReplaceInProgress() bool {
+	return false
 }
 func (s *MasterStatus) SetSynced(synced bool) {
 	s.Synced = synced
@@ -484,6 +507,9 @@ func (s *WorkerStatus) GetConditions() []metav1.Condition {
 func (s *WorkerStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
 }
+func (s *WorkerStatus) GetVolReplaceInProgress() bool {
+	return false
+}
 func (s *WorkerStatus) SetSynced(synced bool) {
 	s.Synced = synced
 }
@@ -531,6 +557,9 @@ func (s *TiProxyStatus) GetConditions() []metav1.Condition {
 }
 func (s *TiProxyStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *TiProxyStatus) GetVolReplaceInProgress() bool {
+	return false
 }
 func (s *TiProxyStatus) SetSynced(synced bool) {
 	s.Synced = synced

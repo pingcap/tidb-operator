@@ -15,8 +15,6 @@ package utils
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/features"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -86,41 +84,6 @@ func notExistMount(sts *apps.StatefulSet, oldSTS *apps.StatefulSet) map[string]c
 	return mounts
 }
 
-func claimsSame(sts *apps.StatefulSet, oldSTS *apps.StatefulSet) error {
-	// Check if VolumeClaimTemplates are different either in whole new/removed claims or different spec.
-	newLen := len(sts.Spec.VolumeClaimTemplates)
-	oldLen := len(oldSTS.Spec.VolumeClaimTemplates)
-	if newLen != oldLen {
-		return fmt.Errorf("different size of volumeClaimTemplates in old (%d) vs new(%d)", oldLen, newLen)
-	}
-	oldClaims := make(map[string]corev1.PersistentVolumeClaim)
-	for _, pvc := range oldSTS.Spec.VolumeClaimTemplates {
-		oldClaims[pvc.Name] = pvc
-	}
-	for _, pvc := range sts.Spec.VolumeClaimTemplates {
-		oldPvc, ok := oldClaims[pvc.Name]
-		if ok {
-			// only diff storage class & resources, other fields may have spurious diffs due to k8s defaults.
-			oldStorageClass, newStorageClass := "", ""
-			if oldPvc.Spec.StorageClassName != nil {
-				oldStorageClass = *oldPvc.Spec.StorageClassName
-			}
-			if pvc.Spec.StorageClassName != nil {
-				newStorageClass = *pvc.Spec.StorageClassName
-			}
-			if oldStorageClass != newStorageClass {
-				return fmt.Errorf("volume claim %s has new storageclass (%s) vs old (%s)", pvc.Name, newStorageClass, oldStorageClass)
-			}
-			if !apiequality.Semantic.DeepEqual(oldPvc.Spec.Resources, pvc.Spec.Resources) {
-				return fmt.Errorf("volume claim %s has new different resource requierments", pvc.Name)
-			}
-		} else {
-			return fmt.Errorf("new volume claim %s not present in old statefulset", pvc.Name)
-		}
-	}
-	return nil
-}
-
 func UpdateStatefulSetWithPrecheck(
 	deps *controller.Dependencies,
 	tc *v1alpha1.TidbCluster,
@@ -136,17 +99,6 @@ func UpdateStatefulSetWithPrecheck(
 	if len(notExistMount) > 0 {
 		deps.Recorder.Eventf(tc, corev1.EventTypeWarning, reason, "contains volumeMounts that do not have matched volume: %v", notExistMount)
 		return fmt.Errorf("contains volumeMounts that do not have matched volume: %v", notExistMount)
-	}
-
-	// This will block statefulset upgrade, but we should still let volume replacer run?
-	// TODO this section should be obsoleted, because it will silently skip calling this function altogether.
-	// TODO REMOVE BEFORE PR, this is failsafe meanwhile.
-	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) {
-		// Throw error, to allow volume replacing to take effect instead.
-		if err := claimsSame(oldTiDBSet, newTiDBSet); err != nil {
-			deps.Recorder.Eventf(tc, corev1.EventTypeWarning, reason, err.Error())
-			return err
-		}
 	}
 
 	return UpdateStatefulSet(deps.StatefulSetControl, tc, newTiDBSet, oldTiDBSet)
