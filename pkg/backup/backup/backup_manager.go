@@ -258,14 +258,26 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 		// not found backup job, so we need to create it
 		job, reason, err = bm.makeBRBackupJob(backup)
 		if err != nil {
-			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Command: logBackupSubcommand,
-				Type:    v1alpha1.BackupRetryTheFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  reason,
-				Message: err.Error(),
-			}, nil)
-			return nil, nil, "", err
+			// don't retry on dup metadata file existing error
+			if reason == "FileExistedInExternalStorage" {
+				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+					Command: logBackupSubcommand,
+					Type:    v1alpha1.BackupFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  reason,
+					Message: err.Error(),
+				}, nil)
+				return nil, nil, "", controller.IgnoreErrorf("%s, reason is %s", err.Error(), reason)
+			} else {
+				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+					Command: logBackupSubcommand,
+					Type:    v1alpha1.BackupRetryTheFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  reason,
+					Message: err.Error(),
+				}, nil)
+				return nil, nil, "", err
+			}
 		}
 
 		if logBackupSubcommand == v1alpha1.LogStartCommand {
