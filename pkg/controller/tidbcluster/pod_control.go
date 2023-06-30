@@ -475,7 +475,7 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 		klog.Infof("Pod %s/%s marked for deletion with storeid %d", pod.Namespace, pod.Name, storeID)
 		if storeInfo.Store.StateName == v1alpha1.TiKVStateUp {
 			if !tc.TiKVAllStoresReady() {
-				klog.Infof("All Tikv Stores not yet ready, waiting before deleting store %d for %s pod %s/%s", storeID, pod.Namespace, pod.Name)
+				klog.Infof("All Tikv Stores not yet ready, waiting before deleting store %d for pod %s/%s", storeID, pod.Namespace, pod.Name)
 				return reconcile.Result{Requeue: true}, nil
 			}
 			// 1. Delete store

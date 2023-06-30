@@ -116,8 +116,10 @@ func (p *pvcReplacer) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (p *pvcReplacer) replaceVolumes(ctx *componentVolumeContext) error {
-	if ctx.status.GetPhase() != v1alpha1.NormalPhase {
-		return fmt.Errorf("component phase is not Normal")
+	if ctx.status.GetPhase() == v1alpha1.ScalePhase {
+		// Note: only wait for scaling, phase may show up as upgrading but will be blocked
+		// for replacing here to effect the config + disk change together.
+		return fmt.Errorf("component phase is not Scaling, waiting to complete.")
 	}
 	if err := p.tryToRecreateSTS(ctx); err != nil {
 		return err
