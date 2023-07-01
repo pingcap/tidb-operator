@@ -56,6 +56,9 @@ type Snapshotter interface {
 
 	// ResetPvAvailableZone resets az of pv if the volumes restore to another az
 	ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume)
+
+	// AddVolumeTags add operator related tags to volumes
+	AddVolumeTags(pvs []*corev1.PersistentVolume) error
 }
 
 type BaseSnapshotter struct {
