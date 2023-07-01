@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -108,6 +109,8 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	ns := pod.GetNamespace()
 	podName := pod.GetName()
 	labels := pod.GetLabels()
+	annotations := pod.GetAnnotations()
+	annotationsUpdated := false
 	tcName := tc.GetName()
 	if labels == nil {
 		return pod, fmt.Errorf("pod %s/%s has empty labels, TidbCluster: %s", ns, podName, tcName)
@@ -144,13 +147,28 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 			}
 		}
 	case label.TiKVLabelVal:
+		storeIDFromStatus := ""
+		// get store id
+		for _, store := range tc.Status.TiKV.Stores {
+			if store.PodName == podName {
+				storeIDFromStatus = store.ID
+				break
+			}
+		}
 		if labels[label.StoreIDLabelKey] == "" {
-			// get store id
-			for _, store := range tc.Status.TiKV.Stores {
-				if store.PodName == podName {
-					storeID = store.ID
-					break
-				}
+			storeID = storeIDFromStatus
+		}
+
+		if storeIDFromStatus != "" {
+			if _, exists := annotations[label.AnnTiKVNoActiveStoreSince]; exists {
+				delete(annotations, label.AnnTiKVNoActiveStoreSince)
+				annotationsUpdated = true
+			}
+		} else if labels[label.StoreIDLabelKey] != "" {
+			// Apply annotation if pod has store label, but not listed as active store in status and not already added.
+			if _, exists := annotations[label.AnnTiKVNoActiveStoreSince]; !exists {
+				annotations[label.AnnTiKVNoActiveStoreSince] = time.Now().Format(time.RFC3339)
+				annotationsUpdated = true
 			}
 		}
 	case label.TiFlashLabelVal:
@@ -166,7 +184,8 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	}
 	if labels[label.ClusterIDLabelKey] == clusterID &&
 		labels[label.MemberIDLabelKey] == memberID &&
-		labels[label.StoreIDLabelKey] == storeID {
+		labels[label.StoreIDLabelKey] == storeID &&
+		!annotationsUpdated {
 		klog.V(4).Infof("pod %s/%s already has cluster labels set, skipping. TidbCluster: %s", ns, podName, tcName)
 		return pod, nil
 	}
@@ -189,6 +208,7 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 			// make a copy so we don't mutate the shared cache
 			pod = updated.DeepCopy()
 			pod.Labels = labels
+			pod.Annotations = annotations
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated Pod %s/%s from lister: %v", ns, podName, err))
 		}

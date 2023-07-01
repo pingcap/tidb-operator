@@ -140,6 +140,10 @@ const (
 	// when TiDB cluster is restored from volume snapshot based backup.
 	AnnTiKVVolumesReadyKey = "tidb.pingcap.com/tikv-volumes-ready"
 
+	// AnnTiKVNoActiveStoreSince is the annotation key to indicate the time since a pod does not have a valid store
+	// Listed from store status, but has a store id in label. This is an alternate way to detect tombstone stores.
+	AnnTiKVNoActiveStoreSince = "tidb.pingcap.com/tikv-no-active-store-since"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value

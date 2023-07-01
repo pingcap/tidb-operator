@@ -455,9 +455,23 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 			if !exist {
 				// TODO: sometimes we can end up here when store is tombstone, but status nor label has store-id labelled.
 				// Likely due to deleting store before pod label got a chance to be applied.
+				// This is an issue for existing tikv scale-in too.
 				// Made these changes:
 				//   * moved metamanager sync above member sync so that label can be updated without being blocked
 				//   * both here & in tikv_scaler before deleting a store, check that label is not empty before deleting.
+				// However there are other cases like store-id not showing up in tombstones etc. Safer solution seems
+				// to be to apply a sort of label on pod saying no-store id "since" with a timestamp, and if a pod
+				// doesn't have store id for more than x minutes, declare it as tombstone and delete it. Here & in tikv
+				// scale-in
+				// Another case this happens pd auto gc the tombstore?
+				//│ [2023/06/30 23:56:53.537 +00:00] [WARN] [cluster.go:1243] ["store has been offline"] [store-id=1020] [store-address=basic-tikv-3.basic-tikv-peer.default.svc:20160] [physically-destroyed=false]                                         │
+				//│ [2023/06/30 23:56:53.538 +00:00] [INFO] [cluster.go:2343] ["store limit changed"] [store-id=1020] [type=remove-peer] [rate-per-min=100000000]                                                                                            │
+				//│ [2023/06/30 23:56:55.125 +00:00] [WARN] [cluster.go:1352] ["store has been Tombstone"] [store-id=1020] [store-address=basic-tikv-3.basic-tikv-peer.default.svc:20160] [state=Offline] [physically-destroyed=false]                       │
+				//│ [2023/06/30 23:56:55.128 +00:00] [INFO] [cluster.go:2209] ["store limit removed"] [store-id=1020]                                                                                                                                        │
+				//│ [2023/06/30 23:57:05.130 +00:00] [INFO] [cluster.go:1542] ["auto gc the tombstore store success"] [store="id:1020 address:\"basic-tikv-3.basic-tikv-peer.default.svc:20160\" state:Tombstone version:\"6.5.0\" peer_address:\"basic-tikv │
+				//  node_state:Removed "] [down-time=468935h57m5.130493006s] ????!? Missing heartbeat so pd auto gc'ed it?
+				// TODO anish : implement handling with label.AnnTiKVNoActiveStoreSince
+
 				return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status or label for pod %s/%s", pod.Namespace, pod.Name)
 			}
 			storeID, err = strconv.ParseUint(storeIDStr, 10, 64)
