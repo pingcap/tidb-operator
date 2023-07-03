@@ -189,22 +189,17 @@ func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	return bm.skipSnapshotBackupSync(backup)
 }
 
-// waitPreTaskDone waits pre task done.
-// just log backup needs to wait pre task done. Mainly including:
+// waitPreTaskDone waits pre task done. this can make sure there is only one backup job running.
 // 1. wait other command done, such as truncate/stop wait start done.
 // 2. wait command's job done
 func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
-	if backup.Spec.Mode != v1alpha1.BackupModeLog {
-		return nil
-	}
-
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
-	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 
 	// check whether backup should wait and requeue
 	if shouldLogBackupCommandRequeue(backup) {
+		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		klog.Infof("log backup %s/%s subcommand %s should wait log backup start complete, will requeue.", ns, name, logBackupSubcommand)
 		return controller.RequeueErrorf(fmt.Sprintf("log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand))
 	}
@@ -212,11 +207,11 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	// log backup should wait old job done
 	oldJob, err := bm.deps.JobLister.Jobs(ns).Get(backupJobName)
 	if oldJob != nil {
-		return waitOldLogBackupJobDone(ns, name, backupJobName, bm, backup, oldJob)
+		return waitOldBackupJobDone(ns, name, backupJobName, bm, backup, oldJob)
 	}
 
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("log backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
+		return fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
 	}
 	return nil
 }
@@ -841,14 +836,10 @@ func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
 	return false
 }
 
-// waitOldLogBackupJobDone wait old log backup job done
-func waitOldLogBackupJobDone(ns, name, backupJobName string, bm *backupManager, backup *v1alpha1.Backup, oldJob *batchv1.Job) error {
-	if backup.Spec.Mode != v1alpha1.BackupModeLog {
-		return nil
-	}
-
+// waitOldBackupJobDone wait old log backup job done
+func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, backup *v1alpha1.Backup, oldJob *batchv1.Job) error {
 	if oldJob.DeletionTimestamp != nil {
-		return controller.RequeueErrorf(fmt.Sprintf("log backup %s/%s job %s is being deleted", ns, name, backupJobName))
+		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s job %s is being deleted", ns, name, backupJobName))
 	}
 	finished := false
 	for _, c := range oldJob.Status.Conditions {
@@ -858,13 +849,13 @@ func waitOldLogBackupJobDone(ns, name, backupJobName string, bm *backupManager, 
 		}
 	}
 	if finished {
-		klog.Infof("log backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
+		klog.Infof("backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
 		if err := bm.deps.JobControl.DeleteJob(backup, oldJob); err != nil {
-			return fmt.Errorf("log backup %s/%s delete job %s failed, err: %v", ns, name, backupJobName, err)
+			return fmt.Errorf("backup %s/%s delete job %s failed, err: %v", ns, name, backupJobName, err)
 		}
 	}
 	// job running no need to requeue, because delete job will call update and it will requeue
-	return controller.IgnoreErrorf("log backup %s/%s job %s is running, will be ignored", ns, name, backupJobName)
+	return controller.IgnoreErrorf("backup %s/%s job %s is running, will be ignored", ns, name, backupJobName)
 }
 
 var _ backup.BackupManager = &backupManager{}
