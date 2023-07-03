@@ -19,3 +19,10 @@ spec:
   #     cpu: 100m
   #     memory: 50Mi
   # timezone: "Asia/Shanghai"
+  ## Tolerations are applied to TiDB Initializer Pod, allowing (but do not require) the pod to be scheduled onto nodes with matching taints.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  # tolerations:
+  #   - effect: NoSchedule
+  #     key: dedicated
+  #     operator: Equal
+  #     value: tidb
