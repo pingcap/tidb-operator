@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/pointer"
 )
 
 func TestManager(t *testing.T) {
@@ -647,6 +648,51 @@ func TestGenerateDashboardStatefulSet(t *testing.T) {
 				container := getDashboardContainer(sts)
 				g.Expect(container.VolumeMounts).Should(ContainElements(expectVolumeMounts))
 				g.Expect(sts.Spec.Template.Spec.Volumes).Should(ContainElements(expectVolumes))
+			},
+		},
+		{
+			name: "should replace the tag in baseImage when version is specified",
+			setInputs: func(td *v1alpha1.TidbDashboard, tc *v1alpha1.TidbCluster) {
+				td.Spec.BaseImage = "registry.local/tidb-dashboard:v1.0.0"
+				td.Spec.Version = pointer.StringPtr("v2.0.0")
+			},
+			expectFn: func(sts *apps.StatefulSet, err error) {
+				expectedImage := "registry.local/tidb-dashboard:v2.0.0"
+				parsedImages := []string{}
+				for _, c := range sts.Spec.Template.Spec.Containers {
+					parsedImages = append(parsedImages, c.Image)
+				}
+				g.Expect(parsedImages).Should(ContainElements(expectedImage))
+			},
+		},
+		{
+			name: "should not edit repo address in the baseImage while auto-adapting image version when there is just a colon for host:port",
+			setInputs: func(td *v1alpha1.TidbDashboard, tc *v1alpha1.TidbCluster) {
+				td.Spec.BaseImage = "registry.local:30000/tidb-dashboard"
+				td.Spec.Version = pointer.StringPtr("v2.0.0")
+			},
+			expectFn: func(sts *apps.StatefulSet, err error) {
+				expectedImage := "registry.local:30000/tidb-dashboard:v2.0.0"
+				parsedImages := []string{}
+				for _, c := range sts.Spec.Template.Spec.Containers {
+					parsedImages = append(parsedImages, c.Image)
+				}
+				g.Expect(parsedImages).Should(ContainElements(expectedImage))
+			},
+		},
+		{
+			name: "should replace the tag in the baseImage when port and tag are both occurred in baseImage",
+			setInputs: func(td *v1alpha1.TidbDashboard, tc *v1alpha1.TidbCluster) {
+				td.Spec.BaseImage = "registry.local:30000/tidb-dashboard:v1.0.0"
+				td.Spec.Version = pointer.StringPtr("v2.0.0")
+			},
+			expectFn: func(sts *apps.StatefulSet, err error) {
+				expectedImage := "registry.local:30000/tidb-dashboard:v2.0.0"
+				parsedImages := []string{}
+				for _, c := range sts.Spec.Template.Spec.Containers {
+					parsedImages = append(parsedImages, c.Image)
+				}
+				g.Expect(parsedImages).Should(ContainElements(expectedImage))
 			},
 		},
 	}
