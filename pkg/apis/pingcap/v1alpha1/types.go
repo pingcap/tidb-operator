@@ -142,7 +142,7 @@ const (
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="PD",type=string,JSONPath=`.status.pd.image`,description="The image for PD cluster"
 // +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.pd.requests.storage`,description="The storage size specified for PD node"
-// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.pd.statefulSet.readyReplicas`,description="The desired replicas number of PD cluster"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.pd.statefulSet.readyReplicas`,description="The ready replicas number of PD cluster"
 // +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.pd.replicas`,description="The desired replicas number of PD cluster"
 // +kubebuilder:printcolumn:name="TiKV",type=string,JSONPath=`.status.tikv.image`,description="The image for TiKV cluster"
 // +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.tikv.requests.storage`,description="The storage size specified for TiKV node"
