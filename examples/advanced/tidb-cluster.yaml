@@ -863,12 +863,10 @@ spec:
   #   additionalVolumes: []
   #   additionalVolumeMounts: []
   #   terminationGracePeriodSeconds: 30
-  #   # Ref: https://docs.pingcap.com/tidb/stable/deploy-ticdc#add-ticdc-to-an-existing-tidb-cluster-using-binary-not-recommended
-  #   config:
-  #     timezone: UTC
-  #     gcTTL: 86400
-  #     logLevel: info
-  #     logFile: /dev/stderr
+  #   config: |
+  #     gc-ttl = 86400
+  #     log-level = "info"
+  #     log-file = ""
   #   # TopologySpreadConstraints for pod scheduling, will overwrite cluster level spread constraints setting
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
