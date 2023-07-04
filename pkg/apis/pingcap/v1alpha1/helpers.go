@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	// #nosec
 	"crypto/md5"
 	"fmt"
 	"hash/fnv"
@@ -114,6 +115,7 @@ func GetStorageVolumeNameForTiFlash(index int) StorageVolumeName {
 }
 
 // GenValidName guarantees generated name containing at most 63 characters
+// #nosec
 func GenValidName(name string) string {
 	if len(name) <= labelLengthLimit {
 		return name
