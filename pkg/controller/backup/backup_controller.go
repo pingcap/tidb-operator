@@ -176,6 +176,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 	}
 
 	if v1alpha1.IsBackupFailed(newBackup) {
+		// when volume backup is failed, the initializing job may not stop immediately, we need stop it.
 		jobRunning, err := c.isVolumeBackupInitializeJobRunning(newBackup)
 		if err != nil {
 			klog.Errorf("Fail to check if initialize job of volume backup %s/%s is running, error %v", ns, name, err)

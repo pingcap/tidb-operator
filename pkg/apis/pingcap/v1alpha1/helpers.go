@@ -113,6 +113,7 @@ func GetStorageVolumeNameForTiFlash(index int) StorageVolumeName {
 	return StorageVolumeName(fmt.Sprintf("data%d", index))
 }
 
+// GenValidName guarantees generated name containing at most 63 characters
 func GenValidName(name string) string {
 	if len(name) <= labelLengthLimit {
 		return name

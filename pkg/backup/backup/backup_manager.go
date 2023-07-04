@@ -85,6 +85,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 		if v1alpha1.IsBackupFailed(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
+			// if volume backup failed, we should delete initialize job to prevent GC and pd schedule blocked
 			if err := bm.deleteVolumeBackupInitializeJob(backup); err != nil {
 				return err
 			}
