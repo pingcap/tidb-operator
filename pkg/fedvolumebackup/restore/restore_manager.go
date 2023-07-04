@@ -426,7 +426,7 @@ func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberClu
 }
 
 func (rm *restoreManager) generateRestoreMemberName(volumeRestoreName, k8sClusterName string) string {
-	return fmt.Sprintf("%s-%s", volumeRestoreName, k8sClusterName)
+	return pingcapv1alpha1.GenValidName(fmt.Sprintf("%s-%s", volumeRestoreName, k8sClusterName))
 }
 
 type volumeRestoreMember struct {
