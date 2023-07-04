@@ -564,7 +564,7 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, acrossK8s bool) e
 }
 
 // ValidateRestore checks whether a restore spec is valid.
-func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
+func ValidateRestore(restore *v1alpha1.Restore, tikvImage string, acrossK8s bool) error {
 	ns := restore.Namespace
 	name := restore.Name
 
@@ -612,6 +612,13 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string) error {
 		} else if restore.Spec.Local != nil {
 			if err := validateLocal(ns, name, restore.Spec.Local); err != nil {
 				return err
+			}
+		}
+
+		if restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot {
+			// only support across k8s now. TODO compatible for single k8s
+			if !acrossK8s {
+				return errors.New("only support volume snapshot restore across k8s clusters")
 			}
 		}
 	}

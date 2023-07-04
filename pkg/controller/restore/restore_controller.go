@@ -174,12 +174,23 @@ func (c *Controller) updateRestore(cur interface{}) {
 			klog.Errorf("Fail to get tidbcluster for restore %s/%s, %v", ns, name, err)
 			return
 		}
-		if tc.IsRecoveryMode() {
+		if tc.IsRecoveryMode() && newRestore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreFinish {
 			c.enqueueRestore(newRestore)
 			return
 		}
 
 		klog.V(4).Infof("restore %s/%s is already DataComplete, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsRestoreTiKVComplete(newRestore) {
+		if newRestore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreData ||
+			newRestore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreFinish {
+			c.enqueueRestore(newRestore)
+			return
+		}
+
+		klog.V(4).Infof("restore %s/%s is already TikvComplete, skipping.", ns, name)
 		return
 	}
 
