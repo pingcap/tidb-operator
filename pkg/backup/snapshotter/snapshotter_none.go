@@ -43,3 +43,8 @@ func (s *NoneSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore, csb *Cloud
 }
 
 func (s *NoneSnapshotter) ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume) {}
+
+func (s *NoneSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
+	// TODO implement it if support to restore snapshots to another az on GCP
+	return nil
+}

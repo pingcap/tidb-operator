@@ -18,22 +18,30 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 )
 
-// The snapshotter for creating snapshots from volumes (during a backup)
+const (
+	CloudAPIConcurrency = 8
+	PVCTagKey           = "CSIVolumeName"
+	PodTagKey           = "kubernetes.io/created-for/pvc/name"
+)
+
+// AWSSnapshotter is the snapshotter for creating snapshots from volumes (during a backup)
 // and volumes from snapshots (during a restore) on AWS EBS.
 type AWSSnapshotter struct {
 	BaseSnapshotter
 }
 
 func (s *AWSSnapshotter) Init(deps *controller.Dependencies, conf map[string]string) error {
-	s.BaseSnapshotter.Init(deps, conf)
+	err := s.BaseSnapshotter.Init(deps, conf)
 	s.volRegexp = regexp.MustCompile("vol-.*")
-	return nil
+	return err
 }
 
 func (s *AWSSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, error) {
@@ -88,6 +96,32 @@ func (s *AWSSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID strin
 
 func (s *AWSSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error) {
 	return s.BaseSnapshotter.prepareRestoreMetadata(r, csb, s)
+}
+
+func (s *AWSSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
+	resourcesTags := make(map[string]util.TagMap)
+
+	for _, pv := range pvs {
+		podName := pv.GetAnnotations()[label.AnnPodNameKey]
+		pvcName := pv.GetName()
+		volId := pv.Spec.CSI.VolumeHandle
+
+		tags := make(map[string]string)
+		tags[PVCTagKey] = pvcName
+		tags[PodTagKey] = podName
+
+		resourcesTags[volId] = tags
+	}
+	ec2Session, err := util.NewEC2Session(CloudAPIConcurrency)
+	if err != nil {
+		return err
+	}
+	if err = ec2Session.AddTags(resourcesTags); err != nil {
+		return err
+	}
+
+	return nil
+
 }
 
 func (s *AWSSnapshotter) ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume) {
