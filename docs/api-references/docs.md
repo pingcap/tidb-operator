@@ -270,6 +270,20 @@ bool
 </tr>
 <tr>
 <td>
+<code>federalVolumeBackupPhase</code></br>
+<em>
+<a href="#federalvolumebackupphase">
+FederalVolumeBackupPhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -1260,6 +1274,20 @@ string
 </td>
 <td>
 <p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>federalVolumeRestorePhase</code></br>
+<em>
+<a href="#federalvolumerestorephase">
+FederalVolumeRestorePhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeRestorePhase indicates which phase to execute in federal volume restore</p>
 </td>
 </tr>
 <tr>
@@ -3991,6 +4019,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>LogStop indicates that will stop the log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>federalVolumeBackupPhase</code></br>
+<em>
+<a href="#federalvolumebackupphase">
+FederalVolumeBackupPhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
 </td>
 </tr>
 <tr>
@@ -6940,6 +6982,22 @@ it takes effect only when set <code>spec.recoverFailover=false</code></p>
 </tr>
 </tbody>
 </table>
+<h3 id="federalvolumebackupphase">FederalVolumeBackupPhase</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>FederalVolumeBackupPhase represents a phase to execute in federal volume backup</p>
+</p>
+<h3 id="federalvolumerestorephase">FederalVolumeRestorePhase</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>FederalVolumeRestorePhase represents a phase to execute in federal volume restore</p>
+</p>
 <h3 id="filelogconfig">FileLogConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -13631,6 +13689,20 @@ string
 </td>
 <td>
 <p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>federalVolumeRestorePhase</code></br>
+<em>
+<a href="#federalvolumerestorephase">
+FederalVolumeRestorePhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeRestorePhase indicates which phase to execute in federal volume restore</p>
 </td>
 </tr>
 <tr>
