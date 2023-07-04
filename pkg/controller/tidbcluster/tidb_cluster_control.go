@@ -14,8 +14,14 @@
 package tidbcluster
 
 import (
+	"errors"
+	"fmt"
+	"regexp"
+
+	"github.com/coreos/go-semver/semver"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
@@ -23,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
+	"github.com/pingcap/tidb-operator/pkg/apis/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -58,7 +65,9 @@ func NewDefaultTidbClusterControl(
 	discoveryManager member.TidbDiscoveryManager,
 	tidbClusterStatusManager manager.Manager,
 	conditionUpdater TidbClusterConditionUpdater,
-	recorder record.EventRecorder) ControlInterface {
+	recorder record.EventRecorder,
+	deps *controller.Dependencies,
+) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl:                tcControl,
 		pdMemberManager:          pdMemberManager,
@@ -77,6 +86,7 @@ func NewDefaultTidbClusterControl(
 		tidbClusterStatusManager: tidbClusterStatusManager,
 		conditionUpdater:         conditionUpdater,
 		recorder:                 recorder,
+		deps:                     deps,
 	}
 }
 
@@ -98,6 +108,7 @@ type defaultTidbClusterControl struct {
 	tidbClusterStatusManager manager.Manager
 	conditionUpdater         TidbClusterConditionUpdater
 	recorder                 record.EventRecorder
+	deps                     *controller.Dependencies
 }
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
@@ -172,6 +183,37 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	if err := c.discoveryManager.Reconcile(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "discovery").Inc()
 		return err
+	}
+
+	// Check if need to upgrade TiCDC first.
+	upgradeTiCDCFirst := false
+
+	oldSts, err := c.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiCDCMemberName(tcName))
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("updateTidbCluster: failed to get sts %s for cluster %s/%s, error: %s", controller.TiCDCMemberName(tcName), ns, tcName, err)
+	}
+	stsNotExist := apierrors.IsNotFound(err)
+	if !stsNotExist {
+		// Get TiCDC version from old sts.
+		ticdcImage := oldSts.Spec.Template.Spec.Containers[0].Image
+		oldTiCDCVersion := util.GetImageVersion(ticdcImage)
+		upgradeTiCDCFirst, err = needToUpdateTiCDCFirst(oldTiCDCVersion)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Upgrade TiCDC first if needed.
+	if upgradeTiCDCFirst {
+		// works that should be done to make the ticdc cluster current state match the desired state:
+		//   - waiting for the pd cluster available(pd cluster is in quorum)
+		//   - waiting for the tikv cluster available(at least one peer works)
+		//   - create or update ticdc deployment
+		//   - sync ticdc cluster status from pd to TidbCluster object
+		if err := c.ticdcMemberManager.Sync(tc); err != nil {
+			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "ticdc").Inc()
+			return err
+		}
 	}
 
 	// works that should be done to make the pd cluster current state match the desired state:
@@ -250,16 +292,17 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	// works that should be done to make the ticdc cluster current state match the desired state:
-	//   - waiting for the pd cluster available(pd cluster is in quorum)
-	//   - waiting for the tikv cluster available(at least one peer works)
-	//   - create or update ticdc deployment
-	//   - sync ticdc cluster status from pd to TidbCluster object
-	if err := c.ticdcMemberManager.Sync(tc); err != nil {
-		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "ticdc").Inc()
-		return err
+	if !upgradeTiCDCFirst {
+		// works that should be done to make the ticdc cluster current state match the desired state:
+		//   - waiting for the pd cluster available(pd cluster is in quorum)
+		//   - waiting for the tikv cluster available(at least one peer works)
+		//   - create or update ticdc deployment
+		//   - sync ticdc cluster status from pd to TidbCluster object
+		if err := c.ticdcMemberManager.Sync(tc); err != nil {
+			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "ticdc").Inc()
+			return err
+		}
 	}
-
 	// syncing the labels from Pod to PVC and PV, these labels include:
 	//   - label.StoreIDLabelKey
 	//   - label.MemberIDLabelKey
@@ -294,6 +337,46 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "cluster_status").Inc()
 	}
 	return err
+}
+
+// needToUpdateTiCDCFirst checks if the TiCDC version is greater than or equal to v5.1.0.
+// If so, we need to update TiCDC first before updating other components.
+// See more: https://github.com/pingcap/tidb-operator/issues/4966#issuecomment-1606727165
+func needToUpdateTiCDCFirst(ticdcVersion string) (bool, error) {
+	// NOTE: 2023-07-04 is the date we add this check,
+	// so later versions should be greater than v5.1.0.
+	if ticdcVersion == util.VersionLatest {
+		return true, nil
+	}
+	ver := &semver.Version{}
+	sanitizedVersion, err := sanitizeVersion(ticdcVersion)
+	if err != nil {
+		return false, err
+	}
+	if err := ver.Set(sanitizedVersion); err != nil {
+		return false, errors.New("ticdc version is invalid")
+	}
+
+	if ver.LessThan(*semver.New("5.1.0-alpha")) {
+		return false, nil
+	} else {
+		return true, nil
+	}
+}
+
+// versionRe matches the version string like v7.2.0, v7.2.0-pre,
+// v6.1.3-20230517-5484207 and v5.1.1-20211227 to extract the version.
+// You can find all the version strings in https://hub.docker.com/r/pingcap/ticdc/tags.
+var versionRe = regexp.MustCompile(`v(\d+\.\d+\.\d+)(?:-\+)?`)
+
+// sanitizeVersion remove the prefix "v" and suffix git hash.
+// For example, the version string v3.0.0-rc.1-10-gd3f8e0a becomes 3.0.0-rc.1.
+func sanitizeVersion(v string) (string, error) {
+	match := versionRe.FindStringSubmatch(v)
+	if len(match) > 1 {
+		return match[1], nil
+	}
+	return "", fmt.Errorf("invalid version string: %s", v)
 }
 
 func (c *defaultTidbClusterControl) recordMetrics(tc *v1alpha1.TidbCluster) {

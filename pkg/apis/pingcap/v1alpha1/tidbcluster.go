@@ -26,6 +26,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/util"
 )
 
 const (
@@ -44,9 +45,6 @@ const (
 	// shutdown a TiCDC pod.
 	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
 	defaultPDStartTimeout               = 30
-
-	// the latest version
-	versionLatest = "latest"
 )
 
 var (
@@ -92,7 +90,7 @@ func (tc *TidbCluster) PDVersion() string {
 		return ""
 	}
 
-	return getImageVersion(tc.PDImage())
+	return util.GetImageVersion(tc.PDImage())
 }
 
 // TiKVImage return the image used by TiKV.
@@ -128,7 +126,7 @@ func (tc *TidbCluster) TiKVVersion() string {
 		return ""
 	}
 
-	return getImageVersion(tc.TiKVImage())
+	return util.GetImageVersion(tc.TiKVImage())
 }
 
 func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
@@ -189,7 +187,7 @@ func (tc *TidbCluster) TiFlashVersion() string {
 		return ""
 	}
 
-	return getImageVersion(tc.TiFlashImage())
+	return util.GetImageVersion(tc.TiFlashImage())
 }
 
 func (tc *TidbCluster) TiFlashContainerPrivilege() *bool {
@@ -309,17 +307,7 @@ func (tc *TidbCluster) TiDBVersion() string {
 		return ""
 	}
 
-	return getImageVersion(tc.TiDBImage())
-}
-
-// getImageVersion returns the verion of a image
-func getImageVersion(image string) string {
-	colonIdx := strings.LastIndexByte(image, ':')
-	if colonIdx >= 0 {
-		return image[colonIdx+1:]
-	}
-
-	return versionLatest
+	return util.GetImageVersion(tc.TiDBImage())
 }
 
 // PumpImage return the image used by Pump.

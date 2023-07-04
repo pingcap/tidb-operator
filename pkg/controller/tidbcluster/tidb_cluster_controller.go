@@ -71,6 +71,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 			mm.NewTidbClusterStatusManager(deps),
 			&tidbClusterConditionUpdater{},
 			deps.Recorder,
+			deps,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
