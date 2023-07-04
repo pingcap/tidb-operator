@@ -407,7 +407,7 @@ func (bm *backupManager) skipSync(volumeBackup *v1alpha1.VolumeBackup) bool {
 }
 
 func (bm *backupManager) generateBackupMemberName(volumeBackupName, k8sClusterName string) string {
-	return fmt.Sprintf("fed-%s-%s", volumeBackupName, k8sClusterName)
+	return fmt.Sprintf("%s-%s", volumeBackupName, k8sClusterName)
 }
 
 type volumeBackupMember struct {

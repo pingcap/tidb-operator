@@ -39,28 +39,28 @@ var (
 
 // GetCleanJobName return the clean job name
 func (bk *Backup) GetCleanJobName() string {
-	return fmt.Sprintf("clean-%s", bk.GetName())
+	return GenValidName(fmt.Sprintf("clean-%s", bk.GetName()))
 }
 
 // GetBackupJobName return the backup job name
 func (bk *Backup) GetBackupJobName() string {
 	if command := ParseLogBackupSubcommand(bk); command != "" {
-		return fmt.Sprintf("backup-%s-%s", bk.GetName(), command)
+		return GenValidName(fmt.Sprintf("backup-%s-%s", bk.GetName(), command))
 	}
-	return fmt.Sprintf("backup-%s", bk.GetName())
+	return GenValidName(fmt.Sprintf("backup-%s", bk.GetName()))
 }
 
 func (bk *Backup) GetVolumeBackupInitializeJobName() string {
 	backupJobName := bk.GetBackupJobName()
-	return fmt.Sprintf("%s-assistant", backupJobName)
+	return GenValidName(fmt.Sprintf("%s-assistant", backupJobName))
 }
 
 // GetAllLogBackupJobName return the all log backup job name
 func (bk *Backup) GetAllLogBackupJobName() []string {
 	return []string{
-		fmt.Sprintf("backup-%s-%s", bk.GetName(), LogStartCommand),
-		fmt.Sprintf("backup-%s-%s", bk.GetName(), LogStopCommand),
-		fmt.Sprintf("backup-%s-%s", bk.GetName(), LogTruncateCommand),
+		GenValidName(fmt.Sprintf("backup-%s-%s", bk.GetName(), LogStartCommand)),
+		GenValidName(fmt.Sprintf("backup-%s-%s", bk.GetName(), LogStopCommand)),
+		GenValidName(fmt.Sprintf("backup-%s-%s", bk.GetName(), LogTruncateCommand)),
 	}
 }
 
