@@ -239,6 +239,30 @@ VolumeRestoreSpec
 <br/>
 <br/>
 <table>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#volumerestoremembercluster">
+[]VolumeRestoreMemberCluster
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>template</code></br>
+<em>
+<a href="#volumerestorememberspec">
+VolumeRestoreMemberSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -259,7 +283,8 @@ VolumeRestoreStatus
 <h3 id="brconfig">BRConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#volumebackupmemberspec">VolumeBackupMemberSpec</a>)
+<a href="#volumebackupmemberspec">VolumeBackupMemberSpec</a>, 
+<a href="#volumerestorememberspec">VolumeRestoreMemberSpec</a>)
 </p>
 <p>
 <p>BRConfig contains config for BR</p>
@@ -557,8 +582,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>ToolImage specifies the tool image used in <code>Backup</code>, which supports BR and Dumpling images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code>
+<p>ToolImage specifies the tool image used in <code>Backup</code>, which supports BR.
+For examples <code>spec.toolImage: pingcap/br:v6.5.0</code>
 For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
@@ -920,6 +945,18 @@ Kubernetes core/v1.ConditionStatus
 </tr>
 <tr>
 <td>
+<code>type</code></br>
+<em>
+<a href="#volumerestoreconditiontype">
+VolumeRestoreConditionType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>lastTransitionTime</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
@@ -952,6 +989,254 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="volumerestoreconditiontype">VolumeRestoreConditionType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumerestorecondition">VolumeRestoreCondition</a>, 
+<a href="#volumerestorestatus">VolumeRestoreStatus</a>)
+</p>
+<p>
+</p>
+<h3 id="volumerestorememberbackupinfo">VolumeRestoreMemberBackupInfo</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumerestoremembercluster">VolumeRestoreMemberCluster</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>StorageProvider</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider
+</em>
+</td>
+<td>
+<p>
+(Members of <code>StorageProvider</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="volumerestoremembercluster">VolumeRestoreMemberCluster</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumerestorespec">VolumeRestoreSpec</a>)
+</p>
+<p>
+<p>VolumeRestoreMemberCluster contains the TiDB cluster which need to execute volume restore</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>k8sClusterName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>K8sClusterName is the name of the k8s cluster where the tc locates</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TCName is the name of the TiDBCluster CR which need to execute volume backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcNamespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TCNamespace is the namespace of the TiDBCluster CR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>azName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AZName is the available zone which the volume snapshots restore to</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backup</code></br>
+<em>
+<a href="#volumerestorememberbackupinfo">
+VolumeRestoreMemberBackupInfo
+</a>
+</em>
+</td>
+<td>
+<p>Backup is the volume backup information</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="volumerestorememberspec">VolumeRestoreMemberSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumerestorespec">VolumeRestoreSpec</a>)
+</p>
+<p>
+<p>VolumeRestoreMemberSpec contains the restore specification for one tidb cluster</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>br</code></br>
+<em>
+<a href="#brconfig">
+BRConfig
+</a>
+</em>
+</td>
+<td>
+<p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in <code>Restore</code>, which supports BR image.
+For examples <code>spec.toolImage: pingcap/br:v6.5.0</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Restore Job Pods</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="volumerestorespec">VolumeRestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -960,6 +1245,40 @@ string
 <p>
 <p>VolumeRestoreSpec describes the attributes that a user creates on a volume restore.</p>
 </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>clusters</code></br>
+<em>
+<a href="#volumerestoremembercluster">
+[]VolumeRestoreMemberCluster
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>template</code></br>
+<em>
+<a href="#volumerestorememberspec">
+VolumeRestoreMemberSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="volumerestorestatus">VolumeRestoreStatus</h3>
 <p>
 (<em>Appears on:</em>
@@ -976,6 +1295,67 @@ string
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>timeStarted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeStarted is the time at which the restore was started.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeCompleted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeCompleted is the time at which the restore was completed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeTaken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TimeTaken is the time that volume restore federation takes, it is TimeCompleted - TimeStarted</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CommitTs is the snapshot time point of tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#volumerestoreconditiontype">
+VolumeRestoreConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Phase is a user readable state inferred from the underlying Restore conditions</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>conditions</code></br>

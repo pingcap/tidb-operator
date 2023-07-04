@@ -151,8 +151,22 @@ func (c *Controller) updateRestore(cur interface{}) {
 	ns := newVolumeRestore.GetNamespace()
 	name := newVolumeRestore.GetName()
 
-	// TODO(federation): check something like non-federation's
-	// `IsRestoreInvalid`, `IsRestoreComplete`, `IsRestoreFailed`, `IsRestoreDataComplete`, `IsRestoreVolumeComplete`, `IsRestoreScheduled`, `IsRestoreRunning`
+	if newVolumeRestore.DeletionTimestamp != nil {
+		// the restore is being deleted, we need to do some cleanup work, enqueue backup.
+		klog.Infof("VolumeRestore %s/%s is being deleted", ns, name)
+		c.enqueueRestore(newVolumeRestore)
+		return
+	}
+
+	if v1alpha1.IsVolumeRestoreComplete(newVolumeRestore) {
+		klog.V(4).Infof("volume restore %s/%s is complete, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsVolumeRestoreFailed(newVolumeRestore) {
+		klog.V(4).Infof("volume restore %s/%s is failed, skipping.", ns, name)
+		return
+	}
 
 	klog.V(4).Infof("VolumeRestore object %s/%s enqueue", ns, name)
 	c.enqueueRestore(newVolumeRestore)
