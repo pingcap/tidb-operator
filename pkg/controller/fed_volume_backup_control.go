@@ -31,7 +31,7 @@ import (
 	listers "github.com/pingcap/tidb-operator/pkg/client/federation/listers/pingcap/v1alpha1"
 )
 
-// FedVolumeBackupControlInterface manages federaton VolumeBackups used in VolumeBackupSchedule
+// FedVolumeBackupControlInterface manages federation VolumeBackups used in VolumeBackupSchedule
 type FedVolumeBackupControlInterface interface {
 	CreateVolumeBackup(backup *v1alpha1.VolumeBackup) (*v1alpha1.VolumeBackup, error)
 	DeleteVolumeBackup(backup *v1alpha1.VolumeBackup) error
@@ -111,7 +111,7 @@ type FakeFedVolumeBackupControl struct {
 	deleteVolumeBackupTracker RequestTracker
 }
 
-// NewFakeBackupControl returns a FakeBackupControl
+// NewFakeFedVolumeBackupControl returns a FakeFedVolumeBackupControl
 func NewFakeFedVolumeBackupControl(volumeBackupInformer informers.VolumeBackupInformer) *FakeFedVolumeBackupControl {
 	return &FakeFedVolumeBackupControl{
 		volumeBackupInformer.Lister(),

@@ -166,6 +166,66 @@ VolumeBackupScheduleSpec
 <br/>
 <br/>
 <table>
+<tr>
+<td>
+<code>schedule</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Schedule specifies the cron string used for backup scheduling.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pause</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Pause means paused backupSchedule</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxBackups</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>MaxBackups is to specify how many backups we want to keep
+0 is magic number to indicate un-limited backups.
+if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
+and MaxBackups is ignored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxReservedTime</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>MaxReservedTime is to specify how long backups we want to keep.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupTemplate</code></br>
+<em>
+<a href="#volumebackupspec">
+VolumeBackupSpec
+</a>
+</em>
+</td>
+<td>
+<p>BackupTemplate is the specification of the volume backup structure to get scheduled.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -559,6 +619,7 @@ github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider
 <p>
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
+<p>StorageProvider configures where and how backups should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -738,6 +799,76 @@ string
 <p>
 <p>VolumeBackupScheduleSpec describes the attributes that a user creates on a volume backup schedule.</p>
 </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>schedule</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Schedule specifies the cron string used for backup scheduling.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pause</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Pause means paused backupSchedule</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxBackups</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>MaxBackups is to specify how many backups we want to keep
+0 is magic number to indicate un-limited backups.
+if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
+and MaxBackups is ignored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxReservedTime</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>MaxReservedTime is to specify how long backups we want to keep.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupTemplate</code></br>
+<em>
+<a href="#volumebackupspec">
+VolumeBackupSpec
+</a>
+</em>
+</td>
+<td>
+<p>BackupTemplate is the specification of the volume backup structure to get scheduled.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="volumebackupschedulestatus">VolumeBackupScheduleStatus</h3>
 <p>
 (<em>Appears on:</em>
@@ -746,10 +877,58 @@ string
 <p>
 <p>VolumeBackupScheduleStatus represents the current status of a volume backup schedule.</p>
 </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>lastBackup</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LastBackup represents the last backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastBackupTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LastBackupTime represents the last time the backup was successfully created.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>allBackupCleanTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>AllBackupCleanTime represents the time when all backup entries are cleaned up</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="volumebackupspec">VolumeBackupSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#volumebackup">VolumeBackup</a>)
+<a href="#volumebackup">VolumeBackup</a>, 
+<a href="#volumebackupschedulespec">VolumeBackupScheduleSpec</a>)
 </p>
 <p>
 <p>VolumeBackupSpec describes the attributes that a user creates on a volume backup.</p>

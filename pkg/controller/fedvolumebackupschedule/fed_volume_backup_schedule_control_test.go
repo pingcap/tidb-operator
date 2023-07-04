@@ -1,4 +1,4 @@
-// Copyright 2019 PingCAP, Inc.
+// Copyright 2023 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backupschedule
+package fedvolumebackupschedule
 
 import (
 	"fmt"
@@ -20,11 +20,11 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/backup/backupschedule"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
-	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned/fake"
+	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup/backupschedule"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -33,7 +33,7 @@ func TestBackupScheduleControlUpdateBackupSchedule(t *testing.T) {
 
 	type testcase struct {
 		name             string
-		update           func(bs *v1alpha1.BackupSchedule)
+		update           func(bs *v1alpha1.VolumeBackupSchedule)
 		syncBsManagerErr bool
 		updateStatusErr  bool
 		errExpectFn      func(*GomegaWithT, error)
@@ -45,7 +45,7 @@ func TestBackupScheduleControlUpdateBackupSchedule(t *testing.T) {
 		if test.update != nil {
 			test.update(bs)
 		}
-		control, bsManager, bsStatusUpdater := newFakeBackupSchduleControl()
+		control, bsManager, bsStatusUpdater := newFakeBackupScheduleControl()
 
 		if test.syncBsManagerErr {
 			bsManager.SetSyncError(fmt.Errorf("backup schedule sync error"))
@@ -82,7 +82,7 @@ func TestBackupScheduleControlUpdateBackupSchedule(t *testing.T) {
 		},
 		{
 			name: "normal",
-			update: func(bs *v1alpha1.BackupSchedule) {
+			update: func(bs *v1alpha1.VolumeBackupSchedule) {
 				bs.Status.LastBackupTime = &metav1.Time{Time: time.Now()}
 			},
 			syncBsManagerErr: false,
@@ -93,7 +93,7 @@ func TestBackupScheduleControlUpdateBackupSchedule(t *testing.T) {
 		},
 		{
 			name: "backup schedule status update failed",
-			update: func(bs *v1alpha1.BackupSchedule) {
+			update: func(bs *v1alpha1.VolumeBackupSchedule) {
 				bs.Status.LastBackupTime = &metav1.Time{Time: time.Now()}
 			},
 			syncBsManagerErr: false,
@@ -110,12 +110,12 @@ func TestBackupScheduleControlUpdateBackupSchedule(t *testing.T) {
 	}
 }
 
-func newFakeBackupSchduleControl() (ControlInterface, *backupschedule.FakeBackupScheduleManager, *controller.FakeBackupScheduleStatusUpdater) {
+func newFakeBackupScheduleControl() (ControlInterface, *backupschedule.FakeBackupScheduleManager, *controller.FakeVolumeBackupScheduleStatusUpdater) {
 	cli := fake.NewSimpleClientset()
-	bsInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().BackupSchedules()
-	statusUpdater := controller.NewFakeBackupScheduleStatusUpdater(bsInformer)
+	bsInformer := informers.NewSharedInformerFactory(cli, 0).Federation().V1alpha1().VolumeBackupSchedules()
+	statusUpdater := controller.NewFakeVolumeBackupScheduleStatusUpdater(bsInformer)
 	bsManager := backupschedule.NewFakeBackupScheduleManager()
-	control := NewDefaultBackupScheduleControl(statusUpdater, bsManager)
+	control := NewDefaultVolumeBackupScheduleControl(statusUpdater, bsManager)
 
 	return control, bsManager, statusUpdater
 }

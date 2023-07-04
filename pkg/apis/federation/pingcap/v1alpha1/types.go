@@ -95,7 +95,8 @@ type VolumeBackupMemberSpec struct {
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// BRConfig is the configs for BR
-	BR                              *BRConfig `json:"br,omitempty"`
+	BR *BRConfig `json:"br,omitempty"`
+	// StorageProvider configures where and how backups should be stored.
 	pingcapv1alpha1.StorageProvider `json:",inline"`
 	Tolerations                     []corev1.Toleration `json:"tolerations,omitempty"`
 	// ToolImage specifies the tool image used in `Backup`, which supports BR.
@@ -203,35 +204,58 @@ const (
 //
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="vbks"
-// +genclient:noStatus
+// +kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule`,description="The cron format string used for backup scheduling"
+// +kubebuilder:printcolumn:name="MaxBackups",type=integer,JSONPath=`.spec.maxBackups`,description="The max number of backups we want to keep"
+// +kubebuilder:printcolumn:name="MaxReservedTime",type=string,JSONPath=`.spec.maxReservedTime`,description="How long backups we want to keep"
+// +kubebuilder:printcolumn:name="LastBackup",type=string,JSONPath=`.status.lastBackup`,description="The last backup CR name",priority=1
+// +kubebuilder:printcolumn:name="LastBackupTime",type=date,JSONPath=`.status.lastBackupTime`,description="The last time the backup was successfully created",priority=1
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type VolumeBackupSchedule struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
 	Spec VolumeBackupScheduleSpec `json:"spec"`
-
 	// +k8s:openapi-gen=false
 	Status VolumeBackupScheduleStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// VolumeBackupScheduleList is VolumeBackupSchedule list
 // +k8s:openapi-gen=true
+// VolumeBackupScheduleList is VolumeBackupSchedule list
 type VolumeBackupScheduleList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []VolumeBackupSchedule `json:"items"`
 }
 
-// VolumeBackupScheduleSpec describes the attributes that a user creates on a volume backup schedule.
 // +k8s:openapi-gen=true
+// VolumeBackupScheduleSpec describes the attributes that a user creates on a volume backup schedule.
 type VolumeBackupScheduleSpec struct {
+	// Schedule specifies the cron string used for backup scheduling.
+	Schedule string `json:"schedule"`
+	// Pause means paused backupSchedule
+	Pause bool `json:"pause,omitempty"`
+	// MaxBackups is to specify how many backups we want to keep
+	// 0 is magic number to indicate un-limited backups.
+	// if MaxBackups and MaxReservedTime are set at the same time, MaxReservedTime is preferred
+	// and MaxBackups is ignored.
+	MaxBackups *int32 `json:"maxBackups,omitempty"`
+	// MaxReservedTime is to specify how long backups we want to keep.
+	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
+	// BackupTemplate is the specification of the volume backup structure to get scheduled.
+	BackupTemplate VolumeBackupSpec `json:"backupTemplate"`
 }
 
 // VolumeBackupScheduleStatus represents the current status of a volume backup schedule.
 type VolumeBackupScheduleStatus struct {
+	// LastBackup represents the last backup.
+	LastBackup string `json:"lastBackup,omitempty"`
+	// LastBackupTime represents the last time the backup was successfully created.
+	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
+	// AllBackupCleanTime represents the time when all backup entries are cleaned up
+	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime,omitempty"`
 }
 
 // +genclient
