@@ -14,11 +14,18 @@
 package v1alpha1
 
 import (
+	"crypto/md5"
 	"fmt"
 	"hash/fnv"
 
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/sets"
+)
+
+const (
+	// See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
+	labelLengthLimit = 63
+	hashSize         = 8
 )
 
 // HashContents hashes the contents using FNV hashing. The returned hash will be a safe encoded string to avoid bad words.
@@ -104,4 +111,15 @@ func GetStorageVolumeName(storageVolumeName string, memberType MemberType) Stora
 // GetStorageVolumeNameForTiFlash return the PVC template name for a TiFlash's data volume
 func GetStorageVolumeNameForTiFlash(index int) StorageVolumeName {
 	return StorageVolumeName(fmt.Sprintf("data%d", index))
+}
+
+func GenValidName(name string) string {
+	if len(name) <= labelLengthLimit {
+		return name
+	}
+
+	prefixLimit := labelLengthLimit - hashSize - 1
+	hash := fmt.Sprintf("%x", md5.Sum([]byte(name)))[:hashSize]
+
+	return fmt.Sprintf("%s-%s", name[:prefixLimit], hash)
 }
