@@ -158,8 +158,20 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	// TODO(federation): check something like non-federation's
-	// `IsBackupInvalid`, `IsBackupComplete`, `IsBackupFailed`, `IsBackupScheduled`, `IsBackupRunning`, `IsBackupPrepared`, `IsLogBackupStopped
+	if v1alpha1.IsVolumeBackupInvalid(newVolumeBackup) {
+		klog.V(4).Infof("volume backup %s/%s is invalid, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsVolumeBackupComplete(newVolumeBackup) {
+		klog.V(4).Infof("volume backup %s/%s is complete, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsVolumeBackupFailed(newVolumeBackup) {
+		klog.V(4).Infof("volume backup %s/%s is failed, skipping.", ns, name)
+		return
+	}
 
 	klog.V(4).Infof("VolumeBackup object %s/%s enqueue", ns, name)
 	c.enqueueBackup(newVolumeBackup)

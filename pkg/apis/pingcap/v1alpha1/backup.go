@@ -243,7 +243,16 @@ func IsVolumeBackupInitializeFailed(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
-// IsVolumeBackupFailed returns true if volume backup is initialized failed
+// IsVolumeBackupComplete returns true if volume backup is complete
+func IsVolumeBackupComplete(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeVolumeSnapshot {
+		return false
+	}
+	_, condition := GetBackupCondition(&backup.Status, VolumeBackupComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsVolumeBackupFailed returns true if volume backup is failed
 func IsVolumeBackupFailed(backup *Backup) bool {
 	if backup.Spec.Mode != BackupModeVolumeSnapshot {
 		return false
