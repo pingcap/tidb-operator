@@ -21,14 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-const (
-	// LabelLengthLimit is max character number of label name
-	// See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
-	LabelLengthLimit = 63
-	// HashSize is hash length
-	HashSize = 8
-)
-
 // HashContents hashes the contents using FNV hashing. The returned hash will be a safe encoded string to avoid bad words.
 func HashContents(contents []byte) string {
 	hf := fnv.New32()
