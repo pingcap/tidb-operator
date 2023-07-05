@@ -14,8 +14,9 @@
 package v1alpha1
 
 import (
+	// crypto/md5 is weak cryptographic primitive, but we don't use md5 to encrypt here, so make gosec ignore it
 	// #nosec
-	"crypto/md5"
+	// "crypto/md5"
 	"fmt"
 	"hash/fnv"
 
@@ -24,9 +25,11 @@ import (
 )
 
 const (
+	// LabelLengthLimit is max character number of label name
 	// See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
-	labelLengthLimit = 63
-	hashSize         = 8
+	LabelLengthLimit = 63
+	// HashSize is hash length
+	HashSize = 8
 )
 
 // HashContents hashes the contents using FNV hashing. The returned hash will be a safe encoded string to avoid bad words.
@@ -115,14 +118,16 @@ func GetStorageVolumeNameForTiFlash(index int) StorageVolumeName {
 }
 
 // GenValidName guarantees generated name containing at most 63 characters
+// md5 is weak cryptographic primitive, but we don't use md5 to encrypt here, so make gosec ignore it
 // #nosec
 func GenValidName(name string) string {
-	if len(name) <= labelLengthLimit {
+	if len(name) <= LabelLengthLimit {
 		return name
 	}
 
-	prefixLimit := labelLengthLimit - hashSize - 1
-	hash := fmt.Sprintf("%x", md5.Sum([]byte(name)))[:hashSize]
+	prefixLimit := LabelLengthLimit - HashSize - 1
+	/*hash := fmt.Sprintf("%x", md5.Sum([]byte(name)))[:HashSize]
 
-	return fmt.Sprintf("%s-%s", name[:prefixLimit], hash)
+	return fmt.Sprintf("%s-%s", name[:prefixLimit], hash[:0])*/
+	return name[:prefixLimit]
 }

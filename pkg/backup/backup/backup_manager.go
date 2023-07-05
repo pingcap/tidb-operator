@@ -85,7 +85,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 		if v1alpha1.IsBackupFailed(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
-			// if volume backup failed, we should delete initialize job to prevent GC and pd schedule blocked
+			// if volume backup failed, we should delete initialize job to resume GC and pd schedule
 			if err := bm.deleteVolumeBackupInitializeJob(backup); err != nil {
 				return err
 			}
@@ -1000,6 +1000,7 @@ func (bm *backupManager) deleteVolumeBackupInitializeJob(backup *v1alpha1.Backup
 	backupInitializeJob, err := bm.deps.JobLister.Jobs(ns).Get(backupInitializeJobName)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			klog.Infof("backup %s/%s doesn't find initializing job %s, ignore it", ns, name, backupInitializeJobName)
 			return nil
 		}
 		return fmt.Errorf("backup %s/%s get initializing job %s failed, err: %v",
