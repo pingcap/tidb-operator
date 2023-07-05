@@ -176,15 +176,6 @@ func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s, recoverMode 
 	g.Expect(err).Should(BeNil())
 }
 
-// DeleteTC deletes a TidbCluster with name `clusterName` in ns `namespace`
-func (h *Helper) DeleteTC(namespace, clusterName string) {
-	h.T.Helper()
-	g := NewGomegaWithT(h.T)
-
-	err := h.Deps.Clientset.PingcapV1alpha1().TidbClusters(namespace).Delete(context.TODO(), clusterName, metav1.DeleteOptions{})
-	g.Expect(err).Should(BeNil())
-}
-
 func (h *Helper) CreateRestore(restore *v1alpha1.Restore) {
 	h.T.Helper()
 	g := NewGomegaWithT(h.T)
@@ -195,12 +186,5 @@ func (h *Helper) CreateRestore(restore *v1alpha1.Restore) {
 		_, err := h.Deps.RestoreLister.Restores(restore.Namespace).Get(restore.Name)
 		return err
 	}, time.Second).Should(BeNil())
-	g.Expect(err).Should(BeNil())
-}
-
-func (h *Helper) DeleteRestore(restore *v1alpha1.Restore) {
-	h.T.Helper()
-	g := NewGomegaWithT(h.T)
-	err := h.Deps.Clientset.PingcapV1alpha1().Restores(restore.Namespace).Delete(context.TODO(), restore.Name, metav1.DeleteOptions{})
 	g.Expect(err).Should(BeNil())
 }
