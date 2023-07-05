@@ -95,6 +95,11 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 		tikvImage := tc.TiKVImage()
 		err = backuputil.ValidateRestore(restore, tikvImage, tc.Spec.AcrossK8s)
+		if err == nil {
+			if restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot && !tc.Spec.RecoveryMode {
+				err = fmt.Errorf("TiDBCluster %s/%s recoveryMode can't be false for volume snapshot restore", tc.Namespace, tc.Name)
+			}
+		}
 	}
 
 	if err != nil {

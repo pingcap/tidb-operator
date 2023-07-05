@@ -969,12 +969,19 @@ spec:
                       type: string
                     k8sClusterName:
                       type: string
+                    message:
+                      type: string
+                    phase:
+                      type: string
+                    reason:
+                      type: string
                     tcName:
                       type: string
                     tcNamespace:
                       type: string
                   required:
                   - backupName
+                  - phase
                   type: object
                 type: array
               commitTs:

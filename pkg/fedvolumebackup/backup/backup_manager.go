@@ -213,7 +213,7 @@ func (bm *backupManager) waitBackupMemberInitialized(ctx context.Context, volume
 		if pingcapv1alpha1.IsVolumeBackupInitialized(backupMember.backup) {
 			return nil
 		}
-		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) {
+		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s initialize failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			return &fedvolumebackup.BRDataPlaneFailedError{
 				Reason:  reasonVolumeBackupMemberFailed,
