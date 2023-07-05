@@ -180,9 +180,8 @@ func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s, recoverMode 
 func (h *Helper) DeleteTC(namespace, clusterName string) {
 	h.T.Helper()
 	g := NewGomegaWithT(h.T)
-	var err error
 
-	err = h.Deps.Clientset.PingcapV1alpha1().TidbClusters(namespace).Delete(context.TODO(), clusterName, metav1.DeleteOptions{})
+	err := h.Deps.Clientset.PingcapV1alpha1().TidbClusters(namespace).Delete(context.TODO(), clusterName, metav1.DeleteOptions{})
 	g.Expect(err).Should(BeNil())
 }
 
