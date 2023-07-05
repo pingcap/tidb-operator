@@ -14,9 +14,6 @@
 package v1alpha1
 
 import (
-	// crypto/md5 is weak cryptographic primitive, but we don't use md5 to encrypt here, so make gosec ignore it
-	// #nosec
-	// "crypto/md5"
 	"fmt"
 	"hash/fnv"
 
@@ -115,19 +112,4 @@ func GetStorageVolumeName(storageVolumeName string, memberType MemberType) Stora
 // GetStorageVolumeNameForTiFlash return the PVC template name for a TiFlash's data volume
 func GetStorageVolumeNameForTiFlash(index int) StorageVolumeName {
 	return StorageVolumeName(fmt.Sprintf("data%d", index))
-}
-
-// GenValidName guarantees generated name containing at most 63 characters
-// md5 is weak cryptographic primitive, but we don't use md5 to encrypt here, so make gosec ignore it
-// #nosec
-func GenValidName(name string) string {
-	if len(name) <= LabelLengthLimit {
-		return name
-	}
-
-	prefixLimit := LabelLengthLimit - HashSize - 1
-	/*hash := fmt.Sprintf("%x", md5.Sum([]byte(name)))[:HashSize]
-
-	return fmt.Sprintf("%s-%s", name[:prefixLimit], hash[:0])*/
-	return name[:prefixLimit]
 }
