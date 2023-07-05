@@ -124,15 +124,16 @@ func (h *Helper) CreateSecret(obj interface{}) {
 }
 
 // CreateTC creates a TidbCluster with name `clusterName` in ns `namespace`
-func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s bool) {
+func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s, recoverMode bool) {
 	h.T.Helper()
 	g := NewGomegaWithT(h.T)
 	var err error
 
 	tc := &v1alpha1.TidbCluster{
 		Spec: v1alpha1.TidbClusterSpec{
-			AcrossK8s:  acrossK8s,
-			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+			AcrossK8s:    acrossK8s,
+			RecoveryMode: recoverMode,
+			TLSCluster:   &v1alpha1.TLSCluster{Enabled: true},
 			TiKV: &v1alpha1.TiKVSpec{
 				BaseImage: "pingcap/tikv",
 				Replicas:  3,
@@ -175,6 +176,16 @@ func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s bool) {
 	g.Expect(err).Should(BeNil())
 }
 
+// DeleteTC deletes a TidbCluster with name `clusterName` in ns `namespace`
+func (h *Helper) DeleteTC(namespace, clusterName string) {
+	h.T.Helper()
+	g := NewGomegaWithT(h.T)
+	var err error
+
+	err = h.Deps.Clientset.PingcapV1alpha1().TidbClusters(namespace).Delete(context.TODO(), clusterName, metav1.DeleteOptions{})
+	g.Expect(err).Should(BeNil())
+}
+
 func (h *Helper) CreateRestore(restore *v1alpha1.Restore) {
 	h.T.Helper()
 	g := NewGomegaWithT(h.T)
@@ -185,5 +196,12 @@ func (h *Helper) CreateRestore(restore *v1alpha1.Restore) {
 		_, err := h.Deps.RestoreLister.Restores(restore.Namespace).Get(restore.Name)
 		return err
 	}, time.Second).Should(BeNil())
+	g.Expect(err).Should(BeNil())
+}
+
+func (h *Helper) DeleteRestore(restore *v1alpha1.Restore) {
+	h.T.Helper()
+	g := NewGomegaWithT(h.T)
+	err := h.Deps.Clientset.PingcapV1alpha1().Restores(restore.Namespace).Delete(context.TODO(), restore.Name, metav1.DeleteOptions{})
 	g.Expect(err).Should(BeNil())
 }
