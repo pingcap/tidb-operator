@@ -417,8 +417,30 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 			logBackup = backup
 			continue
 		}
-		// the backup status CommitTs will be empty after created. without this, all newly created backups will be GC'ed
-		if v1alpha1.IsBackupScheduled(backup) || v1alpha1.IsBackupRunning(backup) || v1alpha1.IsBackupPrepared(backup) {
+		// Completed or failed backups will be GC'ed
+		if !(v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupComplete(backup)) {
+			continue
+		}
+		ascBackupList = append(ascBackupList, backup)
+	}
+
+	sort.Slice(ascBackupList, func(i, j int) bool {
+		return ascBackupList[i].CreationTimestamp.Unix() < ascBackupList[j].CreationTimestamp.Unix()
+	})
+	return ascBackupList, logBackup
+}
+
+// separateAllSnapshotBackupsAndLogBackup return all snapshot backups order by create time asc and log backup,
+// this function is for test only
+func separateAllSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1alpha1.Backup, *v1alpha1.Backup) {
+	var (
+		ascBackupList = make([]*v1alpha1.Backup, 0)
+		logBackup     *v1alpha1.Backup
+	)
+
+	for _, backup := range backupsList {
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+			logBackup = backup
 			continue
 		}
 		ascBackupList = append(ascBackupList, backup)

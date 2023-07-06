@@ -206,7 +206,7 @@ func TestBRRestore(t *testing.T) {
 	for i, restore := range genValidBRRestores() {
 		helper.createRestore(restore)
 		helper.CreateSecret(restore)
-		helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, false)
+		helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, false, false)
 
 		m := NewRestoreManager(deps)
 		err = m.Sync(restore)
@@ -439,11 +439,159 @@ func TestBRRestoreByEBS(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 
-			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster, true)
+			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster, true, true)
 			helper.CreateRestore(tt.restore)
 			m := NewRestoreManager(deps)
 			err := m.Sync(tt.restore)
 			g.Expect(err).Should(BeNil())
 		})
 	}
+}
+
+func TestInvalidReplicasBRRestoreByEBS(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	cases := []struct {
+		name    string
+		restore *v1alpha1.Restore
+	}{
+		{
+			name: "restore-volume",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1",
+					Namespace: "ns-1",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-1",
+						Cluster:          "cluster-1",
+					},
+					StorageProvider: v1alpha1.StorageProvider{
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{},
+			},
+		},
+	}
+
+	// Verify invalid tc with mismatch tikv replicas
+	//generate the restore meta in local nfs, with only 2 tikv replicas
+	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestore2TiKVMetaStr()), 0644) //nolint:gosec
+	g.Expect(err).To(Succeed())
+
+	//generate the backup meta in local nfs, tiflash check need backupmeta to validation
+	err = os.WriteFile("/tmp/backupmeta", []byte(testutils.ConstructRestore2TiKVMetaStr()), 0644) //nolint:gosec
+	g.Expect(err).To(Succeed())
+	defer func() {
+		err = os.Remove("/tmp/restoremeta")
+		g.Expect(err).To(Succeed())
+
+		err = os.Remove("/tmp/backupmeta")
+		g.Expect(err).To(Succeed())
+	}()
+
+	t.Run(cases[0].name, func(t *testing.T) {
+		helper.CreateTC(cases[0].restore.Spec.BR.ClusterNamespace, cases[0].restore.Spec.BR.Cluster, true, true)
+		helper.CreateRestore(cases[0].restore)
+		m := NewRestoreManager(deps)
+		err := m.Sync(cases[0].restore)
+		g.Expect(err).Should(MatchError("tikv replica missmatched"))
+	})
+}
+
+func TestInvalidModeBRRestoreByEBS(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	cases := []struct {
+		name    string
+		restore *v1alpha1.Restore
+	}{
+		{
+			name: "restore-volume",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1",
+					Namespace: "ns-1",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-1",
+						Cluster:          "cluster-1",
+					},
+					StorageProvider: v1alpha1.StorageProvider{
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{},
+			},
+		},
+	}
+
+	// Verify invalid tc with mismatch tikv replicas
+	//generate the restore meta in local nfs, with only 2 tikv replicas
+	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:gosec
+	g.Expect(err).To(Succeed())
+
+	//generate the backup meta in local nfs, tiflash check need backupmeta to validation
+	err = os.WriteFile("/tmp/backupmeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:gosec
+	g.Expect(err).To(Succeed())
+	defer func() {
+		err = os.Remove("/tmp/restoremeta")
+		g.Expect(err).To(Succeed())
+
+		err = os.Remove("/tmp/backupmeta")
+		g.Expect(err).To(Succeed())
+	}()
+
+	t.Run(cases[0].name, func(t *testing.T) {
+		helper.CreateTC(cases[0].restore.Spec.BR.ClusterNamespace, cases[0].restore.Spec.BR.Cluster, true, false)
+		helper.CreateRestore(cases[0].restore)
+		m := NewRestoreManager(deps)
+		err := m.Sync(cases[0].restore)
+		g.Expect(err).Should(MatchError("recovery mode is off"))
+	})
 }
