@@ -157,14 +157,24 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 }
 
 func (rm *restoreManager) listRestoreMembers(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore) ([]*volumeRestoreMember, error) {
+	existedMembers := make(map[string]*v1alpha1.VolumeRestoreMemberStatus, len(volumeRestore.Status.Restores))
+	for i := range volumeRestore.Status.Restores {
+		existedMembers[volumeRestore.Status.Restores[i].K8sClusterName] = &volumeRestore.Status.Restores[i]
+	}
+
 	restoreMembers := make([]*volumeRestoreMember, 0, len(volumeRestore.Spec.Clusters))
 	for _, memberCluster := range volumeRestore.Spec.Clusters {
 		k8sClusterName := memberCluster.K8sClusterName
 		kubeClient, ok := rm.deps.FedClientset[k8sClusterName]
 		if !ok {
-			return nil, controller.RequeueErrorf("not find kube client of cluster %s", memberCluster.K8sClusterName)
+			return nil, controller.RequeueErrorf("not find kube client of cluster %s", k8sClusterName)
 		}
-		restoreName := rm.generateRestoreMemberName(volumeRestore.Name, k8sClusterName)
+		var restoreName string
+		if existedRestoreMember, ok := existedMembers[k8sClusterName]; ok {
+			restoreName = existedRestoreMember.RestoreName
+		} else {
+			restoreName = rm.generateRestoreMemberName(volumeRestore.Name, k8sClusterName)
+		}
 		restoreMember, err := kubeClient.PingcapV1alpha1().Restores(memberCluster.TCNamespace).Get(ctx, restoreName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -208,6 +218,7 @@ func (rm *restoreManager) executeRestoreVolumePhase(ctx context.Context, volumeR
 		}
 		memberCreated = true
 		klog.Infof("VolumeRestore %s/%s create restore member %s successfully", volumeRestore.Namespace, volumeRestore.Name, restoreMember.Name)
+		v1alpha1.UpdateVolumeRestoreMemberStatus(&volumeRestore.Status, k8sClusterName, restoreMember)
 	}
 	return
 }

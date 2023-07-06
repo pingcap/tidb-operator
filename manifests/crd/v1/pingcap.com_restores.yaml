@@ -36,7 +36,6 @@ spec:
     - description: The time that the restore takes
       jsonPath: .status.timeTaken
       name: TimeTaken
-      priority: 1
       type: string
     - description: The commit ts of tidb cluster restore
       jsonPath: .status.commitTs

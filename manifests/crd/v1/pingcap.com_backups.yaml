@@ -61,7 +61,6 @@ spec:
     - description: The time that the backup takes
       jsonPath: .status.timeTaken
       name: TimeTaken
-      priority: 1
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age

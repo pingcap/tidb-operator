@@ -173,14 +173,24 @@ func (bm *backupManager) setVolumeBackupRunning(volumeBackupStatus *v1alpha1.Vol
 }
 
 func (bm *backupManager) listAllBackupMembers(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup) ([]*volumeBackupMember, error) {
+	existedMembers := make(map[string]*v1alpha1.VolumeBackupMemberStatus, len(volumeBackup.Status.Backups))
+	for i := range volumeBackup.Status.Backups {
+		existedMembers[volumeBackup.Status.Backups[i].K8sClusterName] = &volumeBackup.Status.Backups[i]
+	}
+
 	backupMembers := make([]*volumeBackupMember, 0, len(volumeBackup.Spec.Clusters))
 	for _, memberCluster := range volumeBackup.Spec.Clusters {
 		k8sClusterName := memberCluster.K8sClusterName
-		kubeClient, ok := bm.deps.FedClientset[memberCluster.K8sClusterName]
+		kubeClient, ok := bm.deps.FedClientset[k8sClusterName]
 		if !ok {
-			return nil, controller.RequeueErrorf("not find kube client of cluster %s", memberCluster.K8sClusterName)
+			return nil, controller.RequeueErrorf("not find kube client of cluster %s", k8sClusterName)
 		}
-		backupMemberName := bm.generateBackupMemberName(volumeBackup.Name, memberCluster.K8sClusterName)
+		var backupMemberName string
+		if existedBackupMember, ok := existedMembers[k8sClusterName]; ok {
+			backupMemberName = existedBackupMember.BackupName
+		} else {
+			backupMemberName = bm.generateBackupMemberName(volumeBackup.Name, k8sClusterName)
+		}
 		backupMember, err := kubeClient.PingcapV1alpha1().Backups(memberCluster.TCNamespace).Get(ctx, backupMemberName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -205,6 +215,7 @@ func (bm *backupManager) initializeVolumeBackup(ctx context.Context, volumeBacku
 		return controller.RequeueErrorf("create initialize backup member %s to cluster %s error: %s", backupMember.Name, initializeMember.K8sClusterName, err.Error())
 	}
 	klog.Infof("VolumeBackup %s/%s create backup member %s to initialize", volumeBackup.Namespace, volumeBackup.Name, backupMember.Name)
+	v1alpha1.UpdateVolumeBackupMemberStatus(&volumeBackup.Status, initializeMember.K8sClusterName, backupMember)
 	return nil
 }
 
@@ -213,8 +224,15 @@ func (bm *backupManager) waitBackupMemberInitialized(ctx context.Context, volume
 		if pingcapv1alpha1.IsVolumeBackupInitialized(backupMember.backup) {
 			return nil
 		}
-		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
+		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s initialize failed", backupMember.backup.Name, backupMember.k8sClusterName)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeBackupMemberFailed,
+				Message: errMsg,
+			}
+		}
+		if pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
+			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			return &fedvolumebackup.BRDataPlaneFailedError{
 				Reason:  reasonVolumeBackupMemberFailed,
 				Message: errMsg,
@@ -254,13 +272,16 @@ func (bm *backupManager) executeVolumeBackup(ctx context.Context, volumeBackup *
 		}
 		newMemberCreatedOrUpdated = true
 		klog.Infof("VolumeBackup %s/%s create backup member %s to execute volume backup", volumeBackup.Namespace, volumeBackup.Name, backupMember.Name)
+		v1alpha1.UpdateVolumeBackupMemberStatus(&volumeBackup.Status, memberCluster.K8sClusterName, backupMember)
 	}
 	return
 }
 
 func (bm *backupManager) waitVolumeSnapshotsComplete(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) error {
 	for _, backupMember := range backupMembers {
-		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsVolumeBackupFailed(backupMember.backup) {
+		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) ||
+			pingcapv1alpha1.IsVolumeBackupFailed(backupMember.backup) ||
+			pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			return &fedvolumebackup.BRDataPlaneFailedError{
 				Reason:  reasonVolumeBackupMemberFailed,
