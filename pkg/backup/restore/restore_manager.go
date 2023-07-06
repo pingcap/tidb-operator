@@ -95,11 +95,6 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 		tikvImage := tc.TiKVImage()
 		err = backuputil.ValidateRestore(restore, tikvImage, tc.Spec.AcrossK8s)
-		if err == nil {
-			if restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot && !tc.Spec.RecoveryMode {
-				err = fmt.Errorf("TiDBCluster %s/%s recoveryMode can't be false for volume snapshot restore", tc.Namespace, tc.Name)
-			}
-		}
 	}
 
 	if err != nil {
@@ -352,7 +347,7 @@ func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.Tidb
 	}
 
 	// Check recovery mode is on for EBS br across k8s
-	if r.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot && tc.Spec.AcrossK8s && !tc.Spec.RecoveryMode {
+	if r.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot && !v1alpha1.IsRestoreDataComplete(r) && !tc.Spec.RecoveryMode {
 		klog.Errorf("recovery mode is not set for across k8s EBS snapshot restore")
 		return fmt.Errorf("recovery mode is off")
 	}
