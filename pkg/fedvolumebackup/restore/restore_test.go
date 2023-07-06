@@ -89,6 +89,8 @@ func (h *helper) createVolumeRestore(ctx context.Context) *v1alpha1.VolumeRestor
 func (h *helper) assertRunRestoreVolume(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore) {
 	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreRunning))
 	h.g.Expect(volumeRestore.Status.TimeStarted.Unix() > 0).To(gomega.BeTrue())
+	h.g.Expect(len(volumeRestore.Status.Restores)).To(gomega.Equal(3))
+	h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(1))
 
 	restoreMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Restores(fakeTcNamespace1).Get(ctx, h.restoreMemberName1, metav1.GetOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
@@ -101,7 +103,15 @@ func (h *helper) assertRunRestoreVolume(ctx context.Context, volumeRestore *v1al
 	h.g.Expect(restoreMember3.Spec.FederalVolumeRestorePhase).To(gomega.Equal(pingcapv1alpha1.FederalVolumeRestoreVolume))
 }
 
-func (h *helper) assertRunRestoreData(ctx context.Context) {
+func (h *helper) assertRestoreVolumeComplete(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore) {
+	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreVolumeComplete))
+	h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(2))
+}
+
+func (h *helper) assertRunRestoreData(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore) {
+	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreTiKVComplete))
+	h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(3))
+
 	// in setDataPlaneVolumeComplete function, we set restore member1 with minimal commit ts
 	// so restore member1 should execute restore data phase
 	restoreMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Restores(fakeTcNamespace1).Get(ctx, h.restoreMemberName1, metav1.GetOptions{})
@@ -117,7 +127,9 @@ func (h *helper) assertRunRestoreData(ctx context.Context) {
 	h.g.Expect(restoreMember3.Spec.FederalVolumeRestorePhase).To(gomega.Equal(pingcapv1alpha1.FederalVolumeRestoreVolume))
 }
 
-func (h *helper) assertRunRestoreFinish(ctx context.Context) {
+func (h *helper) assertRunRestoreFinish(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore) {
+	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreDataComplete))
+	h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(4))
 	restoreMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Restores(fakeTcNamespace1).Get(ctx, h.restoreMemberName1, metav1.GetOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 	h.g.Expect(restoreMember1.Spec.FederalVolumeRestorePhase).To(gomega.Equal(pingcapv1alpha1.FederalVolumeRestoreFinish))
@@ -282,7 +294,7 @@ func TestVolumeRestore(t *testing.T) {
 	h.setDataPlaneTikvComplete(ctx)
 	err = h.rm.Sync(volumeRestore)
 	h.g.Expect(err).To(gomega.BeNil())
-	h.assertRunRestoreData(ctx)
+	h.assertRunRestoreData(ctx, volumeRestore)
 
 	// wait restore data phase
 	err = h.rm.Sync(volumeRestore)
@@ -292,7 +304,7 @@ func TestVolumeRestore(t *testing.T) {
 	h.setDataPlaneDataComplete(ctx)
 	err = h.rm.Sync(volumeRestore)
 	h.g.Expect(err).To(gomega.BeNil())
-	h.assertRunRestoreFinish(ctx)
+	h.assertRunRestoreFinish(ctx, volumeRestore)
 
 	// wait restore complete
 	err = h.rm.Sync(volumeRestore)
@@ -351,7 +363,7 @@ func TestVolumeRestore_RestoreDataFailed(t *testing.T) {
 	h.setDataPlaneTikvComplete(ctx)
 	err = h.rm.Sync(volumeRestore)
 	h.g.Expect(err).To(gomega.BeNil())
-	h.assertRunRestoreData(ctx)
+	h.assertRunRestoreData(ctx, volumeRestore)
 
 	// restore data failed, restore failed
 	h.setDataPlaneFailed(ctx)
@@ -386,7 +398,7 @@ func TestVolumeRestore_RestoreFinishFailed(t *testing.T) {
 	h.setDataPlaneTikvComplete(ctx)
 	err = h.rm.Sync(volumeRestore)
 	h.g.Expect(err).To(gomega.BeNil())
-	h.assertRunRestoreData(ctx)
+	h.assertRunRestoreData(ctx, volumeRestore)
 
 	// wait restore data phase
 	err = h.rm.Sync(volumeRestore)
@@ -396,7 +408,7 @@ func TestVolumeRestore_RestoreFinishFailed(t *testing.T) {
 	h.setDataPlaneDataComplete(ctx)
 	err = h.rm.Sync(volumeRestore)
 	h.g.Expect(err).To(gomega.BeNil())
-	h.assertRunRestoreFinish(ctx)
+	h.assertRunRestoreFinish(ctx, volumeRestore)
 
 	// restore finish failed, restore failed
 	h.setDataPlaneFailed(ctx)
