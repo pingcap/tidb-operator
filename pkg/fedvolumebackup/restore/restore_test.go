@@ -103,7 +103,7 @@ func (h *helper) assertRunRestoreVolume(ctx context.Context, volumeRestore *v1al
 	h.g.Expect(restoreMember3.Spec.FederalVolumeRestorePhase).To(gomega.Equal(pingcapv1alpha1.FederalVolumeRestoreVolume))
 }
 
-func (h *helper) assertRestoreVolumeComplete(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore) {
+func (h *helper) assertRestoreVolumeComplete(volumeRestore *v1alpha1.VolumeRestore) {
 	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreVolumeComplete))
 	h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(2))
 }
@@ -289,6 +289,7 @@ func TestVolumeRestore(t *testing.T) {
 	h.setDataPlaneVolumeComplete(ctx)
 	err = h.rm.Sync(volumeRestore)
 	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreVolumeComplete(volumeRestore)
 
 	// data plane tikv complete, run restore data phase
 	h.setDataPlaneTikvComplete(ctx)
@@ -358,6 +359,7 @@ func TestVolumeRestore_RestoreDataFailed(t *testing.T) {
 	h.setDataPlaneVolumeComplete(ctx)
 	err = h.rm.Sync(volumeRestore)
 	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreVolumeComplete(volumeRestore)
 
 	// data plane tikv complete, run restore data phase
 	h.setDataPlaneTikvComplete(ctx)
@@ -393,6 +395,7 @@ func TestVolumeRestore_RestoreFinishFailed(t *testing.T) {
 	h.setDataPlaneVolumeComplete(ctx)
 	err = h.rm.Sync(volumeRestore)
 	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreVolumeComplete(volumeRestore)
 
 	// data plane tikv complete, run restore data phase
 	h.setDataPlaneTikvComplete(ctx)
