@@ -431,17 +431,22 @@ type VolumeRestoreCondition struct {
 type VolumeRestoreConditionType string
 
 const (
-	VolumeRestoreInvalid  VolumeRestoreConditionType = "invalid"
-	VolumeRestoreRunning  VolumeRestoreConditionType = "running"
-	VolumeRestoreComplete VolumeRestoreConditionType = "complete"
-	VolumeRestoreFailed   VolumeRestoreConditionType = "failed"
-	VolumeRestoreCleaned  VolumeRestoreConditionType = "cleaned"
+	// VolumeRestoreInvalid means the VolumeRestore is invalid
+	VolumeRestoreInvalid VolumeRestoreConditionType = "Invalid"
+	// VolumeRestoreRunning means start to create restore members in data planes
+	VolumeRestoreRunning VolumeRestoreConditionType = "Running"
 	// VolumeRestoreVolumeComplete means all the restore members are volume complete
 	VolumeRestoreVolumeComplete VolumeRestoreConditionType = "VolumeComplete"
 	// VolumeRestoreTiKVComplete means all the restore members are tikv complete
 	VolumeRestoreTiKVComplete VolumeRestoreConditionType = "TikvComplete"
 	// VolumeRestoreDataComplete means all the restore members are data complete
 	VolumeRestoreDataComplete VolumeRestoreConditionType = "DataComplete"
+	// VolumeRestoreComplete means all the restore members are complete
+	VolumeRestoreComplete VolumeRestoreConditionType = "Complete"
+	// VolumeRestoreFailed means one of restore member is failed
+	VolumeRestoreFailed VolumeRestoreConditionType = "Failed"
+	// VolumeRestoreCleaned means all the restore members are cleaned
+	VolumeRestoreCleaned VolumeRestoreConditionType = "Cleaned"
 )
 
 type VolumeRestoreStepType string
