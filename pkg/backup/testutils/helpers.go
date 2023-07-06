@@ -124,15 +124,16 @@ func (h *Helper) CreateSecret(obj interface{}) {
 }
 
 // CreateTC creates a TidbCluster with name `clusterName` in ns `namespace`
-func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s bool) {
+func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s, recoverMode bool) {
 	h.T.Helper()
 	g := NewGomegaWithT(h.T)
 	var err error
 
 	tc := &v1alpha1.TidbCluster{
 		Spec: v1alpha1.TidbClusterSpec{
-			AcrossK8s:  acrossK8s,
-			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+			AcrossK8s:    acrossK8s,
+			RecoveryMode: recoverMode,
+			TLSCluster:   &v1alpha1.TLSCluster{Enabled: true},
 			TiKV: &v1alpha1.TiKVSpec{
 				BaseImage: "pingcap/tikv",
 				Replicas:  3,
