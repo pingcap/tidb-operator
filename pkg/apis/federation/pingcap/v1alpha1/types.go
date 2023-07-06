@@ -389,9 +389,9 @@ type VolumeRestoreCondition struct {
 type VolumeRestoreConditionType string
 
 const (
-	VolumeRestoreInvalid  VolumeRestoreConditionType = "invalid"
-	VolumeRestoreRunning  VolumeRestoreConditionType = "running"
-	VolumeRestoreComplete VolumeRestoreConditionType = "complete"
-	VolumeRestoreFailed   VolumeRestoreConditionType = "failed"
-	VolumeRestoreCleaned  VolumeRestoreConditionType = "cleaned"
+	VolumeRestoreInvalid  VolumeRestoreConditionType = "Invalid"
+	VolumeRestoreRunning  VolumeRestoreConditionType = "Running"
+	VolumeRestoreComplete VolumeRestoreConditionType = "Complete"
+	VolumeRestoreFailed   VolumeRestoreConditionType = "Failed"
+	VolumeRestoreCleaned  VolumeRestoreConditionType = "Cleaned"
 )
