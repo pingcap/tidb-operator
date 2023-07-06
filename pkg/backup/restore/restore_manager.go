@@ -347,7 +347,7 @@ func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.Tidb
 	}
 
 	// Check recovery mode is on for EBS br across k8s
-	if r.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot && !v1alpha1.IsRestoreDataComplete(r) && !tc.Spec.RecoveryMode {
+	if r.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot && r.Spec.FederalVolumeRestorePhase != v1alpha1.FederalVolumeRestoreFinish && !tc.Spec.RecoveryMode {
 		klog.Errorf("recovery mode is not set for across k8s EBS snapshot restore")
 		return fmt.Errorf("recovery mode is off")
 	}
@@ -454,9 +454,15 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		return "", nil
 	}
 
+	ns := r.Namespace
+	name := r.Name
 	if r.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreFinish {
-		klog.Infof("restore-manager prepares to deal with the phase restore-finish")
+		klog.Infof("%s/%s restore-manager prepares to deal with the phase restore-finish", ns, name)
 
+		if !tc.Spec.RecoveryMode {
+			klog.Infof("%s/%s recovery mode of tc %s/%s is false, ignore restore-finish phase", ns, name, tc.Namespace, tc.Name)
+			return "", nil
+		}
 		// When restore is based on volume snapshot, we need to restart all TiKV pods
 		// after restore data is complete.
 		sel, err := label.New().Instance(tc.Name).TiKV().Selector()
@@ -469,7 +475,7 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		}
 		for _, pod := range pods {
 			if pod.DeletionTimestamp == nil {
-				klog.Infof("restore-manager restarts pod %s/%s", pod.Namespace, pod.Name)
+				klog.Infof("%s/%s restore-manager restarts pod %s/%s", ns, name, pod.Namespace, pod.Name)
 				if err := rm.deps.PodControl.DeletePod(tc, pod); err != nil {
 					return "DeleteTiKVPodFailed", err
 				}
@@ -493,7 +499,7 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 	}
 
 	if v1alpha1.IsRestoreVolumeComplete(r) && r.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreVolume {
-		klog.Infof("restore-manager prepares to deal with the phase VolumeComplete")
+		klog.Infof("%s/%s restore-manager prepares to deal with the phase VolumeComplete", ns, name)
 
 		// TiKV volumes are ready, we can skip prepare restore metadata.
 		if _, ok := tc.Annotations[label.AnnTiKVVolumesReadyKey]; ok {

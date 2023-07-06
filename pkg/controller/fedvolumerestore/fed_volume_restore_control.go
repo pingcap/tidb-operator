@@ -86,7 +86,7 @@ func (c *defaultRestoreControl) updateRestore(volumeRestore *v1alpha1.VolumeRest
 	}
 
 	if !apiequality.Semantic.DeepEqual(oldStatus, &volumeRestore.Status) {
-		klog.Infof("VolumeRestore %/%s update status, old: %+v, new: %+v", ns, name, oldStatus, volumeRestore.Status)
+		klog.Infof("VolumeRestore %s/%s update status, old: %+v, new: %+v", ns, name, oldStatus, volumeRestore.Status)
 		if sErr := c.restoreManager.UpdateStatus(volumeRestore, &volumeRestore.Status); sErr != nil {
 			klog.Warningf("VolumeRestore %s/%s update status error: %s", ns, name, err.Error())
 			if err == nil {

@@ -118,7 +118,6 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	}
 	// restore members in data plane are created just now, wait for next loop.
 	if memberCreated {
-		v1alpha1.StartVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestoreVolume)
 		return nil
 	}
 	if err := rm.waitRestoreVolumeComplete(volumeRestore, restoreMembers); err != nil {
@@ -131,7 +130,6 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	}
 	// just execute restore data phase, wait for next loop.
 	if memberUpdated {
-		v1alpha1.StartVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestoreData)
 		return nil
 	}
 	if err := rm.waitRestoreDataComplete(volumeRestore, restoreMembers); err != nil {
@@ -144,7 +142,6 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	}
 	// just execute restore finish phase, wait for next loop.
 	if memberUpdated {
-		v1alpha1.StartVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestartTiKV)
 		return nil
 	}
 	if err := rm.waitRestoreComplete(volumeRestore, restoreMembers); err != nil {
@@ -198,6 +195,7 @@ func (rm *restoreManager) updateVolumeRestoreMembersToStatus(volumeRestoreStatus
 }
 
 func (rm *restoreManager) executeRestoreVolumePhase(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) (memberCreated bool, err error) {
+	v1alpha1.StartVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestoreVolume)
 	restoreMemberMap := make(map[string]*volumeRestoreMember, len(restoreMembers))
 	for _, restoreMember := range restoreMembers {
 		restoreMemberMap[restoreMember.restore.Name] = restoreMember
@@ -276,6 +274,7 @@ func (rm *restoreManager) executeRestoreDataPhase(ctx context.Context, volumeRes
 		return false, controller.RequeueErrorf("expect %d restore members but get %d when restore data", len(volumeRestore.Spec.Clusters), len(restoreMembers))
 	}
 
+	v1alpha1.StartVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestoreData)
 	minResolvedTs := int64(math.MaxInt64)
 	var minResolvedTsMember *volumeRestoreMember
 	for _, restoreMember := range restoreMembers {
@@ -345,6 +344,7 @@ func (rm *restoreManager) waitRestoreDataComplete(volumeRestore *v1alpha1.Volume
 }
 
 func (rm *restoreManager) executeRestoreFinishPhase(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) (memberUpdated bool, err error) {
+	v1alpha1.StartVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestartTiKV)
 	for _, restoreMember := range restoreMembers {
 		if restoreMember.restore.Spec.FederalVolumeRestorePhase == pingcapv1alpha1.FederalVolumeRestoreFinish {
 			continue
