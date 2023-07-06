@@ -125,7 +125,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}, nil)
 			return err
 		}
-		// restore based volume snapshot for cloud provider
+		// restore based on volume snapshot for cloud provider
 		reason, err := rm.volumeSnapshotRestore(restore, tc)
 		if err != nil {
 			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
@@ -318,24 +318,43 @@ func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore
 	return csb, "", nil
 }
 func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
-	// check tiflash replicas
-	replicas, reason, err := rm.readTiFlashReplicasFromBackupMeta(r)
+	// check tiflash and tikv replicas
+	tiflashReplicas, tikvReplicas, reason, err := rm.readTiFlashAndTiKVReplicasFromBackupMeta(r)
 	if err != nil {
 		klog.Errorf("read tiflash replica failure with reason %s", reason)
 		return err
 	}
 
 	if tc.Spec.TiFlash == nil {
-		if replicas != 0 {
-			klog.Errorf("tiflash is not configured, backupmeta has %d tiflash", replicas)
+		if tiflashReplicas != 0 {
+			klog.Errorf("tiflash is not configured, backupmeta has %d tiflash", tiflashReplicas)
 			return fmt.Errorf("tiflash replica missmatched")
 		}
 
 	} else {
-		if tc.Spec.TiFlash.Replicas != replicas {
-			klog.Errorf("cluster has %d tiflash configured, backupmeta has %d tiflash", tc.Spec.TiFlash.Replicas, replicas)
+		if tc.Spec.TiFlash.Replicas != tiflashReplicas {
+			klog.Errorf("cluster has %d tiflash configured, backupmeta has %d tiflash", tc.Spec.TiFlash.Replicas, tiflashReplicas)
 			return fmt.Errorf("tiflash replica missmatched")
 		}
+	}
+
+	if tc.Spec.TiKV == nil {
+		if tikvReplicas != 0 {
+			klog.Errorf("tikv is not configured, backupmeta has %d tikv", tikvReplicas)
+			return fmt.Errorf("tikv replica missmatched")
+		}
+
+	} else {
+		if tc.Spec.TiKV.Replicas != tikvReplicas {
+			klog.Errorf("cluster has %d tikv configured, backupmeta has %d tikv", tc.Spec.TiKV.Replicas, tikvReplicas)
+			return fmt.Errorf("tikv replica missmatched")
+		}
+	}
+
+	// Check recovery mode is on for EBS br across k8s
+	if r.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot && tc.Spec.AcrossK8s && !tc.Spec.RecoveryMode {
+		klog.Errorf("recovery mode is not set for across k8s EBS snapshot restore")
+		return fmt.Errorf("recovery mode is off")
 	}
 
 	// check tikv encrypt config
@@ -399,17 +418,27 @@ func (rm *restoreManager) checkTiKVEncryption(r *v1alpha1.Restore, tc *v1alpha1.
 	return nil
 }
 
-func (rm *restoreManager) readTiFlashReplicasFromBackupMeta(r *v1alpha1.Restore) (int32, string, error) {
+func (rm *restoreManager) readTiFlashAndTiKVReplicasFromBackupMeta(r *v1alpha1.Restore) (int32, int32, string, error) {
 	metaInfo, err := backuputil.GetVolSnapBackupMetaData(r, rm.deps.SecretLister)
 	if err != nil {
-		return 0, "GetVolSnapBackupMetaData failed", err
+		return 0, 0, "GetVolSnapBackupMetaData failed", err
 	}
+
+	var tiflashReplicas, tikvReplicas int32
 
 	if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash == nil {
-		return 0, "", nil
+		tiflashReplicas = 0
+	} else {
+		tiflashReplicas = metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas
 	}
 
-	return metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas, "", nil
+	if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV == nil {
+		tikvReplicas = 0
+	} else {
+		tikvReplicas = metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas
+	}
+
+	return tiflashReplicas, tikvReplicas, "", nil
 }
 
 func (rm *restoreManager) readTiKVConfigFromBackupMeta(r *v1alpha1.Restore) (*v1alpha1.TiKVConfigWraper, string, error) {
