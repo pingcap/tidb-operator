@@ -148,6 +148,7 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	}
 	if newStatus.TimeCompleted != nil && status.TimeCompleted != *newStatus.TimeCompleted {
 		status.TimeCompleted = *newStatus.TimeCompleted
+		status.TimeTaken = status.TimeCompleted.Sub(status.TimeStarted.Time).Round(time.Second).String()
 		isUpdate = true
 	}
 	if newStatus.BackupSizeReadable != nil && status.BackupSizeReadable != *newStatus.BackupSizeReadable {

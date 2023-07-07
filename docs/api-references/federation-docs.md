@@ -758,6 +758,17 @@ string
 </tr>
 <tr>
 <td>
+<code>phase</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupConditionType
+</em>
+</td>
+<td>
+<p>Phase is the current status of backup member</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupPath</code></br>
 <em>
 string
@@ -787,6 +798,28 @@ string
 </td>
 <td>
 <p>CommitTs is the commit ts of the backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>reason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reason is the reason why backup member is failed</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>message</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Message is the error message if backup member is failed</p>
 </td>
 </tr>
 </tbody>
@@ -1416,6 +1449,111 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="volumerestorememberstatus">VolumeRestoreMemberStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumerestorestatus">VolumeRestoreStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>k8sClusterName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>K8sClusterName is the name of the k8s cluster where the tc locates</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TCName is the name of the TiDBCluster CR which need to execute volume backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcNamespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TCNamespace is the namespace of the TiDBCluster CR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restoreName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>RestoreName is the name of Restore CR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreConditionType
+</em>
+</td>
+<td>
+<p>Phase is the current status of backup member</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CommitTs is the commit ts of the restored backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>reason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reason is the reason why restore member is failed</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>message</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Message is the error message if restore member is failed</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="volumerestorespec">VolumeRestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -1474,6 +1612,32 @@ VolumeRestoreMemberSpec
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>restores</code></br>
+<em>
+<a href="#volumerestorememberstatus">
+[]VolumeRestoreMemberStatus
+</a>
+</em>
+</td>
+<td>
+<p>Restores are volume restores&rsquo; information in data plane</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>steps</code></br>
+<em>
+<a href="#volumerestorestep">
+[]VolumeRestoreStep
+</a>
+</em>
+</td>
+<td>
+<p>Steps are details of every volume restore steps</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>timeStarted</code></br>
@@ -1549,6 +1713,80 @@ VolumeRestoreConditionType
 </tr>
 </tbody>
 </table>
+<h3 id="volumerestorestep">VolumeRestoreStep</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumerestorestatus">VolumeRestoreStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>stepName</code></br>
+<em>
+<a href="#volumerestoresteptype">
+VolumeRestoreStepType
+</a>
+</em>
+</td>
+<td>
+<p>StepName is the name of volume restore step</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeStarted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeStarted is the time at which the restore was started.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeCompleted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeCompleted is the time at which the restore was completed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeTaken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TimeTaken is the time that volume restore federation takes, it is TimeCompleted - TimeStarted</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="volumerestoresteptype">VolumeRestoreStepType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#volumerestorestep">VolumeRestoreStep</a>)
+</p>
+<p>
+</p>
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>

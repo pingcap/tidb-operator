@@ -116,6 +116,7 @@ func newExpectBackupStatus() *v1alpha1.BackupStatus {
 	s.CommitTs = ts
 	s.TimeStarted = metav1.Time{Time: start}
 	s.TimeCompleted = metav1.Time{Time: end}
+	s.TimeTaken = "4m0s"
 	s.BackupPath = path
 	s.BackupSizeReadable = sizeReadable
 	s.BackupSize = size

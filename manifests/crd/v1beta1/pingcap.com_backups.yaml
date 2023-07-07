@@ -48,6 +48,10 @@ spec:
     name: Completed
     priority: 1
     type: date
+  - JSONPath: .status.timeTaken
+    description: The time that the backup takes
+    name: TimeTaken
+    type: string
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
@@ -1505,6 +1509,8 @@ spec:
             timeStarted:
               format: date-time
               nullable: true
+              type: string
+            timeTaken:
               type: string
           type: object
       required:

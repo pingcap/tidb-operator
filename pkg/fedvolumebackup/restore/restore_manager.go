@@ -110,6 +110,7 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	if err != nil {
 		return err
 	}
+	rm.updateVolumeRestoreMembersToStatus(&volumeRestore.Status, restoreMembers)
 
 	memberCreated, err := rm.executeRestoreVolumePhase(ctx, volumeRestore, restoreMembers)
 	if err != nil {
@@ -153,14 +154,24 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 }
 
 func (rm *restoreManager) listRestoreMembers(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore) ([]*volumeRestoreMember, error) {
+	existedMembers := make(map[string]*v1alpha1.VolumeRestoreMemberStatus, len(volumeRestore.Status.Restores))
+	for i := range volumeRestore.Status.Restores {
+		existedMembers[volumeRestore.Status.Restores[i].K8sClusterName] = &volumeRestore.Status.Restores[i]
+	}
+
 	restoreMembers := make([]*volumeRestoreMember, 0, len(volumeRestore.Spec.Clusters))
 	for _, memberCluster := range volumeRestore.Spec.Clusters {
 		k8sClusterName := memberCluster.K8sClusterName
 		kubeClient, ok := rm.deps.FedClientset[k8sClusterName]
 		if !ok {
-			return nil, controller.RequeueErrorf("not find kube client of cluster %s", memberCluster.K8sClusterName)
+			return nil, controller.RequeueErrorf("not find kube client of cluster %s", k8sClusterName)
 		}
-		restoreName := rm.generateRestoreMemberName(volumeRestore.Name, k8sClusterName)
+		var restoreName string
+		if existedRestoreMember, ok := existedMembers[k8sClusterName]; ok {
+			restoreName = existedRestoreMember.RestoreName
+		} else {
+			restoreName = rm.generateRestoreMemberName(volumeRestore.Name, k8sClusterName)
+		}
 		restoreMember, err := kubeClient.PingcapV1alpha1().Restores(memberCluster.TCNamespace).Get(ctx, restoreName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -177,7 +188,14 @@ func (rm *restoreManager) listRestoreMembers(ctx context.Context, volumeRestore 
 	return restoreMembers, nil
 }
 
+func (rm *restoreManager) updateVolumeRestoreMembersToStatus(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus, restoreMembers []*volumeRestoreMember) {
+	for _, restoreMember := range restoreMembers {
+		v1alpha1.UpdateVolumeRestoreMemberStatus(volumeRestoreStatus, restoreMember.k8sClusterName, restoreMember.restore)
+	}
+}
+
 func (rm *restoreManager) executeRestoreVolumePhase(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) (memberCreated bool, err error) {
+	v1alpha1.StartVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestoreVolume)
 	restoreMemberMap := make(map[string]*volumeRestoreMember, len(restoreMembers))
 	for _, restoreMember := range restoreMembers {
 		restoreMemberMap[restoreMember.restore.Name] = restoreMember
@@ -198,11 +216,13 @@ func (rm *restoreManager) executeRestoreVolumePhase(ctx context.Context, volumeR
 		}
 		memberCreated = true
 		klog.Infof("VolumeRestore %s/%s create restore member %s successfully", volumeRestore.Namespace, volumeRestore.Name, restoreMember.Name)
+		v1alpha1.UpdateVolumeRestoreMemberStatus(&volumeRestore.Status, k8sClusterName, restoreMember)
 	}
 	return
 }
 
 func (rm *restoreManager) waitRestoreVolumeComplete(volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) error {
+	// check if restore members failed in data plane
 	for _, restoreMember := range restoreMembers {
 		restoreMemberName := restoreMember.restore.Name
 		k8sClusterName := restoreMember.k8sClusterName
@@ -220,15 +240,41 @@ func (rm *restoreManager) waitRestoreVolumeComplete(volumeRestore *v1alpha1.Volu
 				Message: errMsg,
 			}
 		}
+	}
 
+	for _, restoreMember := range restoreMembers {
+		restoreMemberName := restoreMember.restore.Name
+		k8sClusterName := restoreMember.k8sClusterName
+		if !pingcapv1alpha1.IsRestoreVolumeComplete(restoreMember.restore) {
+			return controller.IgnoreErrorf("restore member %s of cluster %s is not volume complete", restoreMemberName, k8sClusterName)
+		}
+	}
+	// restore volume complete
+	if !v1alpha1.IsVolumeRestoreVolumeComplete(volumeRestore) {
+		rm.setVolumeRestoreVolumeComplete(&volumeRestore.Status)
+	}
+
+	for _, restoreMember := range restoreMembers {
+		restoreMemberName := restoreMember.restore.Name
+		k8sClusterName := restoreMember.k8sClusterName
 		if !pingcapv1alpha1.IsRestoreTiKVComplete(restoreMember.restore) {
 			return controller.IgnoreErrorf("restore member %s of cluster %s is not tikv complete", restoreMemberName, k8sClusterName)
 		}
 	}
+	// restore tikv complete
+	if !v1alpha1.IsVolumeRestoreTiKVComplete(volumeRestore) {
+		rm.setVolumeRestoreTiKVComplete(&volumeRestore.Status)
+	}
+
 	return nil
 }
 
 func (rm *restoreManager) executeRestoreDataPhase(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) (memberUpdated bool, err error) {
+	if len(restoreMembers) != len(volumeRestore.Spec.Clusters) {
+		return false, controller.RequeueErrorf("expect %d restore members but get %d when restore data", len(volumeRestore.Spec.Clusters), len(restoreMembers))
+	}
+
+	v1alpha1.StartVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestoreData)
 	minResolvedTs := int64(math.MaxInt64)
 	var minResolvedTsMember *volumeRestoreMember
 	for _, restoreMember := range restoreMembers {
@@ -279,6 +325,9 @@ func (rm *restoreManager) waitRestoreDataComplete(volumeRestore *v1alpha1.Volume
 		restoreMemberName := restoreMember.restore.Name
 		k8sClusterName := restoreMember.k8sClusterName
 		if pingcapv1alpha1.IsRestoreDataComplete(restoreMember.restore) {
+			if !v1alpha1.IsVolumeRestoreDataComplete(volumeRestore) {
+				rm.setVolumeRestoreDataComplete(&volumeRestore.Status)
+			}
 			return nil
 		}
 
@@ -295,6 +344,7 @@ func (rm *restoreManager) waitRestoreDataComplete(volumeRestore *v1alpha1.Volume
 }
 
 func (rm *restoreManager) executeRestoreFinishPhase(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) (memberUpdated bool, err error) {
+	v1alpha1.StartVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestartTiKV)
 	for _, restoreMember := range restoreMembers {
 		if restoreMember.restore.Spec.FederalVolumeRestorePhase == pingcapv1alpha1.FederalVolumeRestoreFinish {
 			continue
@@ -360,6 +410,32 @@ func (rm *restoreManager) setVolumeRestoreRunning(volumeRestoreStatus *v1alpha1.
 		Type:   v1alpha1.VolumeRestoreRunning,
 		Status: corev1.ConditionTrue,
 	})
+
+}
+
+func (rm *restoreManager) setVolumeRestoreVolumeComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
+	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
+		Type:   v1alpha1.VolumeRestoreVolumeComplete,
+		Status: corev1.ConditionTrue,
+	})
+	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepRestoreVolume)
+	v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
+}
+
+func (rm *restoreManager) setVolumeRestoreTiKVComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
+	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
+		Type:   v1alpha1.VolumeRestoreTiKVComplete,
+		Status: corev1.ConditionTrue,
+	})
+	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
+}
+
+func (rm *restoreManager) setVolumeRestoreDataComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
+	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
+		Type:   v1alpha1.VolumeRestoreDataComplete,
+		Status: corev1.ConditionTrue,
+	})
+	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepRestoreData)
 }
 
 func (rm *restoreManager) setVolumeRestoreComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus, restoreMembers []*volumeRestoreMember) {
@@ -376,6 +452,7 @@ func (rm *restoreManager) setVolumeRestoreComplete(volumeRestoreStatus *v1alpha1
 		Type:   v1alpha1.VolumeRestoreComplete,
 		Status: corev1.ConditionTrue,
 	})
+	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepRestartTiKV)
 }
 
 func (rm *restoreManager) setVolumeRestoreFailed(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus, reason, message string) {

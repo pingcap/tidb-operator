@@ -58,22 +58,31 @@ func UpdateVolumeBackupMemberStatus(volumeBackupStatus *VolumeBackupStatus, k8sC
 		BackupPath:     backupMember.Status.BackupPath,
 		BackupSize:     backupMember.Status.BackupSize,
 		CommitTs:       backupMember.Status.CommitTs,
+		Phase:          backupMember.Status.Phase,
 	}
-
-	existedBackupIndex := -1
-	for i := range volumeBackupStatus.Backups {
-		if volumeBackupStatus.Backups[i].BackupName == backupMember.Name {
-			existedBackupIndex = i
-			break
+	if backupMember.Status.Phase == pingcapv1alpha1.BackupFailed {
+		var failedCondition *pingcapv1alpha1.BackupCondition
+		for i := range backupMember.Status.Conditions {
+			backupCondition := backupMember.Status.Conditions[i]
+			if backupCondition.Type == pingcapv1alpha1.BackupFailed {
+				failedCondition = &backupCondition
+				break
+			}
+		}
+		if failedCondition != nil {
+			backupMemberStatus.Reason = failedCondition.Reason
+			backupMemberStatus.Message = failedCondition.Message
 		}
 	}
 
-	if existedBackupIndex == -1 {
-		volumeBackupStatus.Backups = append(volumeBackupStatus.Backups, backupMemberStatus)
-		return
+	for i := range volumeBackupStatus.Backups {
+		if volumeBackupStatus.Backups[i].BackupName == backupMember.Name {
+			volumeBackupStatus.Backups[i] = backupMemberStatus
+			return
+		}
 	}
 
-	volumeBackupStatus.Backups[existedBackupIndex] = backupMemberStatus
+	volumeBackupStatus.Backups = append(volumeBackupStatus.Backups, backupMemberStatus)
 }
 
 // IsVolumeBackupInvalid returns true if VolumeBackup is invalid
