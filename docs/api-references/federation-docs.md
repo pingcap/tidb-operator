@@ -1516,7 +1516,7 @@ github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreConditionType
 </em>
 </td>
 <td>
-<p>Phase is the current status of backup member</p>
+<p>Phase is the current status of restore member</p>
 </td>
 </tr>
 <tr>
@@ -1751,7 +1751,7 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeStarted is the time at which the restore was started.</p>
+<p>TimeStarted is the time at which the restore step was started.</p>
 </td>
 </tr>
 <tr>
@@ -1764,7 +1764,7 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeCompleted is the time at which the restore was completed.</p>
+<p>TimeCompleted is the time at which the restore step was completed.</p>
 </td>
 </tr>
 <tr>
@@ -1775,7 +1775,7 @@ string
 </em>
 </td>
 <td>
-<p>TimeTaken is the time that volume restore federation takes, it is TimeCompleted - TimeStarted</p>
+<p>TimeTaken is the time that all the data planes take, it is TimeCompleted - TimeStarted</p>
 </td>
 </tr>
 </tbody>
