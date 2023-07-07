@@ -394,7 +394,7 @@ type VolumeRestoreMemberStatus struct {
 	TCNamespace string `json:"tcNamespace,omitempty"`
 	// RestoreName is the name of Restore CR
 	RestoreName string `json:"restoreName"`
-	// Phase is the current status of backup member
+	// Phase is the current status of restore member
 	Phase pingcapv1alpha1.RestoreConditionType `json:"phase"`
 	// CommitTs is the commit ts of the restored backup
 	CommitTs string `json:"commitTs,omitempty"`
@@ -407,13 +407,13 @@ type VolumeRestoreMemberStatus struct {
 type VolumeRestoreStep struct {
 	// StepName is the name of volume restore step
 	StepName VolumeRestoreStepType `json:"stepName"`
-	// TimeStarted is the time at which the restore was started.
+	// TimeStarted is the time at which the restore step was started.
 	// +nullable
 	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
-	// TimeCompleted is the time at which the restore was completed.
+	// TimeCompleted is the time at which the restore step was completed.
 	// +nullable
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
-	// TimeTaken is the time that volume restore federation takes, it is TimeCompleted - TimeStarted
+	// TimeTaken is the time that all the data planes take, it is TimeCompleted - TimeStarted
 	TimeTaken string `json:"timeTaken,omitempty"`
 }
 
