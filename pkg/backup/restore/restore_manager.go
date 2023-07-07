@@ -1111,8 +1111,8 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 		fioCommands = append(fioCommands, strings.ReplaceAll(fioSubCommand, "\n", "; "))
 	}
 	fioCommand := strings.Join(fioCommands, "; ")*/
-	filesArg := fmt.Sprintf("--files %s", constants.TiKVDataVolumeMountPath)
-	args := []string{filesArg}
+
+	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
 
 	fioPaths := make([]string, 0, len(podVolumeMounts))
 	for _, volumeMount := range podVolumeMounts {
@@ -1122,8 +1122,10 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 		fioPaths = append(fioPaths, volumeMount.MountPath)
 	}
 	if len(fioPaths) > 0 {
-		blockArg := fmt.Sprintf("--block %s", strings.Join(fioPaths, " "))
-		args = append(args, blockArg)
+		args = append(args, "--block")
+		for _, fioPath := range fioPaths {
+			args = append(args, fioPath)
+		}
 	}
 
 	warmUpPod := &corev1.PodTemplateSpec{
@@ -1215,8 +1217,7 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 	}
 	fioCommand := strings.Join(fioCommands, "; ")*/
 
-	filesArg := fmt.Sprintf("--files %s", constants.TiKVDataVolumeMountPath)
-	args := []string{filesArg}
+	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
 
 	fioPaths := make([]string, 0, len(warmUpPaths))
 	for _, warmUpPath := range warmUpPaths {
@@ -1226,8 +1227,10 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 		fioPaths = append(fioPaths, warmUpPath)
 	}
 	if len(fioPaths) > 0 {
-		blockArg := fmt.Sprintf("--block %s", strings.Join(fioPaths, " "))
-		args = append(args, blockArg)
+		args = append(args, "--block")
+		for _, fioPath := range fioPaths {
+			args = append(args, fioPath)
+		}
 	}
 
 	warmUpPod := &corev1.PodTemplateSpec{
