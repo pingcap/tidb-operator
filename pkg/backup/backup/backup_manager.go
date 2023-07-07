@@ -84,11 +84,20 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	var err error
 
 	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-		// check volume backup initialize job, we should ensure the job is existed during volume backup
-		if err = bm.checkVolumeBackupInitializeJobExisted(backup); err != nil {
+		if v1alpha1.IsBackupFailed(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
+			// if volume backup failed, we should delete initialize job to resume GC and pd schedule
+			if err := bm.deleteVolumeBackupInitializeJob(backup); err != nil {
+				return err
+			}
+		} else if err = bm.checkVolumeBackupInitializeJobExisted(backup); err != nil {
+			// check volume backup initialize job, we should ensure the job is existed during volume backup
 			klog.Errorf("backup %s/%s check volume backup initialize job error %v.", ns, name, err)
 			return err
 		}
+	}
+
+	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) {
+		return nil
 	}
 
 	// validate backup
@@ -203,7 +212,7 @@ func (bm *backupManager) checkVolumeBackupInitializeJobExisted(backup *v1alpha1.
 	if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
 		return nil
 	}
-	if !v1alpha1.IsVolumeBackupInitialized(backup) {
+	if !v1alpha1.IsVolumeBackupInitialized(backup) || v1alpha1.IsVolumeBackupInitializeFailed(backup) {
 		return nil
 	}
 
@@ -976,6 +985,28 @@ func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err erro
 	}
 
 	// delete the initializing job to resume GC and PD schedules
+	if err := bm.deps.JobControl.DeleteJob(backup, backupInitializeJob); err != nil {
+		return fmt.Errorf("backup %s/%s delete initializing job %s failed, err: %v",
+			ns, name, backupInitializeJobName, err)
+	}
+	return nil
+}
+
+func (bm *backupManager) deleteVolumeBackupInitializeJob(backup *v1alpha1.Backup) error {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	backupInitializeJobName := backup.GetVolumeBackupInitializeJobName()
+
+	backupInitializeJob, err := bm.deps.JobLister.Jobs(ns).Get(backupInitializeJobName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.Infof("backup %s/%s doesn't find initializing job %s, ignore it", ns, name, backupInitializeJobName)
+			return nil
+		}
+		return fmt.Errorf("backup %s/%s get initializing job %s failed, err: %v",
+			ns, name, backupInitializeJobName, err)
+	}
+
 	if err := bm.deps.JobControl.DeleteJob(backup, backupInitializeJob); err != nil {
 		return fmt.Errorf("backup %s/%s delete initializing job %s failed, err: %v",
 			ns, name, backupInitializeJobName, err)

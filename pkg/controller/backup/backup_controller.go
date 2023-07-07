@@ -176,6 +176,17 @@ func (c *Controller) updateBackup(cur interface{}) {
 	}
 
 	if v1alpha1.IsBackupFailed(newBackup) {
+		// when volume backup is failed, the initializing job may not stop immediately, we need stop it.
+		jobRunning, err := c.isVolumeBackupInitializeJobRunning(newBackup)
+		if err != nil {
+			klog.Errorf("Fail to check if initialize job of volume backup %s/%s is running, error %v", ns, name, err)
+			return
+		}
+		if jobRunning {
+			klog.V(4).Infof("volume backup %s/%s failed but initialize job is running, enqueue", ns, name)
+			c.enqueueBackup(newBackup)
+		}
+
 		klog.V(4).Infof("backup %s/%s is Failed, skipping.", ns, name)
 		return
 	}
@@ -436,6 +447,31 @@ func (c *Controller) isBackupPodOrJobFailed(backup *v1alpha1.Backup) (
 		}
 	}
 	return false, "", "", nil
+}
+
+func (c *Controller) isVolumeBackupInitializeJobRunning(backup *v1alpha1.Backup) (bool, error) {
+	if backup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot {
+		return false, nil
+	}
+
+	ns, backupName := backup.Namespace, backup.Name
+	jobName := backup.GetVolumeBackupInitializeJobName()
+	job, err := c.deps.JobLister.Jobs(ns).Get(jobName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		} else {
+			klog.Errorf("Fail to get job %s for backup %s/%s, error %v ", jobName, ns, backupName, err)
+			return false, err
+		}
+	}
+
+	for _, condition := range job.Status.Conditions {
+		if (condition.Type == batchv1.JobFailed || condition.Type == batchv1.JobComplete) && condition.Status == corev1.ConditionTrue {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // retrySnapshotBackupAccordingToBackoffPolicy retry snapshot backup according to spec.backoffRetryPolicy.
