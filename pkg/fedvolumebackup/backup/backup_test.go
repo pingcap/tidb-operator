@@ -82,6 +82,7 @@ func (h *helper) createVolumeBackup(ctx context.Context) *v1alpha1.VolumeBackup 
 }
 
 func (h *helper) assertRunInitialize(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup) {
+	h.g.Expect(len(volumeBackup.Status.Backups)).To(gomega.Equal(1))
 	h.g.Expect(volumeBackup.Status.Phase).To(gomega.Equal(v1alpha1.VolumeBackupRunning))
 	h.g.Expect(volumeBackup.Status.TimeStarted.Unix() > 0).To(gomega.BeTrue())
 	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
@@ -90,7 +91,7 @@ func (h *helper) assertRunInitialize(ctx context.Context, volumeBackup *v1alpha1
 }
 
 func (h *helper) assertRunExecute(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup) {
-	h.g.Expect(len(volumeBackup.Status.Backups)).To(gomega.Equal(1))
+	h.g.Expect(len(volumeBackup.Status.Backups)).To(gomega.Equal(3))
 
 	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
 	h.g.Expect(err).To(gomega.BeNil())

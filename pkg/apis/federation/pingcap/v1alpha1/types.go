@@ -162,12 +162,18 @@ type VolumeBackupMemberStatus struct {
 	TCNamespace string `json:"tcNamespace,omitempty"`
 	// BackupName is the name of Backup CR
 	BackupName string `json:"backupName"`
+	// Phase is the current status of backup member
+	Phase pingcapv1alpha1.BackupConditionType `json:"phase"`
 	// BackupPath is the location of the backup
 	BackupPath string `json:"backupPath,omitempty"`
 	// BackupSize is the data size of the backup
 	BackupSize int64 `json:"backupSize,omitempty"`
 	// CommitTs is the commit ts of the backup
 	CommitTs string `json:"commitTs,omitempty"`
+	// Reason is the reason why backup member is failed
+	Reason string `json:"reason,omitempty"`
+	// Message is the error message if backup member is failed
+	Message string `json:"message,omitempty"`
 }
 
 // VolumeBackupCondition describes the observed state of a VolumeBackup at a certain point.
@@ -359,6 +365,10 @@ type VolumeRestoreMemberBackupInfo struct {
 
 // VolumeRestoreStatus represents the current status of a volume restore.
 type VolumeRestoreStatus struct {
+	// Restores are volume restores' information in data plane
+	Restores []VolumeRestoreMemberStatus `json:"restores,omitempty"`
+	// Steps are details of every volume restore steps
+	Steps []VolumeRestoreStep `json:"steps,omitempty"`
 	// TimeStarted is the time at which the restore was started.
 	// +nullable
 	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
@@ -375,6 +385,38 @@ type VolumeRestoreStatus struct {
 	Conditions []VolumeRestoreCondition `json:"conditions,omitempty"`
 }
 
+type VolumeRestoreMemberStatus struct {
+	// K8sClusterName is the name of the k8s cluster where the tc locates
+	K8sClusterName string `json:"k8sClusterName,omitempty"`
+	// TCName is the name of the TiDBCluster CR which need to execute volume backup
+	TCName string `json:"tcName,omitempty"`
+	// TCNamespace is the namespace of the TiDBCluster CR
+	TCNamespace string `json:"tcNamespace,omitempty"`
+	// RestoreName is the name of Restore CR
+	RestoreName string `json:"restoreName"`
+	// Phase is the current status of backup member
+	Phase pingcapv1alpha1.RestoreConditionType `json:"phase"`
+	// CommitTs is the commit ts of the restored backup
+	CommitTs string `json:"commitTs,omitempty"`
+	// Reason is the reason why restore member is failed
+	Reason string `json:"reason,omitempty"`
+	// Message is the error message if restore member is failed
+	Message string `json:"message,omitempty"`
+}
+
+type VolumeRestoreStep struct {
+	// StepName is the name of volume restore step
+	StepName VolumeRestoreStepType `json:"stepName"`
+	// TimeStarted is the time at which the restore was started.
+	// +nullable
+	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
+	// TimeCompleted is the time at which the restore was completed.
+	// +nullable
+	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+	// TimeTaken is the time that volume restore federation takes, it is TimeCompleted - TimeStarted
+	TimeTaken string `json:"timeTaken,omitempty"`
+}
+
 // VolumeRestoreCondition describes the observed state of a VolumeRestore at a certain point.
 type VolumeRestoreCondition struct {
 	Status corev1.ConditionStatus     `json:"status"`
@@ -389,9 +431,33 @@ type VolumeRestoreCondition struct {
 type VolumeRestoreConditionType string
 
 const (
-	VolumeRestoreInvalid  VolumeRestoreConditionType = "Invalid"
-	VolumeRestoreRunning  VolumeRestoreConditionType = "Running"
+	// VolumeRestoreInvalid means the VolumeRestore is invalid
+	VolumeRestoreInvalid VolumeRestoreConditionType = "Invalid"
+	// VolumeRestoreRunning means start to create restore members in data planes
+	VolumeRestoreRunning VolumeRestoreConditionType = "Running"
+	// VolumeRestoreVolumeComplete means all the restore members are volume complete
+	VolumeRestoreVolumeComplete VolumeRestoreConditionType = "VolumeComplete"
+	// VolumeRestoreTiKVComplete means all the restore members are tikv complete
+	VolumeRestoreTiKVComplete VolumeRestoreConditionType = "TikvComplete"
+	// VolumeRestoreDataComplete means all the restore members are data complete
+	VolumeRestoreDataComplete VolumeRestoreConditionType = "DataComplete"
+	// VolumeRestoreComplete means all the restore members are complete
 	VolumeRestoreComplete VolumeRestoreConditionType = "Complete"
-	VolumeRestoreFailed   VolumeRestoreConditionType = "Failed"
-	VolumeRestoreCleaned  VolumeRestoreConditionType = "Cleaned"
+	// VolumeRestoreFailed means one of restore member is failed
+	VolumeRestoreFailed VolumeRestoreConditionType = "Failed"
+	// VolumeRestoreCleaned means all the restore members are cleaned
+	VolumeRestoreCleaned VolumeRestoreConditionType = "Cleaned"
+)
+
+type VolumeRestoreStepType string
+
+const (
+	// VolumeRestoreStepRestoreVolume is restore volume step
+	VolumeRestoreStepRestoreVolume VolumeRestoreStepType = "RestoreVolume"
+	// VolumeRestoreStepStartTiKV is start tikv step
+	VolumeRestoreStepStartTiKV VolumeRestoreStepType = "StartTiKV"
+	// VolumeRestoreStepRestoreData is restore data step
+	VolumeRestoreStepRestoreData VolumeRestoreStepType = "RestoreData"
+	// VolumeRestoreStepRestartTiKV is restart tikv step
+	VolumeRestoreStepRestartTiKV VolumeRestoreStepType = "RestartTiKV"
 )

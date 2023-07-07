@@ -111,7 +111,7 @@ func TestBackupControlUpdateBackup(t *testing.T) {
 			updateError:  true,
 			expectFn: func(g gomega.Gomega, err error, statusUpdated bool, finalizers []string) {
 				g.Expect(err).To(gomega.HaveOccurred())
-				g.Expect(statusUpdated).To(gomega.BeFalse())
+				g.Expect(statusUpdated).To(gomega.BeTrue())
 				g.Expect(finalizers).NotTo(gomega.BeEmpty())
 			},
 		},
