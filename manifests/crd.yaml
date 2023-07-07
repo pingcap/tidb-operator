@@ -58,6 +58,10 @@ spec:
       name: Completed
       priority: 1
       type: date
+    - description: The time that the backup takes
+      jsonPath: .status.timeTaken
+      name: TimeTaken
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -1510,6 +1514,8 @@ spec:
               timeStarted:
                 format: date-time
                 nullable: true
+                type: string
+              timeTaken:
                 type: string
             type: object
         required:
@@ -12259,6 +12265,10 @@ spec:
       name: Completed
       priority: 1
       type: date
+    - description: The time that the restore takes
+      jsonPath: .status.timeTaken
+      name: TimeTaken
+      type: string
     - description: The commit ts of tidb cluster restore
       jsonPath: .status.commitTs
       name: CommitTS
@@ -14358,6 +14368,8 @@ spec:
               timeStarted:
                 format: date-time
                 nullable: true
+                type: string
+              timeTaken:
                 type: string
             type: object
         required:

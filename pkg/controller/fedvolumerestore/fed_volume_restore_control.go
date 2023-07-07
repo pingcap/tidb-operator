@@ -80,19 +80,22 @@ func (c *defaultRestoreControl) updateRestore(volumeRestore *v1alpha1.VolumeRest
 	ns := volumeRestore.GetNamespace()
 	name := volumeRestore.GetName()
 
-	if err := c.restoreManager.Sync(volumeRestore); err != nil {
+	err := c.restoreManager.Sync(volumeRestore)
+	if err != nil {
 		klog.Warningf("VolumeRestore %s/%s sync error: %s", ns, name, err.Error())
-		return err
 	}
 
-	if apiequality.Semantic.DeepEqual(oldStatus, &volumeRestore.Status) {
-		return nil
+	if !apiequality.Semantic.DeepEqual(oldStatus, &volumeRestore.Status) {
+		klog.Infof("VolumeRestore %s/%s update status, old: %+v, new: %+v", ns, name, oldStatus, volumeRestore.Status)
+		if sErr := c.restoreManager.UpdateStatus(volumeRestore, &volumeRestore.Status); sErr != nil {
+			klog.Warningf("VolumeRestore %s/%s update status error: %s", ns, name, err.Error())
+			if err == nil {
+				err = sErr
+			}
+		}
 	}
-	if err := c.restoreManager.UpdateStatus(volumeRestore, &volumeRestore.Status); err != nil {
-		klog.Warningf("VolumeRestore %s/%s update status error: %s", ns, name, err.Error())
-		return err
-	}
-	return nil
+
+	return err
 }
 
 // addProtectionFinalizer will be called when the VolumeBackup CR is created

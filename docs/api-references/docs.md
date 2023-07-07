@@ -4273,6 +4273,17 @@ TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/
 </tr>
 <tr>
 <td>
+<code>timeTaken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TimeTaken is the time that backup takes, it is TimeCompleted - TimeStarted</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupSizeReadable</code></br>
 <em>
 string
@@ -13966,6 +13977,17 @@ Kubernetes meta/v1.Time
 </td>
 <td>
 <p>TimeCompleted is the time at which the restore was completed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeTaken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TimeTaken is the time that restore takes, it is TimeCompleted - TimeStarted</p>
 </td>
 </tr>
 <tr>
