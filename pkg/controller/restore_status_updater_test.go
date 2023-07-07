@@ -101,5 +101,6 @@ func newExpectRestoreStatus() *v1alpha1.RestoreStatus {
 	s.CommitTs = ts
 	s.TimeStarted = metav1.Time{Time: start}
 	s.TimeCompleted = metav1.Time{Time: end}
+	s.TimeTaken = "4m0s"
 	return s
 }

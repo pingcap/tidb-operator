@@ -969,12 +969,19 @@ spec:
                       type: string
                     k8sClusterName:
                       type: string
+                    message:
+                      type: string
+                    phase:
+                      type: string
+                    reason:
+                      type: string
                     tcName:
                       type: string
                     tcNamespace:
                       type: string
                   required:
                   - backupName
+                  - phase
                   type: object
                 type: array
               commitTs:
@@ -2997,6 +3004,49 @@ spec:
                 type: array
               phase:
                 type: string
+              restores:
+                items:
+                  properties:
+                    commitTs:
+                      type: string
+                    k8sClusterName:
+                      type: string
+                    message:
+                      type: string
+                    phase:
+                      type: string
+                    reason:
+                      type: string
+                    restoreName:
+                      type: string
+                    tcName:
+                      type: string
+                    tcNamespace:
+                      type: string
+                  required:
+                  - phase
+                  - restoreName
+                  type: object
+                type: array
+              steps:
+                items:
+                  properties:
+                    stepName:
+                      type: string
+                    timeCompleted:
+                      format: date-time
+                      nullable: true
+                      type: string
+                    timeStarted:
+                      format: date-time
+                      nullable: true
+                      type: string
+                    timeTaken:
+                      type: string
+                  required:
+                  - stepName
+                  type: object
+                type: array
               timeCompleted:
                 format: date-time
                 nullable: true
