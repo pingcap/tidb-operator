@@ -189,6 +189,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - label.StoreIDLabelKey
 	//   - label.MemberIDLabelKey
 	//   - label.NamespaceLabelKey
+	// Also updates the TiKV pod annotation for label.AnnTiKVNoActiveStoreSince if store is missing.
 	if err := c.metaManager.Sync(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "meta").Inc()
 		return err

@@ -1487,7 +1487,6 @@ type TiFlashStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
 }
 
 // TiProxyMember is TiProxy member
@@ -1514,7 +1513,6 @@ type TiProxyStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
 }
 
 // TiCDCStatus is TiCDC status
@@ -1529,7 +1527,6 @@ type TiCDCStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
 }
 
 // TiCDCCapture is TiCDC Capture status
@@ -1595,7 +1592,6 @@ type PumpStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
 }
 
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
@@ -2898,7 +2894,6 @@ type MasterStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
 }
 
 // MasterMember is dm-master member status
@@ -2939,7 +2934,6 @@ type WorkerStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
 }
 
 // WorkerMember is dm-worker member status

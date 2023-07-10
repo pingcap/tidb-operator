@@ -441,7 +441,6 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 	return reconcile.Result{}, nil
 }
 func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
-	//TODO(anish): remove extra debug logs before PR.
 	value, exist := pod.Annotations[v1alpha1.ReplaceDiskAnnKey]
 	if exist {
 		if value != v1alpha1.ReplaceDiskValueTrue {
@@ -453,25 +452,6 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 		if err != nil {
 			storeIDStr, exist := pod.Labels[label.StoreIDLabelKey]
 			if !exist {
-				// TODO: sometimes we can end up here when store is tombstone, but status nor label has store-id labelled.
-				// Likely due to deleting store before pod label got a chance to be applied.
-				// This is an issue for existing tikv scale-in too.
-				// Made these changes:
-				//   * moved metamanager sync above member sync so that label can be updated without being blocked
-				//   * both here & in tikv_scaler before deleting a store, check that label is not empty before deleting.
-				// However there are other cases like store-id not showing up in tombstones etc. Safer solution seems
-				// to be to apply a sort of label on pod saying no-store id "since" with a timestamp, and if a pod
-				// doesn't have store id for more than x minutes, declare it as tombstone and delete it. Here & in tikv
-				// scale-in
-				// Another case this happens pd auto gc the tombstore?
-				//│ [2023/06/30 23:56:53.537 +00:00] [WARN] [cluster.go:1243] ["store has been offline"] [store-id=1020] [store-address=basic-tikv-3.basic-tikv-peer.default.svc:20160] [physically-destroyed=false]                                         │
-				//│ [2023/06/30 23:56:53.538 +00:00] [INFO] [cluster.go:2343] ["store limit changed"] [store-id=1020] [type=remove-peer] [rate-per-min=100000000]                                                                                            │
-				//│ [2023/06/30 23:56:55.125 +00:00] [WARN] [cluster.go:1352] ["store has been Tombstone"] [store-id=1020] [store-address=basic-tikv-3.basic-tikv-peer.default.svc:20160] [state=Offline] [physically-destroyed=false]                       │
-				//│ [2023/06/30 23:56:55.128 +00:00] [INFO] [cluster.go:2209] ["store limit removed"] [store-id=1020]                                                                                                                                        │
-				//│ [2023/06/30 23:57:05.130 +00:00] [INFO] [cluster.go:1542] ["auto gc the tombstore store success"] [store="id:1020 address:\"basic-tikv-3.basic-tikv-peer.default.svc:20160\" state:Tombstone version:\"6.5.0\" peer_address:\"basic-tikv │
-				//  node_state:Removed "] [down-time=468935h57m5.130493006s] ????!? Missing heartbeat so pd auto gc'ed it?
-				// TODO anish : implement handling with label.AnnTiKVNoActiveStoreSince
-
 				return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status or label for pod %s/%s", pod.Namespace, pod.Name)
 			}
 			storeID, err = strconv.ParseUint(storeIDStr, 10, 64)
@@ -486,23 +466,19 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 		if err != nil {
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store info from pd for storeid %d pod %s/%s", storeID, pod.Namespace, pod.Name)
 		}
-		klog.Infof("Pod %s/%s marked for deletion with storeid %d", pod.Namespace, pod.Name, storeID)
 		if storeInfo.Store.StateName == v1alpha1.TiKVStateUp {
 			if !tc.TiKVAllStoresReady() {
-				klog.Infof("All Tikv Stores not yet ready, waiting before deleting store %d for pod %s/%s", storeID, pod.Namespace, pod.Name)
 				return reconcile.Result{Requeue: true}, nil
 			}
 			// 1. Delete store
-			klog.Infof("storeid %d is Up, deleting...", storeID)
+			klog.Infof("storeid %d is Up, deleting due to replace disk annotation.", storeID)
 			pdClient.DeleteStore(storeID)
 			return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
 		} else if storeInfo.Store.StateName == v1alpha1.TiKVStateOffline {
 			// 2. Wait for Tombstone
-			klog.Infof("storeid %d is Offline, waiting for tombstone...", storeID)
 			return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
 		} else if storeInfo.Store.StateName == v1alpha1.TiKVStateTombstone {
 			// 3. Delete PVCs
-			klog.Infof("storeid %d is Tombstone!, going thru PVCs", storeID)
 			var pvcs []*corev1.PersistentVolumeClaim = nil
 			for _, vol := range pod.Spec.Volumes {
 				if vol.PersistentVolumeClaim != nil {
@@ -525,7 +501,6 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 					err = c.deps.PVCControl.DeletePVC(tc, pvc)
 					klog.Infof("Deleting pvc: %s", pvc.Name)
 					if err != nil {
-						klog.Infof("Deleting pvc: %s | GOT ERROR: %s", pvc.Name, err)
 						anyErr = err
 					}
 				}
@@ -535,10 +510,9 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 			// 4. Delete pod
 			if pod.DeletionTimestamp != nil {
 				// Already marked for deletion, wait for it to delete.
-				klog.Infof("Pod already marked for deletion, not re-deleting: %s", pod.Name)
 				return reconcile.Result{RequeueAfter: RequeueInterval}, nil
 			}
-			klog.Infof("NO PVCS, Deleting pod: %s", pod.Name)
+			klog.Infof("Deleting pod: %s", pod.Name)
 			err := c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 			if err != nil && !errors.IsNotFound(err) {
 				return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
@@ -547,7 +521,6 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 			return reconcile.Result{}, perrors.Annotatef(err, "Cannot replace disk when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
 		}
 	}
-	klog.Infof("No label on pod, nothing to do for disk: %s", pod.Name)
 	return reconcile.Result{}, nil
 }
 
