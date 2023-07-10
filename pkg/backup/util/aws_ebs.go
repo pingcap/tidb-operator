@@ -159,8 +159,9 @@ func (e *EC2Session) AddTags(resourcesTags map[string]TagMap) error {
 		tagMap := resourcesTags[resourceID]
 		var tags []*ec2.Tag
 		for tag := range tagMap {
+			tagKey := tag
 			value := tagMap[tag]
-			tags = append(tags, &ec2.Tag{Key: &tag, Value: &value})
+			tags = append(tags, &ec2.Tag{Key: &tagKey, Value: &value})
 		}
 
 		// Create the input for adding the tag
