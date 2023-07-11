@@ -16,6 +16,7 @@ package volumes
 import (
 	"context"
 	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/utils"
@@ -194,4 +195,19 @@ func (p *pvcReplacer) tryToReplacePVC(ctx *componentVolumeContext) error {
 		return fmt.Errorf("started disk replace for pod %s, waiting", pod.Name)
 	}
 	return nil
+}
+
+type fakePVCReplacer struct {
+}
+
+func (f fakePVCReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
+	return nil
+}
+
+func (f fakePVCReplacer) Sync(tc *v1alpha1.TidbCluster) error {
+	return nil
+}
+
+func NewFakePVCReplacer() PVCReplacerInterface {
+	return &fakePVCReplacer{}
 }

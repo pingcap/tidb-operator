@@ -16,11 +16,12 @@ package volumes
 import (
 	"context"
 	"fmt"
+	"sort"
+
 	"github.com/pingcap/errors"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	storagelister "k8s.io/client-go/listers/storage/v1"
-	"sort"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
