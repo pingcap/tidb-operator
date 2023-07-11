@@ -558,7 +558,11 @@ func (tc *TidbCluster) PDStsDesiredReplicas() int32 {
 	if tc.Spec.PD == nil {
 		return 0
 	}
-	return tc.Spec.PD.Replicas + tc.GetPDDeletedFailureReplicas()
+	var spareReplaceReplicas int32 = 0
+	if tc.Status.PD.VolReplaceInProgress {
+		spareReplaceReplicas = 1
+	}
+	return tc.Spec.PD.Replicas + tc.GetPDDeletedFailureReplicas() + spareReplaceReplicas
 }
 
 func (tc *TidbCluster) PDStsActualReplicas() int32 {

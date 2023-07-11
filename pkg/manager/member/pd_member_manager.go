@@ -253,6 +253,16 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 
+	if tc.Status.PD.VolReplaceInProgress {
+		// Volume Replace in Progress, so do not make any changes to Sts spec, overwrite with old pod spec
+		// config as we are not ready to upgrade yet.
+		_, podSpec, err := GetLastAppliedConfig(oldPDSet)
+		if err != nil {
+			return err
+		}
+		newPDSet.Spec.Template.Spec = *podSpec
+	}
+
 	if !templateEqual(newPDSet, oldPDSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		if err := m.upgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
@@ -809,7 +819,9 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	podSpec.InitContainers = append(initContainers, basePDSpec.InitContainers()...)
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if basePDSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+	if tc.Status.PD.VolReplaceInProgress {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else if basePDSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
