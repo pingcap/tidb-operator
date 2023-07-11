@@ -471,6 +471,8 @@ func getComponentLabelValue(c MemberType) string {
 		return label.TiKVLabelVal
 	case TiFlashMemberType:
 		return label.TiFlashLabelVal
+	case TiProxyMemberType:
+		return label.TiProxyLabelVal
 	case TiCDCMemberType:
 		return label.TiCDCLabelVal
 	case PumpMemberType:
