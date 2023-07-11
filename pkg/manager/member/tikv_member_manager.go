@@ -268,7 +268,7 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 
 	if tc.Status.TiKV.VolReplaceInProgress {
 		// Volume Replace in Progress, so do not make any changes to Sts spec, overwrite with old pod spec
-		//config as we are not ready to upgrade yet.
+		// config as we are not ready to upgrade yet.
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err

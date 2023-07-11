@@ -468,7 +468,7 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 		}
 		if storeInfo.Store.StateName == v1alpha1.TiKVStateUp {
 			if !tc.TiKVAllStoresReady() {
-				return reconcile.Result{Requeue: true}, nil
+				return reconcile.Result{Requeue: true}, fmt.Errorf("Not all TIKV stores ready before replace")
 			}
 			// 1. Delete store
 			klog.Infof("storeid %d is Up, deleting due to replace disk annotation.", storeID)
@@ -476,7 +476,7 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 			return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
 		} else if storeInfo.Store.StateName == v1alpha1.TiKVStateOffline {
 			// 2. Wait for Tombstone
-			return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
+			return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, fmt.Errorf("StoreID %d not yet Tombstone", storeID)
 		} else if storeInfo.Store.StateName == v1alpha1.TiKVStateTombstone {
 			// 3. Delete PVCs
 			var pvcs []*corev1.PersistentVolumeClaim = nil
@@ -515,7 +515,7 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 			klog.Infof("Deleting pod: %s", pod.Name)
 			err := c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 			if err != nil && !errors.IsNotFound(err) {
-				return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
+				return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %s", pod.Name)
 			}
 		} else {
 			return reconcile.Result{}, perrors.Annotatef(err, "Cannot replace disk when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
@@ -525,6 +525,14 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 }
 
 func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	result, err := c.syncTiDBPodForGracefulShutdown(ctx, pod, tc)
+	if err != nil || result.Requeue || result.RequeueAfter > 0 {
+		return result, err
+	}
+	return c.syncTiDBPodForReplaceDisk(ctx, pod, tc)
+}
+
+func (c *PodController) syncTiDBPodForGracefulShutdown(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
 	value := needDeleteTiDBPod(pod)
 	if value == "" {
 		// No need to delete tidb pod
@@ -559,6 +567,72 @@ func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1
 		}
 	}
 
+	return reconcile.Result{}, nil
+}
+
+func (c *PodController) syncTiDBPodForReplaceDisk(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value, exist := pod.Annotations[v1alpha1.ReplaceDiskAnnKey]
+	if exist {
+		if value != v1alpha1.ReplaceDiskValueTrue {
+			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceDiskAnnKey, pod.Namespace, pod.Name)
+			return reconcile.Result{}, nil
+		}
+		// Verify okay to delete tidb pod now.
+		ns := tc.GetNamespace()
+		tcName := tc.GetName()
+
+		if tc.PDUpgrading() || tc.PDScaling() || tc.TiKVUpgrading() || tc.TiKVScaling() || tc.TiDBScaling() {
+			klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
+				"tikv status is %s, tiflash status is %s, pump status is %s, "+
+				"tidb status is %s, can not replace tidb disk",
+				ns, tcName,
+				tc.Status.PD.Phase, tc.Status.TiKV.Phase, tc.Status.TiFlash.Phase,
+				tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
+			return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+		}
+		if !tc.TiDBAllMembersReady() {
+			return reconcile.Result{Requeue: true}, nil
+		}
+		// 1. Delete PVCs
+		var pvcs []*corev1.PersistentVolumeClaim = nil
+		for _, vol := range pod.Spec.Volumes {
+			if vol.PersistentVolumeClaim != nil {
+				pvc, err := c.deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(vol.PersistentVolumeClaim.ClaimName)
+				if err != nil {
+					klog.Warningf("Vol %s, claim %s did not find pvc: %s", vol.Name, vol.PersistentVolumeClaim.ClaimName, err)
+					continue // Skip missing (deleted?) pvc.
+				}
+				if pvc.DeletionTimestamp != nil {
+					klog.Warningf("pvc %s already marked for deletion %s", pvc.Name, pvc.DeletionTimestamp)
+					continue // already marked for deletion.
+				}
+				pvcs = append(pvcs, pvc)
+			}
+		}
+		if pvcs != nil {
+			// Delete any PVCs not yet deleted.
+			var anyErr error = nil
+			for _, pvc := range pvcs {
+				err := c.deps.PVCControl.DeletePVC(tc, pvc)
+				klog.Infof("Deleting pvc: %s", pvc.Name)
+				if err != nil {
+					anyErr = err
+				}
+			}
+			// Requeue next iteration, to verify pvc marked for deletion before moving on to pod deletion.
+			return reconcile.Result{Requeue: true}, anyErr
+		}
+		// 2. Delete pod
+		if pod.DeletionTimestamp != nil {
+			// Already marked for deletion, wait for it to delete.
+			return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+		}
+		klog.Infof("Deleting pod: %s", pod.Name)
+		err := c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %s", pod.Name)
+		}
+	}
 	return reconcile.Result{}, nil
 }
 
