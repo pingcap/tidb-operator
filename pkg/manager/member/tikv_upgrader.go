@@ -22,7 +22,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/features"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 
@@ -194,14 +193,12 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 		return controller.RequeueErrorf("upgradeTiKVPod: evicting leader of pod %s for tc %s/%s", upgradePodName, ns, tcName)
 	}
 
-	if features.DefaultFeatureGate.Enabled(features.VolumeModifying) {
-		done, err = u.modifyVolumesBeforeUpgrade(tc, upgradePod)
-		if err != nil {
-			return fmt.Errorf("upgradeTiKVPod: failed to modify volumes of pod %s for tc %s/%s, error: %s", upgradePodName, ns, tcName, err)
-		}
-		if !done {
-			return controller.RequeueErrorf("upgradeTiKVPod: modifying volumes of pod %s for tc %s/%s", upgradePodName, ns, tcName)
-		}
+	done, err = u.modifyVolumesBeforeUpgrade(tc, upgradePod)
+	if err != nil {
+		return fmt.Errorf("upgradeTiKVPod: failed to modify volumes of pod %s for tc %s/%s, error: %s", upgradePodName, ns, tcName, err)
+	}
+	if !done {
+		return controller.RequeueErrorf("upgradeTiKVPod: modifying volumes of pod %s for tc %s/%s", upgradePodName, ns, tcName)
 	}
 
 	mngerutils.SetUpgradePartition(newSet, ordinal)

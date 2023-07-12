@@ -29,6 +29,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes/delegation"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes/delegation/aws"
 )
@@ -90,12 +91,15 @@ type podVolModifier struct {
 }
 
 func NewPodVolumeModifier(deps *controller.Dependencies) PodVolumeModifier {
-	return &podVolModifier{
-		deps: deps,
-		modifiers: map[string]delegation.VolumeModifier{
-			"ebs.csi.aws.com": aws.NewEBSModifier(deps.AWSConfig),
-		},
+	m := &podVolModifier{
+		deps:      deps,
+		modifiers: map[string]delegation.VolumeModifier{},
 	}
+	if features.DefaultFeatureGate.Enabled(features.VolumeModifying) {
+		m.modifiers["ebs.csi.aws.com"] = aws.NewEBSModifier(deps.AWSConfig)
+	}
+
+	return m
 }
 
 func (p *podVolModifier) ShouldModify(actual []ActualVolume) bool {
