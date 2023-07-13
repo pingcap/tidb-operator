@@ -169,6 +169,8 @@ spec:
             active:
               format: int32
               type: integer
+            completedIndexes:
+              type: string
             completionTime:
               format: date-time
               type: string
@@ -194,6 +196,7 @@ spec:
                 - type
                 type: object
               type: array
+              x-kubernetes-list-type: atomic
             failed:
               format: int32
               type: integer
