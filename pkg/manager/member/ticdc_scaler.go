@@ -235,15 +235,17 @@ func isTiCDCPodSupportGracefulUpgrade(
 	currentVersion := tc.TiCDCVersion()
 	ge, err := cmpver.Compare(podVersion, cmpver.GreaterOrEqual, currentVersion)
 	if err != nil {
-		klog.Errorf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
+		klog.Warningf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
 			action, podVersion, currentVersion, err)
-		return false, nil
+		// if parse version failed, we still try to graftfully shutdown TiCDC,
+		// as we already checked `http.StatusNotFound` in `DrainCapture`, `ResignOwner` and `IsHealthy`
+		return true, nil
 	}
 	le, err := cmpver.Compare(podVersion, cmpver.LessOrEqual, currentVersion)
 	if err != nil {
-		klog.Errorf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
+		klog.Warningf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
 			action, podVersion, currentVersion, err)
-		return false, nil
+		return true, nil
 	}
 	// Reload TiCDC if the current version matches pod version.
 	if ge && le {
@@ -252,7 +254,7 @@ func isTiCDCPodSupportGracefulUpgrade(
 	// We are performing cross version upgrade.
 	lessThan63, err := cmpver.Compare(podVersion, cmpver.Less, ticdcCrossUpgradeVersion)
 	if err != nil {
-		klog.Errorf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
+		klog.Warningf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
 			action, podVersion, ticdcCrossUpgradeVersion, err)
 		return false, nil
 	}
@@ -271,7 +273,7 @@ func isTiCDCPodSupportGracefulUpgrade(
 	podVersionPlus2 := podVer.IncMajor().IncMajor()
 	withInTwoMajorVersion, err := cmpver.Compare(currentVersion, cmpver.Less, podVersionPlus2.String())
 	if err != nil {
-		klog.Errorf("ticdc.%s: fail to compare version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
+		klog.Warningf("ticdc.%s: fail to compare version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
 			action, currentVersion, ticdcCrossUpgradeVersion, err)
 		return false, nil
 	}
