@@ -708,7 +708,7 @@ func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			caseName: "v6.3.0 -> latest, skip graceful upgrade",
+			caseName: "v6.3.0 -> latest, still try to graceful upgrade",
 			cdcCtl: &controller.FakeTiCDCControl{
 				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
 					return &controller.CaptureStatus{
@@ -720,7 +720,7 @@ func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
 				v := "latest"
 				tc.Spec.TiCDC.Version = &v
 			},
-			expectedOk:  false,
+			expectedOk:  true,
 			expectedErr: false,
 		},
 		{
@@ -734,7 +734,7 @@ func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
 			expectedErr: true,
 		},
 		{
-			caseName: "malformed pod version, skip graceful upgrade",
+			caseName: "malformed pod version, still try to graceful upgrade",
 			cdcCtl: &controller.FakeTiCDCControl{
 				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
 					return &controller.CaptureStatus{
@@ -742,11 +742,11 @@ func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
 					}, nil
 				},
 			},
-			expectedOk:  false,
+			expectedOk:  true,
 			expectedErr: false,
 		},
 		{
-			caseName: "malformed tc version, skip graceful upgrade",
+			caseName: "malformed tc version, still try to graceful upgrade",
 			cdcCtl: &controller.FakeTiCDCControl{
 				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
 					return &controller.CaptureStatus{
@@ -757,11 +757,11 @@ func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
 			changeTc: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.Version = "malformed"
 			},
-			expectedOk:  false,
+			expectedOk:  true,
 			expectedErr: false,
 		},
 		{
-			caseName: "malformed ticdc spec version, skip graceful upgrade",
+			caseName: "malformed ticdc spec version, still try to graceful upgrade",
 			cdcCtl: &controller.FakeTiCDCControl{
 				GetStatusFn: func(tc *v1alpha1.TidbCluster, ordinal int32) (*controller.CaptureStatus, error) {
 					return &controller.CaptureStatus{
@@ -773,7 +773,7 @@ func TestTiCDCIsSupportGracefulUpgrade(t *testing.T) {
 				v := "malformed"
 				tc.Spec.TiCDC.Version = &v
 			},
-			expectedOk:  false,
+			expectedOk:  true,
 			expectedErr: false,
 		},
 		{
