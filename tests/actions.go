@@ -408,7 +408,6 @@ func (oa *OperatorActions) DeployOperator(info *OperatorConfig) error {
 
 func (oa *OperatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 	if err := oa.DeployOperator(info); err != nil {
-		time.Sleep(30 * time.Minute)
 		slack.NotifyAndPanic(err)
 	}
 }
