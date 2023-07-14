@@ -235,7 +235,7 @@ func isTiCDCPodSupportGracefulUpgrade(
 	currentVersion := tc.TiCDCVersion()
 	ge, err := cmpver.Compare(podVersion, cmpver.GreaterOrEqual, currentVersion)
 	if err != nil {
-		klog.Warningf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
+		klog.Warningf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, still try to graceful shutdown",
 			action, podVersion, currentVersion, err)
 		// if parse version failed, we still try to graftfully shutdown TiCDC,
 		// as we already checked `http.StatusNotFound` in `DrainCapture`, `ResignOwner` and `IsHealthy`
@@ -243,7 +243,7 @@ func isTiCDCPodSupportGracefulUpgrade(
 	}
 	le, err := cmpver.Compare(podVersion, cmpver.LessOrEqual, currentVersion)
 	if err != nil {
-		klog.Warningf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, skip graceful shutdown",
+		klog.Warningf("ticdc.%s: fail to compare TiCDC pod version \"%s\", version \"%s\", error: %v, still try to graceful shutdown",
 			action, podVersion, currentVersion, err)
 		return true, nil
 	}
