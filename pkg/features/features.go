@@ -48,6 +48,7 @@ const (
 	AutoScaling string = "AutoScaling"
 
 	// VolumeModifying controls whether allow to modify volumes
+	// NOTE: volume resize is always allowed even if this feature is disabled
 	VolumeModifying string = "VolumeModifying"
 )
 
