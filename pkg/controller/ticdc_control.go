@@ -115,8 +115,9 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 		// Let caller retry drain capture.
 		return 0, true, nil
 	}
-	if len(captures) == 1 {
+	if len(captures) == 1 || len(captures) == 0 {
 		// No way to drain a single node TiCDC cluster, ignore.
+		// Can't get capture info, ignore.
 		return 0, false, nil
 	}
 
@@ -186,8 +187,9 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 		// Let caller retry resign owner.
 		return false, nil
 	}
-	if len(captures) == 1 {
+	if len(captures) == 1 || len(captures) == 0 {
 		// No way to resign owner in a single node TiCDC cluster, ignore.
+		// Can't get capture info, ignore.
 		return true, nil
 	}
 
@@ -236,6 +238,10 @@ func (c *defaultTiCDCControl) IsHealthy(tc *v1alpha1.TidbCluster, ordinal int32)
 	if retry {
 		// Let caller retry.
 		return false, nil
+	}
+	if len(captures) == 0 {
+		// No way to get capture info, ignore.
+		return true, nil
 	}
 
 	_, owner := getOrdinalAndOwnerCaptureInfo(tc, ordinal, captures)
