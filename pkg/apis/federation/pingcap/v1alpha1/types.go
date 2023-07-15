@@ -315,6 +315,12 @@ type VolumeRestoreMemberCluster struct {
 	TCNamespace string `json:"tcNamespace,omitempty"`
 	// AZName is the available zone which the volume snapshots restore to
 	AZName string `json:"azName,omitempty"`
+	// VolumeType is type of the restored volume
+	VolumeType string `json:"volumeType,omitempty"`
+	// VolumeIOPS is IOPS of the restored volume
+	VolumeIOPS int64 `json:"volumeIOPS,omitempty"`
+	// VolumeThroughput is bandwidth of the restored volume
+	VolumeThroughput int64 `json:"volumeThroughput,omitempty"`
 	// Backup is the volume backup information
 	Backup VolumeRestoreMemberBackupInfo `json:"backup,omitempty"`
 }

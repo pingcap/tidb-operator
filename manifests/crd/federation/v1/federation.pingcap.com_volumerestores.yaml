@@ -819,6 +819,14 @@ spec:
                       type: string
                     tcNamespace:
                       type: string
+                    volumeIOPS:
+                      format: int64
+                      type: integer
+                    volumeThroughput:
+                      format: int64
+                      type: integer
+                    volumeType:
+                      type: string
                   type: object
                 type: array
               template:

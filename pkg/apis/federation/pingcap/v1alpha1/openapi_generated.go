@@ -619,6 +619,27 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeRestoreMemberCluster(ref comm
 							Format:      "",
 						},
 					},
+					"volumeType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VolumeType is type of the restored volume",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"volumeIOPS": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VolumeIOPS is IOPS of the restored volume",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"volumeThroughput": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VolumeThroughput is bandwidth of the restored volume",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
 					"backup": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Backup is the volume backup information",

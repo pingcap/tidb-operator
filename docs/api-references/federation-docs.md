@@ -1301,6 +1301,39 @@ string
 </tr>
 <tr>
 <td>
+<code>volumeType</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>VolumeType is type of the restored volume</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeIOPS</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>VolumeIOPS is IOPS of the restored volume</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeThroughput</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>VolumeThroughput is bandwidth of the restored volume</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backup</code></br>
 <em>
 <a href="#volumerestorememberbackupinfo">
