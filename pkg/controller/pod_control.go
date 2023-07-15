@@ -110,6 +110,9 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	podName := pod.GetName()
 	labels := pod.GetLabels()
 	annotations := pod.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
 	annotationsUpdated := false
 	tcName := tc.GetName()
 	if labels == nil {

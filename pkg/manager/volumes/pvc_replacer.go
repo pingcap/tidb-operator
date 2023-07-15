@@ -33,14 +33,12 @@ type PVCReplacerInterface interface {
 
 type pvcReplacer struct {
 	deps  *controller.Dependencies
-	pm    PodVolumeModifier
 	utils *volCompareUtils
 }
 
 func NewPVCReplacer(deps *controller.Dependencies) PVCReplacerInterface {
 	return &pvcReplacer{
 		deps:  deps,
-		pm:    NewPodVolumeModifier(deps),
 		utils: newVolCompareUtils(deps),
 	}
 }
@@ -83,7 +81,6 @@ func (p *pvcReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
-		// TODO: Check if there are cases where we should not replace and throw error, like single PD replica etc.
 		status, err := p.getVolReplaceStatusForComponent(tc, comp)
 		if err != nil {
 			errs = append(errs, err)

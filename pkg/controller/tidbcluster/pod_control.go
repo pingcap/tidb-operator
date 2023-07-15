@@ -58,6 +58,7 @@ type PodController struct {
 	recheckLeaderCountDuration    time.Duration
 	recheckClusterStableDuration  time.Duration
 	recheckStoreTombstoneDuration time.Duration
+	deletePVCsAndPodFn            func(deps *controller.Dependencies, ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error)
 }
 
 // NewPodController create a PodController.
@@ -72,6 +73,7 @@ func NewPodController(deps *controller.Dependencies) *PodController {
 		recheckLeaderCountDuration:    time.Second * 15,
 		recheckClusterStableDuration:  time.Minute * 1,
 		recheckStoreTombstoneDuration: time.Second * 15,
+		deletePVCsAndPodFn:            deletePVCsAndPod,
 	}
 
 	podsInformer := deps.KubeInformerFactory.Core().V1().Pods()
@@ -355,7 +357,7 @@ func (c *PodController) syncPDPodForReplaceDisk(ctx context.Context, pod *corev1
 			}
 		}
 		// Delete PVCs & Pod
-		return c.deletePVCsAndPod(ctx, pod, tc)
+		return c.deletePVCsAndPodFn(c.deps, ctx, pod, tc)
 	}
 	return reconcile.Result{}, nil
 }
@@ -550,9 +552,9 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 			return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, fmt.Errorf("StoreID %d not yet Tombstone", storeID)
 		} else if storeInfo.Store.StateName == v1alpha1.TiKVStateTombstone {
 			// 3. Delete PVCs & 4. Delete Pod.
-			return c.deletePVCsAndPod(ctx, pod, tc)
+			return c.deletePVCsAndPodFn(c.deps, ctx, pod, tc)
 		} else {
-			return reconcile.Result{}, perrors.Annotatef(err, "Cannot replace disk when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
+			return reconcile.Result{}, fmt.Errorf("Cannot replace disk when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
 		}
 	}
 	return reconcile.Result{}, nil
@@ -627,17 +629,17 @@ func (c *PodController) syncTiDBPodForReplaceDisk(ctx context.Context, pod *core
 		if !tc.TiDBAllMembersReady() {
 			return reconcile.Result{Requeue: true}, nil
 		}
-		return c.deletePVCsAndPod(ctx, pod, tc)
+		return c.deletePVCsAndPodFn(c.deps, ctx, pod, tc)
 	}
 	return reconcile.Result{}, nil
 }
 
-func (c *PodController) deletePVCsAndPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+func deletePVCsAndPod(deps *controller.Dependencies, ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
 	// 1. Delete PVCs
 	var pvcs []*corev1.PersistentVolumeClaim = nil
 	for _, vol := range pod.Spec.Volumes {
 		if vol.PersistentVolumeClaim != nil {
-			pvc, err := c.deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(vol.PersistentVolumeClaim.ClaimName)
+			pvc, err := deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(vol.PersistentVolumeClaim.ClaimName)
 			if err != nil {
 				klog.Warningf("Vol %s, claim %s did not find pvc: %s", vol.Name, vol.PersistentVolumeClaim.ClaimName, err)
 				continue // Skip missing (deleted?) pvc.
@@ -653,7 +655,7 @@ func (c *PodController) deletePVCsAndPod(ctx context.Context, pod *corev1.Pod, t
 		// Delete any PVCs not yet deleted.
 		var anyErr error = nil
 		for _, pvc := range pvcs {
-			err := c.deps.PVCControl.DeletePVC(tc, pvc)
+			err := deps.PVCControl.DeletePVC(tc, pvc)
 			klog.Infof("Deleting pvc: %s", pvc.Name)
 			if err != nil {
 				anyErr = err
@@ -668,7 +670,7 @@ func (c *PodController) deletePVCsAndPod(ctx context.Context, pod *corev1.Pod, t
 		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
 	}
 	klog.Infof("Deleting pod: %s", pod.Name)
-	err := c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
+	err := deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %s", pod.Name)
 	}

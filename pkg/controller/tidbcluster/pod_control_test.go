@@ -21,6 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap/kvproto/pkg/pdpb"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -43,7 +46,7 @@ func (c *kvClient) GetLeaderCount() (int, error) {
 	return int(count), nil
 }
 
-func TestTiKVPodSync(t *testing.T) {
+func TestTiKVPodSyncForEviction(t *testing.T) {
 	interval := time.Millisecond * 100
 	timeout := time.Minute * 1
 	g := NewGomegaWithT(t)
@@ -165,7 +168,147 @@ func TestTiKVPodSync(t *testing.T) {
 	}, timeout, interval).ShouldNot(Equal(0), "should finish annotation")
 }
 
-func TestPDPodSync(t *testing.T) {
+func TestTiKVPodSyncForReplaceDisk(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name               string
+		storeState         string
+		storeLabel         string
+		storeStatus        string
+		expectRequeue      bool
+		pvcPodDeleted      bool
+		deletedStore       uint64
+		extraNotReadyStore bool
+	}
+
+	testFn := func(tt testcase, t *testing.T) {
+		tc := newTidbCluster()
+		pod := newTiKVPod(tc)
+		if tt.storeLabel != "" {
+			pod.Labels[label.StoreIDLabelKey] = tt.storeLabel
+		}
+		tc.Status.TiKV = v1alpha1.TiKVStatus{
+			Stores: map[string]v1alpha1.TiKVStore{},
+		}
+		if tt.storeStatus != "" {
+			tc.Status.TiKV.Stores[tt.storeStatus] = v1alpha1.TiKVStore{
+				PodName: pod.Name,
+				ID:      tt.storeStatus,
+				State:   tt.storeState,
+			}
+		}
+		if tt.extraNotReadyStore {
+			tc.Status.TiKV.Stores["999"] = v1alpha1.TiKVStore{
+				PodName: pod.Name,
+				ID:      "999",
+				State:   v1alpha1.TiKVStateDown,
+			}
+		}
+		deps := controller.NewFakeDependencies()
+		c := NewPodController(deps)
+		pdClient := pdapi.NewFakePDClient()
+		c.testPDClient = pdClient
+		pdClient.AddReaction(pdapi.GetStoreActionType, func(action *pdapi.Action) (interface{}, error) {
+			storeInfo := &pdapi.StoreInfo{
+				Store: &pdapi.MetaStore{
+					StateName: tt.storeState,
+				},
+			}
+			return storeInfo, nil
+		})
+		var storeDeleted uint64 = 0
+		pdClient.AddReaction(pdapi.DeleteStoreActionType, func(action *pdapi.Action) (interface{}, error) {
+			storeDeleted = action.ID
+			return nil, nil
+		})
+		deletePVCsAndPodCalled := false
+		c.deletePVCsAndPodFn = func(deps *controller.Dependencies, ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+			deletePVCsAndPodCalled = true
+			return reconcile.Result{}, nil
+		}
+
+		ctx := context.Background()
+		if pod.Annotations == nil {
+			pod.Annotations = make(map[string]string)
+		}
+		pod.Annotations[v1alpha1.ReplaceDiskAnnKey] = v1alpha1.ReplaceDiskValueTrue
+		result, err := c.syncTiKVPodForReplaceDisk(ctx, pod, tc)
+		g.Expect(result.Requeue || result.RequeueAfter > 0 || err != nil).To(Equal(tt.expectRequeue))
+		g.Expect(deletePVCsAndPodCalled).To(Equal(tt.pvcPodDeleted))
+		g.Expect(storeDeleted).To(Equal(tt.deletedStore))
+	}
+	tests := []testcase{
+		{
+			name:          "Normal store up is deleted",
+			storeState:    v1alpha1.TiKVStateUp,
+			storeLabel:    "123",
+			storeStatus:   "123",
+			expectRequeue: true,
+			pvcPodDeleted: false,
+			deletedStore:  123,
+		},
+		{
+			name:          "Normal store offline waiting",
+			storeState:    v1alpha1.TiKVStateOffline,
+			storeLabel:    "123",
+			storeStatus:   "123",
+			expectRequeue: true,
+			pvcPodDeleted: false,
+		},
+		{
+			name:          "Normal store tombstone pod deleted",
+			storeState:    v1alpha1.TiKVStateTombstone,
+			storeLabel:    "123",
+			storeStatus:   "123",
+			expectRequeue: false,
+			pvcPodDeleted: true,
+		},
+		{
+			name:          "Missing store status fall back label and tombstone pod deleted",
+			storeState:    v1alpha1.TiKVStateTombstone,
+			storeLabel:    "123",
+			storeStatus:   "",
+			expectRequeue: false,
+			pvcPodDeleted: true,
+		},
+		{
+			name:          "Missing label do not delete store",
+			storeState:    v1alpha1.TiKVStateUp,
+			storeLabel:    "",
+			storeStatus:   "123",
+			expectRequeue: true,
+			pvcPodDeleted: false,
+			deletedStore:  0, // No delete.
+		},
+		{
+			name:               "Stores not ready do not delete",
+			storeState:         v1alpha1.TiKVStateUp,
+			storeLabel:         "123",
+			storeStatus:        "123",
+			expectRequeue:      true,
+			pvcPodDeleted:      false,
+			deletedStore:       0, // No delete.
+			extraNotReadyStore: true,
+		},
+		{
+			name:          "Conflicting store status delete with status",
+			storeState:    v1alpha1.TiKVStateUp,
+			storeLabel:    "124",
+			storeStatus:   "123",
+			expectRequeue: true,
+			pvcPodDeleted: false,
+			deletedStore:  123,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFn(tt, t)
+		})
+	}
+}
+
+func TestPDPodSyncForLeaderTransfer(t *testing.T) {
 	const (
 		interval = 100 * time.Millisecond
 		timeout  = time.Minute
@@ -407,7 +550,7 @@ func TestPDPodSync(t *testing.T) {
 	}
 }
 
-func TestTiDBPodSync(t *testing.T) {
+func TestTiDBPodSyncForGracefulShutdown(t *testing.T) {
 	const (
 		interval = 100 * time.Millisecond
 		timeout  = time.Minute
@@ -590,4 +733,95 @@ func newTiKVPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 			},
 		},
 	}
+}
+
+func TestPdPodSyncForReplaceDisk(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := newTidbCluster()
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-0", controller.PDMemberName(tc.Name)),
+			Namespace: tc.Namespace,
+			Labels: map[string]string{
+				label.MemberIDLabelKey: "123",
+			},
+			Annotations: map[string]string{
+				v1alpha1.ReplaceDiskAnnKey: v1alpha1.ReplaceDiskValueTrue,
+			},
+		},
+	}
+	deps := controller.NewFakeDependencies()
+	c := NewPodController(deps)
+	pdClient := pdapi.NewFakePDClient()
+	c.testPDClient = pdClient
+
+	var leaderId uint64 = 123
+	pdClient.AddReaction(pdapi.GetPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
+		return &pdpb.Member{
+			MemberId: leaderId,
+		}, nil
+	})
+
+	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+		return &pdapi.MembersInfo{
+			Members: []*pdpb.Member{
+				{
+					MemberId: 123,
+					Name:     "pd-0",
+				},
+				{
+					MemberId: 124,
+					Name:     "pd-1",
+				},
+				{
+					MemberId: 125,
+					Name:     "pd-2",
+				},
+			},
+		}, nil
+	})
+
+	transferName := ""
+	pdClient.AddReaction(pdapi.TransferPDLeaderActionType, func(action *pdapi.Action) (interface{}, error) {
+		transferName = action.Name
+		return nil, nil
+	})
+
+	deletePVCsAndPodCalled := false
+	c.deletePVCsAndPodFn = func(deps *controller.Dependencies, ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+		deletePVCsAndPodCalled = true
+		return reconcile.Result{}, nil
+	}
+
+	ctx := context.Background()
+
+	// Current pod is leader, check leader transferred
+	leaderId = 123
+	transferName = ""
+	result, err := c.syncPDPodForReplaceDisk(ctx, pod, tc)
+	g.Expect(err).Should(Succeed())
+	g.Expect(result.Requeue).To(BeTrue())
+	g.Expect(transferName).To(Equal("pd-1"))
+	g.Expect(deletePVCsAndPodCalled).To(BeFalse())
+	// Check deleted when not leader
+	leaderId = 124
+	transferName = ""
+	result, err = c.syncPDPodForReplaceDisk(ctx, pod, tc)
+	g.Expect(err).Should(Succeed())
+	g.Expect(result.Requeue).To(BeFalse())
+	g.Expect(transferName).To(BeEmpty())
+	g.Expect(deletePVCsAndPodCalled).To(BeTrue())
+	// Check not delete when not all PD's are ready.
+	deletePVCsAndPodCalled = false
+	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
+		"125": {
+			Health: false,
+		},
+	}
+	result, err = c.syncPDPodForReplaceDisk(ctx, pod, tc)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(result.Requeue).To(BeTrue())
+	g.Expect(transferName).To(BeEmpty())
+	g.Expect(deletePVCsAndPodCalled).To(BeFalse())
 }
