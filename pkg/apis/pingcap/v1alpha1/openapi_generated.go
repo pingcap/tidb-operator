@@ -7429,6 +7429,27 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"volumeType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VolumeType indicate the volume type of restored volumes. It is only used for mode of volume-snapshot",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"volumeIOPS": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VolumeIOPS indicates IOPS of restored volumes it is only valid for mode of volume-snapshot",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"volumeThroughput": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VolumeThroughput indicate bandwidth of restored volumes. It is only used for mode of volume-snapshot",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
 					"tikvGCLifeTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TikvGCLifeTime is to specify the safe gc life time for restore. The time limit during which data is retained for each GC, in the format of Go Duration. When a GC happens, the current time minus this value is the safe point.",

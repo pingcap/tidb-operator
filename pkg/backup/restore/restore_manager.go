@@ -738,6 +738,18 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			if restore.Spec.VolumeAZ != "" {
 				args = append(args, fmt.Sprintf("--target-az=%s", restore.Spec.VolumeAZ))
 			}
+
+			if restore.Spec.VolumeType != "" {
+				args = append(args, fmt.Sprintf("--volume-type=%s", restore.Spec.VolumeType))
+			}
+
+			if restore.Spec.VolumeIOPS > 0 {
+				args = append(args, fmt.Sprintf("--volume-iops=%d", restore.Spec.VolumeIOPS))
+			}
+
+			if restore.Spec.VolumeThroughput > 0 {
+				args = append(args, fmt.Sprintf("--volume-throughput=%d", restore.Spec.VolumeThroughput))
+			}
 		}
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))

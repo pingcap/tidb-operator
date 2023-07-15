@@ -2401,6 +2401,18 @@ type RestoreSpec struct {
 	// it is only valid for mode of volume-snapshot
 	// +optional
 	VolumeAZ string `json:"volumeAZ,omitempty"`
+	// VolumeType indicate the volume type of restored volumes.
+	// It is only used for mode of volume-snapshot
+	// +optional
+	VolumeType string `json:"volumeType,omitempty"`
+	// VolumeIOPS indicates IOPS of restored volumes
+	// it is only valid for mode of volume-snapshot
+	// +optional
+	VolumeIOPS int64 `json:"volumeIOPS,omitempty"`
+	// VolumeThroughput indicate bandwidth of restored volumes.
+	// It is only used for mode of volume-snapshot
+	// +optional
+	VolumeThroughput int64 `json:"volumeThroughput,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.

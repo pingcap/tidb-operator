@@ -1305,6 +1305,45 @@ it is only valid for mode of volume-snapshot</p>
 </tr>
 <tr>
 <td>
+<code>volumeType</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeType indicate the volume type of restored volumes.
+It is only used for mode of volume-snapshot</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeIOPS</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeIOPS indicates IOPS of restored volumes
+it is only valid for mode of volume-snapshot</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeThroughput</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeThroughput indicate bandwidth of restored volumes.
+It is only used for mode of volume-snapshot</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tikvGCLifeTime</code></br>
 <em>
 string
@@ -13740,6 +13779,45 @@ string
 <em>(Optional)</em>
 <p>VolumeAZ indicates which AZ the volume snapshots restore to.
 it is only valid for mode of volume-snapshot</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeType</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeType indicate the volume type of restored volumes.
+It is only used for mode of volume-snapshot</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeIOPS</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeIOPS indicates IOPS of restored volumes
+it is only valid for mode of volume-snapshot</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeThroughput</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeThroughput indicate bandwidth of restored volumes.
+It is only used for mode of volume-snapshot</p>
 </td>
 </tr>
 <tr>
