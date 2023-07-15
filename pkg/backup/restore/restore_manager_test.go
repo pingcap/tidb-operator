@@ -420,6 +420,47 @@ func TestBRRestoreByEBS(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "restore-volume",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-5",
+					Namespace: "ns-5",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-5",
+						Cluster:          "cluster-5",
+					},
+					VolumeThroughput: 8000,
+					VolumeType:       "io2",
+					VolumeIOPS:       800,
+					VolumeAZ:         "us-east-1-az1",
+					StorageProvider: v1alpha1.StorageProvider{
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{},
+			},
+		},
 	}
 	//generate the restore meta in local nfs
 	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:gosec
