@@ -22,8 +22,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 # parameters
-OPERATOR_OLD="v1\.4\.4"
-OPERATOR_NEW="v1\.4\.5"
+OPERATOR_OLD="v1\.4\.5"
+OPERATOR_NEW="v1\.4\.6"
 TIDB_OLD="v6\.5\.0"
 TIDB_NEW="v7\.1\.0"
 DM_OLD="v6.5.0"
