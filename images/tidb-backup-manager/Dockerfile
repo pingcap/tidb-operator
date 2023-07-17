@@ -2,13 +2,8 @@ FROM rockylinux:9.1.20230215
 ARG TARGETARCH
 ARG RCLONE_VERSION=v1.57.0
 ARG SHUSH_VERSION=v1.4.0
-<<<<<<< HEAD
 ARG TOOLKIT_VERSION=v7.1.0
-RUN apk update && apk add ca-certificates wget unzip bind-tools --no-cache && rm -rf /var/cache/apk/*
-=======
-ARG TOOLKIT_VERSION=v6.5.0
 RUN dnf install -y ca-certificates bind-utils wget nc unzip && dnf clean all
->>>>>>> 2197bef28 (br: fix dockerfile base (#4935))
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip \
   && unzip rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip \
