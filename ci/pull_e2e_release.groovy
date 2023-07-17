@@ -145,11 +145,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                     dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
                         unstash 'tidb-operator'
                         stage("Debug Info") {
-<<<<<<< HEAD
-                            println "debug host: 172.16.5.25"
-                            println "debug command: kubectl -n jenkins-tidb-operator exec -ti ${NODE_NAME} bash"
-=======
->>>>>>> 2f5793ff0 (ci: update ci cluster config (#5008))
                             sh """
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
