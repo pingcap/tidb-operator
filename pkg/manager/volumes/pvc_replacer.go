@@ -85,8 +85,13 @@ func (p *pvcReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			errs = append(errs, err)
 		}
+		// TiKV from 1 -> 2 for volume replace messes up with max-replication=3 preventing delete stores afterwards.
+		if status && comp.MemberType() == v1alpha1.TiKVMemberType && tc.TiKVStsDesiredReplicas() < 3 {
+			status = false
+			klog.Warningf("%s for cluster %s/%s need volume replace, but has too few replicas, so refusing to replace.", comp.MemberType(), tc.GetNamespace(), tc.GetName())
+		}
 		if status != comp.GetVolReplaceInProgress() {
-			klog.Infof("changing VolReplaceInProgress status to %t for %s/%s/%s", status, tc.GetName(), tc.GetName(), comp.MemberType())
+			klog.Infof("changing VolReplaceInProgress status to %t for %s/%s/%s", status, tc.GetNamespace(), tc.GetName(), comp.MemberType())
 		}
 		comp.SetVolReplaceInProgress(status)
 	}
@@ -99,6 +104,9 @@ func (p *pvcReplacer) Sync(tc *v1alpha1.TidbCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
+		if !comp.GetVolReplaceInProgress() {
+			continue
+		}
 		ctx, err := p.utils.BuildContextForTC(tc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by replacer sync for %s/%s:%s failed: %w", tc.Namespace, tc.Name, comp.MemberType(), err))
@@ -117,7 +125,7 @@ func (p *pvcReplacer) replaceVolumes(ctx *componentVolumeContext) error {
 	if ctx.status.GetPhase() == v1alpha1.ScalePhase {
 		// Note: only wait for scaling, phase may show up as upgrading but will be blocked
 		// for replacing here to effect the config + disk change together.
-		return fmt.Errorf("component phase is not Scaling, waiting to complete.")
+		return fmt.Errorf("component phase is Scaling, waiting to complete.")
 	}
 	if err := p.tryToRecreateSTS(ctx); err != nil {
 		return err

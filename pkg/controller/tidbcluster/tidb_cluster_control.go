@@ -293,18 +293,18 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
-	// modify volumes if necessary
-	if err := c.pvcModifier.Sync(tc); err != nil {
-		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_modifier").Inc()
-		return err
-	}
-
-	// Replace volumes if necessary
+	// Replace volumes if necessary. Note: if enabled, takes precedence over pvcModifier.
 	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) {
 		if err := c.pvcReplacer.Sync(tc); err != nil {
 			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_replacer_sync").Inc()
 			return err
 		}
+	}
+
+	// modify volumes if necessary
+	if err := c.pvcModifier.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_modifier").Inc()
+		return err
 	}
 
 	// syncing the some tidbcluster status attributes

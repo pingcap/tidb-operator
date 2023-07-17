@@ -309,6 +309,7 @@ func TestPvcReplacerSync(t *testing.T) {
 		defer close(stop)
 		replacer := NewPVCReplacer(deps)
 		tc := makeTcAndK8Objects(deps, g, tt.sts, tt.pods)
+		tc.Status.TiKV.VolReplaceInProgress = true
 		if tt.isScale {
 			tc.Status.TiKV.Phase = v1alpha1.ScalePhase
 		}
@@ -320,7 +321,7 @@ func TestPvcReplacerSync(t *testing.T) {
 				return err
 			}, testMatchTimeout, testMatchInterval).Should(HaveOccurred())
 			g.Expect(syncErr.Error()).To(ContainSubstring("recreate statefulset"))
-		} else {
+		} else if syncErr != nil {
 			g.Expect(syncErr.Error()).To(Not(ContainSubstring("recreate statefulset")))
 		}
 		if tt.expectAnnotationOnPod1 {
@@ -329,7 +330,7 @@ func TestPvcReplacerSync(t *testing.T) {
 				return pod1.Annotations
 			}, testMatchTimeout, testMatchInterval).Should(HaveKeyWithValue(v1alpha1.ReplaceDiskAnnKey, v1alpha1.ReplaceDiskValueTrue))
 			g.Expect(syncErr.Error()).To(ContainSubstring("started disk replace"))
-		} else {
+		} else if syncErr != nil {
 			g.Expect(syncErr.Error()).To(Not(ContainSubstring("started disk replace")))
 		}
 	}
