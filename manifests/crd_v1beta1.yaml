@@ -282,16 +282,19 @@ spec:
                                   matchLabels:
                                     additionalProperties:
                                       type: string
-                                    type: object
-                                type: object
-                              namespaces:
-                                items:
-                                  type: string
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                  - key
+                                  - operator
+                                  type: object
                                 type: array
-                              topologyKey:
-                                type: string
-                            required:
-                            - topologyKey
+                              matchLabels:
+                                additionalProperties:
+                                  type: string
+                                type: object
                             type: object
                           weight:
                             format: int32
@@ -1731,28 +1734,27 @@ spec:
                         requiredDuringSchedulingIgnoredDuringExecution:
                           items:
                             properties:
-                              labelSelector:
+                              configMap:
                                 properties:
-                                  matchExpressions:
+                                  items:
                                     items:
                                       properties:
                                         key:
                                           type: string
-                                        operator:
+                                        mode:
+                                          format: int32
+                                          type: integer
+                                        path:
                                           type: string
-                                        values:
-                                          items:
-                                            type: string
-                                          type: array
                                       required:
                                       - key
-                                      - operator
+                                      - path
                                       type: object
                                     type: array
-                                  matchLabels:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
+                                  name:
+                                    type: string
+                                  optional:
+                                    type: boolean
                                 type: object
                               namespaces:
                                 items:
@@ -1817,35 +1819,38 @@ spec:
                             properties:
                               labelSelector:
                                 properties:
-                                  matchExpressions:
+                                  items:
                                     items:
                                       properties:
                                         key:
                                           type: string
-                                        operator:
+                                        mode:
+                                          format: int32
+                                          type: integer
+                                        path:
                                           type: string
-                                        values:
-                                          items:
-                                            type: string
-                                          type: array
                                       required:
                                       - key
-                                      - operator
+                                      - path
                                       type: object
                                     type: array
-                                  matchLabels:
-                                    additionalProperties:
-                                      type: string
-                                    type: object
+                                  name:
+                                    type: string
+                                  optional:
+                                    type: boolean
                                 type: object
-                              namespaces:
-                                items:
-                                  type: string
-                                type: array
-                              topologyKey:
-                                type: string
-                            required:
-                            - topologyKey
+                              serviceAccountToken:
+                                properties:
+                                  audience:
+                                    type: string
+                                  expirationSeconds:
+                                    format: int64
+                                    type: integer
+                                  path:
+                                    type: string
+                                required:
+                                - path
+                                type: object
                             type: object
                           type: array
                       type: object
@@ -1990,6 +1995,130 @@ spec:
                             - resource
                             type: object
                           secretKeyRef:
+                            properties:
+                              labelSelector:
+                                properties:
+                                  matchExpressions:
+                                    items:
+                                      properties:
+                                        key:
+                                          type: string
+                                        operator:
+                                          type: string
+                                        values:
+                                          items:
+                                            type: string
+                                          type: array
+                                      required:
+                                      - key
+                                      - operator
+                                      type: object
+                                    type: array
+                                  matchLabels:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                type: object
+                              namespaces:
+                                items:
+                                  type: string
+                                type: array
+                              topologyKey:
+                                type: string
+                            required:
+                            - topologyKey
+                            type: object
+                          type: array
+                      type: object
+                  type: object
+                azblob:
+                  properties:
+                    accessTier:
+                      type: string
+                    container:
+                      type: string
+                    path:
+                      type: string
+                    prefix:
+                      type: string
+                    secretName:
+                      type: string
+                  type: object
+                backupType:
+                  type: string
+                br:
+                  properties:
+                    checkRequirements:
+                      type: boolean
+                    checksum:
+                      type: boolean
+                    cluster:
+                      type: string
+                    clusterNamespace:
+                      type: string
+                    concurrency:
+                      format: int32
+                      type: integer
+                    db:
+                      type: string
+                    logLevel:
+                      type: string
+                    onLine:
+                      type: boolean
+                    options:
+                      items:
+                        type: string
+                      type: array
+                    rateLimit:
+                      type: integer
+                    sendCredToTikv:
+                      type: boolean
+                    statusAddr:
+                      type: string
+                    table:
+                      type: string
+                    timeAgo:
+                      type: string
+                  required:
+                  - cluster
+                  type: object
+                cleanOption:
+                  properties:
+                    batchConcurrency:
+                      format: int32
+                      type: integer
+                    disableBatchConcurrency:
+                      type: boolean
+                    pageSize:
+                      format: int64
+                      type: integer
+                    routineConcurrency:
+                      format: int32
+                      type: integer
+                  type: object
+                cleanPolicy:
+                  type: string
+                dumpling:
+                  properties:
+                    options:
+                      items:
+                        type: string
+                      type: array
+                    tableFilter:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                env:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                      valueFrom:
+                        properties:
+                          configMapKeyRef:
                             properties:
                               key:
                                 type: string
@@ -19752,6 +19881,9 @@ spec:
                 type: string
               type: array
             podManagementPolicy:
+              enum:
+              - OrderedReady
+              - Parallel
               type: string
             podSecurityContext:
               properties:

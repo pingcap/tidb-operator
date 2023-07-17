@@ -27,6 +27,55 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+func TestPodManagementPolicy(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name     string
+		update   func(c *TidbCluster)
+		expectFn func(*GomegaWithT, apps.PodManagementPolicyType)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbCluster()
+		test.update(tc)
+		test.expectFn(g, tc.BasePDSpec().PodManagementPolicy())
+	}
+	tests := []testcase{
+		{
+			name: "OrderedReady",
+			update: func(c *TidbCluster) {
+				c.Spec.PD.PodManagementPolicy = "OrderedReady"
+			},
+			expectFn: func(g *GomegaWithT, s apps.PodManagementPolicyType) {
+				g.Expect(s).To(Equal(apps.OrderedReadyPodManagement))
+			},
+		},
+		{
+			name: "Parallel",
+			update: func(c *TidbCluster) {
+				c.Spec.PD.PodManagementPolicy = "Parallel"
+			},
+			expectFn: func(g *GomegaWithT, s apps.PodManagementPolicyType) {
+				g.Expect(s).To(Equal(apps.ParallelPodManagement))
+			},
+		},
+		{
+			name: "Invalid pod management policy, should fall back to Parallel",
+			update: func(c *TidbCluster) {
+				c.Spec.PD.PodManagementPolicy = "invalid"
+			},
+			expectFn: func(g *GomegaWithT, s apps.PodManagementPolicyType) {
+				g.Expect(s).To(Equal(apps.ParallelPodManagement))
+			},
+		},
+	}
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
 func TestPDIsAvailable(t *testing.T) {
 	g := NewGomegaWithT(t)
 
