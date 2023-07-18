@@ -223,7 +223,7 @@ type Dependencies struct {
 	DeploymentLister            appslisters.DeploymentLister
 	JobLister                   batchlisters.JobLister
 	IngressLister               networklister.IngressLister
-	IngressV1Beta1Lister        extensionslister.IngressLister // in order to be compatibility with kubernetes which less than v1.19
+	IngressV1Beta1Lister        extensionslister.IngressLister // TODO: in order to be compatibility with kubernetes which less than v1.19, remove it if v1.19- is not supported
 	StorageClassLister          storagelister.StorageClassLister
 	TiDBClusterLister           listers.TidbClusterLister
 	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister

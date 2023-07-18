@@ -25,7 +25,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
@@ -1073,7 +1073,7 @@ func (in *CrdKind) DeepCopyInto(out *CrdKind) {
 	}
 	if in.AdditionalPrinterColums != nil {
 		in, out := &in.AdditionalPrinterColums, &out.AdditionalPrinterColums
-		*out = make([]v1beta1.CustomResourceColumnDefinition, len(*in))
+		*out = make([]apiextensionsv1.CustomResourceColumnDefinition, len(*in))
 		copy(*out, *in)
 	}
 	return

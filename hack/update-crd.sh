@@ -36,22 +36,16 @@ CRD_OPTIONS="preserveUnknownFields=false,allowDangerousTypes=true,maxDescLen=0"
 
 # generate CRDs
 ${CONTROLLER_GEN} \
-    crd:crdVersions=v1beta1,${CRD_OPTIONS} \
-    paths=${API_PACKAGES} \
-    output:crd:dir=${CRD_OUTPUT_DIR}/v1beta1
-${CONTROLLER_GEN} \
     crd:crdVersions=v1,${CRD_OPTIONS} \
     paths=${API_PACKAGES} \
     output:crd:dir=${CRD_OUTPUT_DIR}/v1
 
 for file in ${SKIP_CRD_FILES[@]}; do
-    rm -f ${CRD_OUTPUT_DIR}/v1beta1/${file}
     rm -f ${CRD_OUTPUT_DIR}/v1/${file}
 done
 
 # merge all CRDs
 find ${CRD_OUTPUT_DIR}/v1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/crd.yaml
-find ${CRD_OUTPUT_DIR}/v1beta1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/crd_v1beta1.yaml
 
 
 # generate CRDs for federation into separate files so that most users don't need to install them
@@ -63,19 +57,13 @@ CRD_OPTIONS="preserveUnknownFields=false,allowDangerousTypes=true,maxDescLen=0"
 
 # generate CRDs
 ${CONTROLLER_GEN} \
-    crd:crdVersions=v1beta1,${CRD_OPTIONS} \
-    paths=${API_PACKAGES} \
-    output:crd:dir=${CRD_OUTPUT_DIR}/v1beta1
-${CONTROLLER_GEN} \
     crd:crdVersions=v1,${CRD_OPTIONS} \
     paths=${API_PACKAGES} \
     output:crd:dir=${CRD_OUTPUT_DIR}/v1
 
 for file in ${SKIP_CRD_FILES[@]}; do
-    rm -f ${CRD_OUTPUT_DIR}/v1beta1/${file}
     rm -f ${CRD_OUTPUT_DIR}/v1/${file}
 done
 
 # merge all CRDs
 find ${CRD_OUTPUT_DIR}/v1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/federation-crd.yaml
-find ${CRD_OUTPUT_DIR}/v1beta1 -name "*.yaml" | sort | xargs cat > ${ROOT}/manifests/federation-crd_v1beta1.yaml
