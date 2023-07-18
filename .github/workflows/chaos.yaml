@@ -53,7 +53,7 @@ jobs:
     - name: Run chaos mesh
       uses: chaos-mesh/chaos-mesh-actions@master
       env:
-        CFG_BASE64: YXBpVmVyc2lvbjogY2hhb3MtbWVzaC5vcmcvdjFhbHBoYTEKa2luZDogUG9kQ2hhb3MKbWV0YWRhdGE6CiAgbmFtZTogcG9kLWZhaWx1cmUKICBuYW1lc3BhY2U6IHBpbmdjYXAKc3BlYzoKICBhY3Rpb246IHBvZC1mYWlsdXJlIAogIG1vZGU6IG9uZSAKICBkdXJhdGlvbjogIjYwcyIKICBzZWxlY3RvcjoKICAgIGxhYmVsU2VsZWN0b3JzOgogICAgICAiYXBwLmt1YmVybmV0ZXMuaW8vY29tcG9uZW50IjogImNvbnRyb2xsZXItbWFuYWdlciIKICBzY2hlZHVsZXI6CiAgICBjcm9uOiAiQGV2ZXJ5IDVtIgo=
+        CFG_BASE64: YXBpVmVyc2lvbjogY2hhb3MtbWVzaC5vcmcvdjFhbHBoYTEKa2luZDogU2NoZWR1bGUKbWV0YWRhdGE6CiAgbmFtZTogcG9kLWZhaWx1cmUKICBuYW1lc3BhY2U6IHBpbmdjYXAKc3BlYzoKICBzY2hlZHVsZTogJ0BldmVyeSA1bScKICB0eXBlOiBQb2RDaGFvcwogIGhpc3RvcnlMaW1pdDogNQogIGNvbmN1cnJlbmN5UG9saWN5OiBGb3JiaWQKICBwb2RDaGFvczoKICAgIGFjdGlvbjogcG9kLWZhaWx1cmUKICAgIG1vZGU6IG9uZQogICAgZHVyYXRpb246IDYwcwogICAgc2VsZWN0b3I6CiAgICAgIGxhYmVsU2VsZWN0b3JzOgogICAgICAgIGFwcC5rdWJlcm5ldGVzLmlvL2NvbXBvbmVudDogY29udHJvbGxlci1tYW5hZ2VyCg==
         CHAOS_MESH_VERSION: v2.1.0
     - name: Run e2e
       run: |
