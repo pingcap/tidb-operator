@@ -16572,6 +16572,16 @@ string
 <p>Node hosting pod of this TiDB member.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>message</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbservicespec">TiDBServiceSpec</h3>

@@ -21298,12 +21298,15 @@ spec:
                           format: date-time
                           nullable: true
                           type: string
+                        message:
+                          type: string
                         name:
                           type: string
                         node:
                           type: string
                       required:
                       - health
+                      - message
                       - name
                       type: object
                     type: object
