@@ -289,6 +289,9 @@ spec:
                         required:
                         - port
                         type: object
+                      terminationGracePeriodSeconds:
+                        format: int64
+                        type: integer
                       timeoutSeconds:
                         format: int32
                         type: integer
@@ -379,6 +382,9 @@ spec:
                         required:
                         - port
                         type: object
+                      terminationGracePeriodSeconds:
+                        format: int64
+                        type: integer
                       timeoutSeconds:
                         format: int32
                         type: integer
@@ -522,6 +528,9 @@ spec:
                         required:
                         - port
                         type: object
+                      terminationGracePeriodSeconds:
+                        format: int64
+                        type: integer
                       timeoutSeconds:
                         format: int32
                         type: integer
@@ -759,8 +768,6 @@ spec:
                     type: object
                   ephemeral:
                     properties:
-                      readOnly:
-                        type: boolean
                       volumeClaimTemplate:
                         properties:
                           metadata:

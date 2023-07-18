@@ -153,7 +153,7 @@ func (l *Launcher) createContainer(command []string) (*container.ContainerCreate
 		CapAdd:      strslice.StrSlice([]string{CAP_SYS_PTRACE, CAP_SYS_ADMIN}),
 		Privileged:  l.privileged,
 	}
-	body, err := l.client.ContainerCreate(l.ctx, config, hostConfig, nil, "")
+	body, err := l.client.ContainerCreate(l.ctx, config, hostConfig, nil, nil, "")
 	if err != nil {
 		return nil, err
 	}
