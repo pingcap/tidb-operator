@@ -826,6 +826,18 @@ spec:
                                       - kind
                                       - name
                                       type: object
+                                    dataSourceRef:
+                                      properties:
+                                        apiGroup:
+                                          type: string
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                      required:
+                                      - kind
+                                      - name
+                                      type: object
                                     resources:
                                       properties:
                                         limits:
@@ -1370,6 +1382,8 @@ spec:
                           type: string
                         gmsaCredentialSpecName:
                           type: string
+                        hostProcess:
+                          type: boolean
                         runAsUserName:
                           type: string
                       type: object
@@ -2234,6 +2248,18 @@ spec:
                                       - kind
                                       - name
                                       type: object
+                                    dataSourceRef:
+                                      properties:
+                                        apiGroup:
+                                          type: string
+                                        kind:
+                                          type: string
+                                        name:
+                                          type: string
+                                      required:
+                                      - kind
+                                      - name
+                                      type: object
                                     resources:
                                       properties:
                                         limits:
@@ -2778,6 +2804,8 @@ spec:
                           type: string
                         gmsaCredentialSpecName:
                           type: string
+                        hostProcess:
+                          type: boolean
                         runAsUserName:
                           type: string
                       type: object

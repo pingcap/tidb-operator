@@ -400,6 +400,18 @@ spec:
                                           - kind
                                           - name
                                           type: object
+                                        dataSourceRef:
+                                          properties:
+                                            apiGroup:
+                                              type: string
+                                            kind:
+                                              type: string
+                                            name:
+                                              type: string
+                                          required:
+                                          - kind
+                                          - name
+                                          type: object
                                         resources:
                                           properties:
                                             limits:

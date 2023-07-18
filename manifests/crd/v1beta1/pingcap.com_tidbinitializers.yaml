@@ -117,6 +117,8 @@ spec:
                       type: string
                     gmsaCredentialSpecName:
                       type: string
+                    hostProcess:
+                      type: boolean
                     runAsUserName:
                       type: string
                   type: object
@@ -208,6 +210,19 @@ spec:
             succeeded:
               format: int32
               type: integer
+            uncountedTerminatedPods:
+              properties:
+                failed:
+                  items:
+                    type: string
+                  type: array
+                  x-kubernetes-list-type: set
+                succeeded:
+                  items:
+                    type: string
+                  type: array
+                  x-kubernetes-list-type: set
+              type: object
           type: object
       required:
       - metadata

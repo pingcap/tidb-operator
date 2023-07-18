@@ -896,6 +896,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -1232,6 +1234,18 @@ spec:
                                       type: string
                                     type: array
                                   dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  dataSourceRef:
                                     properties:
                                       apiGroup:
                                         type: string
@@ -2614,6 +2628,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -2810,6 +2826,8 @@ spec:
                           type: string
                         gmsaCredentialSpecName:
                           type: string
+                        hostProcess:
+                          type: boolean
                         runAsUserName:
                           type: string
                       type: object
@@ -3373,6 +3391,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -3709,6 +3729,18 @@ spec:
                                       type: string
                                     type: array
                                   dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  dataSourceRef:
                                     properties:
                                       apiGroup:
                                         type: string
@@ -5099,6 +5131,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -5301,6 +5335,8 @@ spec:
                           type: string
                         gmsaCredentialSpecName:
                           type: string
+                        hostProcess:
+                          type: boolean
                         runAsUserName:
                           type: string
                       type: object
@@ -5501,6 +5537,8 @@ spec:
                       type: string
                     gmsaCredentialSpecName:
                       type: string
+                    hostProcess:
+                      type: boolean
                     runAsUserName:
                       type: string
                   type: object
@@ -5945,6 +5983,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -6281,6 +6321,18 @@ spec:
                                       type: string
                                     type: array
                                   dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  dataSourceRef:
                                     properties:
                                       apiGroup:
                                         type: string
@@ -7667,6 +7719,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -7863,6 +7917,8 @@ spec:
                           type: string
                         gmsaCredentialSpecName:
                           type: string
+                        hostProcess:
+                          type: boolean
                         runAsUserName:
                           type: string
                       type: object
@@ -8414,6 +8470,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -8750,6 +8808,18 @@ spec:
                                       type: string
                                     type: array
                                   dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  dataSourceRef:
                                     properties:
                                       apiGroup:
                                         type: string
@@ -10138,6 +10208,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -10334,6 +10406,8 @@ spec:
                           type: string
                         gmsaCredentialSpecName:
                           type: string
+                        hostProcess:
+                          type: boolean
                         runAsUserName:
                           type: string
                       type: object
@@ -10873,6 +10947,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -11209,6 +11285,18 @@ spec:
                                       type: string
                                     type: array
                                   dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  dataSourceRef:
                                     properties:
                                       apiGroup:
                                         type: string
@@ -12599,6 +12687,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -12911,6 +13001,8 @@ spec:
                           type: string
                         gmsaCredentialSpecName:
                           type: string
+                        hostProcess:
+                          type: boolean
                         runAsUserName:
                           type: string
                       type: object
@@ -13544,6 +13636,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -13880,6 +13974,18 @@ spec:
                                       type: string
                                     type: array
                                   dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  dataSourceRef:
                                     properties:
                                       apiGroup:
                                         type: string
@@ -15276,6 +15382,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -15514,6 +15622,8 @@ spec:
                           type: string
                         gmsaCredentialSpecName:
                           type: string
+                        hostProcess:
+                          type: boolean
                         runAsUserName:
                           type: string
                       type: object
@@ -16071,6 +16181,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -16407,6 +16519,18 @@ spec:
                                       type: string
                                     type: array
                                   dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  dataSourceRef:
                                     properties:
                                       apiGroup:
                                         type: string
@@ -17804,6 +17928,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -18025,6 +18151,8 @@ spec:
                           type: string
                         gmsaCredentialSpecName:
                           type: string
+                        hostProcess:
+                          type: boolean
                         runAsUserName:
                           type: string
                       type: object
@@ -18589,6 +18717,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -18925,6 +19055,18 @@ spec:
                                       type: string
                                     type: array
                                   dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  dataSourceRef:
                                     properties:
                                       apiGroup:
                                         type: string
@@ -20311,6 +20453,8 @@ spec:
                                 type: string
                               gmsaCredentialSpecName:
                                 type: string
+                              hostProcess:
+                                type: boolean
                               runAsUserName:
                                 type: string
                             type: object
@@ -20507,6 +20651,8 @@ spec:
                           type: string
                         gmsaCredentialSpecName:
                           type: string
+                        hostProcess:
+                          type: boolean
                         runAsUserName:
                           type: string
                       type: object
@@ -20817,6 +20963,9 @@ spec:
                   type: string
                 statefulSet:
                   properties:
+                    availableReplicas:
+                      format: int32
+                      type: integer
                     collisionCount:
                       format: int32
                       type: integer
@@ -20978,6 +21127,9 @@ spec:
                   type: string
                 statefulSet:
                   properties:
+                    availableReplicas:
+                      format: int32
+                      type: integer
                     collisionCount:
                       format: int32
                       type: integer
@@ -21120,6 +21272,9 @@ spec:
                   type: string
                 statefulSet:
                   properties:
+                    availableReplicas:
+                      format: int32
+                      type: integer
                     collisionCount:
                       format: int32
                       type: integer
@@ -21285,6 +21440,9 @@ spec:
                   type: integer
                 statefulSet:
                   properties:
+                    availableReplicas:
+                      format: int32
+                      type: integer
                     collisionCount:
                       format: int32
                       type: integer
@@ -21466,6 +21624,9 @@ spec:
                   type: string
                 statefulSet:
                   properties:
+                    availableReplicas:
+                      format: int32
+                      type: integer
                     collisionCount:
                       format: int32
                       type: integer
@@ -21722,6 +21883,9 @@ spec:
                   type: string
                 statefulSet:
                   properties:
+                    availableReplicas:
+                      format: int32
+                      type: integer
                     collisionCount:
                       format: int32
                       type: integer
@@ -21927,6 +22091,9 @@ spec:
                   type: string
                 statefulSet:
                   properties:
+                    availableReplicas:
+                      format: int32
+                      type: integer
                     collisionCount:
                       format: int32
                       type: integer
