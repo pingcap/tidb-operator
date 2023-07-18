@@ -370,8 +370,6 @@ spec:
                           type: object
                         ephemeral:
                           properties:
-                            readOnly:
-                              type: boolean
                             volumeClaimTemplate:
                               properties:
                                 metadata:
@@ -1415,8 +1413,6 @@ spec:
                               type: object
                             ephemeral:
                               properties:
-                                readOnly:
-                                  type: boolean
                                 volumeClaimTemplate:
                                   properties:
                                     metadata:
@@ -2311,8 +2307,6 @@ spec:
                                 type: object
                               ephemeral:
                                 properties:
-                                  readOnly:
-                                    type: boolean
                                   volumeClaimTemplate:
                                     properties:
                                       metadata:
