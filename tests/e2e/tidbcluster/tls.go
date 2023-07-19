@@ -40,7 +40,7 @@ import (
 )
 
 var tidbIssuerTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: {{ .ClusterName }}-selfsigned-ca-issuer
@@ -48,7 +48,7 @@ metadata:
 spec:
   selfSigned: {}
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-ca
@@ -61,7 +61,7 @@ spec:
     name: {{ .ClusterRef }}-selfsigned-ca-issuer
     kind: Issuer
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: {{ .ClusterName }}-tidb-issuer
@@ -72,7 +72,7 @@ spec:
 `
 
 var tidbCertificatesTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-tidb-server-secret
@@ -101,7 +101,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-tidb-client-secret
@@ -122,7 +122,7 @@ spec:
 `
 
 var tidbComponentsOnlyPDCertificatesTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-pd-cluster-secret
@@ -157,7 +157,7 @@ spec:
 `
 
 var tidbComponentsExceptPDCertificatesTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-tikv-cluster-secret
@@ -190,7 +190,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-tidb-cluster-secret
@@ -223,7 +223,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-cluster-client-secret
@@ -242,7 +242,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-pump-cluster-secret
@@ -269,7 +269,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-drainer-cluster-secret
@@ -296,7 +296,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-tiflash-cluster-secret
@@ -329,7 +329,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-ticdc-cluster-secret
@@ -364,7 +364,7 @@ spec:
 `
 
 var tidbClientCertificateTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-{{ .Component }}-tls
@@ -385,7 +385,7 @@ spec:
 `
 
 var mysqlCertificatesTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-mysql-secret
@@ -412,7 +412,7 @@ spec:
 `
 
 var dmCertificatesTmp = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-dm-master-cluster-secret
@@ -445,7 +445,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-dm-worker-cluster-secret
@@ -478,7 +478,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-dm-client-secret
@@ -499,7 +499,7 @@ spec:
 `
 
 var xK8sTidbIssuerTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: {{ .ClusterName }}-tidb-issuer
