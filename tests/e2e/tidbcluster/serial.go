@@ -166,7 +166,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
 
 			ginkgo.By("Set tikv partition annotation to 1")
 			err := setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
@@ -681,7 +681,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				tc.Spec.TiFlash.Replicas = 1
 
 				ginkgo.By("Deploy original TiDB cluster")
-				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
 				selector := MustGetLabelSelectorForComponents(tcName, label.DiscoveryLabelVal) // ignore discovery
 				pods := utilpod.MustListPods(selector.String(), ns, c)
 
@@ -799,7 +799,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					}
 
 					ginkgo.By("Deploy original TiDB cluster with prev version")
-					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
 					selector := MustGetLabelSelectorForComponents(tcName,
 						label.DiscoveryLabelVal, // ignore discovery
 					)
@@ -912,7 +912,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				tc.Spec.TiDB.Replicas = 1
 
 				ginkgo.By("Deploy original TiDB cluster")
-				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
 
 				ginkgo.By("Deploy tidb monitor")
 				monitorName := "smooth-migrate"
