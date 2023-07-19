@@ -7,8 +7,8 @@ spec:
   subject:
     organizationalUnits:
       - "TiDB Operator"
-  organization:
-    - "PingCAP"
+    organizations:
+      - PingCAP
   duration: "8760h" # 364 days
   # If you want verify server cert Common Name (e.g. --ssl-verify-server-cert
   # flag in MySQL CLI), you must configure the HostName you used to connect the

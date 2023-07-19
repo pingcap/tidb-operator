@@ -81,8 +81,9 @@ spec:
   secretName: {{ .ClusterName }}-tidb-server-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-    - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB Server"
   usages:
     - server auth
@@ -110,8 +111,9 @@ spec:
   secretName: {{ .ClusterName }}-tidb-client-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-    - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB Client"
   usages:
     - client auth
@@ -131,8 +133,9 @@ spec:
   secretName: {{ .ClusterName }}-pd-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -166,8 +169,9 @@ spec:
   secretName: {{ .ClusterName }}-tikv-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -199,8 +203,9 @@ spec:
   secretName: {{ .ClusterName }}-tidb-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -232,8 +237,9 @@ spec:
   secretName: {{ .ClusterName }}-cluster-client-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - client auth
@@ -251,8 +257,9 @@ spec:
   secretName: {{ .ClusterName }}-pump-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -278,8 +285,9 @@ spec:
   secretName: {{ .ClusterName }}-drainer-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -305,8 +313,9 @@ spec:
   secretName: {{ .ClusterName }}-tiflash-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -338,8 +347,9 @@ spec:
   secretName: {{ .ClusterName }}-ticdc-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
   - server auth
@@ -373,8 +383,9 @@ spec:
   secretName: {{ .ClusterName }}-{{ .Component }}-tls
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-    - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB Client"
   usages:
     - client auth
@@ -394,8 +405,9 @@ spec:
   secretName: {{ .ClusterName }}-mysql-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-    - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "MySQL Server"
   usages:
     - server auth
@@ -421,8 +433,9 @@ spec:
   secretName: {{ .ClusterName }}-dm-master-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -454,8 +467,9 @@ spec:
   secretName: {{ .ClusterName }}-dm-worker-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -487,8 +501,9 @@ spec:
   secretName: {{ .ClusterName }}-dm-client-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - client auth

@@ -76,8 +76,9 @@ spec:
   secretName: {{ .SecretName }}
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "{{ .CN }}"
   {{- if .Usages }}
   usages:
