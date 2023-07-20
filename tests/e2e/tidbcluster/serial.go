@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -79,7 +78,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 	var config *restclient.Config
 	var fw portforward.PortForward
 	var fwCancel context.CancelFunc
-	var stsGetter typedappsv1.StatefulSetsGetter
 	/**
 	 * StatefulSet or AdvancedStatefulSet getter interface.
 	 */
@@ -112,7 +110,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
-		stsGetter = c.AppsV1()
 	})
 
 	ginkgo.AfterEach(func() {
