@@ -22,6 +22,7 @@ brFederationManager:
   # Secret name of the kubeconfig for the federation Kubernetes clusters
   # The data item key is the cluster name, and the data item value is the base64 encoded kubeconfig
   federationKubeconfigSecret: br-federation-kubeconfig
+  federationKubeconfigSecretKey: kubeconfig
 
   logLevel: 2
   replicas: 1

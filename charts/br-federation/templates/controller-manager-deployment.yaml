@@ -78,6 +78,9 @@ spec:
          {{- if .Values.brFederationManager.kubeClientBurst }}
           - -kube-client-burst={{ .Values.brFederationManager.kubeClientBurst }}
          {{- end }}
+         {{- if .Values.brFederationManager.federationKubeconfigSecretKey }}
+          - -federation-kubeconfig-path=/etc/br-federation/federation-kubeconfig/{{ .Values.brFederationManager.federationKubeconfigSecretKey }}
+         {{- end }}
         env:
           - name: NAMESPACE
             valueFrom:
