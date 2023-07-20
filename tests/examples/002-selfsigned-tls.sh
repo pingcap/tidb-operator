@@ -20,7 +20,7 @@ source "${ROOT}/hack/lib.sh"
 source "${ROOT}/tests/examples/t.sh"
 
 NS=$(basename ${0%.*})
-CERT_MANAGER_VERSION=0.14.1
+CERT_MANAGER_VERSION=1.12.2
 
 PORT_FORWARD_PID=
 

@@ -28,14 +28,14 @@ func TestIsAPIGroupVersionSupported(t *testing.T) {
 		wantOK       bool
 	}{
 		{
-			name:         "found",
+			name:         "not found",
 			groupVersion: "apiextensions.k8s.io/v1beta1",
-			wantOK:       true,
+			wantOK:       false,
 		},
 		{
 			name:         "not found",
 			groupVersion: "apiextensions.k8s.io/v1",
-			wantOK:       false,
+			wantOK:       true,
 		},
 		{
 			name:         "bad version",
@@ -49,12 +49,12 @@ func TestIsAPIGroupVersionSupported(t *testing.T) {
 			fake := &k8stesting.Fake{
 				Resources: []*metav1.APIResourceList{
 					{
-						GroupVersion: "apiextensions.k8s.io/v1beta1",
+						GroupVersion: "apiextensions.k8s.io/v1",
 						APIResources: []metav1.APIResource{
 							{
 								Name:    "customresourcedefinitions",
 								Group:   "apiextensions.k8s.io",
-								Version: "v1beta1",
+								Version: "v1",
 							},
 						},
 					},
@@ -94,12 +94,12 @@ func TestIsAPIGroupSupported(t *testing.T) {
 			fake := &k8stesting.Fake{
 				Resources: []*metav1.APIResourceList{
 					{
-						GroupVersion: "apiextensions.k8s.io/v1beta1",
+						GroupVersion: "apiextensions.k8s.io/v1",
 						APIResources: []metav1.APIResource{
 							{
 								Name:    "customresourcedefinitions",
 								Group:   "apiextensions.k8s.io",
-								Version: "v1beta1",
+								Version: "v1",
 							},
 						},
 					},

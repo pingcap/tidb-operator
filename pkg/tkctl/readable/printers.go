@@ -25,7 +25,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/duration"
 	"k8s.io/kubernetes/pkg/printers"
@@ -54,7 +53,7 @@ type podBasicColumns struct {
 }
 
 func AddHandlers(h printers.PrintHandler) {
-	tidbClusterColumns := []metav1beta1.TableColumnDefinition{
+	tidbClusterColumns := []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "PD", Type: "string", Description: "The PD nodes ready status"},
 		{Name: "TiKV", Type: "string", Description: "The TiKV nodes ready status"},
@@ -65,7 +64,7 @@ func AddHandlers(h printers.PrintHandler) {
 	h.TableHandler(tidbClusterColumns, printTidbCluster)
 	// TODO: separate different column definitions for PD/TiKV/TiDB Pod,
 	// e.g. show store-id for tikv, show member-id for pd
-	commonPodColumns := []metav1beta1.TableColumnDefinition{
+	commonPodColumns := []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 		{Name: "Ready", Type: "string", Description: "The aggregate readiness state of this pod for accepting traffic."},
 		{Name: "Status", Type: "string", Description: "The aggregate status of the containers in this pod."},
@@ -80,12 +79,12 @@ func AddHandlers(h printers.PrintHandler) {
 	h.TableHandler(commonPodColumns, printPodList)
 	//tikv columns
 	tikvPodColumns := commonPodColumns
-	storeId := metav1beta1.TableColumnDefinition{
+	storeId := metav1.TableColumnDefinition{
 		Name:        "StoreID",
 		Type:        "string",
 		Description: "TiKV StoreID",
 	}
-	storeState := metav1beta1.TableColumnDefinition{
+	storeState := metav1.TableColumnDefinition{
 		Name:        "Store State",
 		Type:        "string",
 		Description: "TiKV Store State",
@@ -93,7 +92,7 @@ func AddHandlers(h printers.PrintHandler) {
 	tikvPodColumns = append(tikvPodColumns, storeId, storeState)
 	h.TableHandler(tikvPodColumns, printTikvList)
 	// TODO: add available space for volume
-	volumeColumns := []metav1beta1.TableColumnDefinition{
+	volumeColumns := []metav1.TableColumnDefinition{
 		{Name: "Volume", Type: "string", Format: "name", Description: "Volume name"},
 		{Name: "Claim", Type: "string", Format: "name", Description: "Volume claim"},
 		{Name: "Status", Type: "string", Description: "Volume status"},
@@ -106,8 +105,8 @@ func AddHandlers(h printers.PrintHandler) {
 	h.TableHandler(volumeColumns, printVolumeList)
 }
 
-func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
-	rows := make([]metav1beta1.TableRow, 0, len(tcs.Items))
+func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.GenerateOptions) ([]metav1.TableRow, error) {
+	rows := make([]metav1.TableRow, 0, len(tcs.Items))
 	for i := range tcs.Items {
 		r, err := printTidbCluster(&tcs.Items[i], options)
 		if err != nil {
@@ -118,8 +117,8 @@ func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.Genera
 	return rows, nil
 }
 
-func printTidbCluster(tc *v1alpha1.TidbCluster, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
-	row := metav1beta1.TableRow{
+func printTidbCluster(tc *v1alpha1.TidbCluster, options printers.GenerateOptions) ([]metav1.TableRow, error) {
+	row := metav1.TableRow{
 		Object: runtime.RawExtension{Object: tc},
 	}
 	pdReady := unset
@@ -138,11 +137,11 @@ func printTidbCluster(tc *v1alpha1.TidbCluster, options printers.GenerateOptions
 
 	row.Cells = append(row.Cells, tc.Name, pdReady, tikvReady, tidbReady, age)
 
-	return []metav1beta1.TableRow{row}, nil
+	return []metav1.TableRow{row}, nil
 }
 
-func printPodList(podList *v1.PodList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
-	rows := make([]metav1beta1.TableRow, 0, len(podList.Items))
+func printPodList(podList *v1.PodList, options printers.GenerateOptions) ([]metav1.TableRow, error) {
+	rows := make([]metav1.TableRow, 0, len(podList.Items))
 	for i := range podList.Items {
 		r, err := printPod(&podList.Items[i], options)
 		if err != nil {
@@ -153,9 +152,9 @@ func printPodList(podList *v1.PodList, options printers.GenerateOptions) ([]meta
 	return rows, nil
 }
 
-func printPod(pod *v1.Pod, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
+func printPod(pod *v1.Pod, options printers.GenerateOptions) ([]metav1.TableRow, error) {
 	columns := basicPodColumns(pod)
-	row := metav1beta1.TableRow{
+	row := metav1.TableRow{
 		Object: runtime.RawExtension{Object: pod},
 	}
 	row.Cells = append(row.Cells,
@@ -170,11 +169,11 @@ func printPod(pod *v1.Pod, options printers.GenerateOptions) ([]metav1beta1.Tabl
 	if options.Wide {
 		row.Cells = append(row.Cells, columns.PodIP, columns.NodeName)
 	}
-	return []metav1beta1.TableRow{row}, nil
+	return []metav1.TableRow{row}, nil
 }
 
 // add more columns for tikv info
-func printTikvList(tikvList *alias.TikvList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
+func printTikvList(tikvList *alias.TikvList, options printers.GenerateOptions) ([]metav1.TableRow, error) {
 	podList := tikvList.PodList
 	metaTableRows, err := printPodList(podList, options)
 	if err != nil {
@@ -206,8 +205,8 @@ func printTikvList(tikvList *alias.TikvList, options printers.GenerateOptions) (
 	return metaTableRows, nil
 }
 
-func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
-	rows := make([]metav1beta1.TableRow, 0, len(volumeList.Items))
+func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.GenerateOptions) ([]metav1.TableRow, error) {
+	rows := make([]metav1.TableRow, 0, len(volumeList.Items))
 	for i := range volumeList.Items {
 		r, err := printVolume(&volumeList.Items[i], options)
 		if err != nil {
@@ -218,8 +217,8 @@ func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.Gener
 	return rows, nil
 }
 
-func printVolume(volume *v1.PersistentVolume, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
-	row := metav1beta1.TableRow{
+func printVolume(volume *v1.PersistentVolume, options printers.GenerateOptions) ([]metav1.TableRow, error) {
+	row := metav1.TableRow{
 		Object: runtime.RawExtension{Object: volume},
 	}
 
@@ -259,7 +258,7 @@ func printVolume(volume *v1.PersistentVolume, options printers.GenerateOptions) 
 		row.Cells = append(row.Cells, host, local)
 	}
 
-	return []metav1beta1.TableRow{row}, nil
+	return []metav1.TableRow{row}, nil
 }
 
 // basicPodColumns calculates common columns for PD/TiKV/TiDB pods

@@ -392,6 +392,18 @@ spec:
                                         - kind
                                         - name
                                         type: object
+                                      dataSourceRef:
+                                        properties:
+                                          apiGroup:
+                                            type: string
+                                          kind:
+                                            type: string
+                                          name:
+                                            type: string
+                                        required:
+                                        - kind
+                                        - name
+                                        type: object
                                       resources:
                                         properties:
                                           limits:
@@ -1433,6 +1445,18 @@ spec:
                                             - kind
                                             - name
                                             type: object
+                                          dataSourceRef:
+                                            properties:
+                                              apiGroup:
+                                                type: string
+                                              kind:
+                                                type: string
+                                              name:
+                                                type: string
+                                            required:
+                                            - kind
+                                            - name
+                                            type: object
                                           resources:
                                             properties:
                                               limits:
@@ -2314,6 +2338,18 @@ spec:
                                                 type: string
                                               type: array
                                             dataSource:
+                                              properties:
+                                                apiGroup:
+                                                  type: string
+                                                kind:
+                                                  type: string
+                                                name:
+                                                  type: string
+                                              required:
+                                              - kind
+                                              - name
+                                              type: object
+                                            dataSourceRef:
                                               properties:
                                                 apiGroup:
                                                   type: string

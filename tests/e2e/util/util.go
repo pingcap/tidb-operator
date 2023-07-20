@@ -17,7 +17,7 @@ import (
 	"context"
 	"time"
 
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,19 +64,19 @@ func WaitForAPIServicesAvaiable(client aggregatorclientset.Interface, selector l
 
 // WaitForCRDsEstablished waits for all CRDs to be established
 func WaitForCRDsEstablished(client apiextensionsclientset.Interface, selector labels.Selector) error {
-	isEstalbished := func(status apiextensionsv1beta1.CustomResourceDefinitionStatus) bool {
+	isEstalbished := func(status apiextensionsv1.CustomResourceDefinitionStatus) bool {
 		if status.Conditions == nil {
 			return false
 		}
 		for _, condition := range status.Conditions {
-			if condition.Type == apiextensionsv1beta1.Established {
-				return condition.Status == apiextensionsv1beta1.ConditionTrue
+			if condition.Type == apiextensionsv1.Established {
+				return condition.Status == apiextensionsv1.ConditionTrue
 			}
 		}
 		return false
 	}
 	return wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
-		crdList, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{
+		crdList, err := client.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{
 			LabelSelector: selector.String(),
 		})
 		if err != nil {
@@ -98,7 +98,7 @@ func WaitForCRDsEstablished(client apiextensionsclientset.Interface, selector la
 // WaitForCRDNotFound waits for CRD to be not found in apiserver
 func WaitForCRDNotFound(client apiextensionsclientset.Interface, name string) error {
 	return wait.PollImmediate(time.Second, 1*time.Minute, func() (bool, error) {
-		_, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.TODO(), name, metav1.GetOptions{})
+		_, err := client.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if IsRetryableAPIError(err) {
 				return false, nil

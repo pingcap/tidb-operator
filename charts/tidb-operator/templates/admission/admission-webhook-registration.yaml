@@ -41,7 +41,7 @@ webhooks:
     objectSelector:
       matchLabels:
         "app.kubernetes.io/managed-by": "tidb-operator"
-    admissionReviewVersions: ["v1beta1"]
+    admissionReviewVersions: ["v1"]
     failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Fail" }}
     sideEffects: None
     clientConfig:
@@ -79,7 +79,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 webhooks:
   - name: validating.admission.tidb.pingcap.com
-    admissionReviewVersions: ["v1beta1"]
+    admissionReviewVersions: ["v1"]
     failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Fail" }}
     sideEffects: None
     clientConfig:
@@ -113,7 +113,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 webhooks:
   - name: defaulting.admission.tidb.pingcap.com
-    admissionReviewVersions: ["v1beta1"]
+    admissionReviewVersions: ["v1"]
     failurePolicy: {{ .Values.admissionWebhook.failurePolicy.mutation | default "Fail" }}
     sideEffects: None
     clientConfig:
