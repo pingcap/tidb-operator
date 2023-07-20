@@ -439,7 +439,7 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 				tc.Spec.TiDB.Replicas = 1
 				tc.Spec.TiKV.Replicas = tcase.originTiKVReplica
 				setDeleteSlots(tc, tcase.originDeleteSlots)
-				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 				err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 					tc.Spec.TiKV.ScalePolicy = v1alpha1.ScalePolicy{

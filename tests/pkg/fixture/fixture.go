@@ -18,7 +18,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -442,14 +442,14 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 	return monitor
 }
 
-func GetBackupRole(tc *v1alpha1.TidbCluster, serviceAccountName string) *rbacv1beta1.Role {
-	return &rbacv1beta1.Role{
+func GetBackupRole(tc *v1alpha1.TidbCluster, serviceAccountName string) *rbacv1.Role {
+	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceAccountName,
 			Namespace: tc.GetNamespace(),
 			Labels:    map[string]string{label.ComponentLabelKey: serviceAccountName},
 		},
-		Rules: []rbacv1beta1.PolicyRule{
+		Rules: []rbacv1.PolicyRule{
 			{
 				APIGroups: []string{""},
 				Resources: []string{"events"},
@@ -473,20 +473,20 @@ func GetBackupServiceAccount(tc *v1alpha1.TidbCluster, serviceAccountName string
 	}
 }
 
-func GetBackupRoleBinding(tc *v1alpha1.TidbCluster, serviceAccountName string) *rbacv1beta1.RoleBinding {
-	return &rbacv1beta1.RoleBinding{
+func GetBackupRoleBinding(tc *v1alpha1.TidbCluster, serviceAccountName string) *rbacv1.RoleBinding {
+	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceAccountName,
 			Namespace: tc.GetNamespace(),
 			Labels:    map[string]string{label.ComponentLabelKey: serviceAccountName},
 		},
-		Subjects: []rbacv1beta1.Subject{
+		Subjects: []rbacv1.Subject{
 			{
-				Kind: rbacv1beta1.ServiceAccountKind,
+				Kind: rbacv1.ServiceAccountKind,
 				Name: serviceAccountName,
 			},
 		},
-		RoleRef: rbacv1beta1.RoleRef{
+		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "Role",
 			Name:     serviceAccountName,

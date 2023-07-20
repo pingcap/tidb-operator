@@ -670,12 +670,12 @@ func newFakeTidbMonitorManager() *MonitorManager {
 	fake := &k8stesting.Fake{
 		Resources: []*metav1.APIResourceList{
 			{
-				GroupVersion: "apiextensions.k8s.io/v1beta1",
+				GroupVersion: "apiextensions.k8s.io/v1",
 				APIResources: []metav1.APIResource{
 					{
 						Name:    "customresourcedefinitions",
 						Group:   "apiextensions.k8s.io",
-						Version: "v1beta1",
+						Version: "v1",
 					},
 				},
 			},

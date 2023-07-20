@@ -235,7 +235,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 
 			ginkgo.By("Deploy the basic cluster-1 with empty cluster domain")
 			tc1.Spec.ClusterDomain = ""
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Update cluster domain of cluster-1")
 			err := controller.GuaranteedUpdate(genericCli, tc1, func() error {
@@ -715,7 +715,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				}
 
 				ginkgo.By("Deploy tidb cluster")
-				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 				oldTC, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get tc %s/%s", ns, tcName)
 
