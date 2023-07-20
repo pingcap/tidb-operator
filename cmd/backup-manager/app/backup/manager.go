@@ -323,23 +323,24 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 
 	defer func() {
 		// When not disabled, calculate the backup size for ebs backup job even if it fails
-		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize && backup.Spec.CalcSizeLevel != DisabledSizeCalculate {
-			if backup.Spec.CalcSizeLevel == CalculateFullSize || backup.Spec.CalcSizeLevel == CalculateAll {
-				backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
-				if err != nil {
-					klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
-					return
-				}
+		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize && !bm.Initialize && backup.Spec.CalcSizeLevel != DisabledSizeCalculate {
+			fullBackupSize, incrementalBackupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider, backup.Spec.CalcSizeLevel)
+			if err != nil {
+				klog.Errorf("Failed to calc volume snapshot backup, err: %v", err)
+				return
+			}
 
-				backupSizeReadable := humanize.Bytes(uint64(backupSize))
+			backupSizeReadable := humanize.Bytes(uint64(fullBackupSize))
+			incrementalBackupSizeReadable := humanize.Bytes(uint64(incrementalBackupSize))
+			updateStatus := &controller.BackupUpdateStatus{
+				BackupSize:                    &fullBackupSize,
+				BackupSizeReadable:            &backupSizeReadable,
+				IncrementalBackupSize:         &incrementalBackupSize,
+				IncrementalBackupSizeReadable: &incrementalBackupSizeReadable,
+			}
 
-				updateStatus := &controller.BackupUpdateStatus{
-					BackupSize:         &backupSize,
-					BackupSizeReadable: &backupSizeReadable,
-				}
-
-				bm.StatusUpdater.Update(backup, nil,
-					updateStatus)
+			if err := bm.StatusUpdater.Update(backup, nil, updateStatus); err != nil {
+				klog.Errorf("update backup size to status error: %v", err)
 			}
 		}
 	}()

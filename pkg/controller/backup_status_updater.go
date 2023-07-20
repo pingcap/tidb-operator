@@ -45,6 +45,11 @@ type BackupUpdateStatus struct {
 	BackupSizeReadable *string
 	// BackupSize is the data size of the backup.
 	BackupSize *int64
+	// the difference with IncrementalBackupSize is that its format is human readable
+	IncrementalBackupSizeReadable *string
+	// IncrementalBackupSize is the incremental data size of the backup, it is only used for volume snapshot backup
+	// it is the real size of volume snapshot backup
+	IncrementalBackupSize *int64
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
 	// LogCheckpointTs is the ts of log backup process.
@@ -157,6 +162,14 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	}
 	if newStatus.BackupSize != nil && status.BackupSize != *newStatus.BackupSize {
 		status.BackupSize = *newStatus.BackupSize
+		isUpdate = true
+	}
+	if newStatus.IncrementalBackupSizeReadable != nil && status.IncrementalBackupSizeReadable != *newStatus.IncrementalBackupSizeReadable {
+		status.IncrementalBackupSizeReadable = *newStatus.IncrementalBackupSizeReadable
+		isUpdate = true
+	}
+	if newStatus.IncrementalBackupSize != nil && status.IncrementalBackupSize != *newStatus.IncrementalBackupSize {
+		status.IncrementalBackupSize = *newStatus.IncrementalBackupSize
 		isUpdate = true
 	}
 	if newStatus.CommitTs != nil && status.CommitTs != *newStatus.CommitTs {
