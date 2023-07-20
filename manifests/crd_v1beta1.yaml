@@ -30,6 +30,12 @@ spec:
     description: The data size of the backup
     name: BackupSize
     type: string
+  - JSONPath: .status.incrementalBackupSizeReadable
+    description: The real size of volume snapshot backup, only valid to volume snapshot
+      backup
+    name: IncrementalBackupSize
+    priority: 10
+    type: string
   - JSONPath: .status.commitTs
     description: The commit ts of the backup
     name: CommitTS
@@ -1530,6 +1536,11 @@ spec:
                 type: object
               nullable: true
               type: array
+            incrementalBackupSize:
+              format: int64
+              type: integer
+            incrementalBackupSizeReadable:
+              type: string
             logCheckpointTs:
               type: string
             logSubCommandStatuses:
