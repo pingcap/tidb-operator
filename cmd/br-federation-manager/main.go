@@ -20,7 +20,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"reflect"
 	"syscall"
 
@@ -219,18 +218,16 @@ func main() {
 }
 
 func initFederationKubeClients(cliCfg *controller.BrFedCLIConfig) (map[string]fedversioned.Interface, error) {
-	files, err := os.ReadDir(cliCfg.FederationKubeConfigPath)
+	kubeConfig, err := clientcmd.LoadFromFile(cliCfg.FederationKubeConfigPath)
 	if err != nil {
 		return nil, err
 	}
 
 	clients := make(map[string]fedversioned.Interface)
-	for _, f := range files {
-		if f.IsDir() || f.Name() == "..data" {
-			continue
-		}
-
-		cfg, err := clientcmd.BuildConfigFromFlags("", filepath.Join(cliCfg.FederationKubeConfigPath, f.Name()))
+	for contextName := range kubeConfig.Contexts {
+		cfg, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: cliCfg.FederationKubeConfigPath},
+			&clientcmd.ConfigOverrides{CurrentContext: contextName}).ClientConfig()
 		if err != nil {
 			return nil, err // return error if any kube client init failed
 		}
@@ -243,7 +240,7 @@ func initFederationKubeClients(cliCfg *controller.BrFedCLIConfig) (map[string]fe
 		if err != nil {
 			return nil, err
 		}
-		clients[f.Name()] = cli
+		clients[contextName] = cli
 	}
 
 	return clients, nil
