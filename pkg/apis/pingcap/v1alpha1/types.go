@@ -2154,9 +2154,9 @@ type BackupScheduleSpec struct {
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
-	// +optional
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
+	// +optional
 	LogBackupTemplate *BackupSpec `json:"logBackupTemplate"`
 	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
 	// Defaults to Kubernetes default storage class.
