@@ -16,6 +16,7 @@ package restore
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"os"
 	"strings"
 	"testing"
@@ -435,6 +436,8 @@ func TestBRRestoreByEBS(t *testing.T) {
 		err = os.Remove("/tmp/backupmeta")
 		g.Expect(err).To(Succeed())
 	}()
+
+	os.Setenv(constants.AWSRegionEnv, "us-west-1")
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
