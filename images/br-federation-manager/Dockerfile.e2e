@@ -1,4 +1,4 @@
-FROM pingcap-base:v1
+FROM pingcap/pingcap-base:v1
 
 ARG TARGETARCH
 RUN dnf install -y tzdata bind-utils && dnf clean all
