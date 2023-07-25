@@ -84,11 +84,12 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	}()
 
 	contents, err := os.ReadFile(metaFile)
+
 	if errors.Is(err, os.ErrNotExist) {
-		klog.Warningf("read metadata file %s failed, err: %s, a mannual check or delete aciton require.", metaFile, err)
-		return nil
+		klog.Errorf("read metadata file %s failed, err: %s, a manual check or delete action required.", metaFile, err)
+		return err
 	} else if err != nil { // will retry it
-		klog.Warningf("read metadata file %s failed, err: %s", metaFile, err)
+		klog.Errorf("read metadata file %s failed, err: %s", metaFile, err)
 		return err
 	}
 
