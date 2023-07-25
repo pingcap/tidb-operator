@@ -1,4 +1,4 @@
-FROM hub.pingcap.net/bases/pingcap-base:v1
+FROM pingcap/pingcap-base:v1
 ARG TARGETARCH=amd64
 ARG RCLONE_VERSION=v1.57.0
 ARG SHUSH_VERSION=v1.4.0

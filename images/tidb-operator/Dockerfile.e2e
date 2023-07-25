@@ -1,4 +1,4 @@
-FROM hub.pingcap.net/bases/tools-base:v1
+FROM pingcap/tools-base:v1
 
 ADD bin/tidb-scheduler /usr/local/bin/tidb-scheduler
 ADD bin/tidb-discovery /usr/local/bin/tidb-discovery
