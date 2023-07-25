@@ -1,5 +1,4 @@
-FROM alpine:3.14
+FROM hub.pingcap.net/bases/tools-base:v1
 
 ARG TARGETARCH
-RUN apk add tzdata bind-tools --no-cache
 ADD bin/${TARGETARCH}/br-federation-manager /usr/local/bin/br-federation-manager
