@@ -24,6 +24,7 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -435,6 +436,8 @@ func TestBRRestoreByEBS(t *testing.T) {
 		err = os.Remove("/tmp/backupmeta")
 		g.Expect(err).To(Succeed())
 	}()
+
+	os.Setenv(constants.AWSRegionEnv, "us-west-1")
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
