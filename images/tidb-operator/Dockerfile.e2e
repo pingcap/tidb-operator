@@ -1,4 +1,6 @@
-FROM pingcap/tools-base:v1
+FROM pingcap/pingcap-base:v1
+
+RUN dnf install -y tzdata bash bind-utils && dnf clean all
 
 ADD bin/tidb-scheduler /usr/local/bin/tidb-scheduler
 ADD bin/tidb-discovery /usr/local/bin/tidb-discovery
