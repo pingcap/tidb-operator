@@ -1,4 +1,4 @@
-FROM rockylinux:9.1.20230215
+FROM hub.pingcap.net/bases/pingcap-base:v1
 ARG TARGETARCH
 ARG RCLONE_VERSION=v1.57.0
 ARG SHUSH_VERSION=v1.4.0
