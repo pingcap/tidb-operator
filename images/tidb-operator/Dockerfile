@@ -1,6 +1,7 @@
-FROM pingcap/tools-base:v1
+FROM pingcap/pingcap-base:v1
 
 ARG TARGETARCH
+RUN dnf install -y tzdata bind-utils && dnf clean all
 ADD bin/${TARGETARCH}/tidb-scheduler /usr/local/bin/tidb-scheduler
 ADD bin/${TARGETARCH}/tidb-discovery /usr/local/bin/tidb-discovery
 ADD bin/${TARGETARCH}/tidb-controller-manager /usr/local/bin/tidb-controller-manager
