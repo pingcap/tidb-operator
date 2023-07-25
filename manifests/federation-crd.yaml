@@ -886,6 +886,8 @@ spec:
                     - volume
                     - volumeMount
                     type: object
+                  needsCalcSize:
+                    type: boolean
                   priorityClassName:
                     type: string
                   resources:
@@ -1939,6 +1941,8 @@ spec:
                         - volume
                         - volumeMount
                         type: object
+                      needsCalcSize:
+                        type: boolean
                       priorityClassName:
                         type: string
                       resources:

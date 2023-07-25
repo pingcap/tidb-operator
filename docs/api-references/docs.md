@@ -270,6 +270,18 @@ bool
 </tr>
 <tr>
 <td>
+<code>needsCalcSize</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NeedsCalcSize determines if needs to calculate size of snapshots for EBS volume snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>federalVolumeBackupPhase</code></br>
 <em>
 <a href="#federalvolumebackupphase">
@@ -4032,6 +4044,18 @@ bool
 <td>
 <em>(Optional)</em>
 <p>LogStop indicates that will stop the log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>needsCalcSize</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NeedsCalcSize determines if needs to calculate size of snapshots for EBS volume snapshot backup</p>
 </td>
 </tr>
 <tr>

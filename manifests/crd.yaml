@@ -1348,6 +1348,8 @@ spec:
                 type: boolean
               logTruncateUntil:
                 type: string
+              needsCalcSize:
+                type: boolean
               podSecurityContext:
                 properties:
                   fsGroup:
@@ -2966,6 +2968,8 @@ spec:
                     type: boolean
                   logTruncateUntil:
                     type: string
+                  needsCalcSize:
+                    type: boolean
                   podSecurityContext:
                     properties:
                       fsGroup:
@@ -4393,6 +4397,8 @@ spec:
                     type: boolean
                   logTruncateUntil:
                     type: string
+                  needsCalcSize:
+                    type: boolean
                   podSecurityContext:
                     properties:
                       fsGroup:

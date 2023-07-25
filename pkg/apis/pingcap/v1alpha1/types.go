@@ -1948,6 +1948,9 @@ type BackupSpec struct {
 	// LogStop indicates that will stop the log backup.
 	// +optional
 	LogStop bool `json:"logStop,omitempty"`
+	// NeedsCalcSize determines if needs to calculate size of snapshots for EBS volume snapshot backup
+	// +optional
+	NeedsCalcSize bool `json:"needsCalcSize,omitempty"`
 	// FederalVolumeBackupPhase indicates which phase to execute in federal volume backup
 	// +optional
 	FederalVolumeBackupPhase FederalVolumeBackupPhase `json:"federalVolumeBackupPhase,omitempty"`
