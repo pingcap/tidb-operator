@@ -1,4 +1,4 @@
-FROM hub.pingcap.net/bases/tools-base:v1
+FROM pingcap/tools-base:v1
 
 ARG TARGETARCH
 ADD bin/${TARGETARCH}/tidb-scheduler /usr/local/bin/tidb-scheduler
