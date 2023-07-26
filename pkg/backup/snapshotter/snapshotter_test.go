@@ -429,9 +429,9 @@ func TestGenerateBackupMetadata(t *testing.T) {
 					Annotations: make(map[string]string),
 				},
 				Spec: v1alpha1.BackupSpec{
-					Type:          v1alpha1.BackupTypeFull,
-					Mode:          v1alpha1.BackupModeVolumeSnapshot,
-					NeedsCalcSize: true,
+					Type:            v1alpha1.BackupTypeFull,
+					Mode:            v1alpha1.BackupModeVolumeSnapshot,
+					DisableCalcSize: true,
 				},
 			},
 			wantSSNil: false,

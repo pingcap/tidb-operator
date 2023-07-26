@@ -92,6 +92,8 @@ spec:
                     type: object
                   cleanPolicy:
                     type: string
+                  disableCalcSize:
+                    type: boolean
                   env:
                     items:
                       properties:
@@ -886,8 +888,6 @@ spec:
                     - volume
                     - volumeMount
                     type: object
-                  needsCalcSize:
-                    type: boolean
                   priorityClassName:
                     type: string
                   resources:

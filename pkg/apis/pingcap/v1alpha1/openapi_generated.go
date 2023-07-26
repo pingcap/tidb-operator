@@ -1067,9 +1067,9 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
-					"needsCalcSize": {
+					"disableCalcSize": {
 						SchemaProps: spec.SchemaProps{
-							Description: "NeedsCalcSize determines if needs to calculate size of snapshots for EBS volume snapshot backup",
+							Description: "DisableCalcSize determines if disable size calculation of snapshots for EBS volume snapshot backup",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

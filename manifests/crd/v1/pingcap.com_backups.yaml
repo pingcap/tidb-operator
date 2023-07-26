@@ -520,6 +520,8 @@ spec:
                 type: string
               commitTs:
                 type: string
+              disableCalcSize:
+                type: boolean
               dumpling:
                 properties:
                   options:
@@ -1348,8 +1350,6 @@ spec:
                 type: boolean
               logTruncateUntil:
                 type: string
-              needsCalcSize:
-                type: boolean
               podSecurityContext:
                 properties:
                   fsGroup:

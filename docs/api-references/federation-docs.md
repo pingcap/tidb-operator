@@ -697,14 +697,14 @@ string
 </tr>
 <tr>
 <td>
-<code>needsCalcSize</code></br>
+<code>disableCalcSize</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>NeedsCalcSize determines if needs to calculate size of snapshots for EBS volume snapshot backup</p>
+<p>DisableCalcSize determines if disables size calculation of snapshots for EBS volume snapshot backup</p>
 </td>
 </tr>
 </tbody>

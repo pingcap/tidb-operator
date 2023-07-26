@@ -42,9 +42,9 @@ import (
 // interface CalcVolSnapBackupSize called by backup and backup clean.
 
 const (
-	// This value can be between 100 and 1,0000, and charge ~0.6$/1 million request
+	// ListSnapMaxReturnResult This value can be between 100 and 10,000, and charge ~0.6$/1 million request
 	ListSnapMaxReturnResult = 10000
-	// This value can be between 1 and 50 due to aws service quota
+	// EbsApiConcurrency This value can be between 1 and 50 due to aws service quota
 	EbsApiConcurrency = 40
 )
 

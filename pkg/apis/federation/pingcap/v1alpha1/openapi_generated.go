@@ -320,9 +320,9 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeBackupMemberSpec(ref common.R
 							Format:      "",
 						},
 					},
-					"needsCalcSize": {
+					"disableCalcSize": {
 						SchemaProps: spec.SchemaProps{
-							Description: "NeedsCalcSize determines if needs to calculate size of snapshots for EBS volume snapshot backup",
+							Description: "DisableCalcSize determines if disables size calculation of snapshots for EBS volume snapshot backup",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

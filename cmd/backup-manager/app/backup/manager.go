@@ -317,8 +317,8 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	backupErr := bm.backupData(ctx, backup, bm.StatusUpdater)
 
 	defer func() {
-		// Calculate the backup size for ebs backup job even if it fails
-		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize && backup.Spec.NeedsCalcSize {
+		// When not disabled, calculate the backup size for ebs backup job even if it fails
+		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize && !backup.Spec.DisableCalcSize {
 			backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
 			if err != nil {
 				klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
