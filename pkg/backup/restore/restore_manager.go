@@ -1097,12 +1097,22 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 	}
 
 	nodeSelector := make(map[string]string, len(tc.Spec.TiKV.NodeSelector))
+	for k, v := range tc.Spec.NodeSelector {
+		nodeSelector[k] = v
+	}
 	for k, v := range tc.Spec.TiKV.NodeSelector {
 		nodeSelector[k] = v
 	}
+
 	tolerations := make([]corev1.Toleration, 0, len(tc.Spec.TiKV.Tolerations))
 	for _, toleration := range tc.Spec.TiKV.Tolerations {
 		tolerations = append(tolerations, *toleration.DeepCopy())
+	}
+	if len(tolerations) == 0 {
+		// if the tolerations of tikv is empty, use the tolerations of tidb cluster
+		for _, toleration := range tc.Spec.Tolerations {
+			tolerations = append(tolerations, *toleration.DeepCopy())
+		}
 	}
 
 	/*fioCommands := make([]string, 0, len(warmUpPaths))
@@ -1116,9 +1126,9 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 
 	fioPaths := make([]string, 0, len(podVolumeMounts))
 	for _, volumeMount := range podVolumeMounts {
-		if volumeMount.MountPath == constants.TiKVDataVolumeMountPath {
+		/*if volumeMount.MountPath == constants.TiKVDataVolumeMountPath {
 			continue
-		}
+		}*/
 		fioPaths = append(fioPaths, volumeMount.MountPath)
 	}
 	if len(fioPaths) > 0 {
@@ -1127,6 +1137,7 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 			args = append(args, fioPath)
 		}
 	}
+	resourceRequirements := getWarmUpResourceRequirements(tc)
 
 	warmUpPod := &corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
@@ -1142,6 +1153,7 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Command:         []string{"/warmup_steps"},
 					Args:            args,
+					Resources:       *resourceRequirements,
 					VolumeMounts:    podVolumeMounts,
 					SecurityContext: &corev1.SecurityContext{
 						Privileged: pointer.BoolPtr(true),
@@ -1217,13 +1229,13 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 	}
 	fioCommand := strings.Join(fioCommands, "; ")*/
 
-	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
-
+	// args := []string{"--fs", constants.TiKVDataVolumeMountPath}
+	var args []string
 	fioPaths := make([]string, 0, len(warmUpPaths))
 	for _, warmUpPath := range warmUpPaths {
-		if warmUpPath == constants.TiKVDataVolumeMountPath {
+		/*if warmUpPath == constants.TiKVDataVolumeMountPath {
 			continue
-		}
+		}*/
 		fioPaths = append(fioPaths, warmUpPath)
 	}
 	if len(fioPaths) > 0 {
@@ -1353,6 +1365,27 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 		return "PVCStorageSizeTooSmall", fmt.Errorf("%s/%s's restore pvc %s's storage size %s is less than expected storage size %s, please delete old pvc to continue", ns, name, pvc.GetName(), pvcRs.String(), rs.String())
 	}
 	return "", nil
+}
+
+func getWarmUpResourceRequirements(tc *v1alpha1.TidbCluster) *corev1.ResourceRequirements {
+	tikvResourceRequirements := tc.Spec.TiKV.ResourceRequirements.DeepCopy()
+	warmUpResourceRequirements := &corev1.ResourceRequirements{
+		Requests: make(corev1.ResourceList, 4),
+		Limits:   make(corev1.ResourceList, 4),
+	}
+	if quantity, ok := tikvResourceRequirements.Limits[corev1.ResourceCPU]; ok {
+		warmUpResourceRequirements.Limits[corev1.ResourceCPU] = quantity
+	}
+	if quantity, ok := tikvResourceRequirements.Limits[corev1.ResourceMemory]; ok {
+		warmUpResourceRequirements.Limits[corev1.ResourceMemory] = quantity
+	}
+	if quantity, ok := tikvResourceRequirements.Requests[corev1.ResourceCPU]; ok {
+		warmUpResourceRequirements.Requests[corev1.ResourceCPU] = quantity
+	}
+	if quantity, ok := tikvResourceRequirements.Requests[corev1.ResourceMemory]; ok {
+		warmUpResourceRequirements.Requests[corev1.ResourceMemory] = quantity
+	}
+	return warmUpResourceRequirements
 }
 
 func isWarmUpSync(r *v1alpha1.Restore) bool {
