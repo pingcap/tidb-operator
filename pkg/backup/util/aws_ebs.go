@@ -14,7 +14,10 @@
 package util
 
 import (
+	"os"
+
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ebs"
 	"github.com/aws/aws-sdk-go/service/ebs/ebsiface"
@@ -22,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
@@ -119,7 +123,17 @@ func NewEC2Session(concurrency uint) (*EC2Session, error) {
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	ec2Session := ec2.New(sess)
+
+	region := os.Getenv(constants.AWSRegionEnv)
+	if region == "" {
+		ec2Metadata := ec2metadata.New(sess)
+		region, err = ec2Metadata.Region()
+		if err != nil {
+			return nil, errors.Annotate(err, "get ec2 region")
+		}
+	}
+
+	ec2Session := ec2.New(sess, aws.NewConfig().WithRegion(region))
 	return &EC2Session{EC2: ec2Session, concurrency: concurrency}, nil
 }
 
@@ -201,6 +215,15 @@ func NewEBSSession(concurrency uint) (*EBSSession, error) {
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	ebsSession := ebs.New(sess)
+	region := os.Getenv(constants.AWSRegionEnv)
+	if region == "" {
+		ec2Metadata := ec2metadata.New(sess)
+		region, err = ec2Metadata.Region()
+		if err != nil {
+			return nil, errors.Annotate(err, "get ec2 region")
+		}
+	}
+
+	ebsSession := ebs.New(sess, aws.NewConfig().WithRegion(region))
 	return &EBSSession{EBS: ebsSession, concurrency: concurrency}, nil
 }
