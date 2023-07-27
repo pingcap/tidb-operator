@@ -28,7 +28,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/ebs"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/pingcap/errors"
-	backup "github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -53,6 +52,10 @@ const (
 	ListSnapMaxReturnResult = 10000
 	// EbsApiConcurrency This value can be between 1 and 50 due to aws service quota
 	EbsApiConcurrency = 40
+
+	CalculateFullSize    = "full"
+	CalculateIncremental = "incremental"
+	CalculateAll         = "all"
 )
 
 // CalcVolSnapBackupSize get snapshots from backup meta and then calc the backup size of snapshots.
@@ -150,7 +153,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string, level string
 		// sort snapshots by timestamp
 		workerPool.ApplyOnErrorGroup(eg, func() error {
 			var snapSize uint64
-			if level == backup.CalculateFullSize || level == backup.CalculateFullSize {
+			if level == CalculateFullSize || level == CalculateFullSize {
 				snapSize, apiReq, err := calculateSnapshotSize(volumeId, snapshotId)
 				if err != nil {
 					return err
@@ -159,7 +162,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string, level string
 				atomic.AddUint64(&apiReqCount, apiReq)
 			}
 
-			if level == backup.CalculateAll || level == backup.CalculateIncremental {
+			if level == CalculateAll || level == CalculateIncremental {
 				volSnapshots, err := getVolSnapshots(volumeId)
 				if err != nil {
 					return err
