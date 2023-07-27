@@ -159,7 +159,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (fullBackupS
 				return err
 =======
 			var snapSize uint64
-			if level == CalculateFullSize || level == CalculateFullSize {
+			if level == CalculateAll || level == CalculateFullSize {
 				snapSize, apiReq, err := calculateSnapshotSize(volumeId, snapshotId)
 				if err != nil {
 					return err
