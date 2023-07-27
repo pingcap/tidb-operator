@@ -53,6 +53,10 @@ const (
 	ListSnapMaxReturnResult = 10000
 	// This value can be between 1 and 50 due to aws service quota
 	EbsApiConcurrency = 40
+
+	CalculateFullSize    = "full"
+	CalculateIncremental = "incremental"
+	CalculateAll         = "all"
 )
 
 // CalcVolSnapBackupSize get snapshots from backup meta and then calc the backup size of snapshots.
@@ -155,7 +159,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (fullBackupS
 				return err
 =======
 			var snapSize uint64
-			if level == backup.CalculateFullSize || level == backup.CalculateFullSize {
+			if level == CalculateFullSize || level == CalculateFullSize {
 				snapSize, apiReq, err := calculateSnapshotSize(volumeId, snapshotId)
 				if err != nil {
 					return err
@@ -164,6 +168,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (fullBackupS
 				atomic.AddUint64(&apiReqCount, apiReq)
 >>>>>>> 33580d9dc (*: manual cp)
 			}
+<<<<<<< HEAD
 			atomic.AddInt64(&fullBackupSize, int64(snapSize))
 			atomic.AddUint64(&apiReqCount, apiReq)
 
@@ -173,6 +178,10 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (fullBackupS
 				return err
 =======
 			if level == backup.CalculateAll || level == backup.CalculateIncremental {
+=======
+
+			if level == CalculateAll || level == CalculateIncremental {
+>>>>>>> 44eefb26c (*: code format)
 				volSnapshots, err := getVolSnapshots(volumeId)
 				if err != nil {
 					return err
