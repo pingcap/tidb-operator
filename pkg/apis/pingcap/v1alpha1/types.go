@@ -1949,12 +1949,9 @@ type BackupSpec struct {
 	// +optional
 	LogStop bool `json:"logStop,omitempty"`
 	// CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup
-	// 0: disabled
-	// 1: calculate incremental size only
-	// 2: calculate full size only
-	// 3 and above: calculate both
 	// +optional
-	CalcSizeLevel int `json:"calcSizeLevel,omitempty"`
+	// +kubebuilder:default="all"
+	CalcSizeLevel string `json:"calcSizeLevel,omitempty"`
 	// FederalVolumeBackupPhase indicates which phase to execute in federal volume backup
 	// +optional
 	FederalVolumeBackupPhase FederalVolumeBackupPhase `json:"federalVolumeBackupPhase,omitempty"`

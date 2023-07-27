@@ -43,9 +43,10 @@ const (
 	gcPausedKeyword          = "GC is paused"
 	pdSchedulesPausedKeyword = "Schedulers are paused"
 
-	DisableSizeCalculate     = 0
-	CalculateFullSize        = 2
-	CalculateIncrementalOnly = 1
+	DisabledSizeCalculate = "disabled"
+	CalculateFullSize     = "full"
+	CalculateIncremental  = "incremental"
+	CalculateAll          = "all"
 )
 
 // Manager mainly used to manage backup related work
@@ -322,8 +323,8 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 
 	defer func() {
 		// When not disabled, calculate the backup size for ebs backup job even if it fails
-		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize && backup.Spec.CalcSizeLevel > DisableSizeCalculate {
-			if backup.Spec.CalcSizeLevel >= CalculateFullSize {
+		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize && backup.Spec.CalcSizeLevel != DisabledSizeCalculate {
+			if backup.Spec.CalcSizeLevel == CalculateFullSize || backup.Spec.CalcSizeLevel == CalculateAll {
 				backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
 				if err != nil {
 					klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)

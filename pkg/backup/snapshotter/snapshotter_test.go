@@ -431,7 +431,7 @@ func TestGenerateBackupMetadata(t *testing.T) {
 				Spec: v1alpha1.BackupSpec{
 					Type:          v1alpha1.BackupTypeFull,
 					Mode:          v1alpha1.BackupModeVolumeSnapshot,
-					CalcSizeLevel: 1,
+					CalcSizeLevel: "all",
 				},
 			},
 			wantSSNil: false,

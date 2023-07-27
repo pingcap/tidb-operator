@@ -699,16 +699,12 @@ string
 <td>
 <code>calcSizeLevel</code></br>
 <em>
-int
+string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup
-0: disabled
-1: calculate incremental size only
-2: calculate full size only
-3 and above: calculate both</p>
+<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup</p>
 </td>
 </tr>
 </tbody>

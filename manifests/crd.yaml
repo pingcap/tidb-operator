@@ -498,7 +498,8 @@ spec:
                 - cluster
                 type: object
               calcSizeLevel:
-                type: integer
+                default: all
+                type: string
               cleanOption:
                 properties:
                   backoffEnabled:
@@ -2118,7 +2119,8 @@ spec:
                     - cluster
                     type: object
                   calcSizeLevel:
-                    type: integer
+                    default: all
+                    type: string
                   cleanOption:
                     properties:
                       backoffEnabled:
@@ -3547,7 +3549,8 @@ spec:
                     - cluster
                     type: object
                   calcSizeLevel:
-                    type: integer
+                    default: all
+                    type: string
                   cleanOption:
                     properties:
                       backoffEnabled:
