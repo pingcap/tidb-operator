@@ -17,11 +17,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/dustin/go-humanize"
 	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/dustin/go-humanize"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ebs"
