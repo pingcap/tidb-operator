@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ebs"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/dustin/go-humanize"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -146,7 +147,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (fullBackupS
 		volumeId := vid
 		// sort snapshots by timestamp
 		workerPool.ApplyOnErrorGroup(eg, func() error {
-			snapSize, apiReq, err := calculateSnapshotSize(snapshotId)
+			snapSize, apiReq, err := calculateSnapshotSize(volumeId, snapshotId)
 			if err != nil {
 				return err
 			}
@@ -164,7 +165,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (fullBackupS
 				return nil
 			}
 			klog.Infof("get previous snapshot %s of snapshot %s, volume %s", prevSnapshotId, snapshotId, volumeId)
-			incrementalSnapSize, incrementalApiReq, err := calculateChangedBlocksSize(prevSnapshotId, snapshotId)
+			incrementalSnapSize, incrementalApiReq, err := calculateChangedBlocksSize(volumeId, prevSnapshotId, snapshotId)
 			if err != nil {
 				return err
 			}
@@ -186,7 +187,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (fullBackupS
 }
 
 // calculateSnapshotSize calculate size of an snapshot in bytes by listing its blocks.
-func calculateSnapshotSize(snapshotId string) (uint64, uint64, error) {
+func calculateSnapshotSize(volumeId, snapshotId string) (uint64, uint64, error) {
 	var snapshotSize uint64
 	var numApiReq uint64
 	ebsSession, err := util.NewEBSSession(util.CloudAPIConcurrency)
@@ -216,17 +217,19 @@ func calculateSnapshotSize(snapshotId string) (uint64, uint64, error) {
 		}
 		nextToken = resp.NextToken
 	}
-	klog.Infof("full backup snapshot size %d bytes, num of ListSnapshotBlocks request %d", snapshotSize, numApiReq)
+	klog.Infof("full snapshot size %s, num of ListSnapshotBlocks request %d, snapshot id %s, volume id %s",
+		humanize.Bytes(snapshotSize), numApiReq, snapshotId, volumeId)
 	return snapshotSize, numApiReq, nil
 }
 
 // calculateChangedBlocksSize calculates changed blocks total size in bytes between two snapshots with common ancestry.
-func calculateChangedBlocksSize(preSnapshotId string, snapshotId string) (uint64, uint64, error) {
+func calculateChangedBlocksSize(volumeId, preSnapshotId, snapshotId string) (uint64, uint64, error) {
 	var numBlocks int
 	var snapshotSize uint64
 	var numApiReq uint64
 
-	klog.Infof("the calc snapshot size for %s, base on prev snapshot %s", snapshotId, preSnapshotId)
+	klog.Infof("start to calculate incremental snapshot size for %s, base on prev snapshot %s, volume id %s",
+		snapshotId, preSnapshotId, volumeId)
 	ebsSession, err := util.NewEBSSession(util.CloudAPIConcurrency)
 	if err != nil {
 		klog.Errorf("new a ebs session failure.")
@@ -261,7 +264,8 @@ func calculateChangedBlocksSize(preSnapshotId string, snapshotId string) (uint64
 		}
 		nextToken = resp.NextToken
 	}
-	klog.Infof("the total size of snapshot %d, num of api ListChangedBlocks request %d, snapshot id %s", snapshotSize, numApiReq, snapshotId)
+	klog.Infof("incremental snapshot size %s, num of api ListChangedBlocks request %d, snapshot id %s, volume id %s",
+		humanize.Bytes(snapshotSize), numApiReq, snapshotId, volumeId)
 	return snapshotSize, numApiReq, nil
 }
 
