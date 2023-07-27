@@ -153,7 +153,7 @@ func calcBackupSize(ctx context.Context, volumes map[string]string, level string
 		// sort snapshots by timestamp
 		workerPool.ApplyOnErrorGroup(eg, func() error {
 			var snapSize uint64
-			if level == CalculateFullSize || level == CalculateFullSize {
+			if level == CalculateAll || level == CalculateFullSize {
 				snapSize, apiReq, err := calculateSnapshotSize(volumeId, snapshotId)
 				if err != nil {
 					return err
