@@ -1,6 +1,6 @@
-FROM alpine:3.14
+FROM pingcap/pingcap-base:v1
 
-RUN apk add tzdata bash bind-tools --no-cache
+RUN dnf install -y tzdata bash bind-utils && dnf clean all
 
 ADD bin/tidb-scheduler /usr/local/bin/tidb-scheduler
 ADD bin/tidb-discovery /usr/local/bin/tidb-discovery
