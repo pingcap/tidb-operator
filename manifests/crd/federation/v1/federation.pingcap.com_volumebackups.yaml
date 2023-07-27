@@ -90,10 +90,10 @@ spec:
                       sendCredToTikv:
                         type: boolean
                     type: object
+                  calcSizeLevel:
+                    type: integer
                   cleanPolicy:
                     type: string
-                  disableCalcSize:
-                    type: boolean
                   env:
                     items:
                       properties:

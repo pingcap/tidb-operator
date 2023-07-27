@@ -497,6 +497,8 @@ spec:
                 required:
                 - cluster
                 type: object
+              calcSizeLevel:
+                type: integer
               cleanOption:
                 properties:
                   backoffEnabled:
@@ -520,8 +522,6 @@ spec:
                 type: string
               commitTs:
                 type: string
-              disableCalcSize:
-                type: boolean
               dumpling:
                 properties:
                   options:

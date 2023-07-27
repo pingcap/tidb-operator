@@ -414,7 +414,7 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 			ServiceAccount:           backupTemplate.ServiceAccount,
 			CleanPolicy:              backupTemplate.CleanPolicy,
 			PriorityClassName:        backupTemplate.PriorityClassName,
-			DisableCalcSize:          backupTemplate.DisableCalcSize,
+			CalcSizeLevel:            backupTemplate.CalcSizeLevel,
 		},
 	}
 	backupMember.Spec.S3.Prefix = fmt.Sprintf("%s-%s", backupMember.Spec.S3.Prefix, clusterMember.K8sClusterName)

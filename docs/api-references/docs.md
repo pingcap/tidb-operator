@@ -270,14 +270,18 @@ bool
 </tr>
 <tr>
 <td>
-<code>disableCalcSize</code></br>
+<code>calcSizeLevel</code></br>
 <em>
-bool
+int
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>DisableCalcSize determines if disable size calculation of snapshots for EBS volume snapshot backup</p>
+<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup
+0: disabled
+1: calculate incremental size only
+2: calculate full size only
+3 and above: calculate both</p>
 </td>
 </tr>
 <tr>
@@ -4048,14 +4052,18 @@ bool
 </tr>
 <tr>
 <td>
-<code>disableCalcSize</code></br>
+<code>calcSizeLevel</code></br>
 <em>
-bool
+int
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>DisableCalcSize determines if disable size calculation of snapshots for EBS volume snapshot backup</p>
+<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup
+0: disabled
+1: calculate incremental size only
+2: calculate full size only
+3 and above: calculate both</p>
 </td>
 </tr>
 <tr>

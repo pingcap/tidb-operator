@@ -42,6 +42,10 @@ import (
 const (
 	gcPausedKeyword          = "GC is paused"
 	pdSchedulesPausedKeyword = "Schedulers are paused"
+
+	DisableSizeCalculate     = 0
+	CalculateFullSize        = 2
+	CalculateIncrementalOnly = 1
 )
 
 // Manager mainly used to manage backup related work
@@ -318,22 +322,24 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 
 	defer func() {
 		// When not disabled, calculate the backup size for ebs backup job even if it fails
-		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize && !backup.Spec.DisableCalcSize {
-			backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
-			if err != nil {
-				klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
-				return
+		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize && backup.Spec.CalcSizeLevel > DisableSizeCalculate {
+			if backup.Spec.CalcSizeLevel >= CalculateFullSize {
+				backupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider)
+				if err != nil {
+					klog.Warningf("Failed to calc volume snapshot backup size %d bytes, %v", backupSize, err)
+					return
+				}
+
+				backupSizeReadable := humanize.Bytes(uint64(backupSize))
+
+				updateStatus := &controller.BackupUpdateStatus{
+					BackupSize:         &backupSize,
+					BackupSizeReadable: &backupSizeReadable,
+				}
+
+				bm.StatusUpdater.Update(backup, nil,
+					updateStatus)
 			}
-
-			backupSizeReadable := humanize.Bytes(uint64(backupSize))
-
-			updateStatus := &controller.BackupUpdateStatus{
-				BackupSize:         &backupSize,
-				BackupSizeReadable: &backupSizeReadable,
-			}
-
-			bm.StatusUpdater.Update(backup, nil,
-				updateStatus)
 		}
 	}()
 
