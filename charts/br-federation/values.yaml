@@ -20,8 +20,10 @@ brFederationManager:
   serviceAccount: br-federation-manager
 
   # Secret name of the kubeconfig for the federation Kubernetes clusters
-  # The data item key is the cluster name, and the data item value is the base64 encoded kubeconfig
   federationKubeconfigSecret: br-federation-kubeconfig
+  # which data item is the kubeconfig file, and the data item value is the base64 encoded kubeconfig
+  # if you have multiple kubernetes clusters, you should merge them in one kubeconfig
+  # we use the context name in the kubeconfig as the k8sClusterName in volume backup/restore CR
   federationKubeconfigSecretKey: kubeconfig
 
   logLevel: 2
