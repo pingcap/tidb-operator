@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/dustin/go-humanize"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -147,16 +148,48 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (fullBackupS
 		volumeId := vid
 		// sort snapshots by timestamp
 		workerPool.ApplyOnErrorGroup(eg, func() error {
+<<<<<<< HEAD
 			snapSize, apiReq, err := calculateSnapshotSize(volumeId, snapshotId)
 			if err != nil {
 				return err
+=======
+			var snapSize uint64
+			if level == backup.CalculateFullSize || level == backup.CalculateFullSize {
+				snapSize, apiReq, err := calculateSnapshotSize(volumeId, snapshotId)
+				if err != nil {
+					return err
+				}
+				atomic.AddInt64(&fullBackupSize, int64(snapSize))
+				atomic.AddUint64(&apiReqCount, apiReq)
+>>>>>>> 33580d9dc (*: manual cp)
 			}
 			atomic.AddInt64(&fullBackupSize, int64(snapSize))
 			atomic.AddUint64(&apiReqCount, apiReq)
 
+<<<<<<< HEAD
 			volSnapshots, err := getVolSnapshots(volumeId)
 			if err != nil {
 				return err
+=======
+			if level == backup.CalculateAll || level == backup.CalculateIncremental {
+				volSnapshots, err := getVolSnapshots(volumeId)
+				if err != nil {
+					return err
+				}
+				prevSnapshotId, existed := getPrevSnapshotId(snapshotId, volSnapshots)
+				if !existed {
+					// if there is no previous snapshot, means it's the first snapshot, uses its full size as incremental size
+					atomic.AddInt64(&incrementalBackupSize, int64(snapSize))
+					return nil
+				}
+				klog.Infof("get previous snapshot %s of snapshot %s, volume %s", prevSnapshotId, snapshotId, volumeId)
+				incrementalSnapSize, incrementalApiReq, err := calculateChangedBlocksSize(volumeId, prevSnapshotId, snapshotId)
+				if err != nil {
+					return err
+				}
+				atomic.AddInt64(&incrementalBackupSize, int64(incrementalSnapSize))
+				atomic.AddUint64(&incrementalApiReqCount, incrementalApiReq)
+>>>>>>> 33580d9dc (*: manual cp)
 			}
 			prevSnapshotId, existed := getPrevSnapshotId(snapshotId, volSnapshots)
 			if !existed {
@@ -217,19 +250,31 @@ func calculateSnapshotSize(volumeId, snapshotId string) (uint64, uint64, error) 
 		}
 		nextToken = resp.NextToken
 	}
+<<<<<<< HEAD
 	klog.Infof("full snapshot size %s, num of ListSnapshotBlocks request %d, snapshot id %s, volume id %s",
 		humanize.Bytes(snapshotSize), numApiReq, snapshotId, volumeId)
+=======
+	klog.Infof("full backup snapshot size %d bytes, num of ListSnapshotBlocks request %d, snapshot id %s, volume id %s", humanize.Bytes(snapshotSize), numApiReq, snapshotId, volumeId)
+>>>>>>> 33580d9dc (*: manual cp)
 	return snapshotSize, numApiReq, nil
 }
 
 // calculateChangedBlocksSize calculates changed blocks total size in bytes between two snapshots with common ancestry.
+<<<<<<< HEAD
 func calculateChangedBlocksSize(volumeId, preSnapshotId, snapshotId string) (uint64, uint64, error) {
+=======
+func calculateChangedBlocksSize(volumeId, preSnapshotId string, snapshotId string) (uint64, uint64, error) {
+>>>>>>> 33580d9dc (*: manual cp)
 	var numBlocks int
 	var snapshotSize uint64
 	var numApiReq uint64
 
+<<<<<<< HEAD
 	klog.Infof("start to calculate incremental snapshot size for %s, base on prev snapshot %s, volume id %s",
 		snapshotId, preSnapshotId, volumeId)
+=======
+	klog.Infof("the calc snapshot size for %s, base on prev snapshot %s, volume id %s", snapshotId, preSnapshotId, volumeId)
+>>>>>>> 33580d9dc (*: manual cp)
 	ebsSession, err := util.NewEBSSession(util.CloudAPIConcurrency)
 	if err != nil {
 		klog.Errorf("new a ebs session failure.")
@@ -264,8 +309,12 @@ func calculateChangedBlocksSize(volumeId, preSnapshotId, snapshotId string) (uin
 		}
 		nextToken = resp.NextToken
 	}
+<<<<<<< HEAD
 	klog.Infof("incremental snapshot size %s, num of api ListChangedBlocks request %d, snapshot id %s, volume id %s",
 		humanize.Bytes(snapshotSize), numApiReq, snapshotId, volumeId)
+=======
+	klog.Infof("the total size of snapshot %d, num of api ListChangedBlocks request %d, snapshot id %s, volume id %s", humanize.Bytes(snapshotSize), numApiReq, snapshotId, volumeId)
+>>>>>>> 33580d9dc (*: manual cp)
 	return snapshotSize, numApiReq, nil
 }
 
