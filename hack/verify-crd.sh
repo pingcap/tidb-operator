@@ -27,33 +27,29 @@ cp -R "$TARGET_DIR/." "$VERIFY_TMP_DIR"
 
 $ROOT/hack/update-crd.sh
 
-for version in v1beta1 v1; do
-    for file in `ls $TARGET_DIR/$version`; do
-        targetFile=$TARGET_DIR/$version/$file
-        verifyFile=$VERIFY_TMP_DIR/$version/$file
-        echo "diffing $targetFile with $verifyFile" >&2
-        diff=$(diff "$targetFile" "$verifyFile") || true
-        if [[ -n "${diff}" ]]; then
-            echo "${diff}" >&2
-            echo >&2
-            echo "Run ./hack/update-crd.sh" >&2
-            exit 1
-        fi
-    done
+for file in `ls $TARGET_DIR/v1`; do
+    targetFile=$TARGET_DIR/v1/$file
+    verifyFile=$VERIFY_TMP_DIR/v1/$file
+    echo "diffing $targetFile with $verifyFile" >&2
+    diff=$(diff "$targetFile" "$verifyFile") || true
+    if [[ -n "${diff}" ]]; then
+        echo "${diff}" >&2
+        echo >&2
+        echo "Run ./hack/update-crd.sh" >&2
+        exit 1
+    fi
 done
 
 # verify for federation
-for version in v1beta1 v1; do
-    for file in `ls $TARGET_DIR/federation/$version`; do
-        targetFile=$TARGET_DIR/federation/$version/$file
-        verifyFile=$VERIFY_TMP_DIR/federation/$version/$file
-        echo "diffing $targetFile with $verifyFile" >&2
-        diff=$(diff "$targetFile" "$verifyFile") || true
-        if [[ -n "${diff}" ]]; then
-            echo "${diff}" >&2
-            echo >&2
-            echo "Run ./hack/update-crd.sh" >&2
-            exit 1
-        fi
-    done
+for file in `ls $TARGET_DIR/federation/v1`; do
+    targetFile=$TARGET_DIR/federation/v1/$file
+    verifyFile=$VERIFY_TMP_DIR/federation/v1/$file
+    echo "diffing $targetFile with $verifyFile" >&2
+    diff=$(diff "$targetFile" "$verifyFile") || true
+    if [[ -n "${diff}" ]]; then
+        echo "${diff}" >&2
+        echo >&2
+        echo "Run ./hack/update-crd.sh" >&2
+        exit 1
+    fi
 done

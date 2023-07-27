@@ -14,7 +14,7 @@
 package v1alpha1
 
 import (
-	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
 const (

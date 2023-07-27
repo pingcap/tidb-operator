@@ -23,7 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,7 +34,7 @@ func TestStrategyAdmissionHook_Admit(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name      string
-		operation admissionv1beta1.Operation
+		operation admissionv1.Operation
 		apiObj    runtime.Object
 
 		expectedPrepareForCreateTimes int
@@ -43,25 +43,25 @@ func TestStrategyAdmissionHook_Admit(t *testing.T) {
 	testcases := []testcase{
 		{
 			name:                          "Prepare for create",
-			operation:                     admissionv1beta1.Create,
+			operation:                     admissionv1.Create,
 			apiObj:                        &v1alpha1.TidbCluster{},
 			expectedPrepareForCreateTimes: 1,
 			expectedPrepareForUpdateTimes: 0,
 		}, {
 			name:                          "Prepare for update",
-			operation:                     admissionv1beta1.Update,
+			operation:                     admissionv1.Update,
 			apiObj:                        &v1alpha1.TidbCluster{},
 			expectedPrepareForCreateTimes: 0,
 			expectedPrepareForUpdateTimes: 1,
 		}, {
 			name:                          "Deletion should be bypassed",
-			operation:                     admissionv1beta1.Delete,
+			operation:                     admissionv1.Delete,
 			apiObj:                        &v1alpha1.TidbCluster{},
 			expectedPrepareForCreateTimes: 0,
 			expectedPrepareForUpdateTimes: 0,
 		}, {
 			name:                          "Unregistered api type should be bypassed",
-			operation:                     admissionv1beta1.Create,
+			operation:                     admissionv1.Create,
 			apiObj:                        &v1alpha1.Backup{},
 			expectedPrepareForCreateTimes: 0,
 			expectedPrepareForUpdateTimes: 0,
@@ -83,7 +83,7 @@ func TestStrategyAdmissionHook_Admit(t *testing.T) {
 			Raw:    raw,
 			Object: tt.apiObj,
 		}
-		ar := admissionv1beta1.AdmissionRequest{
+		ar := admissionv1.AdmissionRequest{
 			Kind: metav1.GroupVersionKind{
 				Kind:    gvk.Kind,
 				Group:   gvk.Group,
@@ -92,7 +92,7 @@ func TestStrategyAdmissionHook_Admit(t *testing.T) {
 			Operation: tt.operation,
 			Object:    re,
 		}
-		if ar.Operation == admissionv1beta1.Update || ar.Operation == admissionv1beta1.Delete {
+		if ar.Operation == admissionv1.Update || ar.Operation == admissionv1.Delete {
 			ar.OldObject = *re.DeepCopy()
 		}
 
@@ -111,7 +111,7 @@ func TestStrategyAdmissionHook_Validate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name      string
-		operation admissionv1beta1.Operation
+		operation admissionv1.Operation
 		apiObj    runtime.Object
 
 		validateError       error
@@ -123,39 +123,39 @@ func TestStrategyAdmissionHook_Validate(t *testing.T) {
 	testcases := []testcase{
 		{
 			name:                           "Validate creating",
-			operation:                      admissionv1beta1.Create,
+			operation:                      admissionv1.Create,
 			apiObj:                         &v1alpha1.TidbCluster{},
 			expectedValidateTimes:          1,
 			expectedValidateForUpdateTimes: 0,
 		}, {
 			name:                           "Validate updating",
-			operation:                      admissionv1beta1.Update,
+			operation:                      admissionv1.Update,
 			apiObj:                         &v1alpha1.TidbCluster{},
 			expectedValidateTimes:          0,
 			expectedValidateForUpdateTimes: 1,
 		}, {
 			name:                           "Deletion should be bypassed",
-			operation:                      admissionv1beta1.Delete,
+			operation:                      admissionv1.Delete,
 			apiObj:                         &v1alpha1.TidbCluster{},
 			expectedValidateTimes:          0,
 			expectedValidateForUpdateTimes: 0,
 		}, {
 			name:                           "Unregistered api type should be bypassed",
-			operation:                      admissionv1beta1.Create,
+			operation:                      admissionv1.Create,
 			apiObj:                         &v1alpha1.Backup{},
 			expectedValidateTimes:          0,
 			expectedValidateForUpdateTimes: 0,
 		},
 		{
 			name:                           "Validate creating error",
-			operation:                      admissionv1beta1.Create,
+			operation:                      admissionv1.Create,
 			apiObj:                         &v1alpha1.TidbCluster{},
 			validateError:                  fmt.Errorf("invalid object"),
 			expectedValidateTimes:          1,
 			expectedValidateForUpdateTimes: 0,
 		}, {
 			name:                           "Validate updating error",
-			operation:                      admissionv1beta1.Update,
+			operation:                      admissionv1.Update,
 			apiObj:                         &v1alpha1.TidbCluster{},
 			validateUpdateError:            fmt.Errorf("invalid object"),
 			expectedValidateTimes:          0,
@@ -178,7 +178,7 @@ func TestStrategyAdmissionHook_Validate(t *testing.T) {
 			Raw:    raw,
 			Object: tt.apiObj,
 		}
-		ar := admissionv1beta1.AdmissionRequest{
+		ar := admissionv1.AdmissionRequest{
 			Kind: metav1.GroupVersionKind{
 				Kind:    gvk.Kind,
 				Group:   gvk.Group,
@@ -187,7 +187,7 @@ func TestStrategyAdmissionHook_Validate(t *testing.T) {
 			Operation: tt.operation,
 			Object:    re,
 		}
-		if ar.Operation == admissionv1beta1.Update || ar.Operation == admissionv1beta1.Delete {
+		if ar.Operation == admissionv1.Update || ar.Operation == admissionv1.Delete {
 			ar.OldObject = *re.DeepCopy()
 		}
 
@@ -199,9 +199,9 @@ func TestStrategyAdmissionHook_Validate(t *testing.T) {
 		}
 
 		resp := w.Validate(&ar)
-		if tt.validateError != nil && tt.operation == admissionv1beta1.Create {
+		if tt.validateError != nil && tt.operation == admissionv1.Create {
 			g.Expect(resp.Allowed).To(BeFalse())
-		} else if tt.validateUpdateError != nil && tt.operation == admissionv1beta1.Update {
+		} else if tt.validateUpdateError != nil && tt.operation == admissionv1.Update {
 			g.Expect(resp.Allowed).To(BeFalse())
 		} else {
 			g.Expect(resp.Allowed).To(BeTrue())

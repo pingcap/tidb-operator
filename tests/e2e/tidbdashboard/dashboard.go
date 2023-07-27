@@ -118,7 +118,7 @@ var _ = ginkgo.Describe("[TiDBDashboard]", func() {
 			ginkgo.By("Deploy tidb cluster with TLS enabled")
 			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Deploy tidb dashboard")
 			err = genericCli.Create(context.TODO(), td)

@@ -40,7 +40,7 @@ import (
 )
 
 var tidbIssuerTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: {{ .ClusterName }}-selfsigned-ca-issuer
@@ -48,7 +48,7 @@ metadata:
 spec:
   selfSigned: {}
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-ca
@@ -61,7 +61,7 @@ spec:
     name: {{ .ClusterRef }}-selfsigned-ca-issuer
     kind: Issuer
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: {{ .ClusterName }}-tidb-issuer
@@ -72,7 +72,7 @@ spec:
 `
 
 var tidbCertificatesTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-tidb-server-secret
@@ -81,8 +81,9 @@ spec:
   secretName: {{ .ClusterName }}-tidb-server-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-    - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB Server"
   usages:
     - server auth
@@ -101,7 +102,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-tidb-client-secret
@@ -110,8 +111,9 @@ spec:
   secretName: {{ .ClusterName }}-tidb-client-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-    - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB Client"
   usages:
     - client auth
@@ -122,7 +124,7 @@ spec:
 `
 
 var tidbComponentsOnlyPDCertificatesTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-pd-cluster-secret
@@ -131,8 +133,9 @@ spec:
   secretName: {{ .ClusterName }}-pd-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -157,7 +160,7 @@ spec:
 `
 
 var tidbComponentsExceptPDCertificatesTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-tikv-cluster-secret
@@ -166,8 +169,9 @@ spec:
   secretName: {{ .ClusterName }}-tikv-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -190,7 +194,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-tidb-cluster-secret
@@ -199,8 +203,9 @@ spec:
   secretName: {{ .ClusterName }}-tidb-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -223,7 +228,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-cluster-client-secret
@@ -232,8 +237,9 @@ spec:
   secretName: {{ .ClusterName }}-cluster-client-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - client auth
@@ -242,7 +248,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-pump-cluster-secret
@@ -251,8 +257,9 @@ spec:
   secretName: {{ .ClusterName }}-pump-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -269,7 +276,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-drainer-cluster-secret
@@ -278,8 +285,9 @@ spec:
   secretName: {{ .ClusterName }}-drainer-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -296,7 +304,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-tiflash-cluster-secret
@@ -305,8 +313,9 @@ spec:
   secretName: {{ .ClusterName }}-tiflash-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -329,7 +338,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-ticdc-cluster-secret
@@ -338,8 +347,9 @@ spec:
   secretName: {{ .ClusterName }}-ticdc-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
   - server auth
@@ -364,7 +374,7 @@ spec:
 `
 
 var tidbClientCertificateTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-{{ .Component }}-tls
@@ -373,8 +383,9 @@ spec:
   secretName: {{ .ClusterName }}-{{ .Component }}-tls
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-    - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB Client"
   usages:
     - client auth
@@ -385,7 +396,7 @@ spec:
 `
 
 var mysqlCertificatesTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-mysql-secret
@@ -394,8 +405,9 @@ spec:
   secretName: {{ .ClusterName }}-mysql-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-    - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "MySQL Server"
   usages:
     - server auth
@@ -412,7 +424,7 @@ spec:
 `
 
 var dmCertificatesTmp = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-dm-master-cluster-secret
@@ -421,8 +433,9 @@ spec:
   secretName: {{ .ClusterName }}-dm-master-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -445,7 +458,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-dm-worker-cluster-secret
@@ -454,8 +467,9 @@ spec:
   secretName: {{ .ClusterName }}-dm-worker-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - server auth
@@ -478,7 +492,7 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .ClusterName }}-dm-client-secret
@@ -487,8 +501,9 @@ spec:
   secretName: {{ .ClusterName }}-dm-client-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "TiDB"
   usages:
     - client auth
@@ -499,7 +514,7 @@ spec:
 `
 
 var xK8sTidbIssuerTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: {{ .ClusterName }}-tidb-issuer
