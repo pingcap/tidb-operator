@@ -14,21 +14,28 @@
 package backup
 
 import (
-	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 )
 
 type ManifestFetcher interface {
-	ListByTC(tc *pingcapv1alpha1.TidbCluster) (objects []runtime.Object, err error)
+	ListByTC(tc *v1alpha1.TidbCluster) (objects []runtime.Object, err error)
 }
 
 type TiDBDashboardFetcher struct {
 	lister listers.TidbDashboardLister
 }
 
-func (f *TiDBDashboardFetcher) ListByTC(tc *pingcapv1alpha1.TidbCluster) (objects []runtime.Object, err error) {
+func NewTiDBDashboardFetcher(lister listers.TidbDashboardLister) *TiDBDashboardFetcher {
+	return &TiDBDashboardFetcher{
+		lister: lister,
+	}
+}
+
+func (f *TiDBDashboardFetcher) ListByTC(tc *v1alpha1.TidbCluster) (objects []runtime.Object, err error) {
 	emptySelector := labels.NewSelector()
 	dashboards, err := f.lister.List(emptySelector)
 	if err != nil {
@@ -43,6 +50,8 @@ func (f *TiDBDashboardFetcher) ListByTC(tc *pingcapv1alpha1.TidbCluster) (object
 				namespace = dashboard.Namespace
 			}
 			if name == tc.Name && namespace == tc.Namespace {
+				klog.Infof("TiDBDashboard %s/%s matches tc %s/%s",
+					dashboard.Namespace, dashboard.Name, tc.Namespace, tc.Name)
 				objects = append(objects, dashboard)
 				break
 			}
@@ -55,7 +64,13 @@ type TiDBMonitorFetcher struct {
 	lister listers.TidbMonitorLister
 }
 
-func (f *TiDBMonitorFetcher) ListByTC(tc *pingcapv1alpha1.TidbCluster) (objects []runtime.Object, err error) {
+func NewTiDBMonitorFetcher(lister listers.TidbMonitorLister) *TiDBMonitorFetcher {
+	return &TiDBMonitorFetcher{
+		lister: lister,
+	}
+}
+
+func (f *TiDBMonitorFetcher) ListByTC(tc *v1alpha1.TidbCluster) (objects []runtime.Object, err error) {
 	emptySelector := labels.NewSelector()
 	monitors, err := f.lister.List(emptySelector)
 	if err != nil {
@@ -70,6 +85,8 @@ func (f *TiDBMonitorFetcher) ListByTC(tc *pingcapv1alpha1.TidbCluster) (objects 
 				namespace = monitor.Namespace
 			}
 			if name == tc.Name && namespace == tc.Namespace {
+				klog.Infof("TidbMonitor %s/%s matches tc %s/%s",
+					monitor.Namespace, monitor.Name, tc.Namespace, tc.Name)
 				objects = append(objects, monitor)
 				break
 			}
@@ -82,7 +99,13 @@ type TiDBClusterAutoScalerFetcher struct {
 	lister listers.TidbClusterAutoScalerLister
 }
 
-func (f *TiDBClusterAutoScalerFetcher) ListByTC(tc *pingcapv1alpha1.TidbCluster) (objects []runtime.Object, err error) {
+func NewTiDBClusterAutoScalerFetcher(lister listers.TidbClusterAutoScalerLister) *TiDBClusterAutoScalerFetcher {
+	return &TiDBClusterAutoScalerFetcher{
+		lister: lister,
+	}
+}
+
+func (f *TiDBClusterAutoScalerFetcher) ListByTC(tc *v1alpha1.TidbCluster) (objects []runtime.Object, err error) {
 	emptySelector := labels.NewSelector()
 	autoScalers, err := f.lister.List(emptySelector)
 	if err != nil {
@@ -96,6 +119,8 @@ func (f *TiDBClusterAutoScalerFetcher) ListByTC(tc *pingcapv1alpha1.TidbCluster)
 			namespace = autoScaler.Namespace
 		}
 		if name == tc.Name && namespace == tc.Namespace {
+			klog.Infof("TiDBClusterAutoScaler %s/%s matches tc %s/%s",
+				autoScaler.Namespace, autoScaler.Name, tc.Namespace, tc.Name)
 			objects = append(objects, autoScaler)
 		}
 	}
@@ -106,7 +131,13 @@ type TiDBInitializerFetcher struct {
 	lister listers.TidbInitializerLister
 }
 
-func (f *TiDBInitializerFetcher) ListByTC(tc *pingcapv1alpha1.TidbCluster) (objects []runtime.Object, err error) {
+func NewTiDBInitializerFetcher(lister listers.TidbInitializerLister) *TiDBInitializerFetcher {
+	return &TiDBInitializerFetcher{
+		lister: lister,
+	}
+}
+
+func (f *TiDBInitializerFetcher) ListByTC(tc *v1alpha1.TidbCluster) (objects []runtime.Object, err error) {
 	emptySelector := labels.NewSelector()
 	initializers, err := f.lister.List(emptySelector)
 	if err != nil {
@@ -120,6 +151,8 @@ func (f *TiDBInitializerFetcher) ListByTC(tc *pingcapv1alpha1.TidbCluster) (obje
 			namespace = initializer.Namespace
 		}
 		if name == tc.Name && namespace == tc.Namespace {
+			klog.Infof("TiDBInitializer %s/%s matches tc %s/%s",
+				initializer.Namespace, initializer.Name, tc.Namespace, tc.Name)
 			objects = append(objects, initializer)
 		}
 	}
@@ -130,7 +163,13 @@ type TiDBNgMonitoringFetcher struct {
 	lister listers.TidbNGMonitoringLister
 }
 
-func (f *TiDBNgMonitoringFetcher) ListByTC(tc *pingcapv1alpha1.TidbCluster) (objects []runtime.Object, err error) {
+func NewTiDBNgMonitoringFetcher(lister listers.TidbNGMonitoringLister) *TiDBNgMonitoringFetcher {
+	return &TiDBNgMonitoringFetcher{
+		lister: lister,
+	}
+}
+
+func (f *TiDBNgMonitoringFetcher) ListByTC(tc *v1alpha1.TidbCluster) (objects []runtime.Object, err error) {
 	emptySelector := labels.NewSelector()
 	monitorings, err := f.lister.List(emptySelector)
 	if err != nil {
@@ -145,6 +184,8 @@ func (f *TiDBNgMonitoringFetcher) ListByTC(tc *pingcapv1alpha1.TidbCluster) (obj
 				namespace = monitoring.Namespace
 			}
 			if name == tc.Name && namespace == tc.Namespace {
+				klog.Infof("TidbNGMonitoring %s/%s matches tc %s/%s",
+					monitoring.Namespace, monitoring.Name, tc.Namespace, tc.Name)
 				objects = append(objects, monitoring)
 				break
 			}
