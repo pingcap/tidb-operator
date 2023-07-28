@@ -5,9 +5,6 @@ The following steps will create a basic TLS TiDB cluster , then we can create a 
 
 ## Install Cert Manager 
 Reference [document](https://cert-manager.io/docs/installation/).
-```bash
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.7.1/cert-manager.yaml
-```
 
 ## Install TLS certificate
 The following commands is assumed to be executed in this directory.

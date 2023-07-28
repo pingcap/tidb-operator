@@ -189,8 +189,7 @@ scheduler:
 # AdvancedStatefulSet controller.
 # Note that AdvancedStatefulSet CRD must be installed manually via the following
 # command:
-#   kubectl apply -f manifests/advanced-statefulset-crd.v1beta1.yaml # k8s version < 1.16.0
-#   kubectl apply -f manifests/advanced-statefulset-crd.v1.yaml      # k8s version >= 1.16.0
+#   kubectl apply -f manifests/advanced-statefulset-crd.v1.yaml
 advancedStatefulset:
   create: false
   image: pingcap/advanced-statefulset:v0.4.0

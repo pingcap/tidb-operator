@@ -5642,7 +5642,7 @@ string
 <td>
 <code>AdditionalPrinterColums</code></br>
 <em>
-[]k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1.CustomResourceColumnDefinition
+[]k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1.CustomResourceColumnDefinition
 </em>
 </td>
 <td>

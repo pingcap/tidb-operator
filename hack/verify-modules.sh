@@ -29,9 +29,8 @@ cleanup() {
 trap "cleanup" EXIT SIGINT
 cleanup
 
-# TODO: remove gnostic after upgrading kubernetes dependency to v1.22
 ignored_modules=(
-    "github.com/pingcap/tidb-operator/pkg/apis|github.com/googleapis/gnostic"
+    "github.com/pingcap/tidb-operator/pkg/apis"
 )
 
 # check if all packages in submodule is same as main module
