@@ -347,11 +347,7 @@ func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.Tidb
 	}
 
 	// Check recovery mode is on for EBS br across k8s
-<<<<<<< HEAD
-	if r.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot && r.Spec.FederalVolumeRestorePhase != v1alpha1.FederalVolumeRestoreFinish && !tc.Spec.RecoveryMode {
-=======
 	if r.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot && tc.Spec.AcrossK8s && !tc.Spec.RecoveryMode {
->>>>>>> fede6805a (ticdc: upgrade ticdc first if version >= v5.1.0)
 		klog.Errorf("recovery mode is not set for across k8s EBS snapshot restore")
 		return fmt.Errorf("recovery mode is off")
 	}

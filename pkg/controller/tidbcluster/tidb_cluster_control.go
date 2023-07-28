@@ -185,25 +185,11 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	// Check if need to upgrade TiCDC first.
-	upgradeTiCDCFirst := false
-
-	oldSts, err := c.deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiCDCMemberName(tcName))
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("updateTidbCluster: failed to get sts %s for cluster %s/%s, error: %s", controller.TiCDCMemberName(tcName), ns, tcName, err)
-	}
-	stsNotExist := apierrors.IsNotFound(err)
-	if !stsNotExist {
-		// Get TiCDC version from old sts.
-		ticdcImage := oldSts.Spec.Template.Spec.Containers[0].Image
-		oldTiCDCVersion := util.GetImageVersion(ticdcImage)
-		upgradeTiCDCFirst, err = needToUpdateTiCDCFirst(oldTiCDCVersion)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Upgrade TiCDC first if needed.
+	upgradeTiCDCFirst, err := NeedToUpdateTiCDCFirst(ns, tcName, c.deps)
+	if err != nil {
+		return err
+	}
 	if upgradeTiCDCFirst {
 		// works that should be done to make the ticdc cluster current state match the desired state:
 		//   - waiting for the pd cluster available(pd cluster is in quorum)
@@ -339,9 +325,35 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	return err
 }
 
-// needToUpdateTiCDCFirst checks if the TiCDC version is greater than or equal to v5.1.0.
+// NeedToUpdateTiCDCFirst checks if the TiCDC version is greater than or equal to v5.1.0.
 // If so, we need to update TiCDC first before updating other components.
 // See more: https://github.com/pingcap/tidb-operator/issues/4966#issuecomment-1606727165
+func NeedToUpdateTiCDCFirst(ns string, tcName string, deps *controller.Dependencies) (bool, error) {
+	if deps == nil {
+		return false, nil
+	}
+
+	// Check if need to upgrade TiCDC first.
+	upgradeTiCDCFirst := false
+
+	oldSts, err := deps.StatefulSetLister.StatefulSets(ns).Get(controller.TiCDCMemberName(tcName))
+	if err != nil && !apierrors.IsNotFound(err) {
+		return false, fmt.Errorf("updateTidbCluster: failed to get sts %s for cluster %s/%s, error: %s", controller.TiCDCMemberName(tcName), ns, tcName, err)
+	}
+	stsNotExist := apierrors.IsNotFound(err)
+	if !stsNotExist {
+		// Get TiCDC version from old sts.
+		ticdcImage := oldSts.Spec.Template.Spec.Containers[0].Image
+		oldTiCDCVersion := util.GetImageVersion(ticdcImage)
+		upgradeTiCDCFirst, err = needToUpdateTiCDCFirst(oldTiCDCVersion)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return upgradeTiCDCFirst, nil
+}
+
 func needToUpdateTiCDCFirst(ticdcVersion string) (bool, error) {
 	// NOTE: 2023-07-04 is the date we add this check,
 	// so later versions should be greater than v5.1.0.
