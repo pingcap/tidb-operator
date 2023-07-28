@@ -22,11 +22,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dustin/go-humanize"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ebs"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/dustin/go-humanize"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
