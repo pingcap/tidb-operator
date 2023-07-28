@@ -274,7 +274,7 @@ spec:
     ## ImagePullPolicy of grafana.
     # imagePullPolicy: IfNotPresent
     ## Grafana version.
-    version: v7.5.11
+    version: 7.5.11
     ## Describes the compute resource requirements and limits of grafana.
     ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
     # requests:
