@@ -503,6 +503,9 @@ func getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *
 }
 
 func (u *tikvUpgrader) isTiKVReadyToUpgrade(tc *v1alpha1.TidbCluster) string {
+	if tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase || tc.Status.TiCDC.Phase == v1alpha1.ScalePhase {
+		return fmt.Sprintf("ticdc status is %s", tc.Status.TiCDC.Phase)
+	}
 	if tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase {
 		return fmt.Sprintf("tiflash status is %s", tc.Status.TiFlash.Phase)
 	}

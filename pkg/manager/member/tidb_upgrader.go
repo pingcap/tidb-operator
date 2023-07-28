@@ -60,13 +60,14 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		tc.Status.TiKV.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.ScalePhase ||
 		tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase || tc.Status.TiFlash.Phase == v1alpha1.ScalePhase ||
 		tc.Status.Pump.Phase == v1alpha1.UpgradePhase || tc.Status.Pump.Phase == v1alpha1.ScalePhase ||
+		tc.Status.TiCDC.Phase == v1alpha1.UpgradePhase || tc.Status.TiCDC.Phase == v1alpha1.ScalePhase ||
 		tc.TiDBScaling() {
 		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
 			"tikv status is %s, tiflash status is %s, pump status is %s, "+
-			"tidb status is %s, can not upgrade tidb",
+			"tidb status is %s, ticdc status is %s, can not upgrade tidb",
 			ns, tcName,
 			tc.Status.PD.Phase, tc.Status.TiKV.Phase, tc.Status.TiFlash.Phase,
-			tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
+			tc.Status.Pump.Phase, tc.Status.TiDB.Phase, tc.Status.TiCDC.Phase)
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
