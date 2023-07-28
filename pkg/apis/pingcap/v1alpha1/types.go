@@ -1647,6 +1647,7 @@ type TLSCluster struct {
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
+// +kubebuilder:printcolumn:name="IncrementalBackupSize",type=string,JSONPath=`.status.incrementalBackupSizeReadable`,description="The real size of volume snapshot backup, only valid to volume snapshot backup",priority=10
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
 // +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logSuccessTruncateUntil`,description="The log backup truncate until ts"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
@@ -2179,6 +2180,11 @@ type BackupStatus struct {
 	BackupSizeReadable string `json:"backupSizeReadable,omitempty"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize,omitempty"`
+	// the difference with IncrementalBackupSize is that its format is human readable
+	IncrementalBackupSizeReadable string `json:"incrementalBackupSizeReadable,omitempty"`
+	// IncrementalBackupSize is the incremental data size of the backup, it is only used for volume snapshot backup
+	// it is the real size of volume snapshot backup
+	IncrementalBackupSize int64 `json:"incrementalBackupSize,omitempty"`
 	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	CommitTs string `json:"commitTs,omitempty"`
 	// LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.
