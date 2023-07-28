@@ -4307,6 +4307,29 @@ int64
 </tr>
 <tr>
 <td>
+<code>incrementalBackupSizeReadable</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>the difference with IncrementalBackupSize is that its format is human readable</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>incrementalBackupSize</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>IncrementalBackupSize is the incremental data size of the backup, it is only used for volume snapshot backup
+it is the real size of volume snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>commitTs</code></br>
 <em>
 string
