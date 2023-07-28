@@ -54,11 +54,11 @@ type backupManager struct {
 func NewBackupManager(deps *controller.Dependencies) backup.BackupManager {
 	statusUpdater := controller.NewRealBackupConditionUpdater(deps.Clientset, deps.BackupLister, deps.Recorder)
 	manifestFetchers := []ManifestFetcher{
-		&TiDBClusterAutoScalerFetcher{},
-		&TiDBDashboardFetcher{},
-		&TiDBInitializerFetcher{},
-		&TiDBMonitorFetcher{},
-		&TiDBNgMonitoringFetcher{},
+		NewTiDBClusterAutoScalerFetcher(deps.TiDBClusterAutoScalerLister),
+		NewTiDBDashboardFetcher(deps.TiDBDashboardLister),
+		NewTiDBInitializerFetcher(deps.TiDBInitializerLister),
+		NewTiDBMonitorFetcher(deps.TiDBMonitorLister),
+		NewTiDBNgMonitoringFetcher(deps.TiDBNGMonitoringLister),
 	}
 	return &backupManager{
 		deps:             deps,
@@ -798,19 +798,22 @@ func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, cs
 }
 
 func (bm *backupManager) volumeSnapshotBackup(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
-	if s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps); err != nil {
-		return reason, err
-	} else if s != nil {
-		csb, reason, err := s.GenerateBackupMetadata(b, tc)
-		if err != nil {
-			return reason, err
-		}
-
-		return bm.saveClusterMetaToExternalStorage(b, csb)
-	}
-
 	if err := bm.backupManifests(b, tc); err != nil {
 		return "BackupManifestsFailed", err
+	}
+
+	s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps)
+	if err != nil {
+		return reason, err
+	}
+
+	csb, reason, err := s.GenerateBackupMetadata(b, tc)
+	if err != nil {
+		return reason, err
+	}
+
+	if reason, err = bm.saveClusterMetaToExternalStorage(b, csb); err != nil {
+		return reason, err
 	}
 	return "", nil
 }
@@ -833,14 +836,14 @@ func (bm *backupManager) backupManifests(b *v1alpha1.Backup, tc *v1alpha1.TidbCl
 	}
 
 	for _, manifest := range manifests {
-		if err := bm.saveManifest(manifest, externalStorage); err != nil {
+		if err := bm.saveManifest(b, manifest, externalStorage); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (bm *backupManager) saveManifest(manifest runtime.Object, externalStorage *backuputil.StorageBackend) error {
+func (bm *backupManager) saveManifest(b *v1alpha1.Backup, manifest runtime.Object, externalStorage *backuputil.StorageBackend) error {
 	metadataAccessor := meta.NewAccessor()
 	namespace, err := metadataAccessor.Namespace(manifest)
 	if err != nil {
@@ -875,6 +878,7 @@ func (bm *backupManager) saveManifest(manifest runtime.Object, externalStorage *
 	if err := externalStorage.WriteAll(ctx, filePath, buf.Bytes(), nil); err != nil {
 		return err
 	}
+	klog.Infof("%s/%s upload manifest %s successfully", b.Namespace, b.Name, filePath)
 	return nil
 }
 
