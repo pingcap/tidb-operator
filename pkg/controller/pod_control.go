@@ -16,6 +16,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -113,7 +114,10 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	if annotations == nil {
 		annotations = map[string]string{}
 	}
-	annotationsUpdated := false
+	originalAnnotations := map[string]string{}
+	for k, v := range annotations {
+		annotations[k] = v
+	}
 	tcName := tc.GetName()
 	if labels == nil {
 		return pod, fmt.Errorf("pod %s/%s has empty labels, TidbCluster: %s", ns, podName, tcName)
@@ -165,13 +169,11 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 		if storeIDFromStatus != "" {
 			if _, exists := annotations[label.AnnTiKVNoActiveStoreSince]; exists {
 				delete(annotations, label.AnnTiKVNoActiveStoreSince)
-				annotationsUpdated = true
 			}
 		} else if labels[label.StoreIDLabelKey] != "" {
 			// Apply annotation if pod has store label, but not listed as active store in status and not already added.
 			if _, exists := annotations[label.AnnTiKVNoActiveStoreSince]; !exists {
 				annotations[label.AnnTiKVNoActiveStoreSince] = time.Now().Format(time.RFC3339)
-				annotationsUpdated = true
 			}
 		}
 	case label.TiFlashLabelVal:
@@ -188,7 +190,7 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	if labels[label.ClusterIDLabelKey] == clusterID &&
 		labels[label.MemberIDLabelKey] == memberID &&
 		labels[label.StoreIDLabelKey] == storeID &&
-		!annotationsUpdated {
+		reflect.DeepEqual(originalAnnotations, annotations) {
 		klog.V(4).Infof("pod %s/%s already has cluster labels set, skipping. TidbCluster: %s", ns, podName, tcName)
 		return pod, nil
 	}
@@ -196,6 +198,7 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	setIfNotEmpty(labels, label.ClusterIDLabelKey, clusterID)
 	setIfNotEmpty(labels, label.MemberIDLabelKey, memberID)
 	setIfNotEmpty(labels, label.StoreIDLabelKey, storeID)
+	// annotations is already a pointer and was updated so pod.Annotations is updated.
 
 	var updatePod *corev1.Pod
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {

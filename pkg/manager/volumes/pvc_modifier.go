@@ -103,7 +103,7 @@ func (p *pvcModifier) tryToRecreateSTS(ctx *componentVolumeContext) error {
 	name := ctx.sts.Name
 
 	// Modifier does not support new volumes, trigger error if so and return.
-	isSynced, err := p.utils.IsStatefulSetSynced(ctx, ctx.sts, true)
+	isSynced, err := p.utils.IsStatefulSetSynced(ctx, ctx.sts)
 	if err != nil {
 		return err
 	}

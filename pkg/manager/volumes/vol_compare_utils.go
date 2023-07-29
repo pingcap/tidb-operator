@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pingcap/errors"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	storagelister "k8s.io/client-go/listers/storage/v1"
@@ -150,22 +149,16 @@ func (u *volCompareUtils) getStsOfComponent(cluster v1alpha1.Cluster, mt v1alpha
 	return sts, nil
 }
 
-func (u *volCompareUtils) IsStatefulSetSynced(ctx *componentVolumeContext, sts *appsv1.StatefulSet, errOnNewVol bool) (bool, error) {
-	var newVolErr error = nil
+func (u *volCompareUtils) IsStatefulSetSynced(ctx *componentVolumeContext, sts *appsv1.StatefulSet) (bool, error) {
+	// Note: The only errors that IsStatefulSetSynced returns is when number of disks change. This cannot be handled by
+	// pvc_resizer so is an error for it, however pvc_replacer can handle it and will ignore all errors returned here
+	// and only rely on the boolean return (which must be set to false if number of disks change on top of error)
 	for _, volTemplate := range sts.Spec.VolumeClaimTemplates {
 		volName := v1alpha1.StorageVolumeName(volTemplate.Name)
 		size := getStorageSize(volTemplate.Spec.Resources.Requests)
 		desired := getDesiredVolumeByName(ctx.desiredVolumes, volName)
 		if desired == nil {
-			// TODO: verify behaviour is correctly intended, this was previously being ignored. Now explicit error in
-			// pvc modifier..
-			errStr := fmt.Sprintf("volume %s in sts for cluster %s does not exist in desired volumes", volName, ctx.ComponentID())
-			if errOnNewVol {
-				newVolErr = errors.New(errStr)
-			} else {
-				klog.Warningf(errStr)
-			}
-			return false, newVolErr
+			return false, fmt.Errorf("volume %s in sts for cluster %s does not exist in desired volumes", volName, ctx.ComponentID())
 		}
 		if size.Cmp(desired.Size) != 0 {
 			return false, nil
@@ -175,15 +168,8 @@ func (u *volCompareUtils) IsStatefulSetSynced(ctx *componentVolumeContext, sts *
 			return false, nil
 		}
 	}
-	// TODO: verify new behaviour is fine with pvc_modifier, previously number of volumes not checked.
 	if len(sts.Spec.VolumeClaimTemplates) != len(ctx.desiredVolumes) {
-		errStr := fmt.Sprintf("Number of volumes mismatch desired %d vs sts %d for cluster %s", len(ctx.desiredVolumes), len(sts.Spec.VolumeClaimTemplates), ctx.ComponentID())
-		if errOnNewVol {
-			newVolErr = errors.New(errStr)
-		} else {
-			klog.Warningf(errStr)
-		}
-		return false, newVolErr
+		return false, fmt.Errorf("Number of volumes mismatch desired %d vs sts %d for cluster %s", len(ctx.desiredVolumes), len(sts.Spec.VolumeClaimTemplates), ctx.ComponentID())
 	}
 
 	return true, nil
@@ -193,9 +179,8 @@ func (u *volCompareUtils) IsPodSyncedForReplacement(ctx *componentVolumeContext,
 	// Does not check underlying StorageClass for modifications, only matches PVC specs for use by pvc replacer.
 	ns := pod.Namespace
 	podPvcCount := 0
-	for i := range pod.Spec.Volumes {
-		vol := &pod.Spec.Volumes[i]
-		pvc, err := u.getPVC(ns, vol)
+	for _, vol := range pod.Spec.Volumes {
+		pvc, err := u.getPVC(ns, &vol)
 		if err != nil {
 			return false, err
 		}

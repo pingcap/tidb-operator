@@ -1387,7 +1387,7 @@ var (
 const (
 	// EvictLeaderAnnKey is the annotation key to evict leader used by user.
 	EvictLeaderAnnKey = "tidb.pingcap.com/evict-leader"
-	// EvictLeaderAnnKeyForResize the annotation key to evict leader user by pvc resizer.
+	// EvictLeaderAnnKeyForResize is the annotation key to evict leader user by pvc resizer.
 	EvictLeaderAnnKeyForResize = "tidb.pingcap.com/evict-leader-for-resize"
 	// PDLeaderTransferAnnKey is the annotation key to transfer PD leader used by user.
 	PDLeaderTransferAnnKey = "tidb.pingcap.com/pd-transfer-leader"

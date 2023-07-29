@@ -41,7 +41,7 @@ tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.6.0-alpha.3
 #     by deleting old pod + pvc completely and replacing with new pods/PVCs.
 #     pd, tikv, tidb supported.
 #
-features: [VolumeReplacing=true]
+features: []
 # - AdvancedStatefulSet=false
 # - StableScheduling=true
 # - AutoScaling=false

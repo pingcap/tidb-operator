@@ -52,12 +52,8 @@ func (p *pvcReplacer) getVolReplaceStatusForComponent(tc *v1alpha1.TidbCluster, 
 		return comp.GetVolReplaceInProgress(), nil // Do not change existing status.
 	}
 
-	isSynced, err := p.utils.IsStatefulSetSynced(ctx, ctx.sts, false)
-	if err != nil {
-		// Avoid blocking for statefulset level errors as it may block cluster creation.
-		klog.Warningf("skipping replace status: error checking stateful set (%s/%s) synced : %v", ctx.sts.Namespace, ctx.sts.Name, err)
-		return comp.GetVolReplaceInProgress(), nil // Do not change existing status.
-	}
+	// Ignore errors as they only indicate change in number of disks which replacer can handle.
+	isSynced, _ := p.utils.IsStatefulSetSynced(ctx, ctx.sts)
 
 	if !isSynced {
 		klog.Infof("Statefulset not synced for volumes! %s/%s for component %s", ctx.sts.Namespace, ctx.sts.Name, ctx.ComponentID())
@@ -103,6 +99,7 @@ func (p *pvcReplacer) Sync(tc *v1alpha1.TidbCluster) error {
 	components := tc.AllComponentStatus()
 	errs := []error{}
 
+	// Note: implicit ordering of tc components PD > TiDB > TiKV ... important for correct order of syncing.
 	for _, comp := range components {
 		if !comp.GetVolReplaceInProgress() {
 			continue
@@ -140,10 +137,8 @@ func (p *pvcReplacer) tryToRecreateSTS(ctx *componentVolumeContext) error {
 	ns := ctx.sts.Namespace
 	name := ctx.sts.Name
 
-	isSynced, err := p.utils.IsStatefulSetSynced(ctx, ctx.sts, false)
-	if err != nil {
-		return err
-	}
+	// Ignore errors as they only indicate change in number of disks which replacer can handle.
+	isSynced, _ := p.utils.IsStatefulSetSynced(ctx, ctx.sts)
 	if isSynced {
 		return nil
 	}
