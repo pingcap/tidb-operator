@@ -190,6 +190,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 		}
 
 		var tc *v1alpha1.TidbCluster
+		// bm.deps.TiDBClusterAutoScalerLister.List()
 		tc, err = bm.deps.TiDBClusterLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
 		if err != nil {
 			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)

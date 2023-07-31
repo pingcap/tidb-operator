@@ -695,6 +695,18 @@ string
 <p>PriorityClassName of Backup Job Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>calcSizeLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="volumebackupmemberstatus">VolumeBackupMemberStatus</h3>
