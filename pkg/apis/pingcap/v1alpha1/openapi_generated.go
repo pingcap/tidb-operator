@@ -1067,6 +1067,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"calcSizeLevel": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"federalVolumeBackupPhase": {
 						SchemaProps: spec.SchemaProps{
 							Description: "FederalVolumeBackupPhase indicates which phase to execute in federal volume backup",
