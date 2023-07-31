@@ -837,7 +837,7 @@ func (bm *backupManager) backupManifests(b *v1alpha1.Backup, tc *v1alpha1.TidbCl
 	}
 
 	for _, manifest := range manifests {
-		if err := bm.saveManifest(b, manifest, externalStorage); err != nil {
+		if err := bm.saveManifest(b, manifest.DeepCopyObject(), externalStorage); err != nil {
 			return err
 		}
 	}
@@ -845,19 +845,23 @@ func (bm *backupManager) backupManifests(b *v1alpha1.Backup, tc *v1alpha1.TidbCl
 }
 
 func (bm *backupManager) saveManifest(b *v1alpha1.Backup, manifest runtime.Object, externalStorage *backuputil.StorageBackend) error {
-	metadataAccessor := meta.NewAccessor()
-	namespace, err := metadataAccessor.Namespace(manifest)
+	if manifest.GetObjectKind().GroupVersionKind().Empty() {
+		gvk, err := controller.InferObjectKind(manifest)
+		if err != nil {
+			return err
+		}
+		manifest.GetObjectKind().SetGroupVersionKind(gvk)
+	}
+	kind := manifest.GetObjectKind().GroupVersionKind().Kind
+	metadataAccessor, err := meta.Accessor(manifest)
 	if err != nil {
 		return err
 	}
-	name, err := metadataAccessor.Name(manifest)
-	if err != nil {
-		return err
-	}
-	kind, err := metadataAccessor.Kind(manifest)
-	if err != nil {
-		return err
-	}
+	namespace := metadataAccessor.GetNamespace()
+	name := metadataAccessor.GetName()
+	// remove managedFields because it is used for k8s internal housekeeping, and we don't need them in backup
+	metadataAccessor.SetManagedFields(nil)
+	klog.Infof("%s/%s get manifest meta, kind: %s, namespace: %s, name: %s", b.Namespace, b.Name, kind, namespace, name)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
@@ -871,7 +875,7 @@ func (bm *backupManager) saveManifest(b *v1alpha1.Backup, manifest runtime.Objec
 		return nil
 	}
 
-	buf := bytes.NewBuffer(make([]byte, 0, 256))
+	buf := bytes.NewBuffer(make([]byte, 0, 1024))
 	printer := printers.YAMLPrinter{}
 	if err := printer.PrintObj(manifest, buf); err != nil {
 		return err
