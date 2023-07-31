@@ -90,6 +90,8 @@ spec:
                     sendCredToTikv:
                       type: boolean
                   type: object
+                calcSizeLevel:
+                  type: string
                 cleanPolicy:
                   type: string
                 env:
@@ -1135,6 +1137,8 @@ spec:
                         sendCredToTikv:
                           type: boolean
                       type: object
+                    calcSizeLevel:
+                      type: string
                     cleanPolicy:
                       type: string
                     env:

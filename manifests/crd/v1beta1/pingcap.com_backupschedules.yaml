@@ -382,6 +382,8 @@ spec:
                   required:
                   - cluster
                   type: object
+                calcSizeLevel:
+                  type: string
                 cleanOption:
                   properties:
                     backoffEnabled:
@@ -1700,6 +1702,8 @@ spec:
                   required:
                   - cluster
                   type: object
+                calcSizeLevel:
+                  type: string
                 cleanOption:
                   properties:
                     backoffEnabled:
