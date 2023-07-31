@@ -332,6 +332,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 				BackupSizeReadable:            &backupSizeReadable,
 				IncrementalBackupSize:         &incrementalBackupSize,
 				IncrementalBackupSizeReadable: &incrementalBackupSizeReadable,
+				TimeCompleted:                 &metav1.Time{Time: time.Now()},
 			}
 
 			if err := bm.StatusUpdater.Update(backup, nil, updateStatus); err != nil {
