@@ -29,7 +29,7 @@ type TiDBDashboardFetcher struct {
 	lister listers.TidbDashboardLister
 }
 
-func NewTiDBDashboardFetcher(lister listers.TidbDashboardLister) *TiDBDashboardFetcher {
+func NewTiDBDashboardFetcher(lister listers.TidbDashboardLister) ManifestFetcher {
 	return &TiDBDashboardFetcher{
 		lister: lister,
 	}
@@ -64,7 +64,7 @@ type TiDBMonitorFetcher struct {
 	lister listers.TidbMonitorLister
 }
 
-func NewTiDBMonitorFetcher(lister listers.TidbMonitorLister) *TiDBMonitorFetcher {
+func NewTiDBMonitorFetcher(lister listers.TidbMonitorLister) ManifestFetcher {
 	return &TiDBMonitorFetcher{
 		lister: lister,
 	}
@@ -99,7 +99,7 @@ type TiDBClusterAutoScalerFetcher struct {
 	lister listers.TidbClusterAutoScalerLister
 }
 
-func NewTiDBClusterAutoScalerFetcher(lister listers.TidbClusterAutoScalerLister) *TiDBClusterAutoScalerFetcher {
+func NewTiDBClusterAutoScalerFetcher(lister listers.TidbClusterAutoScalerLister) ManifestFetcher {
 	return &TiDBClusterAutoScalerFetcher{
 		lister: lister,
 	}
@@ -131,7 +131,7 @@ type TiDBInitializerFetcher struct {
 	lister listers.TidbInitializerLister
 }
 
-func NewTiDBInitializerFetcher(lister listers.TidbInitializerLister) *TiDBInitializerFetcher {
+func NewTiDBInitializerFetcher(lister listers.TidbInitializerLister) ManifestFetcher {
 	return &TiDBInitializerFetcher{
 		lister: lister,
 	}
@@ -163,7 +163,7 @@ type TiDBNgMonitoringFetcher struct {
 	lister listers.TidbNGMonitoringLister
 }
 
-func NewTiDBNgMonitoringFetcher(lister listers.TidbNGMonitoringLister) *TiDBNgMonitoringFetcher {
+func NewTiDBNgMonitoringFetcher(lister listers.TidbNGMonitoringLister) ManifestFetcher {
 	return &TiDBNgMonitoringFetcher{
 		lister: lister,
 	}
