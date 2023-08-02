@@ -167,9 +167,7 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 		}
 
 		if storeIDFromStatus != "" {
-			if _, exists := annotations[label.AnnTiKVNoActiveStoreSince]; exists {
-				delete(annotations, label.AnnTiKVNoActiveStoreSince)
-			}
+			delete(annotations, label.AnnTiKVNoActiveStoreSince)
 		} else if labels[label.StoreIDLabelKey] != "" {
 			// Apply annotation if pod has store label, but not listed as active store in status and not already added.
 			if _, exists := annotations[label.AnnTiKVNoActiveStoreSince]; !exists {

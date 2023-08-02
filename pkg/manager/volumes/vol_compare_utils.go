@@ -179,8 +179,9 @@ func (u *volCompareUtils) IsPodSyncedForReplacement(ctx *componentVolumeContext,
 	// Does not check underlying StorageClass for modifications, only matches PVC specs for use by pvc replacer.
 	ns := pod.Namespace
 	podPvcCount := 0
-	for _, vol := range pod.Spec.Volumes {
-		pvc, err := u.getPVC(ns, &vol)
+	for i := range pod.Spec.Volumes {
+		vol := &pod.Spec.Volumes[i]
+		pvc, err := u.getPVC(ns, vol)
 		if err != nil {
 			return false, err
 		}
