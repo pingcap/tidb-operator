@@ -12,8 +12,8 @@ if [ -n "$BUILD" ]; then
 	make DOCKER_REPO=xx operator-docker
 fi
 
-kubectl replace -f $BASE/../../manifests/crd.yaml
-kubectl replace -f $BASE/../../manifests/advanced-statefulset-crd.v1.yaml
+kubectl replace --force -f $BASE/../../manifests/crd.yaml
+kubectl replace --force -f $BASE/../../manifests/advanced-statefulset-crd.v1.yaml
 
 kubectl delete --force namespace $namespace || true
 
