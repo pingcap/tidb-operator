@@ -8,7 +8,7 @@ timezone: UTC
 # clusterName is the TiDB cluster name
 clusterName: demo
 
-image: pingcap/tidb-lightning:v6.5.0
+image: pingcap/tidb-lightning:v7.1.1
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
