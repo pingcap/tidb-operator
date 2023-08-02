@@ -14,9 +14,11 @@
 package backup
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -31,27 +33,39 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
 
 type backupManager struct {
-	deps          *controller.Dependencies
-	backupCleaner BackupCleaner
-	backupTracker BackupTracker
-	statusUpdater controller.BackupConditionUpdaterInterface
+	deps             *controller.Dependencies
+	backupCleaner    BackupCleaner
+	backupTracker    BackupTracker
+	statusUpdater    controller.BackupConditionUpdaterInterface
+	manifestFetchers []ManifestFetcher
 }
 
 // NewBackupManager return backupManager
 func NewBackupManager(deps *controller.Dependencies) backup.BackupManager {
 	statusUpdater := controller.NewRealBackupConditionUpdater(deps.Clientset, deps.BackupLister, deps.Recorder)
+	manifestFetchers := []ManifestFetcher{
+		NewTiDBClusterAutoScalerFetcher(deps.TiDBClusterAutoScalerLister),
+		NewTiDBDashboardFetcher(deps.TiDBDashboardLister),
+		NewTiDBInitializerFetcher(deps.TiDBInitializerLister),
+		NewTiDBMonitorFetcher(deps.TiDBMonitorLister),
+		NewTiDBNgMonitoringFetcher(deps.TiDBNGMonitoringLister),
+	}
 	return &backupManager{
-		deps:          deps,
-		backupCleaner: NewBackupCleaner(deps, statusUpdater),
-		backupTracker: NewBackupTracker(deps, statusUpdater),
-		statusUpdater: statusUpdater,
+		deps:             deps,
+		backupCleaner:    NewBackupCleaner(deps, statusUpdater),
+		backupTracker:    NewBackupTracker(deps, statusUpdater),
+		statusUpdater:    statusUpdater,
+		manifestFetchers: manifestFetchers,
 	}
 }
 
@@ -785,17 +799,92 @@ func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, cs
 }
 
 func (bm *backupManager) volumeSnapshotBackup(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
-	if s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps); err != nil {
-		return reason, err
-	} else if s != nil {
-		csb, reason, err := s.GenerateBackupMetadata(b, tc)
-		if err != nil {
-			return reason, err
-		}
+	if err := bm.backupManifests(b, tc); err != nil {
+		return "BackupManifestsFailed", err
+	}
 
-		return bm.saveClusterMetaToExternalStorage(b, csb)
+	s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps)
+	if err != nil {
+		return reason, err
+	}
+
+	csb, reason, err := s.GenerateBackupMetadata(b, tc)
+	if err != nil {
+		return reason, err
+	}
+
+	if reason, err = bm.saveClusterMetaToExternalStorage(b, csb); err != nil {
+		return reason, err
 	}
 	return "", nil
+}
+
+func (bm *backupManager) backupManifests(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) error {
+	cred := backuputil.GetStorageCredential(b.Namespace, b.Spec.StorageProvider, bm.deps.SecretLister)
+	externalStorage, err := backuputil.NewStorageBackend(b.Spec.StorageProvider, cred)
+	if err != nil {
+		return err
+	}
+
+	manifests := make([]runtime.Object, 0, 4)
+	manifests = append(manifests, tc)
+	for _, fetcher := range bm.manifestFetchers {
+		objects, err := fetcher.ListByTC(tc)
+		if err != nil {
+			return err
+		}
+		manifests = append(manifests, objects...)
+	}
+
+	for _, manifest := range manifests {
+		if err := bm.saveManifest(b, manifest.DeepCopyObject(), externalStorage); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (bm *backupManager) saveManifest(b *v1alpha1.Backup, manifest runtime.Object, externalStorage *backuputil.StorageBackend) error {
+	if manifest.GetObjectKind().GroupVersionKind().Empty() {
+		gvk, err := controller.InferObjectKind(manifest)
+		if err != nil {
+			return err
+		}
+		manifest.GetObjectKind().SetGroupVersionKind(gvk)
+	}
+	kind := manifest.GetObjectKind().GroupVersionKind().Kind
+	metadataAccessor, err := meta.Accessor(manifest)
+	if err != nil {
+		return err
+	}
+	namespace := metadataAccessor.GetNamespace()
+	name := metadataAccessor.GetName()
+	// remove managedFields because it is used for k8s internal housekeeping, and we don't need them in backup
+	metadataAccessor.SetManagedFields(nil)
+	klog.Infof("%s/%s get manifest meta, kind: %s, namespace: %s, name: %s", b.Namespace, b.Name, kind, namespace, name)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	filePath := path.Join(constants.ClusterManifests, namespace, kind, fmt.Sprintf("%s.yaml", name))
+	existed, err := externalStorage.Exists(ctx, filePath)
+	if err != nil {
+		return err
+	}
+	if existed {
+		return nil
+	}
+
+	buf := bytes.NewBuffer(make([]byte, 0, 1024))
+	printer := printers.YAMLPrinter{}
+	if err := printer.PrintObj(manifest, buf); err != nil {
+		return err
+	}
+	if err := externalStorage.WriteAll(ctx, filePath, buf.Bytes(), nil); err != nil {
+		return err
+	}
+	klog.Infof("%s/%s upload manifest %s successfully", b.Namespace, b.Name, filePath)
+	return nil
 }
 
 func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, error) {

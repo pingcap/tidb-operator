@@ -649,7 +649,7 @@ func InferObjectKind(obj runtime.Object) (schema.GroupVersionKind, error) {
 		return schema.GroupVersionKind{}, err
 	}
 	if len(gvks) != 1 {
-		return schema.GroupVersionKind{}, fmt.Errorf("Object %v has ambigious GVK", obj)
+		return schema.GroupVersionKind{}, fmt.Errorf("object %v has ambiguous GVK", obj)
 	}
 	return gvks[0], nil
 }
