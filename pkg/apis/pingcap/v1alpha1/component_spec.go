@@ -443,8 +443,15 @@ func (a *componentAccessorImpl) TopologySpreadConstraints() []corev1.TopologySpr
 		case DMClusterKind:
 			l = label.NewDM()
 		}
+		if v, ok := tsc.MatchLabels[label.ComponentLabelKey]; ok {
+			componentLabelVal = v
+		}
 		l[label.ComponentLabelKey] = componentLabelVal
-		l[label.InstanceLabelKey] = a.name
+		instanceLabelVal := a.name
+		if v, ok := tsc.MatchLabels[label.InstanceLabelKey]; ok {
+			instanceLabelVal = v
+		}
+		l[label.InstanceLabelKey] = instanceLabelVal
 		ptsc.LabelSelector = &metav1.LabelSelector{
 			MatchLabels: map[string]string(l),
 		}
