@@ -346,8 +346,11 @@ func NeedToUpdateTiCDCFirst(ns string, tcName string, deps *controller.Dependenc
 		ticdcImage := oldSts.Spec.Template.Spec.Containers[0].Image
 		oldTiCDCVersion := util.GetImageVersion(ticdcImage)
 		upgradeTiCDCFirst, err = needToUpdateTiCDCFirst(oldTiCDCVersion)
+		// For some reason, we can't get the old TiCDC version, so we can't determine if we need to upgrade TiCDC first.
+		// In this case, we just return false.
 		if err != nil {
-			return false, err
+			klog.Warningf("cluster %s/%s can't determine if need to upgrade TiCDC first, error: %s", ns, tcName, err)
+			return false, nil
 		}
 	}
 
@@ -356,7 +359,7 @@ func NeedToUpdateTiCDCFirst(ns string, tcName string, deps *controller.Dependenc
 
 func needToUpdateTiCDCFirst(ticdcVersion string) (bool, error) {
 	// NOTE: 2023-07-04 is the date we add this check,
-	// so later versions should be greater than v5.1.0.
+	// so the latest version should be greater than v5.1.0.
 	if ticdcVersion == util.VersionLatest {
 		return true, nil
 	}
