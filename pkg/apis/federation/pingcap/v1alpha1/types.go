@@ -113,6 +113,10 @@ type VolumeBackupMemberSpec struct {
 	CleanPolicy pingcapv1alpha1.CleanPolicyType `json:"cleanPolicy,omitempty"`
 	// PriorityClassName of Backup Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+	// CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup
+	// +optional
+	// +kubebuilder:default="all"
+	CalcSizeLevel string `json:"calcSizeLevel,omitempty"`
 }
 
 // BRConfig contains config for BR

@@ -2,6 +2,7 @@ apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
   name: basic
+  annotations:
 spec:
   version: v6.3.0
   timezone: UTC
@@ -33,7 +34,7 @@ spec:
     maxFailoverCount: 0
     config: {}
   tiproxy:
-    baseImage: xhebox/tiproxy
+    baseImage: pingcap/tiproxy
     version: latest
     imagePullPolicy: Always
     replicas: 1
