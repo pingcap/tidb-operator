@@ -143,7 +143,7 @@ const (
 	// AnnoTiFlash710KeepPortsKey is the annotation key to indicate whether the TiFlash v7.1.0+ keeps ports to avoid restart.
 	// ports: tcp_port, http_port, tcp_port_secure and https_port.
 	// NOTE: this annotation should only be used for existing TiFlash v7.1.0+ clusters with ports config items.
-	AnnoTiFlash710KeepPortsKey = "tidb.pingcap.com/tiflash-710-keep-port"
+	AnnoTiFlash710KeepPortsKey = "tidb.pingcap.com/tiflash-710-keep-ports"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
