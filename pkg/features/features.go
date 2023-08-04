@@ -53,7 +53,7 @@ const (
 	VolumeModifying string = "VolumeModifying"
 
 	// VolumeReplacing controls whether to replace whole volumes by deleting and recreating on changes.
-	// tidb, tikv & pd supported.
+	// tidb, tikv & pd supported. If enabled takes precedence over resizing/modifying.
 	VolumeReplacing string = "VolumeReplacing"
 )
 
