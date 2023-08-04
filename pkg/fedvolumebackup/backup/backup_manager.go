@@ -209,7 +209,7 @@ func (bm *backupManager) listAllBackupMembers(ctx context.Context, volumeBackup 
 func (bm *backupManager) initializeVolumeBackup(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup) error {
 	initializeMember := volumeBackup.Spec.Clusters[0]
 	kubeClient := bm.deps.FedClientset[initializeMember.K8sClusterName]
-	backupMember := bm.buildBackupMember(volumeBackup.Name, &initializeMember, &volumeBackup.Spec.Template, true)
+	backupMember := bm.buildBackupMember(volumeBackup.Name, &initializeMember, &volumeBackup.Spec.Template, volumeBackup.Annotations, true)
 	backupMember, err := kubeClient.PingcapV1alpha1().Backups(backupMember.Namespace).Create(ctx, backupMember, metav1.CreateOptions{})
 	if err != nil {
 		return controller.RequeueErrorf("create initialize backup member %s to cluster %s error: %s", backupMember.Name, initializeMember.K8sClusterName, err.Error())
@@ -266,7 +266,7 @@ func (bm *backupManager) executeVolumeBackup(ctx context.Context, volumeBackup *
 		}
 
 		kubeClient := bm.deps.FedClientset[memberCluster.K8sClusterName]
-		backupMember := bm.buildBackupMember(volumeBackup.Name, &memberCluster, &volumeBackup.Spec.Template, false)
+		backupMember := bm.buildBackupMember(volumeBackup.Name, &memberCluster, &volumeBackup.Spec.Template, volumeBackup.Annotations, false)
 		if _, err := kubeClient.PingcapV1alpha1().Backups(memberCluster.TCNamespace).Create(ctx, backupMember, metav1.CreateOptions{}); err != nil {
 			return false, controller.RequeueErrorf("create backup member %s to cluster %s error: %s", backupMember.Name, memberCluster.K8sClusterName, err.Error())
 		}
@@ -394,11 +394,12 @@ func (bm *backupManager) updateVolumeBackupMembersToStatus(volumeBackupStatus *v
 	}
 }
 
-func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMember *v1alpha1.VolumeBackupMemberCluster, backupTemplate *v1alpha1.VolumeBackupMemberSpec, initialize bool) *pingcapv1alpha1.Backup {
+func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMember *v1alpha1.VolumeBackupMemberCluster, backupTemplate *v1alpha1.VolumeBackupMemberSpec, annotations map[string]string, initialize bool) *pingcapv1alpha1.Backup {
 	backupMember := &pingcapv1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      bm.generateBackupMemberName(volumeBackupName, clusterMember.K8sClusterName),
-			Namespace: clusterMember.TCNamespace,
+			Name:        bm.generateBackupMemberName(volumeBackupName, clusterMember.K8sClusterName),
+			Namespace:   clusterMember.TCNamespace,
+			Annotations: annotations,
 		},
 		Spec: pingcapv1alpha1.BackupSpec{
 			Mode:                     pingcapv1alpha1.BackupModeVolumeSnapshot,
@@ -414,6 +415,7 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 			ServiceAccount:           backupTemplate.ServiceAccount,
 			CleanPolicy:              backupTemplate.CleanPolicy,
 			PriorityClassName:        backupTemplate.PriorityClassName,
+			CalcSizeLevel:            backupTemplate.CalcSizeLevel,
 		},
 	}
 	backupMember.Spec.S3.Prefix = fmt.Sprintf("%s-%s", backupMember.Spec.S3.Prefix, clusterMember.K8sClusterName)

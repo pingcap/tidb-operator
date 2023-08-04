@@ -3,7 +3,7 @@ module github.com/pingcap/tidb-operator/pkg/client
 go 1.19
 
 require (
-	github.com/pingcap/tidb-operator/pkg/apis v1.6.0-alpha.3
+	github.com/pingcap/tidb-operator/pkg/apis v1.6.0-alpha.5
 	k8s.io/apimachinery v0.22.17
 	k8s.io/client-go v0.22.17
 )

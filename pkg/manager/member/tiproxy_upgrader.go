@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -22,8 +23,13 @@ import (
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 
 	apps "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+)
+
+const (
+	annoKeyTiProxyMinReadySeconds = "tiproxy.pingcap.com/tiproxy-min-ready-seconds"
 )
 
 type tiproxyUpgrader struct {
@@ -63,6 +69,17 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return nil
 	}
 
+	minReadySeconds := int(newSet.Spec.MinReadySeconds)
+	s, ok := tc.Annotations[annoKeyTiProxyMinReadySeconds]
+	if ok {
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", ns, tcName, annoKeyTiProxyMinReadySeconds, err)
+		} else {
+			minReadySeconds = i
+		}
+	}
+
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
@@ -79,7 +96,7 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		}
 
 		if revision == tc.Status.TiProxy.StatefulSet.UpdateRevision {
-			if !podutil.IsPodReady(pod) {
+			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tiproxy pod: [%s] is not ready", ns, tcName, podName)
 			}
 			continue

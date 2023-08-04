@@ -100,6 +100,7 @@ const (
 	ClusterBackupMeta  = "clustermeta"
 	ClusterRestoreMeta = "restoremeta"
 	MetaFile           = "backupmeta"
+	ClusterManifests   = "manifests"
 
 	// AWSRegionEnv is the aws region environment variable
 	AWSRegionEnv = "AWS_REGION"

@@ -503,6 +503,9 @@ spec:
                 required:
                 - cluster
                 type: object
+              calcSizeLevel:
+                default: all
+                type: string
               cleanOption:
                 properties:
                   backoffEnabled:
@@ -2126,6 +2129,9 @@ spec:
                     required:
                     - cluster
                     type: object
+                  calcSizeLevel:
+                    default: all
+                    type: string
                   cleanOption:
                     properties:
                       backoffEnabled:
@@ -3553,6 +3559,9 @@ spec:
                     required:
                     - cluster
                     type: object
+                  calcSizeLevel:
+                    default: all
+                    type: string
                   cleanOption:
                     properties:
                       backoffEnabled:
@@ -7462,6 +7471,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -10001,6 +10014,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -10133,6 +10150,10 @@ spec:
               topologySpreadConstraints:
                 items:
                   properties:
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      type: object
                     topologyKey:
                       type: string
                   required:
@@ -12601,6 +12622,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -18440,6 +18465,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -21015,6 +21044,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -23549,6 +23582,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -26060,6 +26097,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -28753,6 +28794,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -31302,6 +31347,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -33840,6 +33889,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -36322,6 +36375,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -36360,6 +36417,10 @@ spec:
               topologySpreadConstraints:
                 items:
                   properties:
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      type: object
                     topologyKey:
                       type: string
                   required:
@@ -40316,6 +40377,10 @@ spec:
               topologySpreadConstraints:
                 items:
                   properties:
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      type: object
                     topologyKey:
                       type: string
                   required:
@@ -47669,6 +47734,10 @@ spec:
                   topologySpreadConstraints:
                     items:
                       properties:
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         topologyKey:
                           type: string
                       required:
@@ -47807,6 +47876,10 @@ spec:
               topologySpreadConstraints:
                 items:
                   properties:
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      type: object
                     topologyKey:
                       type: string
                   required:

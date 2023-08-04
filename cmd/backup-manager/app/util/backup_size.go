@@ -45,16 +45,20 @@ import (
 // interface CalcVolSnapBackupSize called by backup and backup clean.
 
 const (
-	// This value can be between 5 and 1,000; if MaxResults is given a value larger than 1,000, only 1,000 results are returned.
+	// DescribeSnapMaxReturnResult can be between 5 and 1,000; if MaxResults is given a value larger than 1,000, only 1,000 results are returned.
 	DescribeSnapMaxReturnResult = 1000
-	// This value can be between 100 and 1,0000, and charge ~0.6$/1 million request
+	// ListSnapMaxReturnResult can be between 100 and 10,000, and charge ~0.6$/1 million request
 	ListSnapMaxReturnResult = 10000
-	// This value can be between 1 and 50 due to aws service quota
+	// EbsApiConcurrency can be between 1 and 50 due to aws service quota
 	EbsApiConcurrency = 40
+
+	CalculateFullSize    = "full"
+	CalculateIncremental = "incremental"
+	CalculateAll         = "all"
 )
 
 // CalcVolSnapBackupSize get snapshots from backup meta and then calc the backup size of snapshots.
-func CalcVolSnapBackupSize(ctx context.Context, provider v1alpha1.StorageProvider) (fullBackupSize int64, incrementalBackupSize int64, err error) {
+func CalcVolSnapBackupSize(ctx context.Context, provider v1alpha1.StorageProvider, level string) (fullBackupSize int64, incrementalBackupSize int64, err error) {
 	start := time.Now()
 	// retrieves all snapshots from backup meta file
 	volSnapshots, err := getSnapshotsFromBackupmeta(ctx, provider)
@@ -66,7 +70,7 @@ func CalcVolSnapBackupSize(ctx context.Context, provider v1alpha1.StorageProvide
 		return 0, 0, err
 	}
 
-	fullBackupSize, incrementalBackupSize, err = calcBackupSize(ctx, volSnapshots)
+	fullBackupSize, incrementalBackupSize, err = calcBackupSize(ctx, volSnapshots, level)
 
 	if err != nil {
 		return 0, 0, err
@@ -136,7 +140,7 @@ func getSnapshotsFromBackupmeta(ctx context.Context, provider v1alpha1.StoragePr
 }
 
 // calcBackupSize get a volume-snapshots backup size
-func calcBackupSize(ctx context.Context, volumes map[string]string) (fullBackupSize int64, incrementalBackupSize int64, err error) {
+func calcBackupSize(ctx context.Context, volumes map[string]string, level string) (fullBackupSize int64, incrementalBackupSize int64, err error) {
 	var apiReqCount, incrementalApiReqCount uint64
 
 	workerPool := util.NewWorkerPool(EbsApiConcurrency, "list snapshot size")
@@ -147,30 +151,35 @@ func calcBackupSize(ctx context.Context, volumes map[string]string) (fullBackupS
 		volumeId := vid
 		// sort snapshots by timestamp
 		workerPool.ApplyOnErrorGroup(eg, func() error {
-			snapSize, apiReq, err := calculateSnapshotSize(volumeId, snapshotId)
-			if err != nil {
-				return err
+			var snapSize, apiReq uint64
+			if level == CalculateAll || level == CalculateFullSize {
+				snapSize, apiReq, err = calculateSnapshotSize(volumeId, snapshotId)
+				if err != nil {
+					return err
+				}
+				atomic.AddInt64(&fullBackupSize, int64(snapSize))
+				atomic.AddUint64(&apiReqCount, apiReq)
 			}
-			atomic.AddInt64(&fullBackupSize, int64(snapSize))
-			atomic.AddUint64(&apiReqCount, apiReq)
 
-			volSnapshots, err := getVolSnapshots(volumeId)
-			if err != nil {
-				return err
+			if level == CalculateAll || level == CalculateIncremental {
+				volSnapshots, err := getVolSnapshots(volumeId)
+				if err != nil {
+					return err
+				}
+				prevSnapshotId, existed := getPrevSnapshotId(snapshotId, volSnapshots)
+				if !existed {
+					// if there is no previous snapshot, means it's the first snapshot, uses its full size as incremental size
+					atomic.AddInt64(&incrementalBackupSize, int64(snapSize))
+					return nil
+				}
+				klog.Infof("get previous snapshot %s of snapshot %s, volume %s", prevSnapshotId, snapshotId, volumeId)
+				incrementalSnapSize, incrementalApiReq, err := calculateChangedBlocksSize(volumeId, prevSnapshotId, snapshotId)
+				if err != nil {
+					return err
+				}
+				atomic.AddInt64(&incrementalBackupSize, int64(incrementalSnapSize))
+				atomic.AddUint64(&incrementalApiReqCount, incrementalApiReq)
 			}
-			prevSnapshotId, existed := getPrevSnapshotId(snapshotId, volSnapshots)
-			if !existed {
-				// if there is no previous snapshot, means it's the first snapshot, uses its full size as incremental size
-				atomic.AddInt64(&incrementalBackupSize, int64(snapSize))
-				return nil
-			}
-			klog.Infof("get previous snapshot %s of snapshot %s, volume %s", prevSnapshotId, snapshotId, volumeId)
-			incrementalSnapSize, incrementalApiReq, err := calculateChangedBlocksSize(volumeId, prevSnapshotId, snapshotId)
-			if err != nil {
-				return err
-			}
-			atomic.AddInt64(&incrementalBackupSize, int64(incrementalSnapSize))
-			atomic.AddUint64(&incrementalApiReqCount, incrementalApiReq)
 			return nil
 		})
 	}
@@ -217,8 +226,10 @@ func calculateSnapshotSize(volumeId, snapshotId string) (uint64, uint64, error) 
 		}
 		nextToken = resp.NextToken
 	}
+
 	klog.Infof("full snapshot size %s, num of ListSnapshotBlocks request %d, snapshot id %s, volume id %s",
 		humanize.Bytes(snapshotSize), numApiReq, snapshotId, volumeId)
+
 	return snapshotSize, numApiReq, nil
 }
 
@@ -230,6 +241,7 @@ func calculateChangedBlocksSize(volumeId, preSnapshotId, snapshotId string) (uin
 
 	klog.Infof("start to calculate incremental snapshot size for %s, base on prev snapshot %s, volume id %s",
 		snapshotId, preSnapshotId, volumeId)
+
 	ebsSession, err := util.NewEBSSession(util.CloudAPIConcurrency)
 	if err != nil {
 		klog.Errorf("new a ebs session failure.")
@@ -264,6 +276,7 @@ func calculateChangedBlocksSize(volumeId, preSnapshotId, snapshotId string) (uin
 		}
 		nextToken = resp.NextToken
 	}
+
 	klog.Infof("incremental snapshot size %s, num of api ListChangedBlocks request %d, snapshot id %s, volume id %s",
 		humanize.Bytes(snapshotSize), numApiReq, snapshotId, volumeId)
 	return snapshotSize, numApiReq, nil
