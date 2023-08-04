@@ -1132,6 +1132,11 @@ func (tc *TidbCluster) SkipTLSWhenConnectTiDB() bool {
 	return ok
 }
 
+func (tc *TidbCluster) KeepTiFlash710Ports() bool {
+	_, ok := tc.Annotations[label.AnnoTiFlash710KeepPortsKey]
+	return ok
+}
+
 // TODO: We Should better do not specified the default value ourself if user not specified the item.
 func (tc *TidbCluster) TiCDCTimezone() string {
 	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil {
