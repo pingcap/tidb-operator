@@ -2799,6 +2799,19 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 			setCount: 0,
 		},
 		{
+			name:        "sha256 version string",
+			tidbVersion: "d7f62aab6315b4378cbbfaaaaaaaaaaaaaaaa90ecaf7e0f22d2225304822ee2e",
+			members: []Member{
+				{
+					node: "node-1",
+				},
+				{
+					node: "node-2",
+				},
+			},
+			setCount: 2,
+		},
+		{
 			name: "skip unhealthy pods",
 			members: []Member{
 				{
