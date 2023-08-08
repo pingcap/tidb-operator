@@ -978,7 +978,7 @@ func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *v1alpha
 		if len(podPVCs) != volumesCount {
 			return fmt.Errorf("expected pvc count %d, got pvc count %d, not equal", volumesCount, len(podPVCs))
 		}
-		warmUpJobName := fmt.Sprintf("%s-%d-warm-up", stsName, number)
+		warmUpJobName := fmt.Sprintf("%s-%s-%d-warm-up", r.Name, stsName, number)
 		_, err := rm.deps.JobLister.Jobs(ns).Get(warmUpJobName)
 		if err == nil {
 			klog.Infof("Restore %s/%s warmup job %s/%s exists, pass it", r.Namespace, r.Name, ns, warmUpJobName)
@@ -1038,7 +1038,7 @@ func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alph
 	}
 	for _, pod := range tikvPods {
 		ns, podName := pod.Namespace, pod.Name
-		warmUpJobName := fmt.Sprintf("%s-warm-up", podName)
+		warmUpJobName := fmt.Sprintf("%s-%s-warm-up", r.Name, podName)
 		_, err := rm.deps.JobLister.Jobs(ns).Get(warmUpJobName)
 		if err == nil {
 			klog.Infof("Restore %s/%s warmup job %s/%s of tikv pod %s/%s exists, pass it", r.Namespace, r.Name, ns, warmUpJobName, ns, podName)
