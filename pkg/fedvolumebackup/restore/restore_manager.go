@@ -120,6 +120,7 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	if memberCreated {
 		return nil
 	}
+	rm.syncWarmUpStatus(volumeRestore, restoreMembers)
 	if err := rm.waitRestoreVolumeComplete(volumeRestore, restoreMembers); err != nil {
 		return err
 	}
@@ -251,7 +252,7 @@ func (rm *restoreManager) waitRestoreVolumeComplete(volumeRestore *v1alpha1.Volu
 	}
 	// restore volume complete
 	if !v1alpha1.IsVolumeRestoreVolumeComplete(volumeRestore) {
-		rm.setVolumeRestoreVolumeComplete(&volumeRestore.Status)
+		rm.setVolumeRestoreVolumeComplete(volumeRestore)
 	}
 
 	for _, restoreMember := range restoreMembers {
@@ -267,6 +268,28 @@ func (rm *restoreManager) waitRestoreVolumeComplete(volumeRestore *v1alpha1.Volu
 	}
 
 	return nil
+}
+
+func (rm *restoreManager) syncWarmUpStatus(volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) {
+	for _, member := range restoreMembers {
+		if !pingcapv1alpha1.IsRestoreWarmUpStarted(member.restore) {
+			return
+		}
+	}
+	if !v1alpha1.IsVolumeRestoreWarmUpStarted(volumeRestore) {
+		rm.setVolumeRestoreWarmUpStarted(&volumeRestore.Status)
+		return
+	}
+
+	for _, member := range restoreMembers {
+		if !pingcapv1alpha1.IsRestoreWarmUpComplete(member.restore) {
+			return
+		}
+	}
+	if !v1alpha1.IsVolumeRestoreWarmUpComplete(volumeRestore) {
+		rm.setVolumeRestoreWarmUpComplete(volumeRestore)
+		return
+	}
 }
 
 func (rm *restoreManager) executeRestoreDataPhase(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) (memberUpdated bool, err error) {
@@ -413,13 +436,42 @@ func (rm *restoreManager) setVolumeRestoreRunning(volumeRestoreStatus *v1alpha1.
 
 }
 
-func (rm *restoreManager) setVolumeRestoreVolumeComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
+func (rm *restoreManager) setVolumeRestoreVolumeComplete(volumeRestore *v1alpha1.VolumeRestore) {
+	volumeRestoreStatus := &volumeRestore.Status
 	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
 		Type:   v1alpha1.VolumeRestoreVolumeComplete,
 		Status: corev1.ConditionTrue,
 	})
 	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepRestoreVolume)
-	v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
+
+	if isWarmUpSync(volumeRestore) {
+		v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepWarmUp)
+	} else if isWarmUpAsync(volumeRestore) {
+		v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
+		v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepWarmUp)
+	} else {
+		v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
+	}
+}
+
+func (rm *restoreManager) setVolumeRestoreWarmUpStarted(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
+	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
+		Type:   v1alpha1.VolumeRestoreWarmUpStarted,
+		Status: corev1.ConditionTrue,
+	})
+}
+
+func (rm *restoreManager) setVolumeRestoreWarmUpComplete(volumeRestore *v1alpha1.VolumeRestore) {
+	volumeRestoreStatus := &volumeRestore.Status
+	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
+		Type:   v1alpha1.VolumeRestoreWarmUpComplete,
+		Status: corev1.ConditionTrue,
+	})
+	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepWarmUp)
+
+	if isWarmUpSync(volumeRestore) {
+		v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
+	}
 }
 
 func (rm *restoreManager) setVolumeRestoreTiKVComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
@@ -507,6 +559,14 @@ func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberClu
 
 func (rm *restoreManager) generateRestoreMemberName(volumeRestoreName, k8sClusterName string) string {
 	return fmt.Sprintf("fed-%s-%s", volumeRestoreName, k8sClusterName)
+}
+
+func isWarmUpSync(volumeRestore *v1alpha1.VolumeRestore) bool {
+	return volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeSync
+}
+
+func isWarmUpAsync(volumeRestore *v1alpha1.VolumeRestore) bool {
+	return volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeASync
 }
 
 type volumeRestoreMember struct {

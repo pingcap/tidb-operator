@@ -45,27 +45,6 @@ const (
 	TiKVConfigEncryptionMasterKeyId = "security.encryption.master-key.key-id"
 )
 
-const warmUpVolumeTemplate2 = `mountPaths=(%s)
-volumeNames=(%s)
-volumeSizes=(%s)
-i=0
-for mountPath in ${mountPaths[*]}
-do deviceName=$(lsblk -no NAME,MOUNTPOINT -r | awk -v path=$mountPath '$2 == path {print $1}')
-if [ -z $deviceName ]
-then echo "not found device of mounted path $mountPath"
-continue
-fi
-echo "start warm up device $deviceName with mounted path $mountPath"
-fio --rw=read --bs=256K --iodepth=128 --ioengine=libaio --name=initialize-${volumeNames[$i]} --numjobs=32 --offset=0%% --offset_increment=3%% --size=3%% --thread=1 --filename=/dev/$deviceName
-i=$[i+1]
-done`
-
-const warmUpVolumeTemplate = `deviceName=$(lsblk -no NAME,MOUNTPOINT -r | awk -v path=%s '$2 == path {print $1}')
-echo "start warm up device $deviceName with mounted path %s"
-fio --rw=read --bs=256K --iodepth=128 --ioengine=libaio --name=initialize-%s --numjobs=32 --offset=0%% --offset_increment=3%% --size=3%% --thread=1 --filename=/dev/$deviceName`
-
-const defaultWarmUpImage = "wangle1321/fio:juncen-2023062902"
-
 type restoreManager struct {
 	deps          *controller.Dependencies
 	statusUpdater controller.RestoreConditionUpdaterInterface
@@ -224,11 +203,6 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 					Status: corev1.ConditionTrue,
 				}, nil)
 			}
-
-			return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-				Type:   v1alpha1.RestoreTiKVComplete,
-				Status: corev1.ConditionTrue,
-			}, nil)
 		}
 
 		if isWarmUpAsync(restore) && !v1alpha1.IsRestoreWarmUpComplete(restore) {
@@ -954,11 +928,18 @@ type pvcInfo struct {
 }
 
 func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
-	klog.Infof("Restore %s/%s start to warm up TiKV synchronously", r.Namespace, r.Name)
-	warmUpImage := defaultWarmUpImage
-	if r.Spec.WarmupImage != "" {
-		warmUpImage = r.Spec.WarmupImage
+	warmUpImage := r.Spec.WarmupImage
+	if warmUpImage == "" {
+		rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreRetryFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "NoWarmupImage",
+			Message: "warmup image is empty",
+		}, nil)
+		return fmt.Errorf("warmup image is empty")
 	}
+
+	klog.Infof("Restore %s/%s start to warm up TiKV synchronously", r.Namespace, r.Name)
 	ns := tc.Namespace
 	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
 	if err != nil {
@@ -1022,12 +1003,18 @@ func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *v1alpha
 }
 
 func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
-	klog.Infof("Restore %s/%s start to warm up TiKV asynchronously", r.Namespace, r.Name)
-	warmUpImage := defaultWarmUpImage
-	if r.Spec.WarmupImage != "" {
-		warmUpImage = r.Spec.WarmupImage
+	warmUpImage := r.Spec.WarmupImage
+	if warmUpImage == "" {
+		rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreRetryFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "NoWarmupImage",
+			Message: "warmup image is empty",
+		}, nil)
+		return fmt.Errorf("warmup image is empty")
 	}
 
+	klog.Infof("Restore %s/%s start to warm up TiKV asynchronously", r.Namespace, r.Name)
 	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
 	if err != nil {
 		return err
@@ -1115,27 +1102,18 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 		}
 	}
 
-	/*fioCommands := make([]string, 0, len(warmUpPaths))
-	for i := range warmUpPaths {
-		fioSubCommand := fmt.Sprintf(warmUpVolumeTemplate, warmUpPaths[i], warmUpPaths[i], warmUpVolumeNames[i])
-		fioCommands = append(fioCommands, strings.ReplaceAll(fioSubCommand, "\n", "; "))
-	}
-	fioCommand := strings.Join(fioCommands, "; ")*/
-
 	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
 
 	fioPaths := make([]string, 0, len(podVolumeMounts))
 	for _, volumeMount := range podVolumeMounts {
-		/*if volumeMount.MountPath == constants.TiKVDataVolumeMountPath {
+		if volumeMount.MountPath == constants.TiKVDataVolumeMountPath {
 			continue
-		}*/
+		}
 		fioPaths = append(fioPaths, volumeMount.MountPath)
 	}
 	if len(fioPaths) > 0 {
 		args = append(args, "--block")
-		for _, fioPath := range fioPaths {
-			args = append(args, fioPath)
-		}
+		args = append(args, fioPaths...)
 	}
 	resourceRequirements := getWarmUpResourceRequirements(tc)
 
@@ -1229,20 +1207,17 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 	}
 	fioCommand := strings.Join(fioCommands, "; ")*/
 
-	// args := []string{"--fs", constants.TiKVDataVolumeMountPath}
-	var args []string
+	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
 	fioPaths := make([]string, 0, len(warmUpPaths))
 	for _, warmUpPath := range warmUpPaths {
-		/*if warmUpPath == constants.TiKVDataVolumeMountPath {
+		if warmUpPath == constants.TiKVDataVolumeMountPath {
 			continue
-		}*/
+		}
 		fioPaths = append(fioPaths, warmUpPath)
 	}
 	if len(fioPaths) > 0 {
 		args = append(args, "--block")
-		for _, fioPath := range fioPaths {
-			args = append(args, fioPath)
-		}
+		args = append(args, fioPaths...)
 	}
 
 	warmUpPod := &corev1.PodTemplateSpec{

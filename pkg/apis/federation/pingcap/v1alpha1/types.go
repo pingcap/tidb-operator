@@ -447,6 +447,11 @@ const (
 	VolumeRestoreRunning VolumeRestoreConditionType = "Running"
 	// VolumeRestoreVolumeComplete means all the restore members are volume complete
 	VolumeRestoreVolumeComplete VolumeRestoreConditionType = "VolumeComplete"
+	// VolumeRestoreWarmUpStarted means the Restore has successfully started warmup pods to
+	// initialize volumes restored from snapshots
+	VolumeRestoreWarmUpStarted VolumeRestoreConditionType = "WarmUpStarted"
+	// VolumeRestoreWarmUpComplete means the Restore has successfully warmed up all TiKV volumes
+	VolumeRestoreWarmUpComplete VolumeRestoreConditionType = "WarmUpComplete"
 	// VolumeRestoreTiKVComplete means all the restore members are tikv complete
 	VolumeRestoreTiKVComplete VolumeRestoreConditionType = "TikvComplete"
 	// VolumeRestoreDataComplete means all the restore members are data complete
@@ -466,6 +471,8 @@ const (
 	VolumeRestoreStepRestoreVolume VolumeRestoreStepType = "RestoreVolume"
 	// VolumeRestoreStepStartTiKV is start tikv step
 	VolumeRestoreStepStartTiKV VolumeRestoreStepType = "StartTiKV"
+	// VolumeRestoreStepWarmUp is warm up tikv volumes step
+	VolumeRestoreStepWarmUp VolumeRestoreStepType = "WarmUp"
 	// VolumeRestoreStepRestoreData is restore data step
 	VolumeRestoreStepRestoreData VolumeRestoreStepType = "RestoreData"
 	// VolumeRestoreStepRestartTiKV is restart tikv step
