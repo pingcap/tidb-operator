@@ -205,7 +205,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}
 		}
 
-		if isWarmUpAsync(restore) && !v1alpha1.IsRestoreWarmUpComplete(restore) {
+		if isWarmUpAsync(restore) && v1alpha1.IsRestoreWarmUpStarted(restore) && !v1alpha1.IsRestoreWarmUpComplete(restore) {
 			if err := rm.waitWarmUpJobsFinished(restore); err != nil {
 				return err
 			}
