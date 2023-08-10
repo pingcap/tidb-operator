@@ -1,0 +1,6 @@
+FROM alpine:latest
+RUN apk add lsblk fio
+ADD bin/warmup /warmup
+
+ADD warmup-steps.sh /warmup_steps
+CMD /warmup_steps
