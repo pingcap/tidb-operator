@@ -244,7 +244,7 @@ func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1al
 	if err != nil || result.Requeue || result.RequeueAfter > 0 {
 		return result, err
 	}
-	return c.syncPDPodForReplaceDisk(ctx, pod, tc)
+	return c.syncPDPodForReplaceVolume(ctx, pod, tc)
 }
 
 func (c *PodController) syncPDPodForLeaderTransfer(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
@@ -299,11 +299,11 @@ func (c *PodController) syncPDPodForLeaderTransfer(ctx context.Context, pod *cor
 	return reconcile.Result{}, nil
 }
 
-func (c *PodController) syncPDPodForReplaceDisk(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
-	value, exist := pod.Annotations[v1alpha1.ReplaceDiskAnnKey]
+func (c *PodController) syncPDPodForReplaceVolume(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value, exist := pod.Annotations[v1alpha1.ReplaceVolumeAnnKey]
 	if exist {
-		if value != v1alpha1.ReplaceDiskValueTrue {
-			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceDiskAnnKey, pod.Namespace, pod.Name)
+		if value != v1alpha1.ReplaceVolumeValueTrue {
+			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceVolumeAnnKey, pod.Namespace, pod.Name)
 			return reconcile.Result{}, nil
 		}
 		memberIDStr, exist := pod.Labels[label.MemberIDLabelKey]
@@ -367,7 +367,7 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	if err != nil || result.Requeue || result.RequeueAfter > 0 {
 		return result, err
 	}
-	return c.syncTiKVPodForReplaceDisk(ctx, pod, tc)
+	return c.syncTiKVPodForReplaceVolume(ctx, pod, tc)
 }
 
 func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
@@ -513,11 +513,11 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 
 	return reconcile.Result{}, nil
 }
-func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
-	value, exist := pod.Annotations[v1alpha1.ReplaceDiskAnnKey]
+func (c *PodController) syncTiKVPodForReplaceVolume(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value, exist := pod.Annotations[v1alpha1.ReplaceVolumeAnnKey]
 	if exist {
-		if value != v1alpha1.ReplaceDiskValueTrue {
-			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceDiskAnnKey, pod.Namespace, pod.Name)
+		if value != v1alpha1.ReplaceVolumeValueTrue {
+			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceVolumeAnnKey, pod.Namespace, pod.Name)
 			return reconcile.Result{}, nil
 		}
 		pdClient := c.getPDClient(tc)
@@ -544,7 +544,7 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 				return reconcile.Result{Requeue: true}, fmt.Errorf("Not all TIKV stores ready before replace")
 			}
 			// 1. Delete store
-			klog.Infof("storeid %d is Up, deleting due to replace disk annotation.", storeID)
+			klog.Infof("storeid %d is Up, deleting due to replace volume annotation.", storeID)
 			pdClient.DeleteStore(storeID)
 			return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
 		} else if storeInfo.Store.StateName == v1alpha1.TiKVStateOffline {
@@ -554,7 +554,7 @@ func (c *PodController) syncTiKVPodForReplaceDisk(ctx context.Context, pod *core
 			// 3. Delete PVCs & 4. Delete Pod.
 			return c.deletePVCsAndPodFn(c.deps, ctx, pod, tc)
 		} else {
-			return reconcile.Result{}, fmt.Errorf("Cannot replace disk when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
+			return reconcile.Result{}, fmt.Errorf("Cannot replace volume when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
 		}
 	}
 	return reconcile.Result{}, nil
@@ -565,7 +565,7 @@ func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	if err != nil || result.Requeue || result.RequeueAfter > 0 {
 		return result, err
 	}
-	return c.syncTiDBPodForReplaceDisk(ctx, pod, tc)
+	return c.syncTiDBPodForReplaceVolume(ctx, pod, tc)
 }
 
 func (c *PodController) syncTiDBPodForGracefulShutdown(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
@@ -606,11 +606,11 @@ func (c *PodController) syncTiDBPodForGracefulShutdown(ctx context.Context, pod 
 	return reconcile.Result{}, nil
 }
 
-func (c *PodController) syncTiDBPodForReplaceDisk(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
-	value, exist := pod.Annotations[v1alpha1.ReplaceDiskAnnKey]
+func (c *PodController) syncTiDBPodForReplaceVolume(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value, exist := pod.Annotations[v1alpha1.ReplaceVolumeAnnKey]
 	if exist {
-		if value != v1alpha1.ReplaceDiskValueTrue {
-			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceDiskAnnKey, pod.Namespace, pod.Name)
+		if value != v1alpha1.ReplaceVolumeValueTrue {
+			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceVolumeAnnKey, pod.Namespace, pod.Name)
 			return reconcile.Result{}, nil
 		}
 		// Verify okay to delete tidb pod now.
@@ -620,7 +620,7 @@ func (c *PodController) syncTiDBPodForReplaceDisk(ctx context.Context, pod *core
 		if tc.PDUpgrading() || tc.PDScaling() || tc.TiKVUpgrading() || tc.TiKVScaling() || tc.TiDBScaling() {
 			klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
 				"tikv status is %s, tiflash status is %s, pump status is %s, "+
-				"tidb status is %s, can not replace tidb disk",
+				"tidb status is %s, can not replace tidb volume",
 				ns, tcName,
 				tc.Status.PD.Phase, tc.Status.TiKV.Phase, tc.Status.TiFlash.Phase,
 				tc.Status.Pump.Phase, tc.Status.TiDB.Phase)

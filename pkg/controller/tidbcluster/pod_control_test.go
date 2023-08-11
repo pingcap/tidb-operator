@@ -168,7 +168,7 @@ func TestTiKVPodSyncForEviction(t *testing.T) {
 	}, timeout, interval).ShouldNot(Equal(0), "should finish annotation")
 }
 
-func TestTiKVPodSyncForReplaceDisk(t *testing.T) {
+func TestTiKVPodSyncForReplaceVolume(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
@@ -232,8 +232,8 @@ func TestTiKVPodSyncForReplaceDisk(t *testing.T) {
 		if pod.Annotations == nil {
 			pod.Annotations = make(map[string]string)
 		}
-		pod.Annotations[v1alpha1.ReplaceDiskAnnKey] = v1alpha1.ReplaceDiskValueTrue
-		result, err := c.syncTiKVPodForReplaceDisk(ctx, pod, tc)
+		pod.Annotations[v1alpha1.ReplaceVolumeAnnKey] = v1alpha1.ReplaceVolumeValueTrue
+		result, err := c.syncTiKVPodForReplaceVolume(ctx, pod, tc)
 		g.Expect(result.Requeue || result.RequeueAfter > 0 || err != nil).To(Equal(tt.expectRequeue))
 		g.Expect(deletePVCsAndPodCalled).To(Equal(tt.pvcPodDeleted))
 		g.Expect(storeDeleted).To(Equal(tt.deletedStore))
@@ -735,7 +735,7 @@ func newTiKVPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 	}
 }
 
-func TestPdPodSyncForReplaceDisk(t *testing.T) {
+func TestPdPodSyncForReplaceVolume(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	tc := newTidbCluster()
@@ -747,7 +747,7 @@ func TestPdPodSyncForReplaceDisk(t *testing.T) {
 				label.MemberIDLabelKey: "123",
 			},
 			Annotations: map[string]string{
-				v1alpha1.ReplaceDiskAnnKey: v1alpha1.ReplaceDiskValueTrue,
+				v1alpha1.ReplaceVolumeAnnKey: v1alpha1.ReplaceVolumeValueTrue,
 			},
 		},
 	}
@@ -799,7 +799,7 @@ func TestPdPodSyncForReplaceDisk(t *testing.T) {
 	// Current pod is leader, check leader transferred
 	leaderId = 123
 	transferName = ""
-	result, err := c.syncPDPodForReplaceDisk(ctx, pod, tc)
+	result, err := c.syncPDPodForReplaceVolume(ctx, pod, tc)
 	g.Expect(err).Should(Succeed())
 	g.Expect(result.Requeue).To(BeTrue())
 	g.Expect(transferName).To(Equal("pd-1"))
@@ -807,7 +807,7 @@ func TestPdPodSyncForReplaceDisk(t *testing.T) {
 	// Check deleted when not leader
 	leaderId = 124
 	transferName = ""
-	result, err = c.syncPDPodForReplaceDisk(ctx, pod, tc)
+	result, err = c.syncPDPodForReplaceVolume(ctx, pod, tc)
 	g.Expect(err).Should(Succeed())
 	g.Expect(result.Requeue).To(BeFalse())
 	g.Expect(transferName).To(BeEmpty())
@@ -819,7 +819,7 @@ func TestPdPodSyncForReplaceDisk(t *testing.T) {
 			Health: false,
 		},
 	}
-	result, err = c.syncPDPodForReplaceDisk(ctx, pod, tc)
+	result, err = c.syncPDPodForReplaceVolume(ctx, pod, tc)
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(result.Requeue).To(BeTrue())
 	g.Expect(transferName).To(BeEmpty())

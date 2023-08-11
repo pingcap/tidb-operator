@@ -1398,8 +1398,8 @@ const (
 	TiKVEvictLeaderExpirationTimeAnnKey = "tidb.pingcap.com/tikv-evict-leader-expiration-time"
 	// PDLeaderTransferExpirationTimeAnnKey is the annotation key to expire transfer leader annotation. Type: time.RFC3339.
 	PDLeaderTransferExpirationTimeAnnKey = "tidb.pingcap.com/pd-evict-leader-expiration-time"
-	// ReplaceDiskAnnKey is the annotation key to replace disks used by pod.
-	ReplaceDiskAnnKey = "tidb.pingcap.com/replace-disk"
+	// ReplaceVolumeAnnKey is the annotation key to replace disks used by pod.
+	ReplaceVolumeAnnKey = "tidb.pingcap.com/replace-volume"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -1429,9 +1429,9 @@ const (
 	TiDBPodDeletionDeletePod = "delete-pod"
 )
 
-// Only supported value for ReplaceDisk Annotation.
+// Only supported value for ReplaceVolume Annotation.
 const (
-	ReplaceDiskValueTrue = "true"
+	ReplaceVolumeValueTrue = "true"
 )
 
 type EvictLeaderStatus struct {

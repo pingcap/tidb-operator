@@ -52,7 +52,7 @@ func (p *pvcReplacer) getVolReplaceStatusForComponent(tc *v1alpha1.TidbCluster, 
 		return comp.GetVolReplaceInProgress(), nil // Do not change existing status.
 	}
 
-	// Ignore errors as they only indicate change in number of disks which replacer can handle.
+	// Ignore errors as they only indicate change in number of volume which replacer can handle.
 	isSynced, _ := p.utils.IsStatefulSetSynced(ctx, ctx.sts)
 
 	if !isSynced {
@@ -121,7 +121,7 @@ func (p *pvcReplacer) Sync(tc *v1alpha1.TidbCluster) error {
 func (p *pvcReplacer) replaceVolumes(ctx *componentVolumeContext) error {
 	if ctx.status.GetPhase() == v1alpha1.ScalePhase {
 		// Note: only wait for scaling, phase may show up as upgrading but will be blocked
-		// for replacing here to effect the config + disk change together.
+		// for replacing here to effect the config + volume change together.
 		return fmt.Errorf("component phase is Scaling, waiting to complete.")
 	}
 	if err := p.tryToRecreateSTS(ctx); err != nil {
@@ -137,7 +137,7 @@ func (p *pvcReplacer) tryToRecreateSTS(ctx *componentVolumeContext) error {
 	ns := ctx.sts.Namespace
 	name := ctx.sts.Name
 
-	// Ignore errors as they only indicate change in number of disks which replacer can handle.
+	// Ignore errors as they only indicate change in number of volume which replacer can handle.
 	isSynced, _ := p.utils.IsStatefulSetSynced(ctx, ctx.sts)
 	if isSynced {
 		return nil
@@ -154,31 +154,31 @@ func (p *pvcReplacer) tryToRecreateSTS(ctx *componentVolumeContext) error {
 	return fmt.Errorf("waiting on recreate statefulset %s/%s for component %s", ns, name, ctx.ComponentID())
 }
 
-func isDiskReplacing(pod *corev1.Pod) bool {
-	_, exist := pod.Annotations[v1alpha1.ReplaceDiskAnnKey]
+func isVolumeReplacing(pod *corev1.Pod) bool {
+	_, exist := pod.Annotations[v1alpha1.ReplaceVolumeAnnKey]
 	return exist
 }
 
-func (p *pvcReplacer) startDiskReplace(pod *corev1.Pod) error {
+func (p *pvcReplacer) startVolumeReplace(pod *corev1.Pod) error {
 	pod = pod.DeepCopy()
 
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
 
-	pod.Annotations[v1alpha1.ReplaceDiskAnnKey] = v1alpha1.ReplaceDiskValueTrue
+	pod.Annotations[v1alpha1.ReplaceVolumeAnnKey] = v1alpha1.ReplaceVolumeValueTrue
 	if _, err := p.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{}); err != nil {
-		return fmt.Errorf("add replace disk annotation to pod %s/%s failed: %s", pod.Namespace, pod.Name, err)
+		return fmt.Errorf("add replace volume annotation to pod %s/%s failed: %s", pod.Namespace, pod.Name, err)
 	}
-	klog.Infof("added replace disk annotation to pod %s/%s", pod.Namespace, pod.Name)
+	klog.Infof("added replace volume annotation to pod %s/%s", pod.Namespace, pod.Name)
 	return nil
 }
 
 func (p *pvcReplacer) tryToReplacePVC(ctx *componentVolumeContext) error {
 	for _, pod := range ctx.pods {
 		// Ensure only one is being replaced at a time.
-		if isDiskReplacing(pod) {
-			return fmt.Errorf("waiting for pending disk replace for pod %s", pod.Name)
+		if isVolumeReplacing(pod) {
+			return fmt.Errorf("waiting for pending volume replace for pod %s", pod.Name)
 		}
 	}
 	for _, pod := range ctx.pods {
@@ -189,10 +189,10 @@ func (p *pvcReplacer) tryToReplacePVC(ctx *componentVolumeContext) error {
 		if podSynced {
 			continue
 		}
-		if err := p.startDiskReplace(pod); err != nil {
+		if err := p.startVolumeReplace(pod); err != nil {
 			return err
 		}
-		return fmt.Errorf("started disk replace for pod %s, waiting", pod.Name)
+		return fmt.Errorf("started volume replace for pod %s, waiting", pod.Name)
 	}
 	return nil
 }

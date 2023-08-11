@@ -328,10 +328,10 @@ func TestPvcReplacerSync(t *testing.T) {
 			g.Eventually(func() map[string]string {
 				pod1, _ := deps.PodLister.Pods(tc.Namespace).Get("test-cluster-tikv-1")
 				return pod1.Annotations
-			}, testMatchTimeout, testMatchInterval).Should(HaveKeyWithValue(v1alpha1.ReplaceDiskAnnKey, v1alpha1.ReplaceDiskValueTrue))
-			g.Expect(syncErr.Error()).To(ContainSubstring("started disk replace"))
+			}, testMatchTimeout, testMatchInterval).Should(HaveKeyWithValue(v1alpha1.ReplaceVolumeAnnKey, v1alpha1.ReplaceVolumeValueTrue))
+			g.Expect(syncErr.Error()).To(ContainSubstring("started volume replace"))
 		} else if syncErr != nil {
-			g.Expect(syncErr.Error()).To(Not(ContainSubstring("started disk replace")))
+			g.Expect(syncErr.Error()).To(Not(ContainSubstring("started volume replace")))
 		}
 	}
 	tests := []testcase{
