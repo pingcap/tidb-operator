@@ -531,6 +531,17 @@ func (tc *TidbCluster) PDAllMembersReady() bool {
 	return true
 }
 
+// PDAllPeerMembersReady return whether all peer members of PD are ready.
+func (tc *TidbCluster) PDAllPeerMembersReady() bool {
+
+	for _, member := range tc.Status.PD.PeerMembers {
+		if !member.Health {
+			return false
+		}
+	}
+	return true
+}
+
 func (tc *TidbCluster) PDAutoFailovering() bool {
 	if len(tc.Status.PD.FailureMembers) == 0 {
 		return false
@@ -900,6 +911,16 @@ func (tc *TidbCluster) AllTiKVsAreAvailable() bool {
 	}
 
 	for _, store := range tc.Status.TiKV.Stores {
+		if store.State != TiKVStateUp {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (tc *TidbCluster) AllPeerTiKVsAreAvailable() bool {
+	for _, store := range tc.Status.TiKV.PeerStores {
 		if store.State != TiKVStateUp {
 			return false
 		}

@@ -131,12 +131,12 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}, nil)
 			return err
 		}
-		if !tc.PDAllMembersReady() {
+		if !tc.PDAllMembersReady() || !tc.PDAllPeerMembersReady() {
 			return controller.RequeueErrorf("restore %s/%s: waiting for all PD members are ready in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 		}
 
 		if v1alpha1.IsRestoreVolumeComplete(restore) && !v1alpha1.IsRestoreTiKVComplete(restore) {
-			if !tc.AllTiKVsAreAvailable() {
+			if !tc.AllTiKVsAreAvailable() || !tc.AllPeerTiKVsAreAvailable() {
 				return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 			} else {
 				sel, err := label.New().Instance(tc.Name).TiKV().Selector()
