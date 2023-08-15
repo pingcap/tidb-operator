@@ -111,7 +111,7 @@ func (p *pvcReplacer) Sync(tc *v1alpha1.TidbCluster) error {
 		}
 		err = p.replaceVolumes(ctx)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("replace volumes for %s/%s %s failed: %w", tc.Namespace, tc.Name ctx.ComponentID(), err))
+			errs = append(errs, fmt.Errorf("replace volumes for %s/%s %s failed: %w", tc.Namespace, tc.Name, ctx.ComponentID(), err))
 		}
 	}
 
