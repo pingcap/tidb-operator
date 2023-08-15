@@ -418,7 +418,7 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 			CalcSizeLevel:            backupTemplate.CalcSizeLevel,
 		},
 	}
-	backupMember.Spec.S3.Prefix = fmt.Sprintf("%s-%s", backupMember.Spec.S3.Prefix, clusterMember.K8sClusterName)
+	backupMember.Spec.S3.Prefix = fmt.Sprintf("%s/%s", backupMember.Spec.S3.Prefix, clusterMember.K8sClusterName)
 	if initialize {
 		backupMember.Spec.FederalVolumeBackupPhase = pingcapv1alpha1.FederalVolumeBackupInitialize
 	}
