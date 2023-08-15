@@ -111,7 +111,7 @@ func (p *pvcReplacer) Sync(tc *v1alpha1.TidbCluster) error {
 		}
 		err = p.replaceVolumes(ctx)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("replace volumes for %s failed: %w", ctx.ComponentID(), err))
+			errs = append(errs, fmt.Errorf("replace volumes for %s/%s %s failed: %w", tc.Namespace, tc.Name ctx.ComponentID(), err))
 		}
 	}
 
@@ -143,7 +143,7 @@ func (p *pvcReplacer) tryToRecreateSTS(ctx *componentVolumeContext) error {
 		return nil
 	}
 	if utils.StatefulSetIsUpgrading(ctx.sts) {
-		return fmt.Errorf("component sts %s/%s is upgrading", ctx.sts.Name, ctx.sts.Namespace)
+		return fmt.Errorf("component sts %s/%s is upgrading", ctx.sts.Namespace, ctx.sts.Name)
 	}
 
 	orphan := metav1.DeletePropagationOrphan
