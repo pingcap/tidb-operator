@@ -90,6 +90,7 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 			metav1.NamespaceDefault,
 			metav1.NamespacePublic,
 			v1.NamespaceNodeLease,
+			"chaos-testing", // used by chaos-mesh
 		}
 		if framework.TestContext.Provider == "kind" {
 			// kind local path provisioner namespace since 0.7.0
