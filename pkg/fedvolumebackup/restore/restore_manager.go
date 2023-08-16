@@ -210,7 +210,7 @@ func (rm *restoreManager) executeRestoreVolumePhase(ctx context.Context, volumeR
 		}
 
 		kubeClient := rm.deps.FedClientset[k8sClusterName]
-		restoreMember := rm.buildRestoreMember(volumeRestore.Name, &memberCluster, &volumeRestore.Spec.Template, volumeRestore.Annotations)
+		restoreMember := rm.buildRestoreMember(volumeRestore.Name, &memberCluster, &volumeRestore.Spec.Template, volumeRestore.Annotations, volumeRestore.Labels)
 		if _, err := kubeClient.PingcapV1alpha1().Restores(memberCluster.TCNamespace).Create(ctx, restoreMember, metav1.CreateOptions{}); err != nil {
 			return false, fmt.Errorf("create restore member %s to cluster %s error: %s", restoreMember.Name, k8sClusterName, err.Error())
 		}
@@ -477,7 +477,7 @@ func (rm *restoreManager) skipVolumeRestore(volumeRestore *v1alpha1.VolumeRestor
 	return v1alpha1.IsVolumeRestoreComplete(volumeRestore) || v1alpha1.IsVolumeRestoreFailed(volumeRestore)
 }
 
-func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberCluster *v1alpha1.VolumeRestoreMemberCluster, template *v1alpha1.VolumeRestoreMemberSpec, annotations map[string]string) *pingcapv1alpha1.Restore {
+func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberCluster *v1alpha1.VolumeRestoreMemberCluster, template *v1alpha1.VolumeRestoreMemberSpec, annotations map[string]string, labels map[string]string) *pingcapv1alpha1.Restore {
 	restoreMember := &pingcapv1alpha1.Restore{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        rm.generateRestoreMemberName(volumeRestoreName, memberCluster.K8sClusterName),
