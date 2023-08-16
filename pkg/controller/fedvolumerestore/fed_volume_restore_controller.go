@@ -15,6 +15,7 @@ package fedvolumerestore
 
 import (
 	"fmt"
+	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -158,13 +159,19 @@ func (c *Controller) updateRestore(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsVolumeRestoreComplete(newVolumeRestore) {
-		klog.V(4).Infof("volume restore %s/%s is complete, skipping.", ns, name)
+	if v1alpha1.IsVolumeRestoreFailed(newVolumeRestore) {
+		klog.V(4).Infof("volume restore %s/%s is failed, skipping.", ns, name)
 		return
 	}
 
-	if v1alpha1.IsVolumeRestoreFailed(newVolumeRestore) {
-		klog.V(4).Infof("volume restore %s/%s is failed, skipping.", ns, name)
+	if newVolumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeASync {
+		if !v1alpha1.IsVolumeRestoreWarmUpComplete(newVolumeRestore) {
+			c.enqueueRestore(newVolumeRestore)
+		}
+	}
+
+	if v1alpha1.IsVolumeRestoreComplete(newVolumeRestore) {
+		klog.V(4).Infof("volume restore %s/%s is complete, skipping.", ns, name)
 		return
 	}
 

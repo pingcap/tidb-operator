@@ -1192,21 +1192,6 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 		}
 	}
 
-	/*warmUpVolumeNames := make([]string, 0, len(warmUpVolumeMounts))
-	for _, volumeMount := range warmUpVolumeMounts {
-		warmUpVolumeNames = append(warmUpVolumeNames, volumeMount.Name)
-	}
-	if len(warmUpPaths) != len(warmUpVolumeNames) {
-		return nil, fmt.Errorf("lengths of mounted paths %v and volumes %v in tikv pod %s/%s are not equal", warmUpPaths, warmUpVolumeNames, ns, podName)
-	}*/
-
-	/*fioCommands := make([]string, 0, len(warmUpPaths))
-	for i := range warmUpPaths {
-		fioSubCommand := fmt.Sprintf(warmUpVolumeTemplate, warmUpPaths[i], warmUpPaths[i], warmUpVolumeNames[i])
-		fioCommands = append(fioCommands, strings.ReplaceAll(fioSubCommand, "\n", "; "))
-	}
-	fioCommand := strings.Join(fioCommands, "; ")*/
-
 	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
 	fioPaths := make([]string, 0, len(warmUpPaths))
 	for _, warmUpPath := range warmUpPaths {
