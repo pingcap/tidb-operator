@@ -76,8 +76,9 @@ func newHelper(t *testing.T, restoreName, restoreNamespace string) *helper {
 	return h
 }
 
-func (h *helper) createVolumeRestore(ctx context.Context) *v1alpha1.VolumeRestore {
+func (h *helper) createVolumeRestore(ctx context.Context, warmupMode pingcapv1alpha1.RestoreWarmupMode) *v1alpha1.VolumeRestore {
 	volumeRestore := generateVolumeRestore(h.restoreName, h.restoreNamespace)
+	volumeRestore.Spec.Template.Warmup = warmupMode
 	volumeRestore, err := h.deps.Clientset.FederationV1alpha1().VolumeRestores(h.restoreNamespace).Create(ctx, volumeRestore, metav1.CreateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 	h.g.Expect(volumeRestore.Status.TimeStarted.Unix() < 0).To(gomega.BeTrue())
@@ -105,12 +106,40 @@ func (h *helper) assertRunRestoreVolume(ctx context.Context, volumeRestore *v1al
 
 func (h *helper) assertRestoreVolumeComplete(volumeRestore *v1alpha1.VolumeRestore) {
 	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreVolumeComplete))
-	h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(2))
+	if volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeASync {
+		// aysnc means start tikv and warm up simultaneously
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(3))
+	} else {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(2))
+	}
+}
+
+func (h *helper) assertRestoreWarmUpStarted(volumeRestore *v1alpha1.VolumeRestore) {
+	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreWarmUpStarted))
+	if volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeASync {
+		// aysnc means start tikv and warm up simultaneously
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(3))
+	} else {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(2))
+	}
+}
+
+func (h *helper) assertRestoreWarmUpComplete(volumeRestore *v1alpha1.VolumeRestore) {
+	h.g.Expect(v1alpha1.IsVolumeRestoreWarmUpComplete(volumeRestore)).To(gomega.Equal(true))
+	if volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeSync {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(3))
+	} else if volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeASync {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(5))
+	}
 }
 
 func (h *helper) assertRunRestoreData(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore) {
 	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreTiKVComplete))
-	h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(3))
+	if volumeRestore.Spec.Template.Warmup != "" {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(4))
+	} else {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(3))
+	}
 
 	// in setDataPlaneVolumeComplete function, we set restore member1 with minimal commit ts
 	// so restore member1 should execute restore data phase
@@ -128,8 +157,13 @@ func (h *helper) assertRunRestoreData(ctx context.Context, volumeRestore *v1alph
 }
 
 func (h *helper) assertRunRestoreFinish(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore) {
+	h.g.Expect(volumeRestore.Status.CommitTs).To(gomega.Equal("121"))
 	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreDataComplete))
-	h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(4))
+	if volumeRestore.Spec.Template.Warmup == "" {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(4))
+	} else {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(5))
+	}
 	restoreMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Restores(fakeTcNamespace1).Get(ctx, h.restoreMemberName1, metav1.GetOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 	h.g.Expect(restoreMember1.Spec.FederalVolumeRestorePhase).To(gomega.Equal(pingcapv1alpha1.FederalVolumeRestoreFinish))
@@ -143,6 +177,11 @@ func (h *helper) assertRunRestoreFinish(ctx context.Context, volumeRestore *v1al
 
 func (h *helper) assertRestoreComplete(volumeRestore *v1alpha1.VolumeRestore) {
 	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreComplete))
+	if volumeRestore.Spec.Template.Warmup == "" {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(4))
+	} else {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(5))
+	}
 	h.g.Expect(volumeRestore.Status.CommitTs).To(gomega.Equal("121"))
 	h.g.Expect(volumeRestore.Status.TimeCompleted.Unix() > 0).To(gomega.BeTrue())
 	h.g.Expect(len(volumeRestore.Status.TimeTaken) > 0).To(gomega.BeTrue())
@@ -150,7 +189,9 @@ func (h *helper) assertRestoreComplete(volumeRestore *v1alpha1.VolumeRestore) {
 
 func (h *helper) assertRestoreFailed(volumeRestore *v1alpha1.VolumeRestore) {
 	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreFailed))
-	h.g.Expect(volumeRestore.Status.CommitTs).To(gomega.BeEmpty())
+	if !v1alpha1.IsVolumeRestoreDataComplete(volumeRestore) {
+		h.g.Expect(volumeRestore.Status.CommitTs).To(gomega.BeEmpty())
+	}
 	h.g.Expect(volumeRestore.Status.TimeCompleted.Unix() > 0).To(gomega.BeTrue())
 	h.g.Expect(len(volumeRestore.Status.TimeTaken) > 0).To(gomega.BeTrue())
 }
@@ -216,6 +257,64 @@ func (h *helper) setDataPlaneTikvComplete(ctx context.Context) {
 	h.g.Expect(err).To(gomega.BeNil())
 }
 
+func (h *helper) setDataPlaneWarmUpStarted(ctx context.Context) {
+	restoreMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Restores(fakeTcNamespace1).Get(ctx, h.restoreMemberName1, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateRestoreCondition(&restoreMember1.Status, &pingcapv1alpha1.RestoreCondition{
+		Type:   pingcapv1alpha1.RestoreWarmUpStarted,
+		Status: corev1.ConditionTrue,
+	})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Restores(fakeTcNamespace1).UpdateStatus(ctx, restoreMember1, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+
+	restoreMember2, err := h.dataPlaneClient2.PingcapV1alpha1().Restores(fakeTcNamespace2).Get(ctx, h.restoreMemberName2, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateRestoreCondition(&restoreMember2.Status, &pingcapv1alpha1.RestoreCondition{
+		Type:   pingcapv1alpha1.RestoreWarmUpStarted,
+		Status: corev1.ConditionTrue,
+	})
+	_, err = h.dataPlaneClient2.PingcapV1alpha1().Restores(fakeTcNamespace2).UpdateStatus(ctx, restoreMember2, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+
+	restoreMember3, err := h.dataPlaneClient3.PingcapV1alpha1().Restores(fakeTcNamespace3).Get(ctx, h.restoreMemberName3, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateRestoreCondition(&restoreMember3.Status, &pingcapv1alpha1.RestoreCondition{
+		Type:   pingcapv1alpha1.RestoreWarmUpStarted,
+		Status: corev1.ConditionTrue,
+	})
+	_, err = h.dataPlaneClient3.PingcapV1alpha1().Restores(fakeTcNamespace3).UpdateStatus(ctx, restoreMember3, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+}
+
+func (h *helper) setDataPlaneWarmUpComplete(ctx context.Context) {
+	restoreMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Restores(fakeTcNamespace1).Get(ctx, h.restoreMemberName1, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateRestoreCondition(&restoreMember1.Status, &pingcapv1alpha1.RestoreCondition{
+		Type:   pingcapv1alpha1.RestoreWarmUpComplete,
+		Status: corev1.ConditionTrue,
+	})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Restores(fakeTcNamespace1).UpdateStatus(ctx, restoreMember1, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+
+	restoreMember2, err := h.dataPlaneClient2.PingcapV1alpha1().Restores(fakeTcNamespace2).Get(ctx, h.restoreMemberName2, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateRestoreCondition(&restoreMember2.Status, &pingcapv1alpha1.RestoreCondition{
+		Type:   pingcapv1alpha1.RestoreWarmUpComplete,
+		Status: corev1.ConditionTrue,
+	})
+	_, err = h.dataPlaneClient2.PingcapV1alpha1().Restores(fakeTcNamespace2).UpdateStatus(ctx, restoreMember2, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+
+	restoreMember3, err := h.dataPlaneClient3.PingcapV1alpha1().Restores(fakeTcNamespace3).Get(ctx, h.restoreMemberName3, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateRestoreCondition(&restoreMember3.Status, &pingcapv1alpha1.RestoreCondition{
+		Type:   pingcapv1alpha1.RestoreWarmUpComplete,
+		Status: corev1.ConditionTrue,
+	})
+	_, err = h.dataPlaneClient3.PingcapV1alpha1().Restores(fakeTcNamespace3).UpdateStatus(ctx, restoreMember3, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+}
+
 func (h *helper) setDataPlaneDataComplete(ctx context.Context) {
 	restoreMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Restores(fakeTcNamespace1).Get(ctx, h.restoreMemberName1, metav1.GetOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
@@ -274,7 +373,7 @@ func TestVolumeRestore(t *testing.T) {
 	ctx := context.Background()
 	h := newHelper(t, restoreName, restoreNamespace)
 
-	volumeRestore := h.createVolumeRestore(ctx)
+	volumeRestore := h.createVolumeRestore(ctx, "")
 
 	// run restore volume phase
 	err := h.rm.Sync(volumeRestore)
@@ -318,13 +417,137 @@ func TestVolumeRestore(t *testing.T) {
 	h.assertRestoreComplete(volumeRestore)
 }
 
+func TestVolumeRestoreWithWarmUpSync(t *testing.T) {
+	restoreName := "restore-1"
+	restoreNamespace := "ns-1"
+	ctx := context.Background()
+	h := newHelper(t, restoreName, restoreNamespace)
+
+	volumeRestore := h.createVolumeRestore(ctx, pingcapv1alpha1.RestoreWarmupModeSync)
+
+	// run restore volume phase
+	err := h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunRestoreVolume(ctx, volumeRestore)
+
+	// wait restore volume phase
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+
+	// data plane volume complete, still need to wait tikv ready
+	h.setDataPlaneVolumeComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreVolumeComplete(volumeRestore)
+
+	// warmup start
+	h.setDataPlaneWarmUpStarted(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreWarmUpStarted(volumeRestore)
+
+	// warmup complete
+	h.setDataPlaneWarmUpComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreWarmUpComplete(volumeRestore)
+
+	// data plane tikv complete, run restore data phase
+	h.setDataPlaneTikvComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunRestoreData(ctx, volumeRestore)
+
+	// wait restore data phase
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+
+	// data plane data complete, run restore finish phase
+	h.setDataPlaneDataComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunRestoreFinish(ctx, volumeRestore)
+
+	// wait restore complete
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+
+	// data plane complete, restore complete
+	h.setDataPlaneComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRestoreComplete(volumeRestore)
+}
+
+func TestVolumeRestoreWithWarmUpAsync(t *testing.T) {
+	restoreName := "restore-1"
+	restoreNamespace := "ns-1"
+	ctx := context.Background()
+	h := newHelper(t, restoreName, restoreNamespace)
+
+	volumeRestore := h.createVolumeRestore(ctx, pingcapv1alpha1.RestoreWarmupModeASync)
+
+	// run restore volume phase
+	err := h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunRestoreVolume(ctx, volumeRestore)
+
+	// wait restore volume phase
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+
+	// data plane volume complete, still need to wait tikv ready
+	h.setDataPlaneVolumeComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreVolumeComplete(volumeRestore)
+
+	// warmup start
+	h.setDataPlaneWarmUpStarted(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreWarmUpStarted(volumeRestore)
+
+	// data plane tikv complete, run restore data phase
+	h.setDataPlaneTikvComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunRestoreData(ctx, volumeRestore)
+
+	// wait restore data phase
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+
+	// data plane data complete, run restore finish phase
+	h.setDataPlaneDataComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunRestoreFinish(ctx, volumeRestore)
+
+	// wait restore complete
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+
+	// data plane complete, wait warmup complete
+	h.setDataPlaneComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+
+	// warmup complete, and restore complete
+	h.setDataPlaneWarmUpComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRestoreWarmUpComplete(volumeRestore)
+	h.assertRestoreComplete(volumeRestore)
+}
+
 func TestVolumeRestore_RestoreVolumeFailed(t *testing.T) {
 	restoreName := "restore-1"
 	restoreNamespace := "ns-1"
 	ctx := context.Background()
 	h := newHelper(t, restoreName, restoreNamespace)
 
-	volumeRestore := h.createVolumeRestore(ctx)
+	volumeRestore := h.createVolumeRestore(ctx, "")
 
 	// run restore volume phase
 	err := h.rm.Sync(volumeRestore)
@@ -344,7 +567,7 @@ func TestVolumeRestore_RestoreDataFailed(t *testing.T) {
 	ctx := context.Background()
 	h := newHelper(t, restoreName, restoreNamespace)
 
-	volumeRestore := h.createVolumeRestore(ctx)
+	volumeRestore := h.createVolumeRestore(ctx, "")
 
 	// run restore volume phase
 	err := h.rm.Sync(volumeRestore)
@@ -380,7 +603,7 @@ func TestVolumeRestore_RestoreFinishFailed(t *testing.T) {
 	ctx := context.Background()
 	h := newHelper(t, restoreName, restoreNamespace)
 
-	volumeRestore := h.createVolumeRestore(ctx)
+	volumeRestore := h.createVolumeRestore(ctx, "")
 
 	// run restore volume phase
 	err := h.rm.Sync(volumeRestore)
