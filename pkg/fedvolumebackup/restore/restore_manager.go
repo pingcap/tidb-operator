@@ -149,6 +149,11 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 		return err
 	}
 
+	if !v1alpha1.IsVolumeRestoreWarmUpComplete(volumeRestore) {
+		klog.Infof("VolumeRestore %s/%s data planes all complete, but warmup doesn't complete, wait warmup complete", ns, name)
+		return nil
+	}
+
 	klog.Infof("VolumeRestore %s/%s restore complete", ns, name)
 	rm.setVolumeRestoreComplete(&volumeRestore.Status, restoreMembers)
 	return nil
