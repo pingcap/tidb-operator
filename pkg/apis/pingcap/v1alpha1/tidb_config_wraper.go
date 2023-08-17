@@ -20,7 +20,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
-	"k8s.io/apimachinery/pkg/util/json"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/k8s"
 )
 
 var _ stdjson.Marshaler = &TiDBConfigWraper{}
@@ -45,7 +45,7 @@ func (c *TiDBConfigWraper) MarshalJSON() ([]byte, error) {
 		return nil, errors.AddStack(err)
 	}
 
-	return json.Marshal(string(toml))
+	return k8s.Marshal(string(toml))
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler interface.
@@ -70,7 +70,7 @@ func (c *TiDBConfigWraper) MarshalTOML() ([]byte, error) {
 // If the data is a object, we use x to Unmarshal(json) first and Marshal(toml) again to get toml data
 func unmarshalJSON(data []byte, x interface{}) (g *config.GenericConfig, err error) {
 	var value interface{}
-	err = json.Unmarshal(data, &value)
+	err = k8s.Unmarshal(data, &value)
 	if err != nil {
 		return nil, errors.AddStack(err)
 	}
@@ -80,7 +80,7 @@ func unmarshalJSON(data []byte, x interface{}) (g *config.GenericConfig, err err
 	case string:
 		tomlData = []byte(s)
 	case map[string]interface{}:
-		err = json.Unmarshal(data, x)
+		err = k8s.Unmarshal(data, x)
 		if err != nil {
 			return nil, errors.AddStack(err)
 		}
