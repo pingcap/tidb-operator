@@ -6,7 +6,7 @@ rbac:
 # timezone is the default system timzone
 timezone: UTC
 
-image: pingcap/br-federation-manager:v1.6.0-alpha.5
+image: pingcap/br-federation-manager:v1.6.0-alpha.6
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
