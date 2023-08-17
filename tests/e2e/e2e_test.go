@@ -45,11 +45,11 @@ import (
 
 // handleFlags sets up all flags and parses the command line.
 func handleFlags() {
+	klog.InitFlags(nil)
 	config.CopyFlags(config.Flags, flag.CommandLine)
 	framework.RegisterCommonFlags(flag.CommandLine)
 	framework.RegisterClusterFlags(flag.CommandLine)
 	e2econfig.RegisterTiDBOperatorFlags(flag.CommandLine)
-	klog.InitFlags(nil)
 	flag.Parse()
 }
 
