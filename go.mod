@@ -34,8 +34,8 @@ require (
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20230717084314-aebf289f5b33
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
-	github.com/pingcap/tidb-operator/pkg/apis v1.6.0-alpha.5
-	github.com/pingcap/tidb-operator/pkg/client v1.6.0-alpha.5
+	github.com/pingcap/tidb-operator/pkg/apis v1.6.0-alpha.6
+	github.com/pingcap/tidb-operator/pkg/client v1.6.0-alpha.6
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.26.0
