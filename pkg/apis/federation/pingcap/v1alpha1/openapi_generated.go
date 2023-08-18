@@ -722,6 +722,20 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeRestoreMemberSpec(ref common.
 							Format:      "",
 						},
 					},
+					"warmup": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Warmup represents whether to initialize TiKV volumes after volume snapshot restore",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"warmupImage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WarmupImage represents using what image to initialize TiKV volumes",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

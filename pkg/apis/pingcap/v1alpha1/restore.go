@@ -130,6 +130,18 @@ func IsRestoreVolumeComplete(restore *Restore) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsRestoreWarmUpStarted returns true if all the warmup jobs has successfully started
+func IsRestoreWarmUpStarted(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreWarmUpStarted)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreWarmUpComplete returns true if all the warmup jobs has successfully finished
+func IsRestoreWarmUpComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreWarmUpComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsRestoreTiKVComplete returns true if all TiKVs run successfully during volume restore
 func IsRestoreTiKVComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreTiKVComplete)

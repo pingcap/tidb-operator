@@ -2340,6 +2340,11 @@ const (
 	// RestoreVolumeComplete means the Restore has successfully executed part-1 and the
 	// backup volumes have been rebuilded from the corresponding snapshot
 	RestoreVolumeComplete RestoreConditionType = "VolumeComplete"
+	// RestoreWarmUpStarted means the Restore has successfully started warm up pods to
+	// initialize volumes restored from snapshots
+	RestoreWarmUpStarted RestoreConditionType = "WarmUpStarted"
+	// RestoreWarmUpComplete means the Restore has successfully warmed up all TiKV volumes
+	RestoreWarmUpComplete RestoreConditionType = "WarmUpComplete"
 	// RestoreDataComplete means the Restore has successfully executed part-2 and the
 	// data in restore volumes has been deal with consistency based on min_resolved_ts
 	RestoreDataComplete RestoreConditionType = "DataComplete"
@@ -2444,6 +2449,12 @@ type RestoreSpec struct {
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
 	TableFilter []string `json:"tableFilter,omitempty"`
+	// Warmup represents whether to initialize TiKV volumes after volume snapshot restore
+	// +optional
+	Warmup RestoreWarmupMode `json:"warmup,omitempty"`
+	// WarmupImage represents using what image to initialize TiKV volumes
+	// +optional
+	WarmupImage string `json:"warmupImage,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional
@@ -2463,6 +2474,16 @@ const (
 	FederalVolumeRestoreData FederalVolumeRestorePhase = "restore-data"
 	// FederalVolumeRestoreFinish means restart TiKV and set recoveryMode true
 	FederalVolumeRestoreFinish FederalVolumeRestorePhase = "restore-finish"
+)
+
+// RestoreWarmupMode represents when to initialize TiKV volumes
+type RestoreWarmupMode string
+
+const (
+	// RestoreWarmupModeSync means initialize TiKV volumes before TiKV starts
+	RestoreWarmupModeSync RestoreWarmupMode = "sync"
+	// RestoreWarmupModeASync means initialize TiKV volumes after restore complete
+	RestoreWarmupModeASync RestoreWarmupMode = "async"
 )
 
 // RestoreStatus represents the current status of a tidb cluster restore.

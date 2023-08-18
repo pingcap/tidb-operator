@@ -2981,6 +2981,10 @@ spec:
                     type: array
                   toolImage:
                     type: string
+                  warmup:
+                    type: string
+                  warmupImage:
+                    type: string
                 type: object
             type: object
           status:
