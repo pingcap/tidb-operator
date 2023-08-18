@@ -31,6 +31,16 @@ func IsVolumeRestoreVolumeComplete(volumeRestore *VolumeRestore) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+func IsVolumeRestoreWarmUpStarted(volumeRestore *VolumeRestore) bool {
+	_, condition := GetVolumeRestoreCondition(&volumeRestore.Status, VolumeRestoreWarmUpStarted)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+func IsVolumeRestoreWarmUpComplete(volumeRestore *VolumeRestore) bool {
+	_, condition := GetVolumeRestoreCondition(&volumeRestore.Status, VolumeRestoreWarmUpComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 func IsVolumeRestoreTiKVComplete(volumeRestore *VolumeRestore) bool {
 	_, condition := GetVolumeRestoreCondition(&volumeRestore.Status, VolumeRestoreTiKVComplete)
 	return condition != nil && condition.Status == corev1.ConditionTrue
