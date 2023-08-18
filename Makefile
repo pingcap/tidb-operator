@@ -96,8 +96,6 @@ else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/br-federation-manager/bin/$(GOARCH)/br-federation-manager ./cmd/br-federation-manager
 endif
 
-<<<<<<< HEAD
-=======
 ebs-warmup:
 ifeq ($(E2E),y)
 	$(GO_TEST) -ldflags '$(LDFLAGS)' -c -o images/ebs-warmup/bin/warmup ./cmd/ebs-warmup
@@ -105,15 +103,6 @@ else
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/ebs-warmup/bin/$(GOARCH)/warmup ./cmd/ebs-warmup
 endif
 
-##@ Build Docker images
-docker: operator-docker backup-docker br-federation-docker
-
-docker-push: docker ## Push Docker images to registry
-	docker push "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}"
-	docker push "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}"
-	docker push "${DOCKER_REPO}/br-federation-manager:${IMAGE_TAG}"
-
->>>>>>> aeed0a492 (backup: added ebs-warmup for restoring from EBS snapshots (#5238))
 ifeq ($(NO_BUILD),y)
 backup-docker:
 	@echo "NO_BUILD=y, skip build for $@"
@@ -138,9 +127,6 @@ else
 	docker build --tag "${DOCKER_REPO}/br-federation-manager:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/br-federation-manager
 endif
 
-<<<<<<< HEAD
-e2e-docker-push: e2e-docker
-=======
 ifeq ($(NO_BUILD),y)
 ebs-warmup-docker:
 	@echo "NO_BUILD=y, skip build for $@"
@@ -153,8 +139,7 @@ else
 	docker build --tag "${DOCKER_REPO}/ebs-warmup:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) images/ebs-warmup
 endif
 
-e2e-docker-push: e2e-docker ## Push tidb-operator-e2e image to registry
->>>>>>> aeed0a492 (backup: added ebs-warmup for restoring from EBS snapshots (#5238))
+e2e-docker-push: e2e-docker
 	docker push "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}"
 
 ifeq ($(NO_BUILD),y)
