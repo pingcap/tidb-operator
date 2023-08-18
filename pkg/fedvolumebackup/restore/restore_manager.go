@@ -120,6 +120,7 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	if memberCreated {
 		return nil
 	}
+	rm.syncWarmUpStatus(volumeRestore, restoreMembers)
 	if err := rm.waitRestoreVolumeComplete(volumeRestore, restoreMembers); err != nil {
 		return err
 	}
@@ -147,9 +148,15 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	if err := rm.waitRestoreComplete(volumeRestore, restoreMembers); err != nil {
 		return err
 	}
+	v1alpha1.FinishVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestartTiKV)
+
+	if isWarmUpAsync(volumeRestore) && !v1alpha1.IsVolumeRestoreWarmUpComplete(volumeRestore) {
+		klog.Infof("VolumeRestore %s/%s data planes all complete, but warmup doesn't complete, wait warmup complete", ns, name)
+		return nil
+	}
 
 	klog.Infof("VolumeRestore %s/%s restore complete", ns, name)
-	rm.setVolumeRestoreComplete(&volumeRestore.Status, restoreMembers)
+	rm.setVolumeRestoreComplete(&volumeRestore.Status)
 	return nil
 }
 
@@ -251,7 +258,7 @@ func (rm *restoreManager) waitRestoreVolumeComplete(volumeRestore *v1alpha1.Volu
 	}
 	// restore volume complete
 	if !v1alpha1.IsVolumeRestoreVolumeComplete(volumeRestore) {
-		rm.setVolumeRestoreVolumeComplete(&volumeRestore.Status)
+		rm.setVolumeRestoreVolumeComplete(volumeRestore)
 	}
 
 	for _, restoreMember := range restoreMembers {
@@ -267,6 +274,28 @@ func (rm *restoreManager) waitRestoreVolumeComplete(volumeRestore *v1alpha1.Volu
 	}
 
 	return nil
+}
+
+func (rm *restoreManager) syncWarmUpStatus(volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) {
+	for _, member := range restoreMembers {
+		if !pingcapv1alpha1.IsRestoreWarmUpStarted(member.restore) {
+			return
+		}
+	}
+	if !v1alpha1.IsVolumeRestoreWarmUpStarted(volumeRestore) {
+		rm.setVolumeRestoreWarmUpStarted(&volumeRestore.Status)
+		return
+	}
+
+	for _, member := range restoreMembers {
+		if !pingcapv1alpha1.IsRestoreWarmUpComplete(member.restore) {
+			return
+		}
+	}
+	if !v1alpha1.IsVolumeRestoreWarmUpComplete(volumeRestore) {
+		rm.setVolumeRestoreWarmUpComplete(volumeRestore)
+		return
+	}
 }
 
 func (rm *restoreManager) executeRestoreDataPhase(ctx context.Context, volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) (memberUpdated bool, err error) {
@@ -326,7 +355,7 @@ func (rm *restoreManager) waitRestoreDataComplete(volumeRestore *v1alpha1.Volume
 		k8sClusterName := restoreMember.k8sClusterName
 		if pingcapv1alpha1.IsRestoreDataComplete(restoreMember.restore) {
 			if !v1alpha1.IsVolumeRestoreDataComplete(volumeRestore) {
-				rm.setVolumeRestoreDataComplete(&volumeRestore.Status)
+				rm.setVolumeRestoreDataComplete(&volumeRestore.Status, restoreMember.restore.Status.CommitTs)
 			}
 			return nil
 		}
@@ -413,13 +442,42 @@ func (rm *restoreManager) setVolumeRestoreRunning(volumeRestoreStatus *v1alpha1.
 
 }
 
-func (rm *restoreManager) setVolumeRestoreVolumeComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
+func (rm *restoreManager) setVolumeRestoreVolumeComplete(volumeRestore *v1alpha1.VolumeRestore) {
+	volumeRestoreStatus := &volumeRestore.Status
 	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
 		Type:   v1alpha1.VolumeRestoreVolumeComplete,
 		Status: corev1.ConditionTrue,
 	})
 	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepRestoreVolume)
-	v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
+
+	if isWarmUpSync(volumeRestore) {
+		v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepWarmUp)
+	} else if isWarmUpAsync(volumeRestore) {
+		v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
+		v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepWarmUp)
+	} else {
+		v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
+	}
+}
+
+func (rm *restoreManager) setVolumeRestoreWarmUpStarted(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
+	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
+		Type:   v1alpha1.VolumeRestoreWarmUpStarted,
+		Status: corev1.ConditionTrue,
+	})
+}
+
+func (rm *restoreManager) setVolumeRestoreWarmUpComplete(volumeRestore *v1alpha1.VolumeRestore) {
+	volumeRestoreStatus := &volumeRestore.Status
+	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
+		Type:   v1alpha1.VolumeRestoreWarmUpComplete,
+		Status: corev1.ConditionTrue,
+	})
+	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepWarmUp)
+
+	if isWarmUpSync(volumeRestore) {
+		v1alpha1.StartVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
+	}
 }
 
 func (rm *restoreManager) setVolumeRestoreTiKVComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
@@ -430,7 +488,8 @@ func (rm *restoreManager) setVolumeRestoreTiKVComplete(volumeRestoreStatus *v1al
 	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepStartTiKV)
 }
 
-func (rm *restoreManager) setVolumeRestoreDataComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
+func (rm *restoreManager) setVolumeRestoreDataComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus, commitTs string) {
+	volumeRestoreStatus.CommitTs = commitTs
 	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
 		Type:   v1alpha1.VolumeRestoreDataComplete,
 		Status: corev1.ConditionTrue,
@@ -438,21 +497,13 @@ func (rm *restoreManager) setVolumeRestoreDataComplete(volumeRestoreStatus *v1al
 	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepRestoreData)
 }
 
-func (rm *restoreManager) setVolumeRestoreComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus, restoreMembers []*volumeRestoreMember) {
-	for _, restoreMember := range restoreMembers {
-		if pingcapv1alpha1.IsRestoreDataComplete(restoreMember.restore) {
-			volumeRestoreStatus.CommitTs = restoreMember.restore.Status.CommitTs
-			break
-		}
-	}
-
+func (rm *restoreManager) setVolumeRestoreComplete(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus) {
 	volumeRestoreStatus.TimeCompleted = metav1.Now()
 	volumeRestoreStatus.TimeTaken = volumeRestoreStatus.TimeCompleted.Sub(volumeRestoreStatus.TimeStarted.Time).Round(time.Second).String()
 	v1alpha1.UpdateVolumeRestoreCondition(volumeRestoreStatus, &v1alpha1.VolumeRestoreCondition{
 		Type:   v1alpha1.VolumeRestoreComplete,
 		Status: corev1.ConditionTrue,
 	})
-	v1alpha1.FinishVolumeRestoreStep(volumeRestoreStatus, v1alpha1.VolumeRestoreStepRestartTiKV)
 }
 
 func (rm *restoreManager) setVolumeRestoreFailed(volumeRestoreStatus *v1alpha1.VolumeRestoreStatus, reason, message string) {
@@ -498,6 +549,8 @@ func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberClu
 			ImagePullSecrets:          template.ImagePullSecrets,
 			ServiceAccount:            template.ServiceAccount,
 			PriorityClassName:         template.PriorityClassName,
+			Warmup:                    template.Warmup,
+			WarmupImage:               template.WarmupImage,
 		},
 	}
 	return restoreMember
@@ -505,6 +558,14 @@ func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberClu
 
 func (rm *restoreManager) generateRestoreMemberName(volumeRestoreName, k8sClusterName string) string {
 	return fmt.Sprintf("fed-%s-%s", volumeRestoreName, k8sClusterName)
+}
+
+func isWarmUpSync(volumeRestore *v1alpha1.VolumeRestore) bool {
+	return volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeSync
+}
+
+func isWarmUpAsync(volumeRestore *v1alpha1.VolumeRestore) bool {
+	return volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeASync
 }
 
 type volumeRestoreMember struct {
