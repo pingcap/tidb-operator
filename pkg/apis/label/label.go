@@ -58,6 +58,8 @@ const (
 
 	// RestoreLabelKey is restore key
 	RestoreLabelKey string = "tidb.pingcap.com/restore"
+	// RestoreWarmUpLabelKey defines which pod the restore warms up
+	RestoreWarmUpLabelKey string = "tidb.pingcap.com/warm-up-pod"
 
 	// BackupProtectionFinalizer is the name of finalizer on backups or federation backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
@@ -172,6 +174,8 @@ const (
 	CleanJobLabelVal string = "clean"
 	// RestoreJobLabelVal is restore job label value
 	RestoreJobLabelVal string = "restore"
+	// RestoreWarmUpJobLabelVal is restore warmup job label value
+	RestoreWarmUpJobLabelVal string = "warmup"
 	// BackupJobLabelVal is backup job label value
 	BackupJobLabelVal string = "backup"
 	// BackupScheduleJobLabelVal is backup schedule job label value
@@ -354,6 +358,10 @@ func (l Label) BackupJob() Label {
 // RestoreJob assigns restore to component key in label
 func (l Label) RestoreJob() Label {
 	return l.Component(RestoreJobLabelVal)
+}
+
+func (l Label) RestoreWarmUpJob() Label {
+	return l.Component(RestoreWarmUpJobLabelVal)
 }
 
 // Backup assigns specific value to backup key in label
