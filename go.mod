@@ -119,12 +119,8 @@ require (
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
-<<<<<<< HEAD
-	github.com/docker/go-units v0.4.0 // indirect
-	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
-=======
 	github.com/docker/go-units v0.4.0
->>>>>>> aeed0a492 (backup: added ebs-warmup for restoring from EBS snapshots (#5238))
+	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/elazarl/goproxy v0.0.0-20190421051319-9d40249d3c2f // indirect; indirectload
 	github.com/evanphx/json-patch v4.9.0+incompatible // indirect
