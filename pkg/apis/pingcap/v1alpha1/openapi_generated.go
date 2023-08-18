@@ -7559,6 +7559,20 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							},
 						},
 					},
+					"warmup": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Warmup represents whether to initialize TiKV volumes after volume snapshot restore",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"warmupImage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WarmupImage represents using what image to initialize TiKV volumes",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"podSecurityContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PodSecurityContext of the component",
