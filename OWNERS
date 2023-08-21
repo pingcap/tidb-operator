@@ -1,0 +1,38 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+approvers:
+  - AstroProfundis
+  - aylei
+  - azurezyq
+  - BornChanger
+  - charleszheng44
+  - cofyc
+  - csuzhangxc
+  - DanielZhangQD
+  - dragonly
+  - Ehco1996
+  - fengou1
+  - gozssky
+  - gregwebs
+  - grovecai
+  - handlerww
+  - hanlins
+  - jlerche
+  - july2993
+  - KanShiori
+  - LinuxGit
+  - liubog2008
+  - mikechengwei
+  - onlymellb
+  - qiffang
+  - sdojjy
+  - shuijing198799
+  - tennix
+  - WangLe1321
+  - weekface
+  - WizardXiao
+  - Yisaer
+reviewers:
+  - cvvz
+  - howardlau1999
+  - lichunzhu
+  - shonge

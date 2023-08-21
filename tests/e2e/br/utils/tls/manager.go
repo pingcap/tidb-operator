@@ -31,7 +31,7 @@ import (
 
 var (
 	issuerTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: {{ .Name }}-selfsigned-ca-issuer
@@ -41,7 +41,7 @@ spec:
 `
 
 	caTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .Name }}-ca
@@ -56,7 +56,7 @@ spec:
 `
 
 	certIssuerTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: {{ .Name }}-cert-issuer
@@ -67,7 +67,7 @@ spec:
 `
 
 	certTmpl = `
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .Name }}
@@ -76,8 +76,9 @@ spec:
   secretName: {{ .SecretName }}
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  organization:
-  - PingCAP
+  subject:
+    organizations:
+      - PingCAP
   commonName: "{{ .CN }}"
   {{- if .Usages }}
   usages:

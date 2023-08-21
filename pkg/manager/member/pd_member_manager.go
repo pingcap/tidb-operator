@@ -152,7 +152,7 @@ func (m *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbC
 	tcName := tc.GetName()
 
 	newSvc := getNewPDHeadlessServiceForTidbCluster(tc)
-	oldSvc, err := m.deps.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+	oldSvcTmp, err := m.deps.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
@@ -163,6 +163,8 @@ func (m *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbC
 	if err != nil {
 		return fmt.Errorf("syncPDHeadlessServiceForTidbCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.PDPeerMemberName(tcName), ns, tcName, err)
 	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
 
 	_, err = m.deps.ServiceControl.SyncComponentService(
 		tc,
@@ -461,8 +463,8 @@ func (m *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "client",
-					Port:       2379,
-					TargetPort: intstr.FromInt(2379),
+					Port:       v1alpha1.DefaultPDClientPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -515,15 +517,15 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 			ClusterIP: "None",
 			Ports: []corev1.ServicePort{
 				{
-					Name:       "tcp-peer-2380",
-					Port:       2380,
-					TargetPort: intstr.FromInt(2380),
+					Name:       fmt.Sprintf("tcp-peer-%d", v1alpha1.DefaultPDPeerPort),
+					Port:       v1alpha1.DefaultPDPeerPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDPeerPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 				{
-					Name:       "tcp-peer-2379",
-					Port:       2379,
-					TargetPort: intstr.FromInt(2379),
+					Name:       fmt.Sprintf("tcp-peer-%d", v1alpha1.DefaultPDClientPort),
+					Port:       v1alpha1.DefaultPDClientPort,
+					TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -708,7 +710,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	stsLabels := label.New().Instance(instanceName).PD()
 	podLabels := util.CombineStringMap(stsLabels, basePDSpec.Labels())
-	podAnnotations := util.CombineStringMap(basePDSpec.Annotations(), controller.AnnProm(2379, "/metrics"))
+	podAnnotations := util.CombineStringMap(basePDSpec.Annotations(), controller.AnnProm(v1alpha1.DefaultPDClientPort, "/metrics"))
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
@@ -724,12 +726,12 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "server",
-				ContainerPort: int32(2380),
+				ContainerPort: v1alpha1.DefaultPDPeerPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 			{
 				Name:          "client",
-				ContainerPort: int32(2379),
+				ContainerPort: v1alpha1.DefaultPDClientPort,
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
@@ -967,7 +969,7 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 func buildPDReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 	return corev1.Handler{
 		TCPSocket: &corev1.TCPSocketAction{
-			Port: intstr.FromInt(2379),
+			Port: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
 		},
 	}
 }

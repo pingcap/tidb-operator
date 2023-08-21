@@ -32,9 +32,9 @@ type GCPSnapshotter struct {
 }
 
 func (s *GCPSnapshotter) Init(deps *controller.Dependencies, conf map[string]string) error {
-	s.BaseSnapshotter.Init(deps, conf)
+	err := s.BaseSnapshotter.Init(deps, conf)
 	s.volRegexp = regexp.MustCompile(`^projects\/[^\/]+\/(zones|regions)\/[^\/]+\/disks\/[^\/]+$`)
-	return nil
+	return err
 }
 
 func (s *GCPSnapshotter) GetVolumeID(pv *corev1.PersistentVolume) (string, error) {
@@ -97,4 +97,13 @@ func (s *GCPSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID strin
 
 func (s *GCPSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error) {
 	return s.BaseSnapshotter.prepareRestoreMetadata(r, csb, s)
+}
+
+func (s *GCPSnapshotter) ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume) {
+	// TODO implement it if support to restore snapshots to another az on GCP
+}
+
+func (s *GCPSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
+	// TODO implement it if support to restore snapshots to another az on GCP
+	return nil
 }

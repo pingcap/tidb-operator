@@ -58,9 +58,14 @@ const (
 
 	// RestoreLabelKey is restore key
 	RestoreLabelKey string = "tidb.pingcap.com/restore"
+	// RestoreWarmUpLabelKey defines which pod the restore warms up
+	RestoreWarmUpLabelKey string = "tidb.pingcap.com/warm-up-pod"
 
 	// BackupProtectionFinalizer is the name of finalizer on backups or federation backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
+
+	// VolumeRestoreFederationFinalizer is the name of finalizer on federation restores
+	VolumeRestoreFederationFinalizer string = "tidb.pingcap.com/restore-protection"
 
 	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB
 	AutoScalingGroupLabelKey = "tidb.pingcap.com/autoscaling-group"
@@ -137,6 +142,11 @@ const (
 	// when TiDB cluster is restored from volume snapshot based backup.
 	AnnTiKVVolumesReadyKey = "tidb.pingcap.com/tikv-volumes-ready"
 
+	// AnnoTiFlash710KeepPortsKey is the annotation key to indicate whether the TiFlash v7.1.0+ keeps ports to avoid restart.
+	// ports: tcp_port, http_port, tcp_port_secure and https_port.
+	// NOTE: this annotation should only be used for existing TiFlash v7.1.0+ clusters with ports config items.
+	AnnoTiFlash710KeepPortsKey = "tidb.pingcap.com/tiflash-710-keep-ports"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value
@@ -160,6 +170,8 @@ const (
 	CleanJobLabelVal string = "clean"
 	// RestoreJobLabelVal is restore job label value
 	RestoreJobLabelVal string = "restore"
+	// RestoreWarmUpJobLabelVal is restore warmup job label value
+	RestoreWarmUpJobLabelVal string = "warmup"
 	// BackupJobLabelVal is backup job label value
 	BackupJobLabelVal string = "backup"
 	// BackupScheduleJobLabelVal is backup schedule job label value
@@ -342,6 +354,10 @@ func (l Label) BackupJob() Label {
 // RestoreJob assigns restore to component key in label
 func (l Label) RestoreJob() Label {
 	return l.Component(RestoreJobLabelVal)
+}
+
+func (l Label) RestoreWarmUpJob() Label {
+	return l.Component(RestoreWarmUpJobLabelVal)
 }
 
 // Backup assigns specific value to backup key in label

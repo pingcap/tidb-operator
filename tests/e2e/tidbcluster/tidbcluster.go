@@ -311,7 +311,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
 		// Create and wait for tidbcluster ready
-		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
 		ginkgo.By("Switch to host network")
 		// TODO: Considering other components?
 		err := controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -1086,7 +1086,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					BaseImage:            "pingcap/tidb-binlog",
 					ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 					Config: tcconfig.New(map[string]interface{}{
-						"addr": "0.0.0.0:8250",
+						"addr": fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultPumpPort),
 						"storage": map[string]interface{}{
 							"stop-write-at-available-space": 0,
 						},
@@ -1277,7 +1277,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				BaseImage:            "pingcap/tidb-binlog",
 				ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
 				Config: tcconfig.New(map[string]interface{}{
-					"addr": "0.0.0.0:8250",
+					"addr": fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultPumpPort),
 					"storage": map[string]interface{}{
 						"stop-write-at-available-space": 0,
 					},
@@ -1690,7 +1690,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				"--",
 				"/cdc", "cli", "changefeed", "create",
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
-				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
+				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
 			data, err := framework.RunKubectl(ns, args...)
 			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
@@ -1818,7 +1818,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				"--",
 				"/cdc", "cli", "changefeed", "create",
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
-				fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
+				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
 			data, err := framework.RunKubectl(ns, args...)
 			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
@@ -1877,7 +1877,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiKV.Replicas = 4
 		tc.Spec.TiDB.Replicas = 2
 
-		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
 
 		ginkgo.By("Scale in multiple pvc tidb cluster")
 		// Scale
@@ -1960,7 +1960,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
 			tc.Spec.TiKV.StorageClassName = pointer.StringPtr("local-storage")
 			tc.Spec.TiDB.StorageClassName = pointer.StringPtr("local-storage")
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Update components version")
 			componentVersion := utilimage.TiDBLatest
@@ -1998,7 +1998,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		ginkgo.It("for configuration update", func() {
 			ginkgo.By("Deploy initial tc")
 			tc := fixture.GetTidbCluster(ns, "update-config", utilimage.TiDBLatest)
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Update components configuration")
 			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -2475,7 +2475,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("Deleted objects controlled by TidbCluster will be recovered by Operator", func() {
 		ginkgo.By("Deploy initial tc")
 		tc := fixture.GetTidbCluster(ns, "delete-objects", utilimage.TiDBLatest)
-		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 		ginkgo.By("Delete StatefulSet/ConfigMap/Service of PD")
 		listOptions := metav1.ListOptions{
@@ -2535,7 +2535,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					case v1alpha1.TiDBMemberType:
 						tc.Spec.TiDB.Replicas = replicasLarge
 					}
-					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 					ginkgo.By(fmt.Sprintf("Scale in %s", comp))
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -2657,7 +2657,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					case v1alpha1.TiDBMemberType:
 						tc.Spec.TiDB.Replicas = replicasLarge
 					}
-					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 					ginkgo.By(fmt.Sprintf("Scale in %s to %d replicas", comp, replicasSmall))
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -2726,7 +2726,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			ginkgo.By("Deploy initial tc")
 			tc := fixture.GetTidbCluster(ns, "scale-pd-to-0", utilimage.TiDBLatest)
 			tc.Spec.PD.Replicas = 1
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Scale in PD to 0 replicas")
 			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -2813,7 +2813,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				FSGroup:    &groupID,
 			}
 
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 			podList, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 			framework.ExpectNoError(err, "failed to list pods: %+v")
 			for i := range podList.Items {
@@ -2861,7 +2861,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiCDC.Replicas = 2
 			tc.Spec.Pump.Replicas = 2
 
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 			podList, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 			framework.ExpectNoError(err, "failed to list pods: %+v")
 
@@ -3130,7 +3130,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 
 				ginkgo.By("Deploy tidb cluster")
-				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 			})
 
 			ginkgo.It("migrate start script from v1 to v2 "+testcase.nameSuffix, func() {
@@ -3172,7 +3172,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 
 				ginkgo.By("Deploy tidb cluster")
-				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 				oldTC, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "failed to get tc %s/%s", ns, tcName)
 
@@ -3238,7 +3238,7 @@ func checkPumpStatus(pcli versioned.Interface, ns string, name string, onlineNum
 func testBinlog(oa *tests.OperatorActions, tc *v1alpha1.TidbCluster, cli ctrlCli.Client, pcli versioned.Interface) {
 	config := tcconfig.New(map[string]interface{}{})
 	config.Set("storage.stop-write-at-available-space", 0)
-	config.Set("addr", "0.0.0.0:8250")
+	config.Set("addr", fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultPumpPort))
 
 	pumpSpec := &v1alpha1.PumpSpec{
 		BaseImage: "pingcap/tidb-binlog",

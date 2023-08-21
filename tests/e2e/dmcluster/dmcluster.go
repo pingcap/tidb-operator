@@ -396,7 +396,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
 			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 5*time.Minute, 10*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Install DM components certificate")
 			framework.ExpectNoError(tidbcluster.InstallDMCertificates(ns, dcName), "failed to install DM components certificate")
@@ -456,7 +456,7 @@ var _ = ginkgo.Describe("DMCluster", func() {
     ssl-key: /var/lib/source-tls/%[1]s/tls.key
 `, tidbClientSecretName))
 			taskCfg = strings.ReplaceAll(taskCfg, "dm-tidb-tidb.dm-tidb", fmt.Sprintf("%s-tidb", dcName))
-			taskCfg = fmt.Sprintf(taskCfg, tests.DMTaskName(ns), tests.DMTaskName(ns))
+			taskCfg = fmt.Sprintf(taskCfg, tests.DMTaskName(ns), v1alpha1.DefaultTiDBServerPort, tests.DMTaskName(ns))
 			filename = "/tmp/dm-with-tls-task.yaml"
 			framework.ExpectNoError(ioutil.WriteFile(filename, []byte(taskCfg), 0o644), "failed to write task config file")
 			_, err = framework.RunKubectl(ns, "cp", filename, fmt.Sprintf("%s/%s:%s", ns, podName, filename))

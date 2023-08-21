@@ -70,16 +70,9 @@ func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) 
 		return false
 	}
 	condition.LastTransitionTime = metav1.Now()
+	status.Phase = condition.Type
 	// Try to find this Restore condition.
 	conditionIndex, oldCondition := GetRestoreCondition(status, condition.Type)
-
-	switch condition.Type {
-	case RestoreVolumeComplete, RestoreDataComplete:
-		// VolumeComplete and DataComplete are intermediately conditions,
-		// they can not represent the current phase of restore.
-	default:
-		status.Phase = condition.Type
-	}
 
 	if oldCondition == nil {
 		// We are adding new Restore condition.
@@ -134,6 +127,24 @@ func IsRestoreFailed(restore *Restore) bool {
 // IsRestoreVolumeComplete returns true if a Restore for volume has successfully completed
 func IsRestoreVolumeComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreVolumeComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreWarmUpStarted returns true if all the warmup jobs has successfully started
+func IsRestoreWarmUpStarted(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreWarmUpStarted)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreWarmUpComplete returns true if all the warmup jobs has successfully finished
+func IsRestoreWarmUpComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreWarmUpComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestoreTiKVComplete returns true if all TiKVs run successfully during volume restore
+func IsRestoreTiKVComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreTiKVComplete)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2020 PingCAP, Inc.
+// Copyright 2023 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -234,7 +234,7 @@ func TestBuildBackup(t *testing.T) {
 	}
 }
 
-func TestCaculateExpiredBackupsWithLogBackup(t *testing.T) {
+func TestCalculateExpiredBackupsWithLogBackup(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testCase struct {
 		backups                   []*v1alpha1.Backup
@@ -368,7 +368,7 @@ func (h *helper) checkBacklist(ns string, num int, checkLogBackupTruncate bool) 
 	g := NewGomegaWithT(t)
 
 	check := func(backups []*v1alpha1.Backup) error {
-		snapshotBackups, logBackup := separateSnapshotBackupsAndLogBackup(backups)
+		snapshotBackups, logBackup := separateAllSnapshotBackupsAndLogBackup(backups)
 		// check snapshot backup num
 		if len(snapshotBackups) != num {
 			var names []string

@@ -50,6 +50,11 @@ func (bk *Backup) GetBackupJobName() string {
 	return fmt.Sprintf("backup-%s", bk.GetName())
 }
 
+func (bk *Backup) GetVolumeBackupInitializeJobName() string {
+	backupJobName := bk.GetBackupJobName()
+	return fmt.Sprintf("%s-init", backupJobName)
+}
+
 // GetAllLogBackupJobName return the all log backup job name
 func (bk *Backup) GetAllLogBackupJobName() []string {
 	return []string{
@@ -217,6 +222,42 @@ func IsBackupPrepared(backup *Backup) bool {
 		return IsLogBackupSubCommandOntheCondition(backup, BackupPrepare)
 	}
 	_, condition := GetBackupCondition(&backup.Status, BackupPrepare)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsVolumeBackupInitialized returns true if volume backup is initialized
+func IsVolumeBackupInitialized(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeVolumeSnapshot {
+		return false
+	}
+	_, condition := GetBackupCondition(&backup.Status, VolumeBackupInitialized)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsVolumeBackupInitializeFailed returns true if volume backup is initialized failed
+func IsVolumeBackupInitializeFailed(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeVolumeSnapshot {
+		return false
+	}
+	_, condition := GetBackupCondition(&backup.Status, VolumeBackupInitializeFailed)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsVolumeBackupComplete returns true if volume backup is complete
+func IsVolumeBackupComplete(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeVolumeSnapshot {
+		return false
+	}
+	_, condition := GetBackupCondition(&backup.Status, VolumeBackupComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsVolumeBackupFailed returns true if volume backup is failed
+func IsVolumeBackupFailed(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeVolumeSnapshot {
+		return false
+	}
+	_, condition := GetBackupCondition(&backup.Status, VolumeBackupFailed)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 

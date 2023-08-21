@@ -53,6 +53,12 @@ type Snapshotter interface {
 	// SetVolumeID sets the cloud provider specific identifier
 	// for the PersistentVolume-PV.
 	SetVolumeID(pv *corev1.PersistentVolume, volumeID string) error
+
+	// ResetPvAvailableZone resets az of pv if the volumes restore to another az
+	ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume)
+
+	// AddVolumeTags add operator related tags to volumes
+	AddVolumeTags(pvs []*corev1.PersistentVolume) error
 }
 
 type BaseSnapshotter struct {
@@ -283,7 +289,7 @@ func NewCloudSnapshotBackup(tc *v1alpha1.TidbCluster) (csb *CloudSnapBackup) {
 		csb = &CloudSnapBackup{
 			TiKV: &TiKVBackup{
 				Component: Component{
-					Replicas: tc.Spec.TiKV.Replicas,
+					Replicas: int32(len(tc.Status.TiKV.Stores) + len(tc.Status.TiKV.PeerStores)),
 				},
 				Stores: []*StoresBackup{},
 			},
@@ -490,6 +496,7 @@ func (m *StoresMixture) ProcessCSBPVCsAndPVs(r *v1alpha1.Restore, csb *CloudSnap
 		}
 		// Clear out non-core metadata fields and status
 		resetMetadataAndStatus(r, backupClusterName, pvc, pv)
+		m.snapshotter.ResetPvAvailableZone(r, pv)
 
 		pvs = append(pvs, pv)
 		pvcs = append(pvcs, pvc)

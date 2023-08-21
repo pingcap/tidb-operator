@@ -41,3 +41,10 @@ func (s *NoneSnapshotter) SetVolumeID(pv *corev1.PersistentVolume, volumeID stri
 func (s *NoneSnapshotter) PrepareRestoreMetadata(r *v1alpha1.Restore, csb *CloudSnapBackup) (string, error) {
 	return "", nil
 }
+
+func (s *NoneSnapshotter) ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.PersistentVolume) {}
+
+func (s *NoneSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
+	// TODO implement it if support to restore snapshots to another az on GCP
+	return nil
+}

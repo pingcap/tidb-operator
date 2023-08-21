@@ -40,6 +40,12 @@ spec:
       jsonPath: .status.backupSizeReadable
       name: BackupSize
       type: string
+    - description: The real size of volume snapshot backup, only valid to volume snapshot
+        backup
+      jsonPath: .status.incrementalBackupSizeReadable
+      name: IncrementalBackupSize
+      priority: 10
+      type: string
     - description: The commit ts of the backup
       jsonPath: .status.commitTs
       name: CommitTS
@@ -58,6 +64,10 @@ spec:
       name: Completed
       priority: 1
       type: date
+    - description: The time that the backup takes
+      jsonPath: .status.timeTaken
+      name: TimeTaken
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -196,6 +206,29 @@ spec:
                                         type: string
                                       type: object
                                   type: object
+                                namespaceSelector:
+                                  properties:
+                                    matchExpressions:
+                                      items:
+                                        properties:
+                                          key:
+                                            type: string
+                                          operator:
+                                            type: string
+                                          values:
+                                            items:
+                                              type: string
+                                            type: array
+                                        required:
+                                        - key
+                                        - operator
+                                        type: object
+                                      type: array
+                                    matchLabels:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                  type: object
                                 namespaces:
                                   items:
                                     type: string
@@ -217,6 +250,29 @@ spec:
                         items:
                           properties:
                             labelSelector:
+                              properties:
+                                matchExpressions:
+                                  items:
+                                    properties:
+                                      key:
+                                        type: string
+                                      operator:
+                                        type: string
+                                      values:
+                                        items:
+                                          type: string
+                                        type: array
+                                    required:
+                                    - key
+                                    - operator
+                                    type: object
+                                  type: array
+                                matchLabels:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                              type: object
+                            namespaceSelector:
                               properties:
                                 matchExpressions:
                                   items:
@@ -280,6 +336,29 @@ spec:
                                         type: string
                                       type: object
                                   type: object
+                                namespaceSelector:
+                                  properties:
+                                    matchExpressions:
+                                      items:
+                                        properties:
+                                          key:
+                                            type: string
+                                          operator:
+                                            type: string
+                                          values:
+                                            items:
+                                              type: string
+                                            type: array
+                                        required:
+                                        - key
+                                        - operator
+                                        type: object
+                                      type: array
+                                    matchLabels:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                  type: object
                                 namespaces:
                                   items:
                                     type: string
@@ -301,6 +380,29 @@ spec:
                         items:
                           properties:
                             labelSelector:
+                              properties:
+                                matchExpressions:
+                                  items:
+                                    properties:
+                                      key:
+                                        type: string
+                                      operator:
+                                        type: string
+                                      values:
+                                        items:
+                                          type: string
+                                        type: array
+                                    required:
+                                    - key
+                                    - operator
+                                    type: object
+                                  type: array
+                                matchLabels:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                              type: object
+                            namespaceSelector:
                               properties:
                                 matchExpressions:
                                   items:
@@ -401,6 +503,9 @@ spec:
                 required:
                 - cluster
                 type: object
+              calcSizeLevel:
+                default: all
+                type: string
               cleanOption:
                 properties:
                   backoffEnabled:
@@ -495,6 +600,8 @@ spec:
                   - name
                   type: object
                 type: array
+              federalVolumeBackupPhase:
+                type: string
               from:
                 properties:
                   host:
@@ -730,8 +837,6 @@ spec:
                         type: object
                       ephemeral:
                         properties:
-                          readOnly:
-                            type: boolean
                           volumeClaimTemplate:
                             properties:
                               metadata:
@@ -743,6 +848,18 @@ spec:
                                       type: string
                                     type: array
                                   dataSource:
+                                    properties:
+                                      apiGroup:
+                                        type: string
+                                      kind:
+                                        type: string
+                                      name:
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  dataSourceRef:
                                     properties:
                                       apiGroup:
                                         type: string
@@ -1298,6 +1415,8 @@ spec:
                         type: string
                       gmsaCredentialSpecName:
                         type: string
+                      hostProcess:
+                        type: boolean
                       runAsUserName:
                         type: string
                     type: object
@@ -1439,6 +1558,11 @@ spec:
                   type: object
                 nullable: true
                 type: array
+              incrementalBackupSize:
+                format: int64
+                type: integer
+              incrementalBackupSizeReadable:
+                type: string
               logCheckpointTs:
                 type: string
               logSubCommandStatuses:
@@ -1508,6 +1632,8 @@ spec:
               timeStarted:
                 format: date-time
                 nullable: true
+                type: string
+              timeTaken:
                 type: string
             type: object
         required:

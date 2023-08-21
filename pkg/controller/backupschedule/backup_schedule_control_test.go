@@ -81,6 +81,17 @@ func TestBackupScheduleControlUpdateBackupSchedule(t *testing.T) {
 			},
 		},
 		{
+			name: "normal",
+			update: func(bs *v1alpha1.BackupSchedule) {
+				bs.Status.LastBackupTime = &metav1.Time{Time: time.Now()}
+			},
+			syncBsManagerErr: false,
+			updateStatusErr:  false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+		},
+		{
 			name: "backup schedule status update failed",
 			update: func(bs *v1alpha1.BackupSchedule) {
 				bs.Status.LastBackupTime = &metav1.Time{Time: time.Now()}
@@ -90,17 +101,6 @@ func TestBackupScheduleControlUpdateBackupSchedule(t *testing.T) {
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "update backupSchedule status error")).To(Equal(true))
-			},
-		},
-		{
-			name: "normal",
-			update: func(bs *v1alpha1.BackupSchedule) {
-				bs.Status.LastBackupTime = &metav1.Time{Time: time.Now()}
-			},
-			syncBsManagerErr: false,
-			updateStatusErr:  false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
 			},
 		},
 	}

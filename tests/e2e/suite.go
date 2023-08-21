@@ -52,13 +52,17 @@ func AfterSuiteActions() {
 
 func gatherTestSuiteMetrics() error {
 	framework.Logf("Gathering metrics")
+	cfg, err := framework.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("error loading config: %v", err)
+	}
 	c, err := framework.LoadClientset()
 	if err != nil {
 		return fmt.Errorf("error loading client: %v", err)
 	}
 
 	// Grab metrics for apiserver, scheduler, controller-manager, kubelet (for non-kubemark case) and cluster autoscaler (optionally).
-	grabber, err := e2emetrics.NewMetricsGrabber(c, nil, !framework.ProviderIs("kubemark"), true, true, true, framework.TestContext.IncludeClusterAutoscalerMetrics)
+	grabber, err := e2emetrics.NewMetricsGrabber(c, nil, cfg, !framework.ProviderIs("kubemark"), true, true, true, framework.TestContext.IncludeClusterAutoscalerMetrics, true)
 	if err != nil {
 		return fmt.Errorf("failed to create MetricsGrabber: %v", err)
 	}

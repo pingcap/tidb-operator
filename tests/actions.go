@@ -42,7 +42,6 @@ import (
 	tngmname "github.com/pingcap/tidb-operator/pkg/manager/tidbngmonitoring"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	e2eutil "github.com/pingcap/tidb-operator/tests/e2e/util"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
@@ -276,7 +275,7 @@ func (oa *OperatorActions) RunKubectlOrDie(args ...string) string {
 }
 
 func (oa *OperatorActions) CleanCRDOrDie() {
-	crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+	crdList, err := oa.apiExtCli.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 	framework.ExpectNoError(err, "failed to list CRD")
 	for _, crd := range crdList.Items {
 		if !strings.HasSuffix(crd.Name, ".pingcap.com") {
@@ -284,7 +283,7 @@ func (oa *OperatorActions) CleanCRDOrDie() {
 			continue
 		}
 		framework.Logf("Deleting CRD %q", crd.Name)
-		err = oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(context.TODO(), crd.Name, metav1.DeleteOptions{})
+		err = oa.apiExtCli.ApiextensionsV1().CustomResourceDefinitions().Delete(context.TODO(), crd.Name, metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "failed to delete CRD %q", crd.Name)
 		// Even if DELETE API request succeeds, the CRD object may still exists
 		// in ap server. We should wait for it to be gone.
@@ -334,17 +333,8 @@ func (oa *OperatorActions) CreateReleasedCRDOrDie(version string) {
 }
 
 func (oa *OperatorActions) crdFiles(info *OperatorConfig) ([]string, error) {
-	supportV1, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1")
-	if err != nil {
-		return nil, err
-	}
-
 	crdFile := oa.manifestPath("e2e/crd.yaml")
 	astsCRDFile := oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml")
-	if !supportV1 {
-		crdFile = oa.manifestPath("e2e/crd_v1beta1.yaml")
-		astsCRDFile = oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml")
-	}
 
 	files := []string{
 		crdFile,
@@ -1169,15 +1159,15 @@ func (oa *OperatorActions) pumpIsHealthy(tcName, ns, podName string, tlsEnabled 
 	var err error
 	var addr string
 	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("pod/%s", podName), 8250)
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("pod/%s", podName), uint16(v1alpha1.DefaultPumpPort))
 		if err != nil {
-			log.Logf("failed to forward port %d for %s/%s", 8250, ns, podName)
+			log.Logf("failed to forward port %d for %s/%s", v1alpha1.DefaultPumpPort, ns, podName)
 			return false
 		}
 		defer cancel()
 		addr = fmt.Sprintf("%s:%d", localHost, localPort)
 	} else {
-		addr = fmt.Sprintf("%s.%s-pump.%s:8250", podName, tcName, ns)
+		addr = fmt.Sprintf("%s.%s-pump.%s:%d", podName, tcName, ns, v1alpha1.DefaultPumpPort)
 	}
 	var tlsConfig *tls.Config
 	scheme := "http"
@@ -1233,15 +1223,15 @@ func (oa *OperatorActions) drainerHealth(tcName, ns, podName string, tlsEnabled 
 	var err error
 	var addr string
 	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("pod/%s", podName), 8249)
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("pod/%s", podName), uint16(v1alpha1.DefaultDrainerPort))
 		if err != nil {
-			log.Logf("failed to forward port %d for %s/%s", 8249, ns, podName)
+			log.Logf("failed to forward port %d for %s/%s", v1alpha1.DefaultDrainerPort, ns, podName)
 			return false
 		}
 		defer cancel()
 		addr = fmt.Sprintf("%s:%d", localHost, localPort)
 	} else {
-		addr = fmt.Sprintf("%s.%s-drainer.%s:8249", podName, tcName, ns)
+		addr = fmt.Sprintf("%s.%s-drainer.%s:%d", podName, tcName, ns, v1alpha1.DefaultDrainerPort)
 	}
 	var tlsConfig *tls.Config
 	scheme := "http"

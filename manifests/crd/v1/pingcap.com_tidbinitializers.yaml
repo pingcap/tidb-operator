@@ -118,6 +118,8 @@ spec:
                         type: string
                       gmsaCredentialSpecName:
                         type: string
+                      hostProcess:
+                        type: boolean
                       runAsUserName:
                         type: string
                     type: object
@@ -145,6 +147,22 @@ spec:
                 type: string
               tlsClientSecretName:
                 type: string
+              tolerations:
+                items:
+                  properties:
+                    effect:
+                      type: string
+                    key:
+                      type: string
+                    operator:
+                      type: string
+                    tolerationSeconds:
+                      format: int64
+                      type: integer
+                    value:
+                      type: string
+                  type: object
+                type: array
             required:
             - cluster
             - image
@@ -154,6 +172,8 @@ spec:
               active:
                 format: int32
                 type: integer
+              completedIndexes:
+                type: string
               completionTime:
                 format: date-time
                 type: string
@@ -179,6 +199,7 @@ spec:
                   - type
                   type: object
                 type: array
+                x-kubernetes-list-type: atomic
               failed:
                 format: int32
                 type: integer
@@ -190,6 +211,19 @@ spec:
               succeeded:
                 format: int32
                 type: integer
+              uncountedTerminatedPods:
+                properties:
+                  failed:
+                    items:
+                      type: string
+                    type: array
+                    x-kubernetes-list-type: set
+                  succeeded:
+                    items:
+                      type: string
+                    type: array
+                    x-kubernetes-list-type: set
+                type: object
             type: object
         required:
         - metadata

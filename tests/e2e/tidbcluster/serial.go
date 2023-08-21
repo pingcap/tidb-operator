@@ -23,7 +23,6 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
-	"github.com/pingcap/errors"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -32,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -45,7 +43,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
@@ -62,8 +59,8 @@ import (
 )
 
 const (
-	OperatorLatestVersion    string = "v1.3.6"
-	OperatorPrevMajorVersion string = "v1.2.7"
+	OperatorLatestVersion    string = "v1.5.0-beta.1"
+	OperatorPrevMajorVersion string = "v1.4.6"
 )
 
 // Serial specs describe tests which cannot run in parallel.
@@ -81,7 +78,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 	var config *restclient.Config
 	var fw portforward.PortForward
 	var fwCancel context.CancelFunc
-	var stsGetter typedappsv1.StatefulSetsGetter
 	/**
 	 * StatefulSet or AdvancedStatefulSet getter interface.
 	 */
@@ -114,7 +110,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
-		stsGetter = c.AppsV1()
 	})
 
 	ginkgo.AfterEach(func() {
@@ -166,7 +161,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
-			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
 
 			ginkgo.By("Set tikv partition annotation to 1")
 			err := setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
@@ -681,7 +676,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				tc.Spec.TiFlash.Replicas = 1
 
 				ginkgo.By("Deploy original TiDB cluster")
-				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
 				selector := MustGetLabelSelectorForComponents(tcName, label.DiscoveryLabelVal) // ignore discovery
 				pods := utilpod.MustListPods(selector.String(), ns, c)
 
@@ -799,7 +794,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					}
 
 					ginkgo.By("Deploy original TiDB cluster with prev version")
-					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
+					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
 					selector := MustGetLabelSelectorForComponents(tcName,
 						label.DiscoveryLabelVal, // ignore discovery
 					)
@@ -860,113 +855,6 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				})
 			}
 
-		})
-
-		ginkgo.Context("From v1.1.7", func() {
-			ginkgo.BeforeEach(func() {
-				operatorVersion = "v1.1.7"
-			})
-
-			ginkgo.It("should not change old TidbCluster", func() {
-				tcName := fmt.Sprintf("upgrade-operator-from-%s", strings.ReplaceAll(operatorVersion, ".", "x"))
-				tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV5x3)
-				tc = fixture.AddTiFlashForTidbCluster(tc)
-				tc = fixture.AddTiCDCForTidbCluster(tc)
-				tc = fixture.AddPumpForTidbCluster(tc)
-				tc.Spec.PD.Replicas = 3
-				tc.Spec.TiKV.Replicas = 1
-				tc.Spec.TiDB.Replicas = 1
-				tc.Spec.TiCDC.Config = nil
-
-				ginkgo.By("Deploy original TiDB cluster")
-				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 5*time.Second)
-				selector := MustGetLabelSelectorForComponents(tcName,
-					label.DiscoveryLabelVal,
-					label.PumpLabelVal,
-					label.TiCDCLabelVal,   // ignore ticdc because of PR #4494
-					label.TiFlashLabelVal, // ignore tiflash because of PR #4358
-				)
-				pods := utilpod.MustListPods(selector.String(), ns, c)
-
-				ginkgo.By("Upgrade TiDB Operator and CRDs to current version")
-				ocfg.Tag = cfg.OperatorTag
-				ocfg.Image = cfg.OperatorImage
-				oa.ReplaceCRDOrDie(ocfg)
-				oa.UpgradeOperatorOrDie(ocfg)
-
-				ginkgo.By("Wait for pods are not changed in 5 minutes")
-				err := utilpod.WaitForPodsAreChanged(c, pods, time.Minute*5)
-				framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
-			})
-
-			/*
-			  Release: v1.2.0
-			  new feature in https://github.com/pingcap/tidb-operator/pull/3440
-			  deploy tidbmonitor and upgrade tidb-perator, then tidbmonitor should switch from deployment to statefulset
-			*/
-			ginkgo.It("should migrate tidbmonitor from deployment to sts", func() {
-				tcName := "smooth-tidbcluster"
-				tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
-				tc.Spec.PD.Replicas = 1
-				tc.Spec.TiKV.Replicas = 1
-				tc.Spec.TiDB.Replicas = 1
-
-				ginkgo.By("Deploy original TiDB cluster")
-				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 6*time.Minute, 5*time.Second)
-
-				ginkgo.By("Deploy tidb monitor")
-				monitorName := "smooth-migrate"
-				tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
-				framework.ExpectNoError(err, "failed to get tidbcluster")
-				tm := fixture.NewTidbMonitor(monitorName, ns, tc, true, true, true)
-				_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(context.TODO(), tm, metav1.CreateOptions{})
-				framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
-				err = tests.CheckTidbMonitor(tm, cli, c, fw)
-				framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-
-				deploymentPvcName := fmt.Sprintf("%s-monitor", monitorName)
-				deploymentPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), deploymentPvcName, metav1.GetOptions{})
-				framework.ExpectNoError(err, "Expected tidbmonitor deployment pvc success")
-				oldVolumeName := deploymentPvc.Spec.VolumeName
-
-				ginkgo.By("Upgrade tidb-operator and CRDs to the latest version")
-				ocfg.Tag = cfg.OperatorTag
-				ocfg.Image = cfg.OperatorImage
-				oa.ReplaceCRDOrDie(ocfg)
-				oa.UpgradeOperatorOrDie(ocfg)
-				err = tests.CheckTidbMonitor(tm, cli, c, fw)
-				framework.ExpectNoError(err, "Expected tidbmonitor checked success under migration")
-				err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
-					tmSet, err := stsGetter.StatefulSets(ns).Get(context.TODO(), monitor.GetMonitorObjectName(tm), metav1.GetOptions{})
-					if err != nil {
-						log.Logf("ERROR: failed to get statefulset: %s/%s, %v", ns, tmSet, err)
-						return false, nil
-					}
-					return true, nil
-				})
-				framework.ExpectNoError(err, "Expected tidbmonitor sts success")
-				err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-					newStsPvcName := monitor.GetMonitorFirstPVCName(tm.Name)
-					log.Logf("tidbmonitor newStsPvcName:%s", newStsPvcName)
-					stsPvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), newStsPvcName, metav1.GetOptions{})
-					if err != nil {
-						if errors.IsNotFound(err) {
-							log.Logf("tm[%s/%s]'s first sts pvc not found,tag:%s,image:%s", ns, tm.Name, cfg.OperatorTag, cfg.OperatorImage)
-							return false, nil
-						}
-						log.Logf("ERROR: get tidbmonitor sts pvc err:%v", err)
-						return false, nil
-					}
-					if stsPvc.Spec.VolumeName == oldVolumeName {
-						return true, nil
-					}
-					log.Logf("tidbmonitor sts pv unequal to old deployment pv")
-					return false, nil
-				})
-				framework.ExpectNoError(err, "Expected tidbmonitor sts use pv of old deployment")
-				err = tests.CheckTidbMonitor(tm, cli, c, fw)
-				framework.ExpectNoError(err, "Expected tidbmonitor checked success")
-			})
 		})
 	})
 })

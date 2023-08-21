@@ -94,8 +94,14 @@ const (
 	KubeAnnBoundByController      = "pv.kubernetes.io/bound-by-controller"
 	KubeAnnDynamicallyProvisioned = "pv.kubernetes.io/provisioned-by"
 
+	NodeAffinityCsiEbsAzKey = "topology.ebs.csi.aws.com/zone"
+
 	LocalTmp           = "/tmp"
 	ClusterBackupMeta  = "clustermeta"
 	ClusterRestoreMeta = "restoremeta"
 	MetaFile           = "backupmeta"
+	ClusterManifests   = "manifests"
+
+	// AWSRegionEnv is the aws region environment variable
+	AWSRegionEnv = "AWS_REGION"
 )

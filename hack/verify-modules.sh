@@ -39,7 +39,7 @@ for sub_mod in ${GO_SUBMODULE_DIRS[@]}; do
     dir="$ROOT/$sub_mod"
 
     pushd $dir >/dev/null
-        go mod edit -json | jq -r ".Require[] | .Path" | grep -v -F ${ignored_modules[@]} | while read path; do
+        go mod edit -json | jq -r ".Require[] | .Path" | grep -v -E ${ignored_modules[@]} | while read path; do
             ver_in_sub=$(cd $dir && go list -m -f '{{.Version}}' $path)
             ver_in_main=$(cd $ROOT && go list -mod=readonly -m -f '{{with .Replace}} {{- .Version}} {{else}} {{- .Version}} {{end}}' ${path})
             if [ $ver_in_sub != $ver_in_main ]; then

@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
@@ -142,7 +143,7 @@ const (
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="PD",type=string,JSONPath=`.status.pd.image`,description="The image for PD cluster"
 // +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.pd.requests.storage`,description="The storage size specified for PD node"
-// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.pd.statefulSet.readyReplicas`,description="The desired replicas number of PD cluster"
+// +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.pd.statefulSet.readyReplicas`,description="The ready replicas number of PD cluster"
 // +kubebuilder:printcolumn:name="Desire",type=integer,JSONPath=`.spec.pd.replicas`,description="The desired replicas number of PD cluster"
 // +kubebuilder:printcolumn:name="TiKV",type=string,JSONPath=`.status.tikv.image`,description="The image for TiKV cluster"
 // +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.tikv.requests.storage`,description="The storage size specified for TiKV node"
@@ -514,6 +515,10 @@ type PDSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum:="";"v1"
 	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
+
+	// Timeout threshold when pd get started
+	// +kubebuilder:default=30
+	StartTimeout int `json:"startTimeout,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
@@ -774,6 +779,9 @@ type TiProxySpec struct {
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
 
+	// Whether enable SSL connection between tiproxy and TiDB server
+	SSLEnableTiDB bool `json:"sslEnableTiDB,omitempty"`
+
 	// TLSClientSecretName is the name of secret which stores tidb server client certificate
 	// used by TiProxy to check health status.
 	// +optional
@@ -918,7 +926,7 @@ type TiDBSpec struct {
 	// BootstrapSQLConfigMapName is the name of the ConfigMap which contains the bootstrap SQL file with the key `bootstrap-sql`,
 	// which will only be executed when a TiDB cluster bootstrap on the first time.
 	// The field should be set ONLY when create a TC, since it only take effect on the first time bootstrap.
-	// Only v6.6.0+ supports this feature.
+	// Only v6.5.1+ supports this feature.
 	// +optional
 	BootstrapSQLConfigMapName *string `json:"bootstrapSQLConfigMapName,omitempty"`
 }
@@ -1382,6 +1390,10 @@ const (
 	PDLeaderTransferAnnKey = "tidb.pingcap.com/pd-transfer-leader"
 	// TiDBGracefulShutdownAnnKey is the annotation key to graceful shutdown tidb pod by user.
 	TiDBGracefulShutdownAnnKey = "tidb.pingcap.com/tidb-graceful-shutdown"
+	// TiKVEvictLeaderExpirationTimeAnnKey is the annotation key to expire evict leader annotation. Type: time.RFC3339.
+	TiKVEvictLeaderExpirationTimeAnnKey = "tidb.pingcap.com/tikv-evict-leader-expiration-time"
+	// PDLeaderTransferExpirationTimeAnnKey is the annotation key to expire transfer leader annotation. Type: time.RFC3339.
+	PDLeaderTransferExpirationTimeAnnKey = "tidb.pingcap.com/pd-evict-leader-expiration-time"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -1636,10 +1648,12 @@ type TLSCluster struct {
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
+// +kubebuilder:printcolumn:name="IncrementalBackupSize",type=string,JSONPath=`.status.incrementalBackupSizeReadable`,description="The real size of volume snapshot backup, only valid to volume snapshot backup",priority=10
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
 // +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logSuccessTruncateUntil`,description="The log backup truncate until ts"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
+// +kubebuilder:printcolumn:name="TimeTaken",type=string,JSONPath=`.status.timeTaken`,description="The time that the backup takes"
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type Backup struct {
 	metav1.TypeMeta `json:",inline"`
@@ -1936,6 +1950,13 @@ type BackupSpec struct {
 	// LogStop indicates that will stop the log backup.
 	// +optional
 	LogStop bool `json:"logStop,omitempty"`
+	// CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup
+	// +optional
+	// +kubebuilder:default="all"
+	CalcSizeLevel string `json:"calcSizeLevel,omitempty"`
+	// FederalVolumeBackupPhase indicates which phase to execute in federal volume backup
+	// +optional
+	FederalVolumeBackupPhase FederalVolumeBackupPhase `json:"federalVolumeBackupPhase,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1973,6 +1994,18 @@ type BackupSpec struct {
 	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
 	BackoffRetryPolicy BackoffRetryPolicy `json:"backoffRetryPolicy,omitempty"`
 }
+
+// FederalVolumeBackupPhase represents a phase to execute in federal volume backup
+type FederalVolumeBackupPhase string
+
+const (
+	// FederalVolumeBackupInitialize means we should stop GC and PD schedule
+	FederalVolumeBackupInitialize FederalVolumeBackupPhase = "initialize"
+	// FederalVolumeBackupExecute means we should take volume snapshots for TiKV
+	FederalVolumeBackupExecute FederalVolumeBackupPhase = "execute"
+	// FederalVolumeBackupTeardown means we should resume GC and PD schedule
+	FederalVolumeBackupTeardown FederalVolumeBackupPhase = "teardown"
+)
 
 // +k8s:openapi-gen=true
 // DumplingConfig contains config for dumpling
@@ -2080,6 +2113,14 @@ const (
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
 	BackupRestart BackupConditionType = "Restart"
+	// VolumeBackupInitialized means the volume backup has stopped GC and PD schedule
+	VolumeBackupInitialized BackupConditionType = "VolumeBackupInitialized"
+	// VolumeBackupInitializeFailed means the volume backup initialize job failed
+	VolumeBackupInitializeFailed BackupConditionType = "VolumeBackupInitializeFailed"
+	// VolumeBackupComplete means the volume backup has taken volume snapshots successfully
+	VolumeBackupComplete BackupConditionType = "VolumeBackupComplete"
+	// VolumeBackupFailed means the volume backup take volume snapshots failed
+	VolumeBackupFailed BackupConditionType = "VolumeBackupFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -2137,11 +2178,18 @@ type BackupStatus struct {
 	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
 	// +nullable
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+	// TimeTaken is the time that backup takes, it is TimeCompleted - TimeStarted
+	TimeTaken string `json:"timeTaken,omitempty"`
 	// BackupSizeReadable is the data size of the backup.
 	// the difference with BackupSize is that its format is human readable
 	BackupSizeReadable string `json:"backupSizeReadable,omitempty"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize,omitempty"`
+	// the difference with IncrementalBackupSize is that its format is human readable
+	IncrementalBackupSizeReadable string `json:"incrementalBackupSizeReadable,omitempty"`
+	// IncrementalBackupSize is the incremental data size of the backup, it is only used for volume snapshot backup
+	// it is the real size of volume snapshot backup
+	IncrementalBackupSize int64 `json:"incrementalBackupSize,omitempty"`
 	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	CommitTs string `json:"commitTs,omitempty"`
 	// LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.
@@ -2170,6 +2218,7 @@ type BackupStatus struct {
 // +kubebuilder:resource:shortName="bks"
 // +kubebuilder:printcolumn:name="Schedule",type=string,JSONPath=`.spec.schedule`,description="The cron format string used for backup scheduling"
 // +kubebuilder:printcolumn:name="MaxBackups",type=integer,JSONPath=`.spec.maxBackups`,description="The max number of backups we want to keep"
+// +kubebuilder:printcolumn:name="MaxReservedTime",type=string,JSONPath=`.spec.maxReservedTime`,description="How long backups we want to keep"
 // +kubebuilder:printcolumn:name="LastBackup",type=string,JSONPath=`.status.lastBackup`,description="The last backup CR name",priority=1
 // +kubebuilder:printcolumn:name="LastBackupTime",type=date,JSONPath=`.status.lastBackupTime`,description="The last time the backup was successfully created",priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -2209,9 +2258,9 @@ type BackupScheduleSpec struct {
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
-	// +optional
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
+	// +optional
 	LogBackupTemplate *BackupSpec `json:"logBackupTemplate"`
 	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
 	// Defaults to Kubernetes default storage class.
@@ -2246,6 +2295,7 @@ type BackupScheduleStatus struct {
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the restore"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the restore was started",priority=1
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the restore was completed",priority=1
+// +kubebuilder:printcolumn:name="TimeTaken",type=string,JSONPath=`.status.timeTaken`,description="The time that the restore takes"
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of tidb cluster restore"
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type Restore struct {
@@ -2294,9 +2344,16 @@ const (
 	// RestoreVolumeComplete means the Restore has successfully executed part-1 and the
 	// backup volumes have been rebuilded from the corresponding snapshot
 	RestoreVolumeComplete RestoreConditionType = "VolumeComplete"
+	// RestoreWarmUpStarted means the Restore has successfully started warm up pods to
+	// initialize volumes restored from snapshots
+	RestoreWarmUpStarted RestoreConditionType = "WarmUpStarted"
+	// RestoreWarmUpComplete means the Restore has successfully warmed up all TiKV volumes
+	RestoreWarmUpComplete RestoreConditionType = "WarmUpComplete"
 	// RestoreDataComplete means the Restore has successfully executed part-2 and the
 	// data in restore volumes has been deal with consistency based on min_resolved_ts
 	RestoreDataComplete RestoreConditionType = "DataComplete"
+	// RestoreTiKVComplete means in volume restore, all TiKV instances are started and up
+	RestoreTiKVComplete RestoreConditionType = "TikvComplete"
 	// RestoreComplete means the Restore has successfully executed and the
 	// backup data has been loaded into tidb cluster.
 	RestoreComplete RestoreConditionType = "Complete"
@@ -2353,6 +2410,13 @@ type RestoreSpec struct {
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
+	// FederalVolumeRestorePhase indicates which phase to execute in federal volume restore
+	// +optional
+	FederalVolumeRestorePhase FederalVolumeRestorePhase `json:"federalVolumeRestorePhase,omitempty"`
+	// VolumeAZ indicates which AZ the volume snapshots restore to.
+	// it is only valid for mode of volume-snapshot
+	// +optional
+	VolumeAZ string `json:"volumeAZ,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
@@ -2389,6 +2453,12 @@ type RestoreSpec struct {
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
 	TableFilter []string `json:"tableFilter,omitempty"`
+	// Warmup represents whether to initialize TiKV volumes after volume snapshot restore
+	// +optional
+	Warmup RestoreWarmupMode `json:"warmup,omitempty"`
+	// WarmupImage represents using what image to initialize TiKV volumes
+	// +optional
+	WarmupImage string `json:"warmupImage,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional
@@ -2398,6 +2468,28 @@ type RestoreSpec struct {
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
+// FederalVolumeRestorePhase represents a phase to execute in federal volume restore
+type FederalVolumeRestorePhase string
+
+const (
+	// FederalVolumeRestoreVolume means restore volumes of TiKV and start TiKV
+	FederalVolumeRestoreVolume FederalVolumeRestorePhase = "restore-volume"
+	// FederalVolumeRestoreData means restore data of TiKV to resolved TS
+	FederalVolumeRestoreData FederalVolumeRestorePhase = "restore-data"
+	// FederalVolumeRestoreFinish means restart TiKV and set recoveryMode true
+	FederalVolumeRestoreFinish FederalVolumeRestorePhase = "restore-finish"
+)
+
+// RestoreWarmupMode represents when to initialize TiKV volumes
+type RestoreWarmupMode string
+
+const (
+	// RestoreWarmupModeSync means initialize TiKV volumes before TiKV starts
+	RestoreWarmupModeSync RestoreWarmupMode = "sync"
+	// RestoreWarmupModeASync means initialize TiKV volumes after restore complete
+	RestoreWarmupModeASync RestoreWarmupMode = "async"
+)
+
 // RestoreStatus represents the current status of a tidb cluster restore.
 type RestoreStatus struct {
 	// TimeStarted is the time at which the restore was started.
@@ -2406,6 +2498,8 @@ type RestoreStatus struct {
 	// TimeCompleted is the time at which the restore was completed.
 	// +nullable
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+	// TimeTaken is the time that restore takes, it is TimeCompleted - TimeStarted
+	TimeTaken string `json:"timeTaken,omitempty"`
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs string `json:"commitTs,omitempty"`
 	// Phase is a user readable state inferred from the underlying Restore conditions
@@ -2940,6 +3034,13 @@ type TopologySpreadConstraint struct {
 	// LabelSelector is generated by component type
 	// See pkg/apis/pingcap/v1alpha1/tidbcluster_component.go#TopologySpreadConstraints()
 	TopologyKey string `json:"topologyKey"`
+	// MatchLabels is used to overwrite generated corev1.TopologySpreadConstraints.LabelSelector
+	// corev1.TopologySpreadConstraint generated in component_spec.go will set a
+	// LabelSelector automatically with some KV.
+	// Historically, it is l["comp"] = "" for component tiproxy. And we will use
+	// MatchLabels to keep l["comp"] = "" for old clusters with tiproxy
+	// +optional
+	MatchLabels label.Label `json:"matchLabels"`
 }
 
 // Failover contains the failover specification.

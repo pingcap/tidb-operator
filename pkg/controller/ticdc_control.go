@@ -115,8 +115,9 @@ func (c *defaultTiCDCControl) DrainCapture(tc *v1alpha1.TidbCluster, ordinal int
 		// Let caller retry drain capture.
 		return 0, true, nil
 	}
-	if len(captures) == 1 {
+	if len(captures) == 1 || len(captures) == 0 {
 		// No way to drain a single node TiCDC cluster, ignore.
+		// Can't get capture info, ignore.
 		return 0, false, nil
 	}
 
@@ -186,8 +187,9 @@ func (c *defaultTiCDCControl) ResignOwner(tc *v1alpha1.TidbCluster, ordinal int3
 		// Let caller retry resign owner.
 		return false, nil
 	}
-	if len(captures) == 1 {
+	if len(captures) == 1 || len(captures) == 0 {
 		// No way to resign owner in a single node TiCDC cluster, ignore.
+		// Can't get capture info, ignore.
 		return true, nil
 	}
 
@@ -237,6 +239,10 @@ func (c *defaultTiCDCControl) IsHealthy(tc *v1alpha1.TidbCluster, ordinal int32)
 		// Let caller retry.
 		return false, nil
 	}
+	if len(captures) == 0 {
+		// No way to get capture info, ignore.
+		return true, nil
+	}
 
 	_, owner := getOrdinalAndOwnerCaptureInfo(tc, ordinal, captures)
 	if owner == nil {
@@ -270,7 +276,7 @@ func (c *defaultTiCDCControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32
 
 	scheme := tc.Scheme()
 	addr := getCaptureAdvertiseAddressPrefix(tc, ordinal)
-	return fmt.Sprintf("%s://%s:8301", scheme, addr)
+	return fmt.Sprintf("%s://%s:%d", scheme, addr, v1alpha1.DefaultTiCDCPort)
 }
 
 // getCaptureAdvertiseAddressPrefix is the prefix of TiCDC advertiseAddress
@@ -281,7 +287,14 @@ func getCaptureAdvertiseAddressPrefix(tc *v1alpha1.TidbCluster, ordinal int32) s
 	ns := tc.GetNamespace()
 	hostName := fmt.Sprintf("%s-%d", TiCDCMemberName(tcName), ordinal)
 
-	return fmt.Sprintf("%s.%s.%s", hostName, TiCDCPeerMemberName(tcName), ns)
+	prefix := fmt.Sprintf("%s.%s.%s", hostName, TiCDCPeerMemberName(tcName), ns)
+	if len(tc.Spec.ClusterDomain) > 0 {
+		// When setting up TiCDC across multiple Kubernetes clusters,
+		// it is important to consider the cluster domain if two CDC pods
+		// share the same in-cluster dns name (without cluster domain).
+		prefix = fmt.Sprintf("%s.svc.%s", prefix, tc.Spec.ClusterDomain)
+	}
+	return prefix
 }
 
 func getCaptures(httpClient *http.Client, baseURL string) ([]captureInfo, bool, error) {

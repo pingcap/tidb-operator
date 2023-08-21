@@ -12,12 +12,12 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.5.0-beta.1
+operatorImage: pingcap/tidb-operator:v1.6.0-alpha.6
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.5.0-beta.1
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.6.0-alpha.6
 
 #
 # Enable or disable tidb-operator features:
@@ -189,8 +189,7 @@ scheduler:
 # AdvancedStatefulSet controller.
 # Note that AdvancedStatefulSet CRD must be installed manually via the following
 # command:
-#   kubectl apply -f manifests/advanced-statefulset-crd.v1beta1.yaml # k8s version < 1.16.0
-#   kubectl apply -f manifests/advanced-statefulset-crd.v1.yaml      # k8s version >= 1.16.0
+#   kubectl apply -f manifests/advanced-statefulset-crd.v1.yaml
 advancedStatefulset:
   create: false
   image: pingcap/advanced-statefulset:v0.4.0

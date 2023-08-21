@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"html/template"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
@@ -41,7 +42,7 @@ func (m *NGMonitoringStartScriptModel) FormatClusterDomain() string {
 func (m *NGMonitoringStartScriptModel) PDAddress() string {
 	// don't need add scheme, ng monitoring will use https if cert is configured
 	// TODO: support across kubernetes
-	return fmt.Sprintf("%s.%s:2379", controller.PDMemberName(m.TCName), m.TCNamespace)
+	return fmt.Sprintf("%s.%s:%d", controller.PDMemberName(m.TCName), m.TCNamespace, v1alpha1.DefaultPDClientPort)
 }
 
 func (m *NGMonitoringStartScriptModel) RenderStartScript() (string, error) {

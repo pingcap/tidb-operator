@@ -14,7 +14,10 @@
 package util
 
 import (
+	"os"
+
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ebs"
 	"github.com/aws/aws-sdk-go/service/ebs/ebsiface"
@@ -22,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
@@ -105,7 +109,7 @@ type EC2Session struct {
 	concurrency uint
 }
 
-type VolumeAZs map[string]string
+type TagMap map[string]string
 
 func NewEC2Session(concurrency uint) (*EC2Session, error) {
 	// aws-sdk has builtin exponential backoff retry mechanism, see:
@@ -119,7 +123,17 @@ func NewEC2Session(concurrency uint) (*EC2Session, error) {
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	ec2Session := ec2.New(sess)
+
+	region := os.Getenv(constants.AWSRegionEnv)
+	if region == "" {
+		ec2Metadata := ec2metadata.New(sess)
+		region, err = ec2Metadata.Region()
+		if err != nil {
+			return nil, errors.Annotate(err, "get ec2 region")
+		}
+	}
+
+	ec2Session := ec2.New(sess, aws.NewConfig().WithRegion(region))
 	return &EC2Session{EC2: ec2Session, concurrency: concurrency}, nil
 }
 
@@ -151,6 +165,42 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 	return nil
 }
 
+func (e *EC2Session) AddTags(resourcesTags map[string]TagMap) error {
+
+	eg := new(errgroup.Group)
+	for resourceID := range resourcesTags {
+		id := resourceID
+		tagMap := resourcesTags[resourceID]
+		var tags []*ec2.Tag
+		for tag := range tagMap {
+			tagKey := tag
+			value := tagMap[tag]
+			tags = append(tags, &ec2.Tag{Key: &tagKey, Value: &value})
+		}
+
+		// Create the input for adding the tag
+		input := &ec2.CreateTagsInput{
+			Resources: []*string{aws.String(id)},
+			Tags:      tags,
+		}
+
+		eg.Go(func() error {
+			_, err := e.EC2.CreateTags(input)
+			if err != nil {
+				klog.Errorf("failed to create tags for resource id=%s, %v", id, err)
+				return err
+			}
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		klog.Errorf("failed to create tags for all resources")
+		return err
+	}
+	return nil
+}
+
 type EBSSession struct {
 	EBS ebsiface.EBSAPI
 	// aws operation concurrency
@@ -165,6 +215,15 @@ func NewEBSSession(concurrency uint) (*EBSSession, error) {
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	ebsSession := ebs.New(sess)
+	region := os.Getenv(constants.AWSRegionEnv)
+	if region == "" {
+		ec2Metadata := ec2metadata.New(sess)
+		region, err = ec2Metadata.Region()
+		if err != nil {
+			return nil, errors.Annotate(err, "get ec2 region")
+		}
+	}
+
+	ebsSession := ebs.New(sess, aws.NewConfig().WithRegion(region))
 	return &EBSSession{EBS: ebsSession, concurrency: concurrency}, nil
 }

@@ -103,13 +103,13 @@ func (m *tiproxyMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-	PDAddr := fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Name))
+	PDAddr := fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Name), v1alpha1.DefaultPDClientPort)
 	// TODO: support it
 	if tc.AcrossK8s() {
 		return nil, fmt.Errorf("across k8s is not supported for")
 	}
 	if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		PDAddr = fmt.Sprintf("%s:2379", controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
+		PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	var cfgWrapper *v1alpha1.TiProxyConfigWraper
@@ -134,7 +134,7 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 		cfgWrapper.Set("security.server-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
 		cfgWrapper.Set("security.server-tls.skip-ca", true)
 
-		if !tc.SkipTLSWhenConnectTiDB() {
+		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
 			if tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
 				cfgWrapper.Set("security.sql-tls.skip-ca", true)
 			} else {
@@ -440,7 +440,7 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 			},
 		})
 
-		if !tc.SkipTLSWhenConnectTiDB() {
+		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
 			volMounts = append(volMounts, corev1.VolumeMount{
 				Name: "tidb-client-tls", ReadOnly: true, MountPath: tiproxySQLPath,
 			})

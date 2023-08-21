@@ -270,6 +270,32 @@ bool
 </tr>
 <tr>
 <td>
+<code>calcSizeLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>federalVolumeBackupPhase</code></br>
+<em>
+<a href="#federalvolumebackupphase">
+FederalVolumeBackupPhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -564,7 +590,6 @@ BackupSpec
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>BackupTemplate is the specification of the backup structure to get scheduled.</p>
 </td>
 </tr>
@@ -578,6 +603,7 @@ BackupSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>LogBackupTemplate is the specification of the log backup structure to get scheduled.</p>
 </td>
 </tr>
@@ -1264,6 +1290,33 @@ string
 </tr>
 <tr>
 <td>
+<code>federalVolumeRestorePhase</code></br>
+<em>
+<a href="#federalvolumerestorephase">
+FederalVolumeRestorePhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeRestorePhase indicates which phase to execute in federal volume restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAZ</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeAZ indicates which AZ the volume snapshots restore to.
+it is only valid for mode of volume-snapshot</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tikvGCLifeTime</code></br>
 <em>
 string
@@ -1428,6 +1481,32 @@ For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${
 </td>
 <td>
 <p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>warmup</code></br>
+<em>
+<a href="#restorewarmupmode">
+RestoreWarmupMode
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Warmup represents whether to initialize TiKV volumes after volume snapshot restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>warmupImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WarmupImage represents using what image to initialize TiKV volumes</p>
 </td>
 </tr>
 <tr>
@@ -2445,6 +2524,20 @@ string
 <em>(Optional)</em>
 <p>TLSClientSecretName is the name of secret which stores tidb server client certificate
 Optional: Defaults to nil</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tolerations of the TiDB initializer Pod</p>
 </td>
 </tr>
 </table>
@@ -3653,7 +3746,6 @@ BackupSpec
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>BackupTemplate is the specification of the backup structure to get scheduled.</p>
 </td>
 </tr>
@@ -3667,6 +3759,7 @@ BackupSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>LogBackupTemplate is the specification of the log backup structure to get scheduled.</p>
 </td>
 </tr>
@@ -3981,6 +4074,32 @@ bool
 </tr>
 <tr>
 <td>
+<code>calcSizeLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>federalVolumeBackupPhase</code></br>
+<em>
+<a href="#federalvolumebackupphase">
+FederalVolumeBackupPhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -4204,6 +4323,17 @@ TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/
 </tr>
 <tr>
 <td>
+<code>timeTaken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TimeTaken is the time that backup takes, it is TimeCompleted - TimeStarted</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupSizeReadable</code></br>
 <em>
 string
@@ -4223,6 +4353,29 @@ int64
 </td>
 <td>
 <p>BackupSize is the data size of the backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>incrementalBackupSizeReadable</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>the difference with IncrementalBackupSize is that its format is human readable</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>incrementalBackupSize</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>IncrementalBackupSize is the incremental data size of the backup, it is only used for volume snapshot backup
+it is the real size of volume snapshot backup</p>
 </td>
 </tr>
 <tr>
@@ -5539,7 +5692,7 @@ string
 <td>
 <code>AdditionalPrinterColums</code></br>
 <em>
-[]k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1.CustomResourceColumnDefinition
+[]k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1.CustomResourceColumnDefinition
 </em>
 </td>
 <td>
@@ -6926,6 +7079,22 @@ it takes effect only when set <code>spec.recoverFailover=false</code></p>
 </tr>
 </tbody>
 </table>
+<h3 id="federalvolumebackupphase">FederalVolumeBackupPhase</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>FederalVolumeBackupPhase represents a phase to execute in federal volume backup</p>
+</p>
+<h3 id="federalvolumerestorephase">FederalVolumeRestorePhase</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>FederalVolumeRestorePhase represents a phase to execute in federal volume restore</p>
+</p>
 <h3 id="filelogconfig">FileLogConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -11443,6 +11612,17 @@ string
 <p>Start up script version</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>startTimeout</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Timeout threshold when pd get started</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -13610,6 +13790,33 @@ string
 </tr>
 <tr>
 <td>
+<code>federalVolumeRestorePhase</code></br>
+<em>
+<a href="#federalvolumerestorephase">
+FederalVolumeRestorePhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeRestorePhase indicates which phase to execute in federal volume restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAZ</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeAZ indicates which AZ the volume snapshots restore to.
+it is only valid for mode of volume-snapshot</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tikvGCLifeTime</code></br>
 <em>
 string
@@ -13778,6 +13985,32 @@ For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${
 </tr>
 <tr>
 <td>
+<code>warmup</code></br>
+<em>
+<a href="#restorewarmupmode">
+RestoreWarmupMode
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Warmup represents whether to initialize TiKV volumes after volume snapshot restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>warmupImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WarmupImage represents using what image to initialize TiKV volumes</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#podsecuritycontext-v1-core">
@@ -13847,6 +14080,17 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
+<code>timeTaken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TimeTaken is the time that restore takes, it is TimeCompleted - TimeStarted</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>commitTs</code></br>
 <em>
 string
@@ -13896,6 +14140,14 @@ RestoreConditionType
 </tr>
 </tbody>
 </table>
+<h3 id="restorewarmupmode">RestoreWarmupMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>RestoreWarmupMode represents when to initialize TiKV volumes</p>
+</p>
 <h3 id="s3storageprovider">S3StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
@@ -16873,7 +17125,7 @@ string
 <p>BootstrapSQLConfigMapName is the name of the ConfigMap which contains the bootstrap SQL file with the key <code>bootstrap-sql</code>,
 which will only be executed when a TiDB cluster bootstrap on the first time.
 The field should be set ONLY when create a TC, since it only take effect on the first time bootstrap.
-Only v6.6.0+ supports this feature.</p>
+Only v6.5.1+ supports this feature.</p>
 </td>
 </tr>
 </tbody>
@@ -22480,6 +22732,17 @@ int32
 </tr>
 <tr>
 <td>
+<code>sslEnableTiDB</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Whether enable SSL connection between tiproxy and TiDB server</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tlsClientSecretName</code></br>
 <em>
 string
@@ -24350,6 +24613,20 @@ string
 Optional: Defaults to nil</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tolerations of the TiDB initializer Pod</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbinitializerstatus">TidbInitializerStatus</h3>
@@ -25317,6 +25594,22 @@ MaxSkew is default set to 1
 WhenUnsatisfiable is default set to DoNotSchedule
 LabelSelector is generated by component type
 See pkg/apis/pingcap/v1alpha1/tidbcluster_component.go#TopologySpreadConstraints()</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>matchLabels</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/label.Label
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MatchLabels is used to overwrite generated corev1.TopologySpreadConstraints.LabelSelector
+corev1.TopologySpreadConstraint generated in component_spec.go will set a
+LabelSelector automatically with some KV.
+Historically, it is l[&ldquo;comp&rdquo;] = &ldquo;&rdquo; for component tiproxy. And we will use
+MatchLabels to keep l[&ldquo;comp&rdquo;] = &ldquo;&rdquo; for old clusters with tiproxy</p>
 </td>
 </tr>
 </tbody>

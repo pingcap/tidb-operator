@@ -159,6 +159,13 @@ func (c *Controller) updateRestore(cur interface{}) {
 	}
 
 	if v1alpha1.IsRestoreComplete(newRestore) {
+		if newRestore.Spec.Warmup == v1alpha1.RestoreWarmupModeASync {
+			if !v1alpha1.IsRestoreWarmUpComplete(newRestore) {
+				c.enqueueRestore(newRestore)
+				return
+			}
+		}
+
 		klog.V(4).Infof("restore %s/%s is Complete, skipping.", ns, name)
 		return
 	}
@@ -174,7 +181,7 @@ func (c *Controller) updateRestore(cur interface{}) {
 			klog.Errorf("Fail to get tidbcluster for restore %s/%s, %v", ns, name, err)
 			return
 		}
-		if tc.IsRecoveryMode() {
+		if tc.IsRecoveryMode() && newRestore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreFinish {
 			c.enqueueRestore(newRestore)
 			return
 		}
@@ -183,18 +190,18 @@ func (c *Controller) updateRestore(cur interface{}) {
 		return
 	}
 
+	if v1alpha1.IsRestoreTiKVComplete(newRestore) {
+		if newRestore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreData ||
+			newRestore.Spec.FederalVolumeRestorePhase == v1alpha1.FederalVolumeRestoreFinish {
+			c.enqueueRestore(newRestore)
+			return
+		}
+
+		klog.V(4).Infof("restore %s/%s is already TikvComplete, skipping.", ns, name)
+		return
+	}
+
 	if v1alpha1.IsRestoreVolumeComplete(newRestore) {
-		tc, err := c.getTC(newRestore)
-		if err != nil {
-			klog.Errorf("Fail to get tidbcluster for restore %s/%s, %v", ns, name, err)
-			return
-		}
-
-		if _, ok := tc.Annotations[label.AnnTiKVVolumesReadyKey]; ok {
-			klog.V(4).Infof("restore %s/%s is already VolumeComplete, skipping.", ns, name)
-			return
-		}
-
 		c.enqueueRestore(newRestore)
 		return
 	}

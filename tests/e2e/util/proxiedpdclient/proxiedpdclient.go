@@ -49,7 +49,7 @@ func NewProxiedPDClient(secretLister corelisterv1.SecretLister, fw utilportforwa
 			return nil, nil, err
 		}
 	}
-	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", controller.PDMemberName(tcName)), 2379)
+	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s", controller.PDMemberName(tcName)), uint16(v1alpha1.DefaultPDClientPort))
 	if err != nil {
 		return nil, nil, err
 	}

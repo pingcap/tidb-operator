@@ -1,6 +1,6 @@
 FROM debian:buster-slim
 
-ENV KUBECTL_VERSION=v1.20.2
+ENV KUBECTL_VERSION=v1.22.17
 ENV HELM_VERSION=v3.11.0
 
 # python is required by gcloud
@@ -23,7 +23,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     unzip awscliv2.zip && \
     ./aws/install && \
     rm -r aws awscliv2.zip
-RUN curl -L "https://github.com/jetstack/cert-manager/releases/download/v1.1.0/cert-manager.yaml" -o "/cert-manager.yaml"
+RUN curl -L "https://github.com/jetstack/cert-manager/releases/download/v1.12.2/cert-manager.yaml" -o "/cert-manager.yaml"
 ADD minio /minio
 
 ADD tidb-operator /charts/e2e/tidb-operator

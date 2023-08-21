@@ -19,7 +19,7 @@ import (
 
 	"github.com/openshift/generic-admission-server/pkg/apiserver"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/rest"
@@ -56,13 +56,13 @@ func (w *StrategyAdmissionHook) MutatingResource() (plural schema.GroupVersionRe
 		"pingcapresourcemutation"
 }
 
-func (w *StrategyAdmissionHook) Validate(ar *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
+func (w *StrategyAdmissionHook) Validate(ar *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
 	s, ok := w.registry.Get(ar.Kind)
 	if !ok {
 		// no strategy registered
 		return util.ARSuccess()
 	}
-	if ar.Operation != admissionv1beta1.Create && ar.Operation != admissionv1beta1.Update {
+	if ar.Operation != admissionv1.Create && ar.Operation != admissionv1.Update {
 		return util.ARSuccess()
 	}
 	obj := s.NewObject()
@@ -71,7 +71,7 @@ func (w *StrategyAdmissionHook) Validate(ar *admissionv1beta1.AdmissionRequest) 
 		return util.ARFail(err)
 	}
 	var allErr field.ErrorList
-	if ar.Operation == admissionv1beta1.Create {
+	if ar.Operation == admissionv1.Create {
 		allErr = s.Validate(context.TODO(), obj)
 	} else {
 		old := s.NewObject()
@@ -87,12 +87,12 @@ func (w *StrategyAdmissionHook) Validate(ar *admissionv1beta1.AdmissionRequest) 
 	return util.ARSuccess()
 }
 
-func (w *StrategyAdmissionHook) Admit(ar *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
+func (w *StrategyAdmissionHook) Admit(ar *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
 	s, ok := w.registry.Get(ar.Kind)
 	if !ok {
 		return util.ARSuccess()
 	}
-	if ar.Operation != admissionv1beta1.Create && ar.Operation != admissionv1beta1.Update {
+	if ar.Operation != admissionv1.Create && ar.Operation != admissionv1.Update {
 		return util.ARSuccess()
 	}
 	obj := s.NewObject()
@@ -101,7 +101,7 @@ func (w *StrategyAdmissionHook) Admit(ar *admissionv1beta1.AdmissionRequest) *ad
 		return util.ARFail(err)
 	}
 	original := obj.DeepCopyObject()
-	if ar.Operation == admissionv1beta1.Create {
+	if ar.Operation == admissionv1.Create {
 		s.PrepareForCreate(context.TODO(), obj)
 	} else {
 		old := s.NewObject()

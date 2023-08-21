@@ -70,6 +70,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	}
 
 	// delete the last backup job for release the backup PVC
+
 	if err := bm.deleteLastBackupJob(bs); err != nil {
 		return nil
 	}
@@ -240,7 +241,7 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 		if backupSpec.BR.ClusterNamespace == "" {
 			clusterNamespace = ns
 		}
-		pdAddress = fmt.Sprintf("%s-pd.%s:2379", backupSpec.BR.Cluster, clusterNamespace)
+		pdAddress = fmt.Sprintf("%s-pd.%s:%d", backupSpec.BR.Cluster, clusterNamespace, v1alpha1.DefaultPDClientPort)
 
 		backupPrefix := strings.ReplaceAll(pdAddress, ":", "-") + "-" + timestamp.UTC().Format(v1alpha1.BackupNameTimeFormat)
 		if backupSpec.S3 != nil {
@@ -373,7 +374,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 			return
 		}
 	} else {
-		expiredBackups, err = caculateExpiredBackups(ascBackups, reservedTime)
+		expiredBackups, err = calculateExpiredBackups(ascBackups, reservedTime)
 		if err != nil {
 			klog.Errorf("caculate expired backups without log backup, err: %s", err)
 			return
@@ -404,7 +405,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 	}
 }
 
-// separateSnapshotBackupsAndLogBackup return snapot backups ordry by create time asc and log backup
+// separateSnapshotBackupsAndLogBackup return snapshot backups order by create time asc and log backup
 func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1alpha1.Backup, *v1alpha1.Backup) {
 	var (
 		ascBackupList = make([]*v1alpha1.Backup, 0)
@@ -416,8 +417,30 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 			logBackup = backup
 			continue
 		}
-		// the backup status CommitTs will be empty after created. without this, all newly created backups will be GC'ed
-		if v1alpha1.IsBackupScheduled(backup) || v1alpha1.IsBackupRunning(backup) || v1alpha1.IsBackupPrepared(backup) {
+		// Completed or failed backups will be GC'ed
+		if !(v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupComplete(backup)) {
+			continue
+		}
+		ascBackupList = append(ascBackupList, backup)
+	}
+
+	sort.Slice(ascBackupList, func(i, j int) bool {
+		return ascBackupList[i].CreationTimestamp.Unix() < ascBackupList[j].CreationTimestamp.Unix()
+	})
+	return ascBackupList, logBackup
+}
+
+// separateAllSnapshotBackupsAndLogBackup return all snapshot backups order by create time asc and log backup,
+// this function is for test only
+func separateAllSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1alpha1.Backup, *v1alpha1.Backup) {
+	var (
+		ascBackupList = make([]*v1alpha1.Backup, 0)
+		logBackup     *v1alpha1.Backup
+	)
+
+	for _, backup := range backupsList {
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+			logBackup = backup
 			continue
 		}
 		ascBackupList = append(ascBackupList, backup)
@@ -479,7 +502,7 @@ func calExpiredBackupsAndLogBackup(backupsList []*v1alpha1.Backup, logBackup *v1
 	return expiredBackups, truncateTSO, nil
 }
 
-func caculateExpiredBackups(backupsList []*v1alpha1.Backup, reservedTime time.Duration) ([]*v1alpha1.Backup, error) {
+func calculateExpiredBackups(backupsList []*v1alpha1.Backup, reservedTime time.Duration) ([]*v1alpha1.Backup, error) {
 	expiredTS := config.TSToTSO(time.Now().Add(-1 * reservedTime).Unix())
 	i := 0
 	for ; i < len(backupsList); i++ {

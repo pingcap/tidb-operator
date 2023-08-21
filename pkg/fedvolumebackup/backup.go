@@ -14,6 +14,8 @@
 package fedvolumebackup
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
 )
 
@@ -29,12 +31,21 @@ type BackupManager interface {
 type RestoreManager interface {
 	// Sync	implements the logic for syncing VolumeRestore.
 	Sync(volumeRestore *v1alpha1.VolumeRestore) error
-	// UpdateCondition updates the condition for a VolumeRestore.
-	UpdateCondition(volumeRestore *v1alpha1.VolumeRestore, condition *v1alpha1.VolumeRestoreCondition) error
+	// UpdateStatus updates the status for a VolumeRestore, include condition and status info.
+	UpdateStatus(volumeRestore *v1alpha1.VolumeRestore, newStatus *v1alpha1.VolumeRestoreStatus) error
 }
 
 // BackupScheduleManager implements the logic for manage federation VolumeBackupSchedule.
 type BackupScheduleManager interface {
 	// Sync	implements the logic for syncing VolumeBackupSchedule.
 	Sync(volumeBackup *v1alpha1.VolumeBackupSchedule) error
+}
+
+type BRDataPlaneFailedError struct {
+	Reason  string
+	Message string
+}
+
+func (e *BRDataPlaneFailedError) Error() string {
+	return fmt.Sprintf("reason: %s, message: %s", e.Reason, e.Message)
 }

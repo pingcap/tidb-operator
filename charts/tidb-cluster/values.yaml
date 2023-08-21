@@ -38,7 +38,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.5.0-beta.1
+  image: pingcap/tidb-operator:v1.6.0-alpha.6
   imagePullPolicy: IfNotPresent
   resources:
     limits:

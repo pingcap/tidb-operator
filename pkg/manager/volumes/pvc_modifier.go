@@ -220,7 +220,8 @@ func (p *pvcModifier) isStatefulSetSynced(ctx *componentVolumeContext, sts *apps
 }
 
 func isStorageClassMatched(sc *storagev1.StorageClass, scName string) bool {
-	if sc == nil && scName == "" {
+	if sc == nil {
+		// cannot get sc or sc is unset
 		return true
 	}
 	if sc.Name == scName {
@@ -283,15 +284,21 @@ func (p *pvcModifier) tryToModifyPVC(ctx *componentVolumeContext) error {
 			// try to evict leader if need to modify
 			isEvicted := isLeaderEvictedOrTimeout(ctx.tc, pod)
 			if !isEvicted {
-				if ensureTiKVLeaderEvictionCondition(ctx.tc, metav1.ConditionTrue) {
-					// return to sync tc
-					return fmt.Errorf("try to evict leader for tidbcluster %s/%s", ctx.tc.Namespace, ctx.tc.Name)
-				}
-				if err := p.evictLeader(ctx.tc, pod); err != nil {
-					return err
-				}
+				// do not evict leader when resizing PVC (increasing size)
+				// as if the storage size is not enough, the leader eviction will be blocked (never finished)
+				if !skipEvictLeaderForSizeModify(actual) {
+					if ensureTiKVLeaderEvictionCondition(ctx.tc, metav1.ConditionTrue) {
+						// return to sync tc
+						return fmt.Errorf("try to evict leader for tidbcluster %s/%s", ctx.tc.Namespace, ctx.tc.Name)
+					}
+					if err := p.evictLeader(ctx.tc, pod); err != nil {
+						return err
+					}
 
-				return fmt.Errorf("wait for leader eviction of %s/%s completed", pod.Namespace, pod.Name)
+					return fmt.Errorf("wait for leader eviction of %s/%s completed", pod.Namespace, pod.Name)
+				} else {
+					klog.Infof("skip evicting leader for %s/%s as the storage size is changing", pod.Namespace, pod.Name)
+				}
 			}
 		}
 
@@ -312,6 +319,39 @@ func (p *pvcModifier) tryToModifyPVC(ctx *componentVolumeContext) error {
 	}
 
 	return nil
+}
+
+// skip evict leader if the storage size should be modified or is in modifying phase
+func skipEvictLeaderForSizeModify(actual []ActualVolume) bool {
+	for _, vol := range actual {
+		if vol.PVC == nil || vol.Desired == nil {
+			continue
+		}
+
+		annoStatusSize, ok := vol.PVC.Annotations[annoKeyPVCStatusStorageSize]
+		if ok {
+			// modified by the PVC Modifier before (with status size annotation)
+			if annoStatusSize == vol.Desired.Size.String() {
+				continue // already up to date, no need to modify size
+			}
+			return true // need to modify size
+		}
+
+		// not modified by the PVC modifier before (without status size annotation)
+		quantity := vol.GetStorageSize()
+		statusSize := quantity.String()
+		if statusSize == vol.Desired.Size.String() {
+			// special case: skip evict leader (again) as the PVC is in modfiying phase (and the status size annotation is not set yet)
+			if vol.Phase == VolumePhaseModifying {
+				return true
+			}
+			// already modified, in fact, the status size annotation should already be set
+			continue
+		}
+		// need to modify size
+		return true
+	}
+	return false
 }
 
 func ensureTiKVLeaderEvictionCondition(tc *v1alpha1.TidbCluster, status metav1.ConditionStatus) bool {

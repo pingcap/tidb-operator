@@ -40,19 +40,19 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		model.EnableAdvertiseStatusAddr = true
 	}
 
-	model.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
+	model.PDAddress = fmt.Sprintf("%s://${CLUSTER_NAME}-pd:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
-		model.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
+		model.PDAddress = fmt.Sprintf("%s://${CLUSTER_NAME}-pd:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		model.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
+		model.PDAddress = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	listenHost := "0.0.0.0"
 	if tc.Spec.PreferIPv6 {
 		listenHost = "[::]"
 	}
-	model.Addr = fmt.Sprintf("%s:20160", listenHost)
-	model.StatusAddr = fmt.Sprintf("%s:20180", listenHost)
+	model.Addr = fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiKVServerPort)
+	model.StatusAddr = fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiKVStatusPort)
 
 	return renderTemplateFunc(tikvStartScriptTpl, model)
 }
@@ -63,8 +63,9 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
-		Scheme:  tc.Scheme(),
-		DataDir: filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+		Scheme:         tc.Scheme(),
+		DataDir:        filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+		PDStartTimeout: tc.PDStartTimeout(),
 	}
 	if tc.Spec.PD.StartUpScriptVersion == "v1" {
 		model.CheckDomainScript = checkDNSV1
@@ -83,11 +84,11 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		PluginDirectory: "/plugins",
 		PluginList:      strings.Join(plugins, ","),
 	}
-	model.Path = "${CLUSTER_NAME}-pd:2379"
+	model.Path = fmt.Sprintf("${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
-		model.Path = "${CLUSTER_NAME}-pd:2379" // get pd addr from discovery in startup script
+		model.Path = fmt.Sprintf("${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		model.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379" // use pd of reference cluster
+		model.Path = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	return renderTemplateFunc(tidbStartScriptTpl, model)
@@ -106,7 +107,7 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		pdDomain = controller.PDMemberName(tc.Spec.Cluster.Name) // use pd of reference cluster
 	}
 
-	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, pdDomain)
+	pdAddr := fmt.Sprintf("%s://%s:%d", scheme, pdDomain, v1alpha1.DefaultPDClientPort)
 	return renderTemplateFunc(pumpStartScriptTpl, &PumpStartScriptModel{
 		CommonModel: CommonModel{
 			AcrossK8s:     tc.AcrossK8s(),
@@ -125,9 +126,9 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	// NB: TiCDC control relies the format.
 	// TODO move advertise addr format to package controller.
-	advertiseAddr := fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:8301",
-		controller.FormatClusterDomain(tc.Spec.ClusterDomain))
-	cmdArgs := []string{"/cdc server", "--addr=0.0.0.0:8301", fmt.Sprintf("--advertise-addr=%s", advertiseAddr)}
+	advertiseAddr := fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d",
+		controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiCDCPort)
+	cmdArgs := []string{"/cdc server", fmt.Sprintf("--addr=0.0.0.0:%d", v1alpha1.DefaultTiCDCPort), fmt.Sprintf("--advertise-addr=%s", advertiseAddr)}
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--gc-ttl=%d", tc.TiCDCGCTTL()))
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-file=%s", tc.TiCDCLogFile()))
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-level=%s", tc.TiCDCLogLevel()))
@@ -136,11 +137,11 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.IsTLSClusterEnabled() {
 		scheme = "https"
 	}
-	pdAddr := fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Name))
+	pdAddr := fmt.Sprintf("%s://%s:%d", scheme, controller.PDMemberName(tc.Name), v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
 		pdAddr = "${result}" // get pd addr from discovery in startup script
 	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		pdAddr = fmt.Sprintf("%s://%s:2379", scheme, controller.PDMemberName(tc.Spec.Cluster.Name)) // use pd of reference cluster
+		pdAddr = fmt.Sprintf("%s://%s:%d", scheme, controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	if tc.IsTLSClusterEnabled() {
@@ -161,9 +162,9 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		var pdAddr string
 		pdDomain := controller.PDMemberName(tcName)
 		if tc.IsTLSClusterEnabled() {
-			pdAddr = fmt.Sprintf("https://%s:2379", pdDomain)
+			pdAddr = fmt.Sprintf("https://%s:%d", pdDomain, v1alpha1.DefaultPDClientPort)
 		} else {
-			pdAddr = fmt.Sprintf("http://%s:2379", pdDomain)
+			pdAddr = fmt.Sprintf("http://%s:%d", pdDomain, v1alpha1.DefaultPDClientPort)
 		}
 
 		str := `set -uo pipefail
@@ -196,9 +197,9 @@ func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
 	if tc.AcrossK8s() {
 		var pdAddr string
 		if tc.IsTLSClusterEnabled() {
-			pdAddr = fmt.Sprintf("https://%s-pd:2379", tcName)
+			pdAddr = fmt.Sprintf("https://%s-pd:%d", tcName, v1alpha1.DefaultPDClientPort)
 		} else {
-			pdAddr = fmt.Sprintf("http://%s-pd:2379", tcName)
+			pdAddr = fmt.Sprintf("http://%s-pd:%d", tcName, v1alpha1.DefaultPDClientPort)
 		}
 		str := `pd_url="%s"
 set +e

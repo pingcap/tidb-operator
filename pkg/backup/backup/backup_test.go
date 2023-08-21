@@ -245,7 +245,7 @@ func TestBackupManagerBR(t *testing.T) {
 		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupRetryTheFailed, "failed to fetch tidbcluster")
 
 		// create relate tc and try again should success and job created.
-		helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster)
+		helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster, false, false)
 		err = bm.syncBackupJob(backup)
 		g.Expect(err).Should(BeNil())
 		helper.hasCondition(backup.Namespace, backup.Name, v1alpha1.BackupScheduled, "")
@@ -285,7 +285,7 @@ func TestClean(t *testing.T) {
 		_, err := deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(context.TODO(), backup, metav1.CreateOptions{})
 		g.Expect(err).Should(BeNil())
 		helper.CreateSecret(backup)
-		helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster)
+		helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster, false, false)
 
 		statusUpdater := controller.NewRealBackupConditionUpdater(deps.Clientset, deps.BackupLister, deps.Recorder)
 		bc := NewBackupCleaner(deps, statusUpdater)

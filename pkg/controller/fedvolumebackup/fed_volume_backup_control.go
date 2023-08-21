@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
@@ -76,7 +77,26 @@ func (c *defaultBackupControl) UpdateStatus(volumeBackup *v1alpha1.VolumeBackup,
 }
 
 func (c *defaultBackupControl) updateBackup(volumeBackup *v1alpha1.VolumeBackup) error {
-	return c.backupManager.Sync(volumeBackup)
+	oldStatus := volumeBackup.Status.DeepCopy()
+	ns := volumeBackup.GetNamespace()
+	name := volumeBackup.GetName()
+
+	err := c.backupManager.Sync(volumeBackup)
+	if err != nil {
+		klog.Warningf("VolumeBackup %s/%s sync error: %s", ns, name, err.Error())
+	}
+
+	if !apiequality.Semantic.DeepEqual(oldStatus, &volumeBackup.Status) {
+		klog.Infof("VolumeBackup %/%s update status, old: %+v, new: %+v", ns, name, oldStatus, volumeBackup.Status)
+		if sErr := c.backupManager.UpdateStatus(volumeBackup, &volumeBackup.Status); sErr != nil {
+			klog.Warningf("VolumeBackup %s/%s update status error: %s", ns, name, sErr.Error())
+			if err == nil {
+				err = sErr
+			}
+		}
+	}
+
+	return err
 }
 
 // addProtectionFinalizer will be called when the VolumeBackup CR is created
@@ -111,15 +131,12 @@ func (c *defaultBackupControl) removeProtectionFinalizer(volumeBackup *v1alpha1.
 }
 
 func needToAddFinalizer(volumeBackup *v1alpha1.VolumeBackup) bool {
-	// TODO(federation): add something like non-federation's `IsCleanCandidate` check if needed
 	return volumeBackup.DeletionTimestamp == nil &&
 		!slice.ContainsString(volumeBackup.Finalizers, label.BackupProtectionFinalizer, nil)
 }
 
 func needToRemoveFinalizer(volumeBackup *v1alpha1.VolumeBackup) bool {
-	// TODO(federation): add something like non-federation's
-	// `IsCleanCandidate`, `IsBackupClean`, `NeedNotClean` check if needed
-	return isDeletionCandidate(volumeBackup)
+	return isDeletionCandidate(volumeBackup) && v1alpha1.IsVolumeBackupCleaned(volumeBackup)
 }
 
 func isDeletionCandidate(volumeBackup *v1alpha1.VolumeBackup) bool {

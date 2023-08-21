@@ -24,7 +24,7 @@ OUTPUT=${ROOT}/output
 OUTPUT_BIN=${OUTPUT}/bin
 TERRAFORM_BIN=${OUTPUT_BIN}/terraform
 TERRAFORM_VERSION=${TERRAFORM_VERSION:-0.12.12}
-KUBECTL_VERSION=${KUBECTL_VERSION:-1.20.2}
+KUBECTL_VERSION=${KUBECTL_VERSION:-1.22.17}
 KUBECTL_BIN=$OUTPUT_BIN/kubectl
 HELM_BIN=$OUTPUT_BIN/helm
 DOCS_BIN=$OUTPUT_BIN/gen-crd-api-reference-docs
@@ -32,7 +32,7 @@ CFSSL_BIN=$OUTPUT_BIN/cfssl
 CFSSLJSON_BIN=$OUTPUT_BIN/cfssljson
 JQ_BIN=$OUTPUT_BIN/jq
 CFSSL_VERSION=${CFSSL_VERSION:-1.2}
-K8S_VERSION=${K8S_VERSION:-0.20.15}
+K8S_VERSION=${K8S_VERSION:-0.22.17}
 JQ_VERSION=${JQ_VERSION:-1.6}
 HELM_VERSION=${HELM_VERSION:-3.11.0}
 KIND_VERSION=${KIND_VERSION:-0.11.1}
@@ -266,7 +266,7 @@ function hack::ensure_aws_k8s_tester() {
 
 function hack::ensure_gen_crd_api_references_docs() {
     echo "Installing gen_crd_api_references_docs..."
-    GOBIN=$OUTPUT_BIN go install github.com/xhebox/gen-crd-api-reference-docs@e46d84594a6d158ec7123ff05acd57acf62e140f
+    GOBIN=$OUTPUT_BIN go install github.com/xhebox/gen-crd-api-reference-docs@a8a3b01e858f0de8bc8f9419d210da4334929e2d
 }
 
 function hack::ensure_misspell() {
