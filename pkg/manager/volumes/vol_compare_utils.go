@@ -158,7 +158,7 @@ func (u *volCompareUtils) IsStatefulSetSynced(ctx *componentVolumeContext, sts *
 		size := getStorageSize(volTemplate.Spec.Resources.Requests)
 		desired := getDesiredVolumeByName(ctx.desiredVolumes, volName)
 		if desired == nil {
-			return false, fmt.Errorf("volume %s in sts for cluster %s does not exist in desired volumes", volName, ctx.ComponentID())
+			return false, fmt.Errorf("volume %s unsupported to remove from %s", volName, ctx.ComponentID())
 		}
 		if size.Cmp(desired.Size) != 0 {
 			return false, nil
@@ -169,7 +169,7 @@ func (u *volCompareUtils) IsStatefulSetSynced(ctx *componentVolumeContext, sts *
 		}
 	}
 	if len(sts.Spec.VolumeClaimTemplates) != len(ctx.desiredVolumes) {
-		return false, fmt.Errorf("Number of volumes mismatch desired %d vs sts %d for cluster %s", len(ctx.desiredVolumes), len(sts.Spec.VolumeClaimTemplates), ctx.ComponentID())
+		return false, fmt.Errorf("unsupported change in number of volumes %d -> %d for cluster %s", len(sts.Spec.VolumeClaimTemplates), len(ctx.desiredVolumes), ctx.ComponentID())
 	}
 
 	return true, nil

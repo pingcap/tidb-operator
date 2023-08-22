@@ -105,7 +105,7 @@ func (p *pvcModifier) tryToRecreateSTS(ctx *componentVolumeContext) error {
 	// Modifier does not support new volumes, trigger error if so and return.
 	isSynced, err := p.utils.IsStatefulSetSynced(ctx, ctx.sts)
 	if err != nil {
-		return err
+		return fmt.Errorf("change in number of volumes is not supported without VolumeReplacing feature. Reconciliation is blocked due to : %s", err.Error())
 	}
 	if isSynced {
 		return nil
