@@ -210,7 +210,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			name: "patch pod container",
 			prepare: func(cluster *v1alpha1.TidbCluster) {
 				cluster.Spec.PD.AdditionalContainers = []v1.Container{
-					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.Handler{
+					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.LifecycleHandler{
 						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
 					}}},
 				}
@@ -468,7 +468,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
 				tc.Spec.PD.AdditionalContainers = []v1.Container{
-					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.Handler{
+					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.LifecycleHandler{
 						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
 					}}},
 				}
@@ -490,7 +490,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(set.Spec.Template.Spec.Containers[0].Lifecycle).To(Equal(
-					&corev1.Lifecycle{PreStop: &corev1.Handler{
+					&corev1.Lifecycle{PreStop: &corev1.LifecycleHandler{
 						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
 					}}))
 			},
@@ -1973,7 +1973,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
 				g.Expect(sts.Spec.Template.Spec.Containers[0].ReadinessProbe).To(Equal(&corev1.Probe{
-					Handler:             buildPDReadinessProbHandler(nil),
+					ProbeHandler:        buildPDReadinessProbHandler(nil),
 					InitialDelaySeconds: int32(10),
 				}))
 			},

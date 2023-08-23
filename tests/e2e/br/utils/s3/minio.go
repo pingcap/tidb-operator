@@ -247,7 +247,7 @@ func getMinioPod(ns string) *corev1.Pod {
 						},
 					},
 					ReadinessProbe: &corev1.Probe{
-						Handler: corev1.Handler{
+						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
 								Path: "/minio/health/ready",
 								Port: intstr.FromInt(9000),
@@ -255,7 +255,7 @@ func getMinioPod(ns string) *corev1.Pod {
 						},
 					},
 					LivenessProbe: &corev1.Probe{
-						Handler: corev1.Handler{
+						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
 								Path: "/minio/health/live",
 								Port: intstr.FromInt(9000),

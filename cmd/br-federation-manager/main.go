@@ -48,6 +48,7 @@ import (
 
 func main() {
 	var cfg *rest.Config
+	klog.InitFlags(nil)
 	cliCfg := controller.DefaultBrFedCLIConfig()
 	cliCfg.AddFlag(flag.CommandLine)
 	flag.Parse()
