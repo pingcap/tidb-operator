@@ -204,18 +204,19 @@ The restore process was originally divided into two phases, where the first phas
 **First phase:**
 
 2. The restore controller of the control plane creates `Restore` CRs in each Kubernetes cluster with `federalVolumeRestorePhase: restore-volume`.
-3. The restore controller of the data plane restores the volumes from EBS snapshots, correctly assigns each volume to each TiKV, and starts TiKV.
-4. When the restore controller of the data plane discovers that all TiKV nodes in the current Kubernetes cluster have been successfully started, the restore CR1 enters the `TikvComplete` state.
+3. The restore controller of the data plane restores the volumes from EBS snapshots, correctly assigns each volume to each TiKV.
+4. The restore controller of the data plane starts a number of warmup pods to warm up all the TiKV volumes. After that, TiKV can get normal performance.
+5. The restore controller of the data plane starts all the TiKV. When it discovers that all TiKV nodes in the current Kubernetes cluster have been successfully started, the restore CR1 enters the `TikvComplete` state.
 
 **Second phase:**
 
-5. The restore controller of the control plane randomly selects a Kubernetes cluster to set `federalVolumeRestorePhase` of `Restore` CR to `restore-data` after all `Restore` CRs have entered `TikvComplete` state (if any restore CR fails, the restore fails).
-6. The restore controller of the data plane creates a restore pod, and performs the data restore stage of EBS restore. When BR completes execution, the `Restore` CR enters `DataComplete` state.
+6. The restore controller of the control plane randomly selects a Kubernetes cluster to set `federalVolumeRestorePhase` of `Restore` CR to `restore-data` after all `Restore` CRs have entered `TikvComplete` state (if any restore CR fails, the restore fails).
+7. The restore controller of the data plane creates a restore pod, and performs the data restore stage of EBS restore. When BR completes execution, the `Restore` CR enters `DataComplete` state.
 
 **Third phase:**
 
-7. The restore controller of the control plane updates the `federalVolumeRestorePhase` of all restore CRs to `restore-finish` after the `Restore` CR in step5 enters the `DataComplete` state.
-8. The restore controller of the data plane restarts the TiKV pods in the Kubernetes cluster where it is located, sets TC `recoveryMode` to `false`. Then the `Restore` CR enters `Complete` state.
-9. The restore is completed when the restore controller of the control plane discovers that all `Restore` CRs have entered `Complete` state.
+8. The restore controller of the control plane updates the `federalVolumeRestorePhase` of all restore CRs to `restore-finish` after the `Restore` CR in step5 enters the `DataComplete` state.
+9. The restore controller of the data plane restarts the TiKV pods in the Kubernetes cluster where it is located, sets TC `recoveryMode` to `false`. Then the `Restore` CR enters `Complete` state.
+10. The restore is completed when the restore controller of the control plane discovers that all `Restore` CRs have entered `Complete` state.
 
 ![new-restore-process-in-control-plane.png](new-restore-process-in-control-plane.png)
