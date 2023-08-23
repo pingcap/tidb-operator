@@ -996,7 +996,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
 		EnvFrom:      baseTiDBSpec.EnvFrom(),
 		ReadinessProbe: &corev1.Probe{
-			Handler:             buildTiDBReadinessProbHandler(tc),
+			ProbeHandler:        buildTiDBReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),
 		},
 	}
@@ -1266,12 +1266,12 @@ func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.State
 	return false, nil
 }
 
-func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
+func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.ProbeHandler {
 	if tc.Spec.TiDB.ReadinessProbe != nil {
 		if tp := tc.Spec.TiDB.ReadinessProbe.Type; tp != nil {
 			if *tp == v1alpha1.CommandProbeType {
 				command := buildTiDBProbeCommand(tc)
-				return corev1.Handler{
+				return corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
 						Command: command,
 					},
@@ -1281,7 +1281,7 @@ func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 	}
 
 	// fall to default case v1alpha1.TCPProbeType
-	return corev1.Handler{
+	return corev1.ProbeHandler{
 		TCPSocket: &corev1.TCPSocketAction{
 			Port: intstr.FromInt(int(v1alpha1.DefaultTiDBServerPort)),
 		},

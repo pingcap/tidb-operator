@@ -114,7 +114,7 @@ func (c *FakeTidbNGMonitorings) UpdateStatus(ctx context.Context, tidbNGMonitori
 // Delete takes name of the tidbNGMonitoring and deletes it. Returns an error if one occurs.
 func (c *FakeTidbNGMonitorings) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(tidbngmonitoringsResource, c.ns, name), &v1alpha1.TidbNGMonitoring{})
+		Invokes(testing.NewDeleteActionWithOptions(tidbngmonitoringsResource, c.ns, name, opts), &v1alpha1.TidbNGMonitoring{})
 
 	return err
 }

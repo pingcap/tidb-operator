@@ -633,7 +633,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	if tc.Spec.TiKV.ReadinessProbe != nil {
 		tikvContainer.ReadinessProbe = &corev1.Probe{
-			Handler:             buildTiKVReadinessProbHandler(tc),
+			ProbeHandler:        buildTiKVReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),
 		}
 	}
@@ -1063,8 +1063,8 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 }
 
 // TODO: Support check tikv status http request in future.
-func buildTiKVReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
-	return corev1.Handler{
+func buildTiKVReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.ProbeHandler {
+	return corev1.ProbeHandler{
 		TCPSocket: &corev1.TCPSocketAction{
 			Port: intstr.FromInt(int(v1alpha1.DefaultTiKVServerPort)),
 		},

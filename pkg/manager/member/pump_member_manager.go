@@ -465,7 +465,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			EnvFrom:      spec.EnvFrom(),
 			VolumeMounts: volumeMounts,
 			ReadinessProbe: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					TCPSocket: &corev1.TCPSocketAction{
 						Port: intstr.FromInt(int(v1alpha1.DefaultPumpPort)),
 					},

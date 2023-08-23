@@ -2480,13 +2480,13 @@ func TestTiDBShouldRecover(t *testing.T) {
 func TestBuildTiDBProbeHandler(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	defaultHandler := corev1.Handler{
+	defaultHandler := corev1.ProbeHandler{
 		TCPSocket: &corev1.TCPSocketAction{
 			Port: intstr.FromInt(int(v1alpha1.DefaultTiDBServerPort)),
 		},
 	}
 
-	execHandler := corev1.Handler{
+	execHandler := corev1.ProbeHandler{
 		Exec: &corev1.ExecAction{
 			Command: []string{
 				"curl",
@@ -2497,7 +2497,7 @@ func TestBuildTiDBProbeHandler(t *testing.T) {
 		},
 	}
 
-	sslExecHandler := corev1.Handler{
+	sslExecHandler := corev1.ProbeHandler{
 		Exec: &corev1.ExecAction{
 			Command: []string{
 				"curl",
