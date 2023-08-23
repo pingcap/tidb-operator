@@ -1247,7 +1247,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 				},
 				Resources: corev1.ResourceRequirements{},
 				ReadinessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
 							Path: "/-/ready",
 							Port: intstr.FromInt(9090),
@@ -1413,7 +1413,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 					},
 				},
 				ReadinessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
 							Path: "/api/health",
 							Port: intstr.FromInt(3000),
@@ -1424,7 +1424,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 					SuccessThreshold: 1,
 				},
 				LivenessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
 							Path: "/api/health",
 							Port: intstr.FromInt(3000),

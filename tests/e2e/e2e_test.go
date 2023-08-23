@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/config"
 	"k8s.io/kubernetes/test/e2e/framework/log"
@@ -44,6 +45,7 @@ import (
 
 // handleFlags sets up all flags and parses the command line.
 func handleFlags() {
+	klog.InitFlags(nil)
 	config.CopyFlags(config.Flags, flag.CommandLine)
 	framework.RegisterCommonFlags(flag.CommandLine)
 	framework.RegisterClusterFlags(flag.CommandLine)

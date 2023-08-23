@@ -102,7 +102,7 @@ func (c *FakeTidbClusters) Update(ctx context.Context, tidbCluster *v1alpha1.Tid
 // Delete takes name of the tidbCluster and deletes it. Returns an error if one occurs.
 func (c *FakeTidbClusters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(tidbclustersResource, c.ns, name), &v1alpha1.TidbCluster{})
+		Invokes(testing.NewDeleteActionWithOptions(tidbclustersResource, c.ns, name, opts), &v1alpha1.TidbCluster{})
 
 	return err
 }

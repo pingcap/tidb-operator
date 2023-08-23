@@ -205,6 +205,9 @@ spec:
                 type: integer
               phase:
                 type: string
+              ready:
+                format: int32
+                type: integer
               startTime:
                 format: date-time
                 type: string

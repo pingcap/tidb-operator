@@ -46,6 +46,7 @@ var (
 )
 
 func init() {
+	klog.InitFlags(nil)
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.IntVar(&port, "port", 10261, "The port that the tidb discovery's http service runs on (default 10261)")

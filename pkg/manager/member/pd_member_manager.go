@@ -741,7 +741,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 
 	if tc.Spec.PD.ReadinessProbe != nil {
 		pdContainer.ReadinessProbe = &corev1.Probe{
-			Handler:             buildPDReadinessProbHandler(tc),
+			ProbeHandler:        buildPDReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),
 		}
 	}
@@ -966,8 +966,8 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 }
 
 // TODO: Support check status http request in future.
-func buildPDReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
-	return corev1.Handler{
+func buildPDReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.ProbeHandler {
+	return corev1.ProbeHandler{
 		TCPSocket: &corev1.TCPSocketAction{
 			Port: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
 		},
