@@ -202,7 +202,7 @@ func calculateSnapshotSize(volumeId, snapshotId string) (uint64, uint64, error) 
 
 	start := time.Now()
 
-	klog.Infof("start to calculate snapshot size for %s, base on snapshot %s, volume id %s",
+	klog.Infof("start to calculate snapshot size for %s, volume id %s",
 		snapshotId, volumeId)
 
 	ebsSession, err := util.NewEBSSession(util.CloudAPIConcurrency)
