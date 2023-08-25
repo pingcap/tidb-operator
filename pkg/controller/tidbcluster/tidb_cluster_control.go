@@ -185,16 +185,6 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
-	// syncing the labels from Pod to PVC and PV, these labels include:
-	//   - label.StoreIDLabelKey
-	//   - label.MemberIDLabelKey
-	//   - label.NamespaceLabelKey
-	// Also updates the TiKV pod annotation for label.AnnTiKVNoActiveStoreSince if store is missing.
-	if err := c.metaManager.Sync(tc); err != nil {
-		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "meta").Inc()
-		return err
-	}
-
 	// works that should be done to make the pd cluster current state match the desired state:
 	//   - create or update the pd service
 	//   - create or update the pd headless service
@@ -208,6 +198,17 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - failover the pd cluster
 	if err := c.pdMemberManager.Sync(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pd").Inc()
+		return err
+	}
+
+	// syncing the labels from Pod to PVC and PV, these labels include:
+	//   - label.StoreIDLabelKey
+	//   - label.MemberIDLabelKey
+	//   - label.NamespaceLabelKey
+	// Also updates the TiKV pod annotation for label.AnnTiKVNoActiveStoreSince if store is missing.
+	// (So run before tikv member manager which can wait on this)
+	if err := c.metaManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "meta").Inc()
 		return err
 	}
 
