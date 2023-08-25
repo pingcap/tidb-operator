@@ -114,7 +114,7 @@ func (c *FakeDMClusters) UpdateStatus(ctx context.Context, dMCluster *v1alpha1.D
 // Delete takes name of the dMCluster and deletes it. Returns an error if one occurs.
 func (c *FakeDMClusters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(dmclustersResource, c.ns, name), &v1alpha1.DMCluster{})
+		Invokes(testing.NewDeleteActionWithOptions(dmclustersResource, c.ns, name, opts), &v1alpha1.DMCluster{})
 
 	return err
 }
