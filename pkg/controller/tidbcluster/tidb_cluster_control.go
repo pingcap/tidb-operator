@@ -185,6 +185,16 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
+	// syncing the labels from Pod to PVC and PV, these labels include:
+	//   - label.StoreIDLabelKey
+	//   - label.MemberIDLabelKey
+	//   - label.NamespaceLabelKey
+	// Note this sync is called twice, once here and once after all the member syncs. The call here won't block on
+	// error to avoid potential deadlock with dependency on member manager. However, the next call will return if error.
+	// This also updates the TiKV pod annotation for label.AnnTiKVNoActiveStoreSince if store is missing. So we
+	// sometimes depend on this to be run before tikv member manager which will wait on this.
+	c.metaManager.Sync(tc) // Silently ignore error.
+
 	// works that should be done to make the pd cluster current state match the desired state:
 	//   - create or update the pd service
 	//   - create or update the pd headless service
@@ -198,17 +208,6 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - failover the pd cluster
 	if err := c.pdMemberManager.Sync(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pd").Inc()
-		return err
-	}
-
-	// syncing the labels from Pod to PVC and PV, these labels include:
-	//   - label.StoreIDLabelKey
-	//   - label.MemberIDLabelKey
-	//   - label.NamespaceLabelKey
-	// Also updates the TiKV pod annotation for label.AnnTiKVNoActiveStoreSince if store is missing.
-	// (So run before tikv member manager which can wait on this)
-	if err := c.metaManager.Sync(tc); err != nil {
-		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "meta").Inc()
 		return err
 	}
 
@@ -279,6 +278,16 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - sync ticdc cluster status from pd to TidbCluster object
 	if err := c.ticdcMemberManager.Sync(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "ticdc").Inc()
+		return err
+	}
+
+	// syncing the labels from Pod to PVC and PV, these labels include:
+	//   - label.StoreIDLabelKey
+	//   - label.MemberIDLabelKey
+	//   - label.NamespaceLabelKey
+	// Note: This is second run, where errors should block, see also previous run above.
+	if err := c.metaManager.Sync(tc); err != nil {
+		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "meta").Inc()
 		return err
 	}
 
