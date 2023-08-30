@@ -147,6 +147,10 @@ const (
 	// NOTE: this annotation should only be used for existing TiFlash v7.1.0+ clusters with ports config items.
 	AnnoTiFlash710KeepPortsKey = "tidb.pingcap.com/tiflash-710-keep-ports"
 
+	// AnnTiKVNoActiveStoreSince is the annotation key to indicate the time since a pod does not have a valid store
+	// Listed from store status, but has a store id in label. This is an alternate way to detect tombstone stores.
+	AnnTiKVNoActiveStoreSince = "tidb.pingcap.com/tikv-no-active-store-since"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value

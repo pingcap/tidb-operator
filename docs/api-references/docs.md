@@ -11775,6 +11775,17 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <p>Represents the latest available observations of a component&rsquo;s state.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>volReplaceInProgress</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicates that a Volume replace using VolumeReplacing feature is in progress.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstorelabel">PDStoreLabel</h3>
@@ -17251,6 +17262,17 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <p>Represents the latest available observations of a component&rsquo;s state.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>volReplaceInProgress</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicates that a Volume replace using VolumeReplacing feature is in progress.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbtlsclient">TiDBTLSClient</h3>
@@ -21973,6 +21995,17 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <td>
 <em>(Optional)</em>
 <p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volReplaceInProgress</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicates that a Volume replace using VolumeReplacing feature is in progress.</p>
 </td>
 </tr>
 </tbody>
