@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -103,38 +102,9 @@ func templateEqual(new *apps.StatefulSet, old *apps.StatefulSet) bool {
 			klog.Errorf("unmarshal PodTemplate: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
 			return false
 		}
-
-		hackEphemeralVolumeMode(&oldStsSpec, new)
 		return apiequality.Semantic.DeepEqual(oldStsSpec.Template.Spec, new.Spec.Template.Spec)
 	}
 	return false
-}
-
-// hackEphemeralVolumeMode appends exstings ephemeral volume mode to new spec, so that equal check can ignore the volume mode.
-// before https://github.com/pingcap/advanced-statefulset/pull/96, some asts may have volume mode in ephemeral volume,
-// but after that, no volume mode in ephemeral volume will be set by defaults,
-// so we need to append the volume mode to new spec if it exists in old spec.
-func hackEphemeralVolumeMode(oldStsSpec *apps.StatefulSetSpec, newSts *apps.StatefulSet) {
-	if !features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		// only need this hack for AdvancedStatefulSet
-		return
-	}
-
-	volumeModels := make(map[string]corev1.PersistentVolumeMode)
-	for _, volume := range oldStsSpec.Template.Spec.Volumes {
-		if volume.Ephemeral != nil && volume.Ephemeral.VolumeClaimTemplate != nil &&
-			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode != nil {
-			volumeModels[volume.Name] = *volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode
-		}
-	}
-
-	for _, volume := range newSts.Spec.Template.Spec.Volumes {
-		if volumeMode, ok := volumeModels[volume.Name]; ok && volume.Ephemeral != nil && volume.Ephemeral.VolumeClaimTemplate != nil &&
-			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode == nil {
-			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode = &volumeMode
-			klog.Infof("hack volume mode %s for volume %s in sts %s/%s", volumeMode, volume.Name, newSts.Namespace, newSts.Name)
-		}
-	}
 }
 
 func MemberPodName(controllerName, controllerKind string, ordinal int32, memberType v1alpha1.MemberType) (string, error) {
