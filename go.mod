@@ -32,7 +32,7 @@ require (
 	github.com/onsi/gomega v1.10.2
 	github.com/openshift/generic-admission-server v1.14.1-0.20210422140326-da96454c926d
 	github.com/pingcap/TiProxy/lib v0.0.0-20230201020701-df06ec482c69
-	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20230724024631-026a4f2a911d
+	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20230830071059-cfaedeea6cb3
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/kvproto v0.0.0-20200927054727-1290113160f0
 	github.com/pingcap/tidb-operator/pkg/apis v1.6.0-alpha.6
