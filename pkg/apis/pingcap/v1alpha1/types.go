@@ -1301,6 +1301,8 @@ type PDStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
+	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
 // PDMember is PD member
@@ -1357,6 +1359,8 @@ type TiDBStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
+	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -1394,6 +1398,8 @@ const (
 	TiKVEvictLeaderExpirationTimeAnnKey = "tidb.pingcap.com/tikv-evict-leader-expiration-time"
 	// PDLeaderTransferExpirationTimeAnnKey is the annotation key to expire transfer leader annotation. Type: time.RFC3339.
 	PDLeaderTransferExpirationTimeAnnKey = "tidb.pingcap.com/pd-evict-leader-expiration-time"
+	// ReplaceVolumeAnnKey is the annotation key to replace disks used by pod.
+	ReplaceVolumeAnnKey = "tidb.pingcap.com/replace-volume"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -1421,6 +1427,11 @@ const (
 const (
 	TiDBPodDeletionValueNone = "none"
 	TiDBPodDeletionDeletePod = "delete-pod"
+)
+
+// Only supported value for ReplaceVolume Annotation.
+const (
+	ReplaceVolumeValueTrue = "true"
 )
 
 type EvictLeaderStatus struct {
@@ -1456,6 +1467,8 @@ type TiKVStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
+	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status

@@ -14,6 +14,7 @@
 package tidbcluster
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/features"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -52,6 +53,7 @@ func NewDefaultTidbClusterControl(
 	pvcCleaner member.PVCCleanerInterface,
 	// pvcResizer member.PVCResizerInterface,
 	pvcModifier volumes.PVCModifierInterface,
+	pvcReplacer volumes.PVCReplacerInterface,
 	pumpMemberManager manager.Manager,
 	tiflashMemberManager manager.Manager,
 	ticdcMemberManager manager.Manager,
@@ -70,6 +72,7 @@ func NewDefaultTidbClusterControl(
 		orphanPodsCleaner:        orphanPodsCleaner,
 		pvcCleaner:               pvcCleaner,
 		pvcModifier:              pvcModifier,
+		pvcReplacer:              pvcReplacer,
 		pumpMemberManager:        pumpMemberManager,
 		tiflashMemberManager:     tiflashMemberManager,
 		ticdcMemberManager:       ticdcMemberManager,
@@ -91,6 +94,7 @@ type defaultTidbClusterControl struct {
 	orphanPodsCleaner        member.OrphanPodsCleaner
 	pvcCleaner               member.PVCCleanerInterface
 	pvcModifier              volumes.PVCModifierInterface
+	pvcReplacer              volumes.PVCReplacerInterface
 	pumpMemberManager        manager.Manager
 	tiflashMemberManager     manager.Manager
 	ticdcMemberManager       manager.Manager
@@ -173,6 +177,23 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "discovery").Inc()
 		return err
 	}
+
+	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) {
+		if err := c.pvcReplacer.UpdateStatus(tc); err != nil {
+			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_replacer_updatestatus").Inc()
+			return err
+		}
+	}
+
+	// syncing the labels from Pod to PVC and PV, these labels include:
+	//   - label.StoreIDLabelKey
+	//   - label.MemberIDLabelKey
+	//   - label.NamespaceLabelKey
+	// Note this sync is called twice, once here and once after all the member syncs. The call here won't block on
+	// error to avoid potential deadlock with dependency on member manager. However, the next call will return if error.
+	// This also updates the TiKV pod annotation for label.AnnTiKVNoActiveStoreSince if store is missing. So we
+	// sometimes depend on this to be run before tikv member manager which will wait on this.
+	c.metaManager.Sync(tc) // Silently ignore error.
 
 	// works that should be done to make the pd cluster current state match the desired state:
 	//   - create or update the pd service
@@ -264,6 +285,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - label.StoreIDLabelKey
 	//   - label.MemberIDLabelKey
 	//   - label.NamespaceLabelKey
+	// Note: This is second run, where errors should block, see also previous run above.
 	if err := c.metaManager.Sync(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "meta").Inc()
 		return err
@@ -278,6 +300,14 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	if klog.V(10).Enabled() {
 		for pvcName, reason := range pvcSkipReasons {
 			klog.Infof("pvc %s of cluster %s/%s is skipped, reason %q", pvcName, tc.Namespace, tc.Name, reason)
+		}
+	}
+
+	// Replace volumes if necessary. Note: if enabled, takes precedence over pvcModifier.
+	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) {
+		if err := c.pvcReplacer.Sync(tc); err != nil {
+			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_replacer_sync").Inc()
+			return err
 		}
 	}
 
