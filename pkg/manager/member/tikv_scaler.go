@@ -191,6 +191,9 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State
+			if pod.Labels[label.StoreIDLabelKey] == "" {
+				return deletedUpStore, fmt.Errorf("StoreID not yet updated on pod label")
+			}
 			id, err := strconv.ParseUint(store.ID, 10, 64)
 			if err != nil {
 				return deletedUpStore, err
@@ -251,6 +254,9 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 	//    In this situation return error to wait for another round for safety.
 	// 2. TiKV pod is not ready, such as in pending state.
 	//    In this situation we should delete this TiKV pod immediately to avoid blocking the subsequent operations.
+	// 3. TiKV pod has a valid store in label, but no active stores from PD (via status).
+	//    In this situation we assume that store has been Tombstone'd but pd has gc'ed it, so not available in
+	//    TombstoneStores. We delete the pod in this case.
 	if !podutil.IsPodReady(pod) {
 		if tc.TiKVBootStrapped() {
 			safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
@@ -278,6 +284,27 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 		}
 		return deletedUpStore, nil
 	}
+
+	noActiveStoreSinceAnnValue, exists := pod.Annotations[label.AnnTiKVNoActiveStoreSince]
+	if exists {
+		noActiveStoreSinceTime, err := time.Parse(time.RFC3339, noActiveStoreSinceAnnValue)
+		if err == nil {
+			// Wait for 5 resync periods to ensure that the store is really not showing up in status.
+			if metav1.Now().Time.After(noActiveStoreSinceTime.Add(5 * s.deps.CLIConfig.ResyncDuration)) {
+				pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
+				if err != nil {
+					return deletedUpStore, fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
+				}
+				for _, pvc := range pvcs {
+					if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
+						return deletedUpStore, err
+					}
+				}
+				return deletedUpStore, nil
+			}
+		}
+	}
+
 	return deletedUpStore, fmt.Errorf("TiKV %s/%s not found in cluster", ns, podName)
 }
 

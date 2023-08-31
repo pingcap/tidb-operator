@@ -548,6 +548,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		errExpectFn   func(*GomegaWithT, error)
 		changed       bool
 		getStoresFn   func(action *pdapi.Action) (interface{}, error)
+		NoActiveAnn   bool
 	}
 
 	resyncDuration := time.Duration(0)
@@ -571,7 +572,11 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				Name:              TikvPodName(tc.GetName(), 4),
 				Namespace:         corev1.NamespaceDefault,
 				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+				Annotations:       map[string]string{},
 			},
+		}
+		if test.NoActiveAnn {
+			pod.Annotations[label.AnnTiKVNoActiveStoreSince] = time.Now().Add(-1 * time.Hour).Format(time.RFC3339)
 		}
 
 		readyPodFunc(pod)
@@ -935,6 +940,33 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 					Stores: []*pdapi.StoreInfo{store, store, store, tiflashstore},
 				}, nil
 			},
+		},
+		{
+			name:          "store info missing scale not allowed",
+			tikvUpgrading: false,
+			storeFun:      notReadyStoreFun,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			isPodReady:    true,
+			hasSynced:     true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNotNil,
+			changed:       false,
+		},
+		{
+			name:          "store info missing no active annotation scale allowed",
+			tikvUpgrading: false,
+			storeFun:      notReadyStoreFun,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			isPodReady:    true,
+			hasSynced:     true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNil,
+			changed:       true,
+			NoActiveAnn:   true,
 		},
 	}
 

@@ -16,6 +16,7 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -53,9 +54,11 @@ type PodController struct {
 	podStats   map[string]stat
 
 	// only set in test
-	testPDClient                 pdapi.PDClient
-	recheckLeaderCountDuration   time.Duration
-	recheckClusterStableDuration time.Duration
+	testPDClient                  pdapi.PDClient
+	recheckLeaderCountDuration    time.Duration
+	recheckClusterStableDuration  time.Duration
+	recheckStoreTombstoneDuration time.Duration
+	deletePVCsAndPodFn            func(deps *controller.Dependencies, ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error)
 }
 
 // NewPodController create a PodController.
@@ -66,9 +69,11 @@ func NewPodController(deps *controller.Dependencies) *PodController {
 			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
 			"tidbcluster pods",
 		),
-		podStats:                     make(map[string]stat),
-		recheckLeaderCountDuration:   time.Second * 15,
-		recheckClusterStableDuration: time.Minute * 1,
+		podStats:                      make(map[string]stat),
+		recheckLeaderCountDuration:    time.Second * 15,
+		recheckClusterStableDuration:  time.Minute * 1,
+		recheckStoreTombstoneDuration: time.Second * 15,
+		deletePVCsAndPodFn:            deletePVCsAndPod,
 	}
 
 	podsInformer := deps.KubeInformerFactory.Core().V1().Pods()
@@ -235,6 +240,14 @@ func (c *PodController) getPDClient(tc *v1alpha1.TidbCluster) pdapi.PDClient {
 }
 
 func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	result, err := c.syncPDPodForLeaderTransfer(ctx, pod, tc)
+	if err != nil || result.Requeue || result.RequeueAfter > 0 {
+		return result, err
+	}
+	return c.syncPDPodForReplaceVolume(ctx, pod, tc)
+}
+
+func (c *PodController) syncPDPodForLeaderTransfer(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
 	value, ok := needPDLeaderTransfer(pod)
 	if !ok {
 		// No need to transfer leader
@@ -286,7 +299,78 @@ func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1al
 	return reconcile.Result{}, nil
 }
 
+func (c *PodController) syncPDPodForReplaceVolume(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value, exist := pod.Annotations[v1alpha1.ReplaceVolumeAnnKey]
+	if !exist {
+		return reconcile.Result{}, nil
+	}
+	if value != v1alpha1.ReplaceVolumeValueTrue {
+		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceVolumeAnnKey, pod.Namespace, pod.Name)
+		return reconcile.Result{}, nil
+	}
+	memberIDStr, exist := pod.Labels[label.MemberIDLabelKey]
+	if !exist || memberIDStr == "" {
+		return reconcile.Result{}, fmt.Errorf("failed to get pd member id from label for pod %s/%s", pod.Namespace, pod.Name)
+	}
+	memberID, err := strconv.ParseUint(memberIDStr, 10, 64)
+	if err != nil {
+		return reconcile.Result{}, fmt.Errorf("Could not parse memberID (%s) from label for pod %s/%s", memberIDStr, pod.Namespace, pod.Name)
+	}
+	pdClient := c.getPDClient(tc)
+	leader, err := pdClient.GetPDLeader()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	membersInfo, err := pdClient.GetMembers()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if leader.MemberId == memberID {
+		targetMemberName := ""
+		for _, member := range membersInfo.Members {
+			if member.MemberId != memberID {
+				targetMemberName = member.Name
+				break
+			}
+		}
+		if targetMemberName == "" {
+			return reconcile.Result{}, fmt.Errorf("could not find an alternate pd member to transfer leadership to")
+		}
+		klog.Infof("Transferring PD Leader from %s to %s", pod.Name, targetMemberName)
+		pdClient.TransferPDLeader(targetMemberName)
+		// Wait for leader transfer.
+		return reconcile.Result{Requeue: true}, nil
+	}
+	// Check if memberID is active before deleting
+	memberFound := false
+	for _, member := range membersInfo.Members {
+		if member.MemberId == memberID {
+			memberFound = true
+		}
+	}
+	if memberFound {
+		if !tc.PDAllMembersReady() {
+			return reconcile.Result{Requeue: true}, fmt.Errorf("not all PDs ready before delete member")
+		}
+		klog.Infof("Deleting PD Member ID: %d", memberID)
+		err = pdClient.DeleteMemberByID(memberID)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	// Delete PVCs & Pod
+	return c.deletePVCsAndPodFn(c.deps, ctx, pod, tc)
+}
+
 func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	result, err := c.syncTiKVPodForEviction(ctx, pod, tc)
+	if err != nil || result.Requeue || result.RequeueAfter > 0 {
+		return result, err
+	}
+	return c.syncTiKVPodForReplaceVolume(ctx, pod, tc)
+}
+
+func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
 	key, value, ok := needEvictLeader(pod)
 
 	if ok {
@@ -429,8 +513,69 @@ func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1
 
 	return reconcile.Result{}, nil
 }
+func (c *PodController) syncTiKVPodForReplaceVolume(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value, exist := pod.Annotations[v1alpha1.ReplaceVolumeAnnKey]
+	if !exist {
+		return reconcile.Result{}, nil
+	}
+	if value != v1alpha1.ReplaceVolumeValueTrue {
+		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceVolumeAnnKey, pod.Namespace, pod.Name)
+		return reconcile.Result{}, nil
+	}
+	if tc.PDUpgrading() || tc.PDScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
+			"tikv status is %s can not replace tikv volume",
+			tc.GetNamespace(), tc.GetName(),
+			tc.Status.PD.Phase, tc.Status.TiKV.Phase)
+		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	}
+	pdClient := c.getPDClient(tc)
+	storeID, err := member.TiKVStoreIDFromStatus(tc, pod.Name)
+	if err != nil {
+		storeIDStr, exist := pod.Labels[label.StoreIDLabelKey]
+		if !exist {
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store id from status or label for pod %s/%s", pod.Namespace, pod.Name)
+		}
+		storeID, err = strconv.ParseUint(storeIDStr, 10, 64)
+		if err != nil {
+			return reconcile.Result{}, perrors.Annotatef(err, "Could not parse storeId (%s) from label for pod %s/%s", storeIDStr, pod.Namespace, pod.Name)
+		}
+	}
+	if pod.Labels[label.StoreIDLabelKey] == "" {
+		return reconcile.Result{Requeue: true}, fmt.Errorf("StoreID not yet updated on pod label")
+	}
+	storeInfo, err := pdClient.GetStore(storeID)
+	if err != nil {
+		return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store info from pd for storeid %d pod %s/%s", storeID, pod.Namespace, pod.Name)
+	}
+	if storeInfo.Store.StateName == v1alpha1.TiKVStateUp {
+		if !tc.TiKVAllStoresReady() {
+			return reconcile.Result{Requeue: true}, fmt.Errorf("Not all TIKV stores ready before replace")
+		}
+		// 1. Delete store
+		klog.Infof("storeid %d is Up, deleting due to replace volume annotation.", storeID)
+		pdClient.DeleteStore(storeID)
+		return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
+	} else if storeInfo.Store.StateName == v1alpha1.TiKVStateOffline {
+		// 2. Wait for Tombstone
+		return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, fmt.Errorf("StoreID %d not yet Tombstone", storeID)
+	} else if storeInfo.Store.StateName == v1alpha1.TiKVStateTombstone {
+		// 3. Delete PVCs & 4. Delete Pod.
+		return c.deletePVCsAndPodFn(c.deps, ctx, pod, tc)
+	} else {
+		return reconcile.Result{}, fmt.Errorf("Cannot replace volume when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
+	}
+}
 
 func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	result, err := c.syncTiDBPodForGracefulShutdown(ctx, pod, tc)
+	if err != nil || result.Requeue || result.RequeueAfter > 0 {
+		return result, err
+	}
+	return c.syncTiDBPodForReplaceVolume(ctx, pod, tc)
+}
+
+func (c *PodController) syncTiDBPodForGracefulShutdown(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
 	value := needDeleteTiDBPod(pod)
 	if value == "" {
 		// No need to delete tidb pod
@@ -442,11 +587,9 @@ func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1
 
 	if tc.PDUpgrading() || tc.PDScaling() || tc.TiKVUpgrading() || tc.TiKVScaling() || tc.TiDBUpgrading() || tc.TiDBScaling() {
 		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
-			"tikv status is %s, tiflash status is %s, pump status is %s, "+
-			"tidb status is %s, can not delete tidb",
+			"tikv status is %s, tidb status is %s, can not delete tidb",
 			ns, tcName,
-			tc.Status.PD.Phase, tc.Status.TiKV.Phase, tc.Status.TiFlash.Phase,
-			tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
+			tc.Status.PD.Phase, tc.Status.TiKV.Phase, tc.Status.TiDB.Phase)
 		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
 	}
 
@@ -468,6 +611,76 @@ func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1
 	return reconcile.Result{}, nil
 }
 
+func (c *PodController) syncTiDBPodForReplaceVolume(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value, exist := pod.Annotations[v1alpha1.ReplaceVolumeAnnKey]
+	if !exist {
+		return reconcile.Result{}, nil
+	}
+	if value != v1alpha1.ReplaceVolumeValueTrue {
+		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceVolumeAnnKey, pod.Namespace, pod.Name)
+		return reconcile.Result{}, nil
+	}
+	// Verify okay to delete tidb pod now.
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	if tc.PDUpgrading() || tc.PDScaling() || tc.TiKVUpgrading() || tc.TiKVScaling() || tc.TiDBScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
+			"tikv status is %s, tiflash status is %s, pump status is %s, "+
+			"tidb status is %s, can not replace tidb volume",
+			ns, tcName,
+			tc.Status.PD.Phase, tc.Status.TiKV.Phase, tc.Status.TiFlash.Phase,
+			tc.Status.Pump.Phase, tc.Status.TiDB.Phase)
+		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	}
+	if !tc.TiDBAllMembersReady() {
+		return reconcile.Result{Requeue: true}, nil
+	}
+	return c.deletePVCsAndPodFn(c.deps, ctx, pod, tc)
+}
+
+func deletePVCsAndPod(deps *controller.Dependencies, ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	// 1. Delete PVCs
+	var pvcs []*corev1.PersistentVolumeClaim = nil
+	for _, vol := range pod.Spec.Volumes {
+		if vol.PersistentVolumeClaim != nil {
+			pvc, err := deps.PVCLister.PersistentVolumeClaims(pod.Namespace).Get(vol.PersistentVolumeClaim.ClaimName)
+			if err != nil {
+				klog.Warningf("Vol %s, claim %s did not find pvc: %s", vol.Name, vol.PersistentVolumeClaim.ClaimName, err)
+				continue // Skip missing (deleted?) pvc.
+			}
+			if pvc.DeletionTimestamp != nil {
+				klog.Warningf("pvc %s already marked for deletion %s", pvc.Name, pvc.DeletionTimestamp)
+				continue // already marked for deletion.
+			}
+			pvcs = append(pvcs, pvc)
+		}
+	}
+	if pvcs != nil {
+		// Delete any PVCs not yet deleted.
+		var anyErr error = nil
+		for _, pvc := range pvcs {
+			err := deps.PVCControl.DeletePVC(tc, pvc)
+			klog.Infof("Deleting pvc: %s", pvc.Name)
+			if err != nil {
+				anyErr = err
+			}
+		}
+		// Requeue next iteration, to verify pvc marked for deletion before moving on to pod deletion.
+		return reconcile.Result{Requeue: true}, anyErr
+	}
+	// 2. Delete pod
+	if pod.DeletionTimestamp != nil {
+		// Already marked for deletion, wait for it to delete.
+		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	}
+	klog.Infof("Deleting pod: %s", pod.Name)
+	err := deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %s", pod.Name)
+	}
+	return reconcile.Result{}, nil
+}
 func (c *PodController) cleanupLeaderEvictionAnnotations(pod *corev1.Pod, tc *v1alpha1.TidbCluster, annKeys []string) error {
 	for _, ann := range annKeys {
 		delete(pod.Annotations, ann)
