@@ -117,7 +117,8 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 
 	// Check if an upgrade is needed.
 	// If not, early return.
-	if util.StatefulSetEqual(*newSet, *oldSet) && !isOrphan {
+	stsEqual, podTemplateEqual := util.StatefulSetEqual(*newSet, *oldSet)
+	if stsEqual && !isOrphan {
 		return nil
 	}
 
@@ -156,10 +157,14 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 
 	// this should be done after SetStatefulSetLastAppliedConfigAnnotation,
 	// then this volumeMode set by defaults won't be stored in the annotation
-	setHacked := hackEphemeralVolumeMode(oldSet, &set)
+	if podTemplateEqual {
+		// if the pod template is not equal,
+		// there is no need to hack the volume mode as it can be updated in this round
+		hackEphemeralVolumeMode(oldSet, &set)
+	}
 
 	// commit to k8s
-	_, err = setCtl.UpdateStatefulSet(object, setHacked)
+	_, err = setCtl.UpdateStatefulSet(object, &set)
 	return err
 }
 
@@ -172,55 +177,29 @@ func SetUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 // hackEphemeralVolumeMode appends exstings ephemeral volume mode to asts so that no unexpected rolling update will be triggered.
 // before https://github.com/pingcap/advanced-statefulset/pull/96, some asts may have volume mode in ephemeral volume,
 // but after that, no volume mode in ephemeral volume will be set by defaults,
-// so we need to append the volume mode to new spec if it exists in old spec.
-func hackEphemeralVolumeMode(oldSts *apps.StatefulSet, newSts *apps.StatefulSet) *apps.StatefulSet {
+// so we need to append the volume mode to the new asts spec if it exists in old spec.
+func hackEphemeralVolumeMode(oldSts *apps.StatefulSet, newSts *apps.StatefulSet) {
 	if !features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		// only need this hack for AdvancedStatefulSet
-		return newSts
+		return
 	}
 
-	var configCmName string // the name of configmap in volume "config", like `basic-tidb-6462366`
 	volumeModels := make(map[string]corev1.PersistentVolumeMode)
 	for _, volume := range oldSts.Spec.Template.Spec.Volumes {
 		if volume.Ephemeral != nil && volume.Ephemeral.VolumeClaimTemplate != nil &&
 			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode != nil {
 			volumeModels[volume.Name] = *volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode
 		}
-		if volume.ConfigMap != nil && volume.Name == "config" {
-			configCmName = volume.ConfigMap.Name
-		}
 	}
-
 	if len(volumeModels) == 0 {
-		return newSts
+		return // no need to hack
 	}
 
-	notHackedSet := newSts.DeepCopy()
 	for _, volume := range newSts.Spec.Template.Spec.Volumes {
 		if volumeMode, ok := volumeModels[volume.Name]; ok && volume.Ephemeral != nil && volume.Ephemeral.VolumeClaimTemplate != nil &&
 			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode == nil {
 			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode = &volumeMode
 			klog.Infof("hack volume mode %s for volume %s in sts %s/%s", volumeMode, volume.Name, newSts.Namespace, newSts.Name)
 		}
-		if volume.ConfigMap != nil && volume.Name == "config" && configCmName != volume.ConfigMap.Name {
-			// the configmap is changed, we can update the volume mode in this round of update
-			// TODO: update volume mode if more changes is made in the TidbCluster CR
-			klog.Infof("configmap is changed, update the sts %s/%s", newSts.Namespace, newSts.Name)
-			return notHackedSet
-		}
 	}
-
-	containerImages := make(map[string]string)
-	for _, container := range oldSts.Spec.Template.Spec.Containers {
-		containerImages[container.Name] = container.Image
-	}
-	for _, container := range newSts.Spec.Template.Spec.Containers {
-		if image, ok := containerImages[container.Name]; ok && image != container.Image {
-			// the container image is changed, we can update the volume mode in this round of update
-			klog.Infof("container image is changed, update the sts %s/%s", newSts.Namespace, newSts.Name)
-			return notHackedSet
-		}
-	}
-
-	return newSts
 }
