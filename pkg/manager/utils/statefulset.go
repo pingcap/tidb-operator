@@ -117,7 +117,7 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 
 	// Check if an upgrade is needed.
 	// If not, early return.
-	stsEqual, podTemplateEqual := util.StatefulSetEqual(*newSet, *oldSet)
+	stsEqual, podTemplateCheckedAndNotEqual := util.StatefulSetEqual(*newSet, *oldSet)
 	if stsEqual && !isOrphan {
 		return nil
 	}
@@ -155,11 +155,11 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 		return err
 	}
 
-	// this should be done after SetStatefulSetLastAppliedConfigAnnotation,
-	// then this volumeMode set by defaults won't be stored in the annotation
-	if podTemplateEqual {
-		// if the pod template is not equal,
+	if !podTemplateCheckedAndNotEqual {
+		// if the pod template is check and not equal, it means the pod template is changed
 		// there is no need to hack the volume mode as it can be updated in this round
+		// this should be done after SetStatefulSetLastAppliedConfigAnnotation,
+		// then this volumeMode set by defaults won't be stored in the annotation
 		hackEphemeralVolumeMode(oldSet, &set)
 	}
 
