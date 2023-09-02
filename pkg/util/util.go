@@ -386,7 +386,7 @@ func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel 
 }
 
 // statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
-func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, podTemplateEqual bool) {
+func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, podTemplateCheckedAndNotEqual bool) {
 	// The annotations in old sts may include LastAppliedConfigAnnotation
 	tmpAnno := map[string]string{}
 	for k, v := range old.Annotations {
@@ -395,7 +395,7 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, p
 		}
 	}
 	if !apiequality.Semantic.DeepEqual(new.Annotations, tmpAnno) {
-		return false, false
+		return false, false // pod tempate not checked, return false
 	}
 	oldConfig := apps.StatefulSetSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
@@ -408,12 +408,12 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, p
 		// Please check detail in https://github.com/pingcap/tidb-operator/pull/1489
 		tmpTemplate := oldConfig.Template.DeepCopy()
 		delete(tmpTemplate.Annotations, LastAppliedConfigAnnotation)
-		podTemplateEqual = apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template)
+		podTemplateEqual := apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template)
 		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
 			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy) && // this will be changed when scaling
-			podTemplateEqual, podTemplateEqual
+			podTemplateEqual, !podTemplateEqual // pod tempate checked, may not equal
 	}
-	return false, false
+	return false, false // pod tempate not checked/exist, return false
 }
 
 // ResolvePVCFromPod parses pod volumes definition, and returns all PVCs mounted by this pod
