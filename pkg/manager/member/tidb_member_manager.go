@@ -305,6 +305,16 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 	}
 
+	if tc.Status.TiDB.VolReplaceInProgress {
+		// Volume Replace in Progress, so do not make any changes to Sts spec, overwrite with old pod spec
+		// config as we are not ready to upgrade yet.
+		_, podSpec, err := GetLastAppliedConfig(oldTiDBSet)
+		if err != nil {
+			return err
+		}
+		newTiDBSet.Spec.Template.Spec = *podSpec
+	}
+
 	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		if err := m.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
 			return err
@@ -1031,7 +1041,9 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if baseTiDBSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+	if tc.Status.TiDB.VolReplaceInProgress {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else if baseTiDBSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
