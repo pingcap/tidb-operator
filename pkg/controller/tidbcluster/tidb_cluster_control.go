@@ -338,6 +338,9 @@ func (c *defaultTidbClusterControl) recordMetrics(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.TiDB != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tidb").Set(float64(tc.Spec.TiDB.Replicas))
 	}
+	if tc.Spec.TiProxy != nil {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tiproxy").Set(float64(tc.Spec.TiProxy.Replicas))
+	}
 	if tc.Spec.TiFlash != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tiflash").Set(float64(tc.Spec.TiFlash.Replicas))
 	}
