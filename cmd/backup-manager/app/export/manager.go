@@ -163,85 +163,6 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 	}
 
 	var errs []error
-	oldTikvGCTime, err := bm.GetTikvGCLifeTime(ctx, db)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TikvGCVariable, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetTikvGCLifeTimeFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-	klog.Infof("cluster %s %s is %s", bm, constants.TikvGCVariable, oldTikvGCTime)
-
-	oldTikvGCTimeDuration, err := time.ParseDuration(oldTikvGCTime)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("cluster %s parse old %s failed, err: %s", bm, constants.TikvGCVariable, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "ParseOldTikvGCLifeTimeFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-
-	var tikvGCTimeDuration time.Duration
-	var tikvGCLifeTime string
-	if backup.Spec.TikvGCLifeTime != nil {
-		tikvGCLifeTime = *backup.Spec.TikvGCLifeTime
-		tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("cluster %s parse configured %s failed, err: %s", bm, constants.TikvGCVariable, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
-				Message: err.Error(),
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-	} else {
-		tikvGCLifeTime = constants.TikvGCLifeTime
-		tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("cluster %s parse default %s failed, err: %s", bm, constants.TikvGCVariable, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "ParseDefaultTikvGCLifeTimeFailed",
-				Message: err.Error(),
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-	}
-
-	if oldTikvGCTimeDuration < tikvGCTimeDuration {
-		err = bm.SetTikvGCLifeTime(ctx, db, tikvGCLifeTime)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", bm, constants.TikvGCLifeTime, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "SetTikvGCLifeTimeFailed",
-				Message: err.Error(),
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-		klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
-	}
 
 	backupFullPath := bm.getBackupFullPath()
 	// TODO: Concurrent get file size and upload backup data to speed up processing time
@@ -260,29 +181,6 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 	}
 
 	backupErr := bm.dumpTidbClusterData(ctx, backupFullPath, backup)
-	if oldTikvGCTimeDuration < tikvGCTimeDuration {
-		// use another context to revert `tikv_gc_life_time` back.
-		// `DefaultTerminationGracePeriodSeconds` for a pod is 30, so we use a smaller timeout value here.
-		ctx2, cancel2 := context.WithTimeout(context.Background(), 25*time.Second)
-		defer cancel2()
-		err = bm.SetTikvGCLifeTime(ctx2, db, oldTikvGCTime)
-		if err != nil {
-			if backupErr != nil {
-				errs = append(errs, backupErr)
-			}
-			errs = append(errs, err)
-			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", bm, oldTikvGCTime, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "ResetTikvGCLifeTimeFailed",
-				Message: err.Error(),
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-		klog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
-	}
 
 	if backupErr != nil {
 		errs = append(errs, backupErr)
