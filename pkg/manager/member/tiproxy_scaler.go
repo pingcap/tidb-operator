@@ -27,7 +27,7 @@ type tiproxyScaler struct {
 	generalScaler
 }
 
-// NewTiProxycaler returns a Scaler
+// NewTiProxyScaler returns a Scaler
 func NewTiProxyScaler(deps *controller.Dependencies) Scaler {
 	return &tiproxyScaler{generalScaler: generalScaler{deps: deps}}
 }
