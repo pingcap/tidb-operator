@@ -205,7 +205,7 @@ func (bm *backupScheduleManager) canPerformNextBackup(vbs *v1alpha1.VolumeBackup
 		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, vbs.Status.LastBackup, err)
 	}
 
-	if v1alpha1.IsVolumeBackupComplete(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
+	if v1alpha1.IsVolumeBackupSnapshotsComplete(backup) || v1alpha1.IsVolumeBackupFailed(backup) || v1alpha1.IsVolumeBackupComplete(backup) {
 		return nil
 	}
 	// skip this sync round of the backup schedule and waiting the last backup.

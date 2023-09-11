@@ -2130,8 +2130,10 @@ const (
 	VolumeBackupInitialized BackupConditionType = "VolumeBackupInitialized"
 	// VolumeBackupInitializeFailed means the volume backup initialize job failed
 	VolumeBackupInitializeFailed BackupConditionType = "VolumeBackupInitializeFailed"
-	// VolumeBackupComplete means the volume backup has taken volume snapshots successfully
+	// VolumeBackupComplete means the volume backup is complete successfully
 	VolumeBackupComplete BackupConditionType = "VolumeBackupComplete"
+	// VolumeBackupSnapshotsComplete means the volume backup has taken volume snapshots successfully
+	VolumeBackupSnapshotsComplete BackupConditionType = "VolumeBackupSnapshotsComplete"
 	// VolumeBackupFailed means the volume backup take volume snapshots failed
 	VolumeBackupFailed BackupConditionType = "VolumeBackupFailed"
 )

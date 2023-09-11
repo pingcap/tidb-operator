@@ -327,6 +327,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 
 			backupSizeReadable := humanize.Bytes(uint64(fullBackupSize))
 			incrementalBackupSizeReadable := humanize.Bytes(uint64(incrementalBackupSize))
+
 			updateStatus := &controller.BackupUpdateStatus{
 				BackupSize:                    &fullBackupSize,
 				BackupSizeReadable:            &backupSizeReadable,
@@ -335,8 +336,17 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 				TimeCompleted:                 &metav1.Time{Time: time.Now()},
 			}
 
-			if err := bm.StatusUpdater.Update(backup, nil, updateStatus); err != nil {
-				klog.Errorf("update backup size to status error: %v", err)
+			if v1alpha1.IsVolumeBackupSnapshotsComplete(backup) {
+				if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+					Type:   v1alpha1.VolumeBackupComplete,
+					Status: corev1.ConditionTrue,
+				}, updateStatus); err != nil {
+					klog.Errorf("update backup size and phase to status error: %v", err)
+				}
+			} else {
+				if err := bm.StatusUpdater.Update(backup, nil, updateStatus); err != nil {
+					klog.Errorf("update backup size to status error: %v", err)
+				}
 			}
 		}
 	}()
@@ -393,7 +403,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	switch bm.Mode {
 	case string(v1alpha1.BackupModeVolumeSnapshot):
 		if !bm.Initialize {
-			completeCondition = v1alpha1.VolumeBackupComplete
+			completeCondition = v1alpha1.VolumeBackupSnapshotsComplete
 			// In volume snapshot mode, commitTS have been updated according to the
 			// br command output, so we don't need to update it here.
 			updateStatus = &controller.BackupUpdateStatus{

@@ -199,6 +199,8 @@ const (
 	VolumeBackupInvalid VolumeBackupConditionType = "Invalid"
 	// VolumeBackupRunning means the VolumeBackup is running
 	VolumeBackupRunning VolumeBackupConditionType = "Running"
+	// VolumeBackupSnapshotsComplete means snapshots generation is complete in data plane
+	VolumeBackupSnapshotsComplete VolumeBackupConditionType = "SnapshotsComplete"
 	// VolumeBackupComplete means all the backups in data plane are complete and the VolumeBackup is complete
 	VolumeBackupComplete VolumeBackupConditionType = "Complete"
 	// VolumeBackupFailed means one of backup in data plane is failed and the VolumeBackup is failed

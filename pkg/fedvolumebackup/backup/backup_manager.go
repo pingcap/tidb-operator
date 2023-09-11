@@ -136,9 +136,14 @@ func (bm *backupManager) runBackup(ctx context.Context, volumeBackup *v1alpha1.V
 	if newMemberCreatedOrUpdated {
 		return false, nil
 	}
-	if err := bm.waitVolumeSnapshotsComplete(ctx, volumeBackup, backupMembers); err != nil {
-		return false, err
+
+	if !v1alpha1.IsVolumeBackupSnapshotsComplete(volumeBackup) {
+		if err := bm.waitVolumeSnapshotsComplete(ctx, volumeBackup, backupMembers); err != nil {
+			return false, err
+		}
+		bm.setVolumeBackupSnapshotsComplete(&volumeBackup.Status)
 	}
+
 	return true, nil
 
 }
@@ -168,6 +173,14 @@ func (bm *backupManager) setVolumeBackupRunning(volumeBackupStatus *v1alpha1.Vol
 	volumeBackupStatus.TimeStarted = metav1.Now()
 	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
 		Type:   v1alpha1.VolumeBackupRunning,
+		Status: corev1.ConditionTrue,
+	})
+}
+
+func (bm *backupManager) setVolumeBackupSnapshotsComplete(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
+	volumeBackupStatus.TimeStarted = metav1.Now()
+	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupSnapshotsComplete,
 		Status: corev1.ConditionTrue,
 	})
 }
@@ -288,7 +301,7 @@ func (bm *backupManager) waitVolumeSnapshotsComplete(ctx context.Context, volume
 				Message: errMsg,
 			}
 		}
-		if !pingcapv1alpha1.IsVolumeBackupComplete(backupMember.backup) {
+		if !pingcapv1alpha1.IsVolumeBackupSnapshotsComplete(backupMember.backup) {
 			return controller.IgnoreErrorf("backup member %s of cluster %s is not volume snapshots complete", backupMember.backup.Name, backupMember.k8sClusterName)
 		}
 	}

@@ -103,6 +103,12 @@ func IsVolumeBackupComplete(volumeBackup *VolumeBackup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsVolumeBackupSnapshotsComplete returns true if snapshots generation is complete
+func IsVolumeBackupSnapshotsComplete(volumeBackup *VolumeBackup) bool {
+	_, condition := GetVolumeBackupCondition(&volumeBackup.Status, VolumeBackupSnapshotsComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsVolumeBackupFailed returns true if VolumeBackup is failed
 func IsVolumeBackupFailed(volumeBackup *VolumeBackup) bool {
 	_, condition := GetVolumeBackupCondition(&volumeBackup.Status, VolumeBackupFailed)

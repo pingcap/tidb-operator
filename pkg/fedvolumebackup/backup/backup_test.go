@@ -146,6 +146,35 @@ func (h *helper) setDataPlaneInitialized(ctx context.Context) {
 	h.g.Expect(err).To(gomega.BeNil())
 }
 
+func (h *helper) setDataPlaneVolumeSnapshotsComplete(ctx context.Context) {
+	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember1.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.VolumeBackupSnapshotsComplete,
+	})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+
+	backupMember2, err := h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).Get(ctx, h.backupMemberName2, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember2.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.VolumeBackupSnapshotsComplete,
+	})
+	_, err = h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).UpdateStatus(ctx, backupMember2, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+
+	backupMember3, err := h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).Get(ctx, h.backupMemberName3, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember3.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.VolumeBackupSnapshotsComplete,
+	})
+	_, err = h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).UpdateStatus(ctx, backupMember3, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+}
+
 func (h *helper) setDataPlaneVolumeComplete(ctx context.Context) {
 	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
@@ -268,10 +297,15 @@ func TestVolumeBackup(t *testing.T) {
 	err = h.bm.Sync(volumeBackup)
 	h.g.Expect(err).To(gomega.HaveOccurred())
 
+	// volume snapshots complete
+	h.setDataPlaneVolumeSnapshotsComplete(ctx)
+	err = h.bm.Sync(volumeBackup)
+	h.g.Expect(err).To(gomega.BeNil())
+
 	// volume complete, run teardown phase
 	h.setDataPlaneVolumeComplete(ctx)
 	err = h.bm.Sync(volumeBackup)
-	h.g.Expect(err).To(gomega.BeNil())
+	h.g.Expect(err).To(gomega.HaveOccurred())
 	h.assertRunTeardown(ctx, volumeBackup, false)
 
 	// volume backup complete
