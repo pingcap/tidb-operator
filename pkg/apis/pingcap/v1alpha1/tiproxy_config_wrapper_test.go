@@ -20,7 +20,7 @@ import (
 
 	fuzz "github.com/google/gofuzz"
 	. "github.com/onsi/gomega"
-	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
+	tiproxyConfig "github.com/pingcap/tiproxy/lib/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 )
 

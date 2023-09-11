@@ -16,7 +16,7 @@ package v1alpha1
 import (
 	stdjson "encoding/json"
 
-	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
+	tiproxyConfig "github.com/pingcap/tiproxy/lib/config"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"k8s.io/apimachinery/pkg/util/json"
