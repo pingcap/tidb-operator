@@ -134,6 +134,7 @@ func (ro *Options) restoreData(
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
 	}
+	go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
 
 	var (
 		progressWg     sync.WaitGroup
@@ -151,6 +152,9 @@ func (ro *Options) restoreData(
 		}()
 	}
 
+	stdErrCh := make(chan []byte, 1)
+	go backupUtil.ReadAllStdErrToChannel(stdErr, stdErrCh)
+
 	var errMsg string
 	reader := bufio.NewReader(stdOut)
 	for {
@@ -164,11 +168,14 @@ func (ro *Options) restoreData(
 			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
 		}
 		klog.Info(strings.Replace(line, "\n", "", -1))
-		if err != nil || io.EOF == err {
+		if err != nil {
+			if err != io.EOF {
+				klog.Errorf("read stdout error: %s", err.Error())
+			}
 			break
 		}
 	}
-	tmpErr, _ := io.ReadAll(stdErr)
+	tmpErr := <-stdErrCh
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)
