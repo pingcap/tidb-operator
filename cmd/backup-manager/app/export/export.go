@@ -44,6 +44,16 @@ func (bo *Options) getBackupFullPath() string {
 	return filepath.Join(constants.BackupRootPath, bo.getBackupRelativePath())
 }
 
+func (bo *Options) getBucketPath() string {
+	var backupRelativePath string
+	if len(bo.Prefix) == 0 {
+		backupRelativePath = bo.Bucket
+	} else {
+		backupRelativePath = fmt.Sprintf("%s/%s", bo.Bucket, bo.Prefix)
+	}
+	return backupRelativePath
+}
+
 func (bo *Options) getBackupRelativePath() string {
 	var backupRelativePath string
 	backupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
@@ -107,6 +117,7 @@ func (bo *Options) backupDataToRemote(ctx context.Context, source, bucketURI str
 	destBucket := backupUtil.NormalizeBucketURI(bucketURI)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
 	args := backupUtil.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copyto", source, tmpDestBucket, true)
+	klog.Infof("rclone opts is %s, args is %s", opts, args)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
 	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
 	if err != nil {
@@ -130,8 +141,11 @@ func (bo *Options) backupDataToRemote(ctx context.Context, source, bucketURI str
 // getBackupSize get the backup data size
 func getBackupSize(ctx context.Context, backupPath string, opts []string) (int64, error) {
 	var size int64
-	if exist := backupUtil.IsFileExist(backupPath); !exist {
-		return size, fmt.Errorf("file %s does not exist or is not regular file", backupPath)
+	// if exist := backupUtil.IsFileExist(backupPath); !exist {
+	// 	return size, fmt.Errorf("file %s does not exist or is not regular file", backupPath)
+	// }
+	if exist := backupUtil.IsDirExist(backupPath); !exist {
+		return size, fmt.Errorf("file %s does not exist or is not a dir", backupPath)
 	}
 	args := backupUtil.ConstructRcloneArgs(constants.RcloneConfigArg, nil, "ls", backupPath, "", false)
 	out, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()

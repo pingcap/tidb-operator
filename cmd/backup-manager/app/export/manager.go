@@ -166,9 +166,11 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 
 	backupFullPath := bm.getBackupFullPath()
 	// TODO: Concurrent get file size and upload backup data to speed up processing time
-	archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
-	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
+	// archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
+	// remotePath := strings.TrimPrefix(backupFullPath, constants.BackupRootPath+"/")
+	remotePath := bm.getBucketPath()
 	bucketURI := bm.getDestBucketURI(remotePath)
+	klog.Infof("remote path is %s, bucketURI is %s", remotePath, bucketURI)
 	updatePathStatus := &controller.BackupUpdateStatus{
 		BackupPath: &bucketURI,
 	}
@@ -211,26 +213,27 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 	}
 	klog.Infof("get cluster %s commitTs %s success", bm, commitTs)
 
-	err = archiveBackupData(backupFullPath, archiveBackupPath)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("archive cluster %s backup data %s failed, err: %s", bm, archiveBackupPath, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "ArchiveBackupDataFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-	klog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
+	// err = archiveBackupData(backupFullPath, archiveBackupPath)
+	// if err != nil {
+	// 	errs = append(errs, err)
+	// 	klog.Errorf("archive cluster %s backup data %s failed, err: %s", bm, archiveBackupPath, err)
+	// 	uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	// 		Type:    v1alpha1.BackupFailed,
+	// 		Status:  corev1.ConditionTrue,
+	// 		Reason:  "ArchiveBackupDataFailed",
+	// 		Message: err.Error(),
+	// 	}, nil)
+	// 	errs = append(errs, uerr)
+	// 	return errorutils.NewAggregate(errs)
+	// }
+	// klog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
 
 	opts := util.GetOptions(backup.Spec.StorageProvider)
-	size, err := getBackupSize(ctx, archiveBackupPath, opts)
+	// size, err := getBackupSize(ctx, archiveBackupPath, opts)
+	size, err := getBackupSize(ctx, backupFullPath, opts)
 	if err != nil {
 		errs = append(errs, err)
-		klog.Errorf("get cluster %s archived backup file %s size %d failed, err: %s", bm, archiveBackupPath, size, err)
+		klog.Errorf("get cluster %s backup file %s size %d failed, err: %s", bm, backupFullPath, size, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -240,12 +243,13 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
-	klog.Infof("get cluster %s archived backup file %s size %d success", bm, archiveBackupPath, size)
+	klog.Infof("get cluster %s backup file %s size %d success", bm, backupFullPath, size)
 
 	// archive backup data successfully, origin dir can be deleted safely
-	os.RemoveAll(backupFullPath)
+	// os.RemoveAll(backupFullPath)
 
-	err = bm.backupDataToRemote(ctx, archiveBackupPath, bucketURI, opts)
+	// err = bm.backupDataToRemote(ctx, archiveBackupPath, bucketURI, opts)
+	err = bm.backupDataToRemote(ctx, backupFullPath, bucketURI, opts)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("backup cluster %s data to %s failed, err: %s", bm, bm.StorageType, err)
@@ -260,7 +264,7 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 	}
 	klog.Infof("backup cluster %s data to %s success", bm, bm.StorageType)
 	// backup to remote succeed, archive can be deleted now
-	os.RemoveAll(archiveBackupPath)
+	os.RemoveAll(backupFullPath)
 
 	finish := time.Now()
 
