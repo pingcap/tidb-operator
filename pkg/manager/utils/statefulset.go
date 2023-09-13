@@ -19,6 +19,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	apps "k8s.io/api/apps/v1"
@@ -116,7 +117,8 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 
 	// Check if an upgrade is needed.
 	// If not, early return.
-	if util.StatefulSetEqual(*newSet, *oldSet) && !isOrphan {
+	stsEqual, podTemplateCheckedAndNotEqual := util.StatefulSetEqual(*newSet, *oldSet)
+	if stsEqual && !isOrphan {
 		return nil
 	}
 
@@ -127,7 +129,7 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
 	set.Labels = newSet.Labels
 	set.Annotations = newSet.Annotations
-	set.Spec.Template = newSet.Spec.Template
+	set.Spec.Template = *newSet.Spec.Template.DeepCopy() // do a copy to avoid changing the original TidbCluster CR
 	if isOrphan {
 		set.OwnerReferences = newSet.OwnerReferences
 	}
@@ -153,6 +155,14 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 		return err
 	}
 
+	if !podTemplateCheckedAndNotEqual {
+		// if the pod template is check and not equal, it means the pod template is changed
+		// there is no need to hack the volume mode as it can be updated in this round
+		// this should be done after SetStatefulSetLastAppliedConfigAnnotation,
+		// then this volumeMode set by defaults won't be stored in the annotation
+		hackEphemeralVolumeMode(oldSet, &set)
+	}
+
 	// commit to k8s
 	_, err = setCtl.UpdateStatefulSet(object, &set)
 	return err
@@ -162,4 +172,34 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 func SetUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
 	klog.Infof("set %s/%s partition to %d", set.GetNamespace(), set.GetName(), upgradeOrdinal)
+}
+
+// hackEphemeralVolumeMode appends exstings ephemeral volume mode to asts so that no unexpected rolling update will be triggered.
+// before https://github.com/pingcap/advanced-statefulset/pull/96, some asts may have volume mode in ephemeral volume,
+// but after that, no volume mode in ephemeral volume will be set by defaults,
+// so we need to append the volume mode to the new asts spec if it exists in old spec.
+func hackEphemeralVolumeMode(oldSts *apps.StatefulSet, newSts *apps.StatefulSet) {
+	if !features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		// only need this hack for AdvancedStatefulSet
+		return
+	}
+
+	volumeModels := make(map[string]corev1.PersistentVolumeMode)
+	for _, volume := range oldSts.Spec.Template.Spec.Volumes {
+		if volume.Ephemeral != nil && volume.Ephemeral.VolumeClaimTemplate != nil &&
+			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode != nil {
+			volumeModels[volume.Name] = *volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode
+		}
+	}
+	if len(volumeModels) == 0 {
+		return // no need to hack
+	}
+
+	for _, volume := range newSts.Spec.Template.Spec.Volumes {
+		if volumeMode, ok := volumeModels[volume.Name]; ok && volume.Ephemeral != nil && volume.Ephemeral.VolumeClaimTemplate != nil &&
+			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode == nil {
+			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode = &volumeMode
+			klog.Infof("hack volume mode %s for volume %s in sts %s/%s", volumeMode, volume.Name, newSts.Namespace, newSts.Name)
+		}
+	}
 }

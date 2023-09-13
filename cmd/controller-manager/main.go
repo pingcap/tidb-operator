@@ -59,6 +59,7 @@ import (
 
 func main() {
 	var cfg *rest.Config
+	klog.InitFlags(nil)
 	cliCfg := controller.DefaultCLIConfig()
 	cliCfg.AddFlag(flag.CommandLine)
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)

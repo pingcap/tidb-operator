@@ -34,6 +34,7 @@ var (
 )
 
 func init() {
+	klog.InitFlags(nil)
 	flag.CommandLine.Init(os.Args[0], flag.ContinueOnError)
 	// Define the flag "secure-port" to avoid the `flag.Parse()` reporting error
 	// TODO: remove this flag after we don't use the lib "github.com/openshift/generic-admission-server"

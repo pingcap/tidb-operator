@@ -513,10 +513,13 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		}
 
 		// restore TidbCluster completed
+		newStatus := &controller.RestoreUpdateStatus{
+			TimeCompleted: &metav1.Time{Time: time.Now()},
+		}
 		if err := rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
 			Type:   v1alpha1.RestoreComplete,
 			Status: corev1.ConditionTrue,
-		}, nil); err != nil {
+		}, newStatus); err != nil {
 			return "UpdateRestoreCompleteFailed", err
 		}
 		return "", nil
