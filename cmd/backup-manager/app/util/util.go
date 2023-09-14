@@ -526,12 +526,12 @@ func ReadAllStdErrToChannel(stdErr io.Reader, errMsgCh chan []byte) {
 // the caller should wait the process of cmd to shut down
 func GracefullyShutDownSubProcess(ctx context.Context, cmd *exec.Cmd) {
 	<-ctx.Done()
+	klog.Errorf("context done, err: %s. start to shut down sub process gracefully", ctx.Err().Error())
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		klog.Errorf("send SIGTERM to sub process error: %s", err.Error())
 	} else {
-		klog.Infof("context done, gracefully shut down sub process")
+		klog.Infof("send SIGTERM to sub process successfully")
 	}
-	klog.Error(ctx.Err().Error())
 }
 
 const (
