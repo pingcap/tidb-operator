@@ -264,7 +264,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	}
 	klog.Infof("Running br command with args: %v", fullArgs)
 	bin := filepath.Join(util.BRBinPath, "br")
-	cmd := exec.CommandContext(ctx, bin, fullArgs...)
+	cmd := exec.Command(bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {

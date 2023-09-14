@@ -120,7 +120,7 @@ func (ro *Options) restoreData(
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
 	bin := path.Join(util.BRBinPath, "br")
-	cmd := exec.CommandContext(ctx, bin, fullArgs...)
+	cmd := exec.Command(bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
