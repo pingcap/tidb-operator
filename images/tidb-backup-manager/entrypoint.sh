@@ -96,8 +96,14 @@ esac
 # save the PID of the sub process
 pid=$!
 
+terminate_subprocesses() {
+    echo "get SIGTERM, send it to sub process $pid"
+    kill -15 $pid # -15 is SIGTERM
+    wait $pid
+}
+
 # Trap the SIGTERM signal and forward it to the main process
-trap "echo 'get SIGTERM, propagate it to sub process'; kill -SIGTERM $pid" SIGTERM
+trap 'terminate_subprocesses' SIGTERM
 
 # Wait for the sub process to complete
 wait $pid
