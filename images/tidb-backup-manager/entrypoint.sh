@@ -92,3 +92,12 @@ case "$1" in
 
         exec "$@"
 esac
+
+# save the PID of the main process
+pid=$!
+
+# Trap the SIGTERM signal and forward it to the main process
+trap 'kill -SIGTERM $pid; wait $pid' SIGTERM
+
+# Wait for the main process to complete
+wait $pid
