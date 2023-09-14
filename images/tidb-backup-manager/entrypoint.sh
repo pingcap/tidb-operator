@@ -63,41 +63,41 @@ case "$1" in
     backup)
         shift 1
         echo "$BACKUP_BIN backup $@"
-        $EXEC_COMMAND $BACKUP_BIN backup "$@"
+        $EXEC_COMMAND $BACKUP_BIN backup "$@" &
         ;;
     export)
         shift 1
         echo "$BACKUP_BIN export $@"
-        $EXEC_COMMAND $BACKUP_BIN export "$@"
+        $EXEC_COMMAND $BACKUP_BIN export "$@" &
         ;;
     restore)
         shift 1
         echo "$BACKUP_BIN restore $@"
-        $EXEC_COMMAND $BACKUP_BIN restore "$@"
+        $EXEC_COMMAND $BACKUP_BIN restore "$@" &
         ;;
     import)
         shift 1
         echo "$BACKUP_BIN import $@"
-        $EXEC_COMMAND $BACKUP_BIN import "$@"
+        $EXEC_COMMAND $BACKUP_BIN import "$@" &
         ;;
     clean)
         shift 1
         echo "$BACKUP_BIN clean $@"
-        $EXEC_COMMAND $BACKUP_BIN clean "$@"
+        $EXEC_COMMAND $BACKUP_BIN clean "$@" &
         ;;
     *)
         echo "Usage: $0 {backup|restore|clean}"
         echo "Now runs your command."
         echo "$@"
 
-        exec "$@"
+        exec "$@" &
 esac
 
-# save the PID of the main process
+# save the PID of the sub process
 pid=$!
 
 # Trap the SIGTERM signal and forward it to the main process
-trap 'kill -SIGTERM $pid; wait $pid' SIGTERM
+trap "echo 'get SIGTERM, propagate it to sub process'; kill -SIGTERM $pid" SIGTERM
 
-# Wait for the main process to complete
+# Wait for the sub process to complete
 wait $pid
