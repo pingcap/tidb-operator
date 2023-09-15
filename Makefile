@@ -185,13 +185,8 @@ fault-trigger:
 # 		`-race` for race detector.
 # GO_COVER: Whether to run tests with code coverage. Set to 'y' to enable coverage collection.
 #
-<<<<<<< HEAD
-test: TEST_PACKAGES = ./cmd/backup-manager/app ./pkg
-test:
-=======
 test: TEST_PACKAGES = ./cmd/backup-manager/app ./pkg ./cmd/ebs-warmup/internal/tests
 test: ## Run unit tests
->>>>>>> 2c3cd137b (ebs-warmup: added test cases && better exit logic (#5272))
 	@echo "Run unit tests"
 ifeq ($(GO_COVER),y)
 	go test -cover \
