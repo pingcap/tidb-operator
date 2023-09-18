@@ -14,9 +14,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pingcap/log"
@@ -57,13 +62,43 @@ func main() {
 	log.ReplaceGlobals(logger, props)
 	log.Info("Starting http-service", zap.String("version", version.GetRawInfo()))
 
-	r := gin.New()
-	r.Use(middlewares.LoggingMiddleware(), gin.Recovery()) // log with custom format
+	router := gin.New()
+	router.Use(middlewares.LoggingMiddleware(), gin.Recovery()) // log with custom format
 
-	r.GET("/ping", func(c *gin.Context) {
+	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
 		})
 	})
-	r.Run(cfg.Addr)
+
+	srv := &http.Server{
+		Addr:    cfg.Addr,
+		Handler: router,
+	}
+	// init the server in a goroutine so that
+	// it won't block the graceful shutdown handling below
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Info("The listener closed", zap.String("addr", cfg.Addr), zap.Error(err))
+		}
+	}()
+
+	// wait for interrupt signal to gracefully shutdown the server with a timeout of 5 seconds
+	quit := make(chan os.Signal, 1)
+	// kill (no param) default send syscall.SIGTERM
+	// kill -2 is syscall.SIGINT
+	// kill -9 is syscall.SIGKILL but can't be caught, so don't need to add it
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Info("Shutting down server...")
+
+	// The context is used to inform the server it has 5 seconds to finish
+	// the request it is currently handling
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal("Server forced to shutdown", zap.Error(err))
+	}
+	log.Info("Server exiting")
 }
