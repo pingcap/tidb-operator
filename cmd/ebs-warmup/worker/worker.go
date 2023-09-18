@@ -28,13 +28,15 @@ import (
 	"k8s.io/klog/v2"
 )
 
+type OnStepHook func(file os.FileInfo, readBytes int, take time.Duration)
+
 // Worker is the handler for reading tasks.
 // It shall be !Send.
 type Worker struct {
 	mailbox <-chan tasks.ReadFile
 	buf     []byte
 
-	OnStep      func(file os.FileInfo, readBytes int, take time.Duration)
+	OnStep      OnStepHook
 	RateLimiter *rate.Limiter
 }
 
