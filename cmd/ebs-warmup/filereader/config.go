@@ -13,6 +13,11 @@
 
 package filereader
 
+import (
+	"github.com/pingcap/tidb-operator/cmd/ebs-warmup/worker"
+	"github.com/pingcap/tidb-operator/cmd/ebs-warmup/worker/tasks"
+)
+
 type Config struct {
 	Files           string
 	Type            string
@@ -21,4 +26,7 @@ type Config struct {
 	Direct          bool
 	CheckpointEvery uint64
 	CheckpointFile  string
+
+	OnStep        worker.OnStepHook
+	OnFireRequest func(*tasks.ReadFile)
 }
