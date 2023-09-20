@@ -6,6 +6,13 @@ import "google/api/annotations.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/pingcap/tidb-operator/http-service/api;api";
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "TiDB Operator API",
+    description: "This is the TiDB Operator API.",
+    version: "v1-beta";
+  };
+};
 
 service Cluster {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {description: "Create, get, modify, and delete TiDB clusters."};
@@ -88,10 +95,7 @@ message Component {
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
   string config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component."}];
-  optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "The port of the component. Only used for TiDB now.",
-    example: "4000"
-  }];
+  optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the component. Used for TiDB, Grafana etc."}];
 }
 
 message CreateClusterReq {
@@ -111,7 +115,7 @@ message CreateClusterReq {
 
   string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The unique ID or name of the cluster.",
-    example: "\"1\""
+    example: "\"tidb-clsuter-123\""
   }];
   string version = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The version of the cluster. Only official versions are supported now.",

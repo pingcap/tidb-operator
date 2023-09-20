@@ -1,8 +1,9 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "api/service.proto",
-    "version": "version not set"
+    "title": "TiDB Operator API",
+    "description": "This is the TiDB Operator API.",
+    "version": "v1-beta"
   },
   "tags": [
     {
@@ -73,8 +74,7 @@
         "port": {
           "type": "integer",
           "format": "int64",
-          "example": 4000,
-          "description": "The port of the component. Only used for TiDB now."
+          "description": "The port of the component. Used for TiDB, Grafana etc."
         }
       },
       "description": "Component is the component of the cluster.",
@@ -88,7 +88,7 @@
       "properties": {
         "cluster_id": {
           "type": "string",
-          "example": "1",
+          "example": "tidb-clsuter-123",
           "description": "The unique ID or name of the cluster."
         },
         "version": {
