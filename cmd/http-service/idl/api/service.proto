@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package api;
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/pingcap/tidb-operator/http-service/api;api";
+
+service Cluster {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {description: "Create, get, modify, and delete TiDB clusters."};
+
+  rpc CreateCluster(CreateClusterReq) returns (CreateClusterResp) {
+    option (google.api.http) = {
+      post: "/clusters"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "CreateCluster"
+      summary: "Create a cluster."
+    };
+  }
+}
+
+message User {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "User"
+      description: "User is the username and password of the cluster."
+      required: [
+          "username"
+          "password"
+]
+    }
+  };
+
+  string username = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The username of the cluster.",
+    example: "\"root\""
+  }];
+  string password = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The password of the cluster.",
+    example: "\"123456\""
+  }];
+}
+
+message Resource {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "Resource"
+      description: "Resource is the resource of the component for each replica."
+      required: [
+          "cpu"
+          "memory"
+]
+    }
+  };
+
+  uint32 cpu = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of CPU cores for each replica.",
+    example: "2"
+  }];
+  uint32 memory = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The amount of memory for each replica. unit: Gi",
+    example: "4"
+  }];
+  optional uint32 storage = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The amount of storage for each replica. unit: Gi",
+    example: "100"
+  }];
+}
+
+message Component {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "Component"
+      description: "Component is the component of the cluster."
+      required: [
+          "replicas"
+          "resource"
+]
+    }
+  };
+
+  uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of replicas of the component.",
+    example: "3"
+  }];
+  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
+  string config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component."}];
+  optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The port of the component. Only used for TiDB now.",
+    example: "4000"
+  }];
+}
+
+message CreateClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateClusterReq"
+      description: "CreateClusterReq is the request for creating cluster."
+      required: [
+          "cluster_id"
+          "version"
+          "pd"
+          "tikv"
+          "tidb"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"1\""
+  }];
+  string version = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the cluster. Only official versions are supported now.",
+    example: "\"v7.1.0\""
+  }];
+  optional User user = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The username and password of the cluster."}];
+
+  Component pd = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The PD component of the cluster."}];
+  Component tikv = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiKV component of the cluster."}];
+  optional Component tiflash = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash component of the cluster."}];
+  Component tidb = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiDB component of the cluster."}];
+  optional Component promehteus = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Prometheus component of the cluster."}];
+  optional Component grafana = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Grafana component of the cluster."}];
+}
+
+message CreateClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateClusterResp"
+      description: "CreateClusterResp is the response for creating cluster."
+      required: ["base_resp"]
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}

@@ -1,0 +1,18 @@
+version: v1
+plugins:
+  - plugin: buf.build/grpc/go:v1.3.0
+    out: ./pbgen/proto/
+    opt:
+      - paths=source_relative
+  # dependencies
+  - plugin: buf.build/protocolbuffers/go
+    out: ./pbgen/proto/
+    opt:
+      - paths=source_relative
+  - plugin: buf.build/grpc-ecosystem/gateway:v2.18.0
+    out: ./pbgen/proto/
+    opt:
+      - paths=source_relative
+  - plugin: buf.build/grpc-ecosystem/openapiv2:v2.18.0
+    out: ./pbgen/oas/
+    opt: allow_merge=true,merge_file_name=openapi-spec,json_names_for_fields=false,omit_enum_default_value=true
