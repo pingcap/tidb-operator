@@ -19,7 +19,7 @@ service Cluster {
 
   rpc CreateCluster(CreateClusterReq) returns (CreateClusterResp) {
     option (google.api.http) = {
-      post: "/clusters"
+      post: "/v1beta/clusters"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {

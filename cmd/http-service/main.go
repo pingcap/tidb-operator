@@ -17,17 +17,22 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/pingcap/log"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/pingcap/tidb-operator/http-service/middlewares"
+	"github.com/pingcap/tidb-operator/http-service/pbgen/api"
+	"github.com/pingcap/tidb-operator/http-service/server"
 	"github.com/pingcap/tidb-operator/http-service/version"
 )
 
@@ -63,43 +68,79 @@ func main() {
 	log.Info("Starting http-service", zap.String("version", version.GetRawInfo()))
 	defer log.Sync()
 
-	router := gin.New()
-	router.Use(middlewares.LoggingMiddleware(), gin.Recovery()) // log with custom format
+	// Create context that listens for the interrupt signal from the OS.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
+	var wg sync.WaitGroup
 
-	srv := &http.Server{
-		Addr:    cfg.Addr,
-		Handler: router,
-	}
-	// init the server in a goroutine so that
-	// it won't block the graceful shutdown handling below
+	wg.Add(1)
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Info("The listener closed", zap.String("addr", cfg.Addr), zap.Error(err))
+		defer wg.Done()
+		setupAndRunGRPCServer(ctx, log.L(), cfg.InternalGRPCAddr)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		setupAndRunGRPCGateway(ctx, log.L(), cfg.Addr, cfg.InternalGRPCAddr)
+	}()
+
+	wg.Wait()
+	stop()
+
+	log.Info("HTTP service exiting")
+}
+
+func setupAndRunGRPCServer(ctx context.Context, logger *zap.Logger, addr string) {
+	lis, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Error("Failed to listen for gRPC server", zap.String("addr", addr), zap.Error(err))
+	}
+	s := grpc.NewServer()
+	api.RegisterClusterServer(s, &server.ClusterServer{})
+	log.Info("Starting internal gRPC server", zap.String("addr", addr))
+	go func() {
+		if err2 := s.Serve(lis); err2 != nil {
+			log.Info("Internal gRPC server returned with error", zap.String("addr", addr), zap.Error(err2))
 		}
 	}()
 
-	// wait for interrupt signal to gracefully shutdown the server with a timeout of 5 seconds
-	quit := make(chan os.Signal, 1)
-	// kill (no param) default send syscall.SIGTERM
-	// kill -2 is syscall.SIGINT
-	// kill -9 is syscall.SIGKILL but can't be caught, so don't need to add it
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Info("Shutting down server...")
+	<-ctx.Done()
+
+	log.Info("Stopping internal gRPC server...", zap.String("addr", addr))
+	s.GracefulStop()
+	log.Info("Internal gRPC server stopped", zap.String("addr", addr))
+}
+
+func setupAndRunGRPCGateway(ctx context.Context, logger *zap.Logger, addr, grpcAddr string) {
+	mux := runtime.NewServeMux()
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	if err := api.RegisterClusterHandlerFromEndpoint(ctx, mux, grpcAddr, opts); err != nil {
+		log.Fatal("Failed to register gRPC gateway", zap.Error(err))
+	}
+
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: mux,
+	}
+	log.Info("Starting gRPC gateway", zap.String("addr", addr))
+	go func() {
+		if err2 := srv.ListenAndServe(); err2 != nil && !errors.Is(err2, http.ErrServerClosed) {
+			log.Info("The gRPC gateway returned with error", zap.String("addr", addr), zap.Error(err2))
+		}
+	}()
+
+	<-ctx.Done()
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
+	log.Info("Stopping gRPC gatway...", zap.String("addr", addr))
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown", zap.Error(err))
+		log.Error("gRPC gateway forced to shutdown", zap.String("addr", addr), zap.Error(err))
+	} else {
+		log.Info("gRPC gateway stopped", zap.String("addr", addr))
 	}
-	log.Info("Server exiting")
 }

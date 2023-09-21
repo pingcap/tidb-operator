@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	defaultAddr     = ":9080"
-	defaultLogLevel = "info"
+	defaultAddr             = ":9080"
+	defaultInternalGRPCAddr = "127.0.0.1:9081"
+	defaultLogLevel         = "info"
 )
 
 type Config struct {
@@ -38,19 +39,24 @@ type Config struct {
 
 	// Addr is the address to listen on.
 	Addr string `toml:"addr" json:"addr"`
+
+	// InternalGRPCAddr is the address of internal grpc server.
+	InternalGRPCAddr string `toml:"internal-grpc-addr" json:"internal-grpc-addr"`
 }
 
 func NewConfig() *Config {
 	cfg := &Config{
-		flagSet:  flag.NewFlagSet("http-service", flag.ContinueOnError),
-		LogLevel: defaultLogLevel,
-		Addr:     defaultAddr,
+		flagSet:          flag.NewFlagSet("http-service", flag.ContinueOnError),
+		LogLevel:         defaultLogLevel,
+		Addr:             defaultAddr,
+		InternalGRPCAddr: defaultInternalGRPCAddr,
 	}
 
 	cfg.flagSet.BoolVar(&cfg.printVersion, "V", false, "print version information and exit")
 	cfg.flagSet.StringVar(&cfg.LogFile, "log-file", "", "log file path")
 	cfg.flagSet.StringVar(&cfg.LogLevel, "L", cfg.LogLevel, "log level")
 	cfg.flagSet.StringVar(&cfg.Addr, "addr", cfg.Addr, "address to listen on")
+	cfg.flagSet.StringVar(&cfg.InternalGRPCAddr, "internal-grpc-addr", cfg.InternalGRPCAddr, "address of internal grpc server")
 
 	return cfg
 }
