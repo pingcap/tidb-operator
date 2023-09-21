@@ -61,6 +61,7 @@ func main() {
 	}
 	log.ReplaceGlobals(logger, props)
 	log.Info("Starting http-service", zap.String("version", version.GetRawInfo()))
+	defer log.Sync()
 
 	router := gin.New()
 	router.Use(middlewares.LoggingMiddleware(), gin.Recovery()) // log with custom format

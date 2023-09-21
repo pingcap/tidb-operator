@@ -1,16 +1,16 @@
 version: v1
 plugins:
   - plugin: buf.build/grpc/go:v1.3.0
-    out: ./pbgen/proto/
+    out: ./pbgen/
     opt:
       - paths=source_relative
   # dependencies
   - plugin: buf.build/protocolbuffers/go
-    out: ./pbgen/proto/
+    out: ./pbgen/
     opt:
       - paths=source_relative
   - plugin: buf.build/grpc-ecosystem/gateway:v2.18.0
-    out: ./pbgen/proto/
+    out: ./pbgen/
     opt:
       - paths=source_relative
   - plugin: buf.build/grpc-ecosystem/openapiv2:v2.18.0
