@@ -134,7 +134,6 @@ func (ro *Options) restoreData(
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
 	}
-	go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
 
 	var (
 		progressWg     sync.WaitGroup
