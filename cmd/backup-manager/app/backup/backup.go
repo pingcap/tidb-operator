@@ -278,7 +278,12 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
 	}
-	go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
+
+	// only the initialization command of volume snapshot backup use gracefully shutting down
+	// because it should resume gc and pd scheduler immediately
+	if bo.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bo.Initialize {
+		go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
+	}
 
 	var errMsg string
 	stdErrCh := make(chan []byte, 1)
