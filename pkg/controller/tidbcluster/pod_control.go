@@ -240,11 +240,11 @@ func (c *PodController) getPDClient(tc *v1alpha1.TidbCluster) pdapi.PDClient {
 }
 
 func (c *PodController) syncPDPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
-	result, err := c.syncPDPodForLeaderTransfer(ctx, pod, tc)
+	result, err := c.syncPDPodForReplaceVolume(ctx, pod, tc)
 	if err != nil || result.Requeue || result.RequeueAfter > 0 {
 		return result, err
 	}
-	return c.syncPDPodForReplaceVolume(ctx, pod, tc)
+	return c.syncPDPodForLeaderTransfer(ctx, pod, tc)
 }
 
 func (c *PodController) syncPDPodForLeaderTransfer(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
@@ -363,11 +363,11 @@ func (c *PodController) syncPDPodForReplaceVolume(ctx context.Context, pod *core
 }
 
 func (c *PodController) syncTiKVPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
-	result, err := c.syncTiKVPodForEviction(ctx, pod, tc)
+	result, err := c.syncTiKVPodForReplaceVolume(ctx, pod, tc)
 	if err != nil || result.Requeue || result.RequeueAfter > 0 {
 		return result, err
 	}
-	return c.syncTiKVPodForReplaceVolume(ctx, pod, tc)
+	return c.syncTiKVPodForEviction(ctx, pod, tc)
 }
 
 func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
@@ -568,11 +568,11 @@ func (c *PodController) syncTiKVPodForReplaceVolume(ctx context.Context, pod *co
 }
 
 func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
-	result, err := c.syncTiDBPodForGracefulShutdown(ctx, pod, tc)
+	result, err := c.syncTiDBPodForReplaceVolume(ctx, pod, tc)
 	if err != nil || result.Requeue || result.RequeueAfter > 0 {
 		return result, err
 	}
-	return c.syncTiDBPodForReplaceVolume(ctx, pod, tc)
+	return c.syncTiDBPodForGracefulShutdown(ctx, pod, tc)
 }
 
 func (c *PodController) syncTiDBPodForGracefulShutdown(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
