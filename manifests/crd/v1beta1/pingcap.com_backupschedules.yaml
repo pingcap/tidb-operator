@@ -1307,6 +1307,8 @@ spec:
                         x-kubernetes-int-or-string: true
                       type: object
                   type: object
+                resumeGcSchedule:
+                  type: boolean
                 s3:
                   properties:
                     acl:
@@ -2627,6 +2629,8 @@ spec:
                         x-kubernetes-int-or-string: true
                       type: object
                   type: object
+                resumeGcSchedule:
+                  type: boolean
                 s3:
                   properties:
                     acl:
