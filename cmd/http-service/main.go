@@ -33,6 +33,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pingcap/tidb-operator/http-service/kube"
 	"github.com/pingcap/tidb-operator/http-service/middlewares"
 	"github.com/pingcap/tidb-operator/http-service/pbgen/api"
 	"github.com/pingcap/tidb-operator/http-service/server"
@@ -80,7 +81,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		setupAndRunGRPCServer(ctx, log.L(), cfg.InternalGRPCAddr)
+		setupAndRunGRPCServer(ctx, log.L(), cfg.InternalGRPCAddr, cfg.Kubeconfig)
 	}()
 
 	wg.Add(1)
@@ -95,13 +96,18 @@ func main() {
 	log.Info("HTTP service exiting")
 }
 
-func setupAndRunGRPCServer(ctx context.Context, logger *zap.Logger, addr string) {
+func setupAndRunGRPCServer(ctx context.Context, logger *zap.Logger, addr, kubeconfigPath string) {
+	kubeClient, err := kube.InitKubeClients(kubeconfigPath)
+	if err != nil {
+		log.Fatal("Failed to init kube client", zap.Error(err))
+	}
+
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Error("Failed to listen for gRPC server", zap.String("addr", addr), zap.Error(err))
+		log.Fatal("Failed to listen for gRPC server", zap.String("addr", addr), zap.Error(err))
 	}
 	s := grpc.NewServer()
-	api.RegisterClusterServer(s, &server.ClusterServer{})
+	api.RegisterClusterServer(s, &server.ClusterServer{KubeClient: kubeClient})
 	log.Info("Starting internal gRPC server", zap.String("addr", addr))
 	go func() {
 		if err2 := s.Serve(lis); err2 != nil {
@@ -118,7 +124,7 @@ func setupAndRunGRPCServer(ctx context.Context, logger *zap.Logger, addr string)
 
 func setupAndRunGRPCGateway(ctx context.Context, logger *zap.Logger, addr, grpcAddr string) {
 	mux := runtime.NewServeMux(
-		runtime.WithIncomingHeaderMatcher(CustomMatcher),
+		runtime.WithIncomingHeaderMatcher(customHeaderMatcher),
 	)
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	if err := api.RegisterClusterHandlerFromEndpoint(ctx, mux, grpcAddr, opts); err != nil {
@@ -154,7 +160,7 @@ func setupAndRunGRPCGateway(ctx context.Context, logger *zap.Logger, addr, grpcA
 	}
 }
 
-func CustomMatcher(key string) (string, bool) {
+func customHeaderMatcher(key string) (string, bool) {
 	switch key {
 	case textproto.CanonicalMIMEHeaderKey(server.HeaderKeyKubernetesID):
 		return key, true

@@ -42,6 +42,9 @@ type Config struct {
 
 	// InternalGRPCAddr is the address of internal grpc server.
 	InternalGRPCAddr string `toml:"internal-grpc-addr" json:"internal-grpc-addr"`
+
+	// Kubeconfig is the path to Kubeconfig.
+	Kubeconfig string `toml:"kubeconfig" json:"kubeconfig"`
 }
 
 func NewConfig() *Config {
@@ -57,6 +60,7 @@ func NewConfig() *Config {
 	cfg.flagSet.StringVar(&cfg.LogLevel, "L", cfg.LogLevel, "log level")
 	cfg.flagSet.StringVar(&cfg.Addr, "addr", cfg.Addr, "address to listen on")
 	cfg.flagSet.StringVar(&cfg.InternalGRPCAddr, "internal-grpc-addr", cfg.InternalGRPCAddr, "address of internal grpc server")
+	cfg.flagSet.StringVar(&cfg.Kubeconfig, "kubeconfig", cfg.Kubeconfig, "path to kubeconfig")
 
 	return cfg
 }
