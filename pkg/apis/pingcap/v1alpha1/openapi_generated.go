@@ -1084,6 +1084,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"resumeGcSchedule": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"dumpling": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DumplingConfig is the configs for dumpling",

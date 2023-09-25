@@ -1970,6 +1970,9 @@ type BackupSpec struct {
 	// FederalVolumeBackupPhase indicates which phase to execute in federal volume backup
 	// +optional
 	FederalVolumeBackupPhase FederalVolumeBackupPhase `json:"federalVolumeBackupPhase,omitempty"`
+	// ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup
+	// +optional
+	ResumeGcSchedule bool `json:"resumeGcSchedule,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -2126,10 +2129,14 @@ const (
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
 	BackupRestart BackupConditionType = "Restart"
-	// VolumeBackupInitialized means the volume backup has stopped GC and PD schedule
+	// VolumeBackupInitialized means the volume backup has stopped GC and PD scheduler
 	VolumeBackupInitialized BackupConditionType = "VolumeBackupInitialized"
 	// VolumeBackupInitializeFailed means the volume backup initialize job failed
 	VolumeBackupInitializeFailed BackupConditionType = "VolumeBackupInitializeFailed"
+	// VolumeBackupSnapshotsCreated means the local volume snapshots created, and they won't be changed
+	VolumeBackupSnapshotsCreated BackupConditionType = "VolumeBackupSnapshotsCreated"
+	// VolumeBackupInitializeComplete means the volume backup has safely resumed GC and PD scheduler
+	VolumeBackupInitializeComplete BackupConditionType = "VolumeBackupInitializeComplete"
 	// VolumeBackupComplete means the volume backup has taken volume snapshots successfully
 	VolumeBackupComplete BackupConditionType = "VolumeBackupComplete"
 	// VolumeBackupFailed means the volume backup take volume snapshots failed
