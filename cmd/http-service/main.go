@@ -19,17 +19,18 @@ import (
 	"flag"
 	"net"
 	"net/http"
+	"net/textproto"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/pingcap/log"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pingcap/tidb-operator/http-service/middlewares"
@@ -116,7 +117,9 @@ func setupAndRunGRPCServer(ctx context.Context, logger *zap.Logger, addr string)
 }
 
 func setupAndRunGRPCGateway(ctx context.Context, logger *zap.Logger, addr, grpcAddr string) {
-	mux := runtime.NewServeMux()
+	mux := runtime.NewServeMux(
+		runtime.WithIncomingHeaderMatcher(CustomMatcher),
+	)
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	if err := api.RegisterClusterHandlerFromEndpoint(ctx, mux, grpcAddr, opts); err != nil {
 		log.Fatal("Failed to register gRPC gateway", zap.Error(err))
@@ -148,5 +151,14 @@ func setupAndRunGRPCGateway(ctx context.Context, logger *zap.Logger, addr, grpcA
 		log.Error("gRPC gateway forced to shutdown", zap.String("addr", addr), zap.Error(err))
 	} else {
 		log.Info("gRPC gateway stopped", zap.String("addr", addr))
+	}
+}
+
+func CustomMatcher(key string) (string, bool) {
+	switch key {
+	case textproto.CanonicalMIMEHeaderKey(server.HeaderKeyKubernetesID):
+		return key, true
+	default:
+		return runtime.DefaultHeaderMatcher(key)
 	}
 }

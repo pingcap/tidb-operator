@@ -16,18 +16,17 @@ package server
 import (
 	"context"
 
-	"github.com/pingcap/log"
-	"go.uber.org/zap"
-
-	"github.com/pingcap/tidb-operator/http-service/pbgen/api"
+	"google.golang.org/grpc/metadata"
 )
 
-type ClusterServer struct {
-	api.UnimplementedClusterServer
-}
+const (
+	HeaderKeyKubernetesID = "kubernetes-id"
+)
 
-func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateClusterReq) (*api.CreateClusterResp, error) {
-	k8sID := getKubernetesID(ctx)
-	log.Info("CreateCluster", zap.String("k8sID", k8sID))
-	return &api.CreateClusterResp{Success: true}, nil
+func getKubernetesID(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok || len(md.Get(HeaderKeyKubernetesID)) == 0 {
+		return ""
+	}
+	return md.Get(HeaderKeyKubernetesID)[0]
 }
