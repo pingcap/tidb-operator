@@ -199,6 +199,8 @@ const (
 	VolumeBackupInvalid VolumeBackupConditionType = "Invalid"
 	// VolumeBackupRunning means the VolumeBackup is running
 	VolumeBackupRunning VolumeBackupConditionType = "Running"
+	// VolumeBackupSnapshotsCreated means the all the volume snapshots have created, and we have safely resumed GC and PD scheduler
+	VolumeBackupSnapshotsCreated VolumeBackupConditionType = "SnapshotsCreated"
 	// VolumeBackupComplete means all the backups in data plane are complete and the VolumeBackup is complete
 	VolumeBackupComplete VolumeBackupConditionType = "Complete"
 	// VolumeBackupFailed means one of backup in data plane is failed and the VolumeBackup is failed
