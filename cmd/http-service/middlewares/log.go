@@ -14,6 +14,8 @@
 package middlewares
 
 import (
+	"bytes"
+	"io"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +27,13 @@ func LoggingMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// Starting time
 		startTime := time.Now()
+
+		var body []byte
+		if log.GetLevel().Enabled(zap.DebugLevel) {
+			// copy body for logging
+			body, _ = io.ReadAll(ctx.Request.Body)
+			ctx.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+		}
 
 		// Processing request
 		ctx.Next()
@@ -52,10 +61,18 @@ func LoggingMiddleware() gin.HandlerFunc {
 			zap.String("uri", reqUri),
 			zap.Int("status", statusCode),
 			zap.Duration("latency", latencyTime),
-			zap.String("client", clientIP))
+			zap.String("client", clientIP),
+			zap.Any("params", ctx.Request.URL.Query()),
+		)
 		if errs := ctx.Errors.ByType(gin.ErrorTypePrivate); len(errs) > 0 {
 			logger = logger.With(zap.String("error", errs.String()))
 		}
-		logger.Info("")
+
+		if log.GetLevel().Enabled(zap.DebugLevel) {
+			logger = logger.With(zap.ByteString("body", body))
+			logger.Debug("")
+		} else {
+			logger.Info("")
+		}
 	}
 }

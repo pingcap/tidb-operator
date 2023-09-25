@@ -29,8 +29,10 @@ import (
 	"github.com/pingcap/log"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pingcap/tidb-operator/http-service/middlewares"
 	"github.com/pingcap/tidb-operator/http-service/pbgen/api"
 	"github.com/pingcap/tidb-operator/http-service/server"
 	"github.com/pingcap/tidb-operator/http-service/version"
@@ -120,9 +122,13 @@ func setupAndRunGRPCGateway(ctx context.Context, logger *zap.Logger, addr, grpcA
 		log.Fatal("Failed to register gRPC gateway", zap.Error(err))
 	}
 
+	router := gin.New()
+	router.Use(middlewares.LoggingMiddleware(), gin.Recovery()) // log with custom format
+	router.Group("/v1beta/*{grpc_gateway}").Any("", gin.WrapH(mux))
+
 	srv := &http.Server{
 		Addr:    addr,
-		Handler: mux,
+		Handler: router,
 	}
 	log.Info("Starting gRPC gateway", zap.String("addr", addr))
 	go func() {
