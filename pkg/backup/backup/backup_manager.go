@@ -103,10 +103,16 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 			if err := bm.deleteVolumeBackupInitializeJob(backup); err != nil {
 				return err
 			}
-		} else if err = bm.checkVolumeBackupInitializeJobExisted(backup); err != nil {
+		} else if err := bm.checkVolumeBackupInitializeJobExisted(backup); err != nil {
 			// check volume backup initialize job, we should ensure the job is existed during volume backup
 			klog.Errorf("backup %s/%s check volume backup initialize job error %v.", ns, name, err)
 			return err
+		}
+		if backup.Spec.ResumeGcSchedule {
+			if err := bm.resumeGCScheduleForVolumeBackup(backup); err != nil {
+				klog.Errorf("backup %s/%s resume gc and pd scheduler error %v.", ns, name, err)
+				return err
+			}
 		}
 	}
 
@@ -117,6 +123,11 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	// validate backup
 	if err = bm.validateBackup(backup); err != nil {
 		klog.Errorf("backup %s/%s validate error %v.", ns, name, err)
+		return err
+	}
+
+	if err = bm.checkVolumeBackupSnapshotsCreated(backup); err != nil {
+		klog.Errorf("backup %s/%s check snapshots created error %v.", ns, name, err)
 		return err
 	}
 
@@ -227,6 +238,9 @@ func (bm *backupManager) checkVolumeBackupInitializeJobExisted(backup *v1alpha1.
 	if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
 		return nil
 	}
+	if v1alpha1.IsVolumeBackupSnapshotsCreated(backup) {
+		return nil
+	}
 	if !v1alpha1.IsVolumeBackupInitialized(backup) || v1alpha1.IsVolumeBackupInitializeFailed(backup) {
 		return nil
 	}
@@ -249,6 +263,75 @@ func (bm *backupManager) checkVolumeBackupInitializeJobExisted(backup *v1alpha1.
 			return updateErr
 		}
 		return controller.IgnoreErrorf("backup %s/%s job was deleted, set it VolumeBackupInitializeFailed", ns, name)
+	}
+	return nil
+}
+
+func (bm *backupManager) resumeGCScheduleForVolumeBackup(b *v1alpha1.Backup) error {
+	if b.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot || !b.Spec.ResumeGcSchedule {
+		return nil
+	}
+	if v1alpha1.IsVolumeBackupInitializeFailed(b) {
+		return nil
+	}
+	if v1alpha1.IsVolumeBackupInitializeComplete(b) {
+		return nil
+	}
+
+	ns := b.GetNamespace()
+	name := b.GetName()
+	if !v1alpha1.IsVolumeBackupSnapshotsCreated(b) {
+		klog.Infof("backup %s/%s volume snapshots not created, can't resume gc and pd scheduler", ns, name)
+		return nil
+	}
+	if err := bm.deleteVolumeBackupInitializeJob(b); err != nil {
+		return fmt.Errorf("delete initialize job failed, err: %s", err.Error())
+	}
+	klog.Infof("backup %s/%s resumed GC and PD scheduler successfully", ns, name)
+	err := bm.statusUpdater.Update(b, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.VolumeBackupInitializeComplete,
+		Status: corev1.ConditionTrue,
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("update status to VolumeBackupInitializeComplete error: %s", err.Error())
+	}
+	return nil
+}
+
+func (bm *backupManager) checkVolumeBackupSnapshotsCreated(b *v1alpha1.Backup) error {
+	if b.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot || b.Spec.FederalVolumeBackupPhase != v1alpha1.FederalVolumeBackupExecute {
+		return nil
+	}
+	if v1alpha1.IsVolumeBackupInitializeFailed(b) {
+		return nil
+	}
+	if v1alpha1.IsVolumeBackupSnapshotsCreated(b) {
+		return nil
+	}
+
+	ns := b.GetNamespace()
+	name := b.GetName()
+	cred := backuputil.GetStorageCredential(b.Namespace, b.Spec.StorageProvider, bm.deps.SecretLister)
+	externalStorage, err := backuputil.NewStorageBackend(b.Spec.StorageProvider, cred)
+	if err != nil {
+		return fmt.Errorf("create storage backend error: %s", err.Error())
+	}
+
+	ctx := context.Background()
+	existed, err := externalStorage.Exists(ctx, constants.MetaFile)
+	if err != nil {
+		return fmt.Errorf("check backupmeta existed error: %s", err.Error())
+	}
+	if !existed {
+		return nil
+	}
+	klog.Infof("backup %s/%s volume snapshots have created", ns, name)
+	err = bm.statusUpdater.Update(b, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.VolumeBackupSnapshotsCreated,
+		Status: corev1.ConditionTrue,
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("update status to VolumeBackupSnapshotsCreated error: %s", err.Error())
 	}
 	return nil
 }
@@ -1055,6 +1138,9 @@ func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err erro
 		}, nil)
 	}()
 
+	if v1alpha1.IsVolumeBackupInitializeComplete(backup) {
+		return nil
+	}
 	backupInitializeJob, err := bm.deps.JobLister.Jobs(ns).Get(backupInitializeJobName)
 	if err != nil {
 		if errors.IsNotFound(err) {

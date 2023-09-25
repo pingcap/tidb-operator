@@ -296,6 +296,18 @@ FederalVolumeBackupPhase
 </tr>
 <tr>
 <td>
+<code>resumeGcSchedule</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dumpling</code></br>
 <em>
 <a href="#dumplingconfig">
@@ -4096,6 +4108,18 @@ FederalVolumeBackupPhase
 <td>
 <em>(Optional)</em>
 <p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resumeGcSchedule</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup</p>
 </td>
 </tr>
 <tr>

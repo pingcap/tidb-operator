@@ -264,7 +264,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	}
 	klog.Infof("Running br command with args: %v", fullArgs)
 	bin := filepath.Join(util.BRBinPath, "br")
-	cmd := exec.CommandContext(ctx, bin, fullArgs...)
+	cmd := exec.Command(bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
@@ -278,7 +278,17 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
 	}
+
+	// only the initialization command of volume snapshot backup use gracefully shutting down
+	// because it should resume gc and pd scheduler immediately
+	if bo.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bo.Initialize {
+		go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
+	}
+
 	var errMsg string
+	stdErrCh := make(chan []byte, 1)
+	go backupUtil.ReadAllStdErrToChannel(stdErr, stdErrCh)
+
 	reader := bufio.NewReader(stdOut)
 	for {
 		line, err := reader.ReadString('\n')
@@ -291,10 +301,13 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 
 		klog.Info(strings.Replace(line, "\n", "", -1))
 		if err != nil {
+			if err != io.EOF {
+				klog.Errorf("read stdout error: %s", err.Error())
+			}
 			break
 		}
 	}
-	tmpErr, _ := io.ReadAll(stdErr)
+	tmpErr := <-stdErrCh
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)

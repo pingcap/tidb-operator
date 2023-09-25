@@ -75,6 +75,7 @@ func (bm *backupManager) Sync(volumeBackup *v1alpha1.VolumeBackup) error {
 		if _, ok := err.(*fedvolumebackup.BRDataPlaneFailedError); !ok {
 			return err
 		} else {
+			// volume backup failed, can't return error directly. need to enter teardown phase
 			klog.Errorf("VolumeBackup %s/%s data plane backup failed when sync backup, will teardown all the backups. err: %s", ns, name, err.Error())
 		}
 	} else if !backupFinished {
@@ -136,7 +137,23 @@ func (bm *backupManager) runBackup(ctx context.Context, volumeBackup *v1alpha1.V
 	if newMemberCreatedOrUpdated {
 		return false, nil
 	}
-	if err := bm.waitVolumeSnapshotsComplete(ctx, volumeBackup, backupMembers); err != nil {
+
+	if err := bm.waitVolumeSnapshotsCreated(backupMembers); err != nil {
+		return false, err
+	}
+	memberUpdated, err := bm.resumeGCSchedule(ctx, volumeBackup, backupMembers)
+	if err != nil {
+		return false, err
+	}
+	if memberUpdated {
+		return false, nil
+	}
+
+	if err := bm.waitBackupMemberInitializeComplete(volumeBackup, backupMembers); err != nil {
+		return false, err
+	}
+
+	if err := bm.waitVolumeSnapshotsComplete(backupMembers); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -277,7 +294,75 @@ func (bm *backupManager) executeVolumeBackup(ctx context.Context, volumeBackup *
 	return
 }
 
-func (bm *backupManager) waitVolumeSnapshotsComplete(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) error {
+func (bm *backupManager) resumeGCSchedule(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) (memberUpdated bool, err error) {
+	var initializedBackupMember *volumeBackupMember
+	for _, backupMember := range backupMembers {
+		if pingcapv1alpha1.IsVolumeBackupInitialized(backupMember.backup) {
+			initializedBackupMember = backupMember
+			break
+		}
+	}
+
+	if initializedBackupMember == nil {
+		return false, controller.RequeueErrorf("not found initialized member")
+	}
+	if initializedBackupMember.backup.Spec.ResumeGcSchedule {
+		return false, nil
+	}
+
+	backupCR := initializedBackupMember.backup.DeepCopy()
+	backupCR.Spec.ResumeGcSchedule = true
+	kubeClient := bm.deps.FedClientset[initializedBackupMember.k8sClusterName]
+	if _, err := kubeClient.PingcapV1alpha1().Backups(backupCR.Namespace).Update(ctx, backupCR, metav1.UpdateOptions{}); err != nil {
+		return false, controller.RequeueErrorf(
+			"update backup member %s of cluster %s to resume gc and pd scheduler error: %s",
+			backupCR.Name, initializedBackupMember.k8sClusterName, err.Error())
+	}
+	klog.Infof("VolumeBackup %s/%s update backup member %s to resume gc and pd scheduler", volumeBackup.Namespace, volumeBackup.Name, backupCR.Name)
+	return true, nil
+}
+
+func (bm *backupManager) waitVolumeSnapshotsCreated(backupMembers []*volumeBackupMember) error {
+	for _, backupMember := range backupMembers {
+		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) ||
+			pingcapv1alpha1.IsVolumeBackupFailed(backupMember.backup) ||
+			pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
+			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeBackupMemberFailed,
+				Message: errMsg,
+			}
+		}
+		if !pingcapv1alpha1.IsVolumeBackupSnapshotsCreated(backupMember.backup) {
+			return controller.IgnoreErrorf("backup member %s of cluster %s is not volume snapshots created", backupMember.backup.Name, backupMember.k8sClusterName)
+		}
+	}
+	return nil
+}
+
+func (bm *backupManager) waitBackupMemberInitializeComplete(volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) error {
+	for _, backupMember := range backupMembers {
+		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) ||
+			pingcapv1alpha1.IsVolumeBackupFailed(backupMember.backup) ||
+			pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
+			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeBackupMemberFailed,
+				Message: errMsg,
+			}
+		}
+
+		if pingcapv1alpha1.IsVolumeBackupInitializeComplete(backupMember.backup) {
+			if !v1alpha1.IsVolumeBackupSnapshotsCreated(volumeBackup) {
+				bm.setVolumeBackupSnapshotCreated(&volumeBackup.Status)
+			}
+			return nil
+		}
+	}
+	return controller.IgnoreErrorf("not found backup member with status VolumeBackupInitializeComplete")
+}
+
+func (bm *backupManager) waitVolumeSnapshotsComplete(backupMembers []*volumeBackupMember) error {
 	for _, backupMember := range backupMembers {
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) ||
 			pingcapv1alpha1.IsVolumeBackupFailed(backupMember.backup) ||
@@ -328,6 +413,13 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 
 	klog.Infof("VolumeBackup %s/%s backup complete", volumeBackup.Namespace, volumeBackup.Name)
 	return bm.setVolumeBackupComplete(&volumeBackup.Status, backupMembers)
+}
+
+func (bm *backupManager) setVolumeBackupSnapshotCreated(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
+	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupSnapshotsCreated,
+		Status: corev1.ConditionTrue,
+	})
 }
 
 func (bm *backupManager) setVolumeBackupComplete(volumeBackupStatus *v1alpha1.VolumeBackupStatus, backupMembers []*volumeBackupMember) error {
