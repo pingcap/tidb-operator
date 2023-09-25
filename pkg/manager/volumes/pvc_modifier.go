@@ -302,9 +302,8 @@ func (p *pvcModifier) endEvictLeader(tc *v1alpha1.TidbCluster, pod *corev1.Pod) 
 		if _, err := p.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("delete leader eviction annotation to pod %s/%s failed: %s", pod.Namespace, pod.Name, err)
 		}
-	}
-
-	if !isLeaderEvictionFinished(tc, pod) {
+		// Return an error once after deleting annotation, to give pod_control a chance to stop the eviction.
+		// (but do not block / re-check in case the eviction here maybe manually requested by user via annotation)
 		return fmt.Errorf("wait for leader eviction of %s/%s finished", pod.Namespace, pod.Name)
 	}
 
