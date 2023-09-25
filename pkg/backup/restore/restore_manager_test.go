@@ -649,12 +649,12 @@ func TestVolumeNumMismatchBRRestoreByEBS(t *testing.T) {
 	}
 
 	// Verify invalid tc with mismatch tikv replicas
-	//generate the restore meta in local nfs, with only 2 tikv replicas
-	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestore2TiKVMetaStr()), 0644) //nolint:gosec
+	//generate the restore meta in local nfs, with 3 volumes for each tikv
+	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreTiKVVolumesMetaWithStr()), 0644) //nolint:gosec
 	g.Expect(err).To(Succeed())
 
 	//generate the backup meta in local nfs, tiflash check need backupmeta to validation
-	err = os.WriteFile("/tmp/backupmeta", []byte(testutils.ConstructRestore2TiKVMetaStr()), 0644) //nolint:gosec
+	err = os.WriteFile("/tmp/backupmeta", []byte(testutils.ConstructRestoreTiKVVolumesMetaWithStr()), 0644) //nolint:gosec
 	g.Expect(err).To(Succeed())
 	defer func() {
 		err = os.Remove("/tmp/restoremeta")
@@ -669,6 +669,6 @@ func TestVolumeNumMismatchBRRestoreByEBS(t *testing.T) {
 		helper.CreateRestore(cases[0].restore)
 		m := NewRestoreManager(deps)
 		err := m.Sync(cases[0].restore)
-		g.Expect(err).Should(MatchError("tikv replica mismatch"))
+		g.Expect(err).Should(MatchError("additional volumes mismatched"))
 	})
 }
