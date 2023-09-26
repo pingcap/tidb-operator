@@ -15,12 +15,19 @@ package server
 
 import (
 	"context"
+	"strconv"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
 const (
 	HeaderKeyKubernetesID = "kubernetes-id"
+
+	// if we return an error in the gRPC service, the HTTP response body will be something like
+	// `{"code":2, "message":"k8s client not found", "details":[]}`.
+	// so we choose to return a nil error and set the HTTP status code in the response header.
+	ResponseKeyStatusCode = "x-http-code"
 )
 
 func getKubernetesID(ctx context.Context) string {
@@ -29,4 +36,8 @@ func getKubernetesID(ctx context.Context) string {
 		return ""
 	}
 	return md.Get(HeaderKeyKubernetesID)[0]
+}
+
+func setResponseStatusCodes(ctx context.Context, statusCode int) {
+	_ = grpc.SetHeader(ctx, metadata.Pairs(ResponseKeyStatusCode, strconv.Itoa(statusCode)))
 }

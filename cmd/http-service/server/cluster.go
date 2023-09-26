@@ -17,6 +17,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/pingcap/log"
 	"go.uber.org/zap"
@@ -37,6 +38,7 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 	if k8sCli == nil {
 		log.Error("CreateCluster", zap.String("k8sID", k8sID), zap.Error(errors.New("k8s client not found")))
 		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
 		return &api.CreateClusterResp{Success: false, Message: &message}, nil
 	}
 

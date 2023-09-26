@@ -17,11 +17,13 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"net"
 	"net/http"
 	"net/textproto"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -32,6 +34,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/pingcap/tidb-operator/http-service/kube"
 	"github.com/pingcap/tidb-operator/http-service/middlewares"
@@ -125,6 +128,7 @@ func setupAndRunGRPCServer(ctx context.Context, logger *zap.Logger, addr, kubeco
 func setupAndRunGRPCGateway(ctx context.Context, logger *zap.Logger, addr, grpcAddr string) {
 	mux := runtime.NewServeMux(
 		runtime.WithIncomingHeaderMatcher(customHeaderMatcher),
+		runtime.WithForwardResponseOption(httpResponseModifier),
 	)
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	if err := api.RegisterClusterHandlerFromEndpoint(ctx, mux, grpcAddr, opts); err != nil {
@@ -167,4 +171,25 @@ func customHeaderMatcher(key string) (string, bool) {
 	default:
 		return runtime.DefaultHeaderMatcher(key)
 	}
+}
+
+func httpResponseModifier(ctx context.Context, w http.ResponseWriter, p proto.Message) error {
+	md, ok := runtime.ServerMetadataFromContext(ctx)
+	if !ok {
+		return nil
+	}
+
+	// set http status code
+	if vals := md.HeaderMD.Get(server.ResponseKeyStatusCode); len(vals) > 0 {
+		code, err := strconv.Atoi(vals[0])
+		if err != nil {
+			return err
+		}
+		// delete the headers to not expose any grpc-metadata in http response
+		delete(md.HeaderMD, server.ResponseKeyStatusCode)
+		delete(w.Header(), fmt.Sprintf("Grpc-Metadata-%s", textproto.CanonicalMIMEHeaderKey(server.ResponseKeyStatusCode)))
+		w.WriteHeader(code)
+	}
+
+	return nil
 }
