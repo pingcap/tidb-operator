@@ -16,6 +16,7 @@ package kube
 import (
 	"github.com/pingcap/log"
 	"go.uber.org/zap"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -31,19 +32,28 @@ type KubeClient struct {
 	// When it's true, no `kubenetes-id` for some APIs is needed.
 	inCluster bool
 
-	clients map[string]versioned.Interface // context --> pingcap client
+	opClients   map[string]versioned.Interface  // context --> TiDB Operator client
+	kubeClients map[string]kubernetes.Interface // context --> k8s client
 }
 
-func (kc *KubeClient) GetClient(context string) versioned.Interface {
+func (kc *KubeClient) GetOperatorClient(context string) versioned.Interface {
 	if context == "" && kc.inCluster {
 		context = defaultContext
 	}
-	return kc.clients[context]
+	return kc.opClients[context]
+}
+
+func (kc *KubeClient) GetKubeClient(context string) kubernetes.Interface {
+	if context == "" && kc.inCluster {
+		context = defaultContext
+	}
+	return kc.kubeClients[context]
 }
 
 func InitKubeClients(kubeconfigPath string) (*KubeClient, error) {
 	kc := &KubeClient{
-		clients: make(map[string]versioned.Interface),
+		opClients:   make(map[string]versioned.Interface),
+		kubeClients: make(map[string]kubernetes.Interface),
 	}
 	ctxNames := make([]string, 0)
 
@@ -65,11 +75,17 @@ func InitKubeClients(kubeconfigPath string) (*KubeClient, error) {
 			cfg.QPS = float32(100)
 			cfg.Burst = 100
 
-			cli, err := versioned.NewForConfig(cfg)
+			opCli, err := versioned.NewForConfig(cfg)
 			if err != nil {
 				return nil, err
 			}
-			kc.clients[contextName] = cli
+			kubeCli, err := kubernetes.NewForConfig(cfg)
+			if err != nil {
+				return nil, err
+			}
+
+			kc.opClients[contextName] = opCli
+			kc.kubeClients[contextName] = kubeCli
 			ctxNames = append(ctxNames, contextName)
 		}
 	} else {
@@ -80,11 +96,16 @@ func InitKubeClients(kubeconfigPath string) (*KubeClient, error) {
 		cfg.QPS = float32(100)
 		cfg.Burst = 100
 
-		cli, err := versioned.NewForConfig(cfg)
+		opCli, err := versioned.NewForConfig(cfg)
 		if err != nil {
 			return nil, err
 		}
-		kc.clients[defaultContext] = cli
+		kubeCli, err := kubernetes.NewForConfig(cfg)
+		if err != nil {
+			return nil, err
+		}
+		kc.opClients[defaultContext] = opCli
+		kc.kubeClients[defaultContext] = kubeCli
 		kc.inCluster = true // in k8s cluster
 		ctxNames = append(ctxNames, defaultContext)
 	}

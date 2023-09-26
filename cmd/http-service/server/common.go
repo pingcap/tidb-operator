@@ -15,10 +15,15 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
+	"github.com/pingcap/tidb-operator/http-service/pbgen/api"
 )
 
 const (
@@ -28,6 +33,12 @@ const (
 	// `{"code":2, "message":"k8s client not found", "details":[]}`.
 	// so we choose to return a nil error and set the HTTP status code in the response header.
 	ResponseKeyStatusCode = "x-http-code"
+
+	// we use the `cluster-id` as the namespace of the TidbCluster,
+	// and use the same name for all TidbClusters.
+	tidbClusterName = "db"
+
+	memoryStorageUnit = "Gi"
 )
 
 func getKubernetesID(ctx context.Context) string {
@@ -40,4 +51,37 @@ func getKubernetesID(ctx context.Context) string {
 
 func setResponseStatusCodes(ctx context.Context, statusCode int) {
 	_ = grpc.SetHeader(ctx, metadata.Pairs(ResponseKeyStatusCode, strconv.Itoa(statusCode)))
+}
+
+func convertResourceRequirements(res *api.Resource) (corev1.ResourceRequirements, error) {
+	cpu, err := resource.ParseQuantity(strconv.Itoa(int(res.Cpu)))
+	if err != nil {
+		return corev1.ResourceRequirements{}, err
+	}
+	memory, err := resource.ParseQuantity(fmt.Sprintf("%d%s", res.Memory, memoryStorageUnit))
+	if err != nil {
+		return corev1.ResourceRequirements{}, err
+	}
+
+	ret := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    cpu,
+			corev1.ResourceMemory: memory,
+		},
+		Limits: corev1.ResourceList{ // == Requests
+			corev1.ResourceCPU:    cpu,
+			corev1.ResourceMemory: memory,
+		},
+	}
+
+	if *res.Storage > 0 {
+		storage, err := resource.ParseQuantity(fmt.Sprintf("%d%s", res.Storage, memoryStorageUnit))
+		if err != nil {
+			return corev1.ResourceRequirements{}, err
+		}
+		ret.Requests[corev1.ResourceStorage] = storage
+		ret.Limits[corev1.ResourceStorage] = storage
+	}
+
+	return ret, nil
 }

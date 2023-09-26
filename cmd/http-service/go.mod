@@ -6,15 +6,22 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
 	github.com/pingcap/log v1.1.1-0.20230317032135-a0d097d16e22
+	github.com/pingcap/tidb-operator/pkg/apis v1.6.0-alpha.6
 	github.com/pingcap/tidb-operator/pkg/client v1.6.0-alpha.6
 	go.uber.org/zap v1.23.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d
 	google.golang.org/grpc v1.58.1
 	google.golang.org/protobuf v1.31.0
+	k8s.io/api v0.23.17
+	k8s.io/apimachinery v0.23.17
 	k8s.io/client-go v0.23.17
+	k8s.io/utils v0.0.0-20211116205334-6203023598ed
 )
 
-replace github.com/pingcap/tidb-operator/pkg/client => ../../pkg/client
+replace (
+	github.com/pingcap/tidb-operator/pkg/apis => ../../pkg/apis
+	github.com/pingcap/tidb-operator/pkg/client => ../../pkg/client
+)
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
@@ -56,7 +63,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/pingcap/TiProxy/lib v0.0.0-20230201020701-df06ec482c69 // indirect
 	github.com/pingcap/errors v0.11.4 // indirect
-	github.com/pingcap/tidb-operator/pkg/apis v1.6.0-alpha.6 // indirect
 	github.com/prometheus/common v0.28.0 // indirect
 	github.com/prometheus/prometheus v1.8.2 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
@@ -80,12 +86,9 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.23.17 // indirect
 	k8s.io/apiextensions-apiserver v0.23.17 // indirect
-	k8s.io/apimachinery v0.23.17 // indirect
 	k8s.io/klog/v2 v2.30.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
-	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
