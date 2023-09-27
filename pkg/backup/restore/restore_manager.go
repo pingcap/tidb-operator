@@ -449,11 +449,7 @@ func (rm *restoreManager) checkTiFlashAndTiKVReplicasFromBackupMeta(r *v1alpha1.
 	}
 
 	// Check volume number
-	if (tc.Spec.TiKV.StorageVolumes == nil && metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.StorageVolumes != nil) ||
-		(tc.Spec.TiKV.StorageVolumes != nil && metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.StorageVolumes == nil) {
-		klog.Errorf("additional volumes # not match. either tc or backup metadata has no additional volumes, while the other has")
-		return fmt.Errorf("additional volumes mismatched")
-	} else if len(tc.Spec.TiKV.StorageVolumes) != len(metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.StorageVolumes) {
+	if len(tc.Spec.TiKV.StorageVolumes) != len(metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.StorageVolumes) {
 		klog.Errorf("additional volumes # not match. tc has %d, and backup has %d", len(tc.Spec.TiKV.StorageVolumes), len(metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.StorageVolumes))
 		return fmt.Errorf("additional volumes mismatched")
 	}
