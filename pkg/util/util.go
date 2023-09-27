@@ -386,7 +386,7 @@ func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel 
 }
 
 // statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
-func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
+func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, podTemplateCheckedAndNotEqual bool) {
 	// The annotations in old sts may include LastAppliedConfigAnnotation
 	tmpAnno := map[string]string{}
 	for k, v := range old.Annotations {
@@ -395,24 +395,25 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 		}
 	}
 	if !apiequality.Semantic.DeepEqual(new.Annotations, tmpAnno) {
-		return false
+		return false, false // pod tempate not checked, return false
 	}
 	oldConfig := apps.StatefulSetSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
 		if err != nil {
 			klog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
-			return false
+			return false, false
 		}
 		// oldConfig.Template.Annotations may include LastAppliedConfigAnnotation to keep backward compatiability
 		// Please check detail in https://github.com/pingcap/tidb-operator/pull/1489
 		tmpTemplate := oldConfig.Template.DeepCopy()
 		delete(tmpTemplate.Annotations, LastAppliedConfigAnnotation)
+		podTemplateEqual := apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template)
 		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
-			apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template) &&
-			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
+			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy) && // this will be changed when scaling
+			podTemplateEqual, !podTemplateEqual // pod tempate checked, may not equal
 	}
-	return false
+	return false, false // pod tempate not checked/exist, return false
 }
 
 // ResolvePVCFromPod parses pod volumes definition, and returns all PVCs mounted by this pod

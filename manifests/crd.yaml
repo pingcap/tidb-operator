@@ -1442,6 +1442,8 @@ spec:
                       x-kubernetes-int-or-string: true
                     type: object
                 type: object
+              resumeGcSchedule:
+                type: boolean
               s3:
                 properties:
                   acl:
@@ -3068,6 +3070,8 @@ spec:
                           x-kubernetes-int-or-string: true
                         type: object
                     type: object
+                  resumeGcSchedule:
+                    type: boolean
                   s3:
                     properties:
                       acl:
@@ -4498,6 +4502,8 @@ spec:
                           x-kubernetes-int-or-string: true
                         type: object
                     type: object
+                  resumeGcSchedule:
+                    type: boolean
                   s3:
                     properties:
                       acl:
@@ -37334,6 +37340,8 @@ spec:
                           type: object
                       type: object
                     type: object
+                  volReplaceInProgress:
+                    type: boolean
                   volumes:
                     additionalProperties:
                       properties:
@@ -37792,6 +37800,8 @@ spec:
                     required:
                     - replicas
                     type: object
+                  volReplaceInProgress:
+                    type: boolean
                   volumes:
                     additionalProperties:
                       properties:
@@ -38295,6 +38305,8 @@ spec:
                       - state
                       type: object
                     type: object
+                  volReplaceInProgress:
+                    type: boolean
                   volumes:
                     additionalProperties:
                       properties:

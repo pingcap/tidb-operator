@@ -1301,6 +1301,8 @@ type PDStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
+	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
 // PDMember is PD member
@@ -1357,6 +1359,8 @@ type TiDBStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
+	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -1394,6 +1398,8 @@ const (
 	TiKVEvictLeaderExpirationTimeAnnKey = "tidb.pingcap.com/tikv-evict-leader-expiration-time"
 	// PDLeaderTransferExpirationTimeAnnKey is the annotation key to expire transfer leader annotation. Type: time.RFC3339.
 	PDLeaderTransferExpirationTimeAnnKey = "tidb.pingcap.com/pd-evict-leader-expiration-time"
+	// ReplaceVolumeAnnKey is the annotation key to replace disks used by pod.
+	ReplaceVolumeAnnKey = "tidb.pingcap.com/replace-volume"
 )
 
 // The `Value` of annotation controls the behavior when the leader count drops to zero, the valid value is one of:
@@ -1421,6 +1427,11 @@ const (
 const (
 	TiDBPodDeletionValueNone = "none"
 	TiDBPodDeletionDeletePod = "delete-pod"
+)
+
+// Only supported value for ReplaceVolume Annotation.
+const (
+	ReplaceVolumeValueTrue = "true"
 )
 
 type EvictLeaderStatus struct {
@@ -1456,6 +1467,8 @@ type TiKVStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
+	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status
@@ -1957,6 +1970,9 @@ type BackupSpec struct {
 	// FederalVolumeBackupPhase indicates which phase to execute in federal volume backup
 	// +optional
 	FederalVolumeBackupPhase FederalVolumeBackupPhase `json:"federalVolumeBackupPhase,omitempty"`
+	// ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup
+	// +optional
+	ResumeGcSchedule bool `json:"resumeGcSchedule,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -2113,10 +2129,14 @@ const (
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
 	BackupRestart BackupConditionType = "Restart"
-	// VolumeBackupInitialized means the volume backup has stopped GC and PD schedule
+	// VolumeBackupInitialized means the volume backup has stopped GC and PD scheduler
 	VolumeBackupInitialized BackupConditionType = "VolumeBackupInitialized"
 	// VolumeBackupInitializeFailed means the volume backup initialize job failed
 	VolumeBackupInitializeFailed BackupConditionType = "VolumeBackupInitializeFailed"
+	// VolumeBackupSnapshotsCreated means the local volume snapshots created, and they won't be changed
+	VolumeBackupSnapshotsCreated BackupConditionType = "VolumeBackupSnapshotsCreated"
+	// VolumeBackupInitializeComplete means the volume backup has safely resumed GC and PD scheduler
+	VolumeBackupInitializeComplete BackupConditionType = "VolumeBackupInitializeComplete"
 	// VolumeBackupComplete means the volume backup has taken volume snapshots successfully
 	VolumeBackupComplete BackupConditionType = "VolumeBackupComplete"
 	// VolumeBackupFailed means the volume backup take volume snapshots failed
