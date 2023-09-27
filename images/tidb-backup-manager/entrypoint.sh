@@ -58,12 +58,25 @@ else
 	EXEC_COMMAND="/usr/local/bin/shush exec --"
 fi
 
+terminate_subprocesses() {
+    echo "get SIGTERM, send it to sub process $1"
+    kill -15 $1 # -15 is SIGTERM
+    wait $1
+}
+
 # exec command
 case "$1" in
     backup)
         shift 1
         echo "$BACKUP_BIN backup $@"
-        $EXEC_COMMAND $BACKUP_BIN backup "$@"
+        $EXEC_COMMAND $BACKUP_BIN backup "$@" &
+
+        # save the PID of the sub process
+        pid=$!
+        # Trap the SIGTERM signal and forward it to the main process
+        trap 'terminate_subprocesses $pid' SIGTERM
+        # Wait for the sub process to complete
+        wait $pid
         ;;
     export)
         shift 1

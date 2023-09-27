@@ -104,6 +104,16 @@ func (h *helper) assertRunExecute(ctx context.Context, volumeBackup *v1alpha1.Vo
 	h.g.Expect(backupMember3.Spec.FederalVolumeBackupPhase).To(gomega.Equal(pingcapv1alpha1.FederalVolumeBackupExecute))
 }
 
+func (h *helper) assertRunResumeGcSchedule(ctx context.Context) {
+	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	h.g.Expect(backupMember1.Spec.ResumeGcSchedule).To(gomega.Equal(true))
+}
+
+func (h *helper) assertControlPlaneSnapshotsCreated(volumeBackup *v1alpha1.VolumeBackup) {
+	h.g.Expect(v1alpha1.IsVolumeBackupSnapshotsCreated(volumeBackup)).To(gomega.BeTrue())
+}
+
 func (h *helper) assertRunTeardown(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, initializeFailed bool) {
 	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
@@ -141,6 +151,46 @@ func (h *helper) setDataPlaneInitialized(ctx context.Context) {
 	pingcapv1alpha1.UpdateBackupCondition(&backupMember1.Status, &pingcapv1alpha1.BackupCondition{
 		Status: corev1.ConditionTrue,
 		Type:   pingcapv1alpha1.VolumeBackupInitialized,
+	})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+}
+
+func (h *helper) setDataPlaneSnapshotCreated(ctx context.Context) {
+	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember1.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.VolumeBackupSnapshotsCreated,
+	})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+
+	backupMember2, err := h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).Get(ctx, h.backupMemberName2, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember2.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.VolumeBackupSnapshotsCreated,
+	})
+	_, err = h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).UpdateStatus(ctx, backupMember2, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+
+	backupMember3, err := h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).Get(ctx, h.backupMemberName3, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember3.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.VolumeBackupSnapshotsCreated,
+	})
+	_, err = h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).UpdateStatus(ctx, backupMember3, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+}
+
+func (h *helper) setDataPlaneInitializeComplete(ctx context.Context) {
+	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember1.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.VolumeBackupInitializeComplete,
 	})
 	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
@@ -263,6 +313,26 @@ func TestVolumeBackup(t *testing.T) {
 	err = h.bm.Sync(volumeBackup)
 	h.g.Expect(err).To(gomega.BeNil())
 	h.assertRunExecute(ctx, volumeBackup)
+
+	// wait snapshots created
+	err = h.bm.Sync(volumeBackup)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+
+	// snapshots created, resume gc and scheduler
+	h.setDataPlaneSnapshotCreated(ctx)
+	err = h.bm.Sync(volumeBackup)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunResumeGcSchedule(ctx)
+
+	// wait initialize complete
+	err = h.bm.Sync(volumeBackup)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+
+	// initialize complete
+	h.setDataPlaneInitializeComplete(ctx)
+	err = h.bm.Sync(volumeBackup)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertControlPlaneSnapshotsCreated(volumeBackup)
 
 	// wait volume complete
 	err = h.bm.Sync(volumeBackup)
