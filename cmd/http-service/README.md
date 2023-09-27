@@ -4,6 +4,10 @@ An HTTP Service to convert Kubernetes APIs into HTTP APIs, so that some users ca
 
 ## Development
 
+### OpenAPI
+
+An OpenAPI Swagger file is generated in the `pbgen/oas` directory, you can view this file via some Swagger tools or update the file to [Redoc](https://redocly.github.io/redoc/) and then view in the web UI directly.
+
 ### Generate gRPC stubs and OpenAPI spec
 
 run `make buf-generate`
