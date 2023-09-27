@@ -74,8 +74,8 @@ func convertResourceRequirements(res *api.Resource) (corev1.ResourceRequirements
 		},
 	}
 
-	if *res.Storage > 0 {
-		storage, err := resource.ParseQuantity(fmt.Sprintf("%d%s", res.Storage, memoryStorageUnit))
+	if res.Storage != nil && *res.Storage > 0 {
+		storage, err := resource.ParseQuantity(fmt.Sprintf("%d%s", *res.Storage, memoryStorageUnit))
 		if err != nil {
 			return corev1.ResourceRequirements{}, err
 		}

@@ -31,6 +31,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
+const (
+	helperImage = "busybox:1.36"
+)
+
 type ClusterServer struct {
 	api.UnimplementedClusterServer
 
@@ -91,6 +95,9 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 			Version:              req.Version,
 			PVReclaimPolicy:      &deletePVP,
 			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyRollingUpdate,
+			Helper: &v1alpha1.HelperSpec{
+				Image: pointer.StringPtr(helperImage),
+			},
 			TopologySpreadConstraints: []v1alpha1.TopologySpreadConstraint{{
 				TopologyKey: corev1.LabelHostname, // NOTE: `kubernetes.io/hostname`, add more scheduler policies if needed
 			}},
@@ -121,7 +128,7 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 		},
 	}
 
-	if req.Tiflash.Replicas > 0 {
+	if req.Tiflash != nil && req.Tiflash.Replicas > 0 {
 		tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
 			Replicas:             int32(req.Tiflash.Replicas),
 			MaxFailoverCount:     pointer.Int32Ptr(0),
@@ -138,7 +145,12 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 	if _, err = opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Create(ctx, tc, metav1.CreateOptions{}); err != nil {
 		log.Error("CreateCluster", zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId), zap.Error(err))
 		message := fmt.Sprintf("create TidbCluster failed: %s", err.Error())
-		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		if apierrors.IsAlreadyExists(err) {
+			setResponseStatusCodes(ctx, http.StatusConflict)
+			message = fmt.Sprintf("TidbCluster %s already exists", req.ClusterId)
+		} else {
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		}
 		return &api.CreateClusterResp{Success: false, Message: &message}, nil
 	}
 
