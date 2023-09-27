@@ -16,6 +16,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 
 	"google.golang.org/grpc"
@@ -39,6 +40,11 @@ const (
 	tidbClusterName = "db"
 
 	memoryStorageUnit = "Gi"
+
+	// the name of the environment variable that indicates whether the program is running in a local environment.
+	// if it is running in a local environment:
+	// - remove CPU and memory requests so that the pods can be scheduled on a small local machine.
+	localRunEnvName = "LOCAL_RUN"
 )
 
 func getKubernetesID(ctx context.Context) string {
@@ -81,6 +87,12 @@ func convertResourceRequirements(res *api.Resource) (corev1.ResourceRequirements
 		}
 		ret.Requests[corev1.ResourceStorage] = storage
 		ret.Limits[corev1.ResourceStorage] = storage
+	}
+
+	if os.Getenv(localRunEnvName) != "" {
+		// remove CPU and memory requests so that the pods can be scheduled on a small local machine
+		ret.Requests[corev1.ResourceCPU] = resource.Quantity{}
+		ret.Requests[corev1.ResourceMemory] = resource.Quantity{}
 	}
 
 	return ret, nil
