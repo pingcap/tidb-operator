@@ -137,6 +137,10 @@ func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s, recoverMode 
 			TiKV: &v1alpha1.TiKVSpec{
 				BaseImage: "pingcap/tikv",
 				Replicas:  3,
+				StorageVolumes: []v1alpha1.StorageVolume{
+					{MountPath: "/var/lib/raft", Name: "raft", StorageSize: "50Gi"},
+					{MountPath: "/var/lib/wal", Name: "wal", StorageSize: "50Gi"},
+				},
 			},
 			TiDB: &v1alpha1.TiDBSpec{
 				TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
