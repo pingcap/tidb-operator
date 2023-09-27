@@ -338,36 +338,10 @@ func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore
 }
 func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
 	// check tiflash and tikv replicas
-	tiflashReplicas, tikvReplicas, reason, err := rm.readTiFlashAndTiKVReplicasFromBackupMeta(r)
+	err := rm.checkTiFlashAndTiKVReplicasFromBackupMeta(r, tc)
 	if err != nil {
-		klog.Errorf("read tiflash replica failure with reason %s", reason)
+		klog.Errorf("check tikv/tiflash failure with reason %v", err)
 		return err
-	}
-
-	if tc.Spec.TiFlash == nil {
-		if tiflashReplicas != 0 {
-			klog.Errorf("tiflash is not configured, backupmeta has %d tiflash", tiflashReplicas)
-			return fmt.Errorf("tiflash replica missmatched")
-		}
-
-	} else {
-		if tc.Spec.TiFlash.Replicas != tiflashReplicas {
-			klog.Errorf("cluster has %d tiflash configured, backupmeta has %d tiflash", tc.Spec.TiFlash.Replicas, tiflashReplicas)
-			return fmt.Errorf("tiflash replica missmatched")
-		}
-	}
-
-	if tc.Spec.TiKV == nil {
-		if tikvReplicas != 0 {
-			klog.Errorf("tikv is not configured, backupmeta has %d tikv", tikvReplicas)
-			return fmt.Errorf("tikv replica missmatched")
-		}
-
-	} else {
-		if tc.Spec.TiKV.Replicas != tikvReplicas {
-			klog.Errorf("cluster has %d tikv configured, backupmeta has %d tikv", tc.Spec.TiKV.Replicas, tikvReplicas)
-			return fmt.Errorf("tikv replica missmatched")
-		}
 	}
 
 	// Check recovery mode is on for EBS br across k8s
@@ -437,27 +411,50 @@ func (rm *restoreManager) checkTiKVEncryption(r *v1alpha1.Restore, tc *v1alpha1.
 	return nil
 }
 
-func (rm *restoreManager) readTiFlashAndTiKVReplicasFromBackupMeta(r *v1alpha1.Restore) (int32, int32, string, error) {
+func (rm *restoreManager) checkTiFlashAndTiKVReplicasFromBackupMeta(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
 	metaInfo, err := backuputil.GetVolSnapBackupMetaData(r, rm.deps.SecretLister)
 	if err != nil {
-		return 0, 0, "GetVolSnapBackupMetaData failed", err
+		klog.Errorf("GetVolSnapBackupMetaData failed")
+		return err
 	}
 
-	var tiflashReplicas, tikvReplicas int32
-
-	if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash == nil {
-		tiflashReplicas = 0
-	} else {
-		tiflashReplicas = metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas
+	// Check mismatch of tiflash config
+	if (metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash == nil ||
+		metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas == 0) &&
+		tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 {
+		klog.Errorf("tiflash is enabled in TC but disabled in backup metadata")
+		return fmt.Errorf("tiflash replica mismatched")
+	} else if (tc.Spec.TiFlash == nil || tc.Spec.TiFlash.Replicas == 0) &&
+		metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash != nil &&
+		metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas > 0 {
+		klog.Errorf("tiflash is disabled in TC enabled in backup metadata")
+		return fmt.Errorf("tiflash replica mismatched")
+	} else if tc.Spec.TiFlash != nil && metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash != nil &&
+		tc.Spec.TiFlash.Replicas != metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas {
+		klog.Errorf("tiflash number in TC is %d but is %d in backup metadata", tc.Spec.TiFlash.Replicas, metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas)
+		return fmt.Errorf("tiflash replica mismatched")
 	}
 
-	if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV == nil {
-		tikvReplicas = 0
-	} else {
-		tikvReplicas = metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas
+	// TiKV node must be there
+	if tc.Spec.TiKV == nil || tc.Spec.TiKV.Replicas == 0 {
+		klog.Errorf("ebs snapshot restore doesn't support cluster without tikv nodes")
+		return fmt.Errorf("restore to no tikv cluster")
+	} else if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV == nil ||
+		metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas == 0 {
+		klog.Errorf("backup source tc has no tikv nodes")
+		return fmt.Errorf("backup source tc has no tivk nodes")
+	} else if tc.Spec.TiKV.Replicas != metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas {
+		klog.Errorf("mismatch tikv replicas, tc has %d, while backup has %d", tc.Spec.TiKV.Replicas, metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV)
+		return fmt.Errorf("tikv replica mismatch")
 	}
 
-	return tiflashReplicas, tikvReplicas, "", nil
+	// Check volume number
+	if len(tc.Spec.TiKV.StorageVolumes) != len(metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.StorageVolumes) {
+		klog.Errorf("additional volumes # not match. tc has %d, and backup has %d", len(tc.Spec.TiKV.StorageVolumes), len(metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.StorageVolumes))
+		return fmt.Errorf("additional volumes mismatched")
+	}
+
+	return nil
 }
 
 func (rm *restoreManager) readTiKVConfigFromBackupMeta(r *v1alpha1.Restore) (*v1alpha1.TiKVConfigWraper, string, error) {
