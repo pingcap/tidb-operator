@@ -38,6 +38,14 @@ const (
 	tidbInitializerImage          = "tnir/mysqlclient"
 	tidbInitializerName           = "tidb-initializer"
 	tidbInitializerPasswordSecret = "tidb-secret"
+
+	tidbMonitorName           = "tidb-monitor"
+	prometheusGrafanaLogLevel = "info"
+	prometheusBaseImage       = "prom/prometheus"
+	grafanaBaseImage          = "grafana/grafana"
+	reloaderBaseImage         = "pingcap/tidb-monitor-reloader"
+	reloaderVersion           = "v1.0.1"
+	tmInitializerBase         = "pingcap/tidb-monitor-initializer"
 )
 
 type ClusterServer struct {
@@ -70,12 +78,10 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 		return &api.CreateClusterResp{Success: false, Message: &message}, nil
 	}
 
-	// TODO: add verification for the request body
-	// TODO: customize image support
+	// TODO(http-service): add verification for the request body
+	// TODO(http-service): customize image support
 
 	// TODO(csuzhangxc): json config support
-
-	// TODO(csuzhangxc): create TidbMonitor (prometheus and grafana)
 
 	tc, err := assembleTidbCluster(ctx, req)
 	if err != nil {
@@ -93,18 +99,26 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 		return &api.CreateClusterResp{Success: false, Message: &message}, nil
 	}
 
+	tm, err := assembleTidbMonitor(ctx, req)
+	if err != nil {
+		logger.Error("Assemble TidbMonitor CR failed", zap.Error(err))
+		message := fmt.Sprintf("assemble TidbMonitor CR failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.CreateClusterResp{Success: false, Message: &message}, nil
+	}
+
 	if _, err = opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Create(ctx, tc, metav1.CreateOptions{}); err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			if ti == nil { // TODO(csuzhangxc): check tm exists
-				// if TidbCluster already exists but no TidbInitializer is specified, return conflict error
+			if ti == nil && tm == nil {
+				// if TidbCluster already exists but no TidbInitializer & TidbMonitor is specified, return conflict error
 				logger.Error("TidbCluster already exists", zap.Error(err))
 				setResponseStatusCodes(ctx, http.StatusConflict)
 				message := fmt.Sprintf("TidbCluster %s already exists", req.ClusterId)
 				return &api.CreateClusterResp{Success: false, Message: &message}, nil
 			} else {
-				// if TidbCluster already exists and TidbInitializer is specified
-				// ignore the error so that the TidbInitializer can be created (when re-requesting)
-				logger.Warn("TidbCluster already exists, but still need to create TidbInitializer, ignore the error", zap.Error(err))
+				// if TidbCluster already exists and TidbInitializer/TidbMonitor is specified
+				// ignore the error so that the TidbInitializer/TidbMonitor can be created (when re-requesting)
+				logger.Warn("TidbCluster already exists, but still need to create TidbInitializer/TidbMonitor, ignore the error", zap.Error(err))
 			}
 		} else {
 			logger.Error("Create TidbCluster failed", zap.Error(err))
@@ -133,13 +147,37 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 		}
 
 		if _, err = opCli.PingcapV1alpha1().TidbInitializers(req.ClusterId).Create(ctx, ti, metav1.CreateOptions{}); err != nil {
-			logger.Error("Create TidbInitializer failed", zap.Error(err))
-			message := fmt.Sprintf("create TidbInitializer failed: %s", err.Error())
 			if apierrors.IsAlreadyExists(err) {
+				if tm == nil {
+					// if TidbInitializer already exists but no TidbMonitor is specified, return conflict error
+					logger.Error("TidbInitializer already exists", zap.Error(err))
+					setResponseStatusCodes(ctx, http.StatusConflict)
+					message := fmt.Sprintf("TidbInitializer %s already exists", req.ClusterId)
+					return &api.CreateClusterResp{Success: false, Message: &message}, nil
+				} else {
+					// if TidbInitializer already exists and TidbMonitor is specified
+					// ignore the error so that the TidbMonitor can be created (when re-requesting)
+					logger.Warn("TidbInitializer already exists, but still need to create TidbMonitor, ignore the error", zap.Error(err))
+				}
+			} else {
+				logger.Error("Create TidbInitializer failed", zap.Error(err))
+				message := fmt.Sprintf("create TidbInitializer failed: %s", err.Error())
+				setResponseStatusCodes(ctx, http.StatusInternalServerError)
+				return &api.CreateClusterResp{Success: false, Message: &message}, nil
+			}
+		}
+	}
+
+	if tm != nil {
+		if _, err = opCli.PingcapV1alpha1().TidbMonitors(req.ClusterId).Create(ctx, tm, metav1.CreateOptions{}); err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				logger.Error("TidbMonitor already exists", zap.Error(err))
 				setResponseStatusCodes(ctx, http.StatusConflict)
-				message = fmt.Sprintf("TidbInitializer %s already exists", req.ClusterId)
+				message := fmt.Sprintf("TidbMonitor %s already exists", req.ClusterId)
 				return &api.CreateClusterResp{Success: false, Message: &message}, nil
 			} else {
+				logger.Error("Create TidbMonitor failed", zap.Error(err))
+				message := fmt.Sprintf("create TidbMonitor failed: %s", err.Error())
 				setResponseStatusCodes(ctx, http.StatusInternalServerError)
 				return &api.CreateClusterResp{Success: false, Message: &message}, nil
 			}
@@ -150,7 +188,6 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 }
 
 func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alpha1.TidbCluster, error) {
-	deletePVP := corev1.PersistentVolumeReclaimDelete
 	pdRes, tikvRes, tidbRes, tiflashRes, err := convertClusterComponetsResources(req)
 	if err != nil {
 		return nil, errors.New("invalid resource requirements")
@@ -160,6 +197,7 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 		tidbPort = int32(*req.Tidb.Port)
 	}
 
+	deletePVP := corev1.PersistentVolumeReclaimDelete
 	tc := &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: req.ClusterId,
@@ -253,6 +291,84 @@ func assembleTidbInitializer(ctx context.Context, req *api.CreateClusterReq) (*v
 	return ti, secret, nil
 }
 
+func assembleTidbMonitor(ctx context.Context, req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, error) {
+	if req.Prometheus == nil && req.Grafana == nil {
+		return nil, nil // no need to create monitor
+	} else if req.Prometheus == nil {
+		return nil, errors.New("prometheus must be specified if grafana is specified")
+	}
+
+	promRes, grafanaRes, err := convertMonitorComponetsResources(req)
+	if err != nil {
+		return nil, errors.New("invalid resource requirements")
+	}
+	grafanaPort := int32(3000)
+	if req.Grafana.Port != nil {
+		grafanaPort = int32(*req.Grafana.Port)
+	}
+
+	// TODO(http-service): persistent support
+	deletePVP := corev1.PersistentVolumeReclaimDelete
+	tm := &v1alpha1.TidbMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: req.ClusterId,
+			Name:      tidbMonitorName,
+		},
+		Spec: v1alpha1.TidbMonitorSpec{
+			PVReclaimPolicy: &deletePVP,
+			Clusters: []v1alpha1.TidbClusterRef{{
+				Name: tidbClusterName,
+			}},
+			Prometheus: v1alpha1.PrometheusSpec{
+				LogLevel: prometheusGrafanaLogLevel,
+				Service: v1alpha1.ServiceSpec{
+					Type: corev1.ServiceTypeClusterIP, // ClusterIP for Prometheus now
+				},
+				MonitorContainer: v1alpha1.MonitorContainer{
+					Version:              req.Prometheus.Version,
+					BaseImage:            prometheusBaseImage,
+					ResourceRequirements: promRes,
+				},
+			},
+			Reloader: v1alpha1.ReloaderSpec{
+				Service: v1alpha1.ServiceSpec{
+					Type: corev1.ServiceTypeClusterIP,
+				},
+				MonitorContainer: v1alpha1.MonitorContainer{
+					Version:              reloaderVersion,
+					BaseImage:            reloaderBaseImage,
+					ResourceRequirements: corev1.ResourceRequirements{},
+				},
+			},
+			Initializer: v1alpha1.InitializerSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					Version:              req.Version, // NOTE: use the same version as TidbCluster
+					BaseImage:            tmInitializerBase,
+					ResourceRequirements: corev1.ResourceRequirements{},
+				},
+			},
+		},
+	}
+
+	if req.Grafana != nil {
+		tm.Spec.Grafana = &v1alpha1.GrafanaSpec{
+			LogLevel: prometheusGrafanaLogLevel,
+			Service: v1alpha1.ServiceSpec{
+				Type: corev1.ServiceTypeNodePort, // NOTE: use NodePort for now
+				Port: pointer.Int32Ptr(grafanaPort),
+			},
+			MonitorContainer: v1alpha1.MonitorContainer{
+				Version:              req.Grafana.Version,
+				BaseImage:            grafanaBaseImage,
+				ResourceRequirements: grafanaRes,
+			},
+			Envs: req.Grafana.Envs,
+		}
+	}
+
+	return tm, nil
+}
+
 func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes, tidbRes, tiflash corev1.ResourceRequirements, err error) {
 	if req.Pd == nil || req.Tikv == nil || req.Tidb == nil || req.Pd.Replicas <= 0 || req.Tikv.Replicas <= 0 || req.Tidb.Replicas <= 0 {
 		err = errors.New("resource requirements of PD/TiKV/TiDB must be specified and replicas must be greater than 0")
@@ -279,5 +395,21 @@ func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes
 		}
 	}
 
+	return
+}
+
+func convertMonitorComponetsResources(req *api.CreateClusterReq) (promRes, grafanaRes corev1.ResourceRequirements, err error) {
+	if req.Prometheus != nil {
+		promRes, err = convertResourceRequirements(req.Prometheus.Resource)
+		if err != nil {
+			return
+		}
+	}
+	if req.Grafana != nil {
+		grafanaRes, err = convertResourceRequirements(req.Grafana.Resource)
+		if err != nil {
+			return
+		}
+	}
 	return
 }

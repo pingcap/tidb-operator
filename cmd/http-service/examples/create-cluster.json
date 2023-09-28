@@ -45,24 +45,21 @@
        "config":"string",
        "port":4000
     },
-    "promehteus":{
-       "replicas":3,
-       "resource":{
-          "cpu":2,
-          "memory":4,
-          "storage":100
+    "prometheus": {
+       "version": "v2.27.1",
+       "resource": {
+          "cpu": 2,
+          "memory": 4
        },
-       "config":"string",
-       "port":0
+       "config": "string"
     },
-    "grafana":{
-       "replicas":3,
-       "resource":{
-          "cpu":2,
-          "memory":4,
-          "storage":100
+    "grafana": {
+       "version": "7.5.11",
+       "resource": {
+          "cpu": 2,
+          "memory": 4
        },
-       "config":"string",
-       "port":0
+       "envs": {},
+       "port": 3000
     }
 }
