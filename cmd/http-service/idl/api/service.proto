@@ -72,7 +72,7 @@ message Resource {
     example: "4"
   }];
   optional uint32 storage = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "The amount of storage for each replica. unit: Gi",
+    description: "The amount of storage for each replica. unit: Gi. This is used for PD, TiKV and TiFlash now.",
     example: "100"
   }];
 }
@@ -95,7 +95,48 @@ message Component {
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
   string config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component."}];
-  optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the component. Used for TiDB, Grafana etc."}];
+  optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the component. Only used for TiDB now."}];
+}
+
+message Prometheus {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "Prometheus"
+      description: "Prometheus is the Prometheus component of the cluster."
+      required: [
+          "version"
+          "resource"
+]
+    }
+  };
+
+  string version = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the Prometheus. Only official versions are supported now.",
+    example: "\"v2.27.1\""
+  }];
+  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Prometheus."}];
+  string config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the Prometheus."}];
+}
+
+message Grafana {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "Grafana"
+      description: "Grafana is the Grafana component of the cluster."
+      required: [
+          "version"
+          "resource"
+]
+    }
+  };
+
+  string version = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the Grafana. Only official versions are supported now.",
+    example: "\"7.5.11\""
+  }];
+  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Grafana."}];
+  map<string, string> envs = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The environment variables of the Grafana."}];
+  optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the Grafana."}];
 }
 
 message CreateClusterReq {
@@ -118,7 +159,7 @@ message CreateClusterReq {
     example: "\"tidb-clsuter-123\""
   }];
   string version = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "The version of the cluster. Only official versions are supported now.",
+    description: "The version of the TiDB cluster. Only official versions are supported now.",
     example: "\"v7.1.0\""
   }];
   optional User user = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The username and password of the cluster."}];
@@ -127,8 +168,8 @@ message CreateClusterReq {
   Component tikv = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiKV component of the cluster."}];
   optional Component tiflash = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash component of the cluster."}];
   Component tidb = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiDB component of the cluster."}];
-  optional Component promehteus = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Prometheus component of the cluster."}];
-  optional Component grafana = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Grafana component of the cluster."}];
+  optional Prometheus prometheus = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Prometheus component of the cluster."}];
+  optional Grafana grafana = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Grafana component of the cluster."}];
 }
 
 message CreateClusterResp {
