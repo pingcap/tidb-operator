@@ -66,7 +66,7 @@ while [ $# -gt 0 ]; do
                     ;;
                 fs) /warmup --type=whole --files="$1" -P256 --direct &
                     ;;
-                *) die "internal error: unsupported operation $1; forgot to call --fio or --fs?"
+                *) die "internal error: unsupported operation $1; forgot to call --block or --fs?"
                     ;;
             esac
             ;;

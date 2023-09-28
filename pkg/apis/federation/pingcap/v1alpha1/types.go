@@ -370,7 +370,7 @@ type VolumeRestoreMemberSpec struct {
 	// +optional
 	WarmupImage string `json:"warmupImage,omitempty"`
 	// WarmupStrategy
-	// +kubebuilder:default=hybird
+	// +kubebuilder:default=hybrid
 	WarmupStrategy pingcapv1alpha1.RestoreWarmupStrategy `json:"warmupStrategy,omitempty"`
 }
 

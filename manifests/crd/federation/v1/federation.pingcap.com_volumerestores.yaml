@@ -960,7 +960,7 @@ spec:
                   warmupImage:
                     type: string
                   warmupStrategy:
-                    default: hybird
+                    default: hybrid
                     type: string
                 type: object
             type: object

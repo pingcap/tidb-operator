@@ -703,7 +703,7 @@ func TestGenerateWarmUpArgs(t *testing.T) {
 		},
 		{
 			name:     "data by fs other by block",
-			strategy: v1alpha1.RestoreWarmupStrategyHybirx,
+			strategy: v1alpha1.RestoreWarmupStrategyHybrid,
 			expected: []string{"--fs", constants.TiKVDataVolumeMountPath, "--block", "/logs"},
 		},
 		{

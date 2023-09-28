@@ -2480,7 +2480,7 @@ type RestoreSpec struct {
 	// +optional
 	WarmupImage string `json:"warmupImage,omitempty"`
 	// WarmupStrategy
-	// +kubebuilder:default=hybird
+	// +kubebuilder:default=hybrid
 	WarmupStrategy RestoreWarmupStrategy `json:"warmupStrategy,omitempty"`
 
 	// PodSecurityContext of the component
@@ -2519,8 +2519,8 @@ type RestoreWarmupStrategy string
 const (
 	// RestoreWarmupStrategyFio warms up all data block by block. (use fio)
 	RestoreWarmupStrategyFio RestoreWarmupStrategy = "fio"
-	// RestoreWarmupStrategyHybirx warms up data volume by read sst files one by one, other (e.g. WAL or Raft) will be warmed up via fio.
-	RestoreWarmupStrategyHybirx RestoreWarmupStrategy = "hybird"
+	// RestoreWarmupStrategyHybrid warms up data volume by read sst files one by one, other (e.g. WAL or Raft) will be warmed up via fio.
+	RestoreWarmupStrategyHybrid RestoreWarmupStrategy = "hybrid"
 	// RestoreWarmupStrategyFsr warms up data volume by enabling Fast Snapshot Restore, other (e.g. WAL or Raft) will be warmed up via fio.
 	RestoreWarmupStrategyFsr RestoreWarmupStrategy = "fsr"
 )

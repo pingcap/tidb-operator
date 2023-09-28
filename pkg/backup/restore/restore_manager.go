@@ -1069,7 +1069,7 @@ func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []c
 		switch strategy {
 		case v1alpha1.RestoreWarmupStrategyFio:
 			res = append(res, "--block", p.MountPath)
-		case v1alpha1.RestoreWarmupStrategyHybirx:
+		case v1alpha1.RestoreWarmupStrategyHybrid:
 			if p.MountPath == constants.TiKVDataVolumeMountPath {
 				res = append(res, "--fs", constants.TiKVDataVolumeMountPath)
 			} else {
@@ -1205,17 +1205,9 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 		}
 	}
 
-	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
-	fioPaths := make([]string, 0, len(warmUpPaths))
-	for _, warmUpPath := range warmUpPaths {
-		if warmUpPath == constants.TiKVDataVolumeMountPath {
-			continue
-		}
-		fioPaths = append(fioPaths, warmUpPath)
-	}
-	if len(fioPaths) > 0 {
-		args = append(args, "--block")
-		args = append(args, fioPaths...)
+	args, err := generateWarmUpArgs(r.Spec.WarmupStrategy, warmUpVolumeMounts)
+	if err != nil {
+		return nil, err
 	}
 
 	warmUpPod := &corev1.PodTemplateSpec{
