@@ -192,6 +192,8 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 	if err != nil {
 		return nil, errors.New("invalid resource requirements")
 	}
+
+	pdCfg, tikvCfg, tidbCfg, _ := convertClusterComponetsConfig(req)
 	tidbPort := int32(4000)
 	if req.Tidb.Port != nil {
 		tidbPort = int32(*req.Tidb.Port)
@@ -217,19 +219,19 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 				Replicas:             int32(req.Pd.Replicas),
 				MaxFailoverCount:     pointer.Int32Ptr(0),
 				ResourceRequirements: pdRes,
-				Config:               v1alpha1.NewPDConfig(),
+				Config:               pdCfg,
 			},
 			TiKV: &v1alpha1.TiKVSpec{
 				Replicas:             int32(req.Tikv.Replicas),
 				MaxFailoverCount:     pointer.Int32Ptr(0),
 				ResourceRequirements: tikvRes,
-				Config:               v1alpha1.NewTiKVConfig(),
+				Config:               tikvCfg,
 			},
 			TiDB: &v1alpha1.TiDBSpec{
 				Replicas:             int32(req.Tidb.Replicas),
 				MaxFailoverCount:     pointer.Int32Ptr(0),
 				ResourceRequirements: tidbRes,
-				Config:               v1alpha1.NewTiDBConfig(),
+				Config:               tidbCfg,
 				Service: &v1alpha1.TiDBServiceSpec{
 					ServiceSpec: v1alpha1.ServiceSpec{
 						Type: corev1.ServiceTypeNodePort, // NOTE: use NodePort for now
@@ -394,6 +396,34 @@ func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes
 			return
 		}
 	}
+
+	return
+}
+
+func convertClusterComponetsConfig(req *api.CreateClusterReq) (
+	pdCfg *v1alpha1.PDConfigWraper, tikvCfg *v1alpha1.TiKVConfigWraper,
+	tidbCfg *v1alpha1.TiDBConfigWraper, tiflashCfg *v1alpha1.TiFlashConfigWraper) {
+	pdCfg = v1alpha1.NewPDConfig()
+	for k, v := range req.Pd.Config {
+		pdCfg.Set(k, v.AsInterface())
+	}
+
+	tidbCfg = v1alpha1.NewTiDBConfig()
+	for k, v := range req.Tidb.Config {
+		tidbCfg.Set(k, v.AsInterface())
+	}
+
+	tikvCfg = v1alpha1.NewTiKVConfig()
+	for k, v := range req.Tikv.Config {
+		tikvCfg.Set(k, v.AsInterface())
+	}
+
+	// if req.Tiflash != nil && req.Tiflash.Replicas > 0 {
+	// 	tiflashCfg = v1alpha1.NewTiFlashConfig()
+	// 	for k, v := range req.Tiflash.Config {
+	// 		tiflashCfg.Set(k, v.AsInterface())
+	// 	}
+	// }
 
 	return
 }

@@ -3,6 +3,7 @@ syntax = "proto3";
 package api;
 
 import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/pingcap/tidb-operator/http-service/api;api";
@@ -94,7 +95,7 @@ message Component {
     example: "3"
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
-  string config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component."}];
+  map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component. JSON format."}];
   optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the component. Only used for TiDB now."}];
 }
 

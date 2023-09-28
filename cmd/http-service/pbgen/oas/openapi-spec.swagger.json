@@ -68,8 +68,9 @@
           "description": "The resource of the component for each replica."
         },
         "config": {
-          "type": "string",
-          "description": "The config of the component."
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The config of the component. JSON format."
         },
         "port": {
           "type": "integer",
@@ -260,6 +261,11 @@
         }
       },
       "additionalProperties": {}
+    },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": null,
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`."
     },
     "rpcStatus": {
       "type": "object",
