@@ -48,6 +48,7 @@ files=($(find . -type f -not \( \
         -o -path '*/Dockerfile' \
         -o -path '*/*.register.go' \
         -o -path '*/hack/localtest/*' \
+        -o -path '*/cmd/http-service/pbgen/api/*' \
     \) | grep -v -F "$ignored_files"
 ))
 
