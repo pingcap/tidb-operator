@@ -693,17 +693,17 @@ func TestGenerateWarmUpArgs(t *testing.T) {
 	}{
 		{
 			name:     "all by block",
-			strategy: v1alpha1.RestoreWarmupStrategyAllByBlock,
+			strategy: v1alpha1.RestoreWarmupStrategyFio,
 			expected: []string{"--block", constants.TiKVDataVolumeMountPath, "--block", "/logs"},
 		},
 		{
 			name:     "data by fsr other by block",
-			strategy: v1alpha1.RestoreWarmupStrategyDataByFSROtherByBlock,
+			strategy: v1alpha1.RestoreWarmupStrategyFsr,
 			errMsg:   `warmup strategy "data-by-fsr-other-by-block" is not supported for now`,
 		},
 		{
 			name:     "data by fs other by block",
-			strategy: v1alpha1.RestoreWarmupStrategyDataByFsOtherByBlock,
+			strategy: v1alpha1.RestoreWarmupStrategyHybirx,
 			expected: []string{"--fs", constants.TiKVDataVolumeMountPath, "--block", "/logs"},
 		},
 		{

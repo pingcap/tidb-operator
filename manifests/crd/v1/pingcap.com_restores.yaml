@@ -2206,7 +2206,7 @@ spec:
               warmupImage:
                 type: string
               warmupStrategy:
-                default: data-by-fs-other-by-block
+                default: hybird
                 type: string
             type: object
           status:

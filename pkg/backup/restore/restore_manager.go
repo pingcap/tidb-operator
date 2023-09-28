@@ -1067,15 +1067,15 @@ func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []c
 	res := make([]string, 0, len(mountPoints))
 	for _, p := range mountPoints {
 		switch strategy {
-		case v1alpha1.RestoreWarmupStrategyAllByBlock:
+		case v1alpha1.RestoreWarmupStrategyFio:
 			res = append(res, "--block", p.MountPath)
-		case v1alpha1.RestoreWarmupStrategyDataByFsOtherByBlock:
+		case v1alpha1.RestoreWarmupStrategyHybirx:
 			if p.MountPath == constants.TiKVDataVolumeMountPath {
 				res = append(res, "--fs", constants.TiKVDataVolumeMountPath)
 			} else {
 				res = append(res, "--block", p.MountPath)
 			}
-		case v1alpha1.RestoreWarmupStrategyDataByFSROtherByBlock:
+		case v1alpha1.RestoreWarmupStrategyFsr:
 			// For now we don't support warm up by fsr.
 			return nil, fmt.Errorf("warmup strategy %q is not supported for now", strategy)
 		default:

@@ -2480,7 +2480,7 @@ type RestoreSpec struct {
 	// +optional
 	WarmupImage string `json:"warmupImage,omitempty"`
 	// WarmupStrategy
-	// +kubebuilder:default=data-by-fs-other-by-block
+	// +kubebuilder:default=hybird
 	WarmupStrategy RestoreWarmupStrategy `json:"warmupStrategy,omitempty"`
 
 	// PodSecurityContext of the component
@@ -2516,12 +2516,12 @@ const (
 type RestoreWarmupStrategy string
 
 const (
-	// RestoreWarmupStrategyAllByBlock warms up all data block by block. (use fio)
-	RestoreWarmupStrategyAllByBlock RestoreWarmupStrategy = "all-by-block"
-	// RestoreWarmupStrategyDataByFsOtherByBlock warms up data volume by read sst files one by one, other (e.g. WAL or Raft) will be warmed up via fio.
-	RestoreWarmupStrategyDataByFsOtherByBlock RestoreWarmupStrategy = "data-by-fs-other-by-block"
-	// RestoreWarmupStrategyDataByFSROtherByBlock warms up data volume by enabling Fast Snapshot Restore, other (e.g. WAL or Raft) will be warmed up via fio.
-	RestoreWarmupStrategyDataByFSROtherByBlock RestoreWarmupStrategy = "data-by-fsr-other-by-block"
+	// RestoreWarmupStrategyFio warms up all data block by block. (use fio)
+	RestoreWarmupStrategyFio RestoreWarmupStrategy = "fio"
+	// RestoreWarmupStrategyHybirx warms up data volume by read sst files one by one, other (e.g. WAL or Raft) will be warmed up via fio.
+	RestoreWarmupStrategyHybirx RestoreWarmupStrategy = "hybird"
+	// RestoreWarmupStrategyFsr warms up data volume by enabling Fast Snapshot Restore, other (e.g. WAL or Raft) will be warmed up via fio.
+	RestoreWarmupStrategyFsr RestoreWarmupStrategy = "fsr"
 )
 
 // RestoreStatus represents the current status of a tidb cluster restore.
