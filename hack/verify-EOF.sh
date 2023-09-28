@@ -35,6 +35,7 @@ FILELIST=($(find . -type f -not \( -path './output/*' \
     -o -path './*/.DS_Store' \
     -o -path './data' \
     -o -path './_artifacts/*' \
+    -o -path './cmd/*/bin/*' \
     \)))
 
 NUM=0
