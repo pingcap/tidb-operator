@@ -2205,6 +2205,9 @@ spec:
                 type: string
               warmupImage:
                 type: string
+              warmupStrategy:
+                default: data-by-fs-other-by-block
+                type: string
             type: object
           status:
             properties:

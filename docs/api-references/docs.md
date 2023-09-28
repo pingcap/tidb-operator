@@ -1523,6 +1523,19 @@ string
 </tr>
 <tr>
 <td>
+<code>warmupStrategy</code></br>
+<em>
+<a href="#restorewarmupstrategy">
+RestoreWarmupStrategy
+</a>
+</em>
+</td>
+<td>
+<p>WarmupStrategy</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#podsecuritycontext-v1-core">
@@ -14046,6 +14059,19 @@ string
 </tr>
 <tr>
 <td>
+<code>warmupStrategy</code></br>
+<em>
+<a href="#restorewarmupstrategy">
+RestoreWarmupStrategy
+</a>
+</em>
+</td>
+<td>
+<p>WarmupStrategy</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#podsecuritycontext-v1-core">
@@ -14182,6 +14208,13 @@ RestoreConditionType
 </p>
 <p>
 <p>RestoreWarmupMode represents when to initialize TiKV volumes</p>
+</p>
+<h3 id="restorewarmupstrategy">RestoreWarmupStrategy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
 </p>
 <h3 id="s3storageprovider">S3StorageProvider</h3>
 <p>
