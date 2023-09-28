@@ -1483,6 +1483,17 @@ string
 <p>WarmupImage represents using what image to initialize TiKV volumes</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>warmupStrategy</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreWarmupStrategy
+</em>
+</td>
+<td>
+<p>WarmupStrategy</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="volumerestorememberstatus">VolumeRestoreMemberStatus</h3>

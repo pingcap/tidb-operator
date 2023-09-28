@@ -369,6 +369,9 @@ type VolumeRestoreMemberSpec struct {
 	// WarmupImage represents using what image to initialize TiKV volumes
 	// +optional
 	WarmupImage string `json:"warmupImage,omitempty"`
+	// WarmupStrategy
+	// +kubebuilder:default=hybird
+	WarmupStrategy pingcapv1alpha1.RestoreWarmupStrategy `json:"warmupStrategy,omitempty"`
 }
 
 type VolumeRestoreMemberBackupInfo struct {

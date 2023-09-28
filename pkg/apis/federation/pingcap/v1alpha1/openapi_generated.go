@@ -736,6 +736,13 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeRestoreMemberSpec(ref common.
 							Format:      "",
 						},
 					},
+					"warmupStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WarmupStrategy",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

@@ -551,6 +551,7 @@ func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberClu
 			PriorityClassName:         template.PriorityClassName,
 			Warmup:                    template.Warmup,
 			WarmupImage:               template.WarmupImage,
+			WarmupStrategy:            template.WarmupStrategy,
 		},
 	}
 	return restoreMember

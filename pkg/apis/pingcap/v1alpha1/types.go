@@ -2513,6 +2513,7 @@ const (
 	RestoreWarmupModeASync RestoreWarmupMode = "async"
 )
 
+// RestoreWarmupStrategy represents how to initialize TiKV volumes
 type RestoreWarmupStrategy string
 
 const (

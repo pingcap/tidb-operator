@@ -14215,6 +14215,7 @@ RestoreConditionType
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
+<p>RestoreWarmupStrategy represents how to initialize TiKV volumes</p>
 </p>
 <h3 id="s3storageprovider">S3StorageProvider</h3>
 <p>

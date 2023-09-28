@@ -3015,6 +3015,9 @@ spec:
                     type: string
                   warmupImage:
                     type: string
+                  warmupStrategy:
+                    default: hybird
+                    type: string
                 type: object
             type: object
           status:
