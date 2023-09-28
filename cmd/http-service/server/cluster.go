@@ -33,6 +33,11 @@ import (
 
 const (
 	helperImage = "busybox:1.36"
+
+	// try `kanshiori/mysqlclient-arm64` for ARM64
+	tidbInitializerImage          = "tnir/mysqlclient"
+	tidbInitializerName           = "tidb-initializer"
+	tidbInitializerPasswordSecret = "tidb-secret"
 )
 
 type ClusterServer struct {
@@ -45,8 +50,9 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 	k8sID := getKubernetesID(ctx)
 	opCli := s.KubeClient.GetOperatorClient(k8sID)
 	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "CreateCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
 	if opCli == nil || kubeCli == nil {
-		log.Error("CreateCluster", zap.String("k8sID", k8sID), zap.Error(errors.New("k8s client not found")))
+		logger.Error("K8s client not found")
 		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
 		setResponseStatusCodes(ctx, http.StatusBadRequest)
 		return &api.CreateClusterResp{Success: false, Message: &message}, nil
@@ -58,7 +64,7 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 			Name: req.ClusterId,
 		},
 	}, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
-		log.Error("CreateCluster", zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId), zap.Error(err))
+		logger.Error("Create namespace failed", zap.Error(err))
 		message := fmt.Sprintf("create namespace failed: %s", err.Error())
 		setResponseStatusCodes(ctx, http.StatusInternalServerError)
 		return &api.CreateClusterResp{Success: false, Message: &message}, nil
@@ -67,19 +73,87 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 	// TODO: add verification for the request body
 	// TODO: customize image support
 
-	// TODO(csuzhangxc): init the user and password
-
 	// TODO(csuzhangxc): json config support
 
 	// TODO(csuzhangxc): create TidbMonitor (prometheus and grafana)
 
-	deletePVP := corev1.PersistentVolumeReclaimDelete
-	pdRes, tikvRes, tidbRes, tiflashRes, err := getClusterComponetsResources(req)
+	tc, err := assembleTidbCluster(ctx, req)
 	if err != nil {
-		log.Error("CreateCluster", zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId), zap.Error(err))
-		message := fmt.Sprintf("invalid resource requirements: %s", err.Error())
+		logger.Error("Assemble TidbCluster CR failed", zap.Error(err))
+		message := fmt.Sprintf("assemble TidbCluster CR failed: %s", err.Error())
 		setResponseStatusCodes(ctx, http.StatusBadRequest)
 		return &api.CreateClusterResp{Success: false, Message: &message}, nil
+	}
+
+	ti, tiSecret, err := assembleTidbInitializer(ctx, req)
+	if err != nil {
+		logger.Error("Assemble TidbInitializer CR failed", zap.Error(err))
+		message := fmt.Sprintf("assemble TidbInitializer CR failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.CreateClusterResp{Success: false, Message: &message}, nil
+	}
+
+	if _, err = opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Create(ctx, tc, metav1.CreateOptions{}); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			if ti == nil { // TODO(csuzhangxc): check tm exists
+				// if TidbCluster already exists but no TidbInitializer is specified, return conflict error
+				logger.Error("TidbCluster already exists", zap.Error(err))
+				setResponseStatusCodes(ctx, http.StatusConflict)
+				message := fmt.Sprintf("TidbCluster %s already exists", req.ClusterId)
+				return &api.CreateClusterResp{Success: false, Message: &message}, nil
+			} else {
+				// if TidbCluster already exists and TidbInitializer is specified
+				// ignore the error so that the TidbInitializer can be created (when re-requesting)
+				logger.Warn("TidbCluster already exists, but still need to create TidbInitializer, ignore the error", zap.Error(err))
+			}
+		} else {
+			logger.Error("Create TidbCluster failed", zap.Error(err))
+			message := fmt.Sprintf("create TidbCluster failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.CreateClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+
+	if ti != nil {
+		// create or update the secret before creating the TidbInitializer
+		if _, err = kubeCli.CoreV1().Secrets(req.ClusterId).Create(ctx, tiSecret, metav1.CreateOptions{}); err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				if _, err = kubeCli.CoreV1().Secrets(req.ClusterId).Update(ctx, tiSecret, metav1.UpdateOptions{}); err != nil {
+					logger.Error("Update username and password secret failed", zap.Error(err))
+					message := fmt.Sprintf("update username and password secret failed: %s", err.Error())
+					setResponseStatusCodes(ctx, http.StatusInternalServerError)
+					return &api.CreateClusterResp{Success: false, Message: &message}, nil
+				}
+			} else {
+				logger.Error("Create username and password secret failed", zap.Error(err))
+				message := fmt.Sprintf("create username and password secret failed: %s", err.Error())
+				setResponseStatusCodes(ctx, http.StatusInternalServerError)
+				return &api.CreateClusterResp{Success: false, Message: &message}, nil
+			}
+		}
+
+		if _, err = opCli.PingcapV1alpha1().TidbInitializers(req.ClusterId).Create(ctx, ti, metav1.CreateOptions{}); err != nil {
+			logger.Error("Create TidbInitializer failed", zap.Error(err))
+			message := fmt.Sprintf("create TidbInitializer failed: %s", err.Error())
+			if apierrors.IsAlreadyExists(err) {
+				setResponseStatusCodes(ctx, http.StatusConflict)
+				message = fmt.Sprintf("TidbInitializer %s already exists", req.ClusterId)
+				return &api.CreateClusterResp{Success: false, Message: &message}, nil
+			} else {
+				setResponseStatusCodes(ctx, http.StatusInternalServerError)
+				return &api.CreateClusterResp{Success: false, Message: &message}, nil
+			}
+		}
+	}
+
+	return &api.CreateClusterResp{Success: true}, nil
+}
+
+func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alpha1.TidbCluster, error) {
+	deletePVP := corev1.PersistentVolumeReclaimDelete
+	pdRes, tikvRes, tidbRes, tiflashRes, err := convertClusterComponetsResources(req)
+	if err != nil {
+		return nil, errors.New("invalid resource requirements")
 	}
 	tidbPort := int32(4000)
 	if req.Tidb.Port != nil {
@@ -142,22 +216,44 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 		}
 	}
 
-	if _, err = opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Create(ctx, tc, metav1.CreateOptions{}); err != nil {
-		log.Error("CreateCluster", zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId), zap.Error(err))
-		message := fmt.Sprintf("create TidbCluster failed: %s", err.Error())
-		if apierrors.IsAlreadyExists(err) {
-			setResponseStatusCodes(ctx, http.StatusConflict)
-			message = fmt.Sprintf("TidbCluster %s already exists", req.ClusterId)
-		} else {
-			setResponseStatusCodes(ctx, http.StatusInternalServerError)
-		}
-		return &api.CreateClusterResp{Success: false, Message: &message}, nil
-	}
-
-	return &api.CreateClusterResp{Success: true}, nil
+	return tc, nil
 }
 
-func getClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes, tidbRes, tiflash corev1.ResourceRequirements, err error) {
+func assembleTidbInitializer(ctx context.Context, req *api.CreateClusterReq) (*v1alpha1.TidbInitializer, *corev1.Secret, error) {
+	if req.User == nil || (req.User.Username == "" && req.User.Password == "") {
+		return nil, nil, nil // no need to init user
+	} else if req.User.Username == "" || req.User.Password == "" {
+		return nil, nil, errors.New("username and password must be specified at the same time")
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: req.ClusterId,
+			Name:      tidbInitializerPasswordSecret,
+		},
+		StringData: map[string]string{
+			req.User.Username: req.User.Password,
+		},
+	}
+
+	ti := &v1alpha1.TidbInitializer{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: req.ClusterId,
+			Name:      tidbInitializerName,
+		},
+		Spec: v1alpha1.TidbInitializerSpec{
+			Image: tidbInitializerImage,
+			Clusters: v1alpha1.TidbClusterRef{
+				Name: tidbClusterName,
+			},
+			PasswordSecret: pointer.StringPtr(tidbInitializerPasswordSecret),
+		},
+	}
+
+	return ti, secret, nil
+}
+
+func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes, tidbRes, tiflash corev1.ResourceRequirements, err error) {
 	if req.Pd == nil || req.Tikv == nil || req.Tidb == nil || req.Pd.Replicas <= 0 || req.Tikv.Replicas <= 0 || req.Tidb.Replicas <= 0 {
 		err = errors.New("resource requirements of PD/TiKV/TiDB must be specified and replicas must be greater than 0")
 		return
