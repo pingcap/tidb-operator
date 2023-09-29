@@ -1,0 +1,284 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "TiDB Operator API",
+    "description": "This is the TiDB Operator API.",
+    "version": "v1-beta"
+  },
+  "tags": [
+    {
+      "name": "Cluster",
+      "description": "Create, get, modify, and delete TiDB clusters."
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1beta/clusters": {
+      "post": {
+        "summary": "Create a cluster.",
+        "operationId": "CreateCluster",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiCreateClusterResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "CreateClusterReq is the request for creating cluster.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apiCreateClusterReq"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "apiComponent": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "format": "int64",
+          "example": 3,
+          "description": "The number of replicas of the component."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the component for each replica."
+        },
+        "config": {
+          "type": "string",
+          "description": "The config of the component."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The port of the component. Only used for TiDB now."
+        }
+      },
+      "description": "Component is the component of the cluster.",
+      "title": "Component",
+      "required": [
+        "replicasresource"
+      ]
+    },
+    "apiCreateClusterReq": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string",
+          "example": "tidb-clsuter-123",
+          "description": "The unique ID or name of the cluster."
+        },
+        "version": {
+          "type": "string",
+          "example": "v7.1.0",
+          "description": "The version of the TiDB cluster. Only official versions are supported now."
+        },
+        "user": {
+          "$ref": "#/definitions/apiUser",
+          "description": "The username and password of the cluster."
+        },
+        "pd": {
+          "$ref": "#/definitions/apiComponent",
+          "description": "The PD component of the cluster."
+        },
+        "tikv": {
+          "$ref": "#/definitions/apiComponent",
+          "description": "The TiKV component of the cluster."
+        },
+        "tiflash": {
+          "$ref": "#/definitions/apiComponent",
+          "description": "The TiFlash component of the cluster."
+        },
+        "tidb": {
+          "$ref": "#/definitions/apiComponent",
+          "description": "The TiDB component of the cluster."
+        },
+        "prometheus": {
+          "$ref": "#/definitions/apiPrometheus",
+          "description": "The Prometheus component of the cluster."
+        },
+        "grafana": {
+          "$ref": "#/definitions/apiGrafana",
+          "description": "The Grafana component of the cluster."
+        }
+      },
+      "description": "CreateClusterReq is the request for creating cluster.",
+      "title": "CreateClusterReq",
+      "required": [
+        "cluster_idversionpdtikvtidb"
+      ]
+    },
+    "apiCreateClusterResp": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      },
+      "description": "CreateClusterResp is the response for creating cluster.",
+      "title": "CreateClusterResp",
+      "required": [
+        "base_resp"
+      ]
+    },
+    "apiGrafana": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "example": "7.5.11",
+          "description": "The version of the Grafana. Only official versions are supported now."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the Grafana."
+        },
+        "envs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The environment variables of the Grafana."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The port of the Grafana."
+        }
+      },
+      "description": "Grafana is the Grafana component of the cluster.",
+      "title": "Grafana",
+      "required": [
+        "versionresource"
+      ]
+    },
+    "apiPrometheus": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "example": "v2.27.1",
+          "description": "The version of the Prometheus. Only official versions are supported now."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the Prometheus."
+        },
+        "config": {
+          "type": "string",
+          "description": "The config of the Prometheus."
+        }
+      },
+      "description": "Prometheus is the Prometheus component of the cluster.",
+      "title": "Prometheus",
+      "required": [
+        "versionresource"
+      ]
+    },
+    "apiResource": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "type": "integer",
+          "format": "int64",
+          "example": 2,
+          "description": "The number of CPU cores for each replica."
+        },
+        "memory": {
+          "type": "integer",
+          "format": "int64",
+          "example": 4,
+          "description": "The amount of memory for each replica. unit: Gi"
+        },
+        "storage": {
+          "type": "integer",
+          "format": "int64",
+          "example": 100,
+          "description": "The amount of storage for each replica. unit: Gi. This is used for PD, TiKV and TiFlash now."
+        }
+      },
+      "description": "Resource is the resource of the component for each replica.",
+      "title": "Resource",
+      "required": [
+        "cpumemory"
+      ]
+    },
+    "apiUser": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "example": "root",
+          "description": "The username of the cluster."
+        },
+        "password": {
+          "type": "string",
+          "example": "123456",
+          "description": "The password of the cluster."
+        }
+      },
+      "description": "User is the username and password of the cluster.",
+      "title": "User",
+      "required": [
+        "usernamepassword"
+      ]
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}
