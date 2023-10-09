@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/log"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/structpb"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -403,28 +404,45 @@ func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes
 func convertClusterComponetsConfig(req *api.CreateClusterReq) (
 	pdCfg *v1alpha1.PDConfigWraper, tikvCfg *v1alpha1.TiKVConfigWraper,
 	tidbCfg *v1alpha1.TiDBConfigWraper, tiflashCfg *v1alpha1.TiFlashConfigWraper) {
+	cvtValue := func(x *structpb.Value) interface{} {
+		switch v := x.GetKind().(type) {
+		case *structpb.Value_NumberValue:
+			if v == nil {
+				return nil
+			}
+			// convert float64 to int64 if possible
+			val := x.GetNumberValue()
+			if val == float64(int(val)) {
+				return int64(val)
+			}
+			return val
+		default:
+			return x.AsInterface()
+		}
+	}
+
 	pdCfg = v1alpha1.NewPDConfig()
 	for k, v := range req.Pd.Config {
-		pdCfg.Set(k, v.AsInterface())
+		pdCfg.Set(k, cvtValue(v))
 	}
 
 	tidbCfg = v1alpha1.NewTiDBConfig()
 	for k, v := range req.Tidb.Config {
-		tidbCfg.Set(k, v.AsInterface())
+		tidbCfg.Set(k, cvtValue(v))
 	}
 
 	tikvCfg = v1alpha1.NewTiKVConfig()
 	for k, v := range req.Tikv.Config {
-		tikvCfg.Set(k, v.AsInterface())
+		tikvCfg.Set(k, cvtValue(v))
 	}
 
 	if req.Tiflash != nil && req.Tiflash.Replicas > 0 {
 		tiflashCfg = v1alpha1.NewTiFlashConfig()
 		for k, v := range req.Tiflash.Config {
-			tiflashCfg.Common.Set(k, v.AsInterface())
+			tiflashCfg.Common.Set(k, cvtValue(v))
 		}
 		for k, v := range req.Tiflash.LearnerConfig {
-			tiflashCfg.Proxy.Set(k, v.AsInterface())
+			tiflashCfg.Proxy.Set(k, cvtValue(v))
 		}
 	}
 
