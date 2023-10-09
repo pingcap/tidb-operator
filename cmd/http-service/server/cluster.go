@@ -193,7 +193,7 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 		return nil, errors.New("invalid resource requirements")
 	}
 
-	pdCfg, tikvCfg, tidbCfg, _ := convertClusterComponetsConfig(req)
+	pdCfg, tikvCfg, tidbCfg, tiflashCfg := convertClusterComponetsConfig(req)
 	tidbPort := int32(4000)
 	if req.Tidb.Port != nil {
 		tidbPort = int32(*req.Tidb.Port)
@@ -247,7 +247,7 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 			Replicas:             int32(req.Tiflash.Replicas),
 			MaxFailoverCount:     pointer.Int32Ptr(0),
 			ResourceRequirements: tiflashRes,
-			Config:               v1alpha1.NewTiFlashConfig(),
+			Config:               tiflashCfg,
 			StorageClaims: []v1alpha1.StorageClaim{
 				{
 					Resources: tiflashRes,
