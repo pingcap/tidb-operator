@@ -1,5 +1,5 @@
 {
-    "cluster_id":"tidb-clsuter-123",
+    "cluster_id":"tidb-cluster-123",
     "version":"v7.1.0",
     "user":{
        "username":"root",
@@ -12,8 +12,7 @@
           "memory":1,
           "storage":1
        },
-       "config":"string",
-       "port":0
+       "config":{}
     },
     "tikv":{
        "replicas":1,
@@ -22,8 +21,7 @@
           "memory":4,
           "storage":10
        },
-       "config":"string",
-       "port":0
+       "config":{}
     },
     "tiflash":{
        "replicas":1,
@@ -32,8 +30,8 @@
           "memory":4,
           "storage":5
        },
-       "config":"string",
-       "port":0
+       "config":{},
+       "learner_config":{}
     },
     "tidb":{
        "replicas":1,
@@ -42,7 +40,7 @@
           "memory":4,
           "storage":0
        },
-       "config":"string",
+       "config":{},
        "port":4000
     },
     "prometheus": {
