@@ -418,12 +418,15 @@ func convertClusterComponetsConfig(req *api.CreateClusterReq) (
 		tikvCfg.Set(k, v.AsInterface())
 	}
 
-	// if req.Tiflash != nil && req.Tiflash.Replicas > 0 {
-	// 	tiflashCfg = v1alpha1.NewTiFlashConfig()
-	// 	for k, v := range req.Tiflash.Config {
-	// 		tiflashCfg.Set(k, v.AsInterface())
-	// 	}
-	// }
+	if req.Tiflash != nil && req.Tiflash.Replicas > 0 {
+		tiflashCfg = v1alpha1.NewTiFlashConfig()
+		for k, v := range req.Tiflash.Config {
+			tiflashCfg.Common.Set(k, v.AsInterface())
+		}
+		for k, v := range req.Tiflash.LearnerConfig {
+			tiflashCfg.Proxy.Set(k, v.AsInterface())
+		}
+	}
 
 	return
 }

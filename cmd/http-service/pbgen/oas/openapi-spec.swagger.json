@@ -110,7 +110,7 @@
           "description": "The TiKV component of the cluster."
         },
         "tiflash": {
-          "$ref": "#/definitions/apiComponent",
+          "$ref": "#/definitions/apiTiFlashComponent",
           "description": "The TiFlash component of the cluster."
         },
         "tidb": {
@@ -231,6 +231,41 @@
       "title": "Resource",
       "required": [
         "cpumemory"
+      ]
+    },
+    "apiTiFlashComponent": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "format": "int64",
+          "example": 3,
+          "description": "The number of replicas of the component."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the component for each replica."
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The config of the component. JSON format."
+        },
+        "learner_config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The TiFlash learner config of the component. JSON format."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The port of the component. Only used for TiDB now."
+        }
+      },
+      "description": "Component is the component of the cluster.",
+      "title": "Component",
+      "required": [
+        "replicasresource"
       ]
     },
     "apiUser": {
