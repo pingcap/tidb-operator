@@ -135,6 +135,11 @@ func setupAndRunGRPCGateway(ctx context.Context, logger *zap.Logger, addr, grpcA
 		log.Fatal("Failed to register gRPC gateway", zap.Error(err))
 	}
 
+	lis, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatal("Failed to listen for gRPC gateway", zap.String("addr", addr), zap.Error(err))
+	}
+
 	router := gin.New()
 	router.Use(middlewares.LoggingMiddleware(), gin.Recovery()) // log with custom format
 	router.Group("/v1beta/*{grpc_gateway}").Any("", gin.WrapH(mux))
@@ -145,7 +150,7 @@ func setupAndRunGRPCGateway(ctx context.Context, logger *zap.Logger, addr, grpcA
 	}
 	log.Info("Starting gRPC gateway", zap.String("addr", addr))
 	go func() {
-		if err2 := srv.ListenAndServe(); err2 != nil && !errors.Is(err2, http.ErrServerClosed) {
+		if err2 := srv.Serve(lis); err2 != nil && !errors.Is(err2, http.ErrServerClosed) {
 			log.Info("The gRPC gateway returned with error", zap.String("addr", addr), zap.Error(err2))
 		}
 	}()
