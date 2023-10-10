@@ -3,6 +3,7 @@ syntax = "proto3";
 package api;
 
 import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/pingcap/tidb-operator/http-service/api;api";
@@ -94,8 +95,31 @@ message Component {
     example: "3"
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
-  string config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component."}];
+  map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component. JSON format."}];
   optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the component. Only used for TiDB now."}];
+}
+
+// extension for TiFlash as TiFlash with another learner config field.
+message TiFlashComponent {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "Component"
+      description: "Component is the component of the cluster."
+      required: [
+          "replicas"
+          "resource"
+]
+    }
+  };
+
+  uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of replicas of the component.",
+    example: "3"
+  }];
+  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
+  map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component. JSON format."}];
+  map<string, google.protobuf.Value> learner_config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash learner config of the component. JSON format."}];
+  optional uint32 port = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the component. Only used for TiDB now."}];
 }
 
 message Prometheus {
@@ -115,7 +139,7 @@ message Prometheus {
     example: "\"v2.27.1\""
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Prometheus."}];
-  string config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the Prometheus."}];
+  repeated string command_options = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The command options of the Prometheus."}];
 }
 
 message Grafana {
@@ -166,7 +190,7 @@ message CreateClusterReq {
 
   Component pd = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The PD component of the cluster."}];
   Component tikv = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiKV component of the cluster."}];
-  optional Component tiflash = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash component of the cluster."}];
+  optional TiFlashComponent tiflash = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash component of the cluster."}];
   Component tidb = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiDB component of the cluster."}];
   optional Prometheus prometheus = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Prometheus component of the cluster."}];
   optional Grafana grafana = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Grafana component of the cluster."}];
