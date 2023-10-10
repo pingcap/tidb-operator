@@ -1,63 +1,70 @@
 {
-    "cluster_id":"tidb-cluster-123",
-    "version":"v7.1.0",
-    "user":{
-       "username":"root",
-       "password":"123456"
-    },
-    "pd":{
-       "replicas":1,
-       "resource":{
-          "cpu":1,
-          "memory":1,
-          "storage":1
-       },
-       "config":{}
-    },
-    "tikv":{
-       "replicas":1,
-       "resource":{
-          "cpu":2,
-          "memory":4,
-          "storage":10
-       },
-       "config":{}
-    },
-    "tiflash":{
-       "replicas":1,
-       "resource":{
-          "cpu":2,
-          "memory":4,
-          "storage":5
-       },
-       "config":{},
-       "learner_config":{}
-    },
-    "tidb":{
-       "replicas":1,
-       "resource":{
-          "cpu":2,
-          "memory":4,
-          "storage":0
-       },
-       "config":{},
-       "port":4000
-    },
-    "prometheus": {
-       "version": "v2.27.1",
-       "resource": {
-          "cpu": 2,
-          "memory": 4
-       },
-       "config": "string"
-    },
-    "grafana": {
-       "version": "7.5.11",
-       "resource": {
-          "cpu": 2,
-          "memory": 4
-       },
-       "envs": {},
-       "port": 3000
-    }
+   "cluster_id":"tidb-cluster-123",
+   "version":"v7.1.0",
+   "user":{
+      "username":"root",
+      "password":"123456"
+   },
+   "pd":{
+      "replicas":1,
+      "resource":{
+         "cpu":1,
+         "memory":1,
+         "storage":1
+      },
+      "config":{
+      }
+   },
+   "tikv":{
+      "replicas":1,
+      "resource":{
+         "cpu":2,
+         "memory":4,
+         "storage":10
+      },
+      "config":{
+      }
+   },
+   "tiflash":{
+      "replicas":1,
+      "resource":{
+         "cpu":2,
+         "memory":4,
+         "storage":5
+      },
+      "config":{
+      },
+      "learner_config":{
+      }
+   },
+   "tidb":{
+      "replicas":1,
+      "resource":{
+         "cpu":2,
+         "memory":4,
+         "storage":0
+      },
+      "config":{
+      },
+      "port":4000
+   },
+   "prometheus":{
+      "version":"v2.27.1",
+      "resource":{
+         "cpu":2,
+         "memory":4
+      },
+      "command_options":[
+      ]
+   },
+   "grafana":{
+      "version":"7.5.11",
+      "resource":{
+         "cpu":2,
+         "memory":4
+      },
+      "envs":{
+      },
+      "port":3000
+   }
 }

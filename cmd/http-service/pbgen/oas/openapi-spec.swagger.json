@@ -194,9 +194,12 @@
           "$ref": "#/definitions/apiResource",
           "description": "The resource of the Prometheus."
         },
-        "config": {
-          "type": "string",
-          "description": "The config of the Prometheus."
+        "command_options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The command options of the Prometheus."
         }
       },
       "description": "Prometheus is the Prometheus component of the cluster.",

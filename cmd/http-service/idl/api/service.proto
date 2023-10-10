@@ -139,7 +139,7 @@ message Prometheus {
     example: "\"v2.27.1\""
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Prometheus."}];
-  string config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the Prometheus."}];
+  repeated string command_options = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The command options of the Prometheus."}];
 }
 
 message Grafana {

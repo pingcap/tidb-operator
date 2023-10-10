@@ -82,8 +82,6 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 	// TODO(http-service): add verification for the request body
 	// TODO(http-service): customize image support
 
-	// TODO(csuzhangxc): json config support
-
 	tc, err := assembleTidbCluster(ctx, req)
 	if err != nil {
 		logger.Error("Assemble TidbCluster CR failed", zap.Error(err))
@@ -351,6 +349,12 @@ func assembleTidbMonitor(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 				},
 			},
 		},
+	}
+
+	if req.Prometheus.CommandOptions != nil {
+		tm.Spec.Prometheus.Config = &v1alpha1.PrometheusConfiguration{
+			CommandOptions: req.Prometheus.CommandOptions,
+		}
 	}
 
 	if req.Grafana != nil {
