@@ -74,7 +74,7 @@
         "port": {
           "type": "integer",
           "format": "int64",
-          "description": "The port of the component. Used for TiDB, Grafana etc."
+          "description": "The port of the component. Only used for TiDB now."
         }
       },
       "description": "Component is the component of the cluster.",
@@ -94,7 +94,7 @@
         "version": {
           "type": "string",
           "example": "v7.1.0",
-          "description": "The version of the cluster. Only official versions are supported now."
+          "description": "The version of the TiDB cluster. Only official versions are supported now."
         },
         "user": {
           "$ref": "#/definitions/apiUser",
@@ -116,12 +116,12 @@
           "$ref": "#/definitions/apiComponent",
           "description": "The TiDB component of the cluster."
         },
-        "promehteus": {
-          "$ref": "#/definitions/apiComponent",
+        "prometheus": {
+          "$ref": "#/definitions/apiPrometheus",
           "description": "The Prometheus component of the cluster."
         },
         "grafana": {
-          "$ref": "#/definitions/apiComponent",
+          "$ref": "#/definitions/apiGrafana",
           "description": "The Grafana component of the cluster."
         }
       },
@@ -150,6 +150,60 @@
         "base_resp"
       ]
     },
+    "apiGrafana": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "example": "7.5.11",
+          "description": "The version of the Grafana. Only official versions are supported now."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the Grafana."
+        },
+        "envs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The environment variables of the Grafana."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The port of the Grafana."
+        }
+      },
+      "description": "Grafana is the Grafana component of the cluster.",
+      "title": "Grafana",
+      "required": [
+        "versionresource"
+      ]
+    },
+    "apiPrometheus": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "example": "v2.27.1",
+          "description": "The version of the Prometheus. Only official versions are supported now."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the Prometheus."
+        },
+        "config": {
+          "type": "string",
+          "description": "The config of the Prometheus."
+        }
+      },
+      "description": "Prometheus is the Prometheus component of the cluster.",
+      "title": "Prometheus",
+      "required": [
+        "versionresource"
+      ]
+    },
     "apiResource": {
       "type": "object",
       "properties": {
@@ -169,7 +223,7 @@
           "type": "integer",
           "format": "int64",
           "example": 100,
-          "description": "The amount of storage for each replica. unit: Gi"
+          "description": "The amount of storage for each replica. unit: Gi. This is used for PD, TiKV and TiFlash now."
         }
       },
       "description": "Resource is the resource of the component for each replica.",
