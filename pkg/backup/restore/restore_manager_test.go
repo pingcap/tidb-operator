@@ -699,7 +699,7 @@ func TestGenerateWarmUpArgs(t *testing.T) {
 		{
 			name:     "data by fsr other by block",
 			strategy: v1alpha1.RestoreWarmupStrategyFsr,
-			errMsg:   `warmup strategy "data-by-fsr-other-by-block" is not supported for now`,
+			errMsg:   `warmup strategy "fsr" is not supported for now`,
 		},
 		{
 			name:     "data by fs other by block",
