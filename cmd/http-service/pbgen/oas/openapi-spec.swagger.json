@@ -68,8 +68,9 @@
           "description": "The resource of the component for each replica."
         },
         "config": {
-          "type": "string",
-          "description": "The config of the component."
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The config of the component. JSON format."
         },
         "port": {
           "type": "integer",
@@ -109,7 +110,7 @@
           "description": "The TiKV component of the cluster."
         },
         "tiflash": {
-          "$ref": "#/definitions/apiComponent",
+          "$ref": "#/definitions/apiTiFlashComponent",
           "description": "The TiFlash component of the cluster."
         },
         "tidb": {
@@ -193,9 +194,12 @@
           "$ref": "#/definitions/apiResource",
           "description": "The resource of the Prometheus."
         },
-        "config": {
-          "type": "string",
-          "description": "The config of the Prometheus."
+        "command_options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The command options of the Prometheus."
         }
       },
       "description": "Prometheus is the Prometheus component of the cluster.",
@@ -232,6 +236,41 @@
         "cpumemory"
       ]
     },
+    "apiTiFlashComponent": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "format": "int64",
+          "example": 3,
+          "description": "The number of replicas of the component."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the component for each replica."
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The config of the component. JSON format."
+        },
+        "learner_config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The TiFlash learner config of the component. JSON format."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The port of the component. Only used for TiDB now."
+        }
+      },
+      "description": "Component is the component of the cluster.",
+      "title": "Component",
+      "required": [
+        "replicasresource"
+      ]
+    },
     "apiUser": {
       "type": "object",
       "properties": {
@@ -260,6 +299,11 @@
         }
       },
       "additionalProperties": {}
+    },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": null,
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`."
     },
     "rpcStatus": {
       "type": "object",
