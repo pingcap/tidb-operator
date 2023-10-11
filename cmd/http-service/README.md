@@ -14,12 +14,14 @@ run `make buf-generate`
 
 ### Build
 
-run `make build`
+- run `make build` to build a binary
+- run `make image` to build a Docker image
 
 ## Run
 
 - When running the binary out of a Kubernetes cluster, the `--kubeconfig` must be set to a KUBECONFIG file path.
   - The context name in the KUBECONFIG should be used as the `kubernetes-id` in the HTTP header.
+- Try to apply the `./deploy.yaml` for a Kubernetes cluster.
 - If the Kubernetes cluster does not have enough resources, set `LOCAL_RUN=true` environment variable when running the binary.
   - This will let this HTTP Service to remove the CPU & memory requests for components so that Pods can be scheduled.
 
