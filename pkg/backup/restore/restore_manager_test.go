@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -671,4 +672,55 @@ func TestVolumeNumMismatchBRRestoreByEBS(t *testing.T) {
 		err := m.Sync(cases[0].restore)
 		g.Expect(err).Should(MatchError("additional volumes mismatched"))
 	})
+}
+
+func TestGenerateWarmUpArgs(t *testing.T) {
+	mountPoints := []corev1.VolumeMount{
+		{
+			Name:      "data",
+			MountPath: constants.TiKVDataVolumeMountPath,
+		},
+		{
+			Name:      "logs",
+			MountPath: "/logs",
+		},
+	}
+	testCases := []struct {
+		name     string
+		strategy v1alpha1.RestoreWarmupStrategy
+		expected []string
+		errMsg   string
+	}{
+		{
+			name:     "all by block",
+			strategy: v1alpha1.RestoreWarmupStrategyFio,
+			expected: []string{"--block", constants.TiKVDataVolumeMountPath, "--block", "/logs"},
+		},
+		{
+			name:     "data by fsr other by block",
+			strategy: v1alpha1.RestoreWarmupStrategyFsr,
+			errMsg:   `warmup strategy "fsr" is not supported for now`,
+		},
+		{
+			name:     "data by fs other by block",
+			strategy: v1alpha1.RestoreWarmupStrategyHybrid,
+			expected: []string{"--fs", constants.TiKVDataVolumeMountPath, "--block", "/logs"},
+		},
+		{
+			name:     "unknown strategy",
+			strategy: "unknown",
+			errMsg:   `unknown warmup strategy "unknown"`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			args, err := generateWarmUpArgs(tc.strategy, mountPoints)
+			if tc.errMsg != "" {
+				require.EqualError(t, err, tc.errMsg)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, args)
+		})
+	}
 }
