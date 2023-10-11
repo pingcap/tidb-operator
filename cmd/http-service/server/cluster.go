@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/log"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/structpb"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -80,8 +81,6 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 
 	// TODO(http-service): add verification for the request body
 	// TODO(http-service): customize image support
-
-	// TODO(csuzhangxc): json config support
 
 	tc, err := assembleTidbCluster(ctx, req)
 	if err != nil {
@@ -192,6 +191,8 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 	if err != nil {
 		return nil, errors.New("invalid resource requirements")
 	}
+
+	pdCfg, tikvCfg, tidbCfg, tiflashCfg := convertClusterComponetsConfig(req)
 	tidbPort := int32(4000)
 	if req.Tidb.Port != nil {
 		tidbPort = int32(*req.Tidb.Port)
@@ -217,19 +218,19 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 				Replicas:             int32(req.Pd.Replicas),
 				MaxFailoverCount:     pointer.Int32Ptr(0),
 				ResourceRequirements: pdRes,
-				Config:               v1alpha1.NewPDConfig(),
+				Config:               pdCfg,
 			},
 			TiKV: &v1alpha1.TiKVSpec{
 				Replicas:             int32(req.Tikv.Replicas),
 				MaxFailoverCount:     pointer.Int32Ptr(0),
 				ResourceRequirements: tikvRes,
-				Config:               v1alpha1.NewTiKVConfig(),
+				Config:               tikvCfg,
 			},
 			TiDB: &v1alpha1.TiDBSpec{
 				Replicas:             int32(req.Tidb.Replicas),
 				MaxFailoverCount:     pointer.Int32Ptr(0),
 				ResourceRequirements: tidbRes,
-				Config:               v1alpha1.NewTiDBConfig(),
+				Config:               tidbCfg,
 				Service: &v1alpha1.TiDBServiceSpec{
 					ServiceSpec: v1alpha1.ServiceSpec{
 						Type: corev1.ServiceTypeNodePort, // NOTE: use NodePort for now
@@ -245,7 +246,7 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 			Replicas:             int32(req.Tiflash.Replicas),
 			MaxFailoverCount:     pointer.Int32Ptr(0),
 			ResourceRequirements: tiflashRes,
-			Config:               v1alpha1.NewTiFlashConfig(),
+			Config:               tiflashCfg,
 			StorageClaims: []v1alpha1.StorageClaim{
 				{
 					Resources: tiflashRes,
@@ -350,6 +351,12 @@ func assembleTidbMonitor(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 		},
 	}
 
+	if req.Prometheus.CommandOptions != nil {
+		tm.Spec.Prometheus.Config = &v1alpha1.PrometheusConfiguration{
+			CommandOptions: req.Prometheus.CommandOptions,
+		}
+	}
+
 	if req.Grafana != nil {
 		tm.Spec.Grafana = &v1alpha1.GrafanaSpec{
 			LogLevel: prometheusGrafanaLogLevel,
@@ -392,6 +399,54 @@ func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes
 		tiflash, err = convertResourceRequirements(req.Tiflash.Resource)
 		if err != nil {
 			return
+		}
+	}
+
+	return
+}
+
+func convertClusterComponetsConfig(req *api.CreateClusterReq) (
+	pdCfg *v1alpha1.PDConfigWraper, tikvCfg *v1alpha1.TiKVConfigWraper,
+	tidbCfg *v1alpha1.TiDBConfigWraper, tiflashCfg *v1alpha1.TiFlashConfigWraper) {
+	cvtValue := func(x *structpb.Value) interface{} {
+		switch v := x.GetKind().(type) {
+		case *structpb.Value_NumberValue:
+			if v == nil {
+				return nil
+			}
+			// convert float64 to int64 if possible
+			val := x.GetNumberValue()
+			if val == float64(int(val)) {
+				return int64(val)
+			}
+			return val
+		default:
+			return x.AsInterface()
+		}
+	}
+
+	pdCfg = v1alpha1.NewPDConfig()
+	for k, v := range req.Pd.Config {
+		pdCfg.Set(k, cvtValue(v))
+	}
+
+	tidbCfg = v1alpha1.NewTiDBConfig()
+	for k, v := range req.Tidb.Config {
+		tidbCfg.Set(k, cvtValue(v))
+	}
+
+	tikvCfg = v1alpha1.NewTiKVConfig()
+	for k, v := range req.Tikv.Config {
+		tikvCfg.Set(k, cvtValue(v))
+	}
+
+	if req.Tiflash != nil && req.Tiflash.Replicas > 0 {
+		tiflashCfg = v1alpha1.NewTiFlashConfig()
+		for k, v := range req.Tiflash.Config {
+			tiflashCfg.Common.Set(k, cvtValue(v))
+		}
+		for k, v := range req.Tiflash.LearnerConfig {
+			tiflashCfg.Proxy.Set(k, cvtValue(v))
 		}
 	}
 

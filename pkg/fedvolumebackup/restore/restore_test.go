@@ -70,9 +70,9 @@ func newHelper(t *testing.T, restoreName, restoreNamespace string) *helper {
 	h.dataPlaneClient2 = h.deps.FedClientset[controller.FakeDataPlaneName2]
 	h.dataPlaneClient3 = h.deps.FedClientset[controller.FakeDataPlaneName3]
 
-	h.restoreMemberName1 = h.rm.generateRestoreMemberName(restoreName, controller.FakeDataPlaneName1)
-	h.restoreMemberName2 = h.rm.generateRestoreMemberName(restoreName, controller.FakeDataPlaneName2)
-	h.restoreMemberName3 = h.rm.generateRestoreMemberName(restoreName, controller.FakeDataPlaneName3)
+	h.restoreMemberName1 = h.rm.generateRestoreMemberName(restoreName)
+	h.restoreMemberName2 = h.rm.generateRestoreMemberName(restoreName)
+	h.restoreMemberName3 = h.rm.generateRestoreMemberName(restoreName)
 	return h
 }
 

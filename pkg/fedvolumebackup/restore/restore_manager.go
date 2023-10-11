@@ -177,7 +177,7 @@ func (rm *restoreManager) listRestoreMembers(ctx context.Context, volumeRestore 
 		if existedRestoreMember, ok := existedMembers[k8sClusterName]; ok {
 			restoreName = existedRestoreMember.RestoreName
 		} else {
-			restoreName = rm.generateRestoreMemberName(volumeRestore.Name, k8sClusterName)
+			restoreName = rm.generateRestoreMemberName(volumeRestore.Name)
 		}
 		restoreMember, err := kubeClient.PingcapV1alpha1().Restores(memberCluster.TCNamespace).Get(ctx, restoreName, metav1.GetOptions{})
 		if err != nil {
@@ -205,14 +205,13 @@ func (rm *restoreManager) executeRestoreVolumePhase(ctx context.Context, volumeR
 	v1alpha1.StartVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestoreVolume)
 	restoreMemberMap := make(map[string]*volumeRestoreMember, len(restoreMembers))
 	for _, restoreMember := range restoreMembers {
-		restoreMemberMap[restoreMember.restore.Name] = restoreMember
+		restoreMemberMap[restoreMember.k8sClusterName] = restoreMember
 	}
 
 	for i := range volumeRestore.Spec.Clusters {
 		memberCluster := volumeRestore.Spec.Clusters[i]
 		k8sClusterName := memberCluster.K8sClusterName
-		restoreName := rm.generateRestoreMemberName(volumeRestore.Name, k8sClusterName)
-		if _, ok := restoreMemberMap[restoreName]; ok {
+		if _, ok := restoreMemberMap[k8sClusterName]; ok {
 			continue
 		}
 
@@ -222,7 +221,7 @@ func (rm *restoreManager) executeRestoreVolumePhase(ctx context.Context, volumeR
 			return false, fmt.Errorf("create restore member %s to cluster %s error: %s", restoreMember.Name, k8sClusterName, err.Error())
 		}
 		memberCreated = true
-		klog.Infof("VolumeRestore %s/%s create restore member %s successfully", volumeRestore.Namespace, volumeRestore.Name, restoreMember.Name)
+		klog.Infof("VolumeRestore %s/%s create restore member %s to cluster %s successfully", volumeRestore.Namespace, volumeRestore.Name, restoreMember.Name, k8sClusterName)
 		v1alpha1.UpdateVolumeRestoreMemberStatus(&volumeRestore.Status, k8sClusterName, restoreMember)
 	}
 	return
@@ -388,7 +387,7 @@ func (rm *restoreManager) executeRestoreFinishPhase(ctx context.Context, volumeR
 			return false, controller.RequeueErrorf("update FederalVolumeRestorePhase to restore-finish in restore member %s of cluster %s error: %s", restoreMemberName, k8sClusterName, err.Error())
 		}
 		memberUpdated = true
-		klog.Infof("VolumeRestore %s/%s update restore member %s to restore finish", volumeRestore.Namespace, volumeRestore.Name, restoreCR.Name)
+		klog.Infof("VolumeRestore %s/%s update restore member %s of cluster %s to restore finish", volumeRestore.Namespace, volumeRestore.Name, restoreCR.Name, k8sClusterName)
 	}
 	return
 }
@@ -531,7 +530,7 @@ func (rm *restoreManager) skipVolumeRestore(volumeRestore *v1alpha1.VolumeRestor
 func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberCluster *v1alpha1.VolumeRestoreMemberCluster, template *v1alpha1.VolumeRestoreMemberSpec, annotations map[string]string, labels map[string]string) *pingcapv1alpha1.Restore {
 	restoreMember := &pingcapv1alpha1.Restore{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        rm.generateRestoreMemberName(volumeRestoreName, memberCluster.K8sClusterName),
+			Name:        rm.generateRestoreMemberName(volumeRestoreName),
 			Namespace:   memberCluster.TCNamespace,
 			Annotations: annotations,
 		},
@@ -557,8 +556,8 @@ func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberClu
 	return restoreMember
 }
 
-func (rm *restoreManager) generateRestoreMemberName(volumeRestoreName, k8sClusterName string) string {
-	return fmt.Sprintf("fed-%s-%s", volumeRestoreName, k8sClusterName)
+func (rm *restoreManager) generateRestoreMemberName(volumeRestoreName string) string {
+	return fmt.Sprintf("fed-%s", volumeRestoreName)
 }
 
 func isWarmUpSync(volumeRestore *v1alpha1.VolumeRestore) bool {
