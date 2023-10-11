@@ -7581,6 +7581,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"warmupStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WarmupStrategy",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"podSecurityContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PodSecurityContext of the component",
