@@ -1,0 +1,67 @@
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: tidb-operator-http-service
+  namespace: tidb-admin
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tidb-operator:http-service
+rules:
+- apiGroups: ["*"]
+  resources: ["namespaces", "secrets"]
+  verbs: ["*"]
+- apiGroups: ["pingcap.com"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tidb-operator:http-service
+subjects:
+- kind: ServiceAccount
+  name: tidb-operator-http-service
+  namespace: tidb-admin
+roleRef:
+  kind: ClusterRole
+  name: tidb-operator:http-service
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: tidb-operator-http-service
+  namespace: tidb-admin
+  labels:
+    app: tidb-operator-http-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tidb-operator-http-service
+  template:
+    metadata:
+      labels:
+        app: tidb-operator-http-service
+    spec:
+      serviceAccountName: tidb-operator-http-service
+      containers:
+      - name: http-service
+        image: pingcap/tidb-operator-http-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: tidb-operator-http-service
+  namespace: tidb-admin
+spec:
+  ports:
+  - port: 9080
+    targetPort: 9080
+  selector:
+    app: tidb-operator-http-service
