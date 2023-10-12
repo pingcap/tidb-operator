@@ -2090,6 +2090,8 @@ spec:
               type: string
             warmupImage:
               type: string
+            warmupStrategy:
+              type: string
           type: object
         status:
           properties:
