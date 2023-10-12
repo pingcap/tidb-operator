@@ -949,6 +949,8 @@ spec:
                   type: string
                 warmupImage:
                   type: string
+                warmupStrategy:
+                  type: string
               type: object
           type: object
         status:
