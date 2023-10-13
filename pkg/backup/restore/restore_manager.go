@@ -1063,6 +1063,28 @@ func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alph
 	}, nil)
 }
 
+func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []corev1.VolumeMount) ([]string, error) {
+	res := make([]string, 0, len(mountPoints))
+	for _, p := range mountPoints {
+		switch strategy {
+		case v1alpha1.RestoreWarmupStrategyFio:
+			res = append(res, "--block", p.MountPath)
+		case v1alpha1.RestoreWarmupStrategyHybrid:
+			if p.MountPath == constants.TiKVDataVolumeMountPath {
+				res = append(res, "--fs", constants.TiKVDataVolumeMountPath)
+			} else {
+				res = append(res, "--block", p.MountPath)
+			}
+		case v1alpha1.RestoreWarmupStrategyFsr:
+			// For now we don't support warm up by fsr.
+			return nil, fmt.Errorf("warmup strategy %q is not supported for now", strategy)
+		default:
+			return nil, fmt.Errorf("unknown warmup strategy %q", strategy)
+		}
+	}
+	return res, nil
+}
+
 func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster, pvcs []*pvcInfo, warmUpJobName, warmUpImage string) (*batchv1.Job, error) {
 	podVolumes := make([]corev1.Volume, 0, len(pvcs))
 	podVolumeMounts := make([]corev1.VolumeMount, 0, len(pvcs))
@@ -1102,18 +1124,9 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 		}
 	}
 
-	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
-
-	fioPaths := make([]string, 0, len(podVolumeMounts))
-	for _, volumeMount := range podVolumeMounts {
-		if volumeMount.MountPath == constants.TiKVDataVolumeMountPath {
-			continue
-		}
-		fioPaths = append(fioPaths, volumeMount.MountPath)
-	}
-	if len(fioPaths) > 0 {
-		args = append(args, "--block")
-		args = append(args, fioPaths...)
+	args, err := generateWarmUpArgs(r.Spec.WarmupStrategy, podVolumeMounts)
+	if err != nil {
+		return nil, err
 	}
 	resourceRequirements := getWarmUpResourceRequirements(tc)
 
@@ -1192,17 +1205,9 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 		}
 	}
 
-	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
-	fioPaths := make([]string, 0, len(warmUpPaths))
-	for _, warmUpPath := range warmUpPaths {
-		if warmUpPath == constants.TiKVDataVolumeMountPath {
-			continue
-		}
-		fioPaths = append(fioPaths, warmUpPath)
-	}
-	if len(fioPaths) > 0 {
-		args = append(args, "--block")
-		args = append(args, fioPaths...)
+	args, err := generateWarmUpArgs(r.Spec.WarmupStrategy, warmUpVolumeMounts)
+	if err != nil {
+		return nil, err
 	}
 
 	warmUpPod := &corev1.PodTemplateSpec{
