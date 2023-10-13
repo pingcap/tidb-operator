@@ -18,7 +18,6 @@ import (
 	"time"
 
 	perrors "github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -191,36 +190,35 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
+	// TODO: log backup check all subcommand job's pod status
+	if v1alpha1.IsBackupScheduled(newBackup) && newBackup.Spec.Mode != v1alpha1.BackupModeLog {
+		// we will create backup job when we mark backup as scheduled status,
+		// but the backup job or its pod may failed due to insufficient resources or other reasons in k8s,
+		// we should detect this kind of failure and try to restart backup according to spec.backoffRetryPolicy.
+		jobFailed, reason, originalReason, err := c.detectBackupJobFailure(newBackup)
+		if err != nil {
+			klog.Errorf("Fail to detect backup %s/%s failure, error %v", ns, name, err)
+			return
+		}
+
+		if jobFailed {
+			// retry backup after detect failure
+			if err := c.retryAfterFailureDetected(newBackup, reason, originalReason); err != nil {
+				klog.Errorf("Fail to restart snapshot backup %s/%s, error %v", ns, name, err)
+			}
+			return
+		}
+	}
+
 	// volume backup has multiple phases, we should always reconcile it before it is complete or failed
 	if newBackup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 		klog.V(4).Infof("backup object %s/%s enqueue", ns, name)
 		c.enqueueBackup(newBackup)
+		return
 	}
 
 	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsLogBackupStopped(newBackup) {
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
-		// TODO: log backup check all subcommand job's pod status
-		if newBackup.Spec.Mode == v1alpha1.BackupModeLog {
-			return
-		}
-
-		// we will create backup job when we mark backup as scheduled status,
-		// but the backup job or its pod may failed due to insufficient resources or other reasons in k8s,
-		// we should detect this kind of failure and try to restart backup according to spec.backoffRetryPolicy.
-		podOrJobFailed, reason, originalReason, err := c.detectBackupJobOrPodFailure(newBackup)
-		if err != nil {
-			klog.Errorf("Fail to detect backup %s/%s failure, error %v", ns, name, err)
-		}
-		if !podOrJobFailed {
-			return
-		}
-
-		// retry backup after detect failure
-		err = c.retryAfterFailureDetected(newBackup, reason, originalReason)
-		if err != nil {
-			klog.Errorf("Fail to restart snapshot backup %s/%s, error %v", ns, name, err)
-			return
-		}
 		return
 	}
 
@@ -274,10 +272,10 @@ func (c *Controller) enqueueBackup(obj interface{}) {
 	c.queue.Add(key)
 }
 
-// detectBackupJobOrPodFailure detect backup job or pod failure.
+// detectBackupJobFailure detect backup job or pod failure.
 // it will record failure info to backup status, it is to realize reentrant logic for spec.backoffRetryPolicy. so it only record snapshot backup failed now.
-func (c *Controller) detectBackupJobOrPodFailure(backup *v1alpha1.Backup) (
-	podOrJobFailed bool, reason string, originalReason string, err error) {
+func (c *Controller) detectBackupJobFailure(backup *v1alpha1.Backup) (
+	jobFailed bool, reason string, originalReason string, err error) {
 	var (
 		ns   = backup.GetNamespace()
 		name = backup.GetName()
@@ -290,24 +288,24 @@ func (c *Controller) detectBackupJobOrPodFailure(backup *v1alpha1.Backup) (
 		return true, reason, originalReason, nil
 	}
 
-	// check whether backup pod and job failed by checking their status
-	podOrJobFailed, reason, originalReason, err = c.isBackupPodOrJobFailed(backup)
+	// check whether backup job failed by checking their status
+	jobFailed, reason, originalReason, err = c.isBackupJobFailed(backup)
 	if err != nil {
-		klog.Errorf("Fail to check backup %s/%s pod or job status, %v", ns, name, err)
+		klog.Errorf("Fail to check backup %s/%s job status, %v", ns, name, err)
 		return false, "", "", err
 	}
 	// not failed, make sure reason and originalReason are empty when not failed
-	if !podOrJobFailed {
+	if !jobFailed {
 		return false, "", "", nil
 	}
 
-	klog.Infof("Detect backup %s/%s pod or job failed, will retry, reason %s, original reason %s ", ns, name, reason, originalReason)
+	klog.Infof("Detect backup %s/%s job failed, will retry, reason %s, original reason %s ", ns, name, reason, originalReason)
 	// record failure when detect failure
 	err = c.recordDetectedFailure(backup, reason, originalReason)
 	if err != nil {
 		klog.Errorf("failed to record detected failed %s for backup %s/%s", reason, ns, name)
 	}
-	return podOrJobFailed, reason, originalReason, nil
+	return jobFailed, reason, originalReason, nil
 }
 
 func (c *Controller) isFailureAlreadyRecorded(backup *v1alpha1.Backup) bool {
@@ -404,34 +402,12 @@ func (c *Controller) retryAfterFailureDetected(backup *v1alpha1.Backup, reason, 
 	return nil
 }
 
-func (c *Controller) isBackupPodOrJobFailed(backup *v1alpha1.Backup) (
-	podOrJobFailed bool, reason string, originalReason string, err error) {
+func (c *Controller) isBackupJobFailed(backup *v1alpha1.Backup) (
+	jobFailed bool, reason string, originalReason string, err error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	jobName := backup.GetBackupJobName()
 
-	// check pod status
-	selector, err := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name).Selector()
-	if err != nil {
-		klog.Errorf("Fail to generate selector for backup %s/%s, error %v", ns, name, err)
-		return false, "", "", err
-	}
-	pods, err := c.deps.PodLister.Pods(ns).List(selector)
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Errorf("Fail to list pod for backup %s/%s with selector %s, error %v", ns, name, selector, err)
-		return false, "", "", err
-	}
-	// quick return when find one pod failed, basically there should be only one pod
-	for _, pod := range pods {
-		if pod.Status.Phase == corev1.PodFailed {
-			klog.Infof("backup %s/%s has failed pod %s. original reason %s", ns, name, pod.Name, pod.Status.Reason)
-			reason = fmt.Sprintf("Pod %s has failed", pod.Name)
-			originalReason = pod.Status.Reason
-			return true, reason, originalReason, nil
-		}
-	}
-
-	// to avoid missing pod failed events, double check job status
 	job, err := c.deps.JobLister.Jobs(ns).Get(jobName)
 	if err != nil && !errors.IsNotFound(err) {
 		klog.Errorf("Fail to get job %s for backup %s/%s, error %v ", jobName, ns, name, err)
