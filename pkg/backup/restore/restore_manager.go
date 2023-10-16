@@ -1077,7 +1077,8 @@ func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []c
 			}
 		case v1alpha1.RestoreWarmupStrategyFsr:
 			if p.MountPath == constants.TiKVDataVolumeMountPath {
-				res = append(res, "--fsr", constants.TiKVDataVolumeMountPath)
+				// data volume has been warmed up by enabling FSR
+				continue
 			} else {
 				res = append(res, "--block", p.MountPath)
 			}
