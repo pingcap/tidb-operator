@@ -778,6 +778,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			if restore.Spec.VolumeAZ != "" {
 				args = append(args, fmt.Sprintf("--target-az=%s", restore.Spec.VolumeAZ))
 			}
+			if restore.Spec.WarmupStrategy == v1alpha1.RestoreWarmupStrategyFsr {
+				args = append(args, "--use-fsr=true")
+			}
 		}
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))
