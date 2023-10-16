@@ -22,7 +22,6 @@ cd $ROOT
 
 source "${ROOT}/hack/lib.sh"
 
-exit 1
 hack::ensure_kind
 
 echo "info: create a Kubernetes cluster"
