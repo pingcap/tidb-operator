@@ -25,12 +25,11 @@ source hack/lib.sh
 hack::ensure_golangci_lint
 
 # main module
-# lower concurrency to avoid OOM for GitHub Actions
-${OUTPUT_BIN}/golangci-lint run --timeout 20m -j 2 $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
+${OUTPUT_BIN}/golangci-lint run --timeout 20m -v $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
 
 # sub modules
 for dir in ${GO_SUBMODULE_DIRS[@]}; do
     pushd "${ROOT}/${dir}" >/dev/null
-        ${OUTPUT_BIN}/golangci-lint run --timeout 20m
+        ${OUTPUT_BIN}/golangci-lint run --timeout 20m -v
     popd >/dev/null
 done

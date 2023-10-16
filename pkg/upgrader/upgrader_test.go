@@ -88,7 +88,8 @@ func TestIsOwnedByTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ok, _ := util.IsOwnedByTidbCluster(&tt.sts)
+			sts := tt.sts
+			ok, _ := util.IsOwnedByTidbCluster(&sts)
 			if tt.wantOK != ok {
 				t.Errorf("got %v, want %v", ok, tt.wantOK)
 			}
