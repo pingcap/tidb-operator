@@ -75,6 +75,6 @@ jobs:
       if: ${{ matrix.job == 'test' }}
 
     - name: Set up tmate session
-      if: ${{ failure() }}
+      if: ${{ matrix.job == 'e2e-examples' && failure() }}
       uses: mxschmitt/action-tmate@v3
       timeout-minutes: 60
