@@ -175,26 +175,24 @@ func (c *Controller) updateRestore(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsRestoreScheduled(newRestore) {
-		// check if job failed, but restore status not failed
-		jobFailed, reason, err := c.isRestoreJobFailed(newRestore)
+	// check if job failed, but restore status not failed
+	jobFailed, reason, err := c.isRestoreJobFailed(newRestore)
+	if err != nil {
+		klog.Warningf("restore %s/%s check is job failed error: %s", ns, name, err.Error())
+		return
+	}
+	if jobFailed {
+		klog.Errorf("restore %s/%s job failed: %s", ns, name, reason)
+		err = c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "AlreadyFailed",
+			Message: reason,
+		})
 		if err != nil {
-			klog.Warningf("restore %s/%s check is job failed error: %s", ns, name, err.Error())
-			return
+			klog.Errorf("Fail to update the condition of restore %s/%s, %v", ns, name, err)
 		}
-		if jobFailed {
-			klog.Errorf("restore %s/%s job failed: %s", ns, name, reason)
-			err = c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestoreFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "AlreadyFailed",
-				Message: reason,
-			})
-			if err != nil {
-				klog.Errorf("Fail to update the condition of restore %s/%s, %v", ns, name, err)
-			}
-			return
-		}
+		return
 	}
 
 	if v1alpha1.IsRestoreDataComplete(newRestore) {
