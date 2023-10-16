@@ -191,7 +191,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 	}
 
 	// TODO: log backup check all subcommand job's pod status
-	if v1alpha1.IsBackupScheduled(newBackup) && newBackup.Spec.Mode != v1alpha1.BackupModeLog {
+	if newBackup.Spec.Mode != v1alpha1.BackupModeLog {
 		// we will create backup job when we mark backup as scheduled status,
 		// but the backup job or its pod may failed due to insufficient resources or other reasons in k8s,
 		// we should detect this kind of failure and try to restart backup according to spec.backoffRetryPolicy.
