@@ -468,3 +468,7 @@ func convertMonitorComponetsResources(req *api.CreateClusterReq) (promRes, grafa
 	}
 	return
 }
+
+func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) (*api.GetClusterResp, error) {
+	return nil, nil
+}

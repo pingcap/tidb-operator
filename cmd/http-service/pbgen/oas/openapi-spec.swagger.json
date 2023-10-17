@@ -51,9 +51,90 @@
           "Cluster"
         ]
       }
+    },
+    "/v1beta/clusters/{cluster_id}": {
+      "get": {
+        "summary": "Get a cluster.",
+        "operationId": "GetCluster",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiGetClusterResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
     }
   },
   "definitions": {
+    "apiClusterInfo": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string",
+          "example": "tidb-clsuter-123",
+          "description": "The unique ID or name of the cluster."
+        },
+        "version": {
+          "type": "string",
+          "example": "v7.1.1",
+          "description": "The version of the TiDB cluster."
+        },
+        "status": {
+          "type": "string",
+          "example": "Running",
+          "description": "The status of the TiDB cluster."
+        },
+        "pd": {
+          "$ref": "#/definitions/apiPDStatus",
+          "description": "The PD component of the cluster."
+        },
+        "tikv": {
+          "$ref": "#/definitions/apiTiKVStatus",
+          "description": "The TiKV component of the cluster."
+        },
+        "tiflash": {
+          "$ref": "#/definitions/apiTiFlashStatus",
+          "description": "The TiFlash component of the cluster."
+        },
+        "tidb": {
+          "$ref": "#/definitions/apiTiDBStatus",
+          "description": "The TiDB component of the cluster."
+        },
+        "prometheus": {
+          "$ref": "#/definitions/apiPrometheusStatus",
+          "description": "The Prometheus component of the cluster."
+        },
+        "grafana": {
+          "$ref": "#/definitions/apiGrafanaStatus",
+          "description": "The Grafana component of the cluster."
+        }
+      },
+      "description": "ClusterInfo is the information of the cluster.",
+      "title": "ClusterInfo",
+      "required": [
+        "cluster_idversionstatuspdtikvtidb"
+      ]
+    },
     "apiComponent": {
       "type": "object",
       "properties": {
@@ -94,7 +175,7 @@
         },
         "version": {
           "type": "string",
-          "example": "v7.1.0",
+          "example": "v7.1.1",
           "description": "The version of the TiDB cluster. Only official versions are supported now."
         },
         "user": {
@@ -146,10 +227,27 @@
         }
       },
       "description": "CreateClusterResp is the response for creating cluster.",
-      "title": "CreateClusterResp",
-      "required": [
-        "base_resp"
-      ]
+      "title": "CreateClusterResp"
+    },
+    "apiGetClusterResp": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        },
+        "data": {
+          "$ref": "#/definitions/apiClusterInfo",
+          "description": "The information of the cluster."
+        }
+      },
+      "description": "GetClusterResp is the response for getting cluster.",
+      "title": "GetClusterResp"
     },
     "apiGrafana": {
       "type": "object",
@@ -182,6 +280,106 @@
         "versionresource"
       ]
     },
+    "apiGrafanaStatus": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "example": "7.5.11",
+          "description": "The version of the Grafana component."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the Grafana component."
+        },
+        "envs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The environment variables of the Grafana component."
+        },
+        "host": {
+          "type": "string",
+          "description": "The host (IP or domain name) of the Grafana component."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int64",
+          "example": 3000,
+          "description": "The port of the Grafana component."
+        }
+      },
+      "description": "GrafanaStatus is the status of the Grafana component.",
+      "title": "GrafanaStatus",
+      "required": [
+        "versionresourcehostport"
+      ]
+    },
+    "apiPDMember": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "pd-0",
+          "description": "The name of the PD member."
+        },
+        "id": {
+          "type": "string",
+          "format": "uint64",
+          "example": 123,
+          "description": "The ID of the PD member."
+        },
+        "start_time": {
+          "type": "string",
+          "example": "2023-11-01T00:00:00Z",
+          "description": "The latest start time of the PD member."
+        },
+        "health": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the PD member is healthy."
+        }
+      },
+      "description": "PDMember is a member status of the PD component.",
+      "title": "PDMember",
+      "required": [
+        "nameidstart_timehealth"
+      ]
+    },
+    "apiPDStatus": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "format": "int64",
+          "example": 3,
+          "description": "The number of replicas of the PD component."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the PD component for each replica."
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The config of the PD component. JSON format."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/apiPDMember"
+          },
+          "description": "The members of the PD component."
+        }
+      },
+      "description": "PDStatus is the status of the PD component.",
+      "title": "PDStatus",
+      "required": [
+        "replicasresourcemembers"
+      ]
+    },
     "apiPrometheus": {
       "type": "object",
       "properties": {
@@ -204,6 +402,32 @@
       },
       "description": "Prometheus is the Prometheus component of the cluster.",
       "title": "Prometheus",
+      "required": [
+        "versionresource"
+      ]
+    },
+    "apiPrometheusStatus": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "example": "v2.27.1",
+          "description": "The version of the Prometheus component."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the Prometheus component."
+        },
+        "command_options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The command options of the Prometheus component."
+        }
+      },
+      "description": "PrometheusStatus is the status of the Prometheus component.",
+      "title": "PrometheusStatus",
       "required": [
         "versionresource"
       ]
@@ -234,6 +458,74 @@
       "title": "Resource",
       "required": [
         "cpumemory"
+      ]
+    },
+    "apiTiDBMember": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "tidb-0",
+          "description": "The name of the TiDB member."
+        },
+        "start_time": {
+          "type": "string",
+          "example": "2023-11-01T00:00:00Z",
+          "description": "The latest start time of the TiDB member."
+        },
+        "health": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the TiDB member is healthy."
+        }
+      },
+      "description": "TiDBMember is a member status of the TiDB component.",
+      "title": "TiDBMember",
+      "required": [
+        "namestart_timehealth"
+      ]
+    },
+    "apiTiDBStatus": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "format": "int64",
+          "example": 1,
+          "description": "The number of replicas of the TiDB component."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the TiDB component for each replica."
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The config of the TiDB component. JSON format."
+        },
+        "host": {
+          "type": "string",
+          "description": "The host (IP or domain name) of the TiDB component."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int64",
+          "example": 4000,
+          "description": "The port of the TiDB component."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/apiTiDBMember"
+          },
+          "description": "The members of the TiDB component."
+        }
+      },
+      "description": "TiDBStatus is the status of the TiDB component.",
+      "title": "TiDBStatus",
+      "required": [
+        "replicasresourcehostportmembers"
       ]
     },
     "apiTiFlashComponent": {
@@ -269,6 +561,134 @@
       "title": "Component",
       "required": [
         "replicasresource"
+      ]
+    },
+    "apiTiFlashMember": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "tiflash-0",
+          "description": "The name of the TiFlash member."
+        },
+        "id": {
+          "type": "string",
+          "format": "uint64",
+          "example": 123,
+          "description": "The ID of the TiFlash member."
+        },
+        "start_time": {
+          "type": "string",
+          "example": "2023-11-01T00:00:00Z",
+          "description": "The latest start time of the TiFlash member."
+        },
+        "state": {
+          "type": "string",
+          "example": "Up",
+          "description": "The state of the TiFlash member."
+        }
+      },
+      "description": "TiFlashMember is a member status of the TiFlash component.",
+      "title": "TiFlashMember",
+      "required": [
+        "nameidstart_timestate"
+      ]
+    },
+    "apiTiFlashStatus": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "format": "int64",
+          "example": 2,
+          "description": "The number of replicas of the TiFlash component."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the TiFlash component for each replica."
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The config of the TiFlash component. JSON format."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/apiTiFlashMember"
+          },
+          "description": "The members of the TiFlash component."
+        }
+      },
+      "description": "TiFlashStatus is the status of the TiFlash component.",
+      "title": "TiFlashStatus",
+      "required": [
+        "replicasresourcemembers"
+      ]
+    },
+    "apiTiKVMember": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "tikv-0",
+          "description": "The name of the TiKV member."
+        },
+        "id": {
+          "type": "string",
+          "format": "uint64",
+          "example": 123,
+          "description": "The ID of the TiKV member."
+        },
+        "start_time": {
+          "type": "string",
+          "example": "2023-11-01T00:00:00Z",
+          "description": "The latest start time of the TiKV member."
+        },
+        "state": {
+          "type": "string",
+          "example": "Up",
+          "description": "The state of the TiKV member."
+        }
+      },
+      "description": "TiKVMember is a member status of the TiKV component.",
+      "title": "TiKVMember",
+      "required": [
+        "nameidstart_timestate"
+      ]
+    },
+    "apiTiKVStatus": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "format": "int64",
+          "example": 3,
+          "description": "The number of replicas of the TiKV component."
+        },
+        "resource": {
+          "$ref": "#/definitions/apiResource",
+          "description": "The resource of the TiKV component for each replica."
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The config of the TiKV component. JSON format."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/apiTiKVMember"
+          },
+          "description": "The members of the TiKV component."
+        }
+      },
+      "description": "TiKVStatus is the status of the TiKV component.",
+      "title": "TiKVStatus",
+      "required": [
+        "replicasresourcemembers"
       ]
     },
     "apiUser": {
