@@ -296,7 +296,8 @@ func TestGetMonitorConfigMap(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getPromConfigMap(&tt.monitor, tt.monitorClusterInfos, nil, 0, nil)
 			g.Expect(err).NotTo(HaveOccurred())
@@ -363,7 +364,8 @@ func TestGetMonitorSecret(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sec := getMonitorSecret(&tt.monitor)
 			if tt.expected == nil {
@@ -417,7 +419,8 @@ func TestGetMonitorServiceAccount(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sa := getMonitorServiceAccount(&tt.monitor)
 			if tt.expected == nil {
@@ -868,7 +871,8 @@ func TestGetMonitorService(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			svc := getMonitorService(&tt.monitor)
 			if tt.expected == nil {
@@ -1163,7 +1167,8 @@ func TestGetMonitorVolumes(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sa := getMonitorVolumes(&tt.monitor)
 			tt.expected(sa)
@@ -1288,7 +1293,8 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sa := getMonitorPrometheusContainer(&tt.monitor, 0)
 			if tt.expected == nil {
@@ -1440,7 +1446,8 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sa := getMonitorGrafanaContainer(&tt.secret, &tt.monitor)
 			if tt.expected == nil {
@@ -1564,7 +1571,8 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sa := getThanosSidecarContainer(&tt.monitor)
 			if tt.expected == nil {
@@ -1614,7 +1622,8 @@ func TestBuildExternalLabels(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sa := buildExternalLabels(&tt.monitor)
 			if tt.expected == nil {

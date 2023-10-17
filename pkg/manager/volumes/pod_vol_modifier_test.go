@@ -192,7 +192,8 @@ func TestModify(t *testing.T) {
 	}
 
 	g := NewGomegaWithT(t)
-	for _, c := range cases {
+	for i := range cases {
+		c := &cases[i]
 		kc := fake.NewSimpleClientset(
 			c.pvc,
 			c.pv,
