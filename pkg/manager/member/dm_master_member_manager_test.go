@@ -877,7 +877,8 @@ func TestGetNewMasterHeadlessServiceForDMCluster(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			svc := getNewMasterHeadlessServiceForDMCluster(&tt.dc)
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
@@ -1376,7 +1377,8 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 		// TODO add more tests
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			var cm *corev1.ConfigMap
 			if !tt.nilCM {
@@ -1547,7 +1549,8 @@ ssl-key = "/var/lib/dm-master-tls/tls.key"
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getMasterConfigMap(&tt.dc)
 			g.Expect(err).To(Succeed())
@@ -1882,7 +1885,8 @@ func TestGetNewMasterServiceForDMCluster(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			mmm, _, _, _, _, _, _ := newFakeMasterMemberManager()
 			svc := mmm.getNewMasterServiceForDMCluster(&tt.dc)

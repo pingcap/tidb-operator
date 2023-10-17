@@ -1073,7 +1073,8 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			svc := getNewPDHeadlessServiceForTidbCluster(&tt.tc)
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
@@ -1980,7 +1981,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sts, err := getNewPDSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
@@ -2305,7 +2307,8 @@ func TestGetPDConfigMap(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getPDConfigMap(&tt.tc)
 			g.Expect(err).To(Succeed())
@@ -2673,7 +2676,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			pmm, _, _ := newFakePDMemberManager()
 			svc := pmm.getNewPDServiceForTidbCluster(&tt.tc)
