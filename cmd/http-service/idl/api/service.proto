@@ -292,6 +292,7 @@ message PDStatus {
       title: "PDStatus"
       description: "PDStatus is the status of the PD component."
       required: [
+          "phase"
           "replicas"
           "resource"
           "members"
@@ -299,13 +300,17 @@ message PDStatus {
     }
   };
 
-  uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+  string phase = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The phase of the PD component.",
+    example: "\"Normal\""
+  }];
+  uint32 replicas = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The number of replicas of the PD component.",
     example: "3"
   }];
-  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the PD component for each replica."}];
-  map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the PD component. JSON format."}];
-  repeated PDMember members = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the PD component."}];
+  Resource resource = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the PD component for each replica."}];
+  map<string, google.protobuf.Value> config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the PD component. JSON format."}];
+  repeated PDMember members = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the PD component."}];
 }
 
 message PDMember {
@@ -346,6 +351,7 @@ message TiKVStatus {
       title: "TiKVStatus"
       description: "TiKVStatus is the status of the TiKV component."
       required: [
+          "phase"
           "replicas"
           "resource"
           "members"
@@ -353,13 +359,17 @@ message TiKVStatus {
     }
   };
 
-  uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+  string phase = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The phase of the TiKV component.",
+    example: "\"Normal\""
+  }];
+  uint32 replicas = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The number of replicas of the TiKV component.",
     example: "3"
   }];
-  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the TiKV component for each replica."}];
-  map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the TiKV component. JSON format."}];
-  repeated TiKVMember members = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the TiKV component."}];
+  Resource resource = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the TiKV component for each replica."}];
+  map<string, google.protobuf.Value> config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the TiKV component. JSON format."}];
+  repeated TiKVMember members = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the TiKV component."}];
 }
 
 message TiKVMember {
@@ -400,6 +410,7 @@ message TiFlashStatus {
       title: "TiFlashStatus"
       description: "TiFlashStatus is the status of the TiFlash component."
       required: [
+          "phase"
           "replicas"
           "resource"
           "members"
@@ -407,13 +418,17 @@ message TiFlashStatus {
     }
   };
 
-  uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+  string phase = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The phase of the TiFlash component.",
+    example: "\"Normal\""
+  }];
+  uint32 replicas = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The number of replicas of the TiFlash component.",
     example: "2"
   }];
-  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the TiFlash component for each replica."}];
-  map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the TiFlash component. JSON format."}];
-  repeated TiFlashMember members = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the TiFlash component."}];
+  Resource resource = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the TiFlash component for each replica."}];
+  map<string, google.protobuf.Value> config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the TiFlash component. JSON format."}];
+  repeated TiFlashMember members = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the TiFlash component."}];
 }
 
 message TiFlashMember {
@@ -454,6 +469,7 @@ message TiDBStatus {
       title: "TiDBStatus"
       description: "TiDBStatus is the status of the TiDB component."
       required: [
+          "phase"
           "replicas"
           "resource"
           "host"
@@ -463,18 +479,22 @@ message TiDBStatus {
     }
   };
 
-  uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+  string phase = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The phase of the TiDB component.",
+    example: "\"Normal\""
+  }];
+  uint32 replicas = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The number of replicas of the TiDB component.",
     example: "1"
   }];
-  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the TiDB component for each replica."}];
-  map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the TiDB component. JSON format."}];
-  string host = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The host (IP or domain name) of the TiDB component."}];
-  uint32 port = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+  Resource resource = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the TiDB component for each replica."}];
+  map<string, google.protobuf.Value> config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the TiDB component. JSON format."}];
+  string host = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The host (IP or domain name) of the TiDB component."}];
+  uint32 port = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The port of the TiDB component.",
     example: "4000"
   }];
-  repeated TiDBMember members = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the TiDB component."}];
+  repeated TiDBMember members = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the TiDB component."}];
 }
 
 message TiDBMember {

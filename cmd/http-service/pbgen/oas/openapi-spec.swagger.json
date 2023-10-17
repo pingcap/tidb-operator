@@ -350,6 +350,11 @@
     "apiPDStatus": {
       "type": "object",
       "properties": {
+        "phase": {
+          "type": "string",
+          "example": "Normal",
+          "description": "The phase of the PD component."
+        },
         "replicas": {
           "type": "integer",
           "format": "int64",
@@ -377,7 +382,7 @@
       "description": "PDStatus is the status of the PD component.",
       "title": "PDStatus",
       "required": [
-        "replicasresourcemembers"
+        "phasereplicasresourcemembers"
       ]
     },
     "apiPrometheus": {
@@ -488,6 +493,11 @@
     "apiTiDBStatus": {
       "type": "object",
       "properties": {
+        "phase": {
+          "type": "string",
+          "example": "Normal",
+          "description": "The phase of the TiDB component."
+        },
         "replicas": {
           "type": "integer",
           "format": "int64",
@@ -525,7 +535,7 @@
       "description": "TiDBStatus is the status of the TiDB component.",
       "title": "TiDBStatus",
       "required": [
-        "replicasresourcehostportmembers"
+        "phasereplicasresourcehostportmembers"
       ]
     },
     "apiTiFlashComponent": {
@@ -597,6 +607,11 @@
     "apiTiFlashStatus": {
       "type": "object",
       "properties": {
+        "phase": {
+          "type": "string",
+          "example": "Normal",
+          "description": "The phase of the TiFlash component."
+        },
         "replicas": {
           "type": "integer",
           "format": "int64",
@@ -624,7 +639,7 @@
       "description": "TiFlashStatus is the status of the TiFlash component.",
       "title": "TiFlashStatus",
       "required": [
-        "replicasresourcemembers"
+        "phasereplicasresourcemembers"
       ]
     },
     "apiTiKVMember": {
@@ -661,6 +676,11 @@
     "apiTiKVStatus": {
       "type": "object",
       "properties": {
+        "phase": {
+          "type": "string",
+          "example": "Normal",
+          "description": "The phase of the TiKV component."
+        },
         "replicas": {
           "type": "integer",
           "format": "int64",
@@ -688,7 +708,7 @@
       "description": "TiKVStatus is the status of the TiKV component.",
       "title": "TiKVStatus",
       "required": [
-        "replicasresourcemembers"
+        "phasereplicasresourcemembers"
       ]
     },
     "apiUser": {
