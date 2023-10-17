@@ -200,6 +200,7 @@ func (d *DrainerConfig) DrainerHelmString(m map[string]string, source *DrainerSo
 func GetDrainerSubValuesOrDie(info *DrainerConfig) string {
 	if info == nil {
 		slack.NotifyAndPanic(fmt.Errorf("Cannot get drainer sub values, the drainer config is nil"))
+		return ""
 	}
 	buff := new(bytes.Buffer)
 	switch info.DbType {
