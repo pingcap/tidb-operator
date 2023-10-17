@@ -353,7 +353,7 @@
         "phase": {
           "type": "string",
           "example": "Normal",
-          "description": "The phase of the PD component."
+          "description": "The phase of the PD component. Values include \"Normal\", \"Scale\" and \"Upgrade\"."
         },
         "replicas": {
           "type": "integer",
@@ -496,7 +496,7 @@
         "phase": {
           "type": "string",
           "example": "Normal",
-          "description": "The phase of the TiDB component."
+          "description": "The phase of the TiDB component. Values include \"Normal\", \"Scale\" and \"Upgrade\"."
         },
         "replicas": {
           "type": "integer",
@@ -610,7 +610,7 @@
         "phase": {
           "type": "string",
           "example": "Normal",
-          "description": "The phase of the TiFlash component."
+          "description": "The phase of the TiFlash component. Values include \"Normal\", \"Scale\" and \"Upgrade\"."
         },
         "replicas": {
           "type": "integer",
@@ -679,7 +679,7 @@
         "phase": {
           "type": "string",
           "example": "Normal",
-          "description": "The phase of the TiKV component."
+          "description": "The phase of the TiKV component. Values include \"Normal\", \"Scale\" and \"Upgrade\"."
         },
         "replicas": {
           "type": "integer",
