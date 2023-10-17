@@ -1722,7 +1722,8 @@ func TestGetNewTiKVServiceForTidbCluster(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			svc := getNewServiceForTidbCluster(&tt.tc, tt.svcConfig)
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
@@ -2167,7 +2168,8 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sts, err := getNewTiKVSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
@@ -2506,7 +2508,8 @@ func TestTiKVInitContainers(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sts, err := getNewTiKVSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
@@ -2616,7 +2619,8 @@ func TestGetTiKVConfigMap(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := &testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getTikVConfigMap(&tt.tc)
 			g.Expect(err).To(Succeed())
