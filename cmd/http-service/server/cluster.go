@@ -572,7 +572,6 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 		},
 	}
 
-	// TODO(csuzhangxc): start time
 	namePrefix := fmt.Sprintf("%s-", tc.Name)
 	for name, member := range tc.Status.PD.Members {
 		id, err := strconv.ParseUint(member.ID, 10, 64)

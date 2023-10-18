@@ -101,8 +101,8 @@
         },
         "status": {
           "type": "string",
-          "example": "Running",
-          "description": "The status of the TiDB cluster."
+          "example": "running",
+          "description": "The status of the TiDB cluster. Values include \"creating\", \"running\", \"deleting\", \"scaling\", \"upgrading\" and \"unavailable\"."
         },
         "pd": {
           "$ref": "#/definitions/apiPDStatus",

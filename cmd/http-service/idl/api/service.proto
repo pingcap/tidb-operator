@@ -275,8 +275,8 @@ message ClusterInfo {
     example: "\"v7.1.1\""
   }];
   string status = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "The status of the TiDB cluster.",
-    example: "\"Running\"" // TODO(csuzhangxc): update example
+    description: "The status of the TiDB cluster. Values include \"creating\", \"running\", \"deleting\", \"scaling\", \"upgrading\" and \"unavailable\".",
+    example: "\"running\""
   }];
   PDStatus pd = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The PD component of the cluster."}];
   TiKVStatus tikv = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiKV component of the cluster."}];
