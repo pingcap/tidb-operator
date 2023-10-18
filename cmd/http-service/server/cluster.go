@@ -518,11 +518,21 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 		}
 	}
 
-	info := convertToClusterInfo(logger, kubeCli, tc)
+	tm, err := opCli.PingcapV1alpha1().TidbMonitors(req.ClusterId).Get(ctx, tidbMonitorName, metav1.GetOptions{})
+	if err != nil {
+		// for TidbMonitor, we don't return error if previous TiDBCluster exists
+		if apierrors.IsNotFound(err) {
+			logger.Error("TidbMonitor not found", zap.Error(err))
+		} else {
+			logger.Error("Get TidbMonitor failed", zap.Error(err))
+		}
+	}
+
+	info := convertToClusterInfo(logger, kubeCli, tc, tm)
 	return &api.GetClusterResp{Success: true, Data: info}, nil
 }
 
-func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster) *api.ClusterInfo {
+func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster, tm *v1alpha1.TidbMonitor) *api.ClusterInfo {
 	// get all pods for the TidbCluster
 	podList, err := kubeCli.CoreV1().Pods(tc.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
@@ -653,6 +663,28 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 		}
 	}
 
+	if tm != nil {
+		info.Prometheus = &api.PrometheusStatus{
+			Version:        tm.Spec.Prometheus.MonitorContainer.Version,
+			Resource:       reConvertResourceRequirements(tm.Spec.Prometheus.MonitorContainer.ResourceRequirements),
+			CommandOptions: tm.Spec.Prometheus.Config.CommandOptions,
+		}
+		if tm.Spec.Grafana != nil {
+			info.Grafana = &api.GrafanaStatus{
+				Version:  tm.Spec.Grafana.MonitorContainer.Version,
+				Resource: reConvertResourceRequirements(tm.Spec.Grafana.MonitorContainer.ResourceRequirements),
+				Envs:     tm.Spec.Grafana.Envs,
+			}
+			host, port, err := getGrafanaHostPort(kubeCli, tm)
+			if err != nil {
+				logger.Error("Get Grafana host and port failed", zap.Error(err))
+			} else {
+				info.Grafana.Host = host
+				info.Grafana.Port = uint32(port)
+			}
+		}
+	}
+
 	return info
 }
 
@@ -736,6 +768,32 @@ func getTiDBHostPort(kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster) (ho
 
 	for _, svcPort := range svc.Spec.Ports {
 		if tc.Spec.TiDB.Service != nil && svcPort.Name == tc.Spec.TiDB.Service.GetPortName() {
+			port = svcPort.NodePort // NOTE: use NodePort for now
+		}
+	}
+	// get the Node IP for a random Pod
+	pod := podList.Items[rand.Intn(len(podList.Items))]
+	host = pod.Status.HostIP
+	return
+}
+
+func getGrafanaHostPort(kubeCli kubernetes.Interface, tm *v1alpha1.TidbMonitor) (host string, port int32, err error) {
+	svc, err := kubeCli.CoreV1().Services(tm.Namespace).Get(context.Background(), fmt.Sprintf("%s-grafana", tm.Name), metav1.GetOptions{})
+	if err != nil {
+		return "", 0, err
+	}
+	podList, err := kubeCli.CoreV1().Pods(tm.Namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.New().Instance(tm.Name).Monitor().Labels()).String(),
+	})
+	if err != nil {
+		return "", 0, err
+	}
+	if len(podList.Items) == 0 {
+		return "", 0, fmt.Errorf("no Grafana Pod found")
+	}
+
+	for _, svcPort := range svc.Spec.Ports {
+		if tm.Spec.Grafana != nil && svcPort.Name == "http-grafana" {
 			port = svcPort.NodePort // NOTE: use NodePort for now
 		}
 	}
