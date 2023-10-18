@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pingcap/log"
 	"go.uber.org/zap"
@@ -522,6 +523,16 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 }
 
 func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster) *api.ClusterInfo {
+	// get all pods for the TidbCluster
+	podList, err := kubeCli.CoreV1().Pods(tc.Namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			label.InstanceLabelKey: tc.Name,
+		}).String(),
+	})
+	if err != nil {
+		logger.Error("List pods failed", zap.Error(err))
+	}
+
 	pdRes, tikvRes, TidbRes, TiflashRes := reConvertClusterComponetsResources(tc)
 	pdCfg, tikvCfg, TidbCfg, TiflashCfg, TiflashLearnerCfg := reConvertClusterComponetsConfig(tc)
 	info := &api.ClusterInfo{
@@ -559,9 +570,10 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 			logger.Error("Parse PD member ID failed", zap.String("id", member.ID), zap.Error(err))
 		}
 		info.Pd.Members = append(info.Pd.Members, &api.PDMember{
-			Name:   strings.TrimPrefix(name, namePrefix),
-			Id:     id,
-			Health: member.Health,
+			Name:      strings.TrimPrefix(name, namePrefix),
+			Id:        id,
+			StartTime: getPodStartTime(podList, name),
+			Health:    member.Health,
 		})
 	}
 
@@ -571,17 +583,19 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 			logger.Error("Parse TiKV store ID failed", zap.String("id", member.ID), zap.Error(err))
 		}
 		info.Tikv.Members = append(info.Tikv.Members, &api.TiKVMember{
-			Name:  strings.TrimPrefix(member.PodName, namePrefix),
-			Id:    id,
-			State: string(member.State),
+			Name:      strings.TrimPrefix(member.PodName, namePrefix),
+			Id:        id,
+			StartTime: getPodStartTime(podList, member.PodName),
+			State:     string(member.State),
 		})
 	}
 
 	tidbHealthCount := 0
 	for name, member := range tc.Status.TiDB.Members {
 		info.Tidb.Members = append(info.Tidb.Members, &api.TiDBMember{
-			Name:   strings.TrimPrefix(name, namePrefix),
-			Health: member.Health,
+			Name:      strings.TrimPrefix(name, namePrefix),
+			StartTime: getPodStartTime(podList, name),
+			Health:    member.Health,
 		})
 		if member.Health {
 			tidbHealthCount++
@@ -609,9 +623,10 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 				logger.Error("Parse TiFlash store ID failed", zap.String("id", member.ID), zap.Error(err))
 			}
 			info.Tiflash.Members = append(info.Tiflash.Members, &api.TiFlashMember{
-				Name:  strings.TrimPrefix(member.PodName, namePrefix),
-				Id:    id,
-				State: string(member.State),
+				Name:      strings.TrimPrefix(member.PodName, namePrefix),
+				Id:        id,
+				StartTime: getPodStartTime(podList, member.PodName),
+				State:     string(member.State),
 			})
 			if member.State == v1alpha1.TiKVStateUp {
 				tiflashReadyCount++
@@ -728,4 +743,17 @@ func getTiDBHostPort(kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster) (ho
 	pod := podList.Items[rand.Intn(len(podList.Items))]
 	host = pod.Status.HostIP
 	return
+}
+
+func getPodStartTime(podList *corev1.PodList, name string) string {
+	if podList == nil {
+		return ""
+	}
+
+	for _, pod := range podList.Items {
+		if pod.Name == name {
+			return pod.CreationTimestamp.Format(time.RFC3339)
+		}
+	}
+	return ""
 }
