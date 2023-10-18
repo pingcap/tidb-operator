@@ -519,6 +519,7 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 
 func convertToClusterInfo(logger *zap.Logger, tc *v1alpha1.TidbCluster) *api.ClusterInfo {
 	pdRes, tikvRes, TidbRes, TiflashRes := reConvertClusterComponetsResources(tc)
+	pdCfg, tikvCfg, TidbCfg, TiflashCfg, TiflashLearnerCfg := reConvertClusterComponetsConfig(tc)
 	info := &api.ClusterInfo{
 		ClusterId: tc.Namespace,
 		Version:   tc.Spec.Version,
@@ -527,19 +528,21 @@ func convertToClusterInfo(logger *zap.Logger, tc *v1alpha1.TidbCluster) *api.Clu
 			Phase:    string(tc.Status.PD.Phase),
 			Replicas: uint32(tc.Spec.PD.Replicas),
 			Resource: pdRes,
+			Config:   pdCfg,
 			Members:  make([]*api.PDMember, 0, len(tc.Status.PD.Members)),
-			// TODO(csuzhangxc): config
 		},
 		Tikv: &api.TiKVStatus{
 			Phase:    string(tc.Status.TiKV.Phase),
 			Replicas: uint32(tc.Spec.TiKV.Replicas),
 			Resource: tikvRes,
+			Config:   tikvCfg,
 			Members:  make([]*api.TiKVMember, 0, len(tc.Status.TiKV.Stores)),
 		},
 		Tidb: &api.TiDBStatus{
 			Phase:    string(tc.Status.TiDB.Phase),
 			Replicas: uint32(tc.Spec.TiDB.Replicas),
 			Resource: TidbRes,
+			Config:   TidbCfg,
 			Members:  make([]*api.TiDBMember, 0, len(tc.Status.TiDB.Members)),
 		},
 	}
@@ -588,10 +591,12 @@ func convertToClusterInfo(logger *zap.Logger, tc *v1alpha1.TidbCluster) *api.Clu
 
 	if tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 {
 		info.Tiflash = &api.TiFlashStatus{
-			Phase:    string(tc.Status.TiFlash.Phase),
-			Replicas: uint32(tc.Spec.TiFlash.Replicas),
-			Resource: TiflashRes,
-			Members:  make([]*api.TiFlashMember, 0, len(tc.Status.TiFlash.Stores)),
+			Phase:         string(tc.Status.TiFlash.Phase),
+			Replicas:      uint32(tc.Spec.TiFlash.Replicas),
+			Resource:      TiflashRes,
+			Config:        TiflashCfg,
+			LearnerConfig: TiflashLearnerCfg,
+			Members:       make([]*api.TiFlashMember, 0, len(tc.Status.TiFlash.Stores)),
 		}
 		tiflashReadyCount := 0
 		for _, member := range tc.Status.TiFlash.Stores {
@@ -645,5 +650,42 @@ func reConvertClusterComponetsResources(tc *v1alpha1.TidbCluster) (pd, tikv, tid
 	if tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 {
 		tiflash = reConvertResourceRequirements(tc.Spec.TiFlash.ResourceRequirements)
 	}
+	return
+}
+
+func reConvertClusterComponetsConfig(tc *v1alpha1.TidbCluster) (
+	pdCfg, tikvCfg, tidbCfg, tiflashCfg, tiflashLearnerCfg map[string]*structpb.Value) {
+	// NOTE: we keep the internal default config for now
+	pdCfg = make(map[string]*structpb.Value)
+	for k, v := range tc.Spec.PD.Config.MP {
+		val, _ := structpb.NewValue(v)
+		pdCfg[k] = val
+	}
+
+	tikvCfg = make(map[string]*structpb.Value)
+	for k, v := range tc.Spec.TiKV.Config.MP {
+		val, _ := structpb.NewValue(v)
+		tikvCfg[k] = val
+	}
+
+	tidbCfg = make(map[string]*structpb.Value)
+	for k, v := range tc.Spec.TiDB.Config.MP {
+		val, _ := structpb.NewValue(v)
+		tidbCfg[k] = val
+	}
+
+	if tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 {
+		tiflashCfg = make(map[string]*structpb.Value)
+		tiflashLearnerCfg = make(map[string]*structpb.Value)
+		for k, v := range tc.Spec.TiFlash.Config.Common.MP {
+			val, _ := structpb.NewValue(v)
+			tiflashCfg[k] = val
+		}
+		for k, v := range tc.Spec.TiFlash.Config.Proxy.MP {
+			val, _ := structpb.NewValue(v)
+			tiflashLearnerCfg[k] = val
+		}
+	}
+
 	return
 }
