@@ -518,6 +518,7 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 }
 
 func convertToClusterInfo(logger *zap.Logger, tc *v1alpha1.TidbCluster) *api.ClusterInfo {
+	pdRes, tikvRes, TidbRes, TiflashRes := reConvertClusterComponetsResources(tc)
 	info := &api.ClusterInfo{
 		ClusterId: tc.Namespace,
 		Version:   tc.Spec.Version,
@@ -525,18 +526,20 @@ func convertToClusterInfo(logger *zap.Logger, tc *v1alpha1.TidbCluster) *api.Clu
 		Pd: &api.PDStatus{
 			Phase:    string(tc.Status.PD.Phase),
 			Replicas: uint32(tc.Spec.PD.Replicas),
+			Resource: pdRes,
 			Members:  make([]*api.PDMember, 0, len(tc.Status.PD.Members)),
-			// TODO(csuzhangxc): resource
 			// TODO(csuzhangxc): config
 		},
 		Tikv: &api.TiKVStatus{
 			Phase:    string(tc.Status.TiKV.Phase),
 			Replicas: uint32(tc.Spec.TiKV.Replicas),
+			Resource: tikvRes,
 			Members:  make([]*api.TiKVMember, 0, len(tc.Status.TiKV.Stores)),
 		},
 		Tidb: &api.TiDBStatus{
 			Phase:    string(tc.Status.TiDB.Phase),
 			Replicas: uint32(tc.Spec.TiDB.Replicas),
+			Resource: TidbRes,
 			Members:  make([]*api.TiDBMember, 0, len(tc.Status.TiDB.Members)),
 		},
 	}
@@ -579,6 +582,7 @@ func convertToClusterInfo(logger *zap.Logger, tc *v1alpha1.TidbCluster) *api.Clu
 	}
 
 	if !tc.PDIsAvailable() || !tc.TiKVIsAvailable() || tidbHealthCount == 0 {
+		// for TiDB, only mark as unavailable when all TiDB members are unavailable
 		info.Status = string(ClusterStatusUnavailable)
 	}
 
@@ -586,6 +590,7 @@ func convertToClusterInfo(logger *zap.Logger, tc *v1alpha1.TidbCluster) *api.Clu
 		info.Tiflash = &api.TiFlashStatus{
 			Phase:    string(tc.Status.TiFlash.Phase),
 			Replicas: uint32(tc.Spec.TiFlash.Replicas),
+			Resource: TiflashRes,
 			Members:  make([]*api.TiFlashMember, 0, len(tc.Status.TiFlash.Stores)),
 		}
 		tiflashReadyCount := 0
@@ -608,6 +613,12 @@ func convertToClusterInfo(logger *zap.Logger, tc *v1alpha1.TidbCluster) *api.Clu
 		}
 	}
 
+	// hack for `creating` status
+	if tc.Status.PD.Phase == "" || tc.Status.TiKV.Phase == "" || tc.Status.TiDB.Phase == "" ||
+		(tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 && tc.Status.TiFlash.Phase == "") {
+		info.Status = string(ClusterStatusCreating)
+	}
+
 	return info
 }
 
@@ -615,8 +626,6 @@ func convertClusterStatus(tc *v1alpha1.TidbCluster) ClusterStatus {
 	if tc.DeletionTimestamp != nil {
 		return ClusterStatusDeleting
 	}
-
-	// TODO(csuzhangxc): creating
 
 	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		return ClusterStatusUpgrading
@@ -627,4 +636,14 @@ func convertClusterStatus(tc *v1alpha1.TidbCluster) ClusterStatus {
 	}
 
 	return ClusterStatusRunning
+}
+
+func reConvertClusterComponetsResources(tc *v1alpha1.TidbCluster) (pd, tikv, tidb, tiflash *api.Resource) {
+	pd = reConvertResourceRequirements(tc.Spec.PD.ResourceRequirements)
+	tikv = reConvertResourceRequirements(tc.Spec.TiKV.ResourceRequirements)
+	tidb = reConvertResourceRequirements(tc.Spec.TiDB.ResourceRequirements)
+	if tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 {
+		tiflash = reConvertResourceRequirements(tc.Spec.TiFlash.ResourceRequirements)
+	}
+	return
 }

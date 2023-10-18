@@ -97,3 +97,23 @@ func convertResourceRequirements(res *api.Resource) (corev1.ResourceRequirements
 
 	return ret, nil
 }
+
+func reConvertResourceRequirements(res corev1.ResourceRequirements) *api.Resource {
+	var ret api.Resource
+
+	// we use `Limit` instead of `Request` because `Request` may be empty in local environment.
+	if cpu, ok := res.Limits[corev1.ResourceCPU]; ok {
+		ret.Cpu = uint32(cpu.Value())
+	}
+
+	if memory, ok := res.Limits[corev1.ResourceMemory]; ok {
+		ret.Memory = uint32(memory.Value() / (1 << 30))
+	}
+
+	if storage, ok := res.Limits[corev1.ResourceStorage]; ok {
+		storage := uint32(storage.Value() / (1 << 30))
+		ret.Storage = &storage
+	}
+
+	return &ret
+}
