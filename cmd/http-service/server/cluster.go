@@ -17,6 +17,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -27,10 +28,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/http-service/kube"
 	"github.com/pingcap/tidb-operator/http-service/pbgen/api"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
@@ -513,11 +517,11 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 		}
 	}
 
-	info := convertToClusterInfo(logger, tc)
+	info := convertToClusterInfo(logger, kubeCli, tc)
 	return &api.GetClusterResp{Success: true, Data: info}, nil
 }
 
-func convertToClusterInfo(logger *zap.Logger, tc *v1alpha1.TidbCluster) *api.ClusterInfo {
+func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster) *api.ClusterInfo {
 	pdRes, tikvRes, TidbRes, TiflashRes := reConvertClusterComponetsResources(tc)
 	pdCfg, tikvCfg, TidbCfg, TiflashCfg, TiflashLearnerCfg := reConvertClusterComponetsConfig(tc)
 	info := &api.ClusterInfo{
@@ -624,6 +628,16 @@ func convertToClusterInfo(logger *zap.Logger, tc *v1alpha1.TidbCluster) *api.Clu
 		info.Status = string(ClusterStatusCreating)
 	}
 
+	if info.Status != string(ClusterStatusCreating) {
+		host, port, err := getTiDBHostPort(kubeCli, tc)
+		if err != nil {
+			logger.Error("Get TiDB host and port failed", zap.Error(err))
+		} else {
+			info.Tidb.Host = host
+			info.Tidb.Port = uint32(port)
+		}
+	}
+
 	return info
 }
 
@@ -687,5 +701,31 @@ func reConvertClusterComponetsConfig(tc *v1alpha1.TidbCluster) (
 		}
 	}
 
+	return
+}
+
+func getTiDBHostPort(kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster) (host string, port int32, err error) {
+	svc, err := kubeCli.CoreV1().Services(tc.Namespace).Get(context.Background(), fmt.Sprintf("%s-tidb", tc.Name), metav1.GetOptions{})
+	if err != nil {
+		return "", 0, err
+	}
+	podList, err := kubeCli.CoreV1().Pods(tc.Namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).TiDB().Labels()).String(),
+	})
+	if err != nil {
+		return "", 0, err
+	}
+	if len(podList.Items) == 0 {
+		return "", 0, fmt.Errorf("no TiDB Pod found")
+	}
+
+	for _, svcPort := range svc.Spec.Ports {
+		if tc.Spec.TiDB.Service != nil && svcPort.Name == tc.Spec.TiDB.Service.GetPortName() {
+			port = svcPort.NodePort // NOTE: use NodePort for now
+		}
+	}
+	// get the Node IP for a random Pod
+	pod := podList.Items[rand.Intn(len(podList.Items))]
+	host = pod.Status.HostIP
 	return
 }
