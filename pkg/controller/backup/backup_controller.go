@@ -190,6 +190,14 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
+	// for teardown phase, we should always reconcile it before it is complete or failed to resume gc and pd schedule
+	if newBackup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot &&
+		newBackup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
+		klog.V(4).Infof("backup object %s/%s enqueue", ns, name)
+		c.enqueueBackup(newBackup)
+		return
+	}
+
 	// TODO: log backup check all subcommand job's pod status
 	if newBackup.Spec.Mode != v1alpha1.BackupModeLog {
 		// we will create backup job when we mark backup as scheduled status,
