@@ -856,7 +856,8 @@ func TestGetNewWorkerHeadlessService(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			svc := getNewWorkerHeadlessServiceForDMCluster(&tt.dc)
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
@@ -1325,7 +1326,8 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 		// TODO add more tests
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			var cm *corev1.ConfigMap
 			if !tt.nilCM {
@@ -1445,7 +1447,8 @@ log-level = "info"
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getWorkerConfigMap(&tt.dc)
 			g.Expect(err).To(Succeed())

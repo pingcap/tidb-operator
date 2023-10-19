@@ -936,7 +936,8 @@ func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			svc := getNewTiDBHeadlessServiceForTidbCluster(&tt.tc)
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
@@ -1267,7 +1268,8 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 		// TODO add more tests
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sts, _ := getNewTiDBSetForTidbCluster(&tt.tc, tt.cm)
 			tt.testSts(sts)
@@ -1601,7 +1603,8 @@ func TestTiDBInitContainers(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sts, _ := getNewTiDBSetForTidbCluster(&tt.tc, nil)
 			if diff := cmp.Diff(tt.expectedInit, sts.Spec.Template.Spec.InitContainers); diff != "" {
@@ -1931,7 +1934,8 @@ func TestGetNewTiDBService(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			svc := getNewTiDBServiceOrNil(&tt.tc)
 			if tt.expected == nil {
@@ -2140,7 +2144,8 @@ func TestGetTiDBConfigMap(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getTiDBConfigMap(&tt.tc)
 			g.Expect(err).To(Succeed())
