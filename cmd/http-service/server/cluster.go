@@ -523,6 +523,7 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 		// for TidbMonitor, we don't return error if previous TiDBCluster exists
 		if apierrors.IsNotFound(err) {
 			logger.Warn("TidbMonitor not found", zap.Error(err))
+			tm = nil // set emtpy TidbMonitor to nil
 		} else {
 			logger.Error("Get TidbMonitor failed", zap.Error(err))
 		}
