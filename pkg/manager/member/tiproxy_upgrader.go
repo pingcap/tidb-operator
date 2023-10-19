@@ -59,22 +59,6 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return nil
 	}
 
-<<<<<<< HEAD
-	if tc.Status.TiProxy.StatefulSet.UpdateRevision == tc.Status.TiProxy.StatefulSet.CurrentRevision {
-		return nil
-=======
-	minReadySeconds := int(newSet.Spec.MinReadySeconds)
-	s, ok := tc.Annotations[annoKeyTiProxyMinReadySeconds]
-	if ok {
-		i, err := strconv.Atoi(s)
-		if err != nil {
-			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", ns, tcName, annoKeyTiProxyMinReadySeconds, err)
-		} else {
-			minReadySeconds = i
-		}
->>>>>>> 9500cf2f5 (Remove early return during upgrade that might block rollbacks (#5345))
-	}
-
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
