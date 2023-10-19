@@ -717,19 +717,19 @@ func reConvertClusterComponetsConfig(tc *v1alpha1.TidbCluster) (
 	pdCfg, tikvCfg, tidbCfg, tiflashCfg, tiflashLearnerCfg map[string]*structpb.Value) {
 	// NOTE: we keep the internal default config for now
 	pdCfg = make(map[string]*structpb.Value)
-	for k, v := range tc.Spec.PD.Config.MP {
+	for k, v := range flattenMap(tc.Spec.PD.Config.MP) {
 		val, _ := structpb.NewValue(v)
 		pdCfg[k] = val
 	}
 
 	tikvCfg = make(map[string]*structpb.Value)
-	for k, v := range tc.Spec.TiKV.Config.MP {
+	for k, v := range flattenMap(tc.Spec.TiKV.Config.MP) {
 		val, _ := structpb.NewValue(v)
 		tikvCfg[k] = val
 	}
 
 	tidbCfg = make(map[string]*structpb.Value)
-	for k, v := range tc.Spec.TiDB.Config.MP {
+	for k, v := range flattenMap(tc.Spec.TiDB.Config.MP) {
 		val, _ := structpb.NewValue(v)
 		tidbCfg[k] = val
 	}
@@ -737,17 +737,46 @@ func reConvertClusterComponetsConfig(tc *v1alpha1.TidbCluster) (
 	if tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 {
 		tiflashCfg = make(map[string]*structpb.Value)
 		tiflashLearnerCfg = make(map[string]*structpb.Value)
-		for k, v := range tc.Spec.TiFlash.Config.Common.MP {
+		for k, v := range flattenMap(tc.Spec.TiFlash.Config.Common.MP) {
 			val, _ := structpb.NewValue(v)
 			tiflashCfg[k] = val
 		}
-		for k, v := range tc.Spec.TiFlash.Config.Proxy.MP {
+		for k, v := range flattenMap(tc.Spec.TiFlash.Config.Proxy.MP) {
 			val, _ := structpb.NewValue(v)
 			tiflashLearnerCfg[k] = val
 		}
 	}
 
 	return
+}
+
+// flattenMap convert mutil-layer map to single layer
+// ref: https://github.com/pingcap/tiup/blob/9e47d78b5518999efc3763168e891d6910f26099/pkg/cluster/spec/server_config.go#L119
+func flattenMap(ms map[string]any) map[string]any {
+	result := map[string]any{}
+	for k, v := range ms {
+		var sub map[string]any
+
+		if m, ok := v.(map[string]any); ok {
+			sub = flattenMap(m)
+		} else if m, ok := v.(map[any]any); ok {
+			fixM := map[string]any{}
+			for k, v := range m {
+				if sk, ok := k.(string); ok {
+					fixM[sk] = v
+				}
+			}
+			sub = flattenMap(fixM)
+		} else {
+			result[k] = v
+			continue
+		}
+
+		for sk, sv := range sub {
+			result[k+"."+sk] = sv
+		}
+	}
+	return result
 }
 
 func getTiDBHostPort(kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster) (host string, port int32, err error) {
