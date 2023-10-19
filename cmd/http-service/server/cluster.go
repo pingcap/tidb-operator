@@ -664,9 +664,11 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 
 	if tm != nil {
 		info.Prometheus = &api.PrometheusStatus{
-			Version:        tm.Spec.Prometheus.MonitorContainer.Version,
-			Resource:       reConvertResourceRequirements(tm.Spec.Prometheus.MonitorContainer.ResourceRequirements),
-			CommandOptions: tm.Spec.Prometheus.Config.CommandOptions,
+			Version:  tm.Spec.Prometheus.MonitorContainer.Version,
+			Resource: reConvertResourceRequirements(tm.Spec.Prometheus.MonitorContainer.ResourceRequirements),
+		}
+		if tm.Spec.Prometheus.Config != nil {
+			info.Prometheus.CommandOptions = tm.Spec.Prometheus.Config.CommandOptions
 		}
 		if tm.Spec.Grafana != nil {
 			info.Grafana = &api.GrafanaStatus{
