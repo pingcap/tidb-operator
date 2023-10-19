@@ -65,10 +65,6 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return nil
 	}
 
-	if tc.Status.TiProxy.StatefulSet.UpdateRevision == tc.Status.TiProxy.StatefulSet.CurrentRevision {
-		return nil
-	}
-
 	minReadySeconds := int(newSet.Spec.MinReadySeconds)
 	s, ok := tc.Annotations[annoKeyTiProxyMinReadySeconds]
 	if ok {
