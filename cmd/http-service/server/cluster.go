@@ -237,19 +237,19 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 				TopologyKey: corev1.LabelHostname, // NOTE: `kubernetes.io/hostname`, add more scheduler policies if needed
 			}},
 			PD: &v1alpha1.PDSpec{
-				Replicas:             int32(req.Pd.Replicas),
+				Replicas:             int32(*req.Pd.Replicas),
 				MaxFailoverCount:     pointer.Int32Ptr(0),
 				ResourceRequirements: pdRes,
 				Config:               pdCfg,
 			},
 			TiKV: &v1alpha1.TiKVSpec{
-				Replicas:             int32(req.Tikv.Replicas),
+				Replicas:             int32(*req.Tikv.Replicas),
 				MaxFailoverCount:     pointer.Int32Ptr(0),
 				ResourceRequirements: tikvRes,
 				Config:               tikvCfg,
 			},
 			TiDB: &v1alpha1.TiDBSpec{
-				Replicas:             int32(req.Tidb.Replicas),
+				Replicas:             int32(*req.Tidb.Replicas),
 				MaxFailoverCount:     pointer.Int32Ptr(0),
 				ResourceRequirements: tidbRes,
 				Config:               tidbCfg,
@@ -263,9 +263,9 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 		},
 	}
 
-	if req.Tiflash != nil && req.Tiflash.Replicas > 0 {
+	if req.Tiflash != nil && req.Tiflash.Replicas != nil && *req.Tiflash.Replicas > 0 && req.Tiflash.Resource != nil {
 		tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
-			Replicas:             int32(req.Tiflash.Replicas),
+			Replicas:             int32(*req.Tiflash.Replicas),
 			MaxFailoverCount:     pointer.Int32Ptr(0),
 			ResourceRequirements: tiflashRes,
 			Config:               tiflashCfg,
@@ -399,7 +399,10 @@ func assembleTidbMonitor(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 }
 
 func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes, tidbRes, tiflash corev1.ResourceRequirements, err error) {
-	if req.Pd == nil || req.Tikv == nil || req.Tidb == nil || req.Pd.Replicas <= 0 || req.Tikv.Replicas <= 0 || req.Tidb.Replicas <= 0 {
+	if req.Pd == nil || req.Tikv == nil || req.Tidb == nil ||
+		req.Pd.Replicas == nil || req.Tikv.Replicas == nil || req.Tidb.Replicas == nil ||
+		*req.Pd.Replicas <= 0 || *req.Tikv.Replicas <= 0 || *req.Tidb.Replicas <= 0 ||
+		req.Pd.Resource == nil || req.Tikv.Resource == nil || req.Tidb.Resource == nil {
 		err = errors.New("resource requirements of PD/TiKV/TiDB must be specified and replicas must be greater than 0")
 		return
 	}
@@ -417,7 +420,11 @@ func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes
 		return
 	}
 
-	if req.Tiflash != nil && req.Tiflash.Replicas > 0 {
+	if req.Tiflash != nil && req.Tiflash.Replicas != nil && *req.Tiflash.Replicas > 0 {
+		if req.Tiflash.Resource == nil {
+			err = errors.New("resource requirements of TiFlash must be specified")
+			return
+		}
 		tiflash, err = convertResourceRequirements(req.Tiflash.Resource)
 		if err != nil {
 			return
@@ -462,7 +469,7 @@ func convertClusterComponetsConfig(req *api.CreateClusterReq) (
 		tikvCfg.Set(k, cvtValue(v))
 	}
 
-	if req.Tiflash != nil && req.Tiflash.Replicas > 0 {
+	if req.Tiflash != nil && req.Tiflash.Replicas != nil && *req.Tiflash.Replicas > 0 {
 		tiflashCfg = v1alpha1.NewTiFlashConfig()
 		for k, v := range req.Tiflash.Config {
 			tiflashCfg.Common.Set(k, cvtValue(v))
@@ -489,6 +496,10 @@ func convertMonitorComponetsResources(req *api.CreateClusterReq) (promRes, grafa
 		}
 	}
 	return
+}
+
+func (s *ClusterServer) UpdateCluster(ctx context.Context, req *api.UpdateClusterReq) (*api.UpdateClusterResp, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) (*api.GetClusterResp, error) {
