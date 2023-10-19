@@ -434,48 +434,49 @@ func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes
 	return
 }
 
+func convertConfigValue(x *structpb.Value) interface{} {
+	switch v := x.GetKind().(type) {
+	case *structpb.Value_NumberValue:
+		if v == nil {
+			return nil
+		}
+		// convert float64 to int64 if possible
+		val := x.GetNumberValue()
+		if val == float64(int(val)) {
+			return int64(val)
+		}
+		return val
+	default:
+		return x.AsInterface()
+	}
+}
+
 func convertClusterComponetsConfig(req *api.CreateClusterReq) (
 	pdCfg *v1alpha1.PDConfigWraper, tikvCfg *v1alpha1.TiKVConfigWraper,
 	tidbCfg *v1alpha1.TiDBConfigWraper, tiflashCfg *v1alpha1.TiFlashConfigWraper) {
-	cvtValue := func(x *structpb.Value) interface{} {
-		switch v := x.GetKind().(type) {
-		case *structpb.Value_NumberValue:
-			if v == nil {
-				return nil
-			}
-			// convert float64 to int64 if possible
-			val := x.GetNumberValue()
-			if val == float64(int(val)) {
-				return int64(val)
-			}
-			return val
-		default:
-			return x.AsInterface()
-		}
-	}
 
 	pdCfg = v1alpha1.NewPDConfig()
 	for k, v := range req.Pd.Config {
-		pdCfg.Set(k, cvtValue(v))
+		pdCfg.Set(k, convertConfigValue(v))
 	}
 
 	tidbCfg = v1alpha1.NewTiDBConfig()
 	for k, v := range req.Tidb.Config {
-		tidbCfg.Set(k, cvtValue(v))
+		tidbCfg.Set(k, convertConfigValue(v))
 	}
 
 	tikvCfg = v1alpha1.NewTiKVConfig()
 	for k, v := range req.Tikv.Config {
-		tikvCfg.Set(k, cvtValue(v))
+		tikvCfg.Set(k, convertConfigValue(v))
 	}
 
 	if req.Tiflash != nil && req.Tiflash.Replicas != nil && *req.Tiflash.Replicas > 0 {
 		tiflashCfg = v1alpha1.NewTiFlashConfig()
 		for k, v := range req.Tiflash.Config {
-			tiflashCfg.Common.Set(k, cvtValue(v))
+			tiflashCfg.Common.Set(k, convertConfigValue(v))
 		}
 		for k, v := range req.Tiflash.LearnerConfig {
-			tiflashCfg.Proxy.Set(k, cvtValue(v))
+			tiflashCfg.Proxy.Set(k, convertConfigValue(v))
 		}
 	}
 
@@ -498,8 +499,151 @@ func convertMonitorComponetsResources(req *api.CreateClusterReq) (promRes, grafa
 	return
 }
 
+// UpdateCluster includes:
+// - version: upgrade/downgrade the cluster
+// - [pd/tikv/tiflash/tidb].replicas: scale the cluster
+// - [pd/tikv/tiflash/tidb].resource: update the resource requirements of the cluster
+// - [pd/tikv/tiflash/tidb].config: update the config of the cluster
 func (s *ClusterServer) UpdateCluster(ctx context.Context, req *api.UpdateClusterReq) (*api.UpdateClusterResp, error) {
-	return nil, errors.New("not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	logger := log.L().With(zap.String("request", "UpdateCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
+	if opCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.UpdateClusterResp{Success: false, Message: &message}, nil
+	}
+
+	// get the current TidbCluster
+	tc, err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Get(ctx, tidbClusterName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Error("TidbCluster not found", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
+			return &api.UpdateClusterResp{Success: false, Message: &message}, nil
+		} else {
+			logger.Error("Get TidbCluster failed", zap.Error(err))
+			message := fmt.Sprintf("get TidbCluster failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.UpdateClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+
+	// update the TidbCluster
+	if err = updateTidbCluster(tc, req); err != nil {
+		logger.Error("Update TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("update TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusBadRequest) // bad request if the request body is invalid
+		return &api.UpdateClusterResp{Success: false, Message: &message}, nil
+	}
+	if _, err = opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Update(ctx, tc, metav1.UpdateOptions{}); err != nil {
+		logger.Error("Apply the update failed", zap.Error(err))
+		message := fmt.Sprintf("apply the update failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.UpdateClusterResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.UpdateClusterResp{Success: true}, nil
+}
+
+func updateTidbCluster(tc *v1alpha1.TidbCluster, req *api.UpdateClusterReq) error {
+	// update version if specified
+	if req.Version != nil {
+		tc.Spec.Version = *req.Version
+	}
+
+	// update PD's replicas/resource/config if specified
+	if req.Pd != nil {
+		if req.Pd.Replicas != nil && *req.Pd.Replicas > 0 {
+			tc.Spec.PD.Replicas = int32(*req.Pd.Replicas)
+		}
+		if req.Pd.Resource != nil {
+			res, err := convertResourceRequirements(req.Pd.Resource)
+			if err != nil {
+				return errors.New("invalid resource requirements")
+			}
+			tc.Spec.PD.ResourceRequirements = res
+		}
+		if req.Pd.Config != nil {
+			// drop old config and set new config
+			// empty req.Pd.Config means reset to default
+			tc.Spec.PD.Config = v1alpha1.NewPDConfig()
+			for k, v := range req.Pd.Config {
+				tc.Spec.PD.Config.Set(k, convertConfigValue(v))
+			}
+		}
+	}
+
+	if req.Tikv != nil {
+		if req.Tikv.Replicas != nil && *req.Tikv.Replicas > 0 {
+			tc.Spec.TiKV.Replicas = int32(*req.Tikv.Replicas)
+		}
+		if req.Tikv.Resource != nil {
+			res, err := convertResourceRequirements(req.Tikv.Resource)
+			if err != nil {
+				return errors.New("invalid resource requirements")
+			}
+			tc.Spec.TiKV.ResourceRequirements = res
+		}
+		if req.Tikv.Config != nil {
+			tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
+			for k, v := range req.Tikv.Config {
+				tc.Spec.TiKV.Config.Set(k, convertConfigValue(v))
+			}
+		}
+	}
+
+	// NOTE: DO NOT support scale-out TiFlash from 0 replicas to non-zero replicas for now
+	if req.Tiflash != nil && tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 {
+		if req.Tiflash.Replicas != nil && *req.Tiflash.Replicas > 0 {
+			tc.Spec.TiFlash.Replicas = int32(*req.Tiflash.Replicas)
+		}
+		if req.Tiflash.Resource != nil {
+			res, err := convertResourceRequirements(req.Tiflash.Resource)
+			if err != nil {
+				return errors.New("invalid resource requirements")
+			}
+			tc.Spec.TiFlash.ResourceRequirements = res
+		}
+		if tc.Spec.TiFlash.Config == nil {
+			tc.Spec.TiFlash.Config = v1alpha1.NewTiFlashConfig()
+		}
+		if req.Tiflash.Config != nil {
+			tc.Spec.TiFlash.Config.Common = v1alpha1.NewTiFlashCommonConfig()
+			for k, v := range req.Tiflash.Config {
+				tc.Spec.TiFlash.Config.Common.Set(k, convertConfigValue(v))
+			}
+		}
+		if req.Tiflash.LearnerConfig != nil {
+			tc.Spec.TiFlash.Config.Proxy = v1alpha1.NewTiFlashProxyConfig()
+			for k, v := range req.Tiflash.LearnerConfig {
+				tc.Spec.TiFlash.Config.Proxy.Set(k, convertConfigValue(v))
+			}
+		}
+	}
+
+	if req.Tidb != nil {
+		if req.Tidb.Replicas != nil && *req.Tidb.Replicas > 0 {
+			tc.Spec.TiDB.Replicas = int32(*req.Tidb.Replicas)
+		}
+		if req.Tidb.Resource != nil {
+			res, err := convertResourceRequirements(req.Tidb.Resource)
+			if err != nil {
+				return errors.New("invalid resource requirements")
+			}
+			tc.Spec.TiDB.ResourceRequirements = res
+		}
+		if req.Tidb.Config != nil {
+			tc.Spec.TiDB.Config = v1alpha1.NewTiDBConfig()
+			for k, v := range req.Tidb.Config {
+				tc.Spec.TiDB.Config.Set(k, convertConfigValue(v))
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) (*api.GetClusterResp, error) {
