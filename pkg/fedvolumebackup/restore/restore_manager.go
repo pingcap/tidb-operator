@@ -533,6 +533,7 @@ func (rm *restoreManager) buildRestoreMember(volumeRestoreName string, memberClu
 			Name:        rm.generateRestoreMemberName(volumeRestoreName),
 			Namespace:   memberCluster.TCNamespace,
 			Annotations: annotations,
+			Labels:      labels,
 		},
 		Spec: pingcapv1alpha1.RestoreSpec{
 			Mode:                      pingcapv1alpha1.RestoreModeVolumeSnapshot,
