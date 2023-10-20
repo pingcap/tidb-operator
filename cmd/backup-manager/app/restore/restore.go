@@ -108,10 +108,10 @@ func (ro *Options) restoreData(
 			csbPath = path.Join(util.BRBinPath, "csb_restore.json")
 			args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
 			args = append(args, fmt.Sprintf("--target-az=%s", ro.TargetAZ))
-			if ro.UseFSR == true {
-				args = append(args, fmt.Sprintf("--use-fsr=true"))
+			if ro.UseFSR {
+				args = append(args, "--use-fsr=true")
 			} else {
-				args = append(args, fmt.Sprintf("--use-fsr=false"))
+				args = append(args, "--use-fsr=false")
 			}
 			progressStep = "Volume Restore"
 		} else {
