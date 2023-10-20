@@ -778,6 +778,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			if restore.Spec.VolumeAZ != "" {
 				args = append(args, fmt.Sprintf("--target-az=%s", restore.Spec.VolumeAZ))
 			}
+			if restore.Spec.WarmupStrategy == v1alpha1.RestoreWarmupStrategyFsr {
+				args = append(args, "--use-fsr=true")
+			}
 		}
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))
@@ -1076,8 +1079,12 @@ func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []c
 				res = append(res, "--block", p.MountPath)
 			}
 		case v1alpha1.RestoreWarmupStrategyFsr:
-			// For now we don't support warm up by fsr.
-			return nil, fmt.Errorf("warmup strategy %q is not supported for now", strategy)
+			if p.MountPath == constants.TiKVDataVolumeMountPath {
+				// data volume has been warmed up by enabling FSR
+				continue
+			} else {
+				res = append(res, "--block", p.MountPath)
+			}
 		default:
 			return nil, fmt.Errorf("unknown warmup strategy %q", strategy)
 		}
