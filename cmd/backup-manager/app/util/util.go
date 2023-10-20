@@ -70,6 +70,10 @@ func validCmdFlagFunc(flag *pflag.Flag) {
 		return
 	}
 
+	if flag.Name == "use-fsr" {
+		return
+	}
+
 	cmdutil.CheckErr(fmt.Errorf(cmdHelpMsg, flag.Name))
 }
 
