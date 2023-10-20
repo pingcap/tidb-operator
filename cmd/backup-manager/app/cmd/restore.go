@@ -53,6 +53,7 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&ro.PitrRestoredTs, "pitrRestoredTs", "0", "The pitr restored ts")
 	cmd.Flags().BoolVar(&ro.Prepare, "prepare", false, "Whether to prepare for restore")
 	cmd.Flags().StringVar(&ro.TargetAZ, "target-az", "", "For volume-snapshot restore, which az the volume snapshots restore to")
+	cmd.Flags().BoolVar(&ro.UseFSR, "use-fsr", false, "EBS snapshot restore use FSR for TiKV data volumes or not")
 	return cmd
 }
 

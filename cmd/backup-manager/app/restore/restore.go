@@ -44,6 +44,8 @@ type Options struct {
 	Prepare bool
 	// TargetAZ indicates which az the volume snapshots restore to. It's used in volume-snapshot mode.
 	TargetAZ string
+	// UseFSR to indicate if use FSR for TiKV data volumes during EBS snapshot restore
+	UseFSR bool
 }
 
 func (ro *Options) restoreData(
@@ -106,6 +108,11 @@ func (ro *Options) restoreData(
 			csbPath = path.Join(util.BRBinPath, "csb_restore.json")
 			args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
 			args = append(args, fmt.Sprintf("--target-az=%s", ro.TargetAZ))
+			if ro.UseFSR {
+				args = append(args, "--use-fsr=true")
+			} else {
+				args = append(args, "--use-fsr=false")
+			}
 			progressStep = "Volume Restore"
 		} else {
 			progressStep = "Data Restore"
