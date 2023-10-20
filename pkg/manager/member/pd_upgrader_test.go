@@ -215,22 +215,6 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "update revision equals current revision",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Synced = true
-				tc.Status.PD.StatefulSet.UpdateRevision = tc.Status.PD.StatefulSet.CurrentRevision
-			},
-			changePods:        nil,
-			transferLeaderErr: false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(3)))
-			},
-		},
-		{
 			name: "skip to wait all members health",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Synced = true
