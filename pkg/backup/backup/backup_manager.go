@@ -238,7 +238,8 @@ func (bm *backupManager) checkVolumeBackupInitializeJobExisted(backup *v1alpha1.
 	if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
 		return nil
 	}
-	if v1alpha1.IsVolumeBackupSnapshotsCreated(backup) {
+	if v1alpha1.IsVolumeBackupSnapshotsCreated(backup) && backup.Spec.ResumeGcSchedule {
+		// all the volume snapshots has created
 		return nil
 	}
 	if !v1alpha1.IsVolumeBackupInitialized(backup) || v1alpha1.IsVolumeBackupInitializeFailed(backup) {
