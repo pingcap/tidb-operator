@@ -51,7 +51,7 @@ while [ $# -gt 0 ]; do
             die "unsupported flag $1"
             ;;
         *)
-            echo "spawning wram up task: operation = $operation; file path = $1"
+            echo "spawning warm up task: operation = $operation; file path = $1"
             case "$operation" in
                 fio) 
                     device=$(dev_name_by_mount_point "$1")

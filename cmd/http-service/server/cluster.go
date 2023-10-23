@@ -678,6 +678,7 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 		// for TidbMonitor, we don't return error if previous TiDBCluster exists
 		if apierrors.IsNotFound(err) {
 			logger.Warn("TidbMonitor not found", zap.Error(err))
+			tm = nil // set empty TidbMonitor to nil
 		} else {
 			logger.Error("Get TidbMonitor failed", zap.Error(err))
 		}
@@ -819,9 +820,11 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 
 	if tm != nil {
 		info.Prometheus = &api.PrometheusStatus{
-			Version:        tm.Spec.Prometheus.MonitorContainer.Version,
-			Resource:       reConvertResourceRequirements(tm.Spec.Prometheus.MonitorContainer.ResourceRequirements),
-			CommandOptions: tm.Spec.Prometheus.Config.CommandOptions,
+			Version:  tm.Spec.Prometheus.MonitorContainer.Version,
+			Resource: reConvertResourceRequirements(tm.Spec.Prometheus.MonitorContainer.ResourceRequirements),
+		}
+		if tm.Spec.Prometheus.Config != nil {
+			info.Prometheus.CommandOptions = tm.Spec.Prometheus.Config.CommandOptions
 		}
 		if tm.Spec.Grafana != nil {
 			info.Grafana = &api.GrafanaStatus{
