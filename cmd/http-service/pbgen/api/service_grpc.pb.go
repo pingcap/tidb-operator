@@ -19,9 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Cluster_CreateCluster_FullMethodName = "/api.Cluster/CreateCluster"
-	Cluster_UpdateCluster_FullMethodName = "/api.Cluster/UpdateCluster"
-	Cluster_GetCluster_FullMethodName    = "/api.Cluster/GetCluster"
+	Cluster_CreateCluster_FullMethodName  = "/api.Cluster/CreateCluster"
+	Cluster_UpdateCluster_FullMethodName  = "/api.Cluster/UpdateCluster"
+	Cluster_GetCluster_FullMethodName     = "/api.Cluster/GetCluster"
+	Cluster_DeleteCluster_FullMethodName  = "/api.Cluster/DeleteCluster"
+	Cluster_RestartCluster_FullMethodName = "/api.Cluster/RestartCluster"
+	Cluster_StopCluster_FullMethodName    = "/api.Cluster/StopCluster"
+	Cluster_StartCluster_FullMethodName   = "/api.Cluster/StartCluster"
+	Cluster_CreateBackup_FullMethodName   = "/api.Cluster/CreateBackup"
+	Cluster_CreateRestore_FullMethodName  = "/api.Cluster/CreateRestore"
+	Cluster_GetBackup_FullMethodName      = "/api.Cluster/GetBackup"
+	Cluster_GetRestore_FullMethodName     = "/api.Cluster/GetRestore"
+	Cluster_StopBackup_FullMethodName     = "/api.Cluster/StopBackup"
+	Cluster_StopRestore_FullMethodName    = "/api.Cluster/StopRestore"
+	Cluster_DeleteBackup_FullMethodName   = "/api.Cluster/DeleteBackup"
 )
 
 // ClusterClient is the client API for Cluster service.
@@ -31,6 +42,17 @@ type ClusterClient interface {
 	CreateCluster(ctx context.Context, in *CreateClusterReq, opts ...grpc.CallOption) (*CreateClusterResp, error)
 	UpdateCluster(ctx context.Context, in *UpdateClusterReq, opts ...grpc.CallOption) (*UpdateClusterResp, error)
 	GetCluster(ctx context.Context, in *GetClusterReq, opts ...grpc.CallOption) (*GetClusterResp, error)
+	DeleteCluster(ctx context.Context, in *DeleteClusterReq, opts ...grpc.CallOption) (*DeleteClusterResp, error)
+	RestartCluster(ctx context.Context, in *RestartClusterReq, opts ...grpc.CallOption) (*RestartClusterResp, error)
+	StopCluster(ctx context.Context, in *StopClusterReq, opts ...grpc.CallOption) (*StopClusterResp, error)
+	StartCluster(ctx context.Context, in *StartClusterReq, opts ...grpc.CallOption) (*StartClusterResp, error)
+	CreateBackup(ctx context.Context, in *CreateBackupReq, opts ...grpc.CallOption) (*CreateBackupResp, error)
+	CreateRestore(ctx context.Context, in *CreateRestoreReq, opts ...grpc.CallOption) (*CreateRestoreResp, error)
+	GetBackup(ctx context.Context, in *GetBackupReq, opts ...grpc.CallOption) (*GetBackupResp, error)
+	GetRestore(ctx context.Context, in *GetRestoreReq, opts ...grpc.CallOption) (*GetRestoreResp, error)
+	StopBackup(ctx context.Context, in *StopBackupReq, opts ...grpc.CallOption) (*StopBackupResp, error)
+	StopRestore(ctx context.Context, in *StopRestoreReq, opts ...grpc.CallOption) (*StopRestoreResp, error)
+	DeleteBackup(ctx context.Context, in *DeleteBackupReq, opts ...grpc.CallOption) (*DeleteBackupResp, error)
 }
 
 type clusterClient struct {
@@ -68,6 +90,105 @@ func (c *clusterClient) GetCluster(ctx context.Context, in *GetClusterReq, opts 
 	return out, nil
 }
 
+func (c *clusterClient) DeleteCluster(ctx context.Context, in *DeleteClusterReq, opts ...grpc.CallOption) (*DeleteClusterResp, error) {
+	out := new(DeleteClusterResp)
+	err := c.cc.Invoke(ctx, Cluster_DeleteCluster_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) RestartCluster(ctx context.Context, in *RestartClusterReq, opts ...grpc.CallOption) (*RestartClusterResp, error) {
+	out := new(RestartClusterResp)
+	err := c.cc.Invoke(ctx, Cluster_RestartCluster_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) StopCluster(ctx context.Context, in *StopClusterReq, opts ...grpc.CallOption) (*StopClusterResp, error) {
+	out := new(StopClusterResp)
+	err := c.cc.Invoke(ctx, Cluster_StopCluster_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) StartCluster(ctx context.Context, in *StartClusterReq, opts ...grpc.CallOption) (*StartClusterResp, error) {
+	out := new(StartClusterResp)
+	err := c.cc.Invoke(ctx, Cluster_StartCluster_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) CreateBackup(ctx context.Context, in *CreateBackupReq, opts ...grpc.CallOption) (*CreateBackupResp, error) {
+	out := new(CreateBackupResp)
+	err := c.cc.Invoke(ctx, Cluster_CreateBackup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) CreateRestore(ctx context.Context, in *CreateRestoreReq, opts ...grpc.CallOption) (*CreateRestoreResp, error) {
+	out := new(CreateRestoreResp)
+	err := c.cc.Invoke(ctx, Cluster_CreateRestore_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) GetBackup(ctx context.Context, in *GetBackupReq, opts ...grpc.CallOption) (*GetBackupResp, error) {
+	out := new(GetBackupResp)
+	err := c.cc.Invoke(ctx, Cluster_GetBackup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) GetRestore(ctx context.Context, in *GetRestoreReq, opts ...grpc.CallOption) (*GetRestoreResp, error) {
+	out := new(GetRestoreResp)
+	err := c.cc.Invoke(ctx, Cluster_GetRestore_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) StopBackup(ctx context.Context, in *StopBackupReq, opts ...grpc.CallOption) (*StopBackupResp, error) {
+	out := new(StopBackupResp)
+	err := c.cc.Invoke(ctx, Cluster_StopBackup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) StopRestore(ctx context.Context, in *StopRestoreReq, opts ...grpc.CallOption) (*StopRestoreResp, error) {
+	out := new(StopRestoreResp)
+	err := c.cc.Invoke(ctx, Cluster_StopRestore_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) DeleteBackup(ctx context.Context, in *DeleteBackupReq, opts ...grpc.CallOption) (*DeleteBackupResp, error) {
+	out := new(DeleteBackupResp)
+	err := c.cc.Invoke(ctx, Cluster_DeleteBackup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ClusterServer is the server API for Cluster service.
 // All implementations must embed UnimplementedClusterServer
 // for forward compatibility
@@ -75,6 +196,17 @@ type ClusterServer interface {
 	CreateCluster(context.Context, *CreateClusterReq) (*CreateClusterResp, error)
 	UpdateCluster(context.Context, *UpdateClusterReq) (*UpdateClusterResp, error)
 	GetCluster(context.Context, *GetClusterReq) (*GetClusterResp, error)
+	DeleteCluster(context.Context, *DeleteClusterReq) (*DeleteClusterResp, error)
+	RestartCluster(context.Context, *RestartClusterReq) (*RestartClusterResp, error)
+	StopCluster(context.Context, *StopClusterReq) (*StopClusterResp, error)
+	StartCluster(context.Context, *StartClusterReq) (*StartClusterResp, error)
+	CreateBackup(context.Context, *CreateBackupReq) (*CreateBackupResp, error)
+	CreateRestore(context.Context, *CreateRestoreReq) (*CreateRestoreResp, error)
+	GetBackup(context.Context, *GetBackupReq) (*GetBackupResp, error)
+	GetRestore(context.Context, *GetRestoreReq) (*GetRestoreResp, error)
+	StopBackup(context.Context, *StopBackupReq) (*StopBackupResp, error)
+	StopRestore(context.Context, *StopRestoreReq) (*StopRestoreResp, error)
+	DeleteBackup(context.Context, *DeleteBackupReq) (*DeleteBackupResp, error)
 	mustEmbedUnimplementedClusterServer()
 }
 
@@ -90,6 +222,39 @@ func (UnimplementedClusterServer) UpdateCluster(context.Context, *UpdateClusterR
 }
 func (UnimplementedClusterServer) GetCluster(context.Context, *GetClusterReq) (*GetClusterResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCluster not implemented")
+}
+func (UnimplementedClusterServer) DeleteCluster(context.Context, *DeleteClusterReq) (*DeleteClusterResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteCluster not implemented")
+}
+func (UnimplementedClusterServer) RestartCluster(context.Context, *RestartClusterReq) (*RestartClusterResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RestartCluster not implemented")
+}
+func (UnimplementedClusterServer) StopCluster(context.Context, *StopClusterReq) (*StopClusterResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopCluster not implemented")
+}
+func (UnimplementedClusterServer) StartCluster(context.Context, *StartClusterReq) (*StartClusterResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartCluster not implemented")
+}
+func (UnimplementedClusterServer) CreateBackup(context.Context, *CreateBackupReq) (*CreateBackupResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateBackup not implemented")
+}
+func (UnimplementedClusterServer) CreateRestore(context.Context, *CreateRestoreReq) (*CreateRestoreResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateRestore not implemented")
+}
+func (UnimplementedClusterServer) GetBackup(context.Context, *GetBackupReq) (*GetBackupResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBackup not implemented")
+}
+func (UnimplementedClusterServer) GetRestore(context.Context, *GetRestoreReq) (*GetRestoreResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRestore not implemented")
+}
+func (UnimplementedClusterServer) StopBackup(context.Context, *StopBackupReq) (*StopBackupResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopBackup not implemented")
+}
+func (UnimplementedClusterServer) StopRestore(context.Context, *StopRestoreReq) (*StopRestoreResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopRestore not implemented")
+}
+func (UnimplementedClusterServer) DeleteBackup(context.Context, *DeleteBackupReq) (*DeleteBackupResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteBackup not implemented")
 }
 func (UnimplementedClusterServer) mustEmbedUnimplementedClusterServer() {}
 
@@ -158,6 +323,204 @@ func _Cluster_GetCluster_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Cluster_DeleteCluster_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteClusterReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).DeleteCluster(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_DeleteCluster_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).DeleteCluster(ctx, req.(*DeleteClusterReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_RestartCluster_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestartClusterReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).RestartCluster(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_RestartCluster_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).RestartCluster(ctx, req.(*RestartClusterReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_StopCluster_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopClusterReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).StopCluster(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_StopCluster_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).StopCluster(ctx, req.(*StopClusterReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_StartCluster_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartClusterReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).StartCluster(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_StartCluster_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).StartCluster(ctx, req.(*StartClusterReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_CreateBackup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateBackupReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).CreateBackup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_CreateBackup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).CreateBackup(ctx, req.(*CreateBackupReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_CreateRestore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateRestoreReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).CreateRestore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_CreateRestore_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).CreateRestore(ctx, req.(*CreateRestoreReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_GetBackup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBackupReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).GetBackup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_GetBackup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).GetBackup(ctx, req.(*GetBackupReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_GetRestore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRestoreReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).GetRestore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_GetRestore_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).GetRestore(ctx, req.(*GetRestoreReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_StopBackup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopBackupReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).StopBackup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_StopBackup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).StopBackup(ctx, req.(*StopBackupReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_StopRestore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopRestoreReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).StopRestore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_StopRestore_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).StopRestore(ctx, req.(*StopRestoreReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_DeleteBackup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteBackupReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).DeleteBackup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cluster_DeleteBackup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).DeleteBackup(ctx, req.(*DeleteBackupReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Cluster_ServiceDesc is the grpc.ServiceDesc for Cluster service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -176,6 +539,50 @@ var Cluster_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCluster",
 			Handler:    _Cluster_GetCluster_Handler,
+		},
+		{
+			MethodName: "DeleteCluster",
+			Handler:    _Cluster_DeleteCluster_Handler,
+		},
+		{
+			MethodName: "RestartCluster",
+			Handler:    _Cluster_RestartCluster_Handler,
+		},
+		{
+			MethodName: "StopCluster",
+			Handler:    _Cluster_StopCluster_Handler,
+		},
+		{
+			MethodName: "StartCluster",
+			Handler:    _Cluster_StartCluster_Handler,
+		},
+		{
+			MethodName: "CreateBackup",
+			Handler:    _Cluster_CreateBackup_Handler,
+		},
+		{
+			MethodName: "CreateRestore",
+			Handler:    _Cluster_CreateRestore_Handler,
+		},
+		{
+			MethodName: "GetBackup",
+			Handler:    _Cluster_GetBackup_Handler,
+		},
+		{
+			MethodName: "GetRestore",
+			Handler:    _Cluster_GetRestore_Handler,
+		},
+		{
+			MethodName: "StopBackup",
+			Handler:    _Cluster_StopBackup_Handler,
+		},
+		{
+			MethodName: "StopRestore",
+			Handler:    _Cluster_StopRestore_Handler,
+		},
+		{
+			MethodName: "DeleteBackup",
+			Handler:    _Cluster_DeleteBackup_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
