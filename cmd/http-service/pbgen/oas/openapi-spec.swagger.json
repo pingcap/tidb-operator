@@ -82,6 +82,69 @@
         "tags": [
           "Cluster"
         ]
+      },
+      "put": {
+        "summary": "Update a cluster.",
+        "operationId": "UpdateCluster",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiUpdateClusterResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "example": "v7.1.1",
+                  "description": "The version of the TiDB cluster. Only official versions are supported now."
+                },
+                "pd": {
+                  "$ref": "#/definitions/apiComponent",
+                  "description": "The PD component of the cluster."
+                },
+                "tikv": {
+                  "$ref": "#/definitions/apiComponent",
+                  "description": "The TiKV component of the cluster."
+                },
+                "tiflash": {
+                  "$ref": "#/definitions/apiTiFlashComponent",
+                  "description": "The TiFlash component of the cluster."
+                },
+                "tidb": {
+                  "$ref": "#/definitions/apiComponent",
+                  "description": "The TiDB component of the cluster."
+                }
+              },
+              "description": "UpdateClusterReq is the request for updating cluster.",
+              "title": "UpdateClusterReq"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
       }
     }
   },
@@ -160,10 +223,7 @@
         }
       },
       "description": "Component is the component of the cluster.",
-      "title": "Component",
-      "required": [
-        "replicasresource"
-      ]
+      "title": "Component"
     },
     "apiCreateClusterReq": {
       "type": "object",
@@ -568,10 +628,7 @@
         }
       },
       "description": "Component is the component of the cluster.",
-      "title": "Component",
-      "required": [
-        "replicasresource"
-      ]
+      "title": "Component"
     },
     "apiTiFlashMember": {
       "type": "object",
@@ -715,6 +772,22 @@
       "required": [
         "phasereplicasresourcemembers"
       ]
+    },
+    "apiUpdateClusterResp": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      },
+      "description": "UpdateClusterResp is the response for updating cluster.",
+      "title": "UpdateClusterResp"
     },
     "apiUser": {
       "type": "object",
