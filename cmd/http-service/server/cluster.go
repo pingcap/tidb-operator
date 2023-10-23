@@ -1003,3 +1003,19 @@ func getPodStartTime(podList *corev1.PodList, name string) string {
 	}
 	return ""
 }
+
+func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteClusterReq) (*api.DeleteClusterResp, error) {
+		return nil, errors.New("DeleteCluster not implemented")
+}
+
+func (s *ClusterServer)  RestartCluster(ctx context.Context, req *api.RestartClusterReq) (*api.RestartClusterResp, error) {
+		return nil, errors.New("RestartCluster not implemented")
+}
+
+func (s *ClusterServer) StopCluster(ctx context.Context, req *api.StopClusterReq) (*api.StopClusterResp, error) {
+		return nil, errors.New("StopCluster not implemented")
+}
+
+func(s *ClusterServer)  StartCluster(ctx context.Context, req *api.StartClusterReq) (*api.StartClusterResp, error) {
+		return nil, errors.New("StartCluster not implemented")
+}
