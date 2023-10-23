@@ -47,6 +47,100 @@ service Cluster {
       summary: "Get a cluster."
     };
   }
+
+  rpc DeleteCluster(DeleteClusterReq) returns (DeleteClusterResp) {
+    option (google.api.http) = {delete: "/v1beta/clusters/{cluster_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "DeleteCluster"
+      summary: "Delete a cluster."
+    };
+  }
+
+  rpc RestartCluster(RestartClusterReq) returns (RestartClusterResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}:restart"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "RestartCluster"
+      summary: "Restart a cluster."
+    };
+  }
+
+  rpc StopCluster(StopClusterReq) returns (StopClusterResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}:stop"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "StopCluster"
+      summary: "Stop a cluster."
+    };
+  }
+
+  rpc StartCluster(StartClusterReq) returns (StartClusterResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}:start"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "StartCluster"
+      summary: "Start a cluster."
+    };
+  }
+
+  rpc CreateBackup(CreateBackupReq) returns (CreateBackupResp) {
+    option (google.api.http) = {
+      post: "/v1beta/clusters/{cluster_id}/backups"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "CreateBackup"
+      summary: "Create a backup."
+    };
+  }
+
+  rpc CreateRestore(CreateRestoreReq) returns (CreateRestoreResp) {
+    option (google.api.http) = {
+      post: "/v1beta/clusters/{cluster_id}/restores"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "CreateRestore"
+      summary: "Create a restore."
+    };
+  }
+
+  rpc GetBackup(GetBackupReq) returns (GetBackupResp) {
+    option (google.api.http) = {get: "/v1beta/clusters/{cluster_id}/backups/{backup_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "GetBackup"
+      summary: "Get a backup."
+    };
+  }
+
+  rpc GetRestore(GetRestoreReq) returns (GetRestoreResp) {
+    option (google.api.http) = {get: "/v1beta/clusters/{cluster_id}/restores/{restore_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "GetRestore"
+      summary: "Get a restore."
+    };
+  }
+
+  rpc StopBackup(StopBackupReq) returns (StopBackupResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}/backups/{backup_id}:stop"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "StopBackup"
+      summary: "Stop a backup."
+    };
+  }
+
+  rpc StopRestore(StopRestoreReq) returns (StopRestoreResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}/restores/{restore_id}:stop"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "StopRestore"
+      summary: "Stop a restore."
+    };
+  }
+
+  rpc DeleteBackup(DeleteBackupReq) returns (DeleteBackupResp) {
+    option (google.api.http) = {delete: "/v1beta/clusters/{cluster_id}/backups/{backup_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "DeleteBackup"
+      summary: "Delete a backup."
+    };
+  }
 }
 
 message User {
@@ -612,3 +706,195 @@ message GrafanaStatus {
     example: "3000"
   }];
 }
+
+message DeleteClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "DeleteClusterReq"
+      description: "DeleteClusterReq is the request for deleting cluster."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+}
+
+message DeleteClusterResp {}
+
+message RestartClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "RestartClusterReq"
+      description: "RestartClusterReq is the request for restarting cluster."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+}
+
+message RestartClusterResp {}
+
+message StopClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "StopClusterReq"
+      description: "StopClusterReq is the request for stopping cluster."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+}
+
+message StopClusterResp {}
+
+message StartClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "StartClusterReq"
+      description: "StartClusterReq is the request for starting cluster."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+}
+
+message StartClusterResp {}
+
+message CreateBackupReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateBackupReq"
+      description: "CreateBackupReq is the request for creating backup."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+}
+
+message CreateBackupResp {}
+
+message CreateRestoreReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateRestoreReq"
+      description: "CreateRestoreReq is the request for creating restore."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+}
+
+message CreateRestoreResp {}
+
+message GetBackupReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "GetBackupReq"
+      description: "GetBackupReq is the request for getting backup."
+      required: [
+          "cluster_id"
+          "backup_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the backup."}];
+}
+
+message GetBackupResp {}
+
+message GetRestoreReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "GetRestoreReq"
+      description: "GetRestoreReq is the request for getting restore."
+      required: [
+          "cluster_id"
+          "restore_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string restore_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the restore."}];
+}
+
+message GetRestoreResp {}
+
+message StopBackupReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "StopBackupReq"
+      description: "StopBackupReq is the request for stopping backup."
+      required: [
+          "cluster_id"
+          "backup_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the backup."}];
+}
+
+message StopBackupResp {}
+
+message StopRestoreReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "StopRestoreReq"
+      description: "StopRestoreReq is the request for stopping restore."
+      required: [
+          "cluster_id"
+          "restore_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string restore_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the restore."}];
+}
+
+message StopRestoreResp {}
+
+message DeleteBackupReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "DeleteBackupReq"
+      description: "DeleteBackupReq is the request for deleting backup."
+      required: [
+          "cluster_id"
+          "backup_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the backup."}];
+}
+
+message DeleteBackupResp {}
