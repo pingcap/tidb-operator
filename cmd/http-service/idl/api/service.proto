@@ -29,6 +29,17 @@ service Cluster {
     };
   }
 
+  rpc UpdateCluster(UpdateClusterReq) returns (UpdateClusterResp) {
+    option (google.api.http) = {
+      put: "/v1beta/clusters/{cluster_id}"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "UpdateCluster"
+      summary: "Update a cluster."
+    };
+  }
+
   rpc GetCluster(GetClusterReq) returns (GetClusterResp) {
     option (google.api.http) = {get: "/v1beta/clusters/{cluster_id}"};
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -91,18 +102,14 @@ message Component {
     json_schema: {
       title: "Component"
       description: "Component is the component of the cluster."
-      required: [
-          "replicas"
-          "resource"
-]
     }
   };
 
-  uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+  optional uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The number of replicas of the component.",
     example: "3"
   }];
-  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
+  optional Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
   map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component. JSON format."}];
   optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the component. Only used for TiDB now."}];
 }
@@ -113,18 +120,14 @@ message TiFlashComponent {
     json_schema: {
       title: "Component"
       description: "Component is the component of the cluster."
-      required: [
-          "replicas"
-          "resource"
-]
     }
   };
 
-  uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+  optional uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The number of replicas of the component.",
     example: "3"
   }];
-  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
+  optional Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
   map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component. JSON format."}];
   map<string, google.protobuf.Value> learner_config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash learner config of the component. JSON format."}];
   optional uint32 port = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the component. Only used for TiDB now."}];
@@ -209,6 +212,44 @@ message CreateClusterResp {
     json_schema: {
       title: "CreateClusterResp"
       description: "CreateClusterResp is the response for creating cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message UpdateClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "UpdateClusterReq"
+      description: "UpdateClusterReq is the request for updating cluster."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+  optional string version = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the TiDB cluster. Only official versions are supported now.",
+    example: "\"v7.1.1\""
+  }];
+  optional Component pd = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The PD component of the cluster."}];
+  optional Component tikv = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiKV component of the cluster."}];
+  optional TiFlashComponent tiflash = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash component of the cluster."}];
+  optional Component tidb = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiDB component of the cluster."}];
+}
+
+message UpdateClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "UpdateClusterResp"
+      description: "UpdateClusterResp is the response for updating cluster."
     }
   };
 
