@@ -83,6 +83,36 @@
           "Cluster"
         ]
       },
+      "delete": {
+        "summary": "Delete a cluster.",
+        "operationId": "DeleteCluster",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiDeleteClusterResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      },
       "put": {
         "summary": "Update a cluster.",
         "operationId": "UpdateCluster",
@@ -140,6 +170,379 @@
               "description": "UpdateClusterReq is the request for updating cluster.",
               "title": "UpdateClusterReq"
             }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v1beta/clusters/{cluster_id}/backups": {
+      "post": {
+        "summary": "Create a backup.",
+        "operationId": "CreateBackup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiCreateBackupResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "description": "CreateBackupReq is the request for creating backup.",
+              "title": "CreateBackupReq"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v1beta/clusters/{cluster_id}/backups/{backup_id}": {
+      "get": {
+        "summary": "Get a backup.",
+        "operationId": "GetBackup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiGetBackupResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "backup_id",
+            "description": "The unique ID of the backup.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      },
+      "delete": {
+        "summary": "Delete a backup.",
+        "operationId": "DeleteBackup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiDeleteBackupResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "backup_id",
+            "description": "The unique ID of the backup.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v1beta/clusters/{cluster_id}/backups/{backup_id}:stop": {
+      "post": {
+        "summary": "Stop a backup.",
+        "operationId": "StopBackup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiStopBackupResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "backup_id",
+            "description": "The unique ID of the backup.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v1beta/clusters/{cluster_id}/restores": {
+      "post": {
+        "summary": "Create a restore.",
+        "operationId": "CreateRestore",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiCreateRestoreResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "description": "CreateRestoreReq is the request for creating restore.",
+              "title": "CreateRestoreReq"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v1beta/clusters/{cluster_id}/restores/{restore_id}": {
+      "get": {
+        "summary": "Get a restore.",
+        "operationId": "GetRestore",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiGetRestoreResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "restore_id",
+            "description": "The unique ID of the restore.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v1beta/clusters/{cluster_id}/restores/{restore_id}:stop": {
+      "post": {
+        "summary": "Stop a restore.",
+        "operationId": "StopRestore",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiStopRestoreResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "restore_id",
+            "description": "The unique ID of the restore.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v1beta/clusters/{cluster_id}:restart": {
+      "post": {
+        "summary": "Restart a cluster.",
+        "operationId": "RestartCluster",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiRestartClusterResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v1beta/clusters/{cluster_id}:start": {
+      "post": {
+        "summary": "Start a cluster.",
+        "operationId": "StartCluster",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiStartClusterResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v1beta/clusters/{cluster_id}:stop": {
+      "post": {
+        "summary": "Stop a cluster.",
+        "operationId": "StopCluster",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiStopClusterResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
           }
         ],
         "tags": [
@@ -225,6 +628,9 @@
       "description": "Component is the component of the cluster.",
       "title": "Component"
     },
+    "apiCreateBackupResp": {
+      "type": "object"
+    },
     "apiCreateClusterReq": {
       "type": "object",
       "properties": {
@@ -289,6 +695,18 @@
       "description": "CreateClusterResp is the response for creating cluster.",
       "title": "CreateClusterResp"
     },
+    "apiCreateRestoreResp": {
+      "type": "object"
+    },
+    "apiDeleteBackupResp": {
+      "type": "object"
+    },
+    "apiDeleteClusterResp": {
+      "type": "object"
+    },
+    "apiGetBackupResp": {
+      "type": "object"
+    },
     "apiGetClusterResp": {
       "type": "object",
       "properties": {
@@ -308,6 +726,9 @@
       },
       "description": "GetClusterResp is the response for getting cluster.",
       "title": "GetClusterResp"
+    },
+    "apiGetRestoreResp": {
+      "type": "object"
     },
     "apiGrafana": {
       "type": "object",
@@ -524,6 +945,21 @@
       "required": [
         "cpumemory"
       ]
+    },
+    "apiRestartClusterResp": {
+      "type": "object"
+    },
+    "apiStartClusterResp": {
+      "type": "object"
+    },
+    "apiStopBackupResp": {
+      "type": "object"
+    },
+    "apiStopClusterResp": {
+      "type": "object"
+    },
+    "apiStopRestoreResp": {
+      "type": "object"
     },
     "apiTiDBMember": {
       "type": "object",
