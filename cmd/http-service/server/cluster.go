@@ -850,11 +850,13 @@ func convertClusterStatus(tc *v1alpha1.TidbCluster) ClusterStatus {
 		return ClusterStatusDeleting
 	}
 
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase ||
+		(tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 && tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase) {
 		return ClusterStatusUpgrading
 	}
 
-	if tc.Status.PD.Phase == v1alpha1.ScalePhase || tc.Status.TiKV.Phase == v1alpha1.ScalePhase || tc.Status.TiDB.Phase == v1alpha1.ScalePhase {
+	if tc.Status.PD.Phase == v1alpha1.ScalePhase || tc.Status.TiKV.Phase == v1alpha1.ScalePhase || tc.Status.TiDB.Phase == v1alpha1.ScalePhase ||
+		(tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 && tc.Status.TiFlash.Phase == v1alpha1.ScalePhase) {
 		return ClusterStatusScaling
 	}
 
