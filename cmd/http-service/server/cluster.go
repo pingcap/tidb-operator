@@ -104,7 +104,7 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 	// TODO(http-service): add verification for the request body
 	// TODO(http-service): customize image support
 
-	tc, err := assembleTidbCluster(ctx, req)
+	tc, err := assembleTidbCluster(req)
 	if err != nil {
 		logger.Error("Assemble TidbCluster CR failed", zap.Error(err))
 		message := fmt.Sprintf("assemble TidbCluster CR failed: %s", err.Error())
@@ -112,7 +112,7 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 		return &api.CreateClusterResp{Success: false, Message: &message}, nil
 	}
 
-	ti, tiSecret, err := assembleTidbInitializer(ctx, req)
+	ti, tiSecret, err := assembleTidbInitializer(req)
 	if err != nil {
 		logger.Error("Assemble TidbInitializer CR failed", zap.Error(err))
 		message := fmt.Sprintf("assemble TidbInitializer CR failed: %s", err.Error())
@@ -120,7 +120,7 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 		return &api.CreateClusterResp{Success: false, Message: &message}, nil
 	}
 
-	tm, err := assembleTidbMonitor(ctx, req)
+	tm, err := assembleTidbMonitor(req)
 	if err != nil {
 		logger.Error("Assemble TidbMonitor CR failed", zap.Error(err))
 		message := fmt.Sprintf("assemble TidbMonitor CR failed: %s", err.Error())
@@ -208,7 +208,7 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 	return &api.CreateClusterResp{Success: true}, nil
 }
 
-func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alpha1.TidbCluster, error) {
+func assembleTidbCluster(req *api.CreateClusterReq) (*v1alpha1.TidbCluster, error) {
 	pdRes, tikvRes, tidbRes, tiflashRes, err := convertClusterComponetsResources(req)
 	if err != nil {
 		return nil, errors.New("invalid resource requirements")
@@ -280,7 +280,7 @@ func assembleTidbCluster(ctx context.Context, req *api.CreateClusterReq) (*v1alp
 	return tc, nil
 }
 
-func assembleTidbInitializer(ctx context.Context, req *api.CreateClusterReq) (*v1alpha1.TidbInitializer, *corev1.Secret, error) {
+func assembleTidbInitializer(req *api.CreateClusterReq) (*v1alpha1.TidbInitializer, *corev1.Secret, error) {
 	if req.User == nil || (req.User.Username == "" && req.User.Password == "") {
 		return nil, nil, nil // no need to init user
 	} else if req.User.Username == "" || req.User.Password == "" {
@@ -314,7 +314,7 @@ func assembleTidbInitializer(ctx context.Context, req *api.CreateClusterReq) (*v
 	return ti, secret, nil
 }
 
-func assembleTidbMonitor(ctx context.Context, req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, error) {
+func assembleTidbMonitor(req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, error) {
 	if req.Prometheus == nil && req.Grafana == nil {
 		return nil, nil // no need to create monitor
 	} else if req.Prometheus == nil {
@@ -1005,17 +1005,17 @@ func getPodStartTime(podList *corev1.PodList, name string) string {
 }
 
 func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteClusterReq) (*api.DeleteClusterResp, error) {
-		return nil, errors.New("DeleteCluster not implemented")
+	return nil, errors.New("DeleteCluster not implemented")
 }
 
-func (s *ClusterServer)  RestartCluster(ctx context.Context, req *api.RestartClusterReq) (*api.RestartClusterResp, error) {
-		return nil, errors.New("RestartCluster not implemented")
+func (s *ClusterServer) RestartCluster(ctx context.Context, req *api.RestartClusterReq) (*api.RestartClusterResp, error) {
+	return nil, errors.New("RestartCluster not implemented")
 }
 
 func (s *ClusterServer) StopCluster(ctx context.Context, req *api.StopClusterReq) (*api.StopClusterResp, error) {
-		return nil, errors.New("StopCluster not implemented")
+	return nil, errors.New("StopCluster not implemented")
 }
 
-func(s *ClusterServer)  StartCluster(ctx context.Context, req *api.StartClusterReq) (*api.StartClusterResp, error) {
-		return nil, errors.New("StartCluster not implemented")
+func (s *ClusterServer) StartCluster(ctx context.Context, req *api.StartClusterReq) (*api.StartClusterResp, error) {
+	return nil, errors.New("StartCluster not implemented")
 }
