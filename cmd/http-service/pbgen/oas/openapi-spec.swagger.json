@@ -209,8 +209,42 @@
             "required": true,
             "schema": {
               "type": "object",
+              "properties": {
+                "backup_id": {
+                  "type": "string",
+                  "example": "backup-123",
+                  "description": "The unique ID of the backup for this cluster."
+                },
+                "access_key": {
+                  "type": "string",
+                  "example": "access-key-123",
+                  "description": "The access key of the backup storage."
+                },
+                "secret_key": {
+                  "type": "string",
+                  "description": "The secret key of the backup storage."
+                },
+                "endpoint": {
+                  "type": "string",
+                  "example": "http://backup-storage-123.com",
+                  "description": "The endpoint of the backup storage."
+                },
+                "bucket": {
+                  "type": "string",
+                  "example": "backup-bucket-123",
+                  "description": "The bucket of the backup storage."
+                },
+                "prefix": {
+                  "type": "string",
+                  "example": "path-prefix-to-backup",
+                  "description": "The prefix of the backup storage."
+                }
+              },
               "description": "CreateBackupReq is the request for creating backup.",
-              "title": "CreateBackupReq"
+              "title": "CreateBackupReq",
+              "required": [
+                "cluster_idbackup_id"
+              ]
             }
           }
         ],
@@ -629,7 +663,20 @@
       "title": "Component"
     },
     "apiCreateBackupResp": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      },
+      "description": "CreateBackupResp is the response for creating backup.",
+      "title": "CreateBackupResp"
     },
     "apiCreateClusterReq": {
       "type": "object",
