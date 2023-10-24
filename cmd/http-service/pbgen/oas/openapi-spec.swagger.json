@@ -226,7 +226,7 @@
                 },
                 "endpoint": {
                   "type": "string",
-                  "example": "http://backup-storage-123.com",
+                  "example": "https://s3.compatible.com",
                   "description": "The endpoint of the backup storage."
                 },
                 "bucket": {

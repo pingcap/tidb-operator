@@ -802,7 +802,7 @@ message CreateBackupReq {
   string secret_key = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The secret key of the backup storage."}];
   optional string endpoint = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The endpoint of the backup storage.",
-    example: "\"http://backup-storage-123.com\""
+    example: "\"https://s3.compatible.com\""
   }];
   string bucket = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The bucket of the backup storage.",
