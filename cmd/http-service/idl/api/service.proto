@@ -780,7 +780,10 @@ message CreateBackupReq {
     json_schema: {
       title: "CreateBackupReq"
       description: "CreateBackupReq is the request for creating backup."
-      required: ["cluster_id"]
+      required: [
+          "cluster_id"
+          "backup_id"
+]
     }
   };
 
@@ -788,9 +791,43 @@ message CreateBackupReq {
     description: "The unique ID or name of the cluster.",
     example: "\"tidb-clsuter-123\""
   }];
+  string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID of the backup for this cluster.",
+    example: "\"backup-123\""
+  }];
+  string access_key = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The access key of the backup storage.",
+    example: "\"access-key-123\""
+  }];
+  string secret_key = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The secret key of the backup storage."}];
+  optional string endpoint = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The endpoint of the backup storage.",
+    example: "\"https://s3.compatible.com\""
+  }];
+  string bucket = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The bucket of the backup storage.",
+    example: "\"backup-bucket-123\""
+  }];
+  string prefix = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The prefix of the backup storage.",
+    example: "\"path-prefix-to-backup\""
+  }];
 }
 
-message CreateBackupResp {}
+message CreateBackupResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateBackupResp"
+      description: "CreateBackupResp is the response for creating backup."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
 
 message CreateRestoreReq {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {

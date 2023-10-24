@@ -1,0 +1,9 @@
+{
+    "cluster_id":"tidb-cluster-123",
+    "backup_id":"backup-123",
+    "access_key":"access_key",
+    "secret_key":"secret_key",
+    "endpoint":"https://s3.compatible.com",
+    "bucket":"tidb-backup",
+    "prefix":"prefix-to-backup"
+}
