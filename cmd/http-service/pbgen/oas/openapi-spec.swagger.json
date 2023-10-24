@@ -400,8 +400,42 @@
             "required": true,
             "schema": {
               "type": "object",
+              "properties": {
+                "restore_id": {
+                  "type": "string",
+                  "example": "restore-123",
+                  "description": "The unique ID of the restore for this cluster."
+                },
+                "access_key": {
+                  "type": "string",
+                  "example": "access-key-123",
+                  "description": "The access key of the backup storage."
+                },
+                "secret_key": {
+                  "type": "string",
+                  "description": "The secret key of the backup storage."
+                },
+                "endpoint": {
+                  "type": "string",
+                  "example": "https://s3.compatible.com",
+                  "description": "The endpoint of the backup storage."
+                },
+                "bucket": {
+                  "type": "string",
+                  "example": "backup-bucket-123",
+                  "description": "The bucket of the backup storage."
+                },
+                "prefix": {
+                  "type": "string",
+                  "example": "path-prefix-to-backup",
+                  "description": "The prefix of the backup storage."
+                }
+              },
               "description": "CreateRestoreReq is the request for creating restore.",
-              "title": "CreateRestoreReq"
+              "title": "CreateRestoreReq",
+              "required": [
+                "cluster_idrestore_id"
+              ]
             }
           }
         ],
@@ -743,7 +777,20 @@
       "title": "CreateClusterResp"
     },
     "apiCreateRestoreResp": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      },
+      "description": "CreateRestoreResp is the response for creating restore.",
+      "title": "CreateRestoreResp"
     },
     "apiDeleteBackupResp": {
       "type": "object"

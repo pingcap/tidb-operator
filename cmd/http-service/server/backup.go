@@ -75,7 +75,7 @@ func (s *ClusterServer) CreateBackup(ctx context.Context, req *api.CreateBackupR
 	}
 
 	// ensure RBAC
-	if err = ensureBackupRBAC(ctx, kubeCli, req); err != nil {
+	if err = ensureBackupRestoreRBAC(ctx, kubeCli, req.ClusterId); err != nil {
 		logger.Error("Ensure backup RBAC failed", zap.Error(err))
 		message := fmt.Sprintf("ensure backup RBAC failed: %s", err.Error())
 		setResponseStatusCodes(ctx, http.StatusInternalServerError)
@@ -154,16 +154,16 @@ func assembleBackup(req *api.CreateBackupReq) (*v1alpha1.Backup, error) {
 	}, nil
 }
 
-func ensureBackupRBAC(ctx context.Context, cli kubernetes.Interface, req *api.CreateBackupReq) error {
+func ensureBackupRestoreRBAC(ctx context.Context, cli kubernetes.Interface, namespace string) error {
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: req.ClusterId,
+			Namespace: namespace,
 			Name:      backupManager,
 		},
 	}
 	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: req.ClusterId,
+			Namespace: namespace,
 			Name:      backupManager,
 		},
 		Rules: []rbacv1.PolicyRule{
@@ -181,14 +181,14 @@ func ensureBackupRBAC(ctx context.Context, cli kubernetes.Interface, req *api.Cr
 	}
 	roleBinding := rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: req.ClusterId,
+			Namespace: namespace,
 			Name:      backupManager,
 		},
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      rbacv1.ServiceAccountKind,
 				Name:      backupManager,
-				Namespace: req.ClusterId,
+				Namespace: namespace,
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
@@ -199,13 +199,13 @@ func ensureBackupRBAC(ctx context.Context, cli kubernetes.Interface, req *api.Cr
 	}
 
 	// create RBAC resources if not exists
-	if _, err := cli.CoreV1().ServiceAccounts(req.ClusterId).Create(ctx, sa, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
+	if _, err := cli.CoreV1().ServiceAccounts(namespace).Create(ctx, sa, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
-	if _, err := cli.RbacV1().Roles(req.ClusterId).Create(ctx, role, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
+	if _, err := cli.RbacV1().Roles(namespace).Create(ctx, role, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
-	if _, err := cli.RbacV1().RoleBindings(req.ClusterId).Create(ctx, &roleBinding, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
+	if _, err := cli.RbacV1().RoleBindings(namespace).Create(ctx, &roleBinding, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
 
@@ -213,7 +213,121 @@ func ensureBackupRBAC(ctx context.Context, cli kubernetes.Interface, req *api.Cr
 }
 
 func (s *ClusterServer) CreateRestore(ctx context.Context, req *api.CreateRestoreReq) (*api.CreateRestoreResp, error) {
-	return nil, errors.New("CreateRestore not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "CreateRestore"), zap.String("k8sID", k8sID),
+		zap.String("clusterID", req.ClusterId), zap.String("restoreID", req.RestoreId))
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.CreateRestoreResp{Success: false, Message: &message}, nil
+	}
+	
+	// check whether the cluster exists first
+	_, err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Get(ctx, tidbClusterName, metav1.GetOptions{})
+	if err != nil {
+		logger.Error("TidbCluster not found", zap.Error(err))
+		message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.CreateRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	secret, err := assembleRestoreSecret(req)
+	if err != nil {
+		logger.Error("Assemble restore secret failed", zap.Error(err))
+		message := fmt.Sprintf("assemble restore secret failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.CreateRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	restore, err := assembleRestore(req)
+	if err != nil {
+		logger.Error("Assemble restore CR failed", zap.Error(err))
+		message := fmt.Sprintf("assemble restore CR failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.CreateRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	// ensure RBAC
+	if err = ensureBackupRestoreRBAC(ctx, kubeCli, req.ClusterId); err != nil {
+		logger.Error("Ensure restore RBAC failed", zap.Error(err))
+		message := fmt.Sprintf("ensure restore RBAC failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.CreateRestoreResp{Success: false, Message: &message}, nil
+	}
+	
+	// create secret
+	_, err = kubeCli.CoreV1().Secrets(req.ClusterId).Create(ctx, secret, metav1.CreateOptions{})
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		logger.Error("Create restore secret failed", zap.Error(err))
+		message := fmt.Sprintf("create restore secret failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.CreateRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	// create restore
+	_, err = opCli.PingcapV1alpha1().Restores(req.ClusterId).Create(ctx, restore, metav1.CreateOptions{})
+	if err != nil {
+		logger.Error("Create restore failed", zap.Error(err))
+		message := fmt.Sprintf("create restore failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.CreateRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.CreateRestoreResp{Success: true}, nil
+}
+
+func assembleRestoreSecret(req *api.CreateRestoreReq) (*corev1.Secret, error) {
+	if req.AccessKey == "" || req.SecretKey == "" {
+		return nil, errors.New("access_key and secret_key must be specified")
+	}
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: req.ClusterId,
+			Name:      req.RestoreId, // same as restore name
+		},
+		Data: map[string][]byte{
+			"access_key": []byte(req.AccessKey),
+			"secret_key": []byte(req.SecretKey),
+		},
+	}, nil
+}
+
+func assembleRestore(req *api.CreateRestoreReq) (*v1alpha1.Restore, error) {
+	if req.Bucket == "" || req.Prefix == "" {
+		return nil, errors.New("bucket and prefix must be specified")
+	}
+
+	var endpoint string
+	if req.Endpoint != nil {
+		endpoint = *req.Endpoint
+	}
+
+	return &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: req.ClusterId,
+			Name:      req.RestoreId,
+		},
+		Spec: v1alpha1.RestoreSpec{
+			BR: &v1alpha1.BRConfig{
+				ClusterNamespace: req.ClusterId,
+				Cluster:          tidbClusterName,
+			},
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{
+					// NOTE: update these fields if necessary
+					Provider:     v1alpha1.S3StorageProviderTypeAWS,
+					StorageClass: s3StorageClass,
+					SecretName:   req.RestoreId, // same as restore name
+					Endpoint:     endpoint,
+					Bucket:       req.Bucket,
+					Prefix:       req.Prefix,
+				},
+			},
+		},
+	}, nil
 }
 
 func (s *ClusterServer) GetBackup(ctx context.Context, req *api.GetBackupReq) (*api.GetBackupResp, error) {
