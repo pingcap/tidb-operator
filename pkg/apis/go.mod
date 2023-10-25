@@ -9,8 +9,8 @@ require (
 	github.com/google/gofuzz v1.1.0
 	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/onsi/gomega v1.10.2
-	github.com/pingcap/TiProxy/lib v0.0.0-20230201020701-df06ec482c69
 	github.com/pingcap/errors v0.11.4
+	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
 	github.com/prometheus/common v0.28.0
 	github.com/prometheus/prometheus v1.8.2
 	k8s.io/api v0.23.17
@@ -38,6 +38,7 @@ require (
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
