@@ -20,8 +20,8 @@ import (
 
 	fuzz "github.com/google/gofuzz"
 	. "github.com/onsi/gomega"
-	tiproxyConfig "github.com/pingcap/TiProxy/lib/config"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
+	tiproxyConfig "github.com/pingcap/tiproxy/lib/config"
 )
 
 func TestTiProxyConfigWraper(t *testing.T) {
