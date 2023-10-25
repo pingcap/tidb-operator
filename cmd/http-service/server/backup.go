@@ -375,14 +375,58 @@ func convertToBackupInfo(backup *v1alpha1.Backup) *api.BackupInfo {
 		info.StartedAt = backup.Status.TimeStarted.Format(time.RFC3339)
 	}
 	if !backup.Status.TimeCompleted.IsZero() {
-		info.FinishedAt = backup.Status.TimeCompleted.Format(time.RFC3339)
+		info.CompletedAt = backup.Status.TimeCompleted.Format(time.RFC3339)
 	}
 
 	return info
 }
 
 func (s *ClusterServer) GetRestore(ctx context.Context, req *api.GetRestoreReq) (*api.GetRestoreResp, error) {
-	return nil, errors.New("GetRestore not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	logger := log.L().With(zap.String("request", "GetRestore"), zap.String("k8sID", k8sID),
+		zap.String("clusterID", req.ClusterId), zap.String("restoreID", req.RestoreId))
+	if opCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.GetRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	restore, err := opCli.PingcapV1alpha1().Restores(req.ClusterId).Get(ctx, req.RestoreId, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("Restore not found", zap.Error(err))
+			message := fmt.Sprintf("Restore %s not found", req.RestoreId)
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			return &api.GetRestoreResp{Success: false, Message: &message}, nil
+		}
+		logger.Error("Get restore failed", zap.Error(err))
+		message := fmt.Sprintf("get restore failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.GetRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	info := convertToRestoreInfo(restore)
+	return &api.GetRestoreResp{Success: true, Data: info}, nil
+}
+
+func convertToRestoreInfo(restore *v1alpha1.Restore) *api.RestoreInfo {
+	info := &api.RestoreInfo{
+		ClusterId: restore.Namespace,
+		RestoreId: restore.Name,
+		Status:    string(restore.Status.Phase),
+		CommitTs:  restore.Status.CommitTs,
+	}
+
+	if !restore.Status.TimeStarted.IsZero() {
+		info.StartedAt = restore.Status.TimeStarted.Format(time.RFC3339)
+	}
+	if !restore.Status.TimeCompleted.IsZero() {
+		info.CompletedAt = restore.Status.TimeCompleted.Format(time.RFC3339)
+	}
+
+	return info
 }
 
 func (s *ClusterServer) StopBackup(ctx context.Context, req *api.StopBackupReq) (*api.StopBackupResp, error) {

@@ -651,9 +651,9 @@
           "type": "string",
           "description": "The start time of the backup."
         },
-        "finished_at": {
+        "completed_at": {
           "type": "string",
-          "description": "The finish time of the backup."
+          "description": "The completed time of the backup."
         }
       },
       "description": "BackupInfo is the information of the backup.",
@@ -880,7 +880,23 @@
       "title": "GetClusterResp"
     },
     "apiGetRestoreResp": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        },
+        "data": {
+          "$ref": "#/definitions/apiRestoreInfo",
+          "description": "The information of the restore."
+        }
+      },
+      "description": "GetRestoreResp is the response for getting restore.",
+      "title": "GetRestoreResp"
     },
     "apiGrafana": {
       "type": "object",
@@ -1100,6 +1116,40 @@
     },
     "apiRestartClusterResp": {
       "type": "object"
+    },
+    "apiRestoreInfo": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string",
+          "description": "The unique ID or name of the cluster."
+        },
+        "restore_id": {
+          "type": "string",
+          "description": "The unique ID of the restore."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the restore."
+        },
+        "commit_ts": {
+          "type": "string",
+          "description": "The commit ts of the restore."
+        },
+        "started_at": {
+          "type": "string",
+          "description": "The start time of the restore."
+        },
+        "completed_at": {
+          "type": "string",
+          "description": "The completed time of the restore."
+        }
+      },
+      "description": "RestoreInfo is the information of the restore.",
+      "title": "RestoreInfo",
+      "required": [
+        "cluster_idrestore_idstatus"
+      ]
     },
     "apiStartClusterResp": {
       "type": "object"

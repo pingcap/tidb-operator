@@ -932,7 +932,7 @@ message BackupInfo {
   string backup_path = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The path of the backup."}];
   string commit_ts = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The commit ts of the backup."}];
   string started_at = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The start time of the backup."}];
-  string finished_at = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The finish time of the backup."}];
+  string completed_at = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The completed time of the backup."}];
 }
 
 message GetRestoreReq {
@@ -951,7 +951,39 @@ message GetRestoreReq {
   string restore_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the restore."}];
 }
 
-message GetRestoreResp {}
+message GetRestoreResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "GetRestoreResp"
+      description: "GetRestoreResp is the response for getting restore."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "Whether the request is successful."}];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+  optional RestoreInfo data = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The information of the restore."}];
+}
+
+message RestoreInfo {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "RestoreInfo"
+      description: "RestoreInfo is the information of the restore."
+      required: [
+          "cluster_id"
+          "restore_id"
+          "status"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string restore_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the restore."}];
+  string status = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The status of the restore."}];
+  string commit_ts = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The commit ts of the restore."}];
+  string started_at = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The start time of the restore."}];
+  string completed_at = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The completed time of the restore."}];
+}
 
 message StopBackupReq {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
