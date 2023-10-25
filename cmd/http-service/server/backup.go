@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/pingcap/log"
 	"go.uber.org/zap"
@@ -224,7 +225,7 @@ func (s *ClusterServer) CreateRestore(ctx context.Context, req *api.CreateRestor
 		setResponseStatusCodes(ctx, http.StatusBadRequest)
 		return &api.CreateRestoreResp{Success: false, Message: &message}, nil
 	}
-	
+
 	// check whether the cluster exists first
 	_, err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Get(ctx, tidbClusterName, metav1.GetOptions{})
 	if err != nil {
@@ -257,7 +258,7 @@ func (s *ClusterServer) CreateRestore(ctx context.Context, req *api.CreateRestor
 		setResponseStatusCodes(ctx, http.StatusInternalServerError)
 		return &api.CreateRestoreResp{Success: false, Message: &message}, nil
 	}
-	
+
 	// create secret
 	_, err = kubeCli.CoreV1().Secrets(req.ClusterId).Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil && !apierrors.IsAlreadyExists(err) {
@@ -331,11 +332,101 @@ func assembleRestore(req *api.CreateRestoreReq) (*v1alpha1.Restore, error) {
 }
 
 func (s *ClusterServer) GetBackup(ctx context.Context, req *api.GetBackupReq) (*api.GetBackupResp, error) {
-	return nil, errors.New("GetBackup not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	logger := log.L().With(zap.String("request", "GetBackup"), zap.String("k8sID", k8sID),
+		zap.String("clusterID", req.ClusterId), zap.String("backupID", req.BackupId))
+	if opCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.GetBackupResp{Success: false, Message: &message}, nil
+	}
+
+	backup, err := opCli.PingcapV1alpha1().Backups(req.ClusterId).Get(ctx, req.BackupId, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("Backup not found", zap.Error(err))
+			message := fmt.Sprintf("Backup %s not found", req.BackupId)
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			return &api.GetBackupResp{Success: false, Message: &message}, nil
+		}
+		logger.Error("Get backup failed", zap.Error(err))
+		message := fmt.Sprintf("get backup failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.GetBackupResp{Success: false, Message: &message}, nil
+	}
+
+	info := convertToBackupInfo(backup)
+	return &api.GetBackupResp{Success: true, Data: info}, nil
+}
+
+func convertToBackupInfo(backup *v1alpha1.Backup) *api.BackupInfo {
+	info := &api.BackupInfo{
+		ClusterId:  backup.Namespace,
+		BackupId:   backup.Name,
+		Status:     string(backup.Status.Phase),
+		Size:       backup.Status.BackupSizeReadable,
+		BackupPath: backup.Status.BackupPath,
+		CommitTs:   backup.Status.CommitTs,
+	}
+
+	if !backup.Status.TimeStarted.IsZero() {
+		info.StartedAt = backup.Status.TimeStarted.Format(time.RFC3339)
+	}
+	if !backup.Status.TimeCompleted.IsZero() {
+		info.CompletedAt = backup.Status.TimeCompleted.Format(time.RFC3339)
+	}
+
+	return info
 }
 
 func (s *ClusterServer) GetRestore(ctx context.Context, req *api.GetRestoreReq) (*api.GetRestoreResp, error) {
-	return nil, errors.New("GetRestore not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	logger := log.L().With(zap.String("request", "GetRestore"), zap.String("k8sID", k8sID),
+		zap.String("clusterID", req.ClusterId), zap.String("restoreID", req.RestoreId))
+	if opCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.GetRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	restore, err := opCli.PingcapV1alpha1().Restores(req.ClusterId).Get(ctx, req.RestoreId, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("Restore not found", zap.Error(err))
+			message := fmt.Sprintf("Restore %s not found", req.RestoreId)
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			return &api.GetRestoreResp{Success: false, Message: &message}, nil
+		}
+		logger.Error("Get restore failed", zap.Error(err))
+		message := fmt.Sprintf("get restore failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.GetRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	info := convertToRestoreInfo(restore)
+	return &api.GetRestoreResp{Success: true, Data: info}, nil
+}
+
+func convertToRestoreInfo(restore *v1alpha1.Restore) *api.RestoreInfo {
+	info := &api.RestoreInfo{
+		ClusterId: restore.Namespace,
+		RestoreId: restore.Name,
+		Status:    string(restore.Status.Phase),
+		CommitTs:  restore.Status.CommitTs,
+	}
+
+	if !restore.Status.TimeStarted.IsZero() {
+		info.StartedAt = restore.Status.TimeStarted.Format(time.RFC3339)
+	}
+	if !restore.Status.TimeCompleted.IsZero() {
+		info.CompletedAt = restore.Status.TimeCompleted.Format(time.RFC3339)
+	}
+
+	return info
 }
 
 func (s *ClusterServer) StopBackup(ctx context.Context, req *api.StopBackupReq) (*api.StopBackupResp, error) {

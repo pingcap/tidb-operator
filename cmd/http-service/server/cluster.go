@@ -661,16 +661,15 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 	tc, err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Get(ctx, tidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.Error("TidbCluster not found", zap.Error(err))
-			setResponseStatusCodes(ctx, http.StatusNotFound)
+			logger.Warn("TidbCluster not found", zap.Error(err))
 			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
-			return &api.GetClusterResp{Success: false, Message: &message}, nil
-		} else {
-			logger.Error("Get TidbCluster failed", zap.Error(err))
-			message := fmt.Sprintf("get TidbCluster failed: %s", err.Error())
-			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			setResponseStatusCodes(ctx, http.StatusNotFound)
 			return &api.GetClusterResp{Success: false, Message: &message}, nil
 		}
+		logger.Error("Get TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("get TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.GetClusterResp{Success: false, Message: &message}, nil
 	}
 
 	tm, err := opCli.PingcapV1alpha1().TidbMonitors(req.ClusterId).Get(ctx, tidbMonitorName, metav1.GetOptions{})
