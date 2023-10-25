@@ -620,6 +620,48 @@
     }
   },
   "definitions": {
+    "apiBackupInfo": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string",
+          "description": "The unique ID or name of the cluster."
+        },
+        "backup_id": {
+          "type": "string",
+          "description": "The unique ID of the backup."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the backup."
+        },
+        "size": {
+          "type": "string",
+          "description": "The size of the backup."
+        },
+        "backup_path": {
+          "type": "string",
+          "description": "The path of the backup."
+        },
+        "commit_ts": {
+          "type": "string",
+          "description": "The commit ts of the backup."
+        },
+        "started_at": {
+          "type": "string",
+          "description": "The start time of the backup."
+        },
+        "finished_at": {
+          "type": "string",
+          "description": "The finish time of the backup."
+        }
+      },
+      "description": "BackupInfo is the information of the backup.",
+      "title": "BackupInfo",
+      "required": [
+        "cluster_idbackup_idstatus"
+      ]
+    },
     "apiClusterInfo": {
       "type": "object",
       "properties": {
@@ -799,7 +841,23 @@
       "type": "object"
     },
     "apiGetBackupResp": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        },
+        "data": {
+          "$ref": "#/definitions/apiBackupInfo",
+          "description": "The information of the backup."
+        }
+      },
+      "description": "GetBackupResp is the response for getting backup.",
+      "title": "GetBackupResp"
     },
     "apiGetClusterResp": {
       "type": "object",
