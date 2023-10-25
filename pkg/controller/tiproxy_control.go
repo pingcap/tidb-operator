@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pingcap/TiProxy/lib/cli"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tiproxy/lib/cli"
 	"github.com/spf13/cobra"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
