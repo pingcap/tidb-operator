@@ -120,10 +120,11 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	if memberCreated {
 		return nil
 	}
-	rm.syncWarmUpStatus(volumeRestore, restoreMembers)
 	if err := rm.waitRestoreVolumeComplete(volumeRestore, restoreMembers); err != nil {
 		return err
 	}
+
+	rm.syncWarmUpStatus(volumeRestore, restoreMembers)
 
 	memberUpdated, err := rm.executeRestoreDataPhase(ctx, volumeRestore, restoreMembers)
 	if err != nil {
