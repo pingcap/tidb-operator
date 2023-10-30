@@ -1040,6 +1040,12 @@ func (s *ClusterServer) RestartCluster(ctx context.Context, req *api.RestartClus
 	// to trigger the rolling restart of the TiDB component
 	// set its value to be the current time.
 	tc, err = setRestartAnnotation(tc, req.Component)
+	if err != nil {
+		logger.Error("Restart TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("restart TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.RestartClusterResp{Success: false, Message: &message}, nil
+	}
 
 	// update tc
 	_, err = opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Update(ctx, tc, metav1.UpdateOptions{})
