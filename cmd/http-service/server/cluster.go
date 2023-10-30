@@ -1065,43 +1065,44 @@ func setRestartAnnotation(tc *v1alpha1.TidbCluster, components []string) (*v1alp
 		return nil, fmt.Errorf("no components are specified that need to be restarted")
 	}
 
+	restartAt := time.Now().Format(time.RFC3339)
 	for _, comp := range components {
 		switch strings.ToLower(comp) {
 		case "pd":
 			if tc.Spec.PD.Annotations == nil {
 				tc.Spec.PD.Annotations = make(map[string]string)
 			}
-			tc.Spec.PD.Annotations["tidb.pingcap.com/restartedAt"] = time.Now().Format(time.RFC3339)
+			tc.Spec.PD.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
 		case "tikv":
 			if tc.Spec.TiKV.Annotations == nil {
 				tc.Spec.TiKV.Annotations = make(map[string]string)
 			}
-			tc.Spec.TiKV.Annotations["tidb.pingcap.com/restartedAt"] = time.Now().Format(time.RFC3339)
+			tc.Spec.TiKV.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
 		case "tidb":
 			if tc.Spec.TiDB.Annotations == nil {
 				tc.Spec.TiDB.Annotations = make(map[string]string)
 			}
-			tc.Spec.TiDB.Annotations["tidb.pingcap.com/restartedAt"] = time.Now().Format(time.RFC3339)
+			tc.Spec.TiDB.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
 		case "tiflash":
 			if tc.Spec.TiFlash.Annotations == nil {
 				tc.Spec.TiFlash.Annotations = make(map[string]string)
 			}
-			tc.Spec.TiFlash.Annotations["tidb.pingcap.com/restartedAt"] = time.Now().Format(time.RFC3339)
+			tc.Spec.TiFlash.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
 		case "ticdc":
 			if tc.Spec.TiCDC.Annotations == nil {
 				tc.Spec.TiCDC.Annotations = make(map[string]string)
 			}
-			tc.Spec.TiCDC.Annotations["tidb.pingcap.com/restartedAt"] = time.Now().Format(time.RFC3339)
+			tc.Spec.TiCDC.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
 		case "tiproxy":
 			if tc.Spec.TiDB.Annotations == nil {
 				tc.Spec.TiDB.Annotations = make(map[string]string)
 			}
-			tc.Spec.TiDB.Annotations["tidb.pingcap.com/restartedAt"] = time.Now().Format(time.RFC3339)
+			tc.Spec.TiDB.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
 		case "pump":
 			if tc.Spec.Pump.Annotations == nil {
 				tc.Spec.Pump.Annotations = make(map[string]string)
 			}
-			tc.Spec.Pump.Annotations["tidb.pingcap.com/restartedAt"] = time.Now().Format(time.RFC3339)
+			tc.Spec.Pump.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
 		default:
 			return nil, fmt.Errorf("invalid component: %s", comp)
 		}
