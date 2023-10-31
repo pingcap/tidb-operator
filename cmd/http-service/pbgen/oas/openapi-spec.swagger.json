@@ -547,6 +547,17 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "component",
+            "description": "Components that need to be restarted.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -1115,7 +1126,20 @@
       ]
     },
     "apiRestartClusterResp": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      },
+      "description": "RestartClusterResp is the response for restarting cluster.",
+      "title": "RestartClusterResp"
     },
     "apiRestoreInfo": {
       "type": "object",

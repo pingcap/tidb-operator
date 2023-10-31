@@ -1007,8 +1007,108 @@ func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteCluste
 	return nil, errors.New("DeleteCluster not implemented")
 }
 
+// RestartCluster
+// graceful rolling restart to all Pods in specified components
+// ref https://docs.pingcap.com/tidb-in-kubernetes/stable/restart-a-tidb-cluster
 func (s *ClusterServer) RestartCluster(ctx context.Context, req *api.RestartClusterReq) (*api.RestartClusterResp, error) {
-	return nil, errors.New("RestartCluster not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "RestartCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.RestartClusterResp{Success: false, Message: &message}, nil
+	}
+
+	tc, err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Get(ctx, tidbClusterName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("TidbCluster not found", zap.Error(err))
+			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			return &api.RestartClusterResp{Success: false, Message: &message}, nil
+		}
+		logger.Error("Get TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("get TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.RestartClusterResp{Success: false, Message: &message}, nil
+	}
+
+	// Add tidb.pingcap.com/restartedAt in the annotation of the spec of the TiDB component
+	// to trigger the rolling restart of the TiDB component
+	// set its value to be the current time.
+	tc, err = setRestartAnnotation(tc, req.Component)
+	if err != nil {
+		logger.Error("Restart TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("restart TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.RestartClusterResp{Success: false, Message: &message}, nil
+	}
+
+	// update tc
+	_, err = opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Update(ctx, tc, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error("Update TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("update TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.RestartClusterResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.RestartClusterResp{Success: true}, nil
+}
+
+func setRestartAnnotation(tc *v1alpha1.TidbCluster, components []string) (*v1alpha1.TidbCluster, error) {
+	// check component
+	if len(components) == 0 {
+		return nil, fmt.Errorf("no components are specified that need to be restarted")
+	}
+
+	restartAt := time.Now().Format(time.RFC3339)
+	for _, comp := range components {
+		switch strings.ToLower(comp) {
+		case "pd":
+			if tc.Spec.PD.Annotations == nil {
+				tc.Spec.PD.Annotations = make(map[string]string)
+			}
+			tc.Spec.PD.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "tikv":
+			if tc.Spec.TiKV.Annotations == nil {
+				tc.Spec.TiKV.Annotations = make(map[string]string)
+			}
+			tc.Spec.TiKV.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "tidb":
+			if tc.Spec.TiDB.Annotations == nil {
+				tc.Spec.TiDB.Annotations = make(map[string]string)
+			}
+			tc.Spec.TiDB.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "tiflash":
+			if tc.Spec.TiFlash.Annotations == nil {
+				tc.Spec.TiFlash.Annotations = make(map[string]string)
+			}
+			tc.Spec.TiFlash.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "ticdc":
+			if tc.Spec.TiCDC.Annotations == nil {
+				tc.Spec.TiCDC.Annotations = make(map[string]string)
+			}
+			tc.Spec.TiCDC.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "tiproxy":
+			if tc.Spec.TiDB.Annotations == nil {
+				tc.Spec.TiDB.Annotations = make(map[string]string)
+			}
+			tc.Spec.TiDB.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "pump":
+			if tc.Spec.Pump.Annotations == nil {
+				tc.Spec.Pump.Annotations = make(map[string]string)
+			}
+			tc.Spec.Pump.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		default:
+			return nil, fmt.Errorf("invalid component: %s", comp)
+		}
+	}
+
+	return tc, nil
 }
 
 func (s *ClusterServer) StopCluster(ctx context.Context, req *api.StopClusterReq) (*api.StopClusterResp, error) {
