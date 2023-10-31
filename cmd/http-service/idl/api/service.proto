@@ -729,7 +729,10 @@ message RestartClusterReq {
     json_schema: {
       title: "RestartClusterReq"
       description: "RestartClusterReq is the request for restarting cluster."
-      required: ["cluster_id"]
+      required: [
+          "cluster_id"
+          "component"
+]
     }
   };
 
@@ -737,9 +740,27 @@ message RestartClusterReq {
     description: "The unique ID or name of the cluster.",
     example: "\"tidb-clsuter-123\""
   }];
+
+  repeated string component = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Components that need to be restarted.",
+    example: "[\"tidb\"]",
+  }];
 }
 
-message RestartClusterResp {}
+message RestartClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "RestartClusterResp"
+      description: "RestartClusterResp is the response for restarting cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
 
 message StopClusterReq {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
