@@ -224,7 +224,6 @@ message TiFlashComponent {
   optional Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
   map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component. JSON format."}];
   map<string, google.protobuf.Value> learner_config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash learner config of the component. JSON format."}];
-  optional uint32 port = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the component. Only used for TiDB now."}];
 }
 
 message Prometheus {
@@ -244,7 +243,10 @@ message Prometheus {
     example: "\"v2.27.1\""
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Prometheus."}];
-  repeated string command_options = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The command options of the Prometheus."}];
+  map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The command options config of the Prometheus. ref https://prometheus.io/docs/prometheus/latest/command-line/prometheus/",
+    example: "{\"web.read-timeout\": \"5m\"}"
+  }];
 }
 
 message Grafana {
@@ -264,7 +266,10 @@ message Grafana {
     example: "\"7.5.11\""
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Grafana."}];
-  map<string, string> envs = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The environment variables of the Grafana."}];
+  map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The environment variables config of the Grafana. ref https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#override-configuration-with-environment-variables",
+    example: "{\"GF_SECURITY_ADMIN_USER\": \"admin\"}"
+  }];
   optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the Grafana."}];
 }
 
@@ -609,7 +614,7 @@ message TiDBStatus {
           "replicas"
           "resource"
           "host"
-          "port"
+          "node_port"
           "members"
 ]
     }
@@ -625,9 +630,9 @@ message TiDBStatus {
   }];
   Resource resource = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the TiDB component for each replica."}];
   map<string, google.protobuf.Value> config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the TiDB component. JSON format."}];
-  string host = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The host (IP or domain name) of the TiDB component."}];
-  uint32 port = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "The port of the TiDB component.",
+  string host = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The host of the TiDB component. One of the TiDB nodes will be selected as the host."}];
+  uint32 node_port = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The node port of the TiDB component assigned by Kubernetes.",
     example: "4000"
   }];
   repeated TiDBMember members = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the TiDB component."}];
@@ -677,7 +682,7 @@ message PrometheusStatus {
     example: "\"v2.27.1\""
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Prometheus component."}];
-  repeated string command_options = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The command options of the Prometheus component."}];
+  map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The command options config of the Prometheus. ref https://prometheus.io/docs/prometheus/latest/command-line/prometheus/"}];
 }
 
 message GrafanaStatus {
@@ -689,7 +694,7 @@ message GrafanaStatus {
           "version"
           "resource"
           "host"
-          "port"
+          "node_port"
 ]
     }
   };
@@ -699,10 +704,10 @@ message GrafanaStatus {
     example: "\"7.5.11\""
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Grafana component."}];
-  map<string, string> envs = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The environment variables of the Grafana component."}];
+  map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The environment variables config of the Grafana. ref https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#override-configuration-with-environment-variables"}];
   string host = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The host (IP or domain name) of the Grafana component."}];
-  uint32 port = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "The port of the Grafana component.",
+  uint32 node_port = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The node port of the Grafana assigned by Kubernetes.",
     example: "3000"
   }];
 }
