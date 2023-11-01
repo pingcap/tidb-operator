@@ -964,7 +964,7 @@
         },
         "host": {
           "type": "string",
-          "description": "The host (IP or domain name) of the Grafana component."
+          "description": "The host of the Grafana component."
         },
         "node_port": {
           "type": "integer",

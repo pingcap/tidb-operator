@@ -705,7 +705,7 @@ message GrafanaStatus {
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Grafana component."}];
   map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The environment variables config of the Grafana. ref https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#override-configuration-with-environment-variables"}];
-  string host = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The host (IP or domain name) of the Grafana component."}];
+  string host = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The host of the Grafana component."}];
   uint32 node_port = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The node port of the Grafana assigned by Kubernetes.",
     example: "3000"
