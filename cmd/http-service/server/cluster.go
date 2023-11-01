@@ -373,9 +373,13 @@ func assembleTidbMonitor(req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, erro
 		},
 	}
 
-	if req.Prometheus.CommandOptions != nil {
+	if len(req.Prometheus.Config) > 0 {
+		options := make([]string, 0, len(req.Prometheus.Config))
+		for k, v := range req.Prometheus.Config {
+			options = append(options, fmt.Sprintf("--%s=%s", k, v))
+		}
 		tm.Spec.Prometheus.Config = &v1alpha1.PrometheusConfiguration{
-			CommandOptions: req.Prometheus.CommandOptions,
+			CommandOptions: options,
 		}
 	}
 
@@ -391,7 +395,7 @@ func assembleTidbMonitor(req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, erro
 				BaseImage:            grafanaBaseImage,
 				ResourceRequirements: grafanaRes,
 			},
-			Envs: req.Grafana.Envs,
+			Envs: req.Grafana.Config,
 		}
 	}
 
@@ -813,7 +817,7 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 			logger.Error("Get TiDB host and port failed", zap.Error(err))
 		} else {
 			info.Tidb.Host = host
-			info.Tidb.Port = uint32(port)
+			info.Tidb.NodePort = uint32(port)
 		}
 	}
 
@@ -823,20 +827,26 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 			Resource: reConvertResourceRequirements(tm.Spec.Prometheus.MonitorContainer.ResourceRequirements),
 		}
 		if tm.Spec.Prometheus.Config != nil {
-			info.Prometheus.CommandOptions = tm.Spec.Prometheus.Config.CommandOptions
+			info.Prometheus.Config = make(map[string]string, len(tm.Spec.Prometheus.Config.CommandOptions))
+			for _, opt := range tm.Spec.Prometheus.Config.CommandOptions {
+				kv := strings.SplitN(strings.TrimPrefix(opt, "--"), "=", 2)
+				if len(kv) == 2 {
+					info.Prometheus.Config[kv[0]] = kv[1]
+				}
+			}
 		}
 		if tm.Spec.Grafana != nil {
 			info.Grafana = &api.GrafanaStatus{
 				Version:  tm.Spec.Grafana.MonitorContainer.Version,
 				Resource: reConvertResourceRequirements(tm.Spec.Grafana.MonitorContainer.ResourceRequirements),
-				Envs:     tm.Spec.Grafana.Envs,
+				Config:     tm.Spec.Grafana.Envs,
 			}
 			host, port, err := getGrafanaHostPort(kubeCli, tm)
 			if err != nil {
 				logger.Error("Get Grafana host and port failed", zap.Error(err))
 			} else {
 				info.Grafana.Host = host
-				info.Grafana.Port = uint32(port)
+				info.Grafana.NodePort = uint32(port)
 			}
 		}
 	}
