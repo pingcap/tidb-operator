@@ -64,19 +64,19 @@ service Cluster {
     };
   }
 
-  rpc StopCluster(StopClusterReq) returns (StopClusterResp) {
-    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}:stop"};
+  rpc PauseCluster(PauseClusterReq) returns (PauseClusterResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}:pause"};
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      operation_id: "StopCluster"
-      summary: "Stop a cluster."
+      operation_id: "PauseCluster"
+      summary: "Pause a cluster."
     };
   }
 
-  rpc StartCluster(StartClusterReq) returns (StartClusterResp) {
-    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}:start"};
+  rpc ResumeCluster(ResumeClusterReq) returns (ResumeClusterResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}:resume"};
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      operation_id: "StartCluster"
-      summary: "Start a cluster."
+      operation_id: "ResumeCluster"
+      summary: "Resume a cluster."
     };
   }
 
@@ -762,11 +762,11 @@ message RestartClusterResp {
   optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
 }
 
-message StopClusterReq {
+message PauseClusterReq {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
     json_schema: {
-      title: "StopClusterReq"
-      description: "StopClusterReq is the request for stopping cluster."
+      title: "PauseClusterReq"
+      description: "PauseClusterReq is the request for stopping cluster."
       required: ["cluster_id"]
     }
   };
@@ -777,13 +777,26 @@ message StopClusterReq {
   }];
 }
 
-message StopClusterResp {}
-
-message StartClusterReq {
+message PauseClusterResp {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
     json_schema: {
-      title: "StartClusterReq"
-      description: "StartClusterReq is the request for starting cluster."
+      title: "PauseClusterResp"
+      description: "PauseClusterResp is the response for pausing cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message ResumeClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "ResumeClusterReq"
+      description: "ResumeClusterReq is the request for starting cluster."
       required: ["cluster_id"]
     }
   };
@@ -794,7 +807,20 @@ message StartClusterReq {
   }];
 }
 
-message StartClusterResp {}
+message ResumeClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "ResumeClusterResp"
+      description: "ResumeClusterResp is the response for start cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
 
 message CreateBackupReq {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
