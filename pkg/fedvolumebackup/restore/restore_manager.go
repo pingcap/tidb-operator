@@ -120,11 +120,16 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 	if memberCreated {
 		return nil
 	}
+
 	if err := rm.waitRestoreVolumeComplete(volumeRestore, restoreMembers); err != nil {
 		return err
 	}
 
 	rm.syncWarmUpStatus(volumeRestore, restoreMembers)
+
+	if err := rm.waitRestoreTiKVComplete(volumeRestore, restoreMembers); err != nil {
+		return err
+	}
 
 	memberUpdated, err := rm.executeRestoreDataPhase(ctx, volumeRestore, restoreMembers)
 	if err != nil {
@@ -259,6 +264,30 @@ func (rm *restoreManager) waitRestoreVolumeComplete(volumeRestore *v1alpha1.Volu
 	// restore volume complete
 	if !v1alpha1.IsVolumeRestoreVolumeComplete(volumeRestore) {
 		rm.setVolumeRestoreVolumeComplete(volumeRestore)
+	}
+
+	return nil
+}
+
+func (rm *restoreManager) waitRestoreTiKVComplete(volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) error {
+	// check if restore members failed in data plane
+	for _, restoreMember := range restoreMembers {
+		restoreMemberName := restoreMember.restore.Name
+		k8sClusterName := restoreMember.k8sClusterName
+		if pingcapv1alpha1.IsRestoreInvalid(restoreMember.restore) {
+			errMsg := fmt.Sprintf("restore member %s of cluster %s is invalid", restoreMemberName, k8sClusterName)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeRestoreMemberInvalid,
+				Message: errMsg,
+			}
+		}
+		if pingcapv1alpha1.IsRestoreFailed(restoreMember.restore) {
+			errMsg := fmt.Sprintf("restore member %s of cluster %s is failed", restoreMemberName, k8sClusterName)
+			return &fedvolumebackup.BRDataPlaneFailedError{
+				Reason:  reasonVolumeRestoreMemberFailed,
+				Message: errMsg,
+			}
+		}
 	}
 
 	for _, restoreMember := range restoreMembers {
