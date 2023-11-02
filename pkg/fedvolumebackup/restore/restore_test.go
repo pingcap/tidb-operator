@@ -117,7 +117,7 @@ func (h *helper) assertRestoreVolumeComplete(volumeRestore *v1alpha1.VolumeResto
 func (h *helper) assertRestoreWarmUpStarted(volumeRestore *v1alpha1.VolumeRestore) {
 	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreWarmUpStarted))
 	if volumeRestore.Spec.Template.Warmup == pingcapv1alpha1.RestoreWarmupModeASync {
-		// aysnc means start tikv and warm up simultaneously
+		// async means start tikv and warm up simultaneously
 		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(3))
 	} else {
 		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(2))
