@@ -921,12 +921,15 @@
           "$ref": "#/definitions/apiResource",
           "description": "The resource of the Grafana."
         },
-        "envs": {
+        "config": {
           "type": "object",
+          "example": {
+            "GF_SECURITY_ADMIN_USER": "admin"
+          },
           "additionalProperties": {
             "type": "string"
           },
-          "description": "The environment variables of the Grafana."
+          "description": "The environment variables config of the Grafana. ref https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#override-configuration-with-environment-variables"
         },
         "port": {
           "type": "integer",
@@ -952,28 +955,28 @@
           "$ref": "#/definitions/apiResource",
           "description": "The resource of the Grafana component."
         },
-        "envs": {
+        "config": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "The environment variables of the Grafana component."
+          "description": "The environment variables config of the Grafana. ref https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#override-configuration-with-environment-variables"
         },
         "host": {
           "type": "string",
-          "description": "The host (IP or domain name) of the Grafana component."
+          "description": "The host of the Grafana component."
         },
-        "port": {
+        "node_port": {
           "type": "integer",
           "format": "int64",
           "example": 3000,
-          "description": "The port of the Grafana component."
+          "description": "The node port of the Grafana assigned by Kubernetes."
         }
       },
       "description": "GrafanaStatus is the status of the Grafana component.",
       "title": "GrafanaStatus",
       "required": [
-        "versionresourcehostport"
+        "versionresourcehostnode_port"
       ]
     },
     "apiPDMember": {
@@ -1073,12 +1076,15 @@
           "$ref": "#/definitions/apiResource",
           "description": "The resource of the Prometheus."
         },
-        "command_options": {
-          "type": "array",
-          "items": {
+        "config": {
+          "type": "object",
+          "example": {
+            "web.read-timeout": "5m"
+          },
+          "additionalProperties": {
             "type": "string"
           },
-          "description": "The command options of the Prometheus."
+          "description": "The command options config of the Prometheus. ref https://prometheus.io/docs/prometheus/latest/command-line/prometheus/"
         }
       },
       "description": "Prometheus is the Prometheus component of the cluster.",
@@ -1099,12 +1105,12 @@
           "$ref": "#/definitions/apiResource",
           "description": "The resource of the Prometheus component."
         },
-        "command_options": {
-          "type": "array",
-          "items": {
+        "config": {
+          "type": "object",
+          "additionalProperties": {
             "type": "string"
           },
-          "description": "The command options of the Prometheus component."
+          "description": "The command options config of the Prometheus. ref https://prometheus.io/docs/prometheus/latest/command-line/prometheus/"
         }
       },
       "description": "PrometheusStatus is the status of the Prometheus component.",
@@ -1263,13 +1269,13 @@
         },
         "host": {
           "type": "string",
-          "description": "The host (IP or domain name) of the TiDB component."
+          "description": "The host of the TiDB component. One of the TiDB nodes will be selected as the host."
         },
-        "port": {
+        "node_port": {
           "type": "integer",
           "format": "int64",
           "example": 4000,
-          "description": "The port of the TiDB component."
+          "description": "The node port of the TiDB component assigned by Kubernetes."
         },
         "members": {
           "type": "array",
@@ -1283,7 +1289,7 @@
       "description": "TiDBStatus is the status of the TiDB component.",
       "title": "TiDBStatus",
       "required": [
-        "phasereplicasresourcehostportmembers"
+        "phasereplicasresourcehostnode_portmembers"
       ]
     },
     "apiTiFlashComponent": {
@@ -1308,11 +1314,6 @@
           "type": "object",
           "additionalProperties": {},
           "description": "The TiFlash learner config of the component. JSON format."
-        },
-        "port": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The port of the component. Only used for TiDB now."
         }
       },
       "description": "Component is the component of the cluster.",
