@@ -849,7 +849,20 @@
       "type": "object"
     },
     "apiDeleteClusterResp": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      },
+      "description": "DeleteClusterResp is the response for deleting cluster.",
+      "title": "DeleteClusterResp"
     },
     "apiGetBackupResp": {
       "type": "object",

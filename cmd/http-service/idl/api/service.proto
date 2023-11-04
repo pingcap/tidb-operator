@@ -727,7 +727,20 @@ message DeleteClusterReq {
   }];
 }
 
-message DeleteClusterResp {}
+message DeleteClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "DeleteClusterResp"
+      description: "DeleteClusterResp is the response for deleting cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
 
 message RestartClusterReq {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
