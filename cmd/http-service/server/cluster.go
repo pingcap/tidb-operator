@@ -256,7 +256,7 @@ func (s *ClusterServer) ResumeCluster(ctx context.Context, req *api.ResumeCluste
 	k8sID := getKubernetesID(ctx)
 	opCli := s.KubeClient.GetOperatorClient(k8sID)
 	kubeCli := s.KubeClient.GetKubeClient(k8sID)
-	logger := log.L().With(zap.String("request", "CreateCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
+	logger := log.L().With(zap.String("request", "ResumeCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
 
 	if opCli == nil || kubeCli == nil {
 		logger.Error("K8s client not found")
