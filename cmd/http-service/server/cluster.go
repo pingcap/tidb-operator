@@ -927,7 +927,7 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 			info.Grafana = &api.GrafanaStatus{
 				Version:  tm.Spec.Grafana.MonitorContainer.Version,
 				Resource: reConvertResourceRequirements(tm.Spec.Grafana.MonitorContainer.ResourceRequirements),
-				Config:     tm.Spec.Grafana.Envs,
+				Config:   tm.Spec.Grafana.Envs,
 			}
 			host, port, err := getGrafanaHostPort(kubeCli, tm)
 			if err != nil {
@@ -1102,7 +1102,63 @@ func getPodStartTime(podList *corev1.PodList, name string) string {
 }
 
 func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteClusterReq) (*api.DeleteClusterResp, error) {
-	return nil, errors.New("DeleteCluster not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "DeleteCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+	}
+	// delete tm
+	if err := opCli.PingcapV1alpha1().TidbMonitors(req.ClusterId).Delete(ctx, tidbMonitorName, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("TidbMonitor not found", zap.Error(err))
+		} else {
+			logger.Error("Delete TidbMonitor failed", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			message := fmt.Sprintf("delete TidbMonitor failed: %s", err.Error())
+			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+		}
+
+	}
+	// delete init and secret
+	if err := opCli.PingcapV1alpha1().TidbInitializers(req.ClusterId).Delete(ctx, tidbInitializerName, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("TidbInitializer not found", zap.Error(err))
+		} else {
+			logger.Error("Delete TidbInitializer failed", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			message := fmt.Sprintf("delete TidbInitializer failed: %s", err.Error())
+			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+	if err := kubeCli.CoreV1().Secrets(req.ClusterId).Delete(ctx, tidbInitializerPasswordSecret, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("TidbInitializer password secret not found", zap.Error(err))
+		} else {
+			logger.Error("Delete TidbInitializer password secret failed", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			message := fmt.Sprintf("delete TidbInitializer password secret failed: %s", err.Error())
+			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+	// delete tc
+	if err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Delete(ctx, tidbClusterName, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("TidbCluster not found", zap.Error(err))
+		} else {
+			logger.Error("Delete TidbCluster failed", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			message := fmt.Sprintf("delete TidbCluster failed: %s", err.Error())
+			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+		}
+
+	}
+	// we don't delete the ns for now, since some backup may still stored in it
+	return &api.DeleteClusterResp{Success: true}, nil
 }
 
 // RestartCluster
