@@ -208,6 +208,94 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 	return &api.CreateClusterResp{Success: true}, nil
 }
 
+func (s *ClusterServer) PauseCluster(ctx context.Context, req *api.PauseClusterReq) (*api.PauseClusterResp, error) {
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "PauseCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
+
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.PauseClusterResp{Success: false, Message: &message}, nil
+	}
+
+	ns := req.ClusterId
+	name := tidbClusterName
+
+	tc, err := opCli.PingcapV1alpha1().TidbClusters(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Error("TidbCluster not found", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
+			return &api.PauseClusterResp{Success: false, Message: &message}, nil
+		} else {
+			logger.Error("Get TidbCluster failed", zap.Error(err))
+			message := fmt.Sprintf("get TidbCluster failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.PauseClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+
+	tc.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
+
+	_, err = opCli.PingcapV1alpha1().TidbClusters(ns).Update(ctx, tc, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error("Pause TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("update TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.PauseClusterResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.PauseClusterResp{Success: true}, nil
+}
+
+func (s *ClusterServer) ResumeCluster(ctx context.Context, req *api.ResumeClusterReq) (*api.ResumeClusterResp, error) {
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "ResumeCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
+
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.ResumeClusterResp{Success: false, Message: &message}, nil
+	}
+
+	ns := req.ClusterId
+	name := tidbClusterName
+
+	tc, err := opCli.PingcapV1alpha1().TidbClusters(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Error("TidbCluster not found", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
+			return &api.ResumeClusterResp{Success: false, Message: &message}, nil
+		} else {
+			logger.Error("Get TidbCluster failed", zap.Error(err))
+			message := fmt.Sprintf("get TidbCluster failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.ResumeClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+
+	tc.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: false}
+
+	_, err = opCli.PingcapV1alpha1().TidbClusters(ns).Update(ctx, tc, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error("Resume TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("update TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.ResumeClusterResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.ResumeClusterResp{Success: true}, nil
+}
+
 func assembleTidbCluster(req *api.CreateClusterReq) (*v1alpha1.TidbCluster, error) {
 	pdRes, tikvRes, tidbRes, tiflashRes, err := convertClusterComponetsResources(req)
 	if err != nil {
@@ -1119,12 +1207,4 @@ func setRestartAnnotation(tc *v1alpha1.TidbCluster, components []string) (*v1alp
 	}
 
 	return tc, nil
-}
-
-func (s *ClusterServer) StopCluster(ctx context.Context, req *api.StopClusterReq) (*api.StopClusterResp, error) {
-	return nil, errors.New("StopCluster not implemented")
-}
-
-func (s *ClusterServer) StartCluster(ctx context.Context, req *api.StartClusterReq) (*api.StartClusterResp, error) {
-	return nil, errors.New("StartCluster not implemented")
 }

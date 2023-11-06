@@ -522,6 +522,38 @@
         ]
       }
     },
+    "/v1beta/clusters/{cluster_id}:pause": {
+      "post": {
+        "summary": "Pause a cluster.",
+        "operationId": "PauseCluster",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiPauseClusterResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cluster_id",
+            "description": "The unique ID or name of the cluster.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
     "/v1beta/clusters/{cluster_id}:restart": {
       "post": {
         "summary": "Restart a cluster.",
@@ -565,47 +597,15 @@
         ]
       }
     },
-    "/v1beta/clusters/{cluster_id}:start": {
+    "/v1beta/clusters/{cluster_id}:resume": {
       "post": {
-        "summary": "Start a cluster.",
-        "operationId": "StartCluster",
+        "summary": "Resume a cluster.",
+        "operationId": "ResumeCluster",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/apiStartClusterResp"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "cluster_id",
-            "description": "The unique ID or name of the cluster.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "Cluster"
-        ]
-      }
-    },
-    "/v1beta/clusters/{cluster_id}:stop": {
-      "post": {
-        "summary": "Stop a cluster.",
-        "operationId": "StopCluster",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/apiStopClusterResp"
+              "$ref": "#/definitions/apiResumeClusterResp"
             }
           },
           "default": {
@@ -1048,6 +1048,22 @@
         "phasereplicasresourcemembers"
       ]
     },
+    "apiPauseClusterResp": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      },
+      "description": "PauseClusterResp is the response for pausing cluster.",
+      "title": "PauseClusterResp"
+    },
     "apiPrometheus": {
       "type": "object",
       "properties": {
@@ -1181,13 +1197,23 @@
         "cluster_idrestore_idstatus"
       ]
     },
-    "apiStartClusterResp": {
-      "type": "object"
+    "apiResumeClusterResp": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      },
+      "description": "ResumeClusterResp is the response for start cluster.",
+      "title": "ResumeClusterResp"
     },
     "apiStopBackupResp": {
-      "type": "object"
-    },
-    "apiStopClusterResp": {
       "type": "object"
     },
     "apiStopRestoreResp": {
