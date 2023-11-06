@@ -1158,6 +1158,17 @@ func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteCluste
 
 	}
 	// we don't delete the ns for now, since some backup may still stored in it
+	// TODO(http-service): we delete all pvc in ns for now, but we may only delete tidbcluster pvc in future
+	if err := kubeCli.CoreV1().PersistentVolumeClaims(req.ClusterId).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("PersistentVolumeClaims not found", zap.Error(err))
+		} else {
+			logger.Error("Delete PersistentVolumeClaims failed", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			message := fmt.Sprintf("delete PersistentVolumeClaims failed: %s", err.Error())
+			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+		}
+	}
 	return &api.DeleteClusterResp{Success: true}, nil
 }
 
