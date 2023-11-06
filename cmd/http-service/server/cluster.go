@@ -1069,17 +1069,7 @@ func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteCluste
 		}
 
 	}
-	// delete ns
-	if err := kubeCli.CoreV1().Namespaces().Delete(ctx, req.ClusterId, metav1.DeleteOptions{}); err != nil {
-		if apierrors.IsNotFound(err) {
-			logger.Warn("Namespace not found", zap.Error(err))
-		} else {
-			logger.Error("Delete Namespace failed", zap.Error(err))
-			setResponseStatusCodes(ctx, http.StatusInternalServerError)
-			message := fmt.Sprintf("delete Namespace failed: %s", err.Error())
-			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
-		}
-	}
+	// we don't delete the ns for now, since some backup may still stored in it
 	return &api.DeleteClusterResp{Success: true}, nil
 }
 
