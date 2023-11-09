@@ -297,12 +297,12 @@ func (s *ClusterServer) ResumeCluster(ctx context.Context, req *api.ResumeCluste
 }
 
 func assembleTidbCluster(req *api.CreateClusterReq) (*v1alpha1.TidbCluster, error) {
-	pdRes, tikvRes, tidbRes, tiflashRes, err := convertClusterComponetsResources(req)
+	pdRes, tikvRes, tidbRes, tiflashRes, err := convertClusterComponentsResources(req)
 	if err != nil {
 		return nil, errors.New("invalid resource requirements")
 	}
 
-	pdCfg, tikvCfg, tidbCfg, tiflashCfg := convertClusterComponetsConfig(req)
+	pdCfg, tikvCfg, tidbCfg, tiflashCfg := convertClusterComponentsConfig(req)
 	tidbPort := int32(4000)
 	if req.Tidb.Port != nil {
 		tidbPort = int32(*req.Tidb.Port)
@@ -409,7 +409,7 @@ func assembleTidbMonitor(req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, erro
 		return nil, errors.New("prometheus must be specified if grafana is specified")
 	}
 
-	promRes, grafanaRes, err := convertMonitorComponetsResources(req)
+	promRes, grafanaRes, err := convertMonitorComponentsResources(req)
 	if err != nil {
 		return nil, errors.New("invalid resource requirements")
 	}
@@ -490,7 +490,7 @@ func assembleTidbMonitor(req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, erro
 	return tm, nil
 }
 
-func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes, tidbRes, tiflash corev1.ResourceRequirements, err error) {
+func convertClusterComponentsResources(req *api.CreateClusterReq) (pdRes, tikvRes, tidbRes, tiflash corev1.ResourceRequirements, err error) {
 	if req.Pd == nil || req.Tikv == nil || req.Tidb == nil ||
 		req.Pd.Replicas == nil || req.Tikv.Replicas == nil || req.Tidb.Replicas == nil ||
 		*req.Pd.Replicas <= 0 || *req.Tikv.Replicas <= 0 || *req.Tidb.Replicas <= 0 ||
@@ -543,7 +543,7 @@ func convertConfigValue(x *structpb.Value) interface{} {
 	}
 }
 
-func convertClusterComponetsConfig(req *api.CreateClusterReq) (
+func convertClusterComponentsConfig(req *api.CreateClusterReq) (
 	pdCfg *v1alpha1.PDConfigWraper, tikvCfg *v1alpha1.TiKVConfigWraper,
 	tidbCfg *v1alpha1.TiDBConfigWraper, tiflashCfg *v1alpha1.TiFlashConfigWraper) {
 
@@ -575,7 +575,7 @@ func convertClusterComponetsConfig(req *api.CreateClusterReq) (
 	return
 }
 
-func convertMonitorComponetsResources(req *api.CreateClusterReq) (promRes, grafanaRes corev1.ResourceRequirements, err error) {
+func convertMonitorComponentsResources(req *api.CreateClusterReq) (promRes, grafanaRes corev1.ResourceRequirements, err error) {
 	if req.Prometheus != nil {
 		promRes, err = convertResourceRequirements(req.Prometheus.Resource)
 		if err != nil {
