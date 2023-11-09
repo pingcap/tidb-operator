@@ -846,7 +846,19 @@
       "title": "CreateRestoreResp"
     },
     "apiDeleteBackupResp": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the request is successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      },
+      "description": "DeleteBackupResp is the response for deleting backup.",
+      "title": "DeleteBackupResp"
     },
     "apiDeleteClusterResp": {
       "type": "object",
