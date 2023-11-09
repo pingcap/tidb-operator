@@ -753,6 +753,24 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 	tc, err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Get(ctx, tidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
+			// assume ti's secret wouldn't block the deletion of the TidbCluster
+			existing, err := checkPodPVCExisting(ctx, kubeCli, req.ClusterId)
+			if err != nil {
+				logger.Error("Check pods and pvcs failed", zap.Error(err))
+				message := fmt.Sprintf("check pods and pvcs failed: %s", err.Error())
+				setResponseStatusCodes(ctx, http.StatusInternalServerError)
+				return &api.GetClusterResp{Success: false, Message: &message}, nil
+			}
+			if existing {
+				// if tc not found, but Pods or PVCs exist, return with Deleting status
+				return &api.GetClusterResp{
+					Success: true,
+					Data: &api.ClusterInfo{
+						ClusterId: req.ClusterId,
+						Status:    string(ClusterStatusDeleting),
+					}}, nil
+			}
+
 			logger.Warn("TidbCluster not found", zap.Error(err))
 			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
 			setResponseStatusCodes(ctx, http.StatusNotFound)
@@ -1099,6 +1117,43 @@ func getPodStartTime(podList *corev1.PodList, name string) string {
 		}
 	}
 	return ""
+}
+
+func checkPodPVCExisting(ctx context.Context, kubeCli kubernetes.Interface, namespace string) (bool, error) {
+	ls := metav1.FormatLabelSelector(&metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      label.InstanceLabelKey,
+				Operator: metav1.LabelSelectorOpIn,
+				Values: []string{
+					tidbClusterName,
+					tidbMonitorName,
+					tidbInitializerName,
+				},
+			},
+		},
+	})
+
+	podList, err := kubeCli.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: ls,
+	})
+	if err != nil {
+		return false, err
+	}
+	if len(podList.Items) > 0 {
+		return true, nil
+	}
+
+	pvcList, err := kubeCli.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: ls,
+	})
+	if err != nil {
+		return false, err
+	}
+	if len(pvcList.Items) > 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteClusterReq) (*api.DeleteClusterResp, error) {
