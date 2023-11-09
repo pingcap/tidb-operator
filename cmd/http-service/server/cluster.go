@@ -1200,6 +1200,30 @@ func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteCluste
 			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
 		}
 	}
+
+	// get restores for this cluster
+	// NOTE: we list all restores in the cluster's ns now as we only have one cluster in one ns
+	restoreList, err := opCli.PingcapV1alpha1().Restores(req.ClusterId).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		logger.Error("List TidbRestore failed", zap.Error(err))
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		message := fmt.Sprintf("list TidbRestore failed: %s", err.Error())
+		return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+	}
+	for _, restore := range restoreList.Items {
+		// delete restore for this cluster
+		if err := opCli.PingcapV1alpha1().Restores(req.ClusterId).Delete(ctx, restore.Name, metav1.DeleteOptions{}); err != nil {
+			if apierrors.IsNotFound(err) {
+				logger.Info("TidbRestore not found", zap.String("restore", restore.Name), zap.Error(err))
+			} else {
+				logger.Error("Delete TidbRestore failed", zap.String("restore", restore.Name), zap.Error(err))
+				setResponseStatusCodes(ctx, http.StatusInternalServerError)
+				message := fmt.Sprintf("delete TidbRestore %s failed: %s", restore.Name, err.Error())
+				return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+			}
+		}
+	}
+
 	// delete tc
 	if err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Delete(ctx, tidbClusterName, metav1.DeleteOptions{}); err != nil {
 		if apierrors.IsNotFound(err) {
