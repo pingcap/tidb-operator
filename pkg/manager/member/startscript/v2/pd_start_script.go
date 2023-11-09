@@ -80,36 +80,10 @@ const (
 	pdStartScript = `
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN={{ .PDDomain }}
-
-elapseTime=0
-period=1
-threshold={{ .PDStartTimeout }}
-while true; do
-    sleep ${period}
-    elapseTime=$(( elapseTime+period ))
-
-    if [[ ${elapseTime} -ge ${threshold} ]]; then
-        echo "waiting for pd cluster ready timeout" >&2
-        exit 1
-    fi
-
-    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
-    if [ $? -ne 0  ]; then
-        echo "domain resolve ${PD_DOMAIN} failed"
-        echo "$digRes"
-        continue
-    fi
-
-    if [ -z "${digRes}" ]
-    then
-        echo "domain resolve ${PD_DOMAIN} no record return"
-    else
-        echo "domain resolve ${PD_DOMAIN} success"
-        echo "$digRes"
-        break
-    fi
-done
-
+componentDomain=${PD_DOMAIN}
+waitThreshold={{ .PDStartTimeout }}
+nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
+` + componentCommonWaitForDnsIpMatchScript + `
 ARGS="--data-dir={{ .DataDir }} \
 --name={{ .PDName }} \
 --peer-urls={{ .PeerURL }} \

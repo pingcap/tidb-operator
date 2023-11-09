@@ -56,6 +56,65 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+componentDomain=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc
+waitThreshold=30
+nsLookupCmd="getent ahosts $componentDomain | sed -n 's/ *STREAM.*//p'"
+
+elapseTime=0
+period=1
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(eval "$nsLookupCmd")
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${componentDomain} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${componentDomain} no record return"
+    else
+        echo "domain resolve ${componentDomain} success"
+        echo "$digRes"
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
+    fi
+done
 
 ARGS="--pd=start-script-test-pd:2379 \
 --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
@@ -100,6 +159,65 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+componentDomain=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc
+waitThreshold=30
+nsLookupCmd="getent ahosts $componentDomain | sed -n 's/ *STREAM.*//p'"
+
+elapseTime=0
+period=1
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(eval "$nsLookupCmd")
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${componentDomain} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${componentDomain} no record return"
+    else
+        echo "domain resolve ${componentDomain} success"
+        echo "$digRes"
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
+    fi
+done
 
 ARGS="--pd=start-script-test-pd:2379 \
 --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
@@ -145,6 +263,65 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+componentDomain=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc
+waitThreshold=30
+nsLookupCmd="getent ahosts $componentDomain | sed -n 's/ *STREAM.*//p'"
+
+elapseTime=0
+period=1
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(eval "$nsLookupCmd")
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${componentDomain} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${componentDomain} no record return"
+    else
+        echo "domain resolve ${componentDomain} success"
+        echo "$digRes"
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
+    fi
+done
 
 ARGS="--pd=start-script-test-pd:2379 \
 --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
@@ -192,6 +369,65 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+componentDomain=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc.cluster.local
+waitThreshold=30
+nsLookupCmd="getent ahosts $componentDomain | sed -n 's/ *STREAM.*//p'"
+
+elapseTime=0
+period=1
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(eval "$nsLookupCmd")
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${componentDomain} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${componentDomain} no record return"
+    else
+        echo "domain resolve ${componentDomain} success"
+        echo "$digRes"
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
+    fi
+done
 
 ARGS="--pd=start-script-test-pd:2379 \
 --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc.cluster.local:20160 \
@@ -238,6 +474,65 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+componentDomain=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc.cluster.local
+waitThreshold=30
+nsLookupCmd="getent ahosts $componentDomain | sed -n 's/ *STREAM.*//p'"
+
+elapseTime=0
+period=1
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(eval "$nsLookupCmd")
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${componentDomain} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${componentDomain} no record return"
+    else
+        echo "domain resolve ${componentDomain} success"
+        echo "$digRes"
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
+    fi
+done
 
 ARGS="--pd=start-script-test-pd:2379 \
 --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc.cluster.local:20160 \
@@ -283,6 +578,65 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+componentDomain=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc.cluster.local
+waitThreshold=30
+nsLookupCmd="getent ahosts $componentDomain | sed -n 's/ *STREAM.*//p'"
+
+elapseTime=0
+period=1
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(eval "$nsLookupCmd")
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${componentDomain} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${componentDomain} no record return"
+    else
+        echo "domain resolve ${componentDomain} success"
+        echo "$digRes"
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
+    fi
+done
 pd_url=start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url=start-script-test-discovery.start-script-test-ns:10261
@@ -335,6 +689,65 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+componentDomain=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc
+waitThreshold=30
+nsLookupCmd="getent ahosts $componentDomain | sed -n 's/ *STREAM.*//p'"
+
+elapseTime=0
+period=1
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(eval "$nsLookupCmd")
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${componentDomain} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${componentDomain} no record return"
+    else
+        echo "domain resolve ${componentDomain} success"
+        echo "$digRes"
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
+    fi
+done
 pd_url=start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url=start-script-test-discovery.start-script-test-ns:10261
@@ -387,6 +800,65 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+componentDomain=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc
+waitThreshold=30
+nsLookupCmd="getent ahosts $componentDomain | sed -n 's/ *STREAM.*//p'"
+
+elapseTime=0
+period=1
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(eval "$nsLookupCmd")
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${componentDomain} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${componentDomain} no record return"
+    else
+        echo "domain resolve ${componentDomain} success"
+        echo "$digRes"
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
+    fi
+done
 
 ARGS="--pd=target-cluster-pd:2379 \
 --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
@@ -431,6 +903,65 @@ then
 fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+componentDomain=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc
+waitThreshold=30
+nsLookupCmd="getent ahosts $componentDomain | sed -n 's/ *STREAM.*//p'"
+
+elapseTime=0
+period=1
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(eval "$nsLookupCmd")
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${componentDomain} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${componentDomain} no record return"
+    else
+        echo "domain resolve ${componentDomain} success"
+        echo "$digRes"
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
+    fi
+done
 
 ARGS="--pd=start-script-test-pd:2379 \
 --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
