@@ -364,6 +364,7 @@ func (s *ClusterServer) GetBackup(ctx context.Context, req *api.GetBackupReq) (*
 	_, err = kubeCli.BatchV1().Jobs(backup.GetNamespace()).Get(ctx, backup.GetBackupJobName(), metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
+			info.Status = "Stopped"
 			logger.Info("Backup Job not found, Backup Job is Stopped.", zap.Error(err))
 		} else {
 			logger.Error("Get backup job failed", zap.Error(err))
@@ -428,6 +429,7 @@ func (s *ClusterServer) GetRestore(ctx context.Context, req *api.GetRestoreReq) 
 	_, err = kubeCli.BatchV1().Jobs(restore.GetNamespace()).Get(ctx, restore.GetRestoreJobName(), metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
+			info.Status = "Stopped"
 			logger.Info("Restore Job not found, Restore Job is Stopped.", zap.Error(err))
 		} else {
 			logger.Error("Get Restore job failed", zap.Error(err))
@@ -515,7 +517,6 @@ func (s *ClusterServer) StopBackup(ctx context.Context, req *api.StopBackupReq) 
 	}
 
 	// update backup status
-	backup.Status.Phase = v1alpha1.BackupStopped
 	_, err = opCli.PingcapV1alpha1().Backups(req.ClusterId).Update(ctx, backup, metav1.UpdateOptions{})
 	if err != nil {
 		logger.Error("Backup not found", zap.Error(err))
@@ -573,7 +574,6 @@ func (s *ClusterServer) StopRestore(ctx context.Context, req *api.StopRestoreReq
 	}
 
 	// update restore status
-	restore.Status.Phase = v1alpha1.RestoreStopped
 	_, err = opCli.PingcapV1alpha1().Restores(req.ClusterId).Update(ctx, restore, metav1.UpdateOptions{})
 	if err != nil {
 		logger.Error("Restore not found", zap.Error(err))

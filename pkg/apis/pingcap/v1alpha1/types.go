@@ -2383,8 +2383,6 @@ const (
 	RestoreRetryFailed RestoreConditionType = "RetryFailed"
 	// RestoreInvalid means invalid restore CR.
 	RestoreInvalid RestoreConditionType = "Invalid"
-	// RestoreStopped means the restore was stopped.
-	RestoreStopped RestoreConditionType = "Stopped"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.
