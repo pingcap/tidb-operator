@@ -1239,10 +1239,32 @@
       "title": "ResumeClusterResp"
     },
     "apiStopBackupResp": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is ssuccessful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      }
     },
     "apiStopRestoreResp": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": true,
+          "description": "Whether the request is ssuccessful."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the response."
+        }
+      }
     },
     "apiTiDBMember": {
       "type": "object",

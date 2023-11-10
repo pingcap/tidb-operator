@@ -42,17 +42,17 @@ import (
 type ClusterStatus string
 
 const (
-	// the cluster is still being created
+	// ClusterStatusCreating the cluster is still being created
 	ClusterStatusCreating ClusterStatus = "creating"
-	// all components are running
+	// ClusterStatusRunning all components are running
 	ClusterStatusRunning ClusterStatus = "running"
-	// some components are deleting
+	// ClusterStatusDeleting some components are deleting
 	ClusterStatusDeleting ClusterStatus = "deleting"
-	// some components are scaling
+	// ClusterStatusScaling some components are scaling
 	ClusterStatusScaling ClusterStatus = "scaling"
-	// some components are upgrading
+	// ClusterStatusUpgrading some components are upgrading
 	ClusterStatusUpgrading ClusterStatus = "upgrading"
-	// some components are unavailable
+	// ClusterStatusUnavailable some components are unavailable
 	ClusterStatusUnavailable ClusterStatus = "unavailable"
 
 	helperImage = "busybox:1.36"
@@ -860,7 +860,7 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 			Name:      strings.TrimPrefix(member.PodName, namePrefix),
 			Id:        id,
 			StartTime: getPodStartTime(podList, member.PodName),
-			State:     string(member.State),
+			State:     member.State,
 		})
 	}
 
@@ -900,7 +900,7 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 				Name:      strings.TrimPrefix(member.PodName, namePrefix),
 				Id:        id,
 				StartTime: getPodStartTime(podList, member.PodName),
-				State:     string(member.State),
+				State:     member.State,
 			})
 			if member.State == v1alpha1.TiKVStateUp {
 				tiflashReadyCount++

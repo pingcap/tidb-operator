@@ -359,6 +359,20 @@ func (s *ClusterServer) GetBackup(ctx context.Context, req *api.GetBackupReq) (*
 	}
 
 	info := convertToBackupInfo(backup)
+	// get job status
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	_, err = kubeCli.BatchV1().Jobs(backup.GetNamespace()).Get(ctx, backup.GetBackupJobName(), metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("Backup Job not found, Backup Job is Stopped.", zap.Error(err))
+		} else {
+			logger.Error("Get backup job failed", zap.Error(err))
+			message := fmt.Sprintf("Get backup job failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.GetBackupResp{Success: false, Message: &message}, nil
+		}
+	}
+
 	return &api.GetBackupResp{Success: true, Data: info}, nil
 }
 
@@ -409,6 +423,20 @@ func (s *ClusterServer) GetRestore(ctx context.Context, req *api.GetRestoreReq) 
 	}
 
 	info := convertToRestoreInfo(restore)
+	// get job status
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	_, err = kubeCli.BatchV1().Jobs(restore.GetNamespace()).Get(ctx, restore.GetRestoreJobName(), metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("Restore Job not found, Restore Job is Stopped.", zap.Error(err))
+		} else {
+			logger.Error("Get Restore job failed", zap.Error(err))
+			message := fmt.Sprintf("Get restore job failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.GetRestoreResp{Success: false, Message: &message}, nil
+		}
+	}
+
 	return &api.GetRestoreResp{Success: true, Data: info}, nil
 }
 
@@ -431,11 +459,130 @@ func convertToRestoreInfo(restore *v1alpha1.Restore) *api.RestoreInfo {
 }
 
 func (s *ClusterServer) StopBackup(ctx context.Context, req *api.StopBackupReq) (*api.StopBackupResp, error) {
-	return nil, errors.New("StopBackup not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "StopBackup"), zap.String("k8sID", k8sID),
+		zap.String("clusterID", req.ClusterId), zap.String("backupID", req.BackupId))
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.StopBackupResp{Success: false, Message: &message}, nil
+	}
+
+	// check whether the backup exists
+	backup, err := opCli.PingcapV1alpha1().Backups(req.ClusterId).Get(ctx, req.BackupId, metav1.GetOptions{})
+	if err != nil {
+		logger.Error("Backup not found", zap.Error(err))
+		message := fmt.Sprintf("Backup %s not found", req.BackupId)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.StopBackupResp{Success: false, Message: &message}, nil
+	}
+
+	// stop backup
+	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+		backup.Spec.LogStop = true
+		_, err = opCli.PingcapV1alpha1().Backups(req.ClusterId).Update(ctx, backup, metav1.UpdateOptions{})
+		if err != nil {
+			logger.Error("Stop log backup failed", zap.Error(err))
+			message := fmt.Sprintf("Stop log backup failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.StopBackupResp{Success: false, Message: &message}, nil
+		}
+	} else {
+		_, err := kubeCli.BatchV1().Jobs(backup.GetNamespace()).Get(ctx, backup.GetBackupJobName(), metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				logger.Warn("Backup is already Stopped", zap.Error(err))
+				message := fmt.Sprintf("Backup %s is already Stopped", req.BackupId)
+				setResponseStatusCodes(ctx, http.StatusNotFound)
+				return &api.StopBackupResp{Success: false, Message: &message}, nil
+			}
+			logger.Error("Get backup job failed", zap.Error(err))
+			message := fmt.Sprintf("Get backup job failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.StopBackupResp{Success: false, Message: &message}, nil
+		}
+
+		err = kubeCli.BatchV1().Jobs(backup.GetNamespace()).Delete(ctx, backup.GetBackupJobName(), metav1.DeleteOptions{})
+		if err != nil {
+			logger.Error("Stop backup failed", zap.Error(err))
+			message := fmt.Sprintf("Stop backup failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.StopBackupResp{Success: false, Message: &message}, nil
+		}
+	}
+
+	// update backup status
+	backup.Status.Phase = v1alpha1.BackupStopped
+	_, err = opCli.PingcapV1alpha1().Backups(req.ClusterId).Update(ctx, backup, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error("Backup not found", zap.Error(err))
+		message := fmt.Sprintf("Backup %s not found", req.BackupId)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.StopBackupResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.StopBackupResp{Success: true}, nil
 }
 
 func (s *ClusterServer) StopRestore(ctx context.Context, req *api.StopRestoreReq) (*api.StopRestoreResp, error) {
-	return nil, errors.New("StopRestore not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "StopRestore"), zap.String("k8sID", k8sID),
+		zap.String("clusterID", req.ClusterId), zap.String("storeID", req.RestoreId))
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.StopRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	// check whether the restore exists
+	restore, err := opCli.PingcapV1alpha1().Restores(req.ClusterId).Get(ctx, req.RestoreId, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("Restore is already Stopped", zap.Error(err))
+			message := fmt.Sprintf("Restore %s is already Stopped", req.RestoreId)
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			return &api.StopRestoreResp{Success: false, Message: &message}, nil
+		}
+		logger.Error("Restore not found", zap.Error(err))
+		message := fmt.Sprintf("Restore %s not found", req.RestoreId)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.StopRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	// stop restore
+	_, err = kubeCli.BatchV1().Jobs(restore.GetNamespace()).Get(ctx, restore.GetRestoreJobName(), metav1.GetOptions{})
+	if err != nil {
+		logger.Error("Get restore job failed", zap.Error(err))
+		message := fmt.Sprintf("Get restore job failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.StopRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	err = kubeCli.BatchV1().Jobs(restore.GetNamespace()).Delete(ctx, restore.GetRestoreJobName(), metav1.DeleteOptions{})
+	if err != nil {
+		logger.Error("Stop restore failed", zap.Error(err))
+		message := fmt.Sprintf("Stop restore failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.StopRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	// update restore status
+	restore.Status.Phase = v1alpha1.RestoreStopped
+	_, err = opCli.PingcapV1alpha1().Restores(req.ClusterId).Update(ctx, restore, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error("Restore not found", zap.Error(err))
+		message := fmt.Sprintf("Restore %s not found", req.RestoreId)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.StopRestoreResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.StopRestoreResp{Success: true}, nil
 }
 
 func (s *ClusterServer) DeleteBackup(ctx context.Context, req *api.DeleteBackupReq) (*api.DeleteBackupResp, error) {
