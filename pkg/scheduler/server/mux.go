@@ -42,8 +42,7 @@ func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int
 	svr := &server{scheduler: s}
 
 	ws := new(restful.WebService)
-	ws.
-		Path("/scheduler").
+	ws.Path("/scheduler").
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 
