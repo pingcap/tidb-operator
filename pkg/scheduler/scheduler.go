@@ -43,7 +43,7 @@ type Scheduler interface {
 	// Preempt implements scheduler extender preempt verb.
 	Preempt(args *schedulerapi.ExtenderPreemptionArgs) (*schedulerapi.ExtenderPreemptionResult, error)
 
-	// Prioritize based on extender-implemented priority functions. The returned scores & weight
+	// Priority based on extender-implemented priority functions. The returned scores & weight
 	// are used to compute the weighted score for an extender. The weighted scores are added to
 	// the scores computed  by kubernetes scheduler. The total scores are used to do the host selection.
 	Priority(*schedulerapi.ExtenderArgs) (schedulerapi.HostPriorityList, error)
