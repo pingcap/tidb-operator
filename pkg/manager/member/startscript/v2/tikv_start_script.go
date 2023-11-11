@@ -89,6 +89,14 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		m.ExtraArgs = strings.Join(extraArgs, " ")
 	}
 
+	var tikvStartScriptTpl = template.Must(
+		template.Must(
+			template.New("tikv-start-script").Parse(tikvStartSubScript),
+		).Parse(
+			componentCommonScript +
+				replaceTikvStartScriptDnsAwaitPart(tikvStartScript, tc.Spec.WaitForDnsNameIpMatchOnStartup)),
+	)
+
 	return renderTemplateFunc(tikvStartScriptTpl, m)
 }
 
@@ -106,13 +114,18 @@ done
 {{- end }}
 `
 
-	// tikvStartScript is the template of start script.
-	tikvStartScript = `
-TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+	tikvWaitForDnsIpMatchSubScript = `
 componentDomain={{ .AdvertiseHost }}
 waitThreshold={{ .KVStartTimeout }}
 nsLookupCmd="getent ahosts $componentDomain | sed -n 's/ *STREAM.*//p'"
-` + componentCommonWaitForDnsIpMatchScript + `
+` + componentCommonWaitForDnsIpMatchScript
+
+	tikvWaitForDnsOnlySubScript = "" // it is empty for backward compatibility
+
+	// tikvStartScript is the template of start script.
+	tikvStartScript = `
+TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}` +
+		dnsAwaitPart + `
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
 ARGS="--pd={{ .PDAddr }} \
@@ -137,8 +150,10 @@ exec /tikv-server ${ARGS}
 `
 )
 
-var tikvStartScriptTpl = template.Must(
-	template.Must(
-		template.New("tikv-start-script").Parse(tikvStartSubScript),
-	).Parse(componentCommonScript + tikvStartScript),
-)
+func replaceTikvStartScriptDnsAwaitPart(startScript string, withLocalIpMatch bool) string {
+	if withLocalIpMatch {
+		return strings.ReplaceAll(startScript, dnsAwaitPart, tikvWaitForDnsIpMatchSubScript)
+	} else {
+		return strings.ReplaceAll(startScript, dnsAwaitPart, tikvWaitForDnsOnlySubScript)
+	}
+}

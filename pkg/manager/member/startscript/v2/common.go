@@ -38,6 +38,7 @@ then
     tail -f /dev/null
 fi
 `
+	dnsAwaitPart = "<<dns-await-part>>"
 
 	componentCommonWaitForDnsIpMatchScript = `
 elapseTime=0

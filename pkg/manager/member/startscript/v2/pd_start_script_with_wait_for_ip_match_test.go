@@ -21,7 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
-func TestRenderPDStartScript(t *testing.T) {
+func TestRenderPDStartScriptWithWaitForIpMatch(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	type testcase struct {
@@ -56,33 +56,63 @@ fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
+componentDomain=${PD_DOMAIN}
+waitThreshold=30
+nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
 period=1
-threshold=30
 while true; do
     sleep ${period}
     elapseTime=$(( elapseTime+period ))
 
-    if [[ ${elapseTime} -ge ${threshold} ]]; then
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
         echo "waiting for pd cluster ready timeout" >&2
         exit 1
     fi
 
-    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    digRes=$(eval "$nsLookupCmd")
     if [ $? -ne 0  ]; then
-        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "domain resolve ${componentDomain} failed"
         echo "$digRes"
         continue
     fi
 
     if [ -z "${digRes}" ]
     then
-        echo "domain resolve ${PD_DOMAIN} no record return"
+        echo "domain resolve ${componentDomain} no record return"
     else
-        echo "domain resolve ${PD_DOMAIN} success"
+        echo "domain resolve ${componentDomain} success"
         echo "$digRes"
-        break
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
     fi
 done
 
@@ -140,33 +170,63 @@ fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
+componentDomain=${PD_DOMAIN}
+waitThreshold=30
+nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
 period=1
-threshold=30
 while true; do
     sleep ${period}
     elapseTime=$(( elapseTime+period ))
 
-    if [[ ${elapseTime} -ge ${threshold} ]]; then
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
         echo "waiting for pd cluster ready timeout" >&2
         exit 1
     fi
 
-    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    digRes=$(eval "$nsLookupCmd")
     if [ $? -ne 0  ]; then
-        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "domain resolve ${componentDomain} failed"
         echo "$digRes"
         continue
     fi
 
     if [ -z "${digRes}" ]
     then
-        echo "domain resolve ${PD_DOMAIN} no record return"
+        echo "domain resolve ${componentDomain} no record return"
     else
-        echo "domain resolve ${PD_DOMAIN} success"
+        echo "domain resolve ${componentDomain} success"
         echo "$digRes"
-        break
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
     fi
 done
 
@@ -224,33 +284,63 @@ fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
+componentDomain=${PD_DOMAIN}
+waitThreshold=30
+nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
 period=1
-threshold=30
 while true; do
     sleep ${period}
     elapseTime=$(( elapseTime+period ))
 
-    if [[ ${elapseTime} -ge ${threshold} ]]; then
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
         echo "waiting for pd cluster ready timeout" >&2
         exit 1
     fi
 
-    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    digRes=$(eval "$nsLookupCmd")
     if [ $? -ne 0  ]; then
-        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "domain resolve ${componentDomain} failed"
         echo "$digRes"
         continue
     fi
 
     if [ -z "${digRes}" ]
     then
-        echo "domain resolve ${PD_DOMAIN} no record return"
+        echo "domain resolve ${componentDomain} no record return"
     else
-        echo "domain resolve ${PD_DOMAIN} success"
+        echo "domain resolve ${componentDomain} success"
         echo "$digRes"
-        break
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
     fi
 done
 
@@ -308,33 +398,63 @@ fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc.cluster-1.com
+componentDomain=${PD_DOMAIN}
+waitThreshold=30
+nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
 period=1
-threshold=30
 while true; do
     sleep ${period}
     elapseTime=$(( elapseTime+period ))
 
-    if [[ ${elapseTime} -ge ${threshold} ]]; then
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
         echo "waiting for pd cluster ready timeout" >&2
         exit 1
     fi
 
-    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    digRes=$(eval "$nsLookupCmd")
     if [ $? -ne 0  ]; then
-        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "domain resolve ${componentDomain} failed"
         echo "$digRes"
         continue
     fi
 
     if [ -z "${digRes}" ]
     then
-        echo "domain resolve ${PD_DOMAIN} no record return"
+        echo "domain resolve ${componentDomain} no record return"
     else
-        echo "domain resolve ${PD_DOMAIN} success"
+        echo "domain resolve ${componentDomain} success"
         echo "$digRes"
-        break
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
     fi
 done
 
@@ -393,33 +513,63 @@ fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
+componentDomain=${PD_DOMAIN}
+waitThreshold=30
+nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
 period=1
-threshold=30
 while true; do
     sleep ${period}
     elapseTime=$(( elapseTime+period ))
 
-    if [[ ${elapseTime} -ge ${threshold} ]]; then
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
         echo "waiting for pd cluster ready timeout" >&2
         exit 1
     fi
 
-    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    digRes=$(eval "$nsLookupCmd")
     if [ $? -ne 0  ]; then
-        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "domain resolve ${componentDomain} failed"
         echo "$digRes"
         continue
     fi
 
     if [ -z "${digRes}" ]
     then
-        echo "domain resolve ${PD_DOMAIN} no record return"
+        echo "domain resolve ${componentDomain} no record return"
     else
-        echo "domain resolve ${PD_DOMAIN} success"
+        echo "domain resolve ${componentDomain} success"
         echo "$digRes"
-        break
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
     fi
 done
 
@@ -478,33 +628,63 @@ fi
 
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc.cluster-1.com
+componentDomain=${PD_DOMAIN}
+waitThreshold=30
+nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
 period=1
-threshold=30
 while true; do
     sleep ${period}
     elapseTime=$(( elapseTime+period ))
 
-    if [[ ${elapseTime} -ge ${threshold} ]]; then
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
         echo "waiting for pd cluster ready timeout" >&2
         exit 1
     fi
 
-    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    digRes=$(eval "$nsLookupCmd")
     if [ $? -ne 0  ]; then
-        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "domain resolve ${componentDomain} failed"
         echo "$digRes"
         continue
     fi
 
     if [ -z "${digRes}" ]
     then
-        echo "domain resolve ${PD_DOMAIN} no record return"
+        echo "domain resolve ${componentDomain} no record return"
     else
-        echo "domain resolve ${PD_DOMAIN} success"
+        echo "domain resolve ${componentDomain} success"
         echo "$digRes"
-        break
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+        
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+        
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
     fi
 done
 
@@ -548,6 +728,7 @@ exec /pd-server ${ARGS}
 		}
 		tc.Name = "start-script-test"
 		tc.Namespace = "start-script-test-ns"
+		tc.Spec.WaitForDnsNameIpMatchOnStartup = true
 		if c.modifyTC != nil {
 			c.modifyTC(tc)
 		}
