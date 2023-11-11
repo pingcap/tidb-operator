@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Please install [Go 1.19.x](https://go.dev/doc/install). If you want to run TiDB Operator locally, please also install the latest version of [Docker](https://www.docker.com/get-started/), [kind](https://kind.sigs.k8s.io/docs/user/quick-start/), [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) and [Helm](https://helm.sh/docs/intro/quickstart/).
+Please install [Go 1.21.x](https://go.dev/doc/install). If you want to run TiDB Operator locally, please also install the latest version of [Docker](https://www.docker.com/get-started/), [kind](https://kind.sigs.k8s.io/docs/user/quick-start/), [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) and [Helm](https://helm.sh/docs/intro/quickstart/).
 
 ## Workflow
 
@@ -102,7 +102,7 @@ $ hack/update-all.sh
 
 At first, you must have [Docker](https://www.docker.com/get-started/) installed and running.
 
-We uses [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) to
+We use [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) to
 start a Kubernetes cluster locally and
 [kubectl](https://kubernetes.io/docs/reference/kubectl/overview/) must be
 installed to access Kubernetes cluster.
@@ -163,9 +163,9 @@ $ ./hack/e2e.sh
 >
 > - You can run `make docker` if you only want to build images.
 > - Running all e2e tests typically takes hours and consumes a lot of system resources, so it's better to limit specs to run, for example: `./hack/e2e.sh -- --ginkgo.focus='Basic'`.
-> - It's possible to reuse the kind cluster, e.g pass `SKIP_DOWN=y` for the first time and pass `SKIP_UP=y SKIP_DOWN=y` later.
+> - It's possible to reuse the kind cluster, e.g. pass `SKIP_DOWN=y` for the first time and pass `SKIP_UP=y SKIP_DOWN=y` later.
 > - If you have configured multi docker registry repos, please ensure docker hub is used when building images.
-> - `hack/run-in-container.sh` can start a dev container the same as our CI environment. This is the recommended way to run e2e tests, e.g: `./hack/run-in-container.sh sleep 1d`. You can start more than one terminals and run `./hack/run-in-container.sh` to enter into the same container for debugging. Run `./hack/run-in-container.sh -h` to see help.
+> - `hack/run-in-container.sh` can start a dev container the same as our CI environment. This is the recommended way to run e2e tests, e.g: `./hack/run-in-container.sh sleep 1d`. You can start more than one terminal and run `./hack/run-in-container.sh` to enter into the same container for debugging. Run `./hack/run-in-container.sh -h` to see help.
 > - We don't support bash version < 4 for now. For those who are using a not supported version of bash, especially macOS (which default bash version is 3.2) users, please run `hack/run-in-container.sh` to start a containerized environment or install bash 4+ manually.
 
 

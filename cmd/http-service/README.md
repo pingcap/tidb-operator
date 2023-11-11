@@ -15,7 +15,7 @@ run `make buf-generate`
 ### Build
 
 - run `make build` to build a binary
-- run `make image` to build a Docker image
+- run `make docker` to build a Docker image
 
 ## Run
 
