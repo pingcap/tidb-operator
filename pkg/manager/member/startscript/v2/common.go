@@ -73,13 +73,13 @@ while true; do
             hostIps+=("$line")
         done <<< "$hostnameIRes"
         echo "hostIps: ${hostIps[@]}"
-        
+
         resolvedIps=()
         while IFS= read -r line; do
             resolvedIps+=("$line")
         done <<< "$digRes"
         echo "resolvedIps: ${resolvedIps[@]}"
-        
+
         foundIp=false
         for element in "${resolvedIps[@]}"
         do
