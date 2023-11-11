@@ -54,8 +54,8 @@
          "cpu":2,
          "memory":4
       },
-      "command_options":[
-      ]
+      "config":{
+      }
    },
    "grafana":{
       "version":"7.5.11",
@@ -63,7 +63,7 @@
          "cpu":2,
          "memory":4
       },
-      "envs":{
+      "config":{
       },
       "port":3000
    }
