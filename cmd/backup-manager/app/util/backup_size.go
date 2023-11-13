@@ -292,9 +292,9 @@ func calculateChangedBlocksSize(volumeId, preSnapshotId, snapshotId string) (uin
 		// Each retry interval is around 1 second, and no more than 60 times retry (~1 minute)
 		backoff := wait.Backoff{
 			Duration: time.Second,
-			Steps:    60,
+			Steps:    600,
 			Factor:   1.0,
-			Jitter:   0.1,
+			Jitter:   0.5,
 		}
 
 		isAllChangeListed := false
