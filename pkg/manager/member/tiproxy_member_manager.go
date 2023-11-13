@@ -121,7 +121,6 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 
 	cfgWrapper.Set("workdir", filepath.Join(tiproxyVolumeMountPath, "work"))
 	cfgWrapper.Set("proxy.pd-addrs", PDAddr)
-	cfgWrapper.Set("proxy.require-backend-tls", false)
 
 	if tc.IsTLSClusterEnabled() {
 		cfgWrapper.Set("security.cluster-tls.ca", path.Join(util.ClusterClientTLSPath, "ca.crt"))
