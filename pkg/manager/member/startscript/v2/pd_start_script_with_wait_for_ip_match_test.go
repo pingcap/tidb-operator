@@ -67,7 +67,7 @@ while true; do
     elapseTime=$(( elapseTime+period ))
 
     if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
-        echo "waiting for pd cluster ready timeout" >&2
+        echo "waiting for cluster ready timeout" >&2
         exit 1
     fi
 
@@ -181,7 +181,7 @@ while true; do
     elapseTime=$(( elapseTime+period ))
 
     if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
-        echo "waiting for pd cluster ready timeout" >&2
+        echo "waiting for cluster ready timeout" >&2
         exit 1
     fi
 
@@ -295,7 +295,7 @@ while true; do
     elapseTime=$(( elapseTime+period ))
 
     if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
-        echo "waiting for pd cluster ready timeout" >&2
+        echo "waiting for cluster ready timeout" >&2
         exit 1
     fi
 
@@ -409,7 +409,7 @@ while true; do
     elapseTime=$(( elapseTime+period ))
 
     if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
-        echo "waiting for pd cluster ready timeout" >&2
+        echo "waiting for cluster ready timeout" >&2
         exit 1
     fi
 
@@ -524,7 +524,7 @@ while true; do
     elapseTime=$(( elapseTime+period ))
 
     if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
-        echo "waiting for pd cluster ready timeout" >&2
+        echo "waiting for cluster ready timeout" >&2
         exit 1
     fi
 
@@ -639,7 +639,7 @@ while true; do
     elapseTime=$(( elapseTime+period ))
 
     if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
-        echo "waiting for pd cluster ready timeout" >&2
+        echo "waiting for cluster ready timeout" >&2
         exit 1
     fi
 
