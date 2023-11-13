@@ -13921,6 +13921,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"waitForDnsNameIpMatchOnStartup": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait until local IP address matches the one published to external DNS",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

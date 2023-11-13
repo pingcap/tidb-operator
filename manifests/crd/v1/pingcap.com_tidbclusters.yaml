@@ -21338,6 +21338,8 @@ spec:
                 x-kubernetes-list-type: map
               version:
                 type: string
+              waitForDnsNameIpMatchOnStartup:
+                type: boolean
             type: object
           status:
             properties:

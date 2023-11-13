@@ -2212,6 +2212,18 @@ bool
 <p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>waitForDnsNameIpMatchOnStartup</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait
+until local IP address matches the one published to external DNS</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -23954,6 +23966,18 @@ bool
 </td>
 <td>
 <p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>waitForDnsNameIpMatchOnStartup</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait
+until local IP address matches the one published to external DNS</p>
 </td>
 </tr>
 </tbody>
