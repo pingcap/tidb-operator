@@ -136,6 +136,7 @@ func assembleBackup(req *api.CreateBackupReq) (*v1alpha1.Backup, error) {
 			Name:      req.BackupId,
 		},
 		Spec: v1alpha1.BackupSpec{
+			CleanPolicy: v1alpha1.CleanPolicyTypeDelete, // always delete data when deleting backup
 			BR: &v1alpha1.BRConfig{
 				ClusterNamespace: req.ClusterId,
 				Cluster:          tidbClusterName,
@@ -438,5 +439,40 @@ func (s *ClusterServer) StopRestore(ctx context.Context, req *api.StopRestoreReq
 }
 
 func (s *ClusterServer) DeleteBackup(ctx context.Context, req *api.DeleteBackupReq) (*api.DeleteBackupResp, error) {
-	return nil, errors.New("DeleteBackup not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	logger := log.L().With(zap.String("request", "DeleteBackup"), zap.String("k8sID", k8sID),
+		zap.String("clusterID", req.ClusterId), zap.String("backupID", req.BackupId))
+	if opCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.DeleteBackupResp{Success: false, Message: &message}, nil
+	}
+
+	// check whether the backup exists first
+	_, err := opCli.PingcapV1alpha1().Backups(req.ClusterId).Get(ctx, req.BackupId, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("Backup not found", zap.Error(err))
+			message := fmt.Sprintf("Backup %s not found", req.BackupId)
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			return &api.DeleteBackupResp{Success: false, Message: &message}, nil
+		}
+		logger.Error("Get backup failed", zap.Error(err))
+		message := fmt.Sprintf("get backup failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.DeleteBackupResp{Success: false, Message: &message}, nil
+	}
+
+	// delete backup
+	err = opCli.PingcapV1alpha1().Backups(req.ClusterId).Delete(ctx, req.BackupId, metav1.DeleteOptions{})
+	if err != nil {
+		logger.Error("Delete backup failed", zap.Error(err))
+		message := fmt.Sprintf("delete backup failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.DeleteBackupResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.DeleteBackupResp{Success: true}, nil
 }

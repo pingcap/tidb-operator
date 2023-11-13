@@ -19,7 +19,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/manager/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errutil "k8s.io/apimachinery/pkg/util/errors"
@@ -141,9 +140,6 @@ func (p *pvcReplacer) tryToRecreateSTS(ctx *componentVolumeContext) error {
 	isSynced, _ := p.utils.IsStatefulSetSynced(ctx, ctx.sts)
 	if isSynced {
 		return nil
-	}
-	if utils.StatefulSetIsUpgrading(ctx.sts) {
-		return fmt.Errorf("component sts %s/%s is upgrading", ctx.sts.Namespace, ctx.sts.Name)
 	}
 
 	orphan := metav1.DeletePropagationOrphan

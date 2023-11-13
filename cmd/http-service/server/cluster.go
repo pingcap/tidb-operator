@@ -208,13 +208,101 @@ func (s *ClusterServer) CreateCluster(ctx context.Context, req *api.CreateCluste
 	return &api.CreateClusterResp{Success: true}, nil
 }
 
+func (s *ClusterServer) PauseCluster(ctx context.Context, req *api.PauseClusterReq) (*api.PauseClusterResp, error) {
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "PauseCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
+
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.PauseClusterResp{Success: false, Message: &message}, nil
+	}
+
+	ns := req.ClusterId
+	name := tidbClusterName
+
+	tc, err := opCli.PingcapV1alpha1().TidbClusters(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Error("TidbCluster not found", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
+			return &api.PauseClusterResp{Success: false, Message: &message}, nil
+		} else {
+			logger.Error("Get TidbCluster failed", zap.Error(err))
+			message := fmt.Sprintf("get TidbCluster failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.PauseClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+
+	tc.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: true}
+
+	_, err = opCli.PingcapV1alpha1().TidbClusters(ns).Update(ctx, tc, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error("Pause TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("update TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.PauseClusterResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.PauseClusterResp{Success: true}, nil
+}
+
+func (s *ClusterServer) ResumeCluster(ctx context.Context, req *api.ResumeClusterReq) (*api.ResumeClusterResp, error) {
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "ResumeCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
+
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.ResumeClusterResp{Success: false, Message: &message}, nil
+	}
+
+	ns := req.ClusterId
+	name := tidbClusterName
+
+	tc, err := opCli.PingcapV1alpha1().TidbClusters(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Error("TidbCluster not found", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
+			return &api.ResumeClusterResp{Success: false, Message: &message}, nil
+		} else {
+			logger.Error("Get TidbCluster failed", zap.Error(err))
+			message := fmt.Sprintf("get TidbCluster failed: %s", err.Error())
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			return &api.ResumeClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+
+	tc.Spec.SuspendAction = &v1alpha1.SuspendAction{SuspendStatefulSet: false}
+
+	_, err = opCli.PingcapV1alpha1().TidbClusters(ns).Update(ctx, tc, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error("Resume TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("update TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.ResumeClusterResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.ResumeClusterResp{Success: true}, nil
+}
+
 func assembleTidbCluster(req *api.CreateClusterReq) (*v1alpha1.TidbCluster, error) {
-	pdRes, tikvRes, tidbRes, tiflashRes, err := convertClusterComponetsResources(req)
+	pdRes, tikvRes, tidbRes, tiflashRes, err := convertClusterComponentsResources(req)
 	if err != nil {
 		return nil, errors.New("invalid resource requirements")
 	}
 
-	pdCfg, tikvCfg, tidbCfg, tiflashCfg := convertClusterComponetsConfig(req)
+	pdCfg, tikvCfg, tidbCfg, tiflashCfg := convertClusterComponentsConfig(req)
 	tidbPort := int32(4000)
 	if req.Tidb.Port != nil {
 		tidbPort = int32(*req.Tidb.Port)
@@ -321,7 +409,7 @@ func assembleTidbMonitor(req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, erro
 		return nil, errors.New("prometheus must be specified if grafana is specified")
 	}
 
-	promRes, grafanaRes, err := convertMonitorComponetsResources(req)
+	promRes, grafanaRes, err := convertMonitorComponentsResources(req)
 	if err != nil {
 		return nil, errors.New("invalid resource requirements")
 	}
@@ -373,9 +461,13 @@ func assembleTidbMonitor(req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, erro
 		},
 	}
 
-	if req.Prometheus.CommandOptions != nil {
+	if len(req.Prometheus.Config) > 0 {
+		options := make([]string, 0, len(req.Prometheus.Config))
+		for k, v := range req.Prometheus.Config {
+			options = append(options, fmt.Sprintf("--%s=%s", k, v))
+		}
 		tm.Spec.Prometheus.Config = &v1alpha1.PrometheusConfiguration{
-			CommandOptions: req.Prometheus.CommandOptions,
+			CommandOptions: options,
 		}
 	}
 
@@ -391,14 +483,14 @@ func assembleTidbMonitor(req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, erro
 				BaseImage:            grafanaBaseImage,
 				ResourceRequirements: grafanaRes,
 			},
-			Envs: req.Grafana.Envs,
+			Envs: req.Grafana.Config,
 		}
 	}
 
 	return tm, nil
 }
 
-func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes, tidbRes, tiflash corev1.ResourceRequirements, err error) {
+func convertClusterComponentsResources(req *api.CreateClusterReq) (pdRes, tikvRes, tidbRes, tiflash corev1.ResourceRequirements, err error) {
 	if req.Pd == nil || req.Tikv == nil || req.Tidb == nil ||
 		req.Pd.Replicas == nil || req.Tikv.Replicas == nil || req.Tidb.Replicas == nil ||
 		*req.Pd.Replicas <= 0 || *req.Tikv.Replicas <= 0 || *req.Tidb.Replicas <= 0 ||
@@ -451,7 +543,7 @@ func convertConfigValue(x *structpb.Value) interface{} {
 	}
 }
 
-func convertClusterComponetsConfig(req *api.CreateClusterReq) (
+func convertClusterComponentsConfig(req *api.CreateClusterReq) (
 	pdCfg *v1alpha1.PDConfigWraper, tikvCfg *v1alpha1.TiKVConfigWraper,
 	tidbCfg *v1alpha1.TiDBConfigWraper, tiflashCfg *v1alpha1.TiFlashConfigWraper) {
 
@@ -483,7 +575,7 @@ func convertClusterComponetsConfig(req *api.CreateClusterReq) (
 	return
 }
 
-func convertMonitorComponetsResources(req *api.CreateClusterReq) (promRes, grafanaRes corev1.ResourceRequirements, err error) {
+func convertMonitorComponentsResources(req *api.CreateClusterReq) (promRes, grafanaRes corev1.ResourceRequirements, err error) {
 	if req.Prometheus != nil {
 		promRes, err = convertResourceRequirements(req.Prometheus.Resource)
 		if err != nil {
@@ -661,6 +753,24 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 	tc, err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Get(ctx, tidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
+			// assume ti's secret wouldn't block the deletion of the TidbCluster
+			existing, err := checkPodPVCExisting(ctx, kubeCli, req.ClusterId)
+			if err != nil {
+				logger.Error("Check pods and pvcs failed", zap.Error(err))
+				message := fmt.Sprintf("check pods and pvcs failed: %s", err.Error())
+				setResponseStatusCodes(ctx, http.StatusInternalServerError)
+				return &api.GetClusterResp{Success: false, Message: &message}, nil
+			}
+			if existing {
+				// if tc not found, but Pods or PVCs exist, return with Deleting status
+				return &api.GetClusterResp{
+					Success: true,
+					Data: &api.ClusterInfo{
+						ClusterId: req.ClusterId,
+						Status:    string(ClusterStatusDeleting),
+					}}, nil
+			}
+
 			logger.Warn("TidbCluster not found", zap.Error(err))
 			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
 			setResponseStatusCodes(ctx, http.StatusNotFound)
@@ -813,7 +923,7 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 			logger.Error("Get TiDB host and port failed", zap.Error(err))
 		} else {
 			info.Tidb.Host = host
-			info.Tidb.Port = uint32(port)
+			info.Tidb.NodePort = uint32(port)
 		}
 	}
 
@@ -823,20 +933,26 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 			Resource: reConvertResourceRequirements(tm.Spec.Prometheus.MonitorContainer.ResourceRequirements),
 		}
 		if tm.Spec.Prometheus.Config != nil {
-			info.Prometheus.CommandOptions = tm.Spec.Prometheus.Config.CommandOptions
+			info.Prometheus.Config = make(map[string]string, len(tm.Spec.Prometheus.Config.CommandOptions))
+			for _, opt := range tm.Spec.Prometheus.Config.CommandOptions {
+				kv := strings.SplitN(strings.TrimPrefix(opt, "--"), "=", 2)
+				if len(kv) == 2 {
+					info.Prometheus.Config[kv[0]] = kv[1]
+				}
+			}
 		}
 		if tm.Spec.Grafana != nil {
 			info.Grafana = &api.GrafanaStatus{
 				Version:  tm.Spec.Grafana.MonitorContainer.Version,
 				Resource: reConvertResourceRequirements(tm.Spec.Grafana.MonitorContainer.ResourceRequirements),
-				Envs:     tm.Spec.Grafana.Envs,
+				Config:   tm.Spec.Grafana.Envs,
 			}
 			host, port, err := getGrafanaHostPort(kubeCli, tm)
 			if err != nil {
 				logger.Error("Get Grafana host and port failed", zap.Error(err))
 			} else {
 				info.Grafana.Host = host
-				info.Grafana.Port = uint32(port)
+				info.Grafana.NodePort = uint32(port)
 			}
 		}
 	}
@@ -1003,18 +1119,238 @@ func getPodStartTime(podList *corev1.PodList, name string) string {
 	return ""
 }
 
+func checkPodPVCExisting(ctx context.Context, kubeCli kubernetes.Interface, namespace string) (bool, error) {
+	ls := metav1.FormatLabelSelector(&metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      label.InstanceLabelKey,
+				Operator: metav1.LabelSelectorOpIn,
+				Values: []string{
+					tidbClusterName,
+					tidbMonitorName,
+					tidbInitializerName,
+				},
+			},
+		},
+	})
+
+	podList, err := kubeCli.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: ls,
+	})
+	if err != nil {
+		return false, err
+	}
+	if len(podList.Items) > 0 {
+		return true, nil
+	}
+
+	pvcList, err := kubeCli.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: ls,
+	})
+	if err != nil {
+		return false, err
+	}
+	if len(pvcList.Items) > 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteClusterReq) (*api.DeleteClusterResp, error) {
-	return nil, errors.New("DeleteCluster not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "DeleteCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+	}
+	// delete tm
+	if err := opCli.PingcapV1alpha1().TidbMonitors(req.ClusterId).Delete(ctx, tidbMonitorName, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("TidbMonitor not found", zap.Error(err))
+		} else {
+			logger.Error("Delete TidbMonitor failed", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			message := fmt.Sprintf("delete TidbMonitor failed: %s", err.Error())
+			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+		}
+
+	}
+	// delete init and secret
+	if err := opCli.PingcapV1alpha1().TidbInitializers(req.ClusterId).Delete(ctx, tidbInitializerName, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("TidbInitializer not found", zap.Error(err))
+		} else {
+			logger.Error("Delete TidbInitializer failed", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			message := fmt.Sprintf("delete TidbInitializer failed: %s", err.Error())
+			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+	if err := kubeCli.CoreV1().Secrets(req.ClusterId).Delete(ctx, tidbInitializerPasswordSecret, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("TidbInitializer password secret not found", zap.Error(err))
+		} else {
+			logger.Error("Delete TidbInitializer password secret failed", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			message := fmt.Sprintf("delete TidbInitializer password secret failed: %s", err.Error())
+			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+
+	// get restores for this cluster
+	// NOTE: we list all restores in the cluster's ns now as we only have one cluster in one ns
+	restoreList, err := opCli.PingcapV1alpha1().Restores(req.ClusterId).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		logger.Error("List TidbRestore failed", zap.Error(err))
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		message := fmt.Sprintf("list TidbRestore failed: %s", err.Error())
+		return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+	}
+	for _, restore := range restoreList.Items {
+		// delete restore for this cluster
+		if err := opCli.PingcapV1alpha1().Restores(req.ClusterId).Delete(ctx, restore.Name, metav1.DeleteOptions{}); err != nil {
+			if apierrors.IsNotFound(err) {
+				logger.Info("TidbRestore not found", zap.String("restore", restore.Name), zap.Error(err))
+			} else {
+				logger.Error("Delete TidbRestore failed", zap.String("restore", restore.Name), zap.Error(err))
+				setResponseStatusCodes(ctx, http.StatusInternalServerError)
+				message := fmt.Sprintf("delete TidbRestore %s failed: %s", restore.Name, err.Error())
+				return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+			}
+		}
+	}
+
+	// delete tc
+	if err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Delete(ctx, tidbClusterName, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("TidbCluster not found", zap.Error(err))
+		} else {
+			logger.Error("Delete TidbCluster failed", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			message := fmt.Sprintf("delete TidbCluster failed: %s", err.Error())
+			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+		}
+
+	}
+	// we don't delete the ns for now, since some backup may still stored in it
+	// TODO(http-service): we delete all pvc in ns for now, but we may only delete tidbcluster pvc in future
+	if err := kubeCli.CoreV1().PersistentVolumeClaims(req.ClusterId).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("PersistentVolumeClaims not found", zap.Error(err))
+		} else {
+			logger.Error("Delete PersistentVolumeClaims failed", zap.Error(err))
+			setResponseStatusCodes(ctx, http.StatusInternalServerError)
+			message := fmt.Sprintf("delete PersistentVolumeClaims failed: %s", err.Error())
+			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+		}
+	}
+	return &api.DeleteClusterResp{Success: true}, nil
 }
 
+// RestartCluster
+// graceful rolling restart to all Pods in specified components
+// ref https://docs.pingcap.com/tidb-in-kubernetes/stable/restart-a-tidb-cluster
 func (s *ClusterServer) RestartCluster(ctx context.Context, req *api.RestartClusterReq) (*api.RestartClusterResp, error) {
-	return nil, errors.New("RestartCluster not implemented")
+	k8sID := getKubernetesID(ctx)
+	opCli := s.KubeClient.GetOperatorClient(k8sID)
+	kubeCli := s.KubeClient.GetKubeClient(k8sID)
+	logger := log.L().With(zap.String("request", "RestartCluster"), zap.String("k8sID", k8sID), zap.String("clusterID", req.ClusterId))
+	if opCli == nil || kubeCli == nil {
+		logger.Error("K8s client not found")
+		message := fmt.Sprintf("no %s is specified in the request header or the kubeconfig context not exists", HeaderKeyKubernetesID)
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.RestartClusterResp{Success: false, Message: &message}, nil
+	}
+
+	tc, err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Get(ctx, tidbClusterName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("TidbCluster not found", zap.Error(err))
+			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
+			setResponseStatusCodes(ctx, http.StatusNotFound)
+			return &api.RestartClusterResp{Success: false, Message: &message}, nil
+		}
+		logger.Error("Get TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("get TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.RestartClusterResp{Success: false, Message: &message}, nil
+	}
+
+	// Add tidb.pingcap.com/restartedAt in the annotation of the spec of the TiDB component
+	// to trigger the rolling restart of the TiDB component
+	// set its value to be the current time.
+	tc, err = setRestartAnnotation(tc, req.Component)
+	if err != nil {
+		logger.Error("Restart TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("restart TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusBadRequest)
+		return &api.RestartClusterResp{Success: false, Message: &message}, nil
+	}
+
+	// update tc
+	_, err = opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Update(ctx, tc, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error("Update TidbCluster failed", zap.Error(err))
+		message := fmt.Sprintf("update TidbCluster failed: %s", err.Error())
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		return &api.RestartClusterResp{Success: false, Message: &message}, nil
+	}
+
+	return &api.RestartClusterResp{Success: true}, nil
 }
 
-func (s *ClusterServer) StopCluster(ctx context.Context, req *api.StopClusterReq) (*api.StopClusterResp, error) {
-	return nil, errors.New("StopCluster not implemented")
-}
+func setRestartAnnotation(tc *v1alpha1.TidbCluster, components []string) (*v1alpha1.TidbCluster, error) {
+	// check component
+	if len(components) == 0 {
+		return nil, fmt.Errorf("no components are specified that need to be restarted")
+	}
 
-func (s *ClusterServer) StartCluster(ctx context.Context, req *api.StartClusterReq) (*api.StartClusterResp, error) {
-	return nil, errors.New("StartCluster not implemented")
+	restartAt := time.Now().Format(time.RFC3339)
+	for _, comp := range components {
+		switch strings.ToLower(comp) {
+		case "pd":
+			if tc.Spec.PD.Annotations == nil {
+				tc.Spec.PD.Annotations = make(map[string]string)
+			}
+			tc.Spec.PD.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "tikv":
+			if tc.Spec.TiKV.Annotations == nil {
+				tc.Spec.TiKV.Annotations = make(map[string]string)
+			}
+			tc.Spec.TiKV.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "tidb":
+			if tc.Spec.TiDB.Annotations == nil {
+				tc.Spec.TiDB.Annotations = make(map[string]string)
+			}
+			tc.Spec.TiDB.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "tiflash":
+			if tc.Spec.TiFlash.Annotations == nil {
+				tc.Spec.TiFlash.Annotations = make(map[string]string)
+			}
+			tc.Spec.TiFlash.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "ticdc":
+			if tc.Spec.TiCDC.Annotations == nil {
+				tc.Spec.TiCDC.Annotations = make(map[string]string)
+			}
+			tc.Spec.TiCDC.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "tiproxy":
+			if tc.Spec.TiDB.Annotations == nil {
+				tc.Spec.TiDB.Annotations = make(map[string]string)
+			}
+			tc.Spec.TiDB.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		case "pump":
+			if tc.Spec.Pump.Annotations == nil {
+				tc.Spec.Pump.Annotations = make(map[string]string)
+			}
+			tc.Spec.Pump.Annotations["tidb.pingcap.com/restartedAt"] = restartAt
+		default:
+			return nil, fmt.Errorf("invalid component: %s", comp)
+		}
+	}
+
+	return tc, nil
 }
