@@ -2969,7 +2969,7 @@ func TestMultipleClusterConfigRender(t *testing.T) {
 	for _, item := range pc {
 		key := item.Key
 		if key == "scrape_configs" {
-			g.Expect(len(item.Value.([]yaml.MapSlice))).Should(Equal(26))
+			g.Expect(len(item.Value.([]yaml.MapSlice))).Should(Equal(24))
 		}
 	}
 
