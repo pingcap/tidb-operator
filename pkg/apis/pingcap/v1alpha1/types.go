@@ -376,8 +376,8 @@ type TidbClusterSpec struct {
 	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
 	PreferIPv6 bool `json:"preferIPv6,omitempty"`
 
-	// WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait
-	// until local IP address matches the one published to external DNS
+	// WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait until local IP address matches
+	// the one published to external DNS. This feature is only available with StartScriptVersion: v2
 	WaitForDnsNameIpMatchOnStartup bool `json:"waitForDnsNameIpMatchOnStartup,omitempty"`
 }
 
