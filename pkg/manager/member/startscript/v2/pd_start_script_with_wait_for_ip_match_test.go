@@ -728,7 +728,9 @@ exec /pd-server ${ARGS}
 		}
 		tc.Name = "start-script-test"
 		tc.Namespace = "start-script-test-ns"
-		tc.Spec.WaitForDnsNameIpMatchOnStartup = true
+		tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{
+			v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch,
+		}
 		if c.modifyTC != nil {
 			c.modifyTC(tc)
 		}

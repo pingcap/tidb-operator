@@ -16,6 +16,7 @@ package v2
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -89,12 +90,15 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		m.ExtraArgs = strings.Join(extraArgs, " ")
 	}
 
+	waitForDnsNameIpMatchOnStartup := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
+
 	var tikvStartScriptTpl = template.Must(
 		template.Must(
 			template.New("tikv-start-script").Parse(tikvStartSubScript),
 		).Parse(
 			componentCommonScript +
-				replaceTikvStartScriptDnsAwaitPart(tikvStartScript, tc.Spec.WaitForDnsNameIpMatchOnStartup)),
+				replaceTikvStartScriptDnsAwaitPart(tikvStartScript, waitForDnsNameIpMatchOnStartup)),
 	)
 
 	return renderTemplateFunc(tikvStartScriptTpl, m)

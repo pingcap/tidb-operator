@@ -16,6 +16,7 @@ package v2
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -69,13 +70,16 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.PDStartTimeout = tc.PDStartTimeout()
 
+	waitForDnsNameIpMatchOnStartup := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
+
 	pdStartScriptTpl := template.Must(
 		template.Must(
 			template.New("pd-start-script").Parse(pdStartSubScript),
 		).Parse(
 			componentCommonScript +
 				replacePdStartScriptCustomPorts(
-					replacePdStartScriptDnsAwaitPart(pdStartScript, tc.Spec.WaitForDnsNameIpMatchOnStartup))),
+					replacePdStartScriptDnsAwaitPart(pdStartScript, waitForDnsNameIpMatchOnStartup))),
 	)
 
 	return renderTemplateFunc(pdStartScriptTpl, m)

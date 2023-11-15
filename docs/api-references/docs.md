@@ -2214,14 +2214,18 @@ bool
 </tr>
 <tr>
 <td>
-<code>waitForDnsNameIpMatchOnStartup</code></br>
+<code>startScriptV2FeatureFlags</code></br>
 <em>
-bool
+<a href="#startscriptv2featureflag">
+[]StartScriptV2FeatureFlag
+</a>
 </em>
 </td>
 <td>
-<p>WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait until local IP address matches
-the one published to external DNS. This feature is only available with StartScriptVersion: v2</p>
+<p>Feature flags used by v2 startup script to enable various features.
+Examples of supported feature flags:
+- WaitForDnsNameIpMatch indicates whether PD and TiKV has to wait until local IP address matches the one published to external DNS
+- PreferPDAddressesOverDiscovery advises start script to use TidbClusterSpec.PDAddresses (if supplied) as argument for pd-server, tikv-server and tidb-server commands</p>
 </td>
 </tr>
 </table>
@@ -14856,6 +14860,13 @@ Optional: Defaults to omitted</p>
 </tr>
 </tbody>
 </table>
+<h3 id="startscriptv2featureflag">StartScriptV2FeatureFlag</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+</p>
 <h3 id="startscriptversion">StartScriptVersion</h3>
 <p>
 (<em>Appears on:</em>
@@ -23970,14 +23981,18 @@ bool
 </tr>
 <tr>
 <td>
-<code>waitForDnsNameIpMatchOnStartup</code></br>
+<code>startScriptV2FeatureFlags</code></br>
 <em>
-bool
+<a href="#startscriptv2featureflag">
+[]StartScriptV2FeatureFlag
+</a>
 </em>
 </td>
 <td>
-<p>WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait until local IP address matches
-the one published to external DNS. This feature is only available with StartScriptVersion: v2</p>
+<p>Feature flags used by v2 startup script to enable various features.
+Examples of supported feature flags:
+- WaitForDnsNameIpMatch indicates whether PD and TiKV has to wait until local IP address matches the one published to external DNS
+- PreferPDAddressesOverDiscovery advises start script to use TidbClusterSpec.PDAddresses (if supplied) as argument for pd-server, tikv-server and tidb-server commands</p>
 </td>
 </tr>
 </tbody>

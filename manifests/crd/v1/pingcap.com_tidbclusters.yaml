@@ -8224,6 +8224,10 @@ spec:
                       type: string
                   type: object
                 type: array
+              startScriptV2FeatureFlags:
+                items:
+                  type: string
+                type: array
               startScriptVersion:
                 enum:
                 - ""
@@ -21338,8 +21342,6 @@ spec:
                 x-kubernetes-list-type: map
               version:
                 type: string
-              waitForDnsNameIpMatchOnStartup:
-                type: boolean
             type: object
           status:
             properties:
