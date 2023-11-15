@@ -2220,8 +2220,8 @@ bool
 </em>
 </td>
 <td>
-<p>WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait
-until local IP address matches the one published to external DNS</p>
+<p>WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait until local IP address matches
+the one published to external DNS. This feature is only available with StartScriptVersion: v2</p>
 </td>
 </tr>
 </table>
@@ -23976,8 +23976,8 @@ bool
 </em>
 </td>
 <td>
-<p>WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait
-until local IP address matches the one published to external DNS</p>
+<p>WaitForDnsNameIpMatchOnStartup indicates whether PD and TiKV has to wait until local IP address matches
+the one published to external DNS. This feature is only available with StartScriptVersion: v2</p>
 </td>
 </tr>
 </tbody>
