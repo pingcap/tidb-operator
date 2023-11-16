@@ -516,15 +516,6 @@ func (s *ClusterServer) StopBackup(ctx context.Context, req *api.StopBackupReq) 
 		}
 	}
 
-	// update backup status
-	_, err = opCli.PingcapV1alpha1().Backups(req.ClusterId).Update(ctx, backup, metav1.UpdateOptions{})
-	if err != nil {
-		logger.Error("Backup not found", zap.Error(err))
-		message := fmt.Sprintf("Backup %s not found", req.BackupId)
-		setResponseStatusCodes(ctx, http.StatusBadRequest)
-		return &api.StopBackupResp{Success: false, Message: &message}, nil
-	}
-
 	return &api.StopBackupResp{Success: true}, nil
 }
 
@@ -570,15 +561,6 @@ func (s *ClusterServer) StopRestore(ctx context.Context, req *api.StopRestoreReq
 		logger.Error("Stop restore failed", zap.Error(err))
 		message := fmt.Sprintf("Stop restore failed: %s", err.Error())
 		setResponseStatusCodes(ctx, http.StatusInternalServerError)
-		return &api.StopRestoreResp{Success: false, Message: &message}, nil
-	}
-
-	// update restore status
-	_, err = opCli.PingcapV1alpha1().Restores(req.ClusterId).Update(ctx, restore, metav1.UpdateOptions{})
-	if err != nil {
-		logger.Error("Restore not found", zap.Error(err))
-		message := fmt.Sprintf("Restore %s not found", req.RestoreId)
-		setResponseStatusCodes(ctx, http.StatusBadRequest)
 		return &api.StopRestoreResp{Success: false, Message: &message}, nil
 	}
 
