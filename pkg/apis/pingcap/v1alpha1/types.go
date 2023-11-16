@@ -2482,6 +2482,8 @@ type RestoreSpec struct {
 	// WarmupStrategy
 	// +kubebuilder:default=hybrid
 	WarmupStrategy RestoreWarmupStrategy `json:"warmupStrategy,omitempty"`
+	// WarmupStrategyOptions is the options for warmup.
+	WarmupStrategyOpts RestoreWarmupStrategyOpts `json:"warmupOpts,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional
@@ -2512,6 +2514,10 @@ const (
 	// RestoreWarmupModeASync means initialize TiKV volumes after restore complete
 	RestoreWarmupModeASync RestoreWarmupMode = "async"
 )
+
+type RestoreWarmupStrategyOpts struct {
+	HybridWarmupFrom metav1.Time `json:"hybird.warmupFrom,omitempty"`
+}
 
 // RestoreWarmupStrategy represents how to initialize TiKV volumes
 type RestoreWarmupStrategy string

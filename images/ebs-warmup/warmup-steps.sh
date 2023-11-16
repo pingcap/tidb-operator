@@ -1,4 +1,4 @@
-#! /usr/bin/env sh
+#! /usr/bin/env bash
 
 # Copyright 2023 PingCAP, Inc.
 #
@@ -35,6 +35,7 @@ EOF
 }
 
 operation=none
+fs_extra=( )
 while [ $# -gt 0 ]; do
     case $1 in
         --help | -h) 
@@ -45,15 +46,24 @@ while [ $# -gt 0 ]; do
             ;;
         --fs) operation=fs
             ;;
+        --fs-override-arg) 
+            fs_extra=()
+            operation=fs_override_arg
+            ;;
         --debug) set -x
             ;;
         -*)
-            die "unsupported flag $1"
-            ;;
+            if [ "$operation" != fs_override_arg ]; then
+                die "unsupported flag $1"
+            fi
+            ;&
         *)
-            echo "spawning warm up task: operation = $operation; file path = $1"
             case "$operation" in
+                fs_override_arg) 
+                    fs_extra+=("$1")
+                    ;;
                 fio) 
+                    echo "spawning wram up task: operation = $operation; file path = $1"
                     device=$(dev_name_by_mount_point "$1")
                     if [ -z "$device" ]; then
                         echo "$1 isn't a mount point, skipping."
@@ -64,7 +74,13 @@ while [ $# -gt 0 ]; do
                             --thread=1 --filename=/dev/"$device" &
                     fi
                     ;;
-                fs) /warmup --type=whole --files="$1" -P256 --direct &
+                fs) 
+                    echo "spawning wram up task: operation = $operation; file path = $1, fs_extra = ${fs_extra[*]}"
+                    if (( ${#fs_extra[@]} > 0 )); then
+                        /warmup "${fs_extra[@]}" --files="$1" -P256 --direct &
+                    else
+                        /warmup --type=whole --files="$1" -P256 --direct &
+                    fi
                     ;;
                 *) die "internal error: unsupported operation $1; forgot to call --block or --fs?"
                     ;;

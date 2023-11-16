@@ -372,6 +372,8 @@ type VolumeRestoreMemberSpec struct {
 	// WarmupStrategy
 	// +kubebuilder:default=hybrid
 	WarmupStrategy pingcapv1alpha1.RestoreWarmupStrategy `json:"warmupStrategy,omitempty"`
+	// WarmupStrategyOptions is the options for warmup.
+	WarmupStrategyOpts pingcapv1alpha1.RestoreWarmupStrategyOpts `json:"warmupOpts,omitempty"`
 }
 
 type VolumeRestoreMemberBackupInfo struct {

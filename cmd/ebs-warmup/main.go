@@ -15,9 +15,11 @@ package main
 
 import (
 	"context"
+	"flag"
 	"math"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/pingcap/tidb-operator/cmd/ebs-warmup/filereader"
 	"github.com/spf13/pflag"
@@ -26,17 +28,29 @@ import (
 
 var (
 	files               = pflag.String("files", "*", "What files should be warmed up? This can be a bash glob.")
-	ty                  = pflag.String("type", "footer", "Where to warm up? `footer` or `whole`.")
+	ty                  = pflag.String("type", "footer", "Where to warm up? `footer`, `whole` or `hybrid`.")
 	rateLimit           = pflag.Float64P("ratelimit", "r", math.Inf(1), "What is the max speed of reading? (in MiB/s)")
 	nWorkers            = pflag.IntP("workers", "P", 32, "How many workers should we start?")
 	direct              = pflag.Bool("direct", false, "Should we use direct I/O?")
 	checkpointFileCount = pflag.Uint64("checkpoint.every", 100, "After processing how many files, should we save the checkpoint?")
 	checkpointFile      = pflag.String("checkpoint.at", "warmup-checkpoint.txt", "Where should we save & read the checkpoint?")
+	warmupFrom          = pflag.String("hybrid.full-from-recent", time.Now().Add(-24*time.Hour).Format(time.RFC3339),
+		"Will only warm up full files from this timestamp(RFC3339 format). Other files will only be warmed up with footer.")
 )
 
+// /warmup --type=hibrid --hybrid.full-from-recent 1970-01-01T00:00:01Z -v=3 --files=/etc -P256 --direct
+
 func main() {
+	fs := flag.NewFlagSet("klog", flag.ContinueOnError)
+	klog.InitFlags(fs)
+	pflag.CommandLine.AddGoFlagSet(fs)
 	pflag.Parse()
 
+	warmupFromTs, err := time.Parse(time.RFC3339, *warmupFrom)
+	if err != nil {
+		klog.ErrorS(err, "Failed to parse the time from `hybrid.full-from-recent`.")
+		os.Exit(1)
+	}
 	config := filereader.Config{
 		Files:           *files,
 		Type:            *ty,
@@ -45,6 +59,7 @@ func main() {
 		Direct:          *direct,
 		CheckpointEvery: *checkpointFileCount,
 		CheckpointFile:  *checkpointFile,
+		WarmupAfter:     warmupFromTs,
 	}
 
 	rd := filereader.New(config)
@@ -57,5 +72,8 @@ func main() {
 		signal.Stop(ch)
 		cancel()
 	}()
-	rd.RunAndClose(ctx)
+	if err := rd.RunAndClose(ctx); err != nil {
+		klog.ErrorS(err, "Run failed.")
+		os.Exit(1)
+	}
 }

@@ -1536,6 +1536,19 @@ RestoreWarmupStrategy
 </tr>
 <tr>
 <td>
+<code>warmupOpts</code></br>
+<em>
+<a href="#restorewarmupstrategyopts">
+RestoreWarmupStrategyOpts
+</a>
+</em>
+</td>
+<td>
+<p>WarmupStrategyOptions is the options for warmup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#podsecuritycontext-v1-core">
@@ -14072,6 +14085,19 @@ RestoreWarmupStrategy
 </tr>
 <tr>
 <td>
+<code>warmupOpts</code></br>
+<em>
+<a href="#restorewarmupstrategyopts">
+RestoreWarmupStrategyOpts
+</a>
+</em>
+</td>
+<td>
+<p>WarmupStrategyOptions is the options for warmup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#podsecuritycontext-v1-core">
@@ -14217,6 +14243,35 @@ RestoreConditionType
 <p>
 <p>RestoreWarmupStrategy represents how to initialize TiKV volumes</p>
 </p>
+<h3 id="restorewarmupstrategyopts">RestoreWarmupStrategyOpts</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>hybird.warmupFrom</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="s3storageprovider">S3StorageProvider</h3>
 <p>
 (<em>Appears on:</em>

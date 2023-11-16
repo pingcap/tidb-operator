@@ -2205,6 +2205,12 @@ spec:
                 type: string
               warmupImage:
                 type: string
+              warmupOpts:
+                properties:
+                  hybird.warmupFrom:
+                    format: date-time
+                    type: string
+                type: object
               warmupStrategy:
                 default: hybrid
                 type: string

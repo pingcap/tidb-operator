@@ -116,6 +116,18 @@ func (c *Collector) CheckWith(t *testing.T, fileInfos []os.FileInfo) {
 	}
 }
 
+func (c *Collector) CheckHybrid(t *testing.T, fullFrom time.Time, fileInfos []os.FileInfo) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, f := range fileInfos {
+		if f.ModTime().After(fullFrom) {
+			require.GreaterOrEqual(t, int(f.Size()), c.records[f.Name()], "file %s size %d but should be %d", f.Name(), c.records[f.Name()], f.Size())
+		} else {
+			require.Equal(t, 16*1024, c.records[f.Name()], "file %s size %d(footer size) but should be %d", f.Name(), c.records[f.Name()], f.Size())
+		}
+	}
+}
+
 func TestBasic(t *testing.T) {
 	tw := createTestDataSet(t)
 
@@ -191,4 +203,27 @@ func TestSigAndCheckpoint(t *testing.T) {
 	runner2 := filereader.New(cfg)
 	runner2.RunAndClose(ctx)
 	coll2.CheckWith(t, tw.files[:101])
+}
+
+func TestHybridWarmup(t *testing.T) {
+	tw := createTestDataSet(t)
+
+	for i := 0; i < 10; i++ {
+		tw.createFile(1024*20, true)
+	}
+	createFrom := time.Now()
+	time.Sleep(100 * time.Millisecond)
+	for i := 0; i < 10; i++ {
+		tw.createFile(1024*20, true)
+	}
+	cfg := tw.defaultConfig()
+	coll := NewCollector()
+	cfg.OnStep = coll.OnStep
+	cfg.Type = "hybrid"
+	cfg.WarmupAfter = createFrom
+	runner := filereader.New(cfg)
+	ctx := context.Background()
+	runner.RunAndClose(ctx)
+
+	coll.CheckHybrid(t, createFrom, tw.files)
 }

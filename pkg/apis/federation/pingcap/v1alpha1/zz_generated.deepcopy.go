@@ -515,6 +515,7 @@ func (in *VolumeRestoreMemberSpec) DeepCopyInto(out *VolumeRestoreMemberSpec) {
 		*out = make([]v1.LocalObjectReference, len(*in))
 		copy(*out, *in)
 	}
+	in.WarmupStrategyOpts.DeepCopyInto(&out.WarmupStrategyOpts)
 	return
 }
 
