@@ -309,7 +309,7 @@ func NeedNotClean(backup *Backup) bool {
 	return backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure && !IsBackupFailed(backup)
 }
 
-// ParseLogBackupSubCommand parse the log backup subcommand from cr.
+// ParseLogBackupSubcommand parse the log backup subcommand from cr.
 // The parse priority of the command is stop > truncate > start.
 func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	if backup.Spec.Mode != BackupModeLog {
@@ -382,7 +382,7 @@ func IsLogBackupAlreadyTruncate(backup *Backup) bool {
 	return specTS <= startCommitTS || specTS <= successedTS
 }
 
-// IsLogBackupAlreadyStop return whether log backup has already stoped.
+// IsLogBackupAlreadyStop return whether log backup has already stopped.
 func IsLogBackupAlreadyStop(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupStopped
 }

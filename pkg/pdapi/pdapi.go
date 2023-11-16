@@ -64,7 +64,7 @@ type PDClient interface {
 	GetTombStoneStores() (*StoresInfo, error)
 	// GetStore gets a TiKV store for a specific store id from cluster
 	GetStore(storeID uint64) (*StoreInfo, error)
-	// storeLabelsEqualNodeLabels compares store labels with node labels
+	// SetStoreLabels compares store labels with node labels
 	// for historic reasons, PD stores TiKV labels as []*StoreLabel which is a key-value pair slice
 	SetStoreLabels(storeID uint64, labels map[string]string) (bool, error)
 	// UpdateReplicationConfig updates the replication config
@@ -196,7 +196,7 @@ type MembersInfo struct {
 
 // below copied from github.com/tikv/pd/pkg/autoscaling
 
-// Strategy within a HTTP request provides rules and resources to help make decision for auto scaling.
+// Strategy within an HTTP request provides rules and resources to help make decision for auto scaling.
 type Strategy struct {
 	Rules     []*Rule     `json:"rules"`
 	Resources []*Resource `json:"resources"`
@@ -258,7 +258,7 @@ func (c *pdClient) GetHealth() (*HealthInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	healths := []MemberHealth{}
+	var healths []MemberHealth
 	err = json.Unmarshal(body, &healths)
 	if err != nil {
 		return nil, err
@@ -378,7 +378,7 @@ func (c *pdClient) DeleteStore(storeID uint64) error {
 	}
 	defer httputil.DeferClose(res.Body)
 
-	// Remove an offline store should returns http.StatusOK
+	// Remove an offline store should return http.StatusOK
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
