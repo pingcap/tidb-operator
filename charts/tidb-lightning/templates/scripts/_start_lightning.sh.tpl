@@ -29,9 +29,7 @@ sed "s#CHECKPOINT_USE_DATA_DIR#$data_dir#g" /etc/tidb-lightning/tidb-lightning.t
 /tidb-lightning \
     --pd-urls={{ .Values.targetTidbCluster.name }}-pd.{{ .Values.targetTidbCluster.namespace | default .Release.Namespace }}:{{ .Values.targetTidbCluster.pdClientPort | default 2379 }} \
     --status-addr=0.0.0.0:8289 \
-{{- if eq .Values.backend "importer" }}
-    --importer={{ .Values.targetTidbCluster.name }}-importer.{{ .Values.targetTidbCluster.namespace | default .Release.Namespace }}:8287 \
-{{- else if eq .Values.backend "tidb" }}
+{{- if eq .Values.backend "tidb" }}
     --backend=tidb \
     --tidb-port={{ .Values.targetTidbCluster.port | default 4000 }} \
 {{- else if eq .Values.backend "local" }}

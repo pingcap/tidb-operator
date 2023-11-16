@@ -97,7 +97,7 @@ annotations: {}
 tolerations: []
 affinity: {}
 
-# The delivery backend used to import data (valid options include `local`, `tidb` and `importer`(deprecated)).
+# The delivery backend used to import data (valid options include `local` and `tidb`.
 # If set to `local`, then the following `sortedKV` should be set.
 backend: local
 
