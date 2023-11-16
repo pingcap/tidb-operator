@@ -193,7 +193,7 @@ if [[ -d $TLS_DIR ]]; then
     rm -rf $TLS_DIR
 fi
 
-components=("pd" "tidb" "tikv" "pump" "ticdc" "tiflash" "importer" "lightning")
+components=("pd" "tidb" "tikv" "pump" "ticdc" "tiflash" "lightning")
 
 if [[ $# -eq 1 && $1 = "clean" ]]; then
     echo "cleaning up"
