@@ -2212,6 +2212,22 @@ bool
 <p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>startScriptV2FeatureFlags</code></br>
+<em>
+<a href="#startscriptv2featureflag">
+[]StartScriptV2FeatureFlag
+</a>
+</em>
+</td>
+<td>
+<p>Feature flags used by v2 startup script to enable various features.
+Examples of supported feature flags:
+- WaitForDnsNameIpMatch indicates whether PD and TiKV has to wait until local IP address matches the one published to external DNS
+- PreferPDAddressesOverDiscovery advises start script to use TidbClusterSpec.PDAddresses (if supplied) as argument for pd-server, tikv-server and tidb-server commands</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -14844,6 +14860,13 @@ Optional: Defaults to omitted</p>
 </tr>
 </tbody>
 </table>
+<h3 id="startscriptv2featureflag">StartScriptV2FeatureFlag</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+</p>
 <h3 id="startscriptversion">StartScriptVersion</h3>
 <p>
 (<em>Appears on:</em>
@@ -23954,6 +23977,22 @@ bool
 </td>
 <td>
 <p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startScriptV2FeatureFlags</code></br>
+<em>
+<a href="#startscriptv2featureflag">
+[]StartScriptV2FeatureFlag
+</a>
+</em>
+</td>
+<td>
+<p>Feature flags used by v2 startup script to enable various features.
+Examples of supported feature flags:
+- WaitForDnsNameIpMatch indicates whether PD and TiKV has to wait until local IP address matches the one published to external DNS
+- PreferPDAddressesOverDiscovery advises start script to use TidbClusterSpec.PDAddresses (if supplied) as argument for pd-server, tikv-server and tidb-server commands</p>
 </td>
 </tr>
 </tbody>
