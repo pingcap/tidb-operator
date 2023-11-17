@@ -16,9 +16,13 @@ endif
 export GO111MODULE := on
 GOOS ?= linux
 GOARCH ?= $(shell go env GOARCH)
-GOENV  := CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
+GOENV  := GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go
-GO_BUILD := $(GO) build -trimpath
+ifeq ("${ENABLE_FIPS}", "1")
+GO_BUILD := GOEXPERIMENT=boringcrypto CGO_ENABLED=1 $(GO) build -trimpath -tags boringcrypto
+else
+GO_BUILD := CGO_ENABLED=0 $(GO) build -trimpath
+endif
 GO_SUBMODULES = github.com/pingcap/tidb-operator/pkg/apis github.com/pingcap/tidb-operator/pkg/client
 GO_SUBMODULE_DIRS = pkg/apis pkg/client
 
@@ -32,10 +36,6 @@ TEST_COVER_PACKAGES := go list ./cmd/... ./pkg/... $(foreach mod, $(GO_SUBMODULE
 GO_TEST := $(GO) test -cover -covermode=atomic -coverpkg=$$($(TEST_COVER_PACKAGES))
 
 default: build
-
-
-
-
 
 ifeq ($(NO_BUILD),y)
 operator-docker:

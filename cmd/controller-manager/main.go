@@ -55,6 +55,9 @@ import (
 	"k8s.io/component-base/logs"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	// Enable FIPS when necessary
+	_ "github.com/pingcap/tidb-operator/pkg/fips"
 )
 
 func main() {

@@ -22,6 +22,9 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/ebs-warmup/filereader"
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
+
+	// Enable FIPS when necessary
+	_ "github.com/pingcap/tidb-operator/pkg/fips"
 )
 
 var (
