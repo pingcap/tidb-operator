@@ -14,10 +14,11 @@
 package v2
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
 	"github.com/onsi/gomega"
 	"mvdan.cc/sh/v3/syntax"

@@ -16,8 +16,9 @@ package v2
 import (
 	"bytes"
 	"errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"text/template"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 const (
