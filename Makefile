@@ -37,7 +37,6 @@ GO_TEST := $(GO) test -cover -covermode=atomic -coverpkg=$$($(TEST_COVER_PACKAGE
 
 default: build
 
-<<<<<<< HEAD
 docker-push: docker
 	docker push "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}"
 	docker push "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}"
@@ -45,8 +44,6 @@ docker-push: docker
 
 docker: operator-docker backup-docker br-federation-docker
 
-=======
->>>>>>> 8b83a3fbc (*: support FIPS build (#5397))
 ifeq ($(NO_BUILD),y)
 operator-docker:
 	@echo "NO_BUILD=y, skip build for $@"
