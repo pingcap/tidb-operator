@@ -40,5 +40,4 @@ spec:
     replicas: 1
     config: |
       [proxy]
-      require-backend-tls = false
       max-connections = 30
