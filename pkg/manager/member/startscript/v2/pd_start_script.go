@@ -16,6 +16,7 @@ package v2
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -69,6 +70,18 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.PDStartTimeout = tc.PDStartTimeout()
 
+	waitForDnsNameIpMatchOnStartup := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
+
+	pdStartScriptTpl := template.Must(
+		template.Must(
+			template.New("pd-start-script").Parse(pdStartSubScript),
+		).Parse(
+			componentCommonScript +
+				replacePdStartScriptCustomPorts(
+					replacePdStartScriptDnsAwaitPart(pdStartScript, waitForDnsNameIpMatchOnStartup))),
+	)
+
 	return renderTemplateFunc(pdStartScriptTpl, m)
 }
 
@@ -76,10 +89,13 @@ const (
 	// pdStartSubScript contains optional subscripts used in start script.
 	pdStartSubScript = ``
 
-	// pdStartScript is the template of start script.
-	pdStartScript = `
-PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN={{ .PDDomain }}
+	pdWaitForDnsIpMatchSubScript = `
+componentDomain=${PD_DOMAIN}
+waitThreshold={{ .PDStartTimeout }}
+nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
+` + componentCommonWaitForDnsIpMatchScript
+
+	pdWaitForDnsOnlySubScript = `
 
 elapseTime=0
 period=1
@@ -109,7 +125,13 @@ while true; do
         break
     fi
 done
+`
 
+	// pdStartScript is the template of start script.
+	pdStartScript = `
+PD_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN={{ .PDDomain }}` +
+		dnsAwaitPart + `
 ARGS="--data-dir={{ .DataDir }} \
 --name={{ .PDName }} \
 --peer-urls={{ .PeerURL }} \
@@ -150,8 +172,10 @@ func replacePdStartScriptCustomPorts(startScript string) string {
 	return startScript
 }
 
-var pdStartScriptTpl = template.Must(
-	template.Must(
-		template.New("pd-start-script").Parse(pdStartSubScript),
-	).Parse(componentCommonScript + replacePdStartScriptCustomPorts(pdStartScript)),
-)
+func replacePdStartScriptDnsAwaitPart(startScript string, withLocalIpMatch bool) string {
+	if withLocalIpMatch {
+		return strings.ReplaceAll(startScript, dnsAwaitPart, pdWaitForDnsIpMatchSubScript)
+	} else {
+		return strings.ReplaceAll(startScript, dnsAwaitPart, pdWaitForDnsOnlySubScript)
+	}
+}
