@@ -14,6 +14,7 @@
 package v2
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"regexp"
 	"strings"
 	"testing"
@@ -21,6 +22,23 @@ import (
 	"github.com/onsi/gomega"
 	"mvdan.cc/sh/v3/syntax"
 )
+
+func TestValidateFeatureFlags(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	err := validateFeatureFlags([]v1alpha1.StartScriptV2FeatureFlag{
+		v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch, "wrong-flag",
+	})
+	g.Expect(err).ShouldNot(gomega.BeNil())
+
+	err = validateFeatureFlags([]v1alpha1.StartScriptV2FeatureFlag{
+		v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch,
+	})
+	g.Expect(err).Should(gomega.BeNil())
+
+	err = validateFeatureFlags([]v1alpha1.StartScriptV2FeatureFlag{})
+	g.Expect(err).Should(gomega.BeNil())
+}
 
 func TestScriptFormat(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
