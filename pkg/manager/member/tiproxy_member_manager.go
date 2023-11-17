@@ -121,7 +121,9 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 
 	cfgWrapper.Set("workdir", filepath.Join(tiproxyVolumeMountPath, "work"))
 	cfgWrapper.Set("proxy.pd-addrs", PDAddr)
-	cfgWrapper.Set("proxy.require-backend-tls", false)
+	if cfgWrapper.Get("proxy.require-backend-tls") == nil {
+		cfgWrapper.Set("proxy.require-backend-tls", false)
+	}
 
 	if tc.IsTLSClusterEnabled() {
 		cfgWrapper.Set("security.cluster-tls.ca", path.Join(util.ClusterClientTLSPath, "ca.crt"))
@@ -132,10 +134,17 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 		cfgWrapper.Set("security.server-tls.ca", path.Join(tiproxyServerPath, "ca.crt"))
 		cfgWrapper.Set("security.server-tls.key", path.Join(tiproxyServerPath, "tls.key"))
 		cfgWrapper.Set("security.server-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
-		cfgWrapper.Set("security.server-tls.skip-ca", true)
+		if cfgWrapper.Get("security.server-tls.skip-ca") == nil {
+			cfgWrapper.Set("security.server-tls.skip-ca", true)
+		}
+
+		cfgWrapper.Set("security.server-http-tls.ca", path.Join(tiproxyServerPath, "ca.crt"))
+		cfgWrapper.Set("security.server-http-tls.key", path.Join(tiproxyServerPath, "tls.key"))
+		cfgWrapper.Set("security.server-http-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
+		cfgWrapper.Set("security.server-http-tls.skip-ca", true)
 
 		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
-			if tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
+			if cfgWrapper.Get("security.sql-tls.skip-ca") == nil && tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
 				cfgWrapper.Set("security.sql-tls.skip-ca", true)
 			} else {
 				cfgWrapper.Set("security.sql-tls.ca", path.Join(tiproxySQLPath, "ca.crt"))
