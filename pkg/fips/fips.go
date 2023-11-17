@@ -1,4 +1,4 @@
-// Copyright 2019 PingCAP, Inc.
+// Copyright 2023 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,23 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+//go:build boringcrypto
+// +build boringcrypto
+
+package fips
 
 import (
-	"os"
+	// Restricts all TLS configuration to FIPS-approved settings
+	_ "crypto/tls/fipsonly"
 
-	"k8s.io/klog/v2"
-
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app"
-
-	// Enable FIPS when necessary
-	_ "github.com/pingcap/tidb-operator/pkg/fips"
+	"github.com/pingcap/tidb-operator/pkg/version"
 )
 
-func main() {
-	klog.InitFlags(nil)
-	if err := app.Run(); err != nil {
-		os.Exit(1)
-	}
-	os.Exit(0)
+func init() {
+	version.SetVersionSuffix("-fips")
 }

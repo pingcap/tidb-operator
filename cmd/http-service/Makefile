@@ -6,8 +6,11 @@ LDFLAGS += -X "github.com/pingcap/tidb-operator/http-service/version.GoVersion=$
 
 GO       := $(GOENV) go
 GOARCH   ?= $(shell go env GOARCH)
+ifeq ("${ENABLE_FIPS}", "1")
+GO_BUILD := GOEXPERIMENT=boringcrypto CGO_ENABLED=1 $(GO) build -trimpath -tags boringcrypto
+else
 GOBUILD  := CGO_ENABLED=0 $(GO) build
-
+endif
 DOCKER_REGISTRY ?= localhost:5000
 DOCKER_REPO     ?= ${DOCKER_REGISTRY}/pingcap
 IMAGE_TAG       ?= latest
