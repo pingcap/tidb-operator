@@ -23,6 +23,9 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/component-base/logs"
+
+	// Enable FIPS when necessary
+	_ "github.com/pingcap/tidb-operator/pkg/fips"
 )
 
 func main() {
