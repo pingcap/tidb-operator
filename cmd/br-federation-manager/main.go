@@ -44,6 +44,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/fedvolumerestore"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/version"
+
+	// Enable FIPS when necessary
+	_ "github.com/pingcap/tidb-operator/pkg/fips"
 )
 
 func main() {
