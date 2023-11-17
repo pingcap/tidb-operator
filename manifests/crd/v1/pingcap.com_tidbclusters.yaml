@@ -8224,6 +8224,10 @@ spec:
                       type: string
                   type: object
                 type: array
+              startScriptV2FeatureFlags:
+                items:
+                  type: string
+                type: array
               startScriptVersion:
                 enum:
                 - ""

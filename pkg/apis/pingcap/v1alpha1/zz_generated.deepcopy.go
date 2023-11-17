@@ -9058,6 +9058,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		*out = new(SuspendAction)
 		**out = **in
 	}
+	if in.StartScriptV2FeatureFlags != nil {
+		in, out := &in.StartScriptV2FeatureFlags, &out.StartScriptV2FeatureFlags
+		*out = make([]StartScriptV2FeatureFlag, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

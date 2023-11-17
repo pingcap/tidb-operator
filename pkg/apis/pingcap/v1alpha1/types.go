@@ -133,6 +133,13 @@ const (
 	StartScriptV2 StartScriptVersion = "v2"
 )
 
+type StartScriptV2FeatureFlag string
+
+const (
+	StartScriptV2FeatureFlagWaitForDnsNameIpMatch          = "WaitForDnsNameIpMatch"
+	StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery = "PreferPDAddressesOverDiscovery"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -375,6 +382,12 @@ type TidbClusterSpec struct {
 
 	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
 	PreferIPv6 bool `json:"preferIPv6,omitempty"`
+
+	// Feature flags used by v2 startup script to enable various features.
+	// Examples of supported feature flags:
+	// - WaitForDnsNameIpMatch indicates whether PD and TiKV has to wait until local IP address matches the one published to external DNS
+	// - PreferPDAddressesOverDiscovery advises start script to use TidbClusterSpec.PDAddresses (if supplied) as argument for pd-server, tikv-server and tidb-server commands
+	StartScriptV2FeatureFlags []StartScriptV2FeatureFlag `json:"startScriptV2FeatureFlags,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.

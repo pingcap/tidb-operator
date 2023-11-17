@@ -13921,6 +13921,21 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"startScriptV2FeatureFlags": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Feature flags used by v2 startup script to enable various features. Examples of supported feature flags: - WaitForDnsNameIpMatch indicates whether PD and TiKV has to wait until local IP address matches the one published to external DNS - PreferPDAddressesOverDiscovery advises start script to use TidbClusterSpec.PDAddresses (if supplied) as argument for pd-server, tikv-server and tidb-server commands",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
