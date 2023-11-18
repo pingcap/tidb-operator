@@ -336,6 +336,9 @@ func (c *PodController) syncPDPodForReplaceVolume(ctx context.Context, pod *core
 		if targetMemberName == "" {
 			return reconcile.Result{}, fmt.Errorf("could not find an alternate pd member to transfer leadership to")
 		}
+		if !tc.PDAllMembersReady() {
+			return reconcile.Result{Requeue: true}, fmt.Errorf("not all PDs ready before leader transfer")
+		}
 		klog.Infof("Transferring PD Leader from %s to %s", pod.Name, targetMemberName)
 		pdClient.TransferPDLeader(targetMemberName)
 		// Wait for leader transfer.
