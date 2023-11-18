@@ -274,17 +274,6 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
-			name: "basic with wrong feature flag",
-			modifyTC: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
-				tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{"non-existing-feature-flag"}
-			},
-			expectScript: `#!/bin/sh
-echo "unsupported feature flag: non-existing-feature-flag"
-exit 1
-`,
-		},
-		{
 			name: "enable tls",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}

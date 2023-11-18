@@ -42,11 +42,6 @@ type PDStartScriptModel struct {
 
 // RenderPDStartScript renders PD start script from TidbCluster
 func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	err := validateFeatureFlags(tc.Spec.StartScriptV2FeatureFlags)
-	if err != nil {
-		return "#!/bin/sh\necho \"" + err.Error() + "\"\nexit 1\n", nil
-	}
-
 	m := &PDStartScriptModel{}
 	tcName := tc.Name
 	tcNS := tc.Namespace
