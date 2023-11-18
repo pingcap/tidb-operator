@@ -143,15 +143,19 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 	component := labels[label.ComponentLabelKey]
 	switch component {
 	case label.PDLabelVal:
-		if labels[label.MemberIDLabelKey] == "" {
-			// get member id
-			for _, member := range tc.Status.PD.Members {
-				name := strings.Split(member.Name, ".")[0]
-				if podName == name {
-					memberID = member.ID
-					break
-				}
+		memberIDFromStatus := ""
+		// get member id
+		for _, member := range tc.Status.PD.Members {
+			name := strings.Split(member.Name, ".")[0]
+			if podName == name {
+				memberIDFromStatus = member.ID
+				break
 			}
+		}
+		if labels[label.MemberIDLabelKey] == "" {
+			memberID = memberIDFromStatus
+		} else if memberID != memberIDFromStatus {
+			klog.Errorf("Mismatched Pd member id for %s/%s, tc.Status.PD.Members has %s vs pod label has %s", ns, podName, memberIDFromStatus, memberID)
 		}
 	case label.TiKVLabelVal:
 		storeIDFromStatus := ""
@@ -164,6 +168,8 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 		}
 		if labels[label.StoreIDLabelKey] == "" {
 			storeID = storeIDFromStatus
+		} else if storeID != storeIDFromStatus {
+			klog.Errorf("Mismatched TiKV store id for %s/%s, tc.Status.TiKV.Stores has %s vs pod label has %s", ns, podName, storeIDFromStatus, storeID)
 		}
 
 		if storeIDFromStatus != "" {
