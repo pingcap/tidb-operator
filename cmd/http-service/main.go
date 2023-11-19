@@ -41,6 +41,9 @@ import (
 	"github.com/pingcap/tidb-operator/http-service/pbgen/api"
 	"github.com/pingcap/tidb-operator/http-service/server"
 	"github.com/pingcap/tidb-operator/http-service/version"
+
+	// Enable FIPS when necessary
+	_ "github.com/pingcap/tidb-operator/pkg/fips"
 )
 
 const (
