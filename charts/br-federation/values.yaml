@@ -1,5 +1,9 @@
 # Default values for br-federation
 
+# clusterScoped is whether federation-manager should manage kubernetes cluster wide
+# Also see rbac.create and brFederationManager.serviceAccount.
+clusterScoped: true
+
 rbac:
   create: true
 
@@ -16,7 +20,7 @@ brFederationManager:
   create: true
   # With rbac.create=false, the user is responsible for creating this account
   # With rbac.create=true, this service account will be created
-  # Also see rbac.create
+  # Also see rbac.create and clusterScoped
   serviceAccount: br-federation-manager
 
   # Secret name of the kubeconfig for the federation Kubernetes clusters
