@@ -15,10 +15,7 @@ package v2
 
 import (
 	"bytes"
-	"errors"
 	"text/template"
-
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 const (
@@ -120,16 +117,4 @@ func renderTemplateFunc(tpl *template.Template, model interface{}) (string, erro
 		return "", err
 	}
 	return buff.String(), nil
-}
-
-func validateFeatureFlags(featureFlags []v1alpha1.StartScriptV2FeatureFlag) error {
-	for _, ff := range featureFlags {
-		switch ff {
-		case v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch:
-		case v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery:
-		default:
-			return errors.New("unsupported feature flag: " + string(ff))
-		}
-	}
-	return nil
 }
