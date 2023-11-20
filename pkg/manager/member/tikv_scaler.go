@@ -191,7 +191,7 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 	// update it once here (to avoid a dependency on metaManager to sync it first instead)
 	pod, err = s.deps.PodControl.UpdateMetaInfo(tc, pod)
 	if err != nil {
-		klog.Errorf("tikvScaler.ScaleIn: failed to update pod MetaInfo for %s", podName)
+		klog.Errorf("tikvScaler.ScaleIn: failed to update pod MetaInfo for, pod %s, cluster %s/%s", podName, ns, tcName)
 		return deletedUpStore, nil
 	}
 
