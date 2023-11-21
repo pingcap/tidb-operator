@@ -148,6 +148,9 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.PDAddresses != nil {
 		allErrs = append(allErrs, validatePDAddresses(spec.PDAddresses, fldPath.Child("pdAddresses"))...)
 	}
+	if spec.StartScriptV2FeatureFlags != nil {
+		allErrs = append(allErrs, validateStartScriptFeatureFlags(spec.StartScriptV2FeatureFlags, fldPath.Child("startScriptV2FeatureFlags"))...)
+	}
 	return allErrs
 }
 
@@ -182,6 +185,18 @@ func validatePDAddresses(arrayOfAddresses []string, fldPath *field.Path) field.E
 			allErrs = append(allErrs, field.Invalid(idxPath, address, err.Error()+example))
 		} else if u.Scheme != "http" {
 			allErrs = append(allErrs, field.Invalid(idxPath, address, "Support 'http' scheme only."+example))
+		}
+	}
+	return allErrs
+}
+
+func validateStartScriptFeatureFlags(featureFlags []v1alpha1.StartScriptV2FeatureFlag, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, ff := range featureFlags {
+		idxPath := fldPath.Index(i)
+		if ff != v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch &&
+			ff != v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery {
+			allErrs = append(allErrs, field.Invalid(idxPath, ff, "Invalid start script feature flag"))
 		}
 	}
 	return allErrs
