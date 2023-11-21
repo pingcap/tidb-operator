@@ -75,6 +75,95 @@ exec /tidb-server ${ARGS}
 `,
 		},
 		{
+			name: "with PDAddresses but without PreferPDAddressesOverDiscovery",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}:2380", "another.pd:2380"}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
+
+ARGS="--store=tikv \
+--advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
+--host=0.0.0.0 \
+--path=start-script-test-pd:2379 \
+--config=/etc/tidb/tidb.toml"
+
+SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
+if [[ ! -z "${SLOW_LOG_FILE}" ]]
+then
+    ARGS="${ARGS} --log-slow-query=${SLOW_LOG_FILE:-}"
+fi
+
+echo "start tidb-server ..."
+echo "/tidb-server ${ARGS}"
+exec /tidb-server ${ARGS}
+`,
+		},
+		{
+			name: "with PDAddresses and PreferPDAddressesOverDiscovery",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}:2380", "another.pd:2380"}
+				tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{
+					v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery,
+				}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
+
+ARGS="--store=tikv \
+--advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
+--host=0.0.0.0 \
+--path=${PD_DOMAIN}:2380,another.pd:2380 \
+--config=/etc/tidb/tidb.toml"
+
+SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
+if [[ ! -z "${SLOW_LOG_FILE}" ]]
+then
+    ARGS="${ARGS} --log-slow-query=${SLOW_LOG_FILE:-}"
+fi
+
+echo "start tidb-server ..."
+echo "/tidb-server ${ARGS}"
+exec /tidb-server ${ARGS}
+`,
+		},
+		{
 			name: "set plugin",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiDB.Plugins = []string{"plugin-1", "plugin-2"}
