@@ -187,6 +187,14 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 		return deletedUpStore, fmt.Errorf("tikvScaler.ScaleIn: failed to pass up stores check , pod %s, cluster %s/%s", podName, ns, tcName)
 	}
 
+	// Below code depends on tikv StoreIDLabelKey & AnnTiKVNoActiveStoreSince to be correctly updated, so manually
+	// update it once here (to avoid a dependency on metaManager to sync it first instead)
+	pod, err = s.deps.PodControl.UpdateMetaInfo(tc, pod)
+	if err != nil {
+		klog.Errorf("tikvScaler.ScaleIn: failed to update pod MetaInfo for, pod %s, cluster %s/%s", podName, ns, tcName)
+		return deletedUpStore, nil
+	}
+
 	// call PD API to delete the store of the TiKV Pod to be scaled in
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
