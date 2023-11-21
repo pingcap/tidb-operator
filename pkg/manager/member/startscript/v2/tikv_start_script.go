@@ -27,7 +27,7 @@ import (
 
 // TiKVStartScriptModel contain fields for rendering TiKV start script
 type TiKVStartScriptModel struct {
-	PDAddr         string
+	PDAddresses    string
 	Addr           string
 	StatusAddr     string
 	AdvertiseHost  string
@@ -47,15 +47,23 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	tcNS := tc.Namespace
 	peerServiceName := controller.TiKVPeerMemberName(tcName)
 
-	m.PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort)
-	if tc.AcrossK8s() {
-		m.AcrossK8s = &AcrossK8sScriptModel{
-			PDAddr:        fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
-			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+	preferPDAddressesOverDiscovery := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
+	if preferPDAddressesOverDiscovery {
+		m.PDAddresses = strings.Join(tc.Spec.PDAddresses, ",")
+	}
+	if len(m.PDAddresses) == 0 {
+		if tc.AcrossK8s() {
+			m.AcrossK8s = &AcrossK8sScriptModel{
+				PDAddr:        fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
+				DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+			}
+			m.PDAddresses = "${result}" // get pd addr in subscript
+		} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+			m.PDAddresses = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
+		} else {
+			m.PDAddresses = fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort)
 		}
-		m.PDAddr = "${result}" // get pd addr in subscript
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		m.PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	listenHost := "0.0.0.0"
@@ -132,7 +140,7 @@ TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}` +
 		dnsAwaitPart + `
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
-ARGS="--pd={{ .PDAddr }} \
+ARGS="--pd={{ .PDAddresses }} \
 --advertise-addr={{ .AdvertiseAddr }} \
 --addr={{ .Addr }} \
 --status-addr={{ .StatusAddr }} \
