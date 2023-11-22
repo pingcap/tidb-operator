@@ -36,6 +36,7 @@ type PDStartScriptModel struct {
 	AdvertiseClientURL string
 	DiscoveryAddr      string
 	ExtraArgs          string
+	PDAddresses        string
 	PDStartTimeout     int
 }
 
@@ -54,6 +55,12 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m.PDName = "${PD_POD_NAME}"
 	if tc.AcrossK8s() || tc.Spec.ClusterDomain != "" {
 		m.PDName = "${PD_DOMAIN}"
+	}
+
+	preferPDAddressesOverDiscovery := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
+	if preferPDAddressesOverDiscovery {
+		m.PDAddresses = strings.Join(tc.Spec.PDAddresses, ",")
 	}
 
 	m.DataDir = filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir)
@@ -142,7 +149,9 @@ ARGS="--data-dir={{ .DataDir }} \
 {{- if .ExtraArgs }}
 ARGS="${ARGS} {{ .ExtraArgs }}"
 {{- end }}
-
+{{ if .PDAddresses }}
+ARGS="${ARGS} --join={{ .PDAddresses }}"
+{{- else }}
 if [[ -f {{ .DataDir }}/join ]]; then
     join=$(cat {{ .DataDir }}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
     join=${join%,}
@@ -156,6 +165,7 @@ elif [[ ! -d {{ .DataDir }}/member/wal ]]; then
     done
     ARGS="${ARGS} ${result}"
 fi
+{{- end }}
 
 echo "starting pd-server ..."
 sleep $((RANDOM % 10))

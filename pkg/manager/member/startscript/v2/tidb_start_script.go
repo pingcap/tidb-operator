@@ -15,6 +15,7 @@ package v2
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -24,9 +25,9 @@ import (
 
 // TiDBStartScriptModel contain some fields for rendering TiDB start script
 type TiDBStartScriptModel struct {
-	PDAddr        string
 	AdvertiseAddr string
 	ExtraArgs     string
+	PDAddresses   string
 
 	AcrossK8s *AcrossK8sScriptModel
 }
@@ -38,15 +39,23 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	tcNS := tc.Namespace
 	peerServiceName := controller.TiDBPeerMemberName(tcName)
 
-	m.PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort)
-	if tc.AcrossK8s() {
-		m.AcrossK8s = &AcrossK8sScriptModel{
-			PDAddr:        fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
-			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+	preferPDAddressesOverDiscovery := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
+	if preferPDAddressesOverDiscovery {
+		m.PDAddresses = strings.Join(tc.Spec.PDAddresses, ",")
+	}
+	if len(m.PDAddresses) == 0 {
+		if tc.AcrossK8s() {
+			m.AcrossK8s = &AcrossK8sScriptModel{
+				PDAddr:        fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
+				DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+			}
+			m.PDAddresses = "${result}" // get pd addr in subscript
+		} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+			m.PDAddresses = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
+		} else {
+			m.PDAddresses = fmt.Sprintf("%s:%d", controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort)
 		}
-		m.PDAddr = "${result}" // get pd addr in subscript
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		m.PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	m.AdvertiseAddr = fmt.Sprintf("${TIDB_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
@@ -91,7 +100,7 @@ TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
 --advertise-address={{ .AdvertiseAddr }} \
 --host=0.0.0.0 \
---path={{ .PDAddr }} \
+--path={{ .PDAddresses }} \
 --config=/etc/tidb/tidb.toml"
 {{- if .ExtraArgs }}
 ARGS="${ARGS} {{ .ExtraArgs }}"

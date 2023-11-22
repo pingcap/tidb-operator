@@ -709,6 +709,37 @@ func TestValidatePDAddresses(t *testing.T) {
 	}
 }
 
+func TestValidateStartScriptFeatureFlags(t *testing.T) {
+	successCases := [][]v1alpha1.StartScriptV2FeatureFlag{
+		{
+			v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch,
+			v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery,
+		},
+		{}, //empty
+	}
+
+	for _, c := range successCases {
+		errs := validateStartScriptFeatureFlags(c, field.NewPath("startScriptFeatureFlags"))
+		if len(errs) > 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := [][]v1alpha1.StartScriptV2FeatureFlag{
+		{
+			v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch,
+			"wrong",
+		},
+	}
+
+	for _, c := range errorCases {
+		errs := validateStartScriptFeatureFlags(c, field.NewPath("startScriptFeatureFlags"))
+		if len(errs) != 1 {
+			t.Errorf("expected 1 failure for %s but there was %d", c, len(errs))
+		}
+	}
+}
+
 func TestValidatePDSpec(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tests := []struct {
