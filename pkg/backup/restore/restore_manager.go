@@ -1267,7 +1267,7 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 		return err
 	}
 
-	jobs, err := rm.deps.JobLister.List(sel)
+	jobs, err := rm.deps.JobLister.Jobs(r.Namespace).List(sel)
 	if err != nil {
 		return err
 	}
