@@ -15,6 +15,8 @@ package util
 
 import (
 	"os"
+	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
@@ -27,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"go.uber.org/atomic"
+	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -138,8 +141,12 @@ func NewEC2Session(concurrency uint) (*EC2Session, error) {
 }
 
 func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
+	var (
+		deletedCnt atomic.Int32
+		errs       error
+		lock       sync.Mutex
+	)
 
-	var deletedCnt atomic.Int32
 	eg := new(errgroup.Group)
 	for volID := range snapIDMap {
 		snapID := snapIDMap[volID]
@@ -148,9 +155,18 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 				SnapshotId: &snapID,
 			})
 			if err != nil {
+				if strings.Contains(err.Error(), "NotFound") {
+					klog.Warningf("snapshot %s not found, err: %s", snapID, err.Error())
+					return nil
+				}
+
 				klog.Errorf("failed to delete snapshot id=%s, error=%s", snapID, err)
 				// todo: we can only retry for a few times, might fail still, need to handle error from outside.
 				// we don't return error if it fails to make sure all snapshot got chance to delete.
+				lock.Lock()
+				defer lock.Unlock()
+				errs = multierr.Combine(errs, err)
+				return nil
 			} else {
 				deletedCnt.Add(1)
 			}
@@ -161,6 +177,10 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 	if err := eg.Wait(); err != nil {
 		klog.Errorf("failed to delete snapshots error=%s, already delete=%d", err, deletedCnt.Load())
 		return err
+	}
+
+	if errs != nil {
+		return errs
 	}
 	return nil
 }

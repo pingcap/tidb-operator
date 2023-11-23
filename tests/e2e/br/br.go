@@ -595,7 +595,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("update backup evn, remove simulate panic")
-			backup, err = updateBackup(f, backup, func(backup *v1alpha1.Backup) {
+			backup, err = updateBackup(f, backup.Name, func(backup *v1alpha1.Backup) {
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
 			framework.ExpectNoError(err)
@@ -1185,14 +1185,19 @@ func continueLogBackupAndWaitForComplete(f *e2eframework.Framework, backup *v1al
 }
 
 // updateBackup update backup cr
-func updateBackup(f *e2eframework.Framework, backup *v1alpha1.Backup, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
+func updateBackup(f *e2eframework.Framework, backupName string, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
 	ns := f.Namespace.Name
+	ctx := context.TODO()
+	backup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(ctx, backupName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
 
 	if configure != nil {
 		configure(backup)
 	}
 
-	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{}); err != nil {
+	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Update(ctx, backup, metav1.UpdateOptions{}); err != nil {
 		return nil, err
 	}
 
