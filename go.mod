@@ -17,7 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.17.1
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.53.0
 	github.com/aws/smithy-go v1.12.1
-	github.com/docker/docker v20.10.7+incompatible
+	github.com/docker/docker v24.0.7+incompatible
 	github.com/dustin/go-humanize v1.0.0
 	github.com/emicklei/go-restful v2.16.0+incompatible
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
@@ -137,7 +137,6 @@ require (
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
-	github.com/containerd/containerd v1.4.11 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.0 // indirect
