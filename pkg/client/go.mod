@@ -22,8 +22,13 @@ require (
 	github.com/go-openapi/spec v0.19.3 // indirect
 	github.com/go-openapi/swag v0.19.5 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+<<<<<<< HEAD
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
+=======
+	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
+>>>>>>> 801b32318 (backup-manager: try to directly get the backup size from backupmeta before calculate the backup size (#5411))
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
@@ -38,6 +43,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/prometheus v1.8.2 // indirect
+<<<<<<< HEAD
 	golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
@@ -47,6 +53,16 @@ require (
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/protobuf v1.26.0-rc.1 // indirect
+=======
+	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/oauth2 v0.11.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/term v0.13.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
+	google.golang.org/appengine v1.6.7 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
+>>>>>>> 801b32318 (backup-manager: try to directly get the backup size from backupmeta before calculate the backup size (#5411))
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/api v0.20.15 // indirect
