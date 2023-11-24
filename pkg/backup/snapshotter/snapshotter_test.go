@@ -15,6 +15,7 @@ package snapshotter
 
 import (
 	"encoding/json"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"sort"
 	"strconv"
 	"strings"
@@ -2026,4 +2027,289 @@ func TestResetPVCSequence(t *testing.T) {
 		assert.Equal(t, tc.expectedPVs, restorePVs)
 	}
 
+}
+
+func TestCommitPVsAndPVCsToK8S(t *testing.T) {
+	type testcase struct {
+		name         string
+		restoredPVs  []*corev1.PersistentVolume
+		restoredPVCs []*corev1.PersistentVolumeClaim
+		existingPVs  []*corev1.PersistentVolume
+		existingPVCs []*corev1.PersistentVolumeClaim
+		pvCount      int
+		pvcCount     int
+		restoreError bool
+	}
+
+	var testcases = []*testcase{
+		{
+			name: "create pv and pvc without existing pv and pvc",
+			restoredPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-1-1",
+						Annotations: map[string]string{
+							constants.AnnRestoredVolumeID: "vol-1-1",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Namespace: "a",
+							Name:      "tikv-test-tikv-1-1",
+						},
+					},
+				},
+			},
+			restoredPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "a",
+						Name:      "tikv-test-tikv-1-1",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-1-1",
+					},
+				},
+			},
+			pvCount:  1,
+			pvcCount: 1,
+		},
+		{
+			name: "create pv and pvc with same pvc ref but different volume id",
+			restoredPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-2-1",
+						Annotations: map[string]string{
+							constants.AnnRestoredVolumeID: "vol-2-1",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Namespace: "a",
+							Name:      "tikv-test-tikv-2-1",
+						},
+					},
+				},
+			},
+			existingPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-2-2",
+						Annotations: map[string]string{
+							constants.AnnRestoredVolumeID: "vol-2-2",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Namespace: "a",
+							Name:      "tikv-test-tikv-2-1",
+						},
+					},
+				},
+			},
+			restoredPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "a",
+						Name:      "tikv-test-tikv-2-1",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-2-1",
+					},
+				},
+			},
+			pvCount:  2,
+			pvcCount: 1,
+		},
+		{
+			name: "create pv and pvc with same pvc ref and same volume id",
+			restoredPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-3-1",
+						Annotations: map[string]string{
+							constants.AnnRestoredVolumeID: "vol-3-1",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Namespace: "a",
+							Name:      "tikv-test-tikv-3-1",
+						},
+					},
+				},
+			},
+			existingPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-3-2",
+						Annotations: map[string]string{
+							constants.AnnRestoredVolumeID: "vol-3-1",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Namespace: "a",
+							Name:      "tikv-test-tikv-3-1",
+						},
+					},
+				},
+			},
+			restoredPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "a",
+						Name:      "tikv-test-tikv-3-1",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-3-1",
+					},
+				},
+			},
+			pvCount:  1,
+			pvcCount: 1,
+		},
+		{
+			name: "create pv and pvc with same pvc name but different volume name",
+			restoredPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-4-1",
+						Annotations: map[string]string{
+							constants.AnnRestoredVolumeID: "vol-4-1",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Namespace: "a",
+							Name:      "tikv-test-tikv-4-1",
+						},
+					},
+				},
+			},
+			restoredPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "a",
+						Name:      "tikv-test-tikv-4-1",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-4-1",
+					},
+				},
+			},
+			existingPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "a",
+						Name:      "tikv-test-tikv-4-1",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-4-2",
+					},
+				},
+			},
+			pvCount:      1,
+			pvcCount:     0,
+			restoreError: true,
+		},
+		{
+			name: "create pv and pvc with same pvc name and same volume name",
+			restoredPVs: []*corev1.PersistentVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pv-5-1",
+						Annotations: map[string]string{
+							constants.AnnRestoredVolumeID: "vol-5-1",
+						},
+					},
+					Spec: corev1.PersistentVolumeSpec{
+						ClaimRef: &corev1.ObjectReference{
+							Namespace: "a",
+							Name:      "tikv-test-tikv-5-1",
+						},
+					},
+				},
+			},
+			restoredPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "a",
+						Name:      "tikv-test-tikv-5-1",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-5-1",
+					},
+				},
+			},
+			existingPVCs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "a",
+						Name:      "tikv-test-tikv-5-1",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "pv-5-1",
+					},
+				},
+			},
+			pvCount:  1,
+			pvcCount: 1,
+		},
+	}
+
+	r := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "a",
+			Name:      "restore-pv-pvc-test",
+		},
+		Spec: v1alpha1.RestoreSpec{
+			BR: &v1alpha1.BRConfig{
+				Cluster:          "test",
+				ClusterNamespace: "a",
+			},
+		},
+	}
+	for _, tc := range testcases {
+		deps := controller.NewFakeDependencies()
+		pvLabels := label.New().Instance(r.Spec.BR.Cluster).TiKV().Namespace(r.Spec.BR.ClusterNamespace)
+		pvcLabels := label.New().Instance(r.Spec.BR.Cluster).TiKV()
+		for _, pv := range tc.existingPVs {
+			pv.Labels = pvLabels
+			err := deps.PVControl.CreatePV(r, pv)
+			require.NoError(t, err)
+		}
+		for _, pvc := range tc.existingPVCs {
+			pvc.Labels = pvcLabels
+			err := deps.PVCControl.CreatePVC(r, pvc)
+			require.NoError(t, err)
+		}
+		for _, pv := range tc.restoredPVs {
+			pv.Labels = pvLabels
+		}
+		for _, pvc := range tc.restoredPVCs {
+			pvc.Labels = pvcLabels
+		}
+
+		_, err := commitPVsAndPVCsToK8S(deps, r, tc.restoredPVCs, tc.restoredPVs)
+		if tc.restoreError {
+			require.Error(t, err)
+			continue
+		} else {
+			require.NoError(t, err)
+		}
+
+		pvSel, err := pvLabels.Selector()
+		require.NoError(t, err)
+		pvcSel, err := pvcLabels.Selector()
+		require.NoError(t, err)
+
+		pvs, err := deps.PVLister.List(pvSel)
+		require.NoError(t, err)
+		assert.Equal(t, tc.pvCount, len(pvs))
+		pvcs, err := deps.PVCLister.List(pvcSel)
+		require.NoError(t, err)
+		assert.Equal(t, tc.pvcCount, len(pvcs))
+	}
 }
