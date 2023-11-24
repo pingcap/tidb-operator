@@ -207,7 +207,11 @@ func commitPVsAndPVCsToK8S(
 	r *v1alpha1.Restore,
 	pvcs []*corev1.PersistentVolumeClaim,
 	pvs []*corev1.PersistentVolume) (string, error) {
-	pvSel, err := label.New().Instance(r.Spec.BR.Cluster).TiKV().Namespace(r.Namespace).Selector()
+	clusterNamespace := r.Spec.BR.ClusterNamespace
+	if clusterNamespace == "" {
+		clusterNamespace = r.Namespace
+	}
+	pvSel, err := label.New().Instance(r.Spec.BR.Cluster).TiKV().Namespace(clusterNamespace).Selector()
 	if err != nil {
 		return "BuildTiKVPvSelectorFailed", err
 	}
@@ -259,10 +263,6 @@ func commitPVsAndPVCsToK8S(
 	pvcSel, err := label.New().Instance(r.Spec.BR.Cluster).TiKV().Selector()
 	if err != nil {
 		return "BuildTiKVPvcSelectorFailed", err
-	}
-	clusterNamespace := r.Spec.BR.ClusterNamespace
-	if clusterNamespace == "" {
-		clusterNamespace = r.Namespace
 	}
 	existingPVCs, err := deps.PVCLister.PersistentVolumeClaims(clusterNamespace).List(pvcSel)
 	if err != nil {
