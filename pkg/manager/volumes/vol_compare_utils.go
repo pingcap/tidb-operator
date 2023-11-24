@@ -223,13 +223,6 @@ func (u *volCompareUtils) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha
 	switch mt {
 	case v1alpha1.TiProxyMemberType:
 		defaultScName = tc.Spec.TiProxy.StorageClassName
-		d := DesiredVolume{
-			Name:             v1alpha1.GetStorageVolumeName("", mt),
-			Size:             getStorageSize(tc.Spec.TiProxy.Requests),
-			StorageClassName: defaultScName,
-		}
-		desiredVolumes = append(desiredVolumes, d)
-
 		storageVolumes = tc.Spec.TiProxy.StorageVolumes
 	case v1alpha1.PDMemberType:
 		defaultScName = tc.Spec.PD.StorageClassName
