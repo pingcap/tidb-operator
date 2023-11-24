@@ -218,7 +218,8 @@ func commitPVsAndPVCsToK8S(
 	refPVCMap := make(map[string]struct{})
 	for _, pv := range existingPVs {
 		if pv.Spec.ClaimRef != nil {
-			refPVCMap[pv.Spec.ClaimRef.Name] = struct{}{}
+			namespacedName := buildNamespacedName(pv.Spec.ClaimRef.Namespace, pv.Spec.ClaimRef.Name)
+			refPVCMap[namespacedName] = struct{}{}
 		}
 	}
 
@@ -226,7 +227,8 @@ func commitPVsAndPVCsToK8S(
 	// we need to check if the PV already exists before creating it.
 	for _, pv := range pvs {
 		if pv.Spec.ClaimRef != nil {
-			if _, ok := refPVCMap[pv.Spec.ClaimRef.Name]; ok {
+			namespacedName := buildNamespacedName(pv.Spec.ClaimRef.Namespace, pv.Spec.ClaimRef.Name)
+			if _, ok := refPVCMap[namespacedName]; ok {
 				continue
 			}
 		}
@@ -245,6 +247,10 @@ func commitPVsAndPVCsToK8S(
 	}
 
 	return "", nil
+}
+
+func buildNamespacedName(namespace, name string) string {
+	return fmt.Sprintf("%s/%s", namespace, name)
 }
 
 type CloudSnapBackup struct {
