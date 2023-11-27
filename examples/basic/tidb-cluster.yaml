@@ -8,17 +8,7 @@ metadata:
 spec:
   version: v7.1.1
   timezone: UTC
-  clusterDomain: mydomain.internal
-  startScriptVersion: v2
-  startScriptV2FeatureFlags:
-    - PreferPDAddressesOverDiscovery
-  pdAddresses:
-  - http://basic-pd-0.basic-pd-peer.default.svc.mydomain.internal:2379
-  - http://basic-pd-1.basic-pd-peer.default.svc.mydomain.internal:2379
-  - http://basic-pd-2.basic-pd-peer.default.svc.mydomain.internal:2379
-  tlsCluster:
-    enabled: true
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
   configUpdateStrategy: RollingUpdate
   discovery: {}
@@ -27,7 +17,7 @@ spec:
   pd:
     baseImage: pingcap/pd
     maxFailoverCount: 0
-    replicas: 3
+    replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
@@ -59,8 +49,6 @@ spec:
     baseImage: pingcap/tidb
     maxFailoverCount: 0
     replicas: 1
-    tlsClient:
-      enabled: true
     service:
       type: ClusterIP
     config: {}
