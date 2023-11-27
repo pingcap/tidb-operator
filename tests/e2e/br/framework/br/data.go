@@ -17,7 +17,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -119,7 +119,7 @@ func GetBackup(ns, name, tcName, typ string, s3Config *v1alpha1.S3StorageProvide
 				S3: s3Config,
 			},
 			From: &v1alpha1.TiDBAccessConfig{
-				Host:       util.GetTidbServiceName(tcName),
+				Host:       controller.TiDBMemberName(tcName),
 				SecretName: name,
 				Port:       v1alpha1.DefaultTiDBServerPort,
 				User:       "root",
@@ -155,7 +155,7 @@ func GetRestore(ns, name, tcName, typ string, s3Config *v1alpha1.S3StorageProvid
 				S3: s3Config,
 			},
 			To: &v1alpha1.TiDBAccessConfig{
-				Host:       util.GetTidbServiceName(tcName),
+				Host:       controller.TiDBMemberName(tcName),
 				SecretName: name,
 				Port:       v1alpha1.DefaultTiDBServerPort,
 				User:       "root",

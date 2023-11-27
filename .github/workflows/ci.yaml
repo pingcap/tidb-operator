@@ -57,7 +57,7 @@ jobs:
         if [[ "$job" == "verify" ]]; then
           make check-setup check
         elif [[ "$job" == "build" ]]; then
-          make docker e2e-docker cli debug-build-docker
+          make docker e2e-docker debug-build-docker
         elif [[ "$job" == "test" ]]; then
           make test GOFLAGS=-race GO_COVER=y
         else
