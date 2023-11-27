@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,7 +37,6 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -496,7 +496,7 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 		evictStatus := tc.Status.TiKV.EvictLeader[pod.Name]
 		if evictStatus != nil {
 			if evictStatus.Value == v1alpha1.EvictLeaderValueDeletePod {
-				if podutil.IsPodReady(pod) {
+				if k8s.IsPodReady(pod) {
 					err := endEvict()
 					if err != nil {
 						return reconcile.Result{}, err

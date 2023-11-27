@@ -22,6 +22,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -29,7 +30,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type pumpScaler struct {
@@ -213,7 +213,7 @@ func (s *pumpScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	//    In this situation return error to wait for another round for safety.
 	// 2. Pump pod is not ready, such as in pending state.
 	//    In this situation we should delete this Pump pod immediately to avoid blocking the subsequent operations.
-	if !podutil.IsPodReady(pod) {
+	if !k8s.IsPodReady(pod) {
 		safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
 		if time.Now().Before(safeTimeDeadline) {
 			// Wait for 5 resync periods to ensure that the following situation does not occur:

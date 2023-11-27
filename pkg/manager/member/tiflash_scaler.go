@@ -21,12 +21,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type tiflashScaler struct {
@@ -178,7 +178,7 @@ func (s *tiflashScaler) scaleInOne(tc *v1alpha1.TidbCluster, ordinal int32) erro
 	//
 	// 2. This can happen when TiFlash pod has not been successfully registered in the cluster, such as always pending.
 	//    In this situation we should delete this TiFlash pod immediately to avoid blocking the subsequent operations.
-	if !podutil.IsPodReady(pod) {
+	if !k8s.IsPodReady(pod) {
 		safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
 		if time.Now().Before(safeTimeDeadline) {
 			// Wait for 5 resync periods to ensure that the following situation does not occur:
