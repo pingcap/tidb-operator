@@ -26,7 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/apis/util/config"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 )
 
@@ -572,7 +572,7 @@ func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string,
 				S3: s3config,
 			},
 			From: &v1alpha1.TiDBAccessConfig{
-				Host:       util.GetTidbServiceName(tc.Name),
+				Host:       controller.TiDBMemberName(tc.Name),
 				SecretName: fromSecretName,
 				Port:       v1alpha1.DefaultTiDBServerPort,
 				User:       "root",
@@ -608,7 +608,7 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 				S3: s3config,
 			},
 			To: &v1alpha1.TiDBAccessConfig{
-				Host:       util.GetTidbServiceName(tc.Name),
+				Host:       controller.TiDBMemberName(tc.Name),
 				SecretName: toSecretName,
 				Port:       v1alpha1.DefaultTiDBServerPort,
 				User:       "root",
