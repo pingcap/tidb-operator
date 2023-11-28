@@ -422,18 +422,6 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 			}, nil)
 			return nil, nil, "", err
 		}
-
-		reason, err = bm.ensureBackupPVCExist(backup)
-		if err != nil {
-			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupRetryTheFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  reason,
-				Message: err.Error(),
-			}, nil)
-			return nil, nil, "", err
-		}
-
 	} else {
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		// not found backup job, so we need to create it
