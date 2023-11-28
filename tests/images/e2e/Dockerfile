@@ -27,7 +27,6 @@ RUN curl -L "https://github.com/jetstack/cert-manager/releases/download/v1.12.2/
 ADD minio /minio
 
 ADD tidb-operator /charts/e2e/tidb-operator
-ADD tidb-cluster /charts/e2e/tidb-cluster
 ADD tidb-backup /charts/e2e/tidb-backup
 ADD tidb-drainer /charts/e2e/tidb-drainer
 ADD manifests /manifests/e2e

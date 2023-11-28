@@ -76,7 +76,6 @@ const (
 	grafanaUsername                           = "admin"
 	grafanaPassword                           = "admin"
 	operartorChartName                        = "tidb-operator"
-	tidbClusterChartName                      = "tidb-cluster"
 	backupChartName                           = "tidb-backup"
 	drainerChartName                          = "tidb-drainer"
 	statbilityTestTag                         = "stability"
@@ -578,10 +577,6 @@ func (oa *OperatorActions) chartPath(name string, tag string) string {
 
 func (oa *OperatorActions) operatorChartPath(tag string) string {
 	return oa.chartPath(operartorChartName, tag)
-}
-
-func (oa *OperatorActions) tidbClusterChartPath(tag string) string {
-	return oa.chartPath(tidbClusterChartName, tag)
 }
 
 func (oa *OperatorActions) backupChartPath(tag string) string {
@@ -1137,11 +1132,11 @@ func (oa *OperatorActions) cloneOperatorRepo() error {
 func (oa *OperatorActions) checkoutTag(tagName string) error {
 	cmd := fmt.Sprintf("cd %s && git stash -u && git checkout %s && "+
 		"mkdir -p %s && cp -rf charts/tidb-operator %s && "+
-		"cp -rf charts/tidb-cluster %s && cp -rf charts/tidb-backup %s &&"+
+		"cp -rf charts/tidb-backup %s &&"+
 		"cp -rf manifests %s",
 		oa.cfg.OperatorRepoDir, tagName,
 		filepath.Join(oa.cfg.ChartDir, tagName), oa.operatorChartPath(tagName),
-		oa.tidbClusterChartPath(tagName), oa.backupChartPath(tagName),
+		oa.backupChartPath(tagName),
 		oa.manifestPath(tagName))
 	if tagName != "v1.0.0" {
 		cmd = cmd + fmt.Sprintf(" && cp -rf charts/tidb-drainer %s", oa.drainerChartPath(tagName))

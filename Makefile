@@ -156,11 +156,9 @@ else
 e2e-docker: e2e-build ## Build tidb-operator-e2e image
 endif
 	[ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
-	[ -d tests/images/e2e/tidb-cluster ] && rm -r tests/images/e2e/tidb-cluster || true
 	[ -d tests/images/e2e/tidb-backup ] && rm -r tests/images/e2e/tidb-backup || true
 	[ -d tests/images/e2e/manifests ] && rm -r tests/images/e2e/manifests || true
 	cp -r charts/tidb-operator tests/images/e2e
-	cp -r charts/tidb-cluster tests/images/e2e
 	cp -r charts/tidb-backup tests/images/e2e
 	cp -r charts/tidb-drainer tests/images/e2e
 	cp -r manifests tests/images/e2e
