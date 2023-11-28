@@ -115,6 +115,10 @@ const (
 
 	// AnnPDDeleteSlots is annotation key of pd delete slots.
 	AnnPDDeleteSlots = "pd.tidb.pingcap.com/delete-slots"
+	// AnnTSODeleteSlots is annotation key of pd ms tso delete slots.
+	AnnTSODeleteSlots = "tso.tidb.pingcap.com/delete-slots"
+	// AnnSchedulingDeleteSlots is annotation key of pd ms scheduling delete slots.
+	AnnSchedulingDeleteSlots = "scheduling.tidb.pingcap.com/delete-slots"
 	// AnnTiDBDeleteSlots is annotation key of tidb delete slots.
 	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
 	// AnnTiKVDeleteSlots is annotation key of tikv delete slots.
@@ -153,6 +157,10 @@ const (
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
+	// TSOLabelVal is PD MS TSO label value
+	TSOLabelVal string = "tso"
+	// SchedulingLabelVal is PD  label value
+	SchedulingLabelVal string = "scheduling"
 	// TiDBLabelVal is TiDB label value
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
@@ -205,6 +213,10 @@ const (
 	// ApplicationLabelKey is App label key
 	ApplicationLabelKey string = "app.kubernetes.io/app"
 )
+
+func PDMSLabel(name string) string {
+	return name
+}
 
 // Label is the label field in metadata
 type Label map[string]string
@@ -390,6 +402,14 @@ func (l Label) PD() Label {
 // IsPD returns whether label is a PD component
 func (l Label) IsPD() bool {
 	return l[ComponentLabelKey] == PDLabelVal
+}
+
+func (l Label) PDMS(name string) Label {
+	return l.Component(name)
+}
+
+func (l Label) IsPDMS(name string) Label {
+	return l.Component(name)
 }
 
 // TiProxy assigns tiproxy to component key in label

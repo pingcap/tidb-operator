@@ -105,6 +105,22 @@ func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (s
 	if memberType == v1alpha1.PDMemberType {
 		ann = label.AnnPDDeleteSlots
 		replicas = tc.Spec.PD.Replicas
+	} else if memberType == v1alpha1.TSOMemberType {
+		for _, component := range tc.Spec.PDMS {
+			if component.Name == memberType.String() {
+				replicas = component.Replicas
+				ann = label.AnnTSODeleteSlots
+				break
+			}
+		}
+	} else if memberType == v1alpha1.SchedulingMemberType {
+		for _, component := range tc.Spec.PDMS {
+			if component.Name == memberType.String() {
+				replicas = component.Replicas
+				ann = label.AnnSchedulingDeleteSlots
+				break
+			}
+		}
 	} else if memberType == v1alpha1.TiKVMemberType {
 		ann = label.AnnTiKVDeleteSlots
 		replicas = tc.Spec.TiKV.Replicas

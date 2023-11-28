@@ -47,7 +47,7 @@ func TLSCertFromTC(ns Namespace, tcName string) Option {
 	}
 }
 
-// TLSCertFromTC indicates that clients use certs from specified secret.
+// TLSCertFromSecret indicates that clients use certs from specified secret.
 func TLSCertFromSecret(ns Namespace, secret string) Option {
 	return func(c *clientConfig) {
 		c.tlsSecretNamespace = ns
@@ -160,7 +160,7 @@ func NewDefaultPDControl(secretLister corelisterv1.SecretLister) PDControlInterf
 	return &defaultPDControl{secretLister: secretLister, pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
 }
 
-// NewDefaultPDControl returns a defaultPDControl instance
+// NewDefaultPDControlByCli returns a defaultPDControl instance
 func NewDefaultPDControlByCli(kubeCli kubernetes.Interface) PDControlInterface {
 	return &defaultPDControl{pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
 }

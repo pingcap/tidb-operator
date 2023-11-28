@@ -38,6 +38,18 @@ var (
 		v1alpha1.StartScriptV1: v1.RenderPDStartScript,
 		v1alpha1.StartScriptV2: v2.RenderPDStartScript,
 	}
+	pdMS = map[string]RenderMap{
+		"tso":        pdMS_TSO,
+		"scheduling": pdMS_Scheduling,
+	}
+	pdMS_TSO = RenderMap{
+		v1alpha1.StartScriptV1: v1.RenderPDTSOStartScript,
+		v1alpha1.StartScriptV2: v2.RenderPDTSOStartScript,
+	}
+	pdMS_Scheduling = RenderMap{
+		v1alpha1.StartScriptV1: v1.RenderPDSchedulingStartScript,
+		v1alpha1.StartScriptV2: v2.RenderPDSchedulingStartScript,
+	}
 	tidb = RenderMap{
 		v1alpha1.StartScriptV1: v1.RenderTiDBStartScript,
 		v1alpha1.StartScriptV2: v2.RenderTiDBStartScript,
@@ -66,6 +78,10 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	return pd[tc.StartScriptVersion()](tc)
+}
+
+func RenderPDMCSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error) {
+	return pdMS[name][tc.StartScriptVersion()](tc)
 }
 
 func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {

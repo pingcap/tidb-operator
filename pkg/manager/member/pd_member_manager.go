@@ -80,6 +80,10 @@ func (m *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	if tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS == nil {
+		return fmt.Errorf("tidbcluster: [%s/%s]'s enable micro service but pdMS spec is nil, please check `PDMS`", tc.GetNamespace(), tc.GetName())
+	}
+
 	// skip sync if pd is suspended
 	component := v1alpha1.PDMemberType
 	needSuspend, err := m.suspender.SuspendComponent(tc, component)
@@ -209,6 +213,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		return err
 	}
 	if setNotExist {
+		println("syncPDStatefulSetForTidbCluster: setNotExist")
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
 			return err
@@ -217,12 +222,13 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 			return err
 		}
 		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
+		println("syncPDStatefulSetForTidbCluster: setNotExist done")
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
 	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
 	if !tc.Status.PD.Synced && !templateEqual(newPDSet, oldPDSet) {
-		// upgrade forcedly only when `Synced` is false, because unable to upgrade gracefully
+		// upgrade forced only when `Synced` is false, because unable to upgrade gracefully
 		forceUpgradeAnnoSet := NeedForceUpgrade(tc.Annotations)
 		onlyOnePD := *oldPDSet.Spec.Replicas < 2 && len(tc.Status.PD.PeerMembers) == 0 // it's acceptable to use old record about peer members
 
@@ -314,6 +320,8 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 		return nil
 	}
 
+	println("syncTidbClusterStatus: set != nil")
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -335,7 +343,11 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 
 	pdClient := controller.GetPDClient(m.deps.PDControl, tc)
 
+	println("syncTidbClusterStatus: pdClient.GetHealth()")
+
 	healthInfo, err := pdClient.GetHealth()
+
+	println("syncTidbClusterStatus: pdClient.GetHealth() done", healthInfo)
 	if err != nil {
 		tc.Status.PD.Synced = false
 		// get endpoints info
@@ -683,6 +695,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 					sysctls = sysctls + fmt.Sprintf(" %s=%s", sysctl.Name, sysctl.Value)
 				}
 				privileged := true
+				println("initContainers")
 				initContainers = append(initContainers, corev1.Container{
 					Name:  "init",
 					Image: tc.HelperImage(),

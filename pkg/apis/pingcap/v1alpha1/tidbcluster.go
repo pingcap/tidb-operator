@@ -95,6 +95,17 @@ func (tc *TidbCluster) PDVersion() string {
 	return getImageVersion(tc.PDImage())
 }
 
+// PDMSVersion return the image version used by PD.
+//
+// If PD isn't specified, return empty string.
+func (tc *TidbCluster) PDMSVersion() string {
+	if tc.Spec.PDMS == nil {
+		return ""
+	}
+
+	return getImageVersion(tc.PDImage())
+}
+
 // TiKVImage return the image used by TiKV.
 //
 // If TiKV isn't specified, return empty string.
@@ -390,6 +401,13 @@ func (tc *TidbCluster) PDScaling() bool {
 	return tc.Status.PD.Phase == ScalePhase
 }
 
+func (tc *TidbCluster) PDMSScaling(name string) bool {
+	if tc.Status.PDMS[name] != nil {
+		return tc.Status.PDMS[name].Phase == ScalePhase
+	}
+	return false
+}
+
 func (tc *TidbCluster) TiKVUpgrading() bool {
 	return tc.Status.TiKV.Phase == UpgradePhase
 }
@@ -475,6 +493,10 @@ func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32)
 	var key string
 	if component == label.PDLabelVal {
 		key = label.AnnPDDeleteSlots
+	} else if component == label.TSOLabelVal {
+		key = label.AnnTSODeleteSlots
+	} else if component == label.SchedulingLabelVal {
+		key = label.AnnSchedulingDeleteSlots
 	} else if component == label.TiDBLabelVal {
 		key = label.AnnTiDBDeleteSlots
 	} else if component == label.TiKVLabelVal {
@@ -582,6 +604,27 @@ func (tc *TidbCluster) PDStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 		replicas = tc.PDStsDesiredReplicas()
 	}
 	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.PDLabelVal))
+}
+
+func (tc *TidbCluster) PDMSStsDesiredReplicas(componentName string) int32 {
+	if tc.Spec.PDMS == nil {
+		return 0
+	}
+
+	for _, component := range tc.Spec.PDMS {
+		if component.Name == componentName {
+			return component.Replicas
+		}
+	}
+	return 0
+}
+
+func (tc *TidbCluster) PDMSStsActualReplicas(componentName string) int32 {
+	stsStatus := tc.Status.PDMS[componentName].StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
 }
 
 // TiKVAllPodsStarted return whether all pods of TiKV are started.
@@ -831,6 +874,8 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 	}
 
 	lowerLimit := (tc.Spec.PD.Replicas+int32(len(tc.Status.PD.PeerMembers)))/2 + 1
+	println("PDIsAvailable: tc.Spec.PD.Replicas, len(tc.Status.PD.Members), len(tc.Status.PD.PeerMembers), lowerLimit",
+		tc.Spec.PD.Replicas, len(tc.Status.PD.Members), len(tc.Status.PD.PeerMembers), lowerLimit)
 	if int32(len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers)) < lowerLimit {
 		return false
 	}
@@ -851,14 +896,17 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 
 	availableNum += peerAvailableNum
 	if availableNum < lowerLimit {
+		println("PDIsAvailable: availableNum < lowerLimit", availableNum, lowerLimit)
 		return false
 	}
 
 	if tc.Status.PD.StatefulSet == nil || tc.Status.PD.StatefulSet.ReadyReplicas+peerAvailableNum < lowerLimit {
+		println("PDIsAvailable: ReadyReplicas+peerAvailableNum < lowerLimit", tc.Status.PD.StatefulSet.ReadyReplicas, peerAvailableNum, lowerLimit)
 		return false
 	}
 
 	if tc.Status.PD.Phase == SuspendPhase {
+		println("PDIsAvailable: tc.Status.PD.Phase == SuspendPhase")
 		return false
 	}
 

@@ -85,6 +85,11 @@ func (tc *TidbCluster) AllComponentSpec() []ComponentAccessor {
 	if tc.Spec.PD != nil {
 		components = append(components, tc.BasePDSpec())
 	}
+	if tc.Spec.PDMS != nil {
+		for _, service := range tc.Spec.PDMS {
+			components = append(components, tc.BasePDMSSpec(service))
+		}
+	}
 	if tc.Spec.TiDB != nil {
 		components = append(components, tc.BaseTiDBSpec())
 	}
@@ -472,6 +477,10 @@ func getComponentLabelValue(c MemberType) string {
 	switch c {
 	case PDMemberType:
 		return label.PDLabelVal
+	case TSOMemberType:
+		return label.TSOLabelVal
+	case SchedulingMemberType:
+		return label.SchedulingLabelVal
 	case TiDBMemberType:
 		return label.TiDBLabelVal
 	case TiKVMemberType:
@@ -679,6 +688,17 @@ func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
 	}
 
 	return buildTidbClusterComponentAccessor(PDMemberType, tc, spec)
+}
+
+// BasePDMSSpec returns the base spec of PD Micro-Service servers
+func (tc *TidbCluster) BasePDMSSpec(service *PDMSSpec) ComponentAccessor {
+	var spec *ComponentSpec
+	var serviceName string
+	if service != nil {
+		spec = &service.ComponentSpec
+		serviceName = service.Name
+	}
+	return buildTidbClusterComponentAccessor(PDMSMemberType(serviceName), tc, spec)
 }
 
 // BasePumpSpec returns the base spec of Pump:
