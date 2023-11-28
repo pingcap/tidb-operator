@@ -638,6 +638,9 @@ func isBackoffRetrying(backup *v1alpha1.Backup) bool {
 	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
 		return false
 	}
+	if len(backup.Status.BackoffRetryStatus) == 0 {
+		return false
+	}
 	return backup.Status.Phase == v1alpha1.BackupRetryTheFailed
 }
 
