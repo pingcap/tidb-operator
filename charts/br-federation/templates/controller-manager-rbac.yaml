@@ -99,7 +99,6 @@ subjects:
 roleRef:
   kind: Role
   name: {{ .Release.Name }}:br-federation-manager
-  namespace: {{ .Release.Namespace }}
   apiGroup: rbac.authorization.k8s.io
 {{- end }}
 {{- end }}
