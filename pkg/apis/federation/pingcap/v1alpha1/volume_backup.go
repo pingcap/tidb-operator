@@ -76,7 +76,7 @@ func UpdateVolumeBackupMemberStatus(volumeBackupStatus *VolumeBackupStatus, k8sC
 	}
 
 	for i := range volumeBackupStatus.Backups {
-		if volumeBackupStatus.Backups[i].BackupName == backupMember.Name {
+		if volumeBackupStatus.Backups[i].BackupName == backupMember.Name && volumeBackupStatus.Backups[i].K8sClusterName == k8sClusterName {
 			volumeBackupStatus.Backups[i] = backupMemberStatus
 			return
 		}
