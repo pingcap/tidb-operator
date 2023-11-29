@@ -77,11 +77,7 @@ func ListImages() []string {
 	framework.ExpectNoError(err, "failed to read images from values in charts/tidb-operator/values.yaml")
 
 	images = append(images, imagesFromOperator...)
-	imageKeysFromTiDBCluster := sets.NewString(".pd.image", ".tikv.image", ".tidb.image")
-	imagesFromTiDBCluster, err := readImagesFromValues(filepath.Join(framework.TestContext.RepoRoot, "charts/tidb-cluster/values.yaml"), imageKeysFromTiDBCluster)
-	framework.ExpectNoError(err, "failed to read images from values in charts/tidb-cluster/values.yaml")
 
-	images = append(images, imagesFromTiDBCluster...)
 	return sets.NewString(images...).List()
 }
 
