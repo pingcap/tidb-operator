@@ -112,7 +112,6 @@ func PDMSMemberType(name string) MemberType {
 	case "scheduling":
 		return SchedulingMemberType
 	default:
-		println("unknown pdms member type", name)
 		panic("unknown pdms member type")
 	}
 }
@@ -1412,13 +1411,10 @@ type PDMSStatus struct {
 	Synced      bool                    `json:"synced"`
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	// Members contains PDs in current TidbCluster
-	Members         []string                                   `json:"members,omitempty"`
-	PDArrs          []string                                   `json:"apiEndpoints,omitempty"`
-	Leader          string                                     `json:"leader,omitempty"`
-	UnjoinedMembers map[string]UnjoinedMember                  `json:"unjoinedMembers,omitempty"`
-	Image           string                                     `json:"image,omitempty"`
-	Volumes         map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Members contains other service in current TidbCluster
+	Members []string                                   `json:"members,omitempty"`
+	Image   string                                     `json:"image,omitempty"`
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
 	// +optional
 	// +nullable

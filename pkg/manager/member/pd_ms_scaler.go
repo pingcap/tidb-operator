@@ -56,7 +56,6 @@ func (s *pdMSScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 		return nil
 	}
 	serviceName := controller.PDMSTrimName(oldSet.Name)
-	println("serviceName: ", serviceName)
 	skipReason, err := s.deleteDeferDeletingPVC(obj, v1alpha1.PDMSMemberType(serviceName), ordinal)
 	if err != nil {
 		return err

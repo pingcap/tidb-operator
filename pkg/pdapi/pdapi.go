@@ -114,8 +114,6 @@ var (
 	evictLeaderSchedulerConfigPrefix = "pd/api/v1/scheduler-config/evict-leader-scheduler/list"
 	autoscalingPrefix                = "autoscaling"
 	recoveringMarkPrefix             = "pd/api/v1/admin/cluster/markers/snapshot-recovering"
-
-	serviceMembersPrefix = "pd/api/v1/members/mcs"
 )
 
 // pdClient is default implementation of PDClient
@@ -258,7 +256,6 @@ type RecoveringMark struct {
 
 func (c *pdClient) GetHealth() (*HealthInfo, error) {
 	apiURL := fmt.Sprintf("%s/%s", c.url, healthPrefix)
-	klog.V(3).Infof("GetHealth url: %s", apiURL)
 	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
 	if err != nil {
 		return nil, err
@@ -316,7 +313,7 @@ func (c *pdClient) GetMembers() (*MembersInfo, error) {
 }
 
 func (c *pdClient) GetServiceMembers(service string) ([]string, error) {
-	apiURL := fmt.Sprintf("%s/%s?service=%s", c.url, serviceMembersPrefix, service)
+	apiURL := fmt.Sprintf("%s/%s?service=%s", c.url, membersPrefix, service)
 	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
 	if err != nil {
 		return nil, err

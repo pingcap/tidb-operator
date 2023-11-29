@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -61,12 +62,8 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
-		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", tc.GetNamespace(), tc.GetName())
-	}
-	println("sync pdms")
 	// Need to start PD API
-	if tc.Spec.PD.Mode != "ms" {
+	if tc.Spec.PD == nil || tc.Spec.PD.Mode != "ms" {
 		return nil
 	}
 	// init pdMS status
@@ -88,7 +85,9 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
+// syncSingleService for single PD Micro Service components.
 func (m *pdMSMemberManager) syncSingleService(tc *v1alpha1.TidbCluster) error {
+	metrics.ClusterUpdateErrors.WithLabelValues(tc.GetNamespace(), tc.GetName(), m.curSpec.Name).Inc()
 	// Skip sync if PD Micro Service is suspended
 	componentMemberType := v1alpha1.PDMSMemberType(m.curSpec.Name)
 	needSuspend, err := m.suspender.SuspendComponent(tc, componentMemberType)
@@ -260,7 +259,6 @@ func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster) error 
 		return err
 	}
 	if setNotExist {
-		println("set not exist")
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newPDMSSet)
 		if err != nil {
 			return err
@@ -323,18 +321,6 @@ func (m *pdMSMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.State
 		return err
 	}
 	tc.Status.PDMS[m.curSpec.Name].Members = members
-
-	membersInfo, err := pdClient.GetMembers()
-	if err != nil {
-		return err
-	}
-	pdArrs := make([]string, 0)
-	for _, member := range membersInfo.Members {
-		memberURL := strings.ReplaceAll(member.PeerUrls[0], fmt.Sprintf(":%d", v1alpha1.DefaultPDPeerPort), fmt.Sprintf(":%d", v1alpha1.DefaultPDClientPort))
-		pdArrs = append(pdArrs, memberURL)
-	}
-
-	tc.Status.PDMS[m.curSpec.Name].PDArrs = pdArrs
 	tc.Status.PDMS[m.curSpec.Name].Synced = true
 	return nil
 }

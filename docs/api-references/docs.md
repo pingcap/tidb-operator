@@ -10860,39 +10860,7 @@ Kubernetes apps/v1.StatefulSetStatus
 </em>
 </td>
 <td>
-<p>Members contains PDs in current TidbCluster</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>apiEndpoints</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>leader</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>unjoinedMembers</code></br>
-<em>
-<a href="#unjoinedmember">
-map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.UnjoinedMember
-</a>
-</em>
-</td>
-<td>
+<p>Members contains other service in current TidbCluster</p>
 </td>
 </tr>
 <tr>
@@ -26181,7 +26149,6 @@ uint
 <p>
 (<em>Appears on:</em>
 <a href="#masterstatus">MasterStatus</a>, 
-<a href="#pdmsstatus">PDMSStatus</a>, 
 <a href="#pdstatus">PDStatus</a>)
 </p>
 <p>

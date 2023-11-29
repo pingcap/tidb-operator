@@ -209,8 +209,8 @@ echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `
 
-// mcsStartScriptTplText is the tso start script
-var mcsStartScriptTplText = `#!/bin/sh
+// msStartScriptTplText is the pd microservice start script.
+var msStartScriptTplText = `#!/bin/sh
 
 # This script is used to start tso containers in kubernetes cluster
 
@@ -249,7 +249,6 @@ sleep $((RANDOM % 5))
 done
 
 domain="${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}"
-echo "domain: ${domain}"
 ARGS="` + pdEnableMicroService + `
 --listen-addr={{ .Scheme }}://0.0.0.0:2379 \
 --advertise-listen-addr={{ .Scheme }}://${domain}:2379 \
@@ -259,7 +258,7 @@ ARGS="` + pdEnableMicroService + `
 
 echo "starting tso-server ..."
 sleep $((RANDOM % 10))
-echo "/tso-server ${ARGS}"
+echo "/ms-server ${ARGS}"
 exec /pd-server ${ARGS}
 exit 0
 `

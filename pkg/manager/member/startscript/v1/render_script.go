@@ -112,12 +112,12 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 		model.PDAddress = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
-	mcsStartSubScript := ``
-	mcsStartScriptTpl := template.Must(
+	msStartSubScript := ``
+	msStartScriptTpl := template.Must(
 		template.Must(
-			template.New("mcs-start-script").Parse(mcsStartSubScript),
-		).Parse(enableMicroServiceModeDynamic(name, mcsStartScriptTplText)))
-	return renderTemplateFunc(mcsStartScriptTpl, model)
+			template.New("ms-start-script").Parse(msStartSubScript),
+		).Parse(enableMicroServiceModeDynamic(name, msStartScriptTplText)))
+	return renderTemplateFunc(msStartScriptTpl, model)
 }
 
 func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {

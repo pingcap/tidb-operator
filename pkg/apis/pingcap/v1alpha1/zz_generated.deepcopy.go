@@ -3412,18 +3412,6 @@ func (in *PDMSStatus) DeepCopyInto(out *PDMSStatus) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.PDArrs != nil {
-		in, out := &in.PDArrs, &out.PDArrs
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
-	if in.UnjoinedMembers != nil {
-		in, out := &in.UnjoinedMembers, &out.UnjoinedMembers
-		*out = make(map[string]UnjoinedMember, len(*in))
-		for key, val := range *in {
-			(*out)[key] = *val.DeepCopy()
-		}
-	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))

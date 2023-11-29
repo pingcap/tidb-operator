@@ -874,8 +874,6 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 	}
 
 	lowerLimit := (tc.Spec.PD.Replicas+int32(len(tc.Status.PD.PeerMembers)))/2 + 1
-	println("PDIsAvailable: tc.Spec.PD.Replicas, len(tc.Status.PD.Members), len(tc.Status.PD.PeerMembers), lowerLimit",
-		tc.Spec.PD.Replicas, len(tc.Status.PD.Members), len(tc.Status.PD.PeerMembers), lowerLimit)
 	if int32(len(tc.Status.PD.Members)+len(tc.Status.PD.PeerMembers)) < lowerLimit {
 		return false
 	}
@@ -896,17 +894,14 @@ func (tc *TidbCluster) PDIsAvailable() bool {
 
 	availableNum += peerAvailableNum
 	if availableNum < lowerLimit {
-		println("PDIsAvailable: availableNum < lowerLimit", availableNum, lowerLimit)
 		return false
 	}
 
 	if tc.Status.PD.StatefulSet == nil || tc.Status.PD.StatefulSet.ReadyReplicas+peerAvailableNum < lowerLimit {
-		println("PDIsAvailable: ReadyReplicas+peerAvailableNum < lowerLimit", tc.Status.PD.StatefulSet.ReadyReplicas, peerAvailableNum, lowerLimit)
 		return false
 	}
 
 	if tc.Status.PD.Phase == SuspendPhase {
-		println("PDIsAvailable: tc.Status.PD.Phase == SuspendPhase")
 		return false
 	}
 

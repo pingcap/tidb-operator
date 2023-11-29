@@ -39966,10 +39966,6 @@ spec:
               pdms:
                 additionalProperties:
                   properties:
-                    apiEndpoints:
-                      items:
-                        type: string
-                      type: array
                     conditions:
                       items:
                         properties:
@@ -40008,8 +40004,6 @@ spec:
                       nullable: true
                       type: array
                     image:
-                      type: string
-                    leader:
                       type: string
                     members:
                       items:
@@ -40070,23 +40064,6 @@ spec:
                       type: object
                     synced:
                       type: boolean
-                    unjoinedMembers:
-                      additionalProperties:
-                        properties:
-                          createdAt:
-                            format: date-time
-                            nullable: true
-                            type: string
-                          podName:
-                            type: string
-                          pvcUID:
-                            type: string
-                          pvcUIDSet:
-                            additionalProperties:
-                              type: object
-                            type: object
-                        type: object
-                      type: object
                     volReplaceInProgress:
                       type: boolean
                     volumes:
