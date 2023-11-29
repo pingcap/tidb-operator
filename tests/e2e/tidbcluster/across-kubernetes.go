@@ -746,14 +746,34 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				framework.ExpectNoError(err, "failed to get tc %s/%s", ns, tcName)
 
 				ginkgo.By("Update tc to use start script v2")
+				timeBeforeUpdate := metav1.Now()
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 					tc.Spec.StartScriptVersion = v1alpha1.StartScriptV2
 					return nil
 				})
 				framework.ExpectNoError(err, "failed to start script version to v2")
 
-				ginkgo.By(fmt.Sprintf("Wait for phase is %q", v1alpha1.UpgradePhase))
-				utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*3)
+				ginkgo.By("Wait for PD to be recreated") // MustWaitForComponentPhase may not observe the UpgradePhase
+				err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+					pdPods, err := c.CoreV1().Pods(tc.Namespace).List(context.TODO(), metav1.ListOptions{
+						LabelSelector: labels.SelectorFromSet(map[string]string{
+							"app.kubernetes.io/component": "pd",
+							"app.kubernetes.io/instance":  tc.Name,
+						}).String(),
+					})
+					if err != nil {
+						return false, err
+					}
+					if len(pdPods.Items) == 0 {
+						return false, nil
+					}
+					log.Logf("time before update: %v, pd pod creation time: %v", timeBeforeUpdate, pdPods.Items[0].CreationTimestamp)
+					if pdPods.Items[0].CreationTimestamp.Before(&timeBeforeUpdate) {
+						return false, nil
+					}
+					return true, nil
+				})
+				framework.ExpectNoError(err, "failed to wait for pd pod of tc %s/%s to be recreated", ns, tcName)
 
 				ginkgo.By("Wait for cluster is ready")
 				err = oa.WaitForTidbClusterReady(tc, 25*time.Minute, 10*time.Second)
