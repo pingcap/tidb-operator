@@ -35,6 +35,7 @@ import (
 	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 
 	v1 "k8s.io/api/core/v1"
@@ -238,11 +239,36 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc1, 10*time.Minute, 10*time.Second)
 
 			ginkgo.By("Update cluster domain of cluster-1")
+			timeBeforeUpdate := metav1.Now()
 			err := controller.GuaranteedUpdate(genericCli, tc1, func() error {
 				tc1.Spec.ClusterDomain = defaultClusterDomain
 				return nil
 			})
 			framework.ExpectNoError(err, "failed to update cluster domain of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
+
+			ginkgo.By("Wait for updating cluster domain of cluster-1")
+			// the PD pod should be restarted after updating cluster domain
+			err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+				pdPods, err := c.CoreV1().Pods(tc1.Namespace).List(context.TODO(), metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(map[string]string{
+						"app.kubernetes.io/component": "pd",
+						"app.kubernetes.io/instance":  tc1.Name,
+					}).String(),
+				})
+				if err != nil {
+					return false, err
+				}
+				if len(pdPods.Items) == 0 {
+					return false, nil
+				}
+				log.Logf("time before update: %v, pd pod creation time: %v", timeBeforeUpdate, pdPods.Items[0].CreationTimestamp)
+				if pdPods.Items[0].CreationTimestamp.Before(&timeBeforeUpdate) {
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to wait for updating cluster domain of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
+
 			err = oa.WaitForTidbClusterReady(tc1, 25*time.Minute, 30*time.Second)
 			framework.ExpectNoError(err, "failed to wait for cluster-1 ready: %s/%s", tc1.Namespace, tc1.Name)
 
