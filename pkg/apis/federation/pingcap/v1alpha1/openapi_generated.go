@@ -743,11 +743,18 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeRestoreMemberSpec(ref common.
 							Format:      "",
 						},
 					},
+					"warmupOpts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WarmupStrategyOptions is the options for warmup.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreWarmupStrategyOpts"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1.BRConfig", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreWarmupStrategyOpts", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 

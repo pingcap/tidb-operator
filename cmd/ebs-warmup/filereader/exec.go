@@ -46,6 +46,7 @@ type StatedFile struct {
 }
 
 func StatFilesByGlob(glob string) ([]StatedFile, error) {
+	klog.V(1).InfoS("Entering dir.", "glob", glob)
 	files, err := filepath.Glob(glob)
 	if err != nil {
 		return nil, errors.Annotatef(err, "failed to glob files with glob %s", glob)
@@ -58,6 +59,7 @@ func StatFilesByGlob(glob string) ([]StatedFile, error) {
 		}
 		if s.IsDir() {
 			recPath := filepath.Join(file, "*")
+			klog.V(2).InfoS("Recursively entering dir.", "recPath", recPath)
 			recContent, err := StatFilesByGlob(recPath)
 			if err != nil {
 				return nil, errors.Annotatef(err, "failed to stat files in dir %s (globing %s)", file, recPath)
@@ -67,7 +69,35 @@ func StatFilesByGlob(glob string) ([]StatedFile, error) {
 			stats = append(stats, StatedFile{Info: s, Path: file})
 		}
 	}
+	sort.Slice(stats, func(i, j int) bool {
+		// Desc order of modify time.
+		return stats[i].Info.ModTime().After(stats[j].Info.ModTime())
+	})
 	return stats, nil
+}
+
+func WarmUpHybrid(glob string, fromTime time.Time, sendToWorker sendFileHook) error {
+	files, err := StatFilesByGlob(glob)
+	if err != nil {
+		return errors.Annotatef(err, "failed to stat files with glob %s", glob)
+	}
+	for _, file := range files {
+		var shouldBrk bool
+		if file.Info.ModTime().After(fromTime) {
+			shouldBrk = sendFileWithSegmenting(file, defaultSegmentCount, sendToWorker)
+		} else {
+			task := tasks.ReadFile{
+				Type:     tasks.ReadLastNBytes(16 * 1024),
+				File:     file.Info,
+				FilePath: file.Path,
+			}
+			shouldBrk = sendToWorker(task)
+		}
+		if shouldBrk {
+			return nil
+		}
+	}
+	return nil
 }
 
 func WarmUpFooters(glob string, sendToWorker sendFileHook) error {
@@ -99,10 +129,7 @@ func warmUpWholeFileBy(glob string, onFile func(StatedFile) (brk bool)) error {
 	if err != nil {
 		return errors.Annotatef(err, "failed to stat files with glob %s", glob)
 	}
-	sort.Slice(files, func(i, j int) bool {
-		// Desc order of modify time.
-		return files[i].Info.ModTime().After(files[j].Info.ModTime())
-	})
+
 	for _, file := range files {
 		if onFile(file) {
 			return context.Canceled
@@ -252,6 +279,13 @@ func (execCtx *ExecContext) perhapsCheckpoint() (uint64, error) {
 }
 
 func (execCtx *ExecContext) checkpoint() uint64 {
+	if execCtx.config.Type == "hybrid" {
+		// Hybrid warmup doesn't support checkpoint for now:
+		// we need to check whether the arguments is the same.
+		// add a 1s offset for newly created files. (usually in test)
+		klog.InfoS("Hybrid warmup without checkpoint. Will use time.Now() as checkpoint.")
+		return uint64(time.Now().UnixMilli() + 1000)
+	}
 	ckp, err := execCtx.perhapsCheckpoint()
 	if err != nil {
 		klog.InfoS("Failed to read checkpoint file. Will use time.Now() as checkpoint.", "err", err)
@@ -283,13 +317,15 @@ func New(config Config) *ExecContext {
 	return execCtx
 }
 
-func (execCtx *ExecContext) RunAndClose(ctx context.Context) {
+func (execCtx *ExecContext) RunAndClose(ctx context.Context) error {
 	defer execCtx.cancel()
-
-	total := uint64(0)
 	klog.InfoS("Using checkpoint.", "checkpoint", execCtx.lastSent, "time", time.UnixMilli(int64(execCtx.lastSent)).String())
 
 	switch execCtx.config.Type {
+	case "hybrid":
+		WarmUpHybrid(execCtx.config.Files, execCtx.config.WarmupAfter, func(rf tasks.ReadFile) (brk bool) {
+			return execCtx.sendToWorker(ctx, rf)
+		})
 	case "footer":
 		WarmUpFooters(execCtx.config.Files, func(rf tasks.ReadFile) bool {
 			return execCtx.sendToWorker(ctx, rf)
@@ -298,16 +334,22 @@ func (execCtx *ExecContext) RunAndClose(ctx context.Context) {
 		WarmUpWholeFile(execCtx.config.Files, func(rf tasks.ReadFile) bool {
 			return execCtx.sendToWorker(ctx, rf)
 		})
+	default:
+		return errors.NotSupportedf("type %s isn't supported", execCtx.config.Type)
 	}
 
 	for _, wkr := range execCtx.wkrs {
 		close(wkr)
 	}
-	execCtx.eg.Wait()
+	if err := execCtx.eg.Wait(); err != nil {
+		return err
+	}
 
 	take := time.Since(execCtx.start)
+	total := atomic.LoadUint64(&execCtx.total)
 	rate := float64(total) / take.Seconds()
 	klog.InfoS("Done.", "take", take, "total", total, "rate", fmt.Sprintf("%s/s", units.HumanSize(rate)))
+	return nil
 }
 
 func (execCtx *ExecContext) checkpointTick(ctx context.Context) {
@@ -328,6 +370,7 @@ func (execCtx *ExecContext) checkpointTick(ctx context.Context) {
 
 func (execCtx *ExecContext) sendToWorker(ctx context.Context, rf tasks.ReadFile) bool {
 	createTs := rf.File.ModTime().UnixMilli()
+	klog.V(1).InfoS("Sending file to worker.", "task", rf)
 	if execCtx.config.OnFireRequest != nil {
 		execCtx.config.OnFireRequest(&rf)
 	}

@@ -1066,7 +1066,7 @@ func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alph
 	}, nil)
 }
 
-func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []corev1.VolumeMount) ([]string, error) {
+func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, opts v1alpha1.RestoreWarmupStrategyOpts, mountPoints []corev1.VolumeMount) ([]string, error) {
 	res := make([]string, 0, len(mountPoints))
 	for _, p := range mountPoints {
 		switch strategy {
@@ -1074,7 +1074,14 @@ func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []c
 			res = append(res, "--block", p.MountPath)
 		case v1alpha1.RestoreWarmupStrategyHybrid:
 			if p.MountPath == constants.TiKVDataVolumeMountPath {
+				if !opts.HybridWarmupFrom.IsZero() {
+					res = append(res, "--fs-override-arg", "--type=hybrid", "--hybrid.full-from-recent", opts.HybridWarmupFrom.Time.UTC().Format(time.RFC3339))
+				}
 				res = append(res, "--fs", constants.TiKVDataVolumeMountPath)
+				if !opts.HybridWarmupFrom.IsZero() {
+					// Reset the extra arguments.
+					res = append(res, "--fs-override-arg")
+				}
 			} else {
 				res = append(res, "--block", p.MountPath)
 			}
@@ -1131,7 +1138,7 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 		}
 	}
 
-	args, err := generateWarmUpArgs(r.Spec.WarmupStrategy, podVolumeMounts)
+	args, err := generateWarmUpArgs(r.Spec.WarmupStrategy, r.Spec.WarmupStrategyOpts, podVolumeMounts)
 	if err != nil {
 		return nil, err
 	}
@@ -1212,7 +1219,7 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 		}
 	}
 
-	args, err := generateWarmUpArgs(r.Spec.WarmupStrategy, warmUpVolumeMounts)
+	args, err := generateWarmUpArgs(r.Spec.WarmupStrategy, r.Spec.WarmupStrategyOpts, warmUpVolumeMounts)
 	if err != nil {
 		return nil, err
 	}

@@ -688,6 +688,7 @@ func TestGenerateWarmUpArgs(t *testing.T) {
 	testCases := []struct {
 		name     string
 		strategy v1alpha1.RestoreWarmupStrategy
+		opts     v1alpha1.RestoreWarmupStrategyOpts
 		expected []string
 		errMsg   string
 	}{
@@ -711,10 +712,18 @@ func TestGenerateWarmUpArgs(t *testing.T) {
 			strategy: "unknown",
 			errMsg:   `unknown warmup strategy "unknown"`,
 		},
+		{
+			name:     "hibrid with subset",
+			strategy: "hybrid",
+			expected: []string{"--fs-override-arg", "--type=hybrid", "--hybrid.full-from-recent", "1970-01-01T00:00:01Z", "--fs", "/var/lib/tikv", "--fs-override-arg", "--block", "/logs"},
+			opts: v1alpha1.RestoreWarmupStrategyOpts{
+				HybridWarmupFrom: metav1.Unix(1, 0),
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			args, err := generateWarmUpArgs(tc.strategy, mountPoints)
+			args, err := generateWarmUpArgs(tc.strategy, tc.opts, mountPoints)
 			if tc.errMsg != "" {
 				require.EqualError(t, err, tc.errMsg)
 				return

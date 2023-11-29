@@ -1494,6 +1494,17 @@ github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreWarmupStrategy
 <p>WarmupStrategy</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>warmupOpts</code></br>
+<em>
+github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreWarmupStrategyOpts
+</em>
+</td>
+<td>
+<p>WarmupStrategyOptions is the options for warmup.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="volumerestorememberstatus">VolumeRestoreMemberStatus</h3>
