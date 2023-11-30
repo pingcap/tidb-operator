@@ -861,7 +861,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupInitialize {
 		bm.setBackupPodResourceRequirementsEmpty(&job.Spec.Template)
 		// for volume backup initializing job, set deadline of the job in case it blocks GC and pd schedule indefinitely
-		job.Spec.ActiveDeadlineSeconds = pointer.Int64(int64(volumeBackupInitJobMaxActiveSeconds))
+		job.Spec.ActiveDeadlineSeconds = pointer.Int64Ptr(int64(volumeBackupInitJobMaxActiveSeconds))
 	}
 
 	return job, "", nil

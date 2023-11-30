@@ -276,6 +276,8 @@ spec:
                               type: object
                             ephemeral:
                               properties:
+                                readOnly:
+                                  type: boolean
                                 volumeClaimTemplate:
                                   properties:
                                     metadata:
@@ -287,18 +289,6 @@ spec:
                                             type: string
                                           type: array
                                         dataSource:
-                                          properties:
-                                            apiGroup:
-                                              type: string
-                                            kind:
-                                              type: string
-                                            name:
-                                              type: string
-                                          required:
-                                          - kind
-                                          - name
-                                          type: object
-                                        dataSourceRef:
                                           properties:
                                             apiGroup:
                                               type: string
