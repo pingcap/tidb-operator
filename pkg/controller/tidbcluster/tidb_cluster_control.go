@@ -44,6 +44,7 @@ type ControlInterface interface {
 func NewDefaultTidbClusterControl(
 	tcControl controller.TidbClusterControlInterface,
 	pdMemberManager manager.Manager,
+	pdMSMemberManager manager.Manager,
 	tikvMemberManager manager.Manager,
 	tidbMemberManager manager.Manager,
 	tiproxyMemberManager manager.Manager,
@@ -64,6 +65,7 @@ func NewDefaultTidbClusterControl(
 	return &defaultTidbClusterControl{
 		tcControl:                tcControl,
 		pdMemberManager:          pdMemberManager,
+		pdMSMemberManager:        pdMSMemberManager,
 		tikvMemberManager:        tikvMemberManager,
 		tidbMemberManager:        tidbMemberManager,
 		tiproxyMemberManager:     tiproxyMemberManager,
@@ -86,6 +88,7 @@ func NewDefaultTidbClusterControl(
 type defaultTidbClusterControl struct {
 	tcControl                controller.TidbClusterControlInterface
 	pdMemberManager          manager.Manager
+	pdMSMemberManager        manager.Manager
 	tikvMemberManager        manager.Manager
 	tidbMemberManager        manager.Manager
 	tiproxyMemberManager     manager.Manager
@@ -104,7 +107,7 @@ type defaultTidbClusterControl struct {
 	recorder                 record.EventRecorder
 }
 
-// UpdateStatefulSet executes the core logic loop for a tidbcluster.
+// UpdateTidbCluster executes the core logic loop for a tidbcluster.
 func (c *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
 	c.defaulting(tc)
 	if !c.validate(tc) {
@@ -183,6 +186,17 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_replacer_updatestatus").Inc()
 			return err
 		}
+	}
+
+	// works that should be done to make the pd microservice current state match the desired state:
+	//   - create or update the pdms service
+	//   - create or update the pdms headless service
+	//   - create the pdms statefulset
+	//   - sync pdms cluster status from pdms to TidbCluster object
+	//   - upgrade the pd cluster
+	//   - scale out/in the pd cluster
+	if err := c.pdMSMemberManager.Sync(tc); err != nil {
+		return err
 	}
 
 	// works that should be done to make the pd cluster current state match the desired state:
@@ -320,6 +334,11 @@ func (c *defaultTidbClusterControl) recordMetrics(tc *v1alpha1.TidbCluster) {
 	tcName := tc.GetName()
 	if tc.Spec.PD != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "pd").Set(float64(tc.Spec.PD.Replicas))
+	}
+	if tc.Spec.PDMS != nil {
+		for _, component := range tc.Spec.PDMS {
+			metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, component.Name).Set(float64(component.Replicas))
+		}
 	}
 	if tc.Spec.TiKV != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tikv").Set(float64(tc.Spec.TiKV.Replicas))

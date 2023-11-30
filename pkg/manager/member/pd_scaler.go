@@ -73,7 +73,7 @@ func (s *pdScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet
 	return nil
 }
 
-// We need remove member from cluster before reducing statefulset replicas
+// ScaleIn We need remove member from cluster before reducing statefulset replicas
 // only remove one member at a time when scale down
 func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	tc, ok := meta.(*v1alpha1.TidbCluster)

@@ -38,6 +38,9 @@ func SetTidbClusterDefault(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.PD != nil {
 		setPdSpecDefault(tc)
 	}
+	if tc.Spec.PDMS != nil {
+		setPDMSSpecDefault(tc)
+	}
 	if tc.Spec.TiKV != nil {
 		setTikvSpecDefault(tc)
 	}
@@ -122,6 +125,19 @@ func setPdSpecDefault(tc *v1alpha1.TidbCluster) {
 	}
 	if tc.Spec.PD.MaxFailoverCount == nil {
 		tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(3)
+	}
+}
+
+func setPDMSSpecDefault(tc *v1alpha1.TidbCluster) {
+	for _, component := range tc.Spec.PDMS {
+		if len(*component.Version) > 0 || &component.Version != nil {
+			if *component.BaseImage == "" {
+				*component.BaseImage = defaultPDImage
+			}
+		}
+		if component.MaxFailoverCount == nil {
+			component.MaxFailoverCount = pointer.Int32Ptr(3)
+		}
 	}
 }
 

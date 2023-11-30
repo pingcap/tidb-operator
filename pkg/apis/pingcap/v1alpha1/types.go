@@ -68,6 +68,10 @@ const (
 	DiscoveryMemberType MemberType = "discovery"
 	// PDMemberType is pd member type
 	PDMemberType MemberType = "pd"
+	// TSOMemberType is tso member type
+	TSOMemberType MemberType = "tso"
+	// SchedulingMemberType is scheduling member type
+	SchedulingMemberType MemberType = "scheduling"
 	// TiDBMemberType is tidb member type
 	TiDBMemberType MemberType = "tidb"
 	// TiKVMemberType is tikv member type
@@ -100,6 +104,21 @@ const (
 	// UnknownMemberType is unknown member type
 	UnknownMemberType MemberType = "unknown"
 )
+
+func PDMSMemberType(name string) MemberType {
+	switch name {
+	case "tso":
+		return TSOMemberType
+	case "scheduling":
+		return SchedulingMemberType
+	default:
+		panic("unknown pdms member type")
+	}
+}
+
+func IsPDMSMemberType(name MemberType) bool {
+	return name == TSOMemberType || name == SchedulingMemberType
+}
 
 // MemberPhase is the current state of member
 type MemberPhase string
@@ -199,6 +218,10 @@ type TidbClusterSpec struct {
 	// PD cluster spec
 	// +optional
 	PD *PDSpec `json:"pd,omitempty"`
+
+	// PDMS cluster spec
+	// +optional
+	PDMS []*PDMSSpec `json:"pdms,omitempty"`
 
 	// TiDB cluster spec
 	// +optional
@@ -394,6 +417,7 @@ type TidbClusterSpec struct {
 type TidbClusterStatus struct {
 	ClusterID  string                    `json:"clusterID,omitempty"`
 	PD         PDStatus                  `json:"pd,omitempty"`
+	PDMS       map[string]*PDMSStatus    `json:"pdms,omitempty"`
 	TiKV       TiKVStatus                `json:"tikv,omitempty"`
 	TiDB       TiDBStatus                `json:"tidb,omitempty"`
 	Pump       PumpStatus                `json:"pump,omitempty"`
@@ -519,6 +543,68 @@ type PDSpec struct {
 	// Note that this is deprecated, we should just set `dashboard.internal-proxy` in `pd.config`.
 	// +optional
 	EnableDashboardInternalProxy *bool `json:"enableDashboardInternalProxy,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
+	// Start up script version
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1"
+	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
+
+	// Timeout threshold when pd get started
+	// +kubebuilder:default=30
+	StartTimeout int `json:"startTimeout,omitempty"`
+
+	// Mode is the mode of PD cluster
+	// +optional
+	// +kubebuilder:validation:Enum:="";"ms"
+	Mode string `json:"mode,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// PDMSSpec contains details of PD Micro Service
+type PDMSSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Name of the PD Micro Service
+	Name string `json:"name"`
+
+	// Specify a Service Account for pd ms
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/pd
+	// +optional
+	BaseImage *string `json:"baseImage"`
+
+	// Service defines a Kubernetes service of PD cluster.
+	// Optional: Defaults to `.spec.services` in favor of backward compatibility
+	// +optional
+	Service *ServiceSpec `json:"service,omitempty"`
+
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
+	// Config is the Configuration of pd-servers
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Config *PDConfigWraper `json:"config,omitempty"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// which used by Dashboard.
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
@@ -1309,6 +1395,25 @@ type PDStatus struct {
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
 	Image           string                     `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
+	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
+}
+
+// PDMSStatus is PD Micro Service Status
+type PDMSStatus struct {
+	Name string `json:"name,omitempty"`
+	// +optional
+	Synced      bool                    `json:"synced"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	// Members contains other service in current TidbCluster
+	Members []string                                   `json:"members,omitempty"`
+	Image   string                                     `json:"image,omitempty"`
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
 	// +optional

@@ -40,6 +40,20 @@ type PDStartScriptModel struct {
 	PDStartTimeout     int
 }
 
+// PDMSStartScriptModel contain fields for rendering PD Micro Service start script
+type PDMSStartScriptModel struct {
+	PDMSDomain string
+	PDMSName   string
+
+	DataDir string
+
+	ListenAddr          string
+	AdvertiseListenAddr string
+	BackendEndpoints    string
+
+	DiscoveryAddr string
+}
+
 // RenderPDStartScript renders PD start script from TidbCluster
 func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &PDStartScriptModel{}
@@ -80,16 +94,66 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	waitForDnsNameIpMatchOnStartup := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
 
+	mode := ""
+	if tc.Spec.PD.Mode == "ms" {
+		mode = "api"
+	}
 	pdStartScriptTpl := template.Must(
 		template.Must(
 			template.New("pd-start-script").Parse(pdStartSubScript),
 		).Parse(
 			componentCommonScript +
 				replacePdStartScriptCustomPorts(
-					replacePdStartScriptDnsAwaitPart(pdStartScript, waitForDnsNameIpMatchOnStartup))),
+					replacePdStartScriptDnsAwaitPart(waitForDnsNameIpMatchOnStartup,
+						enableMicroServiceModeDynamic(mode, pdStartScript)))),
 	)
 
 	return renderTemplateFunc(pdStartScriptTpl, m)
+}
+
+func RenderPDTSOStartScript(tc *v1alpha1.TidbCluster) (string, error) {
+	return renderPDMSStartScript(tc, "tso")
+}
+
+func RenderPDSchedulingStartScript(tc *v1alpha1.TidbCluster) (string, error) {
+	return renderPDMSStartScript(tc, "scheduling")
+}
+
+// RenderPDMCSStartScript renders TSO start script from TidbCluster
+func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error) {
+	m := &PDMSStartScriptModel{}
+	tcName := tc.Name
+	tcNS := tc.Namespace
+	peerServiceName := controller.PDMSMemberName(tcName, name)
+
+	m.DataDir = constants.MCSDataVolumeMountPath
+	m.PDMSDomain = fmt.Sprintf("${PDMS_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
+	if tc.Spec.ClusterDomain != "" {
+		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
+	}
+
+	m.PDMSName = "${PDMS_POD_NAME}"
+	if tc.AcrossK8s() || tc.Spec.ClusterDomain != "" {
+		m.PDMSName = "${PDMS_DOMAIN}"
+	}
+
+	m.ListenAddr = fmt.Sprintf("%s://0.0.0.0:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
+
+	m.AdvertiseListenAddr = fmt.Sprintf("%s://${PDMS_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
+
+	m.DiscoveryAddr = fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS)
+
+	m.BackendEndpoints = fmt.Sprintf("%s://${PDMS_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
+
+	msStartSubScript := ``
+	msStartScriptTpl := template.Must(
+		template.Must(
+			template.New("ms-start-script").Parse(msStartSubScript),
+		).Parse(
+			componentCommonScript +
+				enableMicroServiceModeDynamic(name, msStartScriptTplText)))
+
+	return renderTemplateFunc(msStartScriptTpl, m)
 }
 
 const (
@@ -101,6 +165,8 @@ componentDomain=${PD_DOMAIN}
 waitThreshold={{ .PDStartTimeout }}
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 ` + componentCommonWaitForDnsIpMatchScript
+
+	pdEnableMicroServiceSubScript = " services "
 
 	pdWaitForDnsOnlySubScript = `
 
@@ -139,7 +205,8 @@ done
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN={{ .PDDomain }}` +
 		dnsAwaitPart + `
-ARGS="--data-dir={{ .DataDir }} \
+ARGS="` + pdEnableMicroService + `
+--data-dir={{ .DataDir }} \
 --name={{ .PDName }} \
 --peer-urls={{ .PeerURL }} \
 --advertise-peer-urls={{ .AdvertisePeerURL }} \
@@ -172,6 +239,22 @@ sleep $((RANDOM % 10))
 echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `
+
+	// msStartScriptTplText is the template of pd microservices start script.
+	msStartScriptTplText = `
+ARGS="` + pdEnableMicroService + `
+--listen-addr={{ .ListenAddr }} \
+--advertise-listen-addr={{ .AdvertiseListenAddr }} \
+--backend-endpoints=${ .BackendEndpoints } \
+--config=/etc/pd/pd.toml \
+"
+
+echo "starting tso-server ..."
+sleep $((RANDOM % 10))
+echo "/pdms-server ${ARGS}"
+exec /pd-server ${ARGS}
+exit 0
+`
 )
 
 func replacePdStartScriptCustomPorts(startScript string) string {
@@ -182,10 +265,18 @@ func replacePdStartScriptCustomPorts(startScript string) string {
 	return startScript
 }
 
-func replacePdStartScriptDnsAwaitPart(startScript string, withLocalIpMatch bool) string {
+func replacePdStartScriptDnsAwaitPart(withLocalIpMatch bool, startScript string) string {
 	if withLocalIpMatch {
 		return strings.ReplaceAll(startScript, dnsAwaitPart, pdWaitForDnsIpMatchSubScript)
 	} else {
 		return strings.ReplaceAll(startScript, dnsAwaitPart, pdWaitForDnsOnlySubScript)
+	}
+}
+
+func enableMicroServiceModeDynamic(ms string, startScript string) string {
+	if ms != "" {
+		return strings.ReplaceAll(startScript, pdEnableMicroService, fmt.Sprintf(" %s %s ", pdEnableMicroServiceSubScript, ms))
+	} else {
+		return strings.ReplaceAll(startScript, pdEnableMicroService, "")
 	}
 }

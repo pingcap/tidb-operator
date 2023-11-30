@@ -1673,6 +1673,20 @@ PDSpec
 </tr>
 <tr>
 <td>
+<code>pdms</code></br>
+<em>
+<a href="#pdmsspec">
+[]PDMSSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PDMS cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tidb</code></br>
 <em>
 <a href="#tidbspec">
@@ -5125,6 +5139,7 @@ and component-level overrides</p>
 <a href="#discoveryspec">DiscoverySpec</a>, 
 <a href="#masterspec">MasterSpec</a>, 
 <a href="#ngmonitoringspec">NGMonitoringSpec</a>, 
+<a href="#pdmsspec">PDMSSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#pumpspec">PumpSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
@@ -9374,6 +9389,7 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 (<em>Appears on:</em>
 <a href="#masterstatus">MasterStatus</a>, 
 <a href="#ngmonitoringstatus">NGMonitoringStatus</a>, 
+<a href="#pdmsstatus">PDMSStatus</a>, 
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
 <a href="#ticdcstatus">TiCDCStatus</a>, 
@@ -10343,6 +10359,7 @@ DashboardConfig
 <h3 id="pdconfigwraper">PDConfigWraper</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pdmsspec">PDMSSpec</a>, 
 <a href="#pdspec">PDSpec</a>)
 </p>
 <p>
@@ -10587,6 +10604,310 @@ bool
 <em>(Optional)</em>
 <p>DisableErrorVerbose stops annotating logs with the full verbose error
 message.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pdmsspec">PDMSSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>PDMSSpec contains details of PD Micro Service</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the PD Micro Service</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for pd ms</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>service</code></br>
+<em>
+<a href="#servicespec">
+ServiceSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Service defines a Kubernetes service of PD cluster.
+Optional: Defaults to <code>.spec.services</code> in favor of backward compatibility</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxFailoverCount</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+Optional: Defaults to 3</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#pdconfigwraper">
+PDConfigWraper
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Config is the Configuration of pd-servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsClientSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
+which used by Dashboard.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>mountClusterClientSecret</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startUpScriptVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Start up script version</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startTimeout</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Timeout threshold when pd get started</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pdmsstatus">PDMSStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>PDMSStatus is PD Micro Service Status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>members</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Members contains other service in current TidbCluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volReplaceInProgress</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicates that a Volume replace using VolumeReplacing feature is in progress.</p>
 </td>
 </tr>
 </tbody>
@@ -11674,6 +11995,18 @@ int
 </td>
 <td>
 <p>Timeout threshold when pd get started</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>mode</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Mode is the mode of PD cluster</p>
 </td>
 </tr>
 </tbody>
@@ -14737,6 +15070,7 @@ string
 (<em>Appears on:</em>
 <a href="#grafanaspec">GrafanaSpec</a>, 
 <a href="#masterservicespec">MasterServiceSpec</a>, 
+<a href="#pdmsspec">PDMSSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#prometheusspec">PrometheusSpec</a>, 
 <a href="#reloaderspec">ReloaderSpec</a>, 
@@ -15224,6 +15558,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#masterstatus">MasterStatus</a>, 
+<a href="#pdmsstatus">PDMSStatus</a>, 
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
 <a href="#ticdcstatus">TiCDCStatus</a>, 
@@ -23440,6 +23775,20 @@ PDSpec
 </tr>
 <tr>
 <td>
+<code>pdms</code></br>
+<em>
+<a href="#pdmsspec">
+[]PDMSSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PDMS cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tidb</code></br>
 <em>
 <a href="#tidbspec">
@@ -24029,6 +24378,18 @@ string
 <em>
 <a href="#pdstatus">
 PDStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>pdms</code></br>
+<em>
+<a href="#pdmsstatus">
+map[string]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMSStatus
 </a>
 </em>
 </td>

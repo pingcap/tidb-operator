@@ -56,6 +56,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 		control: NewDefaultTidbClusterControl(
 			deps.TiDBClusterControl,
 			mm.NewPDMemberManager(deps, mm.NewPDScaler(deps), mm.NewPDUpgrader(deps), mm.NewPDFailover(deps), suspender, podVolumeModifier),
+			mm.NewPDMSMemberManager(deps, mm.NewPDMSScaler(deps), mm.NewPDMSUpgrader(deps), suspender),
 			mm.NewTiKVMemberManager(deps, mm.NewTiKVFailover(deps), mm.NewTiKVScaler(deps), mm.NewTiKVUpgrader(deps, podVolumeModifier), suspender, podVolumeModifier),
 			mm.NewTiDBMemberManager(deps, mm.NewTiDBScaler(deps), mm.NewTiDBUpgrader(deps), mm.NewTiDBFailover(deps), suspender, podVolumeModifier),
 			mm.NewTiProxyMemberManager(deps, mm.NewTiProxyScaler(deps), mm.NewTiProxyUpgrader(deps), suspender),

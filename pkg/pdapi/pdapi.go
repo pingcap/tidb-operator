@@ -58,6 +58,8 @@ type PDClient interface {
 	GetCluster() (*metapb.Cluster, error)
 	// GetMembers returns all PD members from cluster
 	GetMembers() (*MembersInfo, error)
+	// GetServiceMembers returns all PD members from cluster by service
+	GetServiceMembers(service string) ([]string, error)
 	// GetStores lists all TiKV stores from cluster
 	GetStores() (*StoresInfo, error)
 	// GetTombStoneStores lists all tombstone stores from cluster
@@ -304,6 +306,20 @@ func (c *pdClient) GetMembers() (*MembersInfo, error) {
 	}
 	members := &MembersInfo{}
 	err = json.Unmarshal(body, members)
+	if err != nil {
+		return nil, err
+	}
+	return members, nil
+}
+
+func (c *pdClient) GetServiceMembers(service string) ([]string, error) {
+	apiURL := fmt.Sprintf("%s/%s?service=%s", c.url, membersPrefix, service)
+	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
+	if err != nil {
+		return nil, err
+	}
+	var members []string
+	err = json.Unmarshal(body, &members)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ import (
 	stderrs "errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	fedv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
@@ -308,6 +309,27 @@ func PDMemberName(clusterName string) string {
 // PDPeerMemberName returns pd peer service name
 func PDPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pd-peer", clusterName)
+}
+
+// PDMSMemberName returns pd member name
+func PDMSMemberName(clusterName string, serviceName string) string {
+	return fmt.Sprintf("%s-%s", clusterName, serviceName)
+}
+
+// PDMSPeerMemberName returns pd peer service name
+func PDMSPeerMemberName(clusterName string, serviceName string) string {
+	return fmt.Sprintf("%s-%s-peer", clusterName, serviceName)
+}
+
+// PDMSTrimName returns last `-` separated string for `PDMSMemberName`
+func PDMSTrimName(memberName string) string {
+	name := memberName[strings.LastIndex(memberName, "-")+1:]
+	if name == "peer" {
+		// get middle serviceName
+		check := memberName[:strings.LastIndex(memberName, "-")]
+		name = check[strings.LastIndex(check, "-")+1:]
+	}
+	return name
 }
 
 // TiKVMemberName returns tikv member name

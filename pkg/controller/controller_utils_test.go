@@ -540,6 +540,14 @@ func TestSetIfNotEmpty(t *testing.T) {
 	}
 }
 
+func TestTrimName(t *testing.T) {
+	name := "basic-tso-peer"
+	println(PDMSTrimName(name))
+
+	name = "basic-tso"
+	println(PDMSTrimName(name))
+}
+
 func collectEvents(source <-chan string) []string {
 	done := false
 	events := make([]string, 0)

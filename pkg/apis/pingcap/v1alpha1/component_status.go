@@ -80,6 +80,11 @@ func (tc *TidbCluster) AllComponentStatus() []ComponentStatus {
 	if tc.Spec.PD != nil {
 		components = append(components, &tc.Status.PD)
 	}
+	if tc.Spec.PDMS != nil {
+		for _, component := range tc.Status.PDMS {
+			components = append(components, tc.Status.PDMS[component.Name])
+		}
+	}
 	if tc.Spec.TiDB != nil {
 		components = append(components, &tc.Status.TiDB)
 	}
@@ -180,6 +185,59 @@ func (s *PDStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
 func (s *PDStatus) SetVolReplaceInProgress(status bool) {
+	s.VolReplaceInProgress = status
+}
+
+func (s *PDMSStatus) MemberType() MemberType {
+	return PDMSMemberType(s.Name)
+}
+func (s *PDMSStatus) GetSynced() bool {
+	return s.Synced
+}
+func (s *PDMSStatus) GetPhase() MemberPhase {
+	return s.Phase
+}
+func (s *PDMSStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
+	return s.Volumes
+}
+func (s *PDMSStatus) GetConditions() []metav1.Condition {
+	return s.Conditions
+}
+func (s *PDMSStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *PDMSStatus) GetVolReplaceInProgress() bool {
+	return s.VolReplaceInProgress
+}
+func (s *PDMSStatus) SetSynced(synced bool) {
+	s.Synced = synced
+}
+func (s *PDMSStatus) SetCondition(newCondition metav1.Condition) {
+	if s.Conditions == nil {
+		s.Conditions = []metav1.Condition{}
+	}
+	conditions := s.Conditions
+	meta.SetStatusCondition(&conditions, newCondition)
+	s.Conditions = conditions
+}
+func (s *PDMSStatus) RemoveCondition(conditionType string) {
+	if s.Conditions == nil {
+		return
+	}
+	conditions := s.Conditions
+	meta.RemoveStatusCondition(&conditions, conditionType)
+	s.Conditions = conditions
+}
+func (s *PDMSStatus) SetPhase(phase MemberPhase) {
+	s.Phase = phase
+}
+func (s *PDMSStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
+func (s *PDMSStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
+	s.Volumes = vols
+}
+func (s *PDMSStatus) SetVolReplaceInProgress(status bool) {
 	s.VolReplaceInProgress = status
 }
 
