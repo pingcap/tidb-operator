@@ -112,3 +112,29 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 
 	return nil
 }
+
+type fakePDMSUpgrader struct{}
+
+// NewFakePDMSUpgrader returns a fakePDUpgrader
+func NewFakePDMSUpgrader() Upgrader {
+	return &fakePDMSUpgrader{}
+}
+
+func (u *fakePDMSUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	if tc.Status.PDMS == nil {
+		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS status is nil, can not to be upgraded", tc.GetNamespace(), tc.GetName())
+	}
+
+	componentName := controller.PDMSTrimName(newSet.Spec.ServiceName)
+	if tc.Status.PDMS[componentName] == nil {
+		tc.Status.PDMS[componentName] = &v1alpha1.PDMSStatus{Name: componentName}
+		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS component is nil, can not to be upgraded, component: %s", tc.GetNamespace(), tc.GetName(), componentName)
+	}
+
+	if !tc.Status.PDMS[componentName].Synced {
+		return fmt.Errorf("tidbcluster: pd ms status sync failed, can not to be upgraded")
+	}
+	println("fake pd ms upgrade")
+	tc.Status.PD.Phase = v1alpha1.UpgradePhase
+	return nil
+}

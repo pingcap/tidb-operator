@@ -312,7 +312,6 @@ type PDStartScriptModel struct {
 	DataDir           string
 	CheckDomainScript string
 	PDStartTimeout    int
-	mode              string
 }
 
 // PdMSStartScriptModel contain fields for rendering PD Micro Service start script

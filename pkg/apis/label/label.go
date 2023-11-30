@@ -408,10 +408,6 @@ func (l Label) PDMS(name string) Label {
 	return l.Component(name)
 }
 
-func (l Label) IsPDMS(name string) Label {
-	return l.Component(name)
-}
-
 // TiProxy assigns tiproxy to component key in label
 func (l Label) TiProxy() Label {
 	return l.Component(TiProxyLabelVal)

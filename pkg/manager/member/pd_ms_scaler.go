@@ -103,3 +103,29 @@ func (s *pdMSScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
+
+type fakePDMSScaler struct{}
+
+// NewFakePDMSScaler returns a fake Scaler
+func NewFakePDMSScaler() Scaler {
+	return &fakePDMSScaler{}
+}
+
+func (s *fakePDMSScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
+		return s.ScaleOut(meta, oldSet, newSet)
+	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
+		return s.ScaleIn(meta, oldSet, newSet)
+	}
+	return nil
+}
+
+func (s *fakePDMSScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas+1, nil)
+	return nil
+}
+
+func (s *fakePDMSScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
+	return nil
+}

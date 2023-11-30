@@ -44,6 +44,8 @@ const (
 	TransferPDLeaderActionType                  ActionType = "TransferPDLeader"
 	GetAutoscalingPlansActionType               ActionType = "GetAutoscalingPlans"
 	GetRecoveringMarkActionType                 ActionType = "GetRecoveringMark"
+	// Mircro Service
+	GetServiceMembersActionType ActionType = "GetServiceMembers"
 )
 
 type NotFoundReaction struct {
@@ -124,8 +126,13 @@ func (c *FakePDClient) GetMembers() (*MembersInfo, error) {
 	return result.(*MembersInfo), nil
 }
 
-func (c *FakePDClient) GetServiceMembers(name string) ([]string, error) {
-	return nil, nil
+func (c *FakePDClient) GetServiceMembers(_ string) ([]string, error) {
+	action := &Action{}
+	result, err := c.fakeAPI(GetServiceMembersActionType, action)
+	if err != nil {
+		return nil, err
+	}
+	return result.([]string), nil
 }
 
 func (c *FakePDClient) GetStores() (*StoresInfo, error) {

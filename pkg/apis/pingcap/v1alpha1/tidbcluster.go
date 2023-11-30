@@ -1158,7 +1158,7 @@ func (tidbSvc *TiDBServiceSpec) GetStatusNodePort() int32 {
 	return int32(*statusNodePort)
 }
 
-// GetPort returns the service port name in spec.tidb.service
+// GetPortName returns the service port name in spec.tidb.service
 func (tidbSvc *TiDBServiceSpec) GetPortName() string {
 	portName := "mysql-client"
 	if tidbSvc.PortName != nil {

@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
@@ -40,7 +39,7 @@ func TestPDMSMemberManagerSyncCreate(t *testing.T) {
 		errWhenCreateStatefulSet   bool
 		errWhenCreatePDService     bool
 		errWhenCreatePDPeerService bool
-		statusChange               func(*apps.StatefulSet)
+		pdSvcCreated               bool
 		suspendComponent           func() (bool, error)
 		errExpectFn                func(*GomegaWithT, error)
 		setCreated                 bool
@@ -57,65 +56,9 @@ func TestPDMSMemberManagerSyncCreate(t *testing.T) {
 		tcName := tc.Name
 		oldSpec := tc.Spec
 
-		// finish pd cluster
-		pdmm, _, _ := newFakePDMemberManager()
-		fakeSetControl := pdmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
-		fakeSvcControl := pdmm.deps.ServiceControl.(*controller.FakeServiceControl)
-		if test.errWhenCreateStatefulSet {
-			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
-		}
-		if test.errWhenCreatePDService {
-			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
-		}
-		if test.errWhenCreatePDPeerService {
-			fakeSvcControl.SetCreateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 1)
-		}
-		if test.suspendComponent != nil {
-			pdmm.suspender.(*suspender.FakeSuspender).SuspendComponentFunc = func(c v1alpha1.Cluster, mt v1alpha1.MemberType) (bool, error) {
-				return test.suspendComponent()
-			}
-		}
-
-		if test.statusChange == nil {
-			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
-				set.Status.Replicas = *set.Spec.Replicas
-				set.Status.CurrentRevision = "pd-1"
-				set.Status.UpdateRevision = "pd-1"
-				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = observedGeneration
-				set.Status.ReadyReplicas = 1
-			})
-		} else {
-			fakeSetControl.SetStatusChange(test.statusChange)
-		}
-
-		// retry Sync, wait for pd cluster ready.
-		fakePDControl := pdmm.deps.PDControl.(*pdapi.FakePDControl)
-		pdClient := controller.NewFakePDClient(fakePDControl, tc)
-		pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
-			}}, nil
-		})
-		pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &metapb.Cluster{Id: uint64(1)}, nil
-		})
-		err := pdmm.Sync(tc)
-		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
-
-		err = pdmm.Sync(tc)
-
-		tc1, err := pdmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
-		if test.setCreated {
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(tc1).NotTo(Equal(nil))
-		} else {
-			expectErrIsNotFound(g, err)
-		}
-
 		pmm, _, _ := newFakePDMSMemberManager(tc.Spec.PDMS)
-		fakeSetControl = pmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
-		fakeSvcControl = pmm.deps.ServiceControl.(*controller.FakeServiceControl)
+		fakeSetControl := pmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
+		fakeSvcControl := pmm.deps.ServiceControl.(*controller.FakeServiceControl)
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
 		}
@@ -131,11 +74,23 @@ func TestPDMSMemberManagerSyncCreate(t *testing.T) {
 			}
 		}
 
-		err = pmm.Sync(tc)
+		err := pmm.Sync(tc)
 		test.errExpectFn(g, err)
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
-		tc1, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		svc1, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		eps1, eperr := pmm.deps.EndpointLister.Endpoints(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		if test.pdSvcCreated {
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(svc1).NotTo(Equal(nil))
+			g.Expect(eperr).NotTo(HaveOccurred())
+			g.Expect(eps1).NotTo(Equal(nil))
+		} else {
+			expectErrIsNotFound(g, err)
+			expectErrIsNotFound(g, eperr)
+		}
+
+		tc1, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
 		if test.setCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(tc1).NotTo(Equal(nil))
@@ -150,6 +105,7 @@ func TestPDMSMemberManagerSyncCreate(t *testing.T) {
 			errWhenCreateStatefulSet:   false,
 			errWhenCreatePDService:     false,
 			errWhenCreatePDPeerService: false,
+			pdSvcCreated:               true,
 			errExpectFn:                errExpectRequeue,
 			setCreated:                 true,
 		},
@@ -165,16 +121,12 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 	type testcase struct {
 		name                       string
 		modify                     func(cluster *v1alpha1.TidbCluster)
-		pdHealth                   *pdapi.HealthInfo
 		errWhenUpdateStatefulSet   bool
 		errWhenUpdatePDService     bool
 		errWhenUpdatePDPeerService bool
-		errWhenGetCluster          bool
-		errWhenGetPDHealth         bool
 		statusChange               func(*apps.StatefulSet)
 		err                        bool
 		expectPDServiceFn          func(*GomegaWithT, *corev1.Service, error)
-		expectPDPeerServiceFn      func(*GomegaWithT, *corev1.Service, error)
 		expectStatefulSetFn        func(*GomegaWithT, *apps.StatefulSet, error)
 		expectTidbClusterFn        func(*GomegaWithT, *v1alpha1.TidbCluster)
 	}
@@ -184,47 +136,49 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pdmm, _, _ := newFakePDMemberManager()
-		fakePDControl := pdmm.deps.PDControl.(*pdapi.FakePDControl)
-		fakeSetControl := pdmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
-		//fakeSvcControl := pdmm.deps.ServiceControl.(*controller.FakeServiceControl)
-		pdClient := controller.NewFakePDClient(fakePDControl, tc)
-		if test.errWhenGetPDHealth {
-			pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
-				return nil, fmt.Errorf("failed to get health of pd cluster")
-			})
-		} else {
-			pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
-				return test.pdHealth, nil
-			})
-		}
-
-		if test.errWhenGetCluster {
-			pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
-				return nil, fmt.Errorf("failed to get cluster info")
-			})
-		} else {
-			pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
-				return &metapb.Cluster{Id: uint64(1)}, nil
-			})
-		}
+		pmm, _, _ := newFakePDMSMemberManager(tc.Spec.PDMS)
+		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
+		fakeSetControl := pmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
+		fakeSvcControl := pmm.deps.ServiceControl.(*controller.FakeServiceControl)
 
 		if test.statusChange == nil {
 			fakeSetControl.SetStatusChange(func(set *apps.StatefulSet) {
 				set.Status.Replicas = *set.Spec.Replicas
-				set.Status.CurrentRevision = "pd-1"
-				set.Status.UpdateRevision = "pd-1"
-				observedGeneration := int64(1)
-				set.Status.ObservedGeneration = observedGeneration
 			})
 		} else {
 			fakeSetControl.SetStatusChange(test.statusChange)
 		}
 
-		err := pdmm.Sync(tc)
+		pdClient := controller.NewFakePDClient(fakePDControl, tc)
+		pdClient.AddReaction(pdapi.GetServiceMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+			return []string{"tso"}, nil
+		})
+
+		err := pmm.Sync(tc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		err = pdmm.Sync(tc)
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.deps.EndpointLister.Endpoints(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		g.Expect(err).NotTo(HaveOccurred())
+
+		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		g.Expect(err).NotTo(HaveOccurred())
+
+		tc1 := tc.DeepCopy()
+		test.modify(tc1)
+
+		if test.errWhenUpdatePDService {
+			fakeSvcControl.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+		if test.errWhenUpdatePDPeerService {
+			fakeSvcControl.SetUpdateServiceError(errors.NewInternalError(fmt.Errorf("API server failed")), 1)
+		}
+		if test.errWhenUpdateStatefulSet {
+			fakeSetControl.SetUpdateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
+		}
+
+		err = pmm.Sync(tc1)
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
 		} else {
@@ -232,204 +186,69 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		if test.expectPDServiceFn != nil {
-			svc, err := pdmm.deps.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
+			svc, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, "tso"))
 			test.expectPDServiceFn(g, svc, err)
 		}
-		if test.expectPDPeerServiceFn != nil {
-			svc, err := pdmm.deps.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
-			test.expectPDPeerServiceFn(g, svc, err)
-		}
 		if test.expectStatefulSetFn != nil {
-			set, err := pdmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+			set, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectTidbClusterFn != nil {
-			test.expectTidbClusterFn(g, tc)
+			test.expectTidbClusterFn(g, tc1)
 		}
-
-		// pd ms
-		pmm, _, _ := newFakePDMSMemberManager(tc.Spec.PDMS)
-		err = pmm.Sync(tc)
-
-		tc5, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
-		test.expectStatefulSetFn(g, tc5, err)
 	}
 
 	tests := []testcase{
 		{
 			name: "normal",
 			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Replicas = 5
+				tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
+					{
+						Name:     "tso",
+						Replicas: 5,
+					},
+				}
 				tc.Spec.Services = []v1alpha1.Service{
-					{Name: "pd", Type: string(corev1.ServiceTypeNodePort)},
+					{Name: "tso", Type: string(corev1.ServiceTypeNodePort)},
 				}
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
-			}},
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
-			errWhenGetPDHealth:         false,
 			err:                        false,
 			expectPDServiceFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeNodePort))
 			},
-			expectPDPeerServiceFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				// g.Expect(int(*set.Spec.Replicas)).To(Equal(4))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.ClusterID).To(Equal("1"))
-				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.ScalePhase))
-				g.Expect(tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
-				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
-				g.Expect(tc.Status.PD.Members["pd1"].Health).To(Equal(true))
-				g.Expect(tc.Status.PD.Members["pd2"].Health).To(Equal(true))
-				g.Expect(tc.Status.PD.Members["pd3"].Health).To(Equal(false))
+				g.Expect(tc.Status.PDMS["tso"].Phase).To(Equal(v1alpha1.ScalePhase))
 			},
 		},
 		{
-			name: "error when update pd service",
+			name: "patch tso add additional container ",
 			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.Services = []v1alpha1.Service{
-					{Name: "pd", Type: string(corev1.ServiceTypeNodePort)},
+				tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
+					{
+						Name:     "tso",
+						Replicas: 5,
+					},
 				}
-			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
-			}},
-			errWhenUpdateStatefulSet:   false,
-			errWhenUpdatePDService:     true,
-			errWhenUpdatePDPeerService: false,
-			err:                        true,
-			expectPDServiceFn:          nil,
-			expectPDPeerServiceFn:      nil,
-			expectStatefulSetFn:        nil,
-		},
-		{
-			name: "error when update statefulset",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Replicas = 5
-			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
-			}},
-			errWhenUpdateStatefulSet:   true,
-			errWhenUpdatePDService:     false,
-			errWhenUpdatePDPeerService: false,
-			err:                        true,
-			expectPDServiceFn:          nil,
-			expectPDPeerServiceFn:      nil,
-			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-		},
-		{
-			name: "error when sync pd status",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Replicas = 5
-			},
-			errWhenUpdateStatefulSet:   false,
-			errWhenUpdatePDService:     false,
-			errWhenUpdatePDPeerService: false,
-			errWhenGetPDHealth:         true,
-			err:                        false,
-			expectPDServiceFn:          nil,
-			expectPDPeerServiceFn:      nil,
-			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PD.Synced).To(BeFalse())
-				g.Expect(tc.Status.PD.Members).To(BeNil())
-			},
-		},
-		{
-			name: "error when sync cluster ID",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Replicas = 5
-			},
-			errWhenUpdateStatefulSet:   false,
-			errWhenUpdatePDService:     false,
-			errWhenUpdatePDPeerService: false,
-			errWhenGetCluster:          true,
-			errWhenGetPDHealth:         false,
-			err:                        false,
-			expectPDServiceFn:          nil,
-			expectPDPeerServiceFn:      nil,
-			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PD.Synced).To(BeFalse())
-				g.Expect(tc.Status.PD.Members).To(BeNil())
-			},
-		},
-		{
-			name: "patch pd container lifecycle configuration when sync cluster  ",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Replicas = 5
-				tc.Spec.PD.AdditionalContainers = []corev1.Container{
-					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.LifecycleHandler{
-						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
-					}}},
-				}
-			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
-			}},
-			errWhenUpdateStatefulSet:   false,
-			errWhenUpdatePDService:     false,
-			errWhenUpdatePDPeerService: false,
-			errWhenGetPDHealth:         false,
-			err:                        false,
-			expectPDServiceFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-			expectPDPeerServiceFn: nil,
-			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(set.Spec.Template.Spec.Containers[0].Lifecycle).To(Equal(
-					&corev1.Lifecycle{PreStop: &corev1.LifecycleHandler{
-						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
-					}}))
-			},
-			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-			},
-		},
-		{
-			name: "patch pd add additional container ",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Replicas = 5
-				tc.Spec.PD.AdditionalContainers = []corev1.Container{
+
+				tc.Spec.PDMS[0].AdditionalContainers = []corev1.Container{
 					{Name: "additional", Image: "test"},
 				}
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
-			}},
 			errWhenUpdateStatefulSet:   false,
 			errWhenUpdatePDService:     false,
 			errWhenUpdatePDPeerService: false,
-			errWhenGetPDHealth:         false,
 			err:                        false,
 			expectPDServiceFn: func(g *GomegaWithT, svc *corev1.Service, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
-			expectPDPeerServiceFn: nil,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(set.Spec.Template.Spec.Containers)).To(Equal(2))
@@ -440,6 +259,87 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 		},
 	}
 
+	for i := range tests {
+		t.Logf("begin: %s", tests[i].name)
+		testFn(&tests[i], t)
+		t.Logf("end: %s", tests[i].name)
+	}
+}
+
+func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                string
+		preModify           func(cluster *v1alpha1.TidbCluster)
+		modify              func(cluster *v1alpha1.TidbCluster)
+		err                 bool
+		expectStatefulSetFn func(*GomegaWithT, *apps.StatefulSet, error)
+		expectTidbClusterFn func(*GomegaWithT, *v1alpha1.TidbCluster)
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPDMS()
+		if test.preModify != nil {
+			test.preModify(tc)
+		}
+		ns := tc.Namespace
+		tcName := tc.Name
+
+		pmm, _, _ := newFakePDMSMemberManager(tc.Spec.PDMS)
+		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
+		pdClient := controller.NewFakePDClient(fakePDControl, tc)
+		pdClient.AddReaction(pdapi.GetServiceMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+			return []string{"tso"}, nil
+		})
+
+		err := pmm.Sync(tc)
+		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
+
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		g.Expect(err).NotTo(HaveOccurred())
+
+		test.modify(tc)
+		err = pmm.syncPDMSStatefulSet(tc)
+		if test.err {
+			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+
+		if test.expectStatefulSetFn != nil {
+			set, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+			test.expectStatefulSetFn(g, set, err)
+			println("set.Spec.Template.Spec.Containers[0].Image", set.Spec.Template.Spec.Containers[0].Image)
+		}
+		if test.expectTidbClusterFn != nil {
+			test.expectTidbClusterFn(g, tc)
+		}
+	}
+	tests := []testcase{
+		{
+			name: "normal",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD.Image = "pd-test-image:v2"
+				tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
+					{
+						Name:     "tso",
+						Replicas: 1,
+					},
+				}
+			},
+			err: false,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("pd-test-image:v2"))
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(2)))
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.PDMS["tso"].Phase).To(Equal(v1alpha1.ScalePhase))
+			},
+		},
+	}
 	for i := range tests {
 		t.Logf("begin: %s", tests[i].name)
 		testFn(&tests[i], t)
@@ -461,7 +361,7 @@ func newTidbClusterForPDMS() *v1alpha1.TidbCluster {
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: &v1alpha1.PDSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
-					Image: "pingcap/pd:v7.2.0",
+					Image: "pingcap/pd:v7.3.0",
 				},
 				Replicas:         1,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
@@ -471,12 +371,91 @@ func newTidbClusterForPDMS() *v1alpha1.TidbCluster {
 				{
 					Name: "tso",
 					ComponentSpec: v1alpha1.ComponentSpec{
-						Image: "pingcap/pd:v7.2.0",
+						Image: "pingcap/pd:v7.3.0",
 					},
 					Replicas: 3,
 				},
 			},
 		},
+	}
+}
+
+func TestGetNewPDMSHeadlessServiceForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name     string
+		tc       v1alpha1.TidbCluster
+		expected corev1.Service
+	}{
+		{
+			name: "basic",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+			},
+			expected: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-tso-peer",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/used-by":    "peer",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "None",
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "tcp-peer-2380",
+							Port:       v1alpha1.DefaultPDPeerPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDPeerPort)),
+							Protocol:   corev1.ProtocolTCP,
+						},
+						{
+							Name:       "tcp-peer-2379",
+							Port:       v1alpha1.DefaultPDClientPort,
+							TargetPort: intstr.FromInt(int(v1alpha1.DefaultPDClientPort)),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "tso",
+					},
+					PublishNotReadyAddresses: true,
+				},
+			},
+		},
+	}
+
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			svc := getNewPDMSHeadlessService(&tt.tc, "tso")
+			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
+				t.Errorf("unexpected Service (-want, +got): %s", diff)
+			}
+		})
 	}
 }
 
@@ -486,6 +465,8 @@ func newFakePDMSMemberManager(ms []*v1alpha1.PDMSSpec) (*pdMSMemberManager, cach
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	pdMSManager := &pdMSMemberManager{
 		deps:      fakeDeps,
+		scaler:    NewFakePDMSScaler(),
+		upgrader:  NewFakePDMSUpgrader(),
 		suspender: suspender.NewFakeSuspender(),
 	}
 	if ms != nil {
