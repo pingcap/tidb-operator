@@ -50,6 +50,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/slack"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 
 	"github.com/ghodss/yaml"
 	_ "github.com/go-sql-driver/mysql"
@@ -66,7 +67,6 @@ import (
 	"k8s.io/klog/v2"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (

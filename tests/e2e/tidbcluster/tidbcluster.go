@@ -37,10 +37,10 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	k8sScheme "k8s.io/client-go/kubernetes/scheme"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/log"
 	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	"k8s.io/utils/pointer"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
@@ -67,7 +67,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 var _ = ginkgo.Describe("TiDBCluster", func() {

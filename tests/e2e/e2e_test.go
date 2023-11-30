@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,16 +30,17 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/config"
-	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/framework/testfiles"
 
 	// test sources
 	_ "github.com/pingcap/tidb-operator/tests/e2e/br"
+	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/dmcluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbdashboard"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbngmonitoring"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tikv"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 // handleFlags sets up all flags and parses the command line.

@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/api"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
-	"k8s.io/kubernetes/test/e2e/framework/log"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 // Client is a fault-trigger client

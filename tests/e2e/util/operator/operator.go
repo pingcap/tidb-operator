@@ -21,8 +21,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 )
 
 // OperatorKillerConfig describes configuration for operator killer.
@@ -73,7 +74,7 @@ func (k *OperatorKiller) Run(stopCh <-chan struct{}) {
 		}
 		framework.Logf("Trying to kill tidb-operator pods (%d)", len(pods))
 		for _, pod := range pods {
-			if !podutil.IsPodReady(&pod) || hasBeenRestarted(&pod) {
+			if !k8s.IsPodReady(&pod) || hasBeenRestarted(&pod) {
 				// deleting the pod will recreate it, we should skip if the pod
 				// is not ready or has been restarted before, otherwise
 				// potential errors (e.g. panic) in operator may be hidden.

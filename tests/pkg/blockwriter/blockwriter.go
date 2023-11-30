@@ -23,9 +23,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework/log"
+
+	"github.com/pingcap/tidb-operator/tests/pkg/util"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 const (

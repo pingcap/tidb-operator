@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
@@ -47,6 +48,7 @@ import (
 	utiltikv "github.com/pingcap/tidb-operator/tests/e2e/util/tikv"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/mock"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -60,9 +62,7 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/framework/node"
 	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
 	"k8s.io/kubernetes/test/e2e/framework/pod"
@@ -770,7 +770,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					}
 					return false, err
 				}
-				_, condition := podutil.GetPodCondition(&pod.Status, v1.PodScheduled)
+				_, condition := k8s.GetPodCondition(&pod.Status, v1.PodScheduled)
 				if condition == nil || condition.Status != v1.ConditionTrue {
 					return false, nil
 				}
@@ -829,7 +829,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					}
 					return false, err
 				}
-				return !podutil.IsPodReady(pod), nil
+				return !k8s.IsPodReady(pod), nil
 			})
 			framework.ExpectNoError(err, "wait for patched pod ready timeout")
 

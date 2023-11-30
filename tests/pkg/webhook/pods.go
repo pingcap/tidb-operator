@@ -18,8 +18,8 @@ import (
 
 	v1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/kubernetes/test/e2e/framework/log"
+	
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 // only allow pods to be delete when it is not ddlowner of tidb, not leader of pd and not
