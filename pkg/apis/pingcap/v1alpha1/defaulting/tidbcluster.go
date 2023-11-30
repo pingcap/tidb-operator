@@ -130,7 +130,7 @@ func setPdSpecDefault(tc *v1alpha1.TidbCluster) {
 
 func setPDMSSpecDefault(tc *v1alpha1.TidbCluster) {
 	for _, component := range tc.Spec.PDMS {
-		if len(*component.Version) > 0 || &component.Version != nil {
+		if len(*component.Version) > 0 || component.Version != nil {
 			if *component.BaseImage == "" {
 				*component.BaseImage = defaultPDImage
 			}
