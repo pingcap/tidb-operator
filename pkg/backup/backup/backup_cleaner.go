@@ -155,6 +155,13 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		volumeMounts = append(volumeMounts, localVolumeMount)
 	}
 
+	if len(backup.Spec.AdditionalVolumes) > 0 {
+		volumes = append(volumes, backup.Spec.AdditionalVolumes...)
+	}
+	if len(backup.Spec.AdditionalVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, backup.Spec.AdditionalVolumeMounts...)
+	}
+
 	serviceAccount := constants.DefaultServiceAccountName
 	if backup.Spec.ServiceAccount != "" {
 		serviceAccount = backup.Spec.ServiceAccount
