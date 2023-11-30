@@ -18,7 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	
+
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 

@@ -18,7 +18,7 @@ import (
 
 	v1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	
+
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 

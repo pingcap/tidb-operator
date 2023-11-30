@@ -41,8 +41,10 @@ files=($(find . -type f -not \( \
         -o -path './.git/*' \
         -o -path './.*/*' \
         -o -path './pkg/client/*' \
+        -o -path './pkg/third_party/*' \
         -o -path './*/.terraform/*' \
         -o -path './tests/images/*/*' \
+        -o -path './tests/third_party/*' \
         -o -path './deploy/*' \
         -o -path '*/Makefile' \
         -o -path '*/Dockerfile' \
