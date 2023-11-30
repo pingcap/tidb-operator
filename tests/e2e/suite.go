@@ -14,13 +14,7 @@
 package e2e
 
 import (
-	"fmt"
-	"io/ioutil"
-	"path"
-	"time"
-
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2emetrics "k8s.io/kubernetes/test/e2e/framework/metrics"
 )
 
 // CleanupSuite is the boilerplate that can be used after tests on ginkgo were run, on the SynchronizedAfterSuite step.
@@ -40,48 +34,7 @@ func AfterSuiteActions() {
 	if framework.TestContext.ReportDir != "" {
 		framework.CoreDump(framework.TestContext.ReportDir)
 	}
-	if framework.TestContext.GatherSuiteMetricsAfterTest {
-		if err := gatherTestSuiteMetrics(); err != nil {
-			framework.Logf("Error gathering metrics: %v", err)
-		}
-	}
 	if framework.TestContext.NodeKiller.Enabled {
 		close(framework.TestContext.NodeKiller.NodeKillerStopCh)
 	}
-}
-
-func gatherTestSuiteMetrics() error {
-	framework.Logf("Gathering metrics")
-	cfg, err := framework.LoadConfig()
-	if err != nil {
-		return fmt.Errorf("error loading config: %v", err)
-	}
-	c, err := framework.LoadClientset()
-	if err != nil {
-		return fmt.Errorf("error loading client: %v", err)
-	}
-
-	// Grab metrics for apiserver, scheduler, controller-manager, kubelet (for non-kubemark case) and cluster autoscaler (optionally).
-	grabber, err := e2emetrics.NewMetricsGrabber(c, nil, cfg, !framework.ProviderIs("kubemark"), true, true, true, framework.TestContext.IncludeClusterAutoscalerMetrics, true)
-	if err != nil {
-		return fmt.Errorf("failed to create MetricsGrabber: %v", err)
-	}
-
-	received, err := grabber.Grab()
-	if err != nil {
-		return fmt.Errorf("failed to grab metrics: %v", err)
-	}
-
-	metricsForE2E := (*e2emetrics.ComponentCollection)(&received)
-	metricsJSON := metricsForE2E.PrintJSON()
-	if framework.TestContext.ReportDir != "" {
-		filePath := path.Join(framework.TestContext.ReportDir, "MetricsForE2ESuite_"+time.Now().Format(time.RFC3339)+".json")
-		if err := ioutil.WriteFile(filePath, []byte(metricsJSON), 0644); err != nil {
-			return fmt.Errorf("error writing to %q: %v", filePath, err)
-		}
-	} else {
-		framework.Logf("\n\nTest Suite Metrics:\n%s\n", metricsJSON)
-	}
-
-	return nil
 }

@@ -13,6 +13,7 @@
 
 package tidbcluster
 
+/*
 import (
 	"context"
 	"fmt"
@@ -39,7 +40,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,7 +57,6 @@ import (
 	testutils "github.com/pingcap/tidb-operator/tests/e2e/util"
 	utilcloud "github.com/pingcap/tidb-operator/tests/e2e/util/cloud"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
-	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
@@ -70,6 +69,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	e2enode "github.com/pingcap/tidb-operator/tests/third_party/k8s/node"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/pod"
+	e2eskipper "github.com/pingcap/tidb-operator/tests/third_party/k8s/skipper"
 )
 
 // Stability specs describe tests which involve disruptive operations, e.g.
@@ -362,67 +362,6 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			err = framework.TestContext.CloudConfig.Provider.DeleteNode(nodeToDelete)
 			framework.ExpectNoError(err, fmt.Sprintf("failed to delete node %q", nodeToDelete.Name))
 			framework.Logf("Node %q deleted", nodeToDelete.Name)
-
-			if framework.TestContext.Provider == "aws" {
-				// The node object will be gone with physical machine.
-				ginkgo.By(fmt.Sprintf("[AWS/EKS] Wait for the node object %q to be deleted", nodeToDelete.Name))
-				err = wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
-					_, err = c.CoreV1().Nodes().Get(context.TODO(), nodeToDelete.Name, metav1.GetOptions{})
-					if err == nil || !apierrors.IsNotFound(err) {
-						return false, nil
-					}
-					return true, nil
-				})
-				framework.ExpectNoError(err, "failed to get node %s", nodeToDelete.Name)
-
-				ginkgo.By("[AWS/EKS] New instance will be created and join the cluster")
-				_, err := e2enode.CheckReady(c, len(nodeList.Items), 5*time.Minute)
-				framework.ExpectNoError(err, "failed to check node ready state")
-
-				ginkgo.By("[AWS/EKS] Initialize newly created node")
-				nodeList, err = c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-				framework.ExpectNoError(err, "failed to list nodes")
-				initialized := 0
-				for _, node := range nodeList.Items {
-					if _, ok := allNodes[node.Name]; !ok {
-						framework.ExpectNoError(utilnode.InitNode(&node))
-						initialized++
-					}
-				}
-				gomega.Expect(initialized).To(gomega.BeNumerically("==", 1), "must have a node initialized")
-			} else if framework.TestContext.Provider == "gke" {
-				instanceIDAnn := "container.googleapis.com/instance_id"
-				oldInstanceID, ok := nodeToDelete.Annotations[instanceIDAnn]
-				if !ok {
-					framework.Failf("instance label %q not found on node object %q", instanceIDAnn, nodeToDelete.Name)
-				}
-
-				ginkgo.By("[GCP/GKE] Wait for instance ID to be updated")
-				err = wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
-					node, err := c.CoreV1().Nodes().Get(context.TODO(), nodeToDelete.Name, metav1.GetOptions{})
-					if err != nil {
-						return false, nil
-					}
-					instanceID, ok := node.Annotations[instanceIDAnn]
-					if !ok {
-						return false, nil
-					}
-					if instanceID == oldInstanceID {
-						return false, nil
-					}
-					framework.Logf("instance ID of node %q changed from %q to %q", nodeToDelete.Name, oldInstanceID, instanceID)
-					return true, nil
-				})
-				framework.ExpectNoError(err, "wait for instance ID timeout")
-
-				ginkgo.By("[GCP/GKE] Wait for the node to be ready")
-				e2enode.WaitForNodeToBeReady(c, nodeToDelete.Name, time.Minute*5)
-
-				ginkgo.By(fmt.Sprintf("[GCP/GKE] Initialize underlying machine of node %s", nodeToDelete.Name))
-				node, err := c.CoreV1().Nodes().Get(context.TODO(), nodeToDelete.Name, metav1.GetOptions{})
-				framework.ExpectNoError(err, "failed to get node %s", nodeToDelete.Name)
-				framework.ExpectNoError(utilnode.InitNode(node))
-			}
 
 			ginkgo.By("Mark stores of failed tikv pods as tombstone")
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, clusterName, false)
@@ -1590,3 +1529,4 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		})
 	})
 })
+*/

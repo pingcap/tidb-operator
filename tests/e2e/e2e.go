@@ -31,7 +31,6 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,9 +48,7 @@ import (
 	// ensure auth plugins are loaded
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	// ensure that cloud providers are loaded
-	_ "k8s.io/kubernetes/test/e2e/framework/providers/aws"
-	_ "k8s.io/kubernetes/test/e2e/framework/providers/gce"
+	// not cloud provider specific for now in real e2e
 
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -60,14 +57,12 @@ import (
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
-	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
 	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	e2ekubectl "github.com/pingcap/tidb-operator/tests/third_party/k8s/kubectl"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	e2enode "github.com/pingcap/tidb-operator/tests/third_party/k8s/node"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/pod"
-	storageutil "github.com/pingcap/tidb-operator/tests/third_party/k8s/storage"
 )
 
 var (
@@ -144,52 +139,6 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 
 	if err := waitForDaemonSets(c, metav1.NamespaceSystem, int32(framework.TestContext.AllowedNotReadyNodes), framework.TestContext.SystemDaemonsetStartupTimeout); err != nil {
 		log.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
-	}
-
-	ginkgo.By("Initializing all nodes")
-	nodeList, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-	framework.ExpectNoError(err, "failed to list nodes")
-	for _, node := range nodeList.Items {
-		framework.Logf("Initializing node %q", node.Name)
-		framework.ExpectNoError(utilnode.InitNode(&node), fmt.Sprintf("initializing node %s failed", node.Name))
-	}
-
-	// By using default storage class in GKE/EKS (aws), network attached storage
-	// which be used and we must clean them later.
-	// We set local-storage class as default for simplicity.
-	// The default storage class of kind is local-path-provisioner which
-	// consumes local storage like local-volume-provisioner. However, it's not
-	// stable in our e2e testing.
-	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" {
-		defaultSCName := "local-storage"
-		list, err := c.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
-		framework.ExpectNoError(err, "list storage class failed")
-		// only one storage class can be marked default
-		// https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/#changing-the-default-storageclass
-		var localStorageSC *storagev1.StorageClass
-		for i, sc := range list.Items {
-			if sc.Name == defaultSCName {
-				localStorageSC = &list.Items[i]
-			} else if storageutil.IsDefaultAnnotation(sc.ObjectMeta) {
-				delete(sc.ObjectMeta.Annotations, storageutil.IsDefaultStorageClassAnnotation)
-				_, err = c.StorageV1().StorageClasses().Update(context.TODO(), &sc, metav1.UpdateOptions{})
-				framework.ExpectNoError(err, "update storage class failed, %v", sc)
-			}
-		}
-		// nolint: staticcheck
-		// reason: SA5011(related information): this check suggests that the pointer can be nil
-		if localStorageSC == nil {
-			log.Failf("local-storage storage class not found")
-		}
-		// nolint: staticcheck
-		// reason: SA5011: possible nil pointer dereference
-		if localStorageSC.Annotations == nil {
-			localStorageSC.Annotations = map[string]string{}
-		}
-		localStorageSC.Annotations[storageutil.IsDefaultStorageClassAnnotation] = "true"
-		log.Logf("Setting %q as the default storage class", localStorageSC.Name)
-		_, err = c.StorageV1().StorageClasses().Update(context.TODO(), localStorageSC, metav1.UpdateOptions{})
-		framework.ExpectNoError(err, "update storage class failed, %v", localStorageSC)
 	}
 
 	// Log the version of the server and this client.

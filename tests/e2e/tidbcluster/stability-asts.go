@@ -32,7 +32,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -49,6 +48,7 @@ import (
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
+	e2esset "github.com/pingcap/tidb-operator/tests/third_party/k8s/statefulset"
 )
 
 var _ = ginkgo.Describe("[Stability]", func() {

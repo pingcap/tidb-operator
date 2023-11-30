@@ -41,7 +41,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	"k8s.io/utils/pointer"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -68,6 +67,7 @@ import (
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
+	e2eskipper "github.com/pingcap/tidb-operator/tests/third_party/k8s/skipper"
 )
 
 var _ = ginkgo.Describe("TiDBCluster", func() {
