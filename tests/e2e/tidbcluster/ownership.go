@@ -17,14 +17,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 // WaitObjectToBeControlledByOrDie wait desired owner become the controller of the object

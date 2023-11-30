@@ -17,6 +17,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/ssh"
+
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 var (
@@ -75,7 +77,7 @@ func InitNode(node *v1.Node) error {
 	} else if framework.TestContext.Provider == "gke" {
 		initNodeCmd = gkeNodeInitCmd
 	} else {
-		framework.Logf("Unknown provider %q, skipped", framework.TestContext.Provider)
+		log.Logf("Unknown provider %q, skipped", framework.TestContext.Provider)
 		return nil
 	}
 	return ssh.IssueSSHCommand(initNodeCmd, framework.TestContext.Provider, node)
