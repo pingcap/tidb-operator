@@ -29,8 +29,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/config"
-	"k8s.io/kubernetes/test/e2e/framework/testfiles"
 
 	// test sources
 	_ "github.com/pingcap/tidb-operator/tests/e2e/br"
@@ -40,7 +38,9 @@ import (
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbdashboard"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbngmonitoring"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tikv"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/config"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/testfiles"
 )
 
 // handleFlags sets up all flags and parses the command line.

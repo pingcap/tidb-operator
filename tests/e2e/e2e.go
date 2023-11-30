@@ -30,17 +30,6 @@ import (
 	"github.com/onsi/ginkgo/config"
 	"github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/gomega"
-	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/version"
-	"github.com/pingcap/tidb-operator/tests"
-	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
-	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
-	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
-	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
-	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -54,11 +43,7 @@ import (
 	"k8s.io/component-base/logs"
 	"k8s.io/klog/v2"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2ekubectl "k8s.io/kubernetes/test/e2e/framework/kubectl"
-	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
-	"k8s.io/kubernetes/test/e2e/framework/pod"
 	utilnet "k8s.io/utils/net"
 
 	// ensure auth plugins are loaded
@@ -67,6 +52,22 @@ import (
 	// ensure that cloud providers are loaded
 	_ "k8s.io/kubernetes/test/e2e/framework/providers/aws"
 	_ "k8s.io/kubernetes/test/e2e/framework/providers/gce"
+
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/version"
+	"github.com/pingcap/tidb-operator/tests"
+	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
+	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	e2ekubectl "github.com/pingcap/tidb-operator/tests/third_party/k8s/kubectl"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
+	e2enode "github.com/pingcap/tidb-operator/tests/third_party/k8s/node"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/pod"
+	storageutil "github.com/pingcap/tidb-operator/tests/third_party/k8s/storage"
 )
 
 var (

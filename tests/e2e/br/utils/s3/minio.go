@@ -21,13 +21,14 @@ import (
 
 	"github.com/minio/minio-go/v6"
 	"github.com/onsi/ginkgo"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	podutil "k8s.io/kubernetes/test/e2e/framework/pod"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
+	podutil "github.com/pingcap/tidb-operator/tests/third_party/k8s/pod"
 )
 
 const (

@@ -25,6 +25,25 @@ import (
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/errors"
+	v1 "k8s.io/api/core/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
+	clientset "k8s.io/client-go/kubernetes"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
+	restclient "k8s.io/client-go/rest"
+	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
+	"k8s.io/kubernetes/test/e2e/framework"
+	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
+	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
+	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -49,27 +68,8 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/mock"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
-	v1 "k8s.io/api/core/v1"
-	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/util/wait"
-	clientset "k8s.io/client-go/kubernetes"
-	corelisterv1 "k8s.io/client-go/listers/core/v1"
-	restclient "k8s.io/client-go/rest"
-	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/node"
-	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
-	"k8s.io/kubernetes/test/e2e/framework/pod"
-	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
-	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
-	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	e2enode "github.com/pingcap/tidb-operator/tests/third_party/k8s/node"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/pod"
 )
 
 // Stability specs describe tests which involve disruptive operations, e.g.
@@ -376,7 +376,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				framework.ExpectNoError(err, "failed to get node %s", nodeToDelete.Name)
 
 				ginkgo.By("[AWS/EKS] New instance will be created and join the cluster")
-				_, err := node.CheckReady(c, len(nodeList.Items), 5*time.Minute)
+				_, err := e2enode.CheckReady(c, len(nodeList.Items), 5*time.Minute)
 				framework.ExpectNoError(err, "failed to check node ready state")
 
 				ginkgo.By("[AWS/EKS] Initialize newly created node")
@@ -416,7 +416,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				framework.ExpectNoError(err, "wait for instance ID timeout")
 
 				ginkgo.By("[GCP/GKE] Wait for the node to be ready")
-				node.WaitForNodeToBeReady(c, nodeToDelete.Name, time.Minute*5)
+				e2enode.WaitForNodeToBeReady(c, nodeToDelete.Name, time.Minute*5)
 
 				ginkgo.By(fmt.Sprintf("[GCP/GKE] Initialize underlying machine of node %s", nodeToDelete.Name))
 				node, err := c.CoreV1().Nodes().Get(context.TODO(), nodeToDelete.Name, metav1.GetOptions{})
