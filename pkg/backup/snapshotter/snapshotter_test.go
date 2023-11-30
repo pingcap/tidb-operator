@@ -1469,6 +1469,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				Annotations: map[string]string{
 					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
 					"test/annotation":                       "retained",
+					"tikv-volume-restore/volume-id":         "vol-0e65f40961a9f0001",
 				},
 			},
 			Spec: corev1.PersistentVolumeSpec{
@@ -1493,6 +1494,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				Annotations: map[string]string{
 					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
 					"test/annotation":                       "retained",
+					"tikv-volume-restore/volume-id":         "vol-1e65f40961a9f0001",
 				},
 			},
 			Spec: corev1.PersistentVolumeSpec{
@@ -1517,6 +1519,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				Annotations: map[string]string{
 					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
 					"test/annotation":                       "retained",
+					"tikv-volume-restore/volume-id":         "vol-0e65f40961a9f0002",
 				},
 			},
 			Spec: corev1.PersistentVolumeSpec{
@@ -1541,6 +1544,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				Annotations: map[string]string{
 					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
 					"test/annotation":                       "retained",
+					"tikv-volume-restore/volume-id":         "vol-1e65f40961a9f0002",
 				},
 			},
 			Spec: corev1.PersistentVolumeSpec{
@@ -1565,6 +1569,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				Annotations: map[string]string{
 					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
 					"test/annotation":                       "retained",
+					"tikv-volume-restore/volume-id":         "vol-0e65f40961a9f0003",
 				},
 			},
 			Spec: corev1.PersistentVolumeSpec{
@@ -1589,6 +1594,7 @@ func TestProcessCSBPVCsAndPVs(t *testing.T) {
 				Annotations: map[string]string{
 					constants.KubeAnnDynamicallyProvisioned: "ebs.csi.aws.com",
 					"test/annotation":                       "retained",
+					"tikv-volume-restore/volume-id":         "vol-1e65f40961a9f0003",
 				},
 			},
 			Spec: corev1.PersistentVolumeSpec{
