@@ -52,7 +52,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} does't exist, exiting."
+    echo "${ANNOTATIONS} doesn't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -339,7 +339,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} does't exist, exiting."
+    echo "${ANNOTATIONS} doesn't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -589,7 +589,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} does't exist, exiting."
+    echo "${ANNOTATIONS} doesn't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -704,7 +704,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} does't exist, exiting."
+    echo "${ANNOTATIONS} doesn't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null

@@ -730,3 +730,23 @@ func PDMSSupportMicroServices(version string) (bool, error) {
 	}
 	return v.Major() >= 7 && v.Minor() >= 1 && v.Patch() >= 0, nil
 }
+
+// TODO: seems not used
+type FakePDMSMemberManager struct {
+	err error
+}
+
+func NewFakePDMSMemberManager() *FakePDMSMemberManager {
+	return &FakePDMSMemberManager{}
+}
+
+func (m *FakePDMSMemberManager) SetSyncError(err error) {
+	m.err = err
+}
+
+func (m *FakePDMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+	if m.err != nil {
+		return m.err
+	}
+	return nil
+}
