@@ -42,6 +42,8 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+const volumeBackupInitJobMaxActiveSeconds = 10 * 60
+
 type backupManager struct {
 	deps             *controller.Dependencies
 	backupCleaner    BackupCleaner
@@ -420,18 +422,6 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 			}, nil)
 			return nil, nil, "", err
 		}
-
-		reason, err = bm.ensureBackupPVCExist(backup)
-		if err != nil {
-			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupRetryTheFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  reason,
-				Message: err.Error(),
-			}, nil)
-			return nil, nil, "", err
-		}
-
 	} else {
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		// not found backup job, so we need to create it
@@ -521,6 +511,13 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
 	initContainers := []corev1.Container{}
+
+	if len(backup.Spec.AdditionalVolumes) > 0 {
+		volumes = append(volumes, backup.Spec.AdditionalVolumes...)
+	}
+	if len(backup.Spec.AdditionalVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, backup.Spec.AdditionalVolumeMounts...)
+	}
 
 	if backup.Spec.From.TLSClientSecretName != nil {
 		args = append(args, "--client-tls=true")
@@ -775,6 +772,13 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		},
 	})
 
+	if len(backup.Spec.AdditionalVolumes) > 0 {
+		volumes = append(volumes, backup.Spec.AdditionalVolumes...)
+	}
+	if len(backup.Spec.AdditionalVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, backup.Spec.AdditionalVolumeMounts...)
+	}
+
 	// mount volumes if specified
 	if backup.Spec.Local != nil {
 		volumes = append(volumes, backup.Spec.Local.Volume)
@@ -835,13 +839,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		},
 	}
 
-	// for volume backup initializing job, we should set resource requirement empty
-	// avoid it consuming too much resource
-	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot &&
-		backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupInitialize {
-		bm.setBackupPodResourceRequirementsEmpty(podSpec)
-	}
-
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
@@ -856,6 +853,15 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			BackoffLimit: pointer.Int32Ptr(0),
 			Template:     *podSpec,
 		},
+	}
+
+	// for volume backup initializing job, we should set resource requirement empty
+	// avoid it consuming too much resource
+	if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot &&
+		backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupInitialize {
+		bm.setBackupPodResourceRequirementsEmpty(&job.Spec.Template)
+		// for volume backup initializing job, set deadline of the job in case it blocks GC and pd schedule indefinitely
+		job.Spec.ActiveDeadlineSeconds = pointer.Int64(int64(volumeBackupInitJobMaxActiveSeconds))
 	}
 
 	return job, "", nil

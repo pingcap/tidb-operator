@@ -65,9 +65,9 @@ func newHelper(t *testing.T, backupName, backupNamespace string) *helper {
 	h.dataPlaneClient2 = h.deps.FedClientset[controller.FakeDataPlaneName2]
 	h.dataPlaneClient3 = h.deps.FedClientset[controller.FakeDataPlaneName3]
 
-	h.backupMemberName1 = h.bm.generateBackupMemberName(backupName, controller.FakeDataPlaneName1)
-	h.backupMemberName2 = h.bm.generateBackupMemberName(backupName, controller.FakeDataPlaneName2)
-	h.backupMemberName3 = h.bm.generateBackupMemberName(backupName, controller.FakeDataPlaneName3)
+	h.backupMemberName1 = h.bm.generateBackupMemberName(backupName)
+	h.backupMemberName2 = h.bm.generateBackupMemberName(backupName)
+	h.backupMemberName3 = h.bm.generateBackupMemberName(backupName)
 	return h
 }
 

@@ -2127,6 +2127,13 @@ type BackupSpec struct {
 
 	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
 	BackoffRetryPolicy BackoffRetryPolicy `json:"backoffRetryPolicy,omitempty"`
+
+	// Additional volumes of component pod.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+	// Additional volume mounts of component pod.
+	// +optional
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
 // FederalVolumeBackupPhase represents a phase to execute in federal volume backup
@@ -2607,6 +2614,13 @@ type RestoreSpec struct {
 
 	// PriorityClassName of Restore Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// Additional volumes of component pod.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+	// Additional volume mounts of component pod.
+	// +optional
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
 // FederalVolumeRestorePhase represents a phase to execute in federal volume restore
