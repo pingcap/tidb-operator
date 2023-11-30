@@ -15,7 +15,6 @@ package snapshotter
 
 import (
 	"encoding/json"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/r3labs/diff/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
