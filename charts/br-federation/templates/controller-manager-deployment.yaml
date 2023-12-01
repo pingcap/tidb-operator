@@ -60,6 +60,7 @@ spec:
         command:
           - /usr/local/bin/br-federation-manager
           - -v={{ .Values.brFederationManager.logLevel }}
+          - -cluster-scoped={{ .Values.clusterScoped }}
           {{- if .Values.brFederationManager.workers }}
           - -workers={{ .Values.brFederationManager.workers | default 5 }}
           {{- end }}
