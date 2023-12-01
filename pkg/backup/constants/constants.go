@@ -85,6 +85,8 @@ const (
 
 	// the annotation for store temporary volumeID
 	AnnTemporaryVolumeID = "temporary/volume-id"
+	// AnnRestoredVolumeID for store the volume id restored by volume-restore
+	AnnRestoredVolumeID = "tikv-volume-restore/volume-id"
 
 	// These annotations are taken from the Kubernetes persistent volume/persistent volume claim controller.
 	// They cannot be directly importing because they are part of the kubernetes/kubernetes package, and importing that package is unsupported.
