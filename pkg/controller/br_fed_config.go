@@ -29,6 +29,9 @@ type BrFedCLIConfig struct {
 	// Larger number = more responsive management, but more CPU
 	// (and network) load
 	Workers int
+	// Controls whether operator should manage kubernetes cluster
+	// wide TiDB clusters
+	ClusterScoped bool
 
 	LeaseDuration time.Duration
 	RenewDeadline time.Duration
@@ -49,6 +52,7 @@ type BrFedCLIConfig struct {
 func DefaultBrFedCLIConfig() *BrFedCLIConfig {
 	return &BrFedCLIConfig{
 		Workers:        5,
+		ClusterScoped:  true,
 		LeaseDuration:  15 * time.Second,
 		RenewDeadline:  10 * time.Second,
 		RetryPeriod:    2 * time.Second,
@@ -64,6 +68,7 @@ func (c *BrFedCLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.BoolVar(&c.PrintVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&c.PrintVersion, "version", false, "Show version and quit")
 	flag.IntVar(&c.Workers, "workers", c.Workers, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
+	flag.BoolVar(&c.ClusterScoped, "cluster-scoped", c.ClusterScoped, "Whether br-federation-manager should manage kubernetes cluster-wide resources")
 	flag.DurationVar(&c.ResyncDuration, "resync-duration", c.ResyncDuration, "Resync time of informer")
 
 	// see https://pkg.go.dev/k8s.io/client-go/tools/leaderelection#LeaderElectionConfig for the config
