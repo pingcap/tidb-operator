@@ -118,7 +118,7 @@ func main() {
 		klog.Fatalf("failed to init federation kube clients: %v", err)
 	}
 
-	deps := controller.NewBrFedDependencies(cliCfg, cli, kubeCli, genericCli, fedClients)
+	deps := controller.NewBrFedDependencies(ns, cliCfg, cli, kubeCli, genericCli, fedClients)
 
 	onStarted := func(ctx context.Context) {
 		// Define some nested types to simplify the codebase
