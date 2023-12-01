@@ -73,8 +73,16 @@ type BrFedDependencies struct {
 }
 
 // NewBrFedDependencies is used to construct the dependencies
-func NewBrFedDependencies(cliCfg *BrFedCLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface,
+func NewBrFedDependencies(ns string, cliCfg *BrFedCLIConfig, clientset versioned.Interface, kubeClientset kubernetes.Interface,
 	genericCli client.Client, fedClientset map[string]fedversioned.Interface) *BrFedDependencies {
+	var (
+		options     []informers.SharedInformerOption
+		kubeoptions []kubeinformers.SharedInformerOption
+	)
+	if !cliCfg.ClusterScoped {
+		options = append(options, informers.WithNamespace(ns))
+		kubeoptions = append(kubeoptions, kubeinformers.WithNamespace(ns))
+	}
 	tweakListOptionsFunc := func(options *metav1.ListOptions) {
 		if len(options.LabelSelector) > 0 {
 			options.LabelSelector += ",app.kubernetes.io/managed-by=tidb-operator"
@@ -85,8 +93,8 @@ func NewBrFedDependencies(cliCfg *BrFedCLIConfig, clientset versioned.Interface,
 	tweakListOptions := kubeinformers.WithTweakListOptions(tweakListOptionsFunc)
 
 	// Initialize the informer factories
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, cliCfg.ResyncDuration)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration)
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(clientset, cliCfg.ResyncDuration, options...)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration, kubeoptions...)
 	labelFilterKubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, cliCfg.ResyncDuration, tweakListOptions)
 
 	// Initialize the event recorder
