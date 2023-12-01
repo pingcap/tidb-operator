@@ -55,6 +55,7 @@ import (
 	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	k8se2e "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
@@ -87,27 +88,27 @@ var _ = ginkgo.Describe("[Serial]", func() {
 		c = f.ClientSet
 		var err error
 		config, err = framework.LoadConfig()
-		framework.ExpectNoError(err, "failed to load config")
+		k8se2e.ExpectNoError(err, "failed to load config")
 		cli, err = versioned.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset")
+		k8se2e.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset")
+		k8se2e.ExpectNoError(err, "failed to create clientset")
 		mapper, err := apiutil.NewDynamicRESTMapper(config, apiutil.WithLazyDiscovery)
-		framework.ExpectNoError(err, "failed to create dynamic RESTMapper")
+		k8se2e.ExpectNoError(err, "failed to create dynamic RESTMapper")
 		genericCli, err = client.New(config, client.Options{
 			Scheme: scheme.Scheme,
 			Mapper: mapper,
 		})
-		framework.ExpectNoError(err, "failed to create clientset for controller-runtime")
+		k8se2e.ExpectNoError(err, "failed to create clientset for controller-runtime")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset for kube-aggregator")
+		k8se2e.ExpectNoError(err, "failed to create clientset for kube-aggregator")
 		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
+		k8se2e.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
-		framework.ExpectNoError(err, "failed to load raw config for tidb operator")
+		k8se2e.ExpectNoError(err, "failed to load raw config for tidb operator")
 		ctx, cancel := context.WithCancel(context.Background())
 		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
-		framework.ExpectNoError(err, "failed to create port forwarder")
+		k8se2e.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 	})
@@ -165,14 +166,14 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 			ginkgo.By("Set tikv partition annotation to 1")
 			err := setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
-			framework.ExpectNoError(err, "set tikv Partition annotation failed")
+			k8se2e.ExpectNoError(err, "set tikv Partition annotation failed")
 
 			ginkgo.By(fmt.Sprintf("Upgrade TidbCluster version to %q", utilimage.TiDBLatest))
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.Version = utilimage.TiDBLatest
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update TidbCluster to upgrade tidb version to %v", utilimage.TiDBLatest)
+			k8se2e.ExpectNoError(err, "failed to update TidbCluster to upgrade tidb version to %v", utilimage.TiDBLatest)
 
 			ginkgo.By(fmt.Sprintf("wait for tikv-1 pod upgrading to %q", utilimage.TiDBLatest))
 			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
@@ -185,7 +186,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				}
 				return true, nil
 			})
-			framework.ExpectNoError(err, "failed to upgrade tikv-1 to %q", utilimage.TiDBLatest)
+			k8se2e.ExpectNoError(err, "failed to upgrade tikv-1 to %q", utilimage.TiDBLatest)
 
 			ginkgo.By("Wait to see if tikv sts partition annotation remains 1 for 3 min")
 			// TODO: explain the purpose of this testing
@@ -201,18 +202,18 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				}
 				return true, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "tikv sts partition annotation should remain 1 for 3 min")
+			k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "tikv sts partition annotation should remain 1 for 3 min")
 
 			ginkgo.By("Set tc annotations to nil")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Annotations = nil
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to set TidbCluster annotation to nil: %v", tc)
+			k8se2e.ExpectNoError(err, "failed to set TidbCluster annotation to nil: %v", tc)
 
 			// TODO: find a more graceful way to check tidbcluster during upgrading
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
+			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})
 
@@ -293,7 +294,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			var err error
 			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), legacyTc, metav1.CreateOptions{})
 			// err := genericCli.Create(context.TODO(),context.TODO(), legacyTc)
-			framework.ExpectNoError(err, "Expected create tidbcluster without defaulting and validating")
+			k8se2e.ExpectNoError(err, "Expected create tidbcluster without defaulting and validating")
 
 			ginkgo.By("Enable webhook in operator")
 			ocfg.WebhookEnabled = true
@@ -303,8 +304,8 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBLatest)
 				return nil
 			})
-			framework.ExpectNoError(err, "Update legacy TidbCluster should not be influenced by validating")
-			framework.ExpectEqual(legacyTc.Spec.TiDB.BaseImage, "", "Update legacy tidbcluster should not be influenced by defaulting")
+			k8se2e.ExpectNoError(err, "Update legacy TidbCluster should not be influenced by validating")
+			k8se2e.ExpectEqual(legacyTc.Spec.TiDB.BaseImage, "", "Update legacy tidbcluster should not be influenced by defaulting")
 
 			ginkgo.By("Update TidbCluster to use webhook")
 			err = controller.GuaranteedUpdate(genericCli, legacyTc, func() error {
@@ -314,7 +315,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				legacyTc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBLatest)
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update TidbCluster")
+			k8se2e.ExpectNoError(err, "failed to update TidbCluster")
 
 			ginkgo.By("Set empty values to test validating")
 			err = controller.GuaranteedUpdate(genericCli, legacyTc, func() error {
@@ -322,7 +323,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				legacyTc.Spec.PD.Version = pointer.StringPtr("")
 				return nil
 			})
-			framework.ExpectError(err, "Validating should reject empty mandatory fields")
+			k8se2e.ExpectError(err, "Validating should reject empty mandatory fields")
 
 			ginkgo.By("Deploy a new tc with legacy fields")
 			// TODO: explain the purpose of this testing
@@ -360,7 +361,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				},
 			}
 			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), newTC, metav1.CreateOptions{})
-			framework.ExpectError(err, "Validating should reject legacy fields for newly created cluster")
+			k8se2e.ExpectError(err, "Validating should reject legacy fields for newly created cluster")
 
 			ginkgo.By("Deploy a new tc")
 			newTC = &v1alpha1.TidbCluster{
@@ -392,7 +393,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				},
 			}
 			newTC, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), newTC, metav1.CreateOptions{})
-			framework.ExpectNoError(err, "required fields should be set by defaulting")
+			k8se2e.ExpectNoError(err, "required fields should be set by defaulting")
 			// don't have to check all fields, just take some to test if defaulting set
 			if empty, err := gomega.BeEmpty().Match(newTC.Spec.TiDB.BaseImage); empty {
 				log.Failf("Expected tidb.baseImage has default value set, %v", err)
@@ -405,7 +406,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				}
 				return nil
 			})
-			framework.ExpectError(err, "Could not set instance label with value other than cluster name")
+			k8se2e.ExpectError(err, "Could not set instance label with value other than cluster name")
 
 			ginkgo.By("Update pd replication config in tc")
 			err = controller.GuaranteedUpdate(genericCli, newTC, func() error {
@@ -414,7 +415,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				newTC.Spec.PD.Config = c
 				return nil
 			})
-			framework.ExpectError(err, "PD replication config is immutable through CR")
+			k8se2e.ExpectError(err, "PD replication config is immutable through CR")
 		})
 	})
 
@@ -467,7 +468,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				tc.Spec.Version = utilimage.TiDBLatest
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update TidbCluster 1 to upgrade PD version to %v", utilimage.TiDBLatest)
+			k8se2e.ExpectNoError(err, "failed to update TidbCluster 1 to upgrade PD version to %v", utilimage.TiDBLatest)
 
 			err = wait.Poll(5*time.Second, 2*time.Minute, func() (done bool, err error) {
 				// confirm the TidbCluster 1 PD haven't been changed
@@ -482,7 +483,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				log.Logf("confirm TidbCluster 1 PD pods haven't been changed this time")
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect TidbCluster 1 PD haven't been changed for 2 minutes")
+			k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "expect TidbCluster 1 PD haven't been changed for 2 minutes")
 			log.Logf("Upgrade TidbCluster 1 to new version, but no rolling update occurs")
 
 			ginkgo.By("Set label version=old to TidbCluster 1, check that PD of TidbCluster 1 has been rolling updated")
@@ -490,7 +491,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				tc.Labels = map[string]string{"version": "old"}
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update TidbCluster 1 to set label version=old")
+			k8se2e.ExpectNoError(err, "failed to update TidbCluster 1 to set label version=old")
 
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				// confirm the PD Pods have been changed
@@ -505,7 +506,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				log.Logf("PD pods haven't been changed yet")
 				return false, nil
 			})
-			framework.ExpectNoError(err, "expect PD pods have been changed in 5 minutes")
+			k8se2e.ExpectNoError(err, "expect PD pods have been changed in 5 minutes")
 			log.Logf("Upgrade TidbCluster 1 with label version=old and PD pods have been rolling updated.")
 
 			ginkgo.By("Deploy TidbCluster 2 with label version=new")
@@ -517,7 +518,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 			tc2.Labels = map[string]string{"version": "new"}
 
 			err = genericCli.Create(context.TODO(), tc2)
-			framework.ExpectNoError(err, "Expected Tidbcluster 2 be created")
+			k8se2e.ExpectNoError(err, "Expected Tidbcluster 2 be created")
 			log.Logf("Finished deploying TidbCluster 2 with label version=new")
 
 			ginkgo.By("Wait for 2 minutes and check that no PD Pod is created")
@@ -534,7 +535,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				log.Logf("Tidbcluster 2 PD pods have not been created yet")
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "No PD Pods created for Tidbcluster 2")
+			k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "No PD Pods created for Tidbcluster 2")
 			log.Logf("Confirm that no PD Pods created for Tidbcluster 2")
 
 			ginkgo.By("Deploy TiDB Operator 2 with --selector=version=new")
@@ -552,7 +553,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 			ginkgo.By("Check TidbCluster 2 is ready")
 			err = oa.WaitForTidbClusterReady(tc2, 10*time.Minute, 5*time.Second)
-			framework.ExpectNoError(err, "Expected TiDB cluster2 ready")
+			k8se2e.ExpectNoError(err, "Expected TiDB cluster2 ready")
 			log.Logf("confirm TidbCluster 2 is ready")
 
 			ginkgo.By("Delete the default TiDB Operator")
@@ -564,11 +565,11 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				tc2.Spec.Version = utilimage.TiDBLatest
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to update TidbCluster 2 to upgrade tidb version to %v", utilimage.TiDBLatest)
+			k8se2e.ExpectNoError(err, "failed to update TidbCluster 2 to upgrade tidb version to %v", utilimage.TiDBLatest)
 			log.Logf("Finished upgrading TidbCluster 2")
 
 			err = oa.WaitForTidbClusterReady(tc2, 10*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc2.Name)
+			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc2.Name)
 
 			ginkgo.By(fmt.Sprintf("wait for TidbCluster 2 pd-0 pod upgrading to %q", utilimage.TiDBLatest))
 			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
@@ -581,7 +582,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				}
 				return true, nil
 			})
-			framework.ExpectNoError(err, "failed to upgrade TidbCluster 2 pd-0 to %q", utilimage.TiDBLatest)
+			k8se2e.ExpectNoError(err, "failed to upgrade TidbCluster 2 pd-0 to %q", utilimage.TiDBLatest)
 			log.Logf("Finished upgrading TidbCluster 2")
 
 			ginkgo.By("Deploy the default TiDB Operator with --selector=version=old")
@@ -605,7 +606,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				tc.Spec.TiDB.Replicas = 2
 				return nil
 			})
-			framework.ExpectNoError(err, "failed to scale out TidbCluster 1")
+			k8se2e.ExpectNoError(err, "failed to scale out TidbCluster 1")
 
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tidbStatefulSet, err := c.AppsV1().StatefulSets(ns).Get(context.TODO(), fmt.Sprintf("%s-tidb", tc.Name), metav1.GetOptions{})
@@ -617,7 +618,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				}
 				return true, nil
 			})
-			framework.ExpectNoError(err, "expect TiDB in tidbcluster 1 to scale out to 2")
+			k8se2e.ExpectNoError(err, "expect TiDB in tidbcluster 1 to scale out to 2")
 			log.Logf("Succeed to scale out TiDB of TidbCluster 1")
 		})
 	})
@@ -688,7 +689,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 				ginkgo.By("Wait for pods are not changed in 5 minutes")
 				err := utilpod.WaitForPodsAreChanged(c, pods, time.Minute*5)
-				framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
+				k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
 			})
 
 			ginkgo.Context("Admission Webhook", func() {
@@ -703,7 +704,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 				ginkgo.It("should be able to be deployed", func() {
 					ginkgo.By("Wait old webhook pods to become ready")
 					err := oa.WaitAdmissionWebhookReady(ocfg, time.Minute*3, time.Second*10)
-					framework.ExpectNoError(err, "failed to wait old webhook pods to become ready")
+					k8se2e.ExpectNoError(err, "failed to wait old webhook pods to become ready")
 
 					ginkgo.By("Upgrade TiDB Operator and CRDs to current version")
 					ocfg.Tag = cfg.OperatorTag
@@ -713,7 +714,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 					ginkgo.By("Wait webhook pods to become ready")
 					err = oa.WaitAdmissionWebhookReady(ocfg, time.Minute*3, time.Second*10)
-					framework.ExpectNoError(err, "failed to wait webhook pods to become ready")
+					k8se2e.ExpectNoError(err, "failed to wait webhook pods to become ready")
 				})
 			})
 		})
@@ -774,23 +775,23 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 						ginkgo.By("Installing tidb CA certificate")
 						err := InstallTiDBIssuer(ns, tcName)
-						framework.ExpectNoError(err, "failed to install CA certificate")
+						k8se2e.ExpectNoError(err, "failed to install CA certificate")
 
 						ginkgo.By("Installing tidb server and client certificate")
 						err = InstallTiDBCertificates(ns, tcName)
-						framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+						k8se2e.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 						ginkgo.By("Installing tidbInitializer client certificate")
 						err = installTiDBInitializerCertificates(ns, tcName)
-						framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+						k8se2e.ExpectNoError(err, "failed to install tidbInitializer client certificate")
 
 						ginkgo.By("Installing dashboard client certificate")
 						err = installPDDashboardCertificates(ns, tcName)
-						framework.ExpectNoError(err, "failed to install dashboard client certificate")
+						k8se2e.ExpectNoError(err, "failed to install dashboard client certificate")
 
 						ginkgo.By("Installing tidb components certificates")
 						err = InstallTiDBComponentsCertificates(ns, tcName)
-						framework.ExpectNoError(err, "failed to install tidb components certificates")
+						k8se2e.ExpectNoError(err, "failed to install tidb components certificates")
 					}
 
 					ginkgo.By("Deploy original TiDB cluster with prev version")
@@ -801,14 +802,14 @@ var _ = ginkgo.Describe("[Serial]", func() {
 					pods := utilpod.MustListPods(selector.String(), ns, c)
 
 					dsn, fwcancel, err := utiltidb.PortForwardAndGetTiDBDSN(fw, ns, tcName, "root", "", dbName)
-					framework.ExpectNoError(err, "failed to get dsn")
+					k8se2e.ExpectNoError(err, "failed to get dsn")
 					defer fwcancel()
 					db := utildb.NewDatabaseOrDie(dsn)
 					defer db.Close()
 
 					ginkgo.By("Prepare data in database")
 					err = bw.Write(context.Background(), dsn)
-					framework.ExpectNoError(err, "failed to write data")
+					k8se2e.ExpectNoError(err, "failed to write data")
 
 					ginkgo.By("Create TiFlash replicas for table 0 and ensure it is ready")
 					MustCreateTiFlashReplicationForTable(db, dbName, tables[0], expectCount)
@@ -821,7 +822,7 @@ var _ = ginkgo.Describe("[Serial]", func() {
 
 					ginkgo.By("Wait for pods are not changed in 5 minutes")
 					err = utilpod.WaitForPodsAreChanged(c, pods, time.Minute*5)
-					framework.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
+					k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "pods should not change in 5 minutes")
 
 					ginkgo.By("Ensure records in table 0 have not changed after upgrading TiDB Operator")
 					EnsureRecordsNotChangedForTables(db, "tiflash", dbName, tables[0:1], expectCount)
@@ -835,13 +836,13 @@ var _ = ginkgo.Describe("[Serial]", func() {
 						tc.Spec.Version = utilimage.TiDBLatest
 						return nil
 					})
-					framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
+					k8se2e.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 5*time.Second)
-					framework.ExpectNoError(err, "waiting for cluster %q ready", tcName)
+					k8se2e.ExpectNoError(err, "waiting for cluster %q ready", tcName)
 
 					// reopen db after upgrade
 					dsn2, fwcancel2, err := utiltidb.PortForwardAndGetTiDBDSN(fw, ns, tcName, "root", "", dbName)
-					framework.ExpectNoError(err, "failed to get dsn")
+					k8se2e.ExpectNoError(err, "failed to get dsn")
 					defer fwcancel2()
 					db2 := utildb.NewDatabaseOrDie(dsn2)
 					defer db2.Close()
@@ -872,7 +873,7 @@ func MustGetLabelSelectorForComponents(tcName string, filterComponents ...string
 	selector := labels.SelectorFromSet(label.New().Instance(tcName).Labels())
 
 	r, err := labels.NewRequirement(label.ComponentLabelKey, selection.NotIn, filterComponents)
-	framework.ExpectNoError(err, "failed to create label requirement")
+	k8se2e.ExpectNoError(err, "failed to create label requirement")
 
 	return selector.Add(*r)
 }
@@ -880,17 +881,17 @@ func MustGetLabelSelectorForComponents(tcName string, filterComponents ...string
 // MustCreateTiFlashReplicationForTable create TiFLash replication and ensure it is ready
 func MustCreateTiFlashReplicationForTable(db *utildb.Database, dbName string, table string, expectCount int) {
 	err := utildb.CreateTiFlashReplicationAndWaitToComplete(db.TiFlashAction(), dbName, table, 1, time.Minute)
-	framework.ExpectNoError(err, "failed to create TiFlash replication for %s", table)
+	k8se2e.ExpectNoError(err, "failed to create TiFlash replication for %s", table)
 	count, err := utildb.Count(db, "tiflash", dbName, table)
-	framework.ExpectNoError(err, "failed to count records in %s by using %s", table, "tiflash")
-	framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", table, "tiflash")
+	k8se2e.ExpectNoError(err, "failed to count records in %s by using %s", table, "tiflash")
+	k8se2e.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", table, "tiflash")
 }
 
 // EnsureRecordsNotChangedForTables ensure records not changed for tables
 func EnsureRecordsNotChangedForTables(db *utildb.Database, engine string, dbName string, tables []string, expectCount int) {
 	for _, table := range tables {
 		count, err := utildb.Count(db, engine, dbName, table)
-		framework.ExpectNoError(err, "failed to count records in %s by using %s", table, engine)
-		framework.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", table, engine)
+		k8se2e.ExpectNoError(err, "failed to count records in %s by using %s", table, engine)
+		k8se2e.ExpectEqual(count, expectCount, "count of records in %s changed by using %s", table, engine)
 	}
 }

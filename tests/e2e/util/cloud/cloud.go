@@ -19,6 +19,7 @@ import (
 
 	"k8s.io/kubernetes/test/e2e/framework"
 
+	k8se2e "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
@@ -67,10 +68,10 @@ func DisableNodeAutoRepair() {
 		gcloudCommand := getGcloudCommand(args)
 		output, err := execCmd(gcloudCommand...).CombinedOutput()
 		log.Logf("Config update result: %s", output)
-		framework.ExpectNoError(err, "failed to get gcloud command: %q", gcloudCommand)
+		k8se2e.ExpectNoError(err, "failed to get gcloud command: %q", gcloudCommand)
 	} else {
 		// TODO support AWS (EKS)
-		framework.Failf("unsupported provider %q", framework.TestContext.Provider)
+		log.Failf("unsupported provider %q", framework.TestContext.Provider)
 	}
 }
 
@@ -84,9 +85,9 @@ func EnableNodeAutoRepair() {
 		gcloudCommand := getGcloudCommand(args)
 		output, err := execCmd(gcloudCommand...).CombinedOutput()
 		log.Logf("Config update result: %s", output)
-		framework.ExpectNoError(err, "failed to get gcloud command: %q", gcloudCommand)
+		k8se2e.ExpectNoError(err, "failed to get gcloud command: %q", gcloudCommand)
 	} else {
 		// TODO support AWS (EKS)
-		framework.Failf("unsupported provider %q", framework.TestContext.Provider)
+		log.Failf("unsupported provider %q", framework.TestContext.Provider)
 	}
 }

@@ -90,10 +90,10 @@ func createTestingNS(baseName string, c clientset.Interface, labels map[string]s
 		if err != nil {
 			if apierrors.IsAlreadyExists(err) {
 				// regenerate on conflict
-				framework.Logf("Namespace name %q was already taken, generate a new name and retry", namespaceObj.Name)
+				log.Logf("Namespace name %q was already taken, generate a new name and retry", namespaceObj.Name)
 				namespaceObj.Name = fmt.Sprintf("%v-%v", baseName, framework.RandomSuffix())
 			} else {
-				framework.Logf("Unexpected error while creating namespace: %v", err)
+				log.Logf("Unexpected error while creating namespace: %v", err)
 			}
 			return false, nil
 		}

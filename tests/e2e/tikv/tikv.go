@@ -50,6 +50,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	k8se2e "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
@@ -297,20 +298,20 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 
 		var err error
 		config, err = framework.LoadConfig()
-		framework.ExpectNoError(err, "failed to load config")
+		k8se2e.ExpectNoError(err, "failed to load config")
 		cli, err = versioned.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset for pingcap")
+		k8se2e.ExpectNoError(err, "failed to create clientset for pingcap")
 		asCli, err = asclientset.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
+		k8se2e.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset kube-aggregator")
+		k8se2e.ExpectNoError(err, "failed to create clientset kube-aggregator")
 		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create clientset apiextensions-apiserver")
+		k8se2e.ExpectNoError(err, "failed to create clientset apiextensions-apiserver")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
-		framework.ExpectNoError(err, "failed to load raw config for tidb-operator")
+		k8se2e.ExpectNoError(err, "failed to load raw config for tidb-operator")
 		ctx, cancel := context.WithCancel(context.Background())
 		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
-		framework.ExpectNoError(err, "failed to create port forwarder")
+		k8se2e.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 	})
@@ -336,7 +337,7 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
 			genericCli, err = ctrlCli.New(config, ctrlCli.Options{Scheme: scheme.Scheme})
-			framework.ExpectNoError(err, "failed to create clientset")
+			k8se2e.ExpectNoError(err, "failed to create clientset")
 		})
 
 		ginkgo.AfterEach(func() {
@@ -362,11 +363,11 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 					tc.Spec.TiKV.Replicas = tcase.finalTiKVReplica
 					return nil
 				})
-				framework.ExpectNoError(err, "failed to scale in %s for TidbCluster /%s", ns, tc.Name)
+				k8se2e.ExpectNoError(err, "failed to scale in %s for TidbCluster /%s", ns, tc.Name)
 				log.Logf("tikv is in ScalePhase")
 				ginkgo.By("Wait for tc ready")
 				err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in ", ns, tc.Name)
+				k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in ", ns, tc.Name)
 				log.Logf("tc is ready")
 
 				scaleInTimeMap := make(map[int32]string)
@@ -376,9 +377,9 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 						comp := v1alpha1.TiKVMemberType
 						var pvcSelector labels.Selector
 						pvcSelector, err = member.GetPVCSelectorForPod(tc, comp, int32(ordinal))
-						framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
+						k8se2e.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
 						pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
-						framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+						k8se2e.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 						for _, pvc := range pvcs.Items {
 							annotations := pvc.GetObjectMeta().GetAnnotations()
 							log.Logf("pvc annotations: %+v", annotations)
@@ -392,7 +393,7 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 					}
 					return true, nil
 				})
-				framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
+				k8se2e.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 				checkScaleInTime(scaleInTimeMap, tcase.scaleInGroups)
 			})
 		}
@@ -419,7 +420,7 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
 			genericCli, err = ctrlCli.New(config, ctrlCli.Options{Scheme: scheme.Scheme})
-			framework.ExpectNoError(err, "failed to create clientset")
+			k8se2e.ExpectNoError(err, "failed to create clientset")
 			stsGetter = astsHelper.NewHijackClient(c, asCli).AppsV1()
 		})
 
@@ -449,7 +450,7 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 					setDeleteSlots(tc, tcase.finalDeleteSlots)
 					return nil
 				})
-				framework.ExpectNoError(err, "failed to scale in %s for TidbCluster /%s", ns, tc.Name)
+				k8se2e.ExpectNoError(err, "failed to scale in %s for TidbCluster /%s", ns, tc.Name)
 
 				var deleteSlotsList [][]int32
 				deleteSlotSets := sets.NewString()
@@ -480,7 +481,7 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 
 				ginkgo.By("Wait for tc ready")
 				err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 10*time.Second)
-				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in ", ns, tc.Name)
+				k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in ", ns, tc.Name)
 				log.Logf("tc is ready")
 
 				scaleInTimeMap := make(map[int32]string)
@@ -488,9 +489,9 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 				err = wait.Poll(10*time.Second, 4*time.Minute, func() (done bool, err error) {
 					for _, ordinal := range tcase.scaleInOrdinals {
 						pvcSelector, err := member.GetPVCSelectorForPod(tc, v1alpha1.TiKVMemberType, int32(ordinal))
-						framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
+						k8se2e.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
 						pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
-						framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+						k8se2e.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 						for _, pvc := range pvcs.Items {
 							annotations := pvc.GetObjectMeta().GetAnnotations()
 							log.Logf("pvc annotations: %+v", annotations)
@@ -503,12 +504,12 @@ var _ = ginkgo.Describe("[TiKV: Scale in simultaneously]", func() {
 					}
 					return true, nil
 				})
-				framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
+				k8se2e.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 				checkScaleInTime(scaleInTimeMap, tcase.scaleInGroups)
 
 				ginkgo.By("Check delete-slots evolution")
 				cancel()
-				framework.ExpectEqual(reflect.DeepEqual(tcase.deleteSlotsEvolutions, deleteSlotsList), true, "failed to check delete-slots with: %v, expected: %v", deleteSlotsList, tcase.deleteSlotsEvolutions)
+				k8se2e.ExpectEqual(reflect.DeepEqual(tcase.deleteSlotsEvolutions, deleteSlotsList), true, "failed to check delete-slots with: %v, expected: %v", deleteSlotsList, tcase.deleteSlotsEvolutions)
 			})
 		}
 	})
@@ -521,13 +522,13 @@ func checkScaleInTime(scaleInTimeMap map[int32]string, groups [][]int32) {
 		subTimeSet := sets.NewString()
 		for _, oridinal := range group {
 			t, ok := scaleInTimeMap[oridinal]
-			framework.ExpectEqual(true, ok, "scale in time of oridinal %v not found", oridinal)
+			k8se2e.ExpectEqual(true, ok, "scale in time of oridinal %v not found", oridinal)
 			subTimeSet.Insert(t)
 			timeSet.Insert(t)
 		}
-		framework.ExpectEqual(len(subTimeSet), 1, "scale in time in group %v deffers, actual scaleInTimeMap: %v", group, scaleInTimeMap)
+		k8se2e.ExpectEqual(len(subTimeSet), 1, "scale in time in group %v deffers, actual scaleInTimeMap: %v", group, scaleInTimeMap)
 	}
-	framework.ExpectEqual(len(timeSet), len(groups), "scale in time not match with groups, actual scaleInTimeMap: %v", scaleInTimeMap)
+	k8se2e.ExpectEqual(len(timeSet), len(groups), "scale in time not match with groups, actual scaleInTimeMap: %v", scaleInTimeMap)
 }
 
 func setDeleteSlots(tc *v1alpha1.TidbCluster, deleteSlots sets.Int32) {

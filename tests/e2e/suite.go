@@ -15,6 +15,8 @@ package e2e
 
 import (
 	"k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 // CleanupSuite is the boilerplate that can be used after tests on ginkgo were run, on the SynchronizedAfterSuite step.
@@ -23,14 +25,14 @@ import (
 // and then the function that only runs on the first Ginkgo node.
 func CleanupSuite() {
 	// Run on all Ginkgo nodes
-	framework.Logf("Running AfterSuite actions on all nodes")
+	log.Logf("Running AfterSuite actions on all nodes")
 	framework.RunCleanupActions()
 }
 
 // AfterSuiteActions are actions that are run on ginkgo's SynchronizedAfterSuite
 func AfterSuiteActions() {
 	// Run only Ginkgo on node 1
-	framework.Logf("Running AfterSuite actions on node 1")
+	log.Logf("Running AfterSuite actions on node 1")
 	if framework.TestContext.ReportDir != "" {
 		framework.CoreDump(framework.TestContext.ReportDir)
 	}
