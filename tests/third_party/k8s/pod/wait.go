@@ -26,21 +26,29 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/onsi/ginkgo"
+
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/kubectl/pkg/util/podutils"
 
 	podutil "github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	e2elog "github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 const (
+	// podStartTimeout is how long to wait for the pod to be started.
+	podStartTimeout = 5 * time.Minute
+
 	// poll is how often to poll pods, nodes and claims.
 	poll = 2 * time.Second
 )
+
+type podCondition func(pod *v1.Pod) (bool, error)
 
 // errorBadPodsStates create error message of basic info of bad pods for debugging.
 func errorBadPodsStates(badPods []v1.Pod, desiredPods int, ns, desiredState string, timeout time.Duration, err error) string {
@@ -181,6 +189,75 @@ func WaitForPodsRunningReady(c clientset.Interface, ns string, minPods, allowedN
 	return nil
 }
 
+// WaitForPodCondition waits a pods to be matched to the given condition.
+func WaitForPodCondition(c clientset.Interface, ns, podName, desc string, timeout time.Duration, condition podCondition) error {
+	e2elog.Logf("Waiting up to %v for pod %q in namespace %q to be %q", timeout, podName, ns, desc)
+	var lastPodError error
+	for start := time.Now(); time.Since(start) < timeout; time.Sleep(poll) {
+		pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), podName, metav1.GetOptions{})
+		lastPodError = err
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				e2elog.Logf("Pod %q in namespace %q not found. Error: %v", podName, ns, err)
+			} else {
+				e2elog.Logf("Get pod %q in namespace %q failed, ignoring for %v. Error: %v", podName, ns, poll, err)
+			}
+			continue
+		}
+		// log now so that current pod info is reported before calling `condition()`
+		e2elog.Logf("Pod %q: Phase=%q, Reason=%q, readiness=%t. Elapsed: %v",
+			podName, pod.Status.Phase, pod.Status.Reason, podutils.IsPodReady(pod), time.Since(start))
+		if done, err := condition(pod); done {
+			if err == nil {
+				e2elog.Logf("Pod %q satisfied condition %q", podName, desc)
+			}
+			return err
+		}
+	}
+	if apierrors.IsNotFound(lastPodError) {
+		// return for compatbility with other functions testing for IsNotFound
+		return lastPodError
+	}
+	return fmt.Errorf("Gave up after waiting %v for pod %q to be %q", timeout, podName, desc)
+}
+
+// WaitForPodTerminatedInNamespace returns an error if it takes too long for the pod to terminate,
+// if the pod Get api returns an error (IsNotFound or other), or if the pod failed (and thus did not
+// terminate) with an unexpected reason. Typically called to test that the passed-in pod is fully
+// terminated (reason==""), but may be called to detect if a pod did *not* terminate according to
+// the supplied reason.
+func WaitForPodTerminatedInNamespace(c clientset.Interface, podName, reason, namespace string) error {
+	return WaitForPodCondition(c, namespace, podName, "terminated due to deadline exceeded", podStartTimeout, func(pod *v1.Pod) (bool, error) {
+		// Only consider Failed pods. Successful pods will be deleted and detected in
+		// waitForPodCondition's Get call returning `IsNotFound`
+		if pod.Status.Phase == v1.PodFailed {
+			if pod.Status.Reason == reason { // short-circuit waitForPodCondition's loop
+				return true, nil
+			}
+			return true, fmt.Errorf("Expected pod %q in namespace %q to be terminated with reason %q, got reason: %q", podName, namespace, reason, pod.Status.Reason)
+		}
+		return false, nil
+	})
+}
+
+// WaitForPodSuccessInNamespaceTimeout returns nil if the pod reached state success, or an error if it reached failure or ran too long.
+func WaitForPodSuccessInNamespaceTimeout(c clientset.Interface, podName, namespace string, timeout time.Duration) error {
+	return WaitForPodCondition(c, namespace, podName, fmt.Sprintf("%s or %s", v1.PodSucceeded, v1.PodFailed), timeout, func(pod *v1.Pod) (bool, error) {
+		if pod.Spec.RestartPolicy == v1.RestartPolicyAlways {
+			return true, fmt.Errorf("pod %q will never terminate with a succeeded state since its restart policy is Always", podName)
+		}
+		switch pod.Status.Phase {
+		case v1.PodSucceeded:
+			ginkgo.By("Saw pod success")
+			return true, nil
+		case v1.PodFailed:
+			return true, fmt.Errorf("pod %q failed with status: %+v", podName, pod.Status)
+		default:
+			return false, nil
+		}
+	})
+}
+
 // WaitTimeoutForPodRunningInNamespace waits the given timeout duration for the specified pod to become running.
 func WaitTimeoutForPodRunningInNamespace(c clientset.Interface, podName, namespace string, timeout time.Duration) error {
 	return wait.PollImmediate(poll, timeout, podRunning(c, podName, namespace))
@@ -204,6 +281,31 @@ func WaitForPodNotFoundInNamespace(c clientset.Interface, podName, ns string, ti
 		}
 		if err != nil {
 			return true, err // stop wait with error
+		}
+		return false, nil
+	})
+}
+
+// WaitForPodToDisappear waits the given timeout duration for the specified pod to disappear.
+func WaitForPodToDisappear(c clientset.Interface, ns, podName string, label labels.Selector, interval, timeout time.Duration) error {
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		e2elog.Logf("Waiting for pod %s to disappear", podName)
+		options := metav1.ListOptions{LabelSelector: label.String()}
+		pods, err := c.CoreV1().Pods(ns).List(context.TODO(), options)
+		if err != nil {
+			return false, err
+		}
+		found := false
+		for _, pod := range pods.Items {
+			if pod.Name == podName {
+				e2elog.Logf("Pod %s still exists", podName)
+				found = true
+				break
+			}
+		}
+		if !found {
+			e2elog.Logf("Pod %s no longer exists", podName)
+			return true, nil
 		}
 		return false, nil
 	})

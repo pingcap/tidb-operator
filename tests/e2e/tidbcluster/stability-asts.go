@@ -31,7 +31,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -47,7 +46,7 @@ import (
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-	k8se2e "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	e2esset "github.com/pingcap/tidb-operator/tests/third_party/k8s/statefulset"
 )
@@ -72,21 +71,21 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		c = f.ClientSet
 		var err error
 		config, err = framework.LoadConfig()
-		k8se2e.ExpectNoError(err, "failed to load config")
+		framework.ExpectNoError(err, "failed to load config")
 		cli, err = versioned.NewForConfig(config)
-		k8se2e.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
-		k8se2e.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
-		k8se2e.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset")
 		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
-		k8se2e.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
-		k8se2e.ExpectNoError(err, "failed to load raw config")
+		framework.ExpectNoError(err, "failed to load raw config")
 		hc = helper.NewHijackClient(c, asCli)
 		ctx, cancel := context.WithCancel(context.Background())
 		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
-		k8se2e.ExpectNoError(err, "failed to create port forwarder")
+		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 	})
@@ -129,7 +128,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			oa.DeployOperatorOrDie(ocfg)
 			var err error
 			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-			k8se2e.ExpectNoError(err, "failed to create clientset")
+			framework.ExpectNoError(err, "failed to create clientset")
 		})
 
 		ginkgo.AfterEach(func() {
@@ -265,13 +264,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				stsName := fmt.Sprintf("%s-%s", clusterName, st.component)
 
 				sts, err := hc.AppsV1().StatefulSets(ns).Get(context.TODO(), stsName, metav1.GetOptions{})
-				k8se2e.ExpectNoError(err, "failed to get statefulset %s/%s", ns, stsName)
+				framework.ExpectNoError(err, "failed to get statefulset %s/%s", ns, stsName)
 
 				oldPodList := e2esset.GetPodList(c, sts)
 
 				ginkgo.By(fmt.Sprintf("Scaling sts %s/%s to replicas %d and setting deleting pods to %v (old replicas: %d, old delete slots: %v)", ns, stsName, replicas, st.deleteSlots.List(), *sts.Spec.Replicas, helper.GetDeleteSlots(sts).List()))
 				tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), clusterName, metav1.GetOptions{})
-				k8se2e.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, clusterName)
+				framework.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, clusterName)
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 					if tc.Annotations == nil {
 						tc.Annotations = map[string]string{}
@@ -296,7 +295,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					}
 					return nil
 				})
-				k8se2e.ExpectNoError(err, "failed to update TidbCluster %s/%s", ns, clusterName)
+				framework.ExpectNoError(err, "failed to update TidbCluster %s/%s", ns, clusterName)
 
 				ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are in desired state (replicas: %d, delete slots: %v)", st.component, ns, stsName, st.replicas, st.deleteSlots.List()))
 				err = wait.PollImmediate(time.Second*5, time.Minute*15, func() (bool, error) {
@@ -316,11 +315,11 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					// check all desired pods are running and ready
 					return utilstatefulset.IsAllDesiredPodsRunningAndReady(hc, sts), nil
 				})
-				k8se2e.ExpectNoError(err, "failed to wait for pod in TidbCluster component %s ready", st.component)
+				framework.ExpectNoError(err, "failed to wait for pod in TidbCluster component %s ready", st.component)
 
 				ginkgo.By(fmt.Sprintf("Verify other pods of sts %s/%s should not be affected", ns, stsName))
 				newPodList := e2esset.GetPodList(c, sts)
-				k8se2e.ExpectEqual(len(newPodList.Items), int(*sts.Spec.Replicas))
+				framework.ExpectEqual(len(newPodList.Items), int(*sts.Spec.Replicas))
 				for _, newPod := range newPodList.Items {
 					for _, oldPod := range oldPodList.Items {
 						// if the pod is not new or deleted in scaling, it should not be affected
@@ -332,7 +331,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			}
 
 			err := oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 		})
 	})
 
@@ -364,7 +363,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		oa.DeployOperatorOrDie(ocfg)
 		var err error
 		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-		k8se2e.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset")
 
 		defer func() {
 			ginkgo.By("Uninstall tidb-operator")
@@ -375,9 +374,9 @@ var _ = ginkgo.Describe("[Stability]", func() {
 
 		tc := fixture.GetTidbCluster(ns, "sts", utilimage.TiDBLatest)
 		err = genericCli.Create(context.TODO(), tc)
-		k8se2e.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
+		framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 		listOption := metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(map[string]string{
@@ -385,13 +384,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			}).String(),
 		}
 		stsList, err := c.AppsV1().StatefulSets(tc.Namespace).List(context.TODO(), listOption)
-		k8se2e.ExpectNoError(err, "failed to list statefulsets in ns %s: %v", tc.Namespace, listOption)
+		framework.ExpectNoError(err, "failed to list statefulsets in ns %s: %v", tc.Namespace, listOption)
 		if len(stsList.Items) < 3 {
 			log.Failf("at least 3 statefulsets must be created, got %d", len(stsList.Items))
 		}
 
 		podListBeforeUpgrade, err := c.CoreV1().Pods(tc.Namespace).List(context.TODO(), listOption)
-		k8se2e.ExpectNoError(err, "failed to list pods in ns %s: %v", tc.Namespace, listOption)
+		framework.ExpectNoError(err, "failed to list pods in ns %s: %v", tc.Namespace, listOption)
 
 		ginkgo.By("Upgrading tidb-operator with AdvancedStatefulSet feature")
 		ocfg.Features = []string{
@@ -421,11 +420,11 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			}
 			return true, nil
 		})
-		k8se2e.ExpectNoError(err, "failed to wait for the advanced statefulsets are created and Kubernetes statfulsets are deleted")
+		framework.ExpectNoError(err, "failed to wait for the advanced statefulsets are created and Kubernetes statfulsets are deleted")
 
 		ginkgo.By("Make sure pods are not changed")
 		err = utilpod.WaitForPodsAreChanged(c, podListBeforeUpgrade.Items, time.Minute*3)
-		k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "Pods are changed after the operator is upgraded")
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods are changed after the operator is upgraded")
 	})
 
 	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
@@ -456,7 +455,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		oa.DeployOperatorOrDie(ocfg)
 		var err error
 		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-		k8se2e.ExpectNoError(err, "failed to create clientset")
+		framework.ExpectNoError(err, "failed to create clientset")
 
 		defer func() {
 			ginkgo.By("Uninstall tidb-operator")
@@ -470,13 +469,13 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		tc.Spec.TiKV.Replicas = 4
 		tc.Spec.TiDB.Replicas = 3
 		err = genericCli.Create(context.TODO(), tc)
-		k8se2e.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
+		framework.ExpectNoError(err, "failed to create TidbCluster: %v", tc)
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 		ginkgo.By("Scaling in the cluster by deleting some pods not at the end")
 		tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tc.Name, metav1.GetOptions{})
-		k8se2e.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, tc.Name)
+		framework.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, tc.Name)
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			if tc.Annotations == nil {
 				tc.Annotations = map[string]string{}
@@ -489,19 +488,19 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			tc.Spec.TiDB.Replicas = 2
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to update TidbCluster %s/%s", ns, tc.Name)
+		framework.ExpectNoError(err, "failed to update TidbCluster %s/%s", ns, tc.Name)
 		ginkgo.By("Checking for tidb cluster is ready")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 
 		ginkgo.By("Upgrading the cluster")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.Version = utilimage.TiDBLatest
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to upgrade TidbCluster %s/%s", ns, tc.Name)
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster %s/%s", ns, tc.Name)
 		ginkgo.By("Checking for tidb cluster is ready")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %v", tc)
 	})
 })

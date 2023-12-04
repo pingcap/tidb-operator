@@ -28,7 +28,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	apiregistration "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
@@ -40,7 +39,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/s3"
 	tlsutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/tls"
 	yamlutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/yaml"
-	k8se2e "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
@@ -142,7 +141,7 @@ func (f *Framework) BeforeEach() {
 
 		return nil
 	}); err != nil {
-		k8se2e.ExpectNoError(err, "init client failed")
+		framework.ExpectNoError(err, "init client failed")
 	}
 	// always reset mapper cache
 	f.RESTMapper.Reset()

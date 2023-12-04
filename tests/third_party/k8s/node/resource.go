@@ -263,3 +263,27 @@ func IsNodeReady(node *v1.Node) bool {
 		IsConditionSetAsExpectedSilent(node, v1.NodeNetworkUnavailable, false)
 	return nodeReady && networkReady
 }
+
+// hasNonblockingTaint returns true if the node contains at least
+// one taint with a key matching the regexp.
+func hasNonblockingTaint(node *v1.Node, nonblockingTaints string) bool {
+	if node == nil {
+		return false
+	}
+
+	// Simple lookup for nonblocking taints based on comma-delimited list.
+	nonblockingTaintsMap := map[string]struct{}{}
+	for _, t := range strings.Split(nonblockingTaints, ",") {
+		if strings.TrimSpace(t) != "" {
+			nonblockingTaintsMap[strings.TrimSpace(t)] = struct{}{}
+		}
+	}
+
+	for _, taint := range node.Spec.Taints {
+		if _, hasNonblockingTaint := nonblockingTaintsMap[taint.Key]; hasNonblockingTaint {
+			return true
+		}
+	}
+
+	return false
+}

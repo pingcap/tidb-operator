@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	// test sources
 	_ "github.com/pingcap/tidb-operator/tests/e2e/br"
@@ -38,6 +37,7 @@ import (
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbdashboard"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbngmonitoring"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tikv"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/config"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/testfiles"

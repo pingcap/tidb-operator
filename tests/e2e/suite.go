@@ -14,8 +14,7 @@
 package e2e
 
 import (
-	"k8s.io/kubernetes/test/e2e/framework"
-
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 

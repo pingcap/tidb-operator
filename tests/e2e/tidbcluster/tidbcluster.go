@@ -40,7 +40,6 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/utils/pointer"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -66,7 +65,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-	k8se2e "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	e2eskipper "github.com/pingcap/tidb-operator/tests/third_party/k8s/skipper"
 )
@@ -101,22 +100,22 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		var err error
 		config, err = framework.LoadConfig()
-		k8se2e.ExpectNoError(err, "failed to load config")
+		framework.ExpectNoError(err, "failed to load config")
 		cli, err = versioned.NewForConfig(config)
-		k8se2e.ExpectNoError(err, "failed to create clientset for pingcap")
+		framework.ExpectNoError(err, "failed to create clientset for pingcap")
 		asCli, err = asclientset.NewForConfig(config)
-		k8se2e.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
+		framework.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
 		genericCli, err = ctrlCli.New(config, ctrlCli.Options{Scheme: scheme.Scheme})
-		k8se2e.ExpectNoError(err, "failed to create clientset for controller-runtime")
+		framework.ExpectNoError(err, "failed to create clientset for controller-runtime")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
-		k8se2e.ExpectNoError(err, "failed to create clientset kube-aggregator")
+		framework.ExpectNoError(err, "failed to create clientset kube-aggregator")
 		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
-		k8se2e.ExpectNoError(err, "failed to create clientset apiextensions-apiserver")
+		framework.ExpectNoError(err, "failed to create clientset apiextensions-apiserver")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
-		k8se2e.ExpectNoError(err, "failed to load raw config for tidb-operator")
+		framework.ExpectNoError(err, "failed to load raw config for tidb-operator")
 		ctx, cancel := context.WithCancel(context.Background())
 		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
-		k8se2e.ExpectNoError(err, "failed to create port forwarder")
+		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		// OperatorFeatures := map[string]bool{"AutoScaling": true}
@@ -164,11 +163,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						},
 					}
 					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-					k8se2e.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 					err = crdUtil.CheckDisasterTolerance(tc)
-					k8se2e.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
 
 					ginkgo.By("scale out tidb, tikv, pd")
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -178,11 +177,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						tc.Spec.PD.Replicas = 5
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 					err = crdUtil.CheckDisasterTolerance(tc)
-					k8se2e.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
 				})
 
 				ginkgo.It("should scale in tc successfully", func() {
@@ -191,11 +190,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tc.Spec.TiKV.Replicas = 4
 					tc.Spec.PD.Replicas = 5
 					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-					k8se2e.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 					err = crdUtil.CheckDisasterTolerance(tc)
-					k8se2e.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
 
 					ginkgo.By("Scale in tidb, tikv, pd")
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -204,11 +203,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						tc.Spec.PD.Replicas = 3
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to scale in TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to scale in TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 					err = crdUtil.CheckDisasterTolerance(tc)
-					k8se2e.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
 				})
 
 				// only test with the latest version for avoid too much cases.
@@ -217,11 +216,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						ginkgo.By("Deploy a basic tc")
 						tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
 						_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-						k8se2e.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+						framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 						err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
-						k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+						framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 						err = crdUtil.CheckDisasterTolerance(tc)
-						k8se2e.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+						framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
 
 						testBinlog(oa, tc, genericCli, cli)
 					})
@@ -232,11 +231,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
 					tc.Spec.TiDB.Replicas = 1
 					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-					k8se2e.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 					err = crdUtil.CheckDisasterTolerance(tc)
-					k8se2e.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
 
 					ginkgo.By("Change configuration")
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -246,12 +245,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
 					ginkgo.By("Check custom labels and annotations will not lost")
-					k8se2e.ExpectNoError(checkCustomLabelAndAnn(tc, c, tc.Spec.Labels[fixture.ClusterCustomKey], time.Minute, 10*time.Second), "failed to check labels and annotations")
+					framework.ExpectNoError(checkCustomLabelAndAnn(tc, c, tc.Spec.Labels[fixture.ClusterCustomKey], time.Minute, 10*time.Second), "failed to check labels and annotations")
 
 					ginkgo.By("Change labels and annotations")
 					newValue := "new-value"
@@ -268,12 +267,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						tc.Spec.TiDB.Service.Annotations[fixture.ComponentCustomKey] = newValue
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
 					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
 					ginkgo.By("Check custom labels and annotations changed")
-					k8se2e.ExpectNoError(checkCustomLabelAndAnn(tc, c, newValue, 10*time.Minute, 10*time.Second), "failed to check labels and annotations")
+					framework.ExpectNoError(checkCustomLabelAndAnn(tc, c, newValue, 10*time.Minute, 10*time.Second), "failed to check labels and annotations")
 				})
 			})
 		}
@@ -286,7 +285,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	ginkgo.It("should switch between pod network and host network", func() {
 		if !ocfg.Enabled(features.AdvancedStatefulSet) {
 			serverVersion, err := c.Discovery().ServerVersion()
-			k8se2e.ExpectNoError(err, "failed to fetch Kubernetes version")
+			framework.ExpectNoError(err, "failed to fetch Kubernetes version")
 			sv := utilversion.MustParseSemantic(serverVersion.GitVersion)
 			log.Logf("ServerVersion: %v", serverVersion.String())
 			if sv.LessThan(utilversion.MustParseSemantic("v1.13.11")) || // < v1.13.11
@@ -322,9 +321,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(true)
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to switch to host network, TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to switch to host network, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
 		ginkgo.By("Switch back to pod network")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -334,9 +333,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiDB.HostNetwork = pointer.BoolPtr(false)
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to switch to pod network, TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to switch to pod network, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
 
 	ginkgo.It("should direct upgrade tc successfully when PD replicas less than 2.", func() {
@@ -348,7 +347,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.PD.BaseImage = "pingcap/pd-not-exist"
 		// Deploy
 		err := genericCli.Create(context.TODO(), tc)
-		k8se2e.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
+		framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", tc.Namespace, tc.Name)
 
 		err = utiltc.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, time.Second*10,
 			func(tc *v1alpha1.TidbCluster) (bool, error) {
@@ -361,17 +360,17 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				return false, nil
 			})
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 
 		ginkgo.By("Force Upgrading tidb cluster ignoring PD error")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.PD.BaseImage = "pingcap/pd"
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 	})
 
 	ginkgo.It("should direct upgrade tc successfully when TiKV replicas less than 2.", func() {
@@ -389,18 +388,18 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.Version = utilimage.TiDBLatest
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 7*time.Minute, 5*time.Second)
 
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 		pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tc.Name, false)
-		k8se2e.ExpectNoError(err, "failed to create proxied PD client")
+		framework.ExpectNoError(err, "failed to create proxied PD client")
 		defer cancel()
 
 		evictLeaderSchedulers, err := pdClient.GetEvictLeaderSchedulers()
-		k8se2e.ExpectNoError(err, "failed to get EvictLeader")
+		framework.ExpectNoError(err, "failed to get EvictLeader")
 		res := utiltc.MustPDHasScheduler(evictLeaderSchedulers, "evict-leader-scheduler")
-		k8se2e.ExpectEqual(res, false)
+		framework.ExpectEqual(res, false)
 	})
 
 	// TODO: move into TiDBMonitor specific group
@@ -411,18 +410,18 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
 		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected create tidbcluster")
+		framework.ExpectNoError(err, "Expected create tidbcluster")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-		k8se2e.ExpectNoError(err, "Expected get tidbcluster")
+		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		ginkgo.By("Deploy tidbmonitor")
 		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
 		pvpDelete := corev1.PersistentVolumeReclaimDelete
 		tm.Spec.PVReclaimPolicy = &pvpDelete
 		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(context.TODO(), tm, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected tidbmonitor deployed success")
+		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
-		k8se2e.ExpectNoError(err, "Expected tidbmonitor checked success")
+		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 
 		ginkgo.By("Check tidbmonitor pv label")
 		err = wait.Poll(5*time.Second, 2*time.Minute, func() (done bool, err error) {
@@ -463,7 +462,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return true, nil
 		})
-		k8se2e.ExpectNoError(err, "tidbmonitor pv label error")
+		framework.ExpectNoError(err, "tidbmonitor pv label error")
 
 		// update TidbMonitor and check whether portName is updated and the nodePort is unchanged
 		ginkgo.By("Update tidbmonitor service")
@@ -473,7 +472,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tm.Spec.PVReclaimPolicy = &retainPVP
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "update tidbmonitor service type error")
+		framework.ExpectNoError(err, "update tidbmonitor service type error")
 
 		var targetPort int32
 		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
@@ -490,17 +489,17 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			targetPort = prometheusSvc.Spec.Ports[0].NodePort
 			return true, nil
 		})
-		k8se2e.ExpectNoError(err, "failed to wait for tidbmonitor service to be changed")
+		framework.ExpectNoError(err, "failed to wait for tidbmonitor service to be changed")
 
 		err = controller.GuaranteedUpdate(genericCli, tm, func() error {
 			newPortName := "any-other-word"
 			tm.Spec.Prometheus.Service.PortName = &newPortName
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "update tidbmonitor service portName error")
+		framework.ExpectNoError(err, "update tidbmonitor service portName error")
 
 		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), monitor.GetMonitorFirstPVCName(tm.Name), metav1.GetOptions{})
-		k8se2e.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
+		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 		pvName := pvc.Spec.VolumeName
 		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 			prometheusSvc, err := c.CoreV1().Services(ns).Get(context.TODO(), fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
@@ -531,7 +530,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return true, nil
 		})
-		k8se2e.ExpectNoError(err, "second update tidbmonitor service error")
+		framework.ExpectNoError(err, "second update tidbmonitor service error")
 
 		ginkgo.By("Verify tidbmonitor and tidbcluster PVReclaimPolicy won't affect each other")
 		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
@@ -553,7 +552,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return false, nil
 		})
-		k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "tidbmonitor and tidbcluster PVReclaimPolicy should not affect each other")
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "tidbmonitor and tidbcluster PVReclaimPolicy should not affect each other")
 
 		ginkgo.By("Check custom labels and annotations")
 		checkMonitorCustomLabelAndAnn(tm, c)
@@ -568,16 +567,16 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "enable tidbmonitor dynamic configuration error")
+		framework.ExpectNoError(err, "enable tidbmonitor dynamic configuration error")
 
 		secondTc := fixture.GetTidbCluster(ns, "monitor-test-second", utilimage.TiDBLatest)
 		secondTc.Spec.PD.Replicas = 1
 		secondTc.Spec.TiKV.Replicas = 1
 		secondTc.Spec.TiDB.Replicas = 1
 		secondTc, err = cli.PingcapV1alpha1().TidbClusters(secondTc.Namespace).Create(context.TODO(), secondTc, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected create tidbcluster")
+		framework.ExpectNoError(err, "Expected create tidbcluster")
 		err = oa.WaitForTidbClusterReady(secondTc, 30*time.Minute, 5*time.Second)
-		k8se2e.ExpectNoError(err, "Expected get secondTc tidbcluster")
+		framework.ExpectNoError(err, "Expected get secondTc tidbcluster")
 		ginkgo.By("update tidbmonitor cluster spec")
 		err = controller.GuaranteedUpdate(genericCli, tm, func() error {
 			tm.Spec.Clusters = []v1alpha1.TidbClusterRef{
@@ -590,13 +589,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "update tidbmonitor cluster spec error")
+		framework.ExpectNoError(err, "update tidbmonitor cluster spec error")
 		err = tests.CheckTidbMonitorConfigurationUpdate(tm, c, fw, 5)
-		k8se2e.ExpectNoError(err, "Expected tidbmonitor dynamic configuration checked success")
+		framework.ExpectNoError(err, "Expected tidbmonitor dynamic configuration checked success")
 
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(context.TODO(), tm.Name, metav1.DeleteOptions{})
-		k8se2e.ExpectNoError(err, "delete tidbmonitor failed")
+		framework.ExpectNoError(err, "delete tidbmonitor failed")
 	})
 
 	ginkgo.It("can be paused and resumed", func() {
@@ -609,32 +608,32 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 30*time.Minute, 5*time.Second)
 
 		podListBeforePaused, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-		k8se2e.ExpectNoError(err, "failed to list pods in ns %s", ns)
+		framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
 
 		ginkgo.By("Pause the tidb cluster")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.Paused = true
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to pause TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to pause TidbCluster: %q", tc.Name)
 
 		ginkgo.By(fmt.Sprintf("upgrade tc version to %q", utilimage.TiDBLatest))
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.Version = utilimage.TiDBLatest
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to upgrade TidbCluster version: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to upgrade TidbCluster version: %q", tc.Name)
 
 		ginkgo.By("Check pods are not changed when the tidb cluster is paused for 3 min")
 		err = utilpod.WaitForPodsAreChanged(c, podListBeforePaused.Items, 3*time.Minute)
-		k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "Pods are changed when the tidb cluster is paused")
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods are changed when the tidb cluster is paused")
 
 		ginkgo.By("Resume the tidb cluster")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.Paused = false
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to resume TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to resume TidbCluster: %q", tc.Name)
 
 		ginkgo.By("Check the tidb cluster will be upgraded")
 		listOptions := metav1.ListOptions{
@@ -658,7 +657,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return false, nil
 		})
-		k8se2e.ExpectNoError(err, "failed to wait for tikv upgraded: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to wait for tikv upgraded: %q", tc.Name)
 	})
 
 	ginkgo.Context("[Feature: AutoFailover]", func() {
@@ -672,7 +671,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiDB.Config.Set("log.file.max-size", "300")
 			// Deploy
 			err := genericCli.Create(context.TODO(), tc)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster created")
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
 
 			ginkgo.By("check tidb failure member count")
 			ns := tc.Namespace
@@ -691,14 +690,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				log.Logf("the number of failed tidb member is not 1 (current: %d)", len(tc.Status.TiDB.FailureMembers))
 				return false, nil
 			})
-			k8se2e.ExpectNoError(err, "expect tidb failure member count = 1")
+			framework.ExpectNoError(err, "expect tidb failure member count = 1")
 
 			ginkgo.By("Scale tidb to 0")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.TiDB.Replicas = 0
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to scale tidb to 0, TidbCluster: %q", tc.Name)
+			framework.ExpectNoError(err, "failed to scale tidb to 0, TidbCluster: %q", tc.Name)
 
 			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 				var tc *v1alpha1.TidbCluster
@@ -718,7 +717,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				log.Logf("scale tidb member to zero successfully")
 				return true, nil
 			})
-			k8se2e.ExpectNoError(err, "not clear TiDB failureMembers when scale TiDB to zero")
+			framework.ExpectNoError(err, "not clear TiDB failureMembers when scale TiDB to zero")
 		})
 
 		ginkgo.It("should failover and recover by recoverByUID", func() {
@@ -759,7 +758,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					return tikvIsDown && tiflashIsDown, nil
 				})
-			k8se2e.ExpectNoError(err, "failed to waiting for stores to become Down")
+			framework.ExpectNoError(err, "failed to waiting for stores to become Down")
 
 			ginkgo.By("Waiting for stores to be recorded in failure stores")
 			err = utiltc.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*10, time.Second*10,
@@ -783,7 +782,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					return tikvIsRecorded && tiflashIsRecorded, nil
 				})
-			k8se2e.ExpectNoError(err, "failed to wait for stores to be recorded into failure stores")
+			framework.ExpectNoError(err, "failed to wait for stores to be recorded into failure stores")
 
 			ginkgo.By("Waiting for failover pods to be created")
 			err, lastReason := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
@@ -795,7 +794,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				return true, nil, ""
 			})
-			k8se2e.ExpectNoError(err, "failed to wait for failover pods to be created, last reason: %s", lastReason)
+			framework.ExpectNoError(err, "failed to wait for failover pods to be created, last reason: %s", lastReason)
 
 			ginkgo.By("Up down stores and waiting to become Up")
 			f.ExecCommandInContainer(downTiKVPodName, "tikv", "sh", "-c", "mv /var/lib/tikv/db_down /var/lib/tikv/db")
@@ -817,7 +816,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					return tikvIsUp && tiflashIsUp, nil
 				})
-			k8se2e.ExpectNoError(err, "failed to waiting for down stores to become Up")
+			framework.ExpectNoError(err, "failed to waiting for down stores to become Up")
 
 			ginkgo.By("Update failover.recoverByUID of tikv and tiflash")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -827,7 +826,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.TiFlash.Failover = &v1alpha1.Failover{RecoverByUID: tc.Status.TiFlash.FailoverUID}
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to update failover.recoverByUID of tikv and tiflash")
+			framework.ExpectNoError(err, "failed to update failover.recoverByUID of tikv and tiflash")
 
 			ginkgo.By("Waiting for failureStore to be empty after recovery")
 			err = utiltc.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, time.Second*10,
@@ -836,7 +835,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tiflasFailureStoreIsEmpty := len(tc.Status.TiFlash.FailureStores) == 0 && tc.Status.TiFlash.FailoverUID == ""
 					return tikvFailureStoreIsEmpty && tiflasFailureStoreIsEmpty, nil
 				})
-			k8se2e.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
+			framework.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
 
 			ginkgo.By("Waiting for failover pods to be deleted after recovery")
 			err, lastReason = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
@@ -854,7 +853,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 				return true, nil, ""
 			})
-			k8se2e.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery, last reason: %s", lastReason)
+			framework.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery, last reason: %s", lastReason)
 		})
 
 		ginkgo.It("should failover and recover by recoverFailover eventually", func() {
@@ -895,7 +894,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					return tikvIsDown && tiflashIsDown, nil
 				})
-			k8se2e.ExpectNoError(err, "failed to waiting for stores to become Down")
+			framework.ExpectNoError(err, "failed to waiting for stores to become Down")
 
 			ginkgo.By("Waiting for stores to be recorded in failure stores")
 			err = utiltc.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*10, time.Second*10,
@@ -919,7 +918,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					return tikvIsRecorded && tiflashIsRecorded, nil
 				})
-			k8se2e.ExpectNoError(err, "failed to wait for stores to be recorded into failure stores")
+			framework.ExpectNoError(err, "failed to wait for stores to be recorded into failure stores")
 
 			ginkgo.By("Waiting for failover pods to be created")
 			err, lastReason := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
@@ -931,7 +930,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				return true, nil, ""
 			})
-			k8se2e.ExpectNoError(err, "failed to wait for failover pods to be created, last reason: %s", lastReason)
+			framework.ExpectNoError(err, "failed to wait for failover pods to be created, last reason: %s", lastReason)
 
 			ginkgo.By("Up down stores and waiting to become Up")
 			f.ExecCommandInContainer(downTiKVPodName, "tikv", "sh", "-c", "mv /var/lib/tikv/db_down /var/lib/tikv/db")
@@ -953,7 +952,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					return tikvIsUp && tiflashIsUp, nil
 				})
-			k8se2e.ExpectNoError(err, "failed to waiting for tikv-1 store to be in Up state")
+			framework.ExpectNoError(err, "failed to waiting for tikv-1 store to be in Up state")
 
 			ginkgo.By("Update TiKV wrong failover.recoverByUID")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -963,7 +962,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.TiFlash.Failover = &v1alpha1.Failover{RecoverByUID: "11111111-1111-1111-1111-111111111111"}
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to update TiKV wrong failover.recoverByUID")
+			framework.ExpectNoError(err, "failed to update TiKV wrong failover.recoverByUID")
 
 			ginkgo.By("Waiting for failureStore empty timeout")
 			err = utiltc.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*3, time.Second*10,
@@ -976,7 +975,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					return false, nil
 				})
-			k8se2e.ExpectEqual(err, wait.ErrWaitTimeout)
+			framework.ExpectEqual(err, wait.ErrWaitTimeout)
 
 			ginkgo.By("Update spec.recoverFailover to be true")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -985,7 +984,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				// even still wrong recoverByUID
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to update spec.recoverFailover")
+			framework.ExpectNoError(err, "failed to update spec.recoverFailover")
 
 			ginkgo.By("Waiting for failureStore to be empty after recovery")
 			err = utiltc.WaitForTCCondition(cli, tc.Namespace, tc.Name, time.Minute*5, time.Second*10,
@@ -994,7 +993,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tiflasFailureStoreIsEmpty := len(tc.Status.TiFlash.FailureStores) == 0 && tc.Status.TiFlash.FailoverUID == ""
 					return tikvFailureStoreIsEmpty && tiflasFailureStoreIsEmpty, nil
 				})
-			k8se2e.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
+			framework.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
 
 			ginkgo.By("Waiting for failover pods to be deleted after recovery")
 			err, lastReason = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
@@ -1012,7 +1011,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 				return true, nil, ""
 			})
-			k8se2e.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery, last reason: %s", lastReason)
+			framework.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery, last reason: %s", lastReason)
 		})
 	})
 
@@ -1040,32 +1039,32 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 				ginkgo.By("Installing tidb CA certificate")
 				err := InstallTiDBIssuer(ns, tcName)
-				k8se2e.ExpectNoError(err, "failed to install CA certificate")
+				framework.ExpectNoError(err, "failed to install CA certificate")
 
 				ginkgo.By("Installing tidb server and client certificate")
 				err = InstallTiDBCertificates(ns, tcName)
-				k8se2e.ExpectNoError(err, "failed to install tidb server and client certificate")
+				framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 				ginkgo.By("Installing tidbInitializer client certificate")
 				err = installTiDBInitializerCertificates(ns, tcName)
-				k8se2e.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+				framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
 
 				ginkgo.By("Installing dashboard client certificate")
 				err = installPDDashboardCertificates(ns, tcName)
-				k8se2e.ExpectNoError(err, "failed to install dashboard client certificate")
+				framework.ExpectNoError(err, "failed to install dashboard client certificate")
 
 				ginkgo.By("Installing tidb components certificates")
 				err = InstallTiDBComponentsCertificates(ns, tcName)
-				k8se2e.ExpectNoError(err, "failed to install tidb components certificates")
+				framework.ExpectNoError(err, "failed to install tidb components certificates")
 
 				if sc.skipCA {
 					ginkgo.By("Removing ca.crt in tidb-client-secret, dashboard and tidbInitializer client certificate")
 					err = removeCACertFromSecret(genericCli, ns, fmt.Sprintf("%s-tidb-client-secret", tcName))
-					k8se2e.ExpectNoError(err, "failed to update tidb-client-secret with ca.crt deleted")
+					framework.ExpectNoError(err, "failed to update tidb-client-secret with ca.crt deleted")
 					err = removeCACertFromSecret(genericCli, ns, fmt.Sprintf("%s-dashboard-tls", tcName))
-					k8se2e.ExpectNoError(err, "failed to update dashboard-tls secret with ca.crt deleted")
+					framework.ExpectNoError(err, "failed to update dashboard-tls secret with ca.crt deleted")
 					err = removeCACertFromSecret(genericCli, ns, fmt.Sprintf("%s-initializer-tls", tcName))
-					k8se2e.ExpectNoError(err, "failed to update initializer-tls secret with ca.crt deleted")
+					framework.ExpectNoError(err, "failed to update initializer-tls secret with ca.crt deleted")
 				}
 
 				ginkgo.By("Creating tidb cluster with TLS enabled")
@@ -1095,32 +1094,32 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 
 				err = genericCli.Create(context.TODO(), tc)
-				k8se2e.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+				framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-				k8se2e.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 				ginkgo.By("Ensure configs of all components are not changed")
 				newTC, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{})
 				tc.Spec.TiDB.Config.Set("log.file.max-backups", int64(3)) // add default configs that ard added by operator
-				k8se2e.ExpectNoError(err, "failed to get TidbCluster: %s", tc.Name)
-				k8se2e.ExpectEqual(newTC.Spec.PD.Config, tc.Spec.PD.Config, "pd config isn't equal of TidbCluster: %s", tc.Name)
-				k8se2e.ExpectEqual(newTC.Spec.TiKV.Config, tc.Spec.TiKV.Config, "tikv config isn't equal of TidbCluster: %s", tc.Name)
-				k8se2e.ExpectEqual(newTC.Spec.TiDB.Config, tc.Spec.TiDB.Config, "tidb config isn't equal of TidbCluster: %s", tc.Name)
-				k8se2e.ExpectEqual(newTC.Spec.Pump.Config, tc.Spec.Pump.Config, "pump config isn't equal of TidbCluster: %s", tc.Name)
-				k8se2e.ExpectEqual(newTC.Spec.TiCDC.Config, tc.Spec.TiCDC.Config, "ticdc config isn't equal of TidbCluster: %s", tc.Name)
-				k8se2e.ExpectEqual(newTC.Spec.TiFlash.Config, tc.Spec.TiFlash.Config, "tiflash config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectNoError(err, "failed to get TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.PD.Config, tc.Spec.PD.Config, "pd config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.TiKV.Config, tc.Spec.TiKV.Config, "tikv config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.TiDB.Config, tc.Spec.TiDB.Config, "tidb config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.Pump.Config, tc.Spec.Pump.Config, "pump config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.TiCDC.Config, tc.Spec.TiCDC.Config, "ticdc config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.TiFlash.Config, tc.Spec.TiFlash.Config, "tiflash config isn't equal of TidbCluster: %s", tc.Name)
 
 				ginkgo.By("Ensure Dashboard use custom secret")
 				foundSecretName := false
 				pdSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), controller.PDMemberName(tcName), metav1.GetOptions{})
-				k8se2e.ExpectNoError(err, "failed to get statefulsets for pd: %q", tc.Name)
+				framework.ExpectNoError(err, "failed to get statefulsets for pd: %q", tc.Name)
 				for _, vol := range pdSts.Spec.Template.Spec.Volumes {
 					if vol.Name == "tidb-client-tls" {
 						foundSecretName = true
-						k8se2e.ExpectEqual(vol.Secret.SecretName, dashTLSName)
+						framework.ExpectEqual(vol.Secret.SecretName, dashTLSName)
 					}
 				}
-				k8se2e.ExpectEqual(foundSecretName, true)
+				framework.ExpectEqual(foundSecretName, true)
 
 				ginkgo.By("Creating tidb initializer")
 				passwd := "admin"
@@ -1129,11 +1128,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				initTLSName := fmt.Sprintf("%s-initializer-tls", tcName)
 				initSecret := fixture.GetInitializerSecret(tc, initPassWDName, passwd)
 				_, err = c.CoreV1().Secrets(ns).Create(context.TODO(), initSecret, metav1.CreateOptions{})
-				k8se2e.ExpectNoError(err, "failed to create secret for TidbInitializer: %v", initSecret)
+				framework.ExpectNoError(err, "failed to create secret for TidbInitializer: %v", initSecret)
 
 				ti := fixture.GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName)
 				err = genericCli.Create(context.TODO(), ti)
-				k8se2e.ExpectNoError(err, "failed to create TidbInitializer: %v", ti)
+				framework.ExpectNoError(err, "failed to create TidbInitializer: %v", ti)
 
 				source := &tests.DrainerSourceConfig{
 					Namespace:      ns,
@@ -1147,9 +1146,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				targetTc.Spec.TiKV.Replicas = 1
 				targetTc.Spec.TiDB.Replicas = 1
 				err = genericCli.Create(context.TODO(), targetTc)
-				k8se2e.ExpectNoError(err, "failed to create TidbCluster: %v", targetTc)
+				framework.ExpectNoError(err, "failed to create TidbCluster: %v", targetTc)
 				err = oa.WaitForTidbClusterReady(targetTc, 30*time.Minute, 5*time.Second)
-				k8se2e.ExpectNoError(err, "wait for TidbCluster timeout: %v", targetTc)
+				framework.ExpectNoError(err, "wait for TidbCluster timeout: %v", targetTc)
 
 				drainerConfig := &tests.DrainerConfig{
 					// Note: DrainerName muse be tcName
@@ -1176,21 +1175,21 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 				ginkgo.By("Deploying tidb drainer")
 				err = oa.DeployDrainer(drainerConfig, source)
-				k8se2e.ExpectNoError(err, "failed to deploy drainer: %v", drainerConfig)
+				framework.ExpectNoError(err, "failed to deploy drainer: %v", drainerConfig)
 				err = oa.CheckDrainer(drainerConfig, source)
-				k8se2e.ExpectNoError(err, "failed to check drainer: %v", drainerConfig)
+				framework.ExpectNoError(err, "failed to check drainer: %v", drainerConfig)
 
 				ginkgo.By("Inserting data into source db")
 				err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, tcName, passwd, true))
-				k8se2e.ExpectNoError(err, "insert data into source db timeout")
+				framework.ExpectNoError(err, "insert data into source db timeout")
 
 				ginkgo.By("Checking tidb-binlog works as expected")
 				err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, targetTcName, "", false))
-				k8se2e.ExpectNoError(err, "check data correct timeout")
+				framework.ExpectNoError(err, "check data correct timeout")
 
 				ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")
 				err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
-				k8se2e.ExpectNoError(err, "connect to TLS tidb timeout")
+				framework.ExpectNoError(err, "connect to TLS tidb timeout")
 
 				ginkgo.By("Scaling out tidb cluster")
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -1202,9 +1201,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tc.Spec.TiCDC.Replicas = 3
 					return nil
 				})
-				k8se2e.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
+				framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
 				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-				k8se2e.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 				ginkgo.By("Scaling in tidb cluster")
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -1216,18 +1215,18 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					tc.Spec.TiCDC.Replicas = 1
 					return nil
 				})
-				k8se2e.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
+				framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
 				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-				k8se2e.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 				ginkgo.By("Upgrading tidb cluster")
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 					tc.Spec.Version = utilimage.TiDBLatest
 					return nil
 				})
-				k8se2e.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
+				framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
 				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-				k8se2e.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 				ginkgo.By("Check custom labels and annotations for TidbInitializer")
 				checkInitializerCustomLabelAndAnn(ti, c)
@@ -1240,29 +1239,29 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Installing tidb CA certificate")
 			err := InstallTiDBIssuer(ns, tcName)
-			k8se2e.ExpectNoError(err, "failed to generate tidb issuer template")
+			framework.ExpectNoError(err, "failed to generate tidb issuer template")
 
 			ginkgo.By("Installing tidb server and client certificate")
 			err = InstallTiDBCertificates(ns, tcName)
-			k8se2e.ExpectNoError(err, "failed to install tidb server and client certificate")
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 			ginkgo.By("Installing heterogeneous tidb server and client certificate")
 			err = installHeterogeneousTiDBCertificates(ns, heterogeneousTcName, tcName)
-			k8se2e.ExpectNoError(err, "failed to install heterogeneous tidb server and client certificate")
+			framework.ExpectNoError(err, "failed to install heterogeneous tidb server and client certificate")
 
 			ginkgo.By("Installing separate tidbInitializer client certificate")
 			err = installTiDBInitializerCertificates(ns, tcName)
-			k8se2e.ExpectNoError(err, "failed to install separate tidbInitializer client certificate")
+			framework.ExpectNoError(err, "failed to install separate tidbInitializer client certificate")
 
 			ginkgo.By("Installing separate dashboard client certificate")
 			err = installPDDashboardCertificates(ns, tcName)
-			k8se2e.ExpectNoError(err, "failed to install separate dashboard client certificate")
+			framework.ExpectNoError(err, "failed to install separate dashboard client certificate")
 
 			ginkgo.By("Installing tidb components certificates")
 			err = InstallTiDBComponentsCertificates(ns, tcName)
-			k8se2e.ExpectNoError(err, "failed to install tidb components certificates")
+			framework.ExpectNoError(err, "failed to install tidb components certificates")
 			err = installHeterogeneousTiDBComponentsCertificates(ns, heterogeneousTcName, tcName)
-			k8se2e.ExpectNoError(err, "failed to install heterogeneous tidb components certificates")
+			framework.ExpectNoError(err, "failed to install heterogeneous tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster")
 			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
@@ -1285,9 +1284,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}),
 			}
 			err = genericCli.Create(context.TODO(), tc)
-			k8se2e.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 			ginkgo.By("Creating heterogeneous tidb cluster")
 			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBLatest)
@@ -1302,11 +1301,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			heterogeneousTc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			heterogeneousTc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			err = genericCli.Create(context.TODO(), heterogeneousTc)
-			k8se2e.ExpectNoError(err, "failed to create heterogeneous TidbCluster: %v", heterogeneousTc)
+			framework.ExpectNoError(err, "failed to create heterogeneous TidbCluster: %v", heterogeneousTc)
 
 			ginkgo.By("Waiting heterogeneous tls tidb cluster ready")
 			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 			ginkgo.By("Checking heterogeneous tls tidb cluster status")
 			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
@@ -1318,7 +1317,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				log.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
 				secretLister = tests.GetSecretListerWithCacheSynced(c, 5*time.Second)
 				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tcName, true)
-				k8se2e.ExpectNoError(err, "create pdClient error")
+				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()
 				storeInfo, err := pdClient.GetStores()
 				if err != nil {
@@ -1331,19 +1330,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				log.Logf("check heterogeneous tc successfully")
 				return true, nil
 			})
-			k8se2e.ExpectNoError(err, "check heterogeneous TidbCluster timeout: %v", heterogeneousTc)
+			framework.ExpectNoError(err, "check heterogeneous TidbCluster timeout: %v", heterogeneousTc)
 
 			ginkgo.By("Ensure Dashboard use custom secret")
 			foundSecretName := false
 			pdSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), controller.PDMemberName(tcName), metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get statefulsets for pd")
+			framework.ExpectNoError(err, "failed to get statefulsets for pd")
 			for _, vol := range pdSts.Spec.Template.Spec.Volumes {
 				if vol.Name == "tidb-client-tls" {
 					foundSecretName = true
-					k8se2e.ExpectEqual(vol.Secret.SecretName, dashTLSName)
+					framework.ExpectEqual(vol.Secret.SecretName, dashTLSName)
 				}
 			}
-			k8se2e.ExpectEqual(foundSecretName, true)
+			framework.ExpectEqual(foundSecretName, true)
 
 			ginkgo.By("Creating tidb initializer")
 			passwd := "admin"
@@ -1352,11 +1351,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			initTLSName := fmt.Sprintf("%s-initializer-tls", tcName)
 			initSecret := fixture.GetInitializerSecret(tc, initPassWDName, passwd)
 			_, err = c.CoreV1().Secrets(ns).Create(context.TODO(), initSecret, metav1.CreateOptions{})
-			k8se2e.ExpectNoError(err, "failed to create secret for TidbInitializer: %v", initSecret)
+			framework.ExpectNoError(err, "failed to create secret for TidbInitializer: %v", initSecret)
 
 			ti := fixture.GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName)
 			err = genericCli.Create(context.TODO(), ti)
-			k8se2e.ExpectNoError(err, "failed to create TidbInitializer: %v", ti)
+			framework.ExpectNoError(err, "failed to create TidbInitializer: %v", ti)
 
 			source := &tests.DrainerSourceConfig{
 				Namespace:      ns,
@@ -1370,9 +1369,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			targetTc.Spec.TiKV.Replicas = 1
 			targetTc.Spec.TiDB.Replicas = 1
 			err = genericCli.Create(context.TODO(), targetTc)
-			k8se2e.ExpectNoError(err, "failed to create TidbCluster: %v", targetTc)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %v", targetTc)
 			err = oa.WaitForTidbClusterReady(targetTc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 			drainerConfig := &tests.DrainerConfig{
 				DrainerName:       tcName,
@@ -1389,21 +1388,21 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Deploying tidb drainer")
 			err = oa.DeployDrainer(drainerConfig, source)
-			k8se2e.ExpectNoError(err, "failed to deploy drainer: %v", drainerConfig)
+			framework.ExpectNoError(err, "failed to deploy drainer: %v", drainerConfig)
 			err = oa.CheckDrainer(drainerConfig, source)
-			k8se2e.ExpectNoError(err, "failed to check drainer: %v", drainerConfig)
+			framework.ExpectNoError(err, "failed to check drainer: %v", drainerConfig)
 
 			ginkgo.By("Inserting data into source db")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, tcName, passwd, true))
-			k8se2e.ExpectNoError(err, "insert data into source db timeout")
+			framework.ExpectNoError(err, "insert data into source db timeout")
 
 			ginkgo.By("Checking tidb-binlog works as expected")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, targetTcName, "", false))
-			k8se2e.ExpectNoError(err, "check data correct timeout")
+			framework.ExpectNoError(err, "check data correct timeout")
 
 			ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
-			k8se2e.ExpectNoError(err, "connect to TLS tidb timeout")
+			framework.ExpectNoError(err, "connect to TLS tidb timeout")
 		})
 	})
 
@@ -1421,9 +1420,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			},
 		}
 		err := genericCli.Create(context.TODO(), nodeTc)
-		k8se2e.ExpectNoError(err, "Expected TiDB cluster created")
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(nodeTc, 30*time.Minute, 5*time.Second)
-		k8se2e.ExpectNoError(err, "Expected TiDB cluster ready")
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		// expect tidb service type is Nodeport
 		// NOTE: should we poll here or just check for once? because tc is ready
@@ -1439,7 +1438,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return true, nil
 		})
-		k8se2e.ExpectNoError(err, "wait for tidb service sync timeout")
+		framework.ExpectNoError(err, "wait for tidb service sync timeout")
 		oldPorts := s.Spec.Ports
 
 		ensureSvcNodePortUnchangedFor1Min := func() {
@@ -1460,7 +1459,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				return false, nil
 			})
-			k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "service NodePort should not change in 1 minute")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "service NodePort should not change in 1 minute")
 		}
 
 		ginkgo.By("Make sure tidb service NodePort doesn't changed")
@@ -1468,14 +1467,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.By("Change tidb service annotation")
 		nodeTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), "nodeport", metav1.GetOptions{})
-		k8se2e.ExpectNoError(err, "failed to get TidbCluster")
+		framework.ExpectNoError(err, "failed to get TidbCluster")
 		err = controller.GuaranteedUpdate(genericCli, nodeTc, func() error {
 			nodeTc.Spec.TiDB.Service.Annotations = map[string]string{
 				"foo": "bar",
 			}
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to change tidb service annotation")
+		framework.ExpectNoError(err, "failed to change tidb service annotation")
 
 		// check whether the tidb svc have updated
 		err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
@@ -1495,7 +1494,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return true, nil
 		})
-		k8se2e.ExpectNoError(err, "failed wait for tidb service sync")
+		framework.ExpectNoError(err, "failed wait for tidb service sync")
 
 		ginkgo.By("Make sure tidb service NodePort doesn't changed")
 		// check whether NodePort have changed for 1 min
@@ -1512,9 +1511,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			originTc.Spec.TiKV.Replicas = 1
 			originTc.Spec.TiDB.Replicas = 1
 			err := genericCli.Create(context.TODO(), originTc)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster created")
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
 			err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster ready")
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("Deploy heterogeneous tc")
 			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBLatest)
@@ -1533,9 +1532,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 
 			err = genericCli.Create(context.TODO(), heterogeneousTc)
-			k8se2e.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
+			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
 			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
-			k8se2e.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
+			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
 
 			ginkgo.By("Wait for heterogeneous tc to join origin tc")
 			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
@@ -1546,7 +1545,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				log.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
 				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, originTc.Name, false)
-				k8se2e.ExpectNoError(err, "create pdClient error")
+				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()
 				storeInfo, err := pdClient.GetStores()
 				if err != nil {
@@ -1559,7 +1558,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				log.Logf("check heterogeneous tc successfully")
 				return true, nil
 			})
-			k8se2e.ExpectNoError(err, "failed to wait heterogeneous tc to join origin tc")
+			framework.ExpectNoError(err, "failed to wait heterogeneous tc to join origin tc")
 		})
 
 		ginkgo.It("should join cluster with setting cluster domain", func() {
@@ -1570,9 +1569,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			originTc.Spec.TiKV.Replicas = 1
 			originTc.Spec.TiDB.Replicas = 1
 			err := genericCli.Create(context.TODO(), originTc)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster created")
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
 			err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster ready")
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("Deploy heterogeneous tc")
 			heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBLatest)
@@ -1591,9 +1590,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			heterogeneousTc.Spec.ClusterDomain = "cluster.local"
 
 			err = genericCli.Create(context.TODO(), heterogeneousTc)
-			k8se2e.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
+			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
 			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
-			k8se2e.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
+			framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
 
 			ginkgo.By("Wait for heterogeneous tc to join origin tc")
 			err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
@@ -1604,7 +1603,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				log.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
 				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, originTc.Name, false)
-				k8se2e.ExpectNoError(err, "create pdClient error")
+				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()
 				storeInfo, err := pdClient.GetStores()
 				if err != nil {
@@ -1617,7 +1616,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				log.Logf("check heterogeneous tc successfully")
 				return true, nil
 			})
-			k8se2e.ExpectNoError(err, "failed to wait heterogeneous tc to join origin tc")
+			framework.ExpectNoError(err, "failed to wait heterogeneous tc to join origin tc")
 		})
 	})
 
@@ -1633,9 +1632,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			fromTc.Spec.TiCDC.Replicas = 3
 
 			err := genericCli.Create(context.TODO(), fromTc)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster created")
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
 			err = oa.WaitForTidbClusterReady(fromTc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster ready")
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("Creating cdc-sink cluster")
 			toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBLatest)
@@ -1643,18 +1642,18 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			toTc.Spec.TiKV.Replicas = 1
 			toTc.Spec.TiDB.Replicas = 1
 			err = genericCli.Create(context.TODO(), toTc)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster created")
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
 			err = oa.WaitForTidbClusterReady(toTc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster ready")
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("Update cdc config to use config file")
 			err = controller.GuaranteedUpdate(genericCli, fromTc, func() error {
 				fromTc.Spec.TiCDC.Config.Set("capture-session-ttl", 10)
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to update cdc config: %q", fromTc.Name)
+			framework.ExpectNoError(err, "failed to update cdc config: %q", fromTc.Name)
 			err = oa.WaitForTidbClusterReady(fromTc, 3*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", fromTc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", fromTc.Name)
 
 			ginkgo.By("Check cdc configuration")
 			var cdcCmName string
@@ -1675,10 +1674,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 				return false, nil
 			})
-			k8se2e.ExpectNoError(err, "failed wait to update to use config file")
+			framework.ExpectNoError(err, "failed wait to update to use config file")
 
 			cdcCm, err := c.CoreV1().ConfigMaps(ns).Get(context.TODO(), cdcCmName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, cdcCm)
+			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, cdcCm)
 			log.Logf("CDC config:\n%s", cdcCm.Data["config-file"])
 			gomega.Expect(cdcCm.Data["config-file"]).To(gomega.ContainSubstring("capture-session-ttl = 10"))
 
@@ -1694,15 +1693,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
 			data, err := framework.RunKubectl(ns, args...)
-			k8se2e.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
 
 			ginkgo.By("Inserting data to cdc cluster")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
-			k8se2e.ExpectNoError(err, "insert data to cdc cluster timeout")
+			framework.ExpectNoError(err, "insert data to cdc cluster timeout")
 
 			ginkgo.By("Checking cdc works as expected")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, toTCName, "", false))
-			k8se2e.ExpectNoError(err, "check cdc timeout")
+			framework.ExpectNoError(err, "check cdc timeout")
 
 			log.Logf("CDC works as expected")
 		})
@@ -1726,9 +1725,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 
 			err := genericCli.Create(context.TODO(), fromTc)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster created")
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
 			err = oa.WaitForTidbClusterReady(fromTc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster ready")
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("Creating cdc-sink cluster")
 			toTc := fixture.GetTidbCluster(ns, "cdc-sink-advance", utilimage.TiDBLatest)
@@ -1736,29 +1735,29 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			toTc.Spec.TiKV.Replicas = 1
 			toTc.Spec.TiDB.Replicas = 1
 			err = genericCli.Create(context.TODO(), toTc)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster created")
+			framework.ExpectNoError(err, "Expected TiDB cluster created")
 			err = oa.WaitForTidbClusterReady(toTc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "Expected TiDB cluster ready")
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 			ginkgo.By("Scale in TiCDC")
 			err = controller.GuaranteedUpdate(genericCli, fromTc, func() error {
 				fromTc.Spec.TiCDC.Replicas = 2
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to scale in TiCDC for TidbCluster %s/%s", ns, fromTc.Name)
+			framework.ExpectNoError(err, "failed to scale in TiCDC for TidbCluster %s/%s", ns, fromTc.Name)
 
 			ginkgo.By("Wait for fromTC ready")
 			err = oa.WaitForTidbClusterReady(fromTc, 3*time.Minute, 10*time.Second)
-			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in TiCDC", ns, fromTc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in TiCDC", ns, fromTc.Name)
 
 			ginkgo.By("Check PVC annotation tidb.pingcap.com/pvc-defer-deleting")
 			pvcUIDs := make(map[string]string)
 			ordinal := int32(2)
 			pvcSelector, err := member.GetPVCSelectorForPod(fromTc, v1alpha1.TiCDCMemberType, ordinal)
-			k8se2e.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", fromTc.GetNamespace(), fromTc.GetName())
+			framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", fromTc.GetNamespace(), fromTc.GetName())
 			err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
 				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
-				k8se2e.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+				framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 				if len(pvcs.Items) == 0 {
 					log.Logf("no PVC found")
 					return false, nil
@@ -1775,23 +1774,23 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				return true, nil
 			})
-			k8se2e.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
+			framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 
 			ginkgo.By("Scale out TiCDC")
 			err = controller.GuaranteedUpdate(genericCli, fromTc, func() error {
 				fromTc.Spec.TiCDC.Replicas = 3
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to scale out TiCDC for TidbCluster %s/%s", ns, fromTc.Name)
+			framework.ExpectNoError(err, "failed to scale out TiCDC for TidbCluster %s/%s", ns, fromTc.Name)
 
 			ginkgo.By("Wait for fromTC ready")
 			err = oa.WaitForTidbClusterReady(fromTc, 3*time.Minute, 10*time.Second)
-			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out TiCDC", ns, fromTc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out TiCDC", ns, fromTc.Name)
 
 			ginkgo.By("Check PVCs are recreated for newly scaled out TiCDC")
 			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
 				pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
-				k8se2e.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+				framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 				if len(pvcs.Items) == 0 {
 					log.Logf("no PVC found")
 					return false, nil
@@ -1804,11 +1803,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						return false, nil
 					}
 					pvcUIDString := pvcUIDs[pvc.Name]
-					k8se2e.ExpectNotEqual(string(pvc.UID), pvcUIDString)
+					framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
 				}
 				return true, nil
 			})
-			k8se2e.ExpectNoError(err, "expect PVCs of scaled out Pods to be recreated")
+			framework.ExpectNoError(err, "expect PVCs of scaled out Pods to be recreated")
 
 			ginkgo.By("Creating change feed task")
 			fromTCName := fromTc.Name
@@ -1822,15 +1821,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
 			data, err := framework.RunKubectl(ns, args...)
-			k8se2e.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
 
 			ginkgo.By("Inserting data to cdc cluster")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
-			k8se2e.ExpectNoError(err, "insert data to cdc cluster timeout")
+			framework.ExpectNoError(err, "insert data to cdc cluster timeout")
 
 			ginkgo.By("Checking cdc works as expected")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, toTCName, "", false))
-			k8se2e.ExpectNoError(err, "check cdc timeout")
+			framework.ExpectNoError(err, "check cdc timeout")
 
 			log.Logf("CDC works as expected")
 		})
@@ -1887,18 +1886,18 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiDB.Replicas = 1
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to scale in TiKV/TiDB, TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to scale in TiKV/TiDB, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
 		ginkgo.By("Check PVC annotation tidb.pingcap.com/pvc-defer-deleting")
 		pvcUIDs := make(map[string]string)
 		ordinal := int32(1)
 		pvcSelector, err := member.GetPVCSelectorForPod(tc, v1alpha1.TiDBMemberType, ordinal)
-		k8se2e.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
+		framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
 		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
 			pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
-			k8se2e.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+			framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 			if len(pvcs.Items) == 0 {
 				log.Logf("no PVC found")
 				return false, nil
@@ -1915,7 +1914,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return true, nil
 		})
-		k8se2e.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
+		framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 
 		ginkgo.By("Scale out multiple pvc tidb cluster")
 		// Scale
@@ -1924,14 +1923,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiDB.Replicas = 2
 			return nil
 		})
-		k8se2e.ExpectNoError(err, "failed to scale out TiKV/TiDB, TidbCluster: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to scale out TiKV/TiDB, TidbCluster: %q", tc.Name)
 		err = oa.WaitForTidbClusterReady(tc, 3*time.Minute, 5*time.Second)
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 
 		ginkgo.By("Check PVCs are recreated for newly scaled out TiDB")
 		err = wait.Poll(10*time.Second, 3*time.Minute, func() (done bool, err error) {
 			pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
-			k8se2e.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+			framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 			if len(pvcs.Items) == 0 {
 				log.Logf("no PVC found")
 				return false, nil
@@ -1944,11 +1943,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					return false, nil
 				}
 				pvcUIDString := pvcUIDs[pvc.Name]
-				k8se2e.ExpectNotEqual(string(pvc.UID), pvcUIDString)
+				framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
 			}
 			return true, nil
 		})
-		k8se2e.ExpectNoError(err, "expect PVCs of scaled out Pods to be recreated")
+		framework.ExpectNoError(err, "expect PVCs of scaled out Pods to be recreated")
 	})
 
 	// test cases for tc upgrade
@@ -1971,29 +1970,29 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.TiDB.Version = pointer.StringPtr(componentVersion)
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to update components version to %q", componentVersion)
+			framework.ExpectNoError(err, "failed to update components version to %q", componentVersion)
 			err = oa.WaitForTidbClusterReady(tc, 20*time.Minute, 10*time.Second)
-			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check components version")
 			pdMemberName := controller.PDMemberName(tc.Name)
 			pdSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), pdMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
 			pdImage := fmt.Sprintf("pingcap/pd:%s", componentVersion)
-			k8se2e.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, pdImage, "pd sts image should be %q", pdImage)
+			framework.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, pdImage, "pd sts image should be %q", pdImage)
 
 			tikvMemberName := controller.TiKVMemberName(tc.Name)
 			tikvSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), tikvMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
 			tikvImage := fmt.Sprintf("pingcap/tikv:%s", componentVersion)
-			k8se2e.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, tikvImage, "tikv sts image should be %q", tikvImage)
+			framework.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, tikvImage, "tikv sts image should be %q", tikvImage)
 
 			tidbMemberName := controller.TiDBMemberName(tc.Name)
 			tidbSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), tidbMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
 			tidbImage := fmt.Sprintf("pingcap/tidb:%s", componentVersion)
 			// the 0th container for tidb pod is slowlog, which runs busybox
-			k8se2e.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
+			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
 		})
 
 		ginkgo.It("for configuration update", func() {
@@ -2015,7 +2014,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.TiDB.Config = tidbCfg
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to update components configuration")
+			framework.ExpectNoError(err, "failed to update components configuration")
 
 			ginkgo.By("Wait for PD to be in UpgradePhase")
 			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
@@ -2023,17 +2022,17 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Wait for tc ready")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check PD configuration")
 			pdMemberName := controller.PDMemberName(tc.Name)
 			pdSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), pdMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
 			pdCmName := mngerutils.FindConfigMapVolume(&pdSts.Spec.Template.Spec, func(name string) bool {
 				return strings.HasPrefix(name, controller.PDMemberName(tc.Name))
 			})
 			pdCm, err := c.CoreV1().ConfigMaps(ns).Get(context.TODO(), pdCmName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, pdCm)
+			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, pdCm)
 			log.Logf("PD config:\n%s", pdCm.Data["config-file"])
 			gomega.Expect(pdCm.Data["config-file"]).To(gomega.ContainSubstring("lease = 3"))
 
@@ -2043,17 +2042,17 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Wait for tc ready")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check TiKV configuration")
 			tikvMemberName := controller.TiKVMemberName(tc.Name)
 			tikvSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), tikvMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
 			tikvCmName := mngerutils.FindConfigMapVolume(&tikvSts.Spec.Template.Spec, func(name string) bool {
 				return strings.HasPrefix(name, controller.TiKVMemberName(tc.Name))
 			})
 			tikvCm, err := c.CoreV1().ConfigMaps(ns).Get(context.TODO(), tikvCmName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tikvCmName)
+			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tikvCmName)
 			log.Logf("TiKV config:\n%s", tikvCm.Data["config-file"])
 			gomega.Expect(tikvCm.Data["config-file"]).To(gomega.ContainSubstring("status-thread-pool-size = 1"))
 
@@ -2063,17 +2062,17 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.By("Wait for tc ready")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check TiDB configuration")
 			tidbMemberName := controller.TiDBMemberName(tc.Name)
 			tidbSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), tidbMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
 			tidbCmName := mngerutils.FindConfigMapVolume(&tidbSts.Spec.Template.Spec, func(name string) bool {
 				return strings.HasPrefix(name, controller.TiDBMemberName(tc.Name))
 			})
 			tidbCm, err := c.CoreV1().ConfigMaps(ns).Get(context.TODO(), tidbCmName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tidbCmName)
+			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tidbCmName)
 			log.Logf("TiDB config:\n%s", tidbCm.Data["config-file"])
 			gomega.Expect(tidbCm.Data["config-file"]).To(gomega.ContainSubstring("token-limit = 10000"))
 		})
@@ -2104,48 +2103,48 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to update tc version to %q", ucase.newVersion)
+			framework.ExpectNoError(err, "failed to update tc version to %q", ucase.newVersion)
 			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
-			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check components version")
 			componentVersion := ucase.newVersion
 			pdMemberName := controller.PDMemberName(tc.Name)
 			pdSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), pdMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pdMemberName)
 			pdImage := fmt.Sprintf("pingcap/pd:%s", componentVersion)
-			k8se2e.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, pdImage, "pd sts image should be %q", pdImage)
+			framework.ExpectEqual(pdSts.Spec.Template.Spec.Containers[0].Image, pdImage, "pd sts image should be %q", pdImage)
 
 			tikvMemberName := controller.TiKVMemberName(tc.Name)
 			tikvSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), tikvMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tikvMemberName)
 			tikvImage := fmt.Sprintf("pingcap/tikv:%s", componentVersion)
-			k8se2e.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, tikvImage, "tikv sts image should be %q", tikvImage)
+			framework.ExpectEqual(tikvSts.Spec.Template.Spec.Containers[0].Image, tikvImage, "tikv sts image should be %q", tikvImage)
 
 			tiflashMemberName := controller.TiFlashMemberName(tc.Name)
 			tiflashSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), tiflashMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tiflashMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tiflashMemberName)
 			tiflashImage := fmt.Sprintf("pingcap/tiflash:%s", componentVersion)
-			k8se2e.ExpectEqual(tiflashSts.Spec.Template.Spec.Containers[0].Image, tiflashImage, "tiflash sts image should be %q", tiflashImage)
+			framework.ExpectEqual(tiflashSts.Spec.Template.Spec.Containers[0].Image, tiflashImage, "tiflash sts image should be %q", tiflashImage)
 
 			tidbMemberName := controller.TiDBMemberName(tc.Name)
 			tidbSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), tidbMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, tidbMemberName)
 			tidbImage := fmt.Sprintf("pingcap/tidb:%s", componentVersion)
 			// the 0th container for tidb pod is slowlog, which runs busybox
-			k8se2e.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
+			framework.ExpectEqual(tidbSts.Spec.Template.Spec.Containers[1].Image, tidbImage, "tidb sts image should be %q", tidbImage)
 
 			ticdcMemberName := controller.TiCDCMemberName(tc.Name)
 			ticdcSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), ticdcMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, ticdcMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, ticdcMemberName)
 			ticdcImage := fmt.Sprintf("pingcap/ticdc:%s", componentVersion)
-			k8se2e.ExpectEqual(ticdcSts.Spec.Template.Spec.Containers[0].Image, ticdcImage, "ticdc sts image should be %q", ticdcImage)
+			framework.ExpectEqual(ticdcSts.Spec.Template.Spec.Containers[0].Image, ticdcImage, "ticdc sts image should be %q", ticdcImage)
 
 			pumpMemberName := controller.PumpMemberName(tc.Name)
 			pumpSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), pumpMemberName, metav1.GetOptions{})
-			k8se2e.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pumpMemberName)
+			framework.ExpectNoError(err, "failed to get StatefulSet %s/%s", ns, pumpMemberName)
 			pumpImage := fmt.Sprintf("pingcap/tidb-binlog:%s", componentVersion)
-			k8se2e.ExpectEqual(pumpSts.Spec.Template.Spec.Containers[0].Image, pumpImage, "pump sts image should be %q", pumpImage)
+			framework.ExpectEqual(pumpSts.Spec.Template.Spec.Containers[0].Image, pumpImage, "pump sts image should be %q", pumpImage)
 		}
 
 		// upgrdae testing from previous version to latest version
@@ -2309,7 +2308,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						tc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBLatest)
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to update PD version to %q", utilimage.TiDBLatest)
+					framework.ExpectNoError(err, "failed to update PD version to %q", utilimage.TiDBLatest)
 
 					ginkgo.By(fmt.Sprintf("Wait for PD phase is %q", v1alpha1.UpgradePhase))
 					utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
@@ -2319,15 +2318,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						tc.Spec.PD.Replicas = expectedReplicas
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to scale %s PD", op)
+					framework.ExpectNoError(err, "failed to scale %s PD", op)
 
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", ns, tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", ns, tc.Name)
 
 					ginkgo.By("Check PD replicas")
 					tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
-					k8se2e.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", ns, tcName, err)
-					k8se2e.ExpectEqual(tc.Spec.PD.Replicas, expectedReplicas)
+					framework.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", ns, tcName, err)
+					framework.ExpectEqual(tc.Spec.PD.Replicas, expectedReplicas)
 				})
 			}
 		})
@@ -2355,7 +2354,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						tc.Spec.TiKV.Version = pointer.StringPtr(utilimage.TiDBLatest)
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to update TiKV version to %q", utilimage.TiDBLatest)
+					framework.ExpectNoError(err, "failed to update TiKV version to %q", utilimage.TiDBLatest)
 
 					ginkgo.By(fmt.Sprintf("Wait for TiKV phase is %q", v1alpha1.UpgradePhase))
 					utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
@@ -2365,34 +2364,34 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						tc.Spec.TiKV.Replicas = expectedReplicas
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to scale %s TiKV", op)
+					framework.ExpectNoError(err, "failed to scale %s TiKV", op)
 
 					ginkgo.By("Wait for TiKV to be in ScalePhase")
 					utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.ScalePhase, time.Minute, time.Second)
 
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", ns, tc.Name)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %s/%s", ns, tc.Name)
 
 					ginkgo.By("Check if TiKV replicas is correct")
 					tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
-					k8se2e.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", ns, tcName)
-					k8se2e.ExpectEqual(tc.Spec.TiKV.Replicas, expectedReplicas, "TiKV replicas is not correct")
+					framework.ExpectNoError(err, "failed to get TidbCluster %s/%s: %v", ns, tcName)
+					framework.ExpectEqual(tc.Spec.TiKV.Replicas, expectedReplicas, "TiKV replicas is not correct")
 
 					ginkgo.By("Check no evict leader scheduler left")
 					pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tc.Name, false)
-					k8se2e.ExpectNoError(err, "fail to create proxied pdClient")
+					framework.ExpectNoError(err, "fail to create proxied pdClient")
 					defer cancel()
 					err = wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
 						schedulers, err := pdClient.GetEvictLeaderSchedulers()
-						k8se2e.ExpectNoError(err, "failed to get evict leader schedulers")
+						framework.ExpectNoError(err, "failed to get evict leader schedulers")
 						if len(schedulers) != 0 {
 							log.Logf("there are %d evict leader left: %v", len(schedulers), schedulers)
 							return false, nil
 						}
 						return true, nil
 					})
-					k8se2e.ExpectNoError(err, "failed to wait for evict leader schedulers to become 0")
+					framework.ExpectNoError(err, "failed to wait for evict leader schedulers to become 0")
 				})
 			}
 		})
@@ -2402,7 +2401,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc := fixture.GetTidbCluster(ns, "force-upgrade-pd", utilimage.TiDBLatestPrev)
 			tc.Spec.PD.BaseImage = "wrong-pd-image"
 			err := genericCli.Create(context.TODO(), tc)
-			k8se2e.ExpectNoError(err, "failed to create TidbCluster %s/%s", ns, tc.Name)
+			framework.ExpectNoError(err, "failed to create TidbCluster %s/%s", ns, tc.Name)
 
 			ginkgo.By("Wait for 1 min and ensure no healthy PD Pod exist")
 			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
@@ -2410,20 +2409,20 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
 				}
 				pods, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
-				k8se2e.ExpectNoError(err, "failed to list Pods with selector %+v", listOptions)
+				framework.ExpectNoError(err, "failed to list Pods with selector %+v", listOptions)
 				for _, pod := range pods.Items {
-					k8se2e.ExpectNotEqual(pod.Status.Phase, corev1.PodRunning, "expect PD Pod %s/%s not to be running", ns, pod.Name)
+					framework.ExpectNotEqual(pod.Status.Phase, corev1.PodRunning, "expect PD Pod %s/%s not to be running", ns, pod.Name)
 				}
 				return false, nil
 			})
-			k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "no Pod should be found for PD")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "no Pod should be found for PD")
 
 			ginkgo.By("Update PD Pod to correct image")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.PD.BaseImage = "pingcap/pd"
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to change PD Pod image")
+			framework.ExpectNoError(err, "failed to change PD Pod image")
 
 			ginkgo.By("Wait for 1 min and ensure no healthy PD Pod exist")
 			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
@@ -2431,13 +2430,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
 				}
 				pods, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
-				k8se2e.ExpectNoError(err, "failed to list Pods with selector %+v", listOptions)
+				framework.ExpectNoError(err, "failed to list Pods with selector %+v", listOptions)
 				for _, pod := range pods.Items {
-					k8se2e.ExpectNotEqual(pod.Status.Phase, corev1.PodRunning, "expect PD Pod %s/%s not to be running", ns, pod.Name)
+					framework.ExpectNotEqual(pod.Status.Phase, corev1.PodRunning, "expect PD Pod %s/%s not to be running", ns, pod.Name)
 				}
 				return false, nil
 			})
-			k8se2e.ExpectEqual(err, wait.ErrWaitTimeout, "no Pod should be found for PD")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "no Pod should be found for PD")
 
 			ginkgo.By("Annotate TidbCluster for force upgrade")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -2448,28 +2447,28 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.PD.BaseImage = "wrong" // we need to make this right later
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to annotate tc for force upgrade")
+			framework.ExpectNoError(err, "failed to annotate tc for force upgrade")
 			err = wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
 				tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tc.Name, metav1.GetOptions{})
-				k8se2e.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, tc.Name)
+				framework.ExpectNoError(err, "failed to get TidbCluster %s/%s", ns, tc.Name)
 				val, exist := tc.Annotations["tidb.pingcap.com/force-upgrade"]
 				if !exist {
 					log.Logf("annotation tidb.pingcap.com/force-upgrade not exist in tc")
 					return false, nil
 				}
-				k8se2e.ExpectEqual(val, "true", "tc annotation tidb.pingcap.com/force-upgrade is not \"true\", but %q", val)
+				framework.ExpectEqual(val, "true", "tc annotation tidb.pingcap.com/force-upgrade is not \"true\", but %q", val)
 				return true, nil
 			})
-			k8se2e.ExpectNoError(err, "failed to wait for annotation tidb.pingcap.com/force-upgrade")
+			framework.ExpectNoError(err, "failed to wait for annotation tidb.pingcap.com/force-upgrade")
 
 			ginkgo.By("Update PD Pod to correct image")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.PD.BaseImage = "pingcap/pd"
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to change PD Pod image")
+			framework.ExpectNoError(err, "failed to change PD Pod image")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-			k8se2e.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+			framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
 		})
 	})
 
@@ -2483,27 +2482,27 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Labels()).String(),
 		}
 		stsList, err := stsGetter.StatefulSets(ns).List(context.TODO(), listOptions)
-		k8se2e.ExpectNoError(err, "failed to list StatefulSet with option: %+v", listOptions)
+		framework.ExpectNoError(err, "failed to list StatefulSet with option: %+v", listOptions)
 		for _, sts := range stsList.Items {
 			err := stsGetter.StatefulSets(ns).Delete(context.TODO(), sts.Name, metav1.DeleteOptions{})
-			k8se2e.ExpectNoError(err, "failed to delete StatefulSet %s/%s", ns, sts.Name)
+			framework.ExpectNoError(err, "failed to delete StatefulSet %s/%s", ns, sts.Name)
 		}
 		cmList, err := c.CoreV1().ConfigMaps(ns).List(context.TODO(), listOptions)
-		k8se2e.ExpectNoError(err, "failed to list ConfigMap with option: %+v", listOptions)
+		framework.ExpectNoError(err, "failed to list ConfigMap with option: %+v", listOptions)
 		for _, cm := range cmList.Items {
 			err := c.CoreV1().ConfigMaps(ns).Delete(context.TODO(), cm.Name, metav1.DeleteOptions{})
-			k8se2e.ExpectNoError(err, "failed to delete ConfigMap %s/%s", ns, cm.Name)
+			framework.ExpectNoError(err, "failed to delete ConfigMap %s/%s", ns, cm.Name)
 		}
 		svcList, err := c.CoreV1().Services(ns).List(context.TODO(), listOptions)
-		k8se2e.ExpectNoError(err, "failed to list Service with option: %+v", listOptions)
+		framework.ExpectNoError(err, "failed to list Service with option: %+v", listOptions)
 		for _, svc := range svcList.Items {
 			err := c.CoreV1().Services(ns).Delete(context.TODO(), svc.Name, metav1.DeleteOptions{})
-			k8se2e.ExpectNoError(err, "failed to delete Service %s/%s", ns, svc.Name)
+			framework.ExpectNoError(err, "failed to delete Service %s/%s", ns, svc.Name)
 		}
 
 		ginkgo.By("Wait for TidbCluster components ready again")
 		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-		k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
+		framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", tc.Namespace, tc.Name)
 	})
 
 	ginkgo.Context("Scale in", func() {
@@ -2550,14 +2549,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						}
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
+					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
 					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in %s", ns, tc.Name, comp)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in %s", ns, tc.Name, comp)
 					log.Logf("tc is ready")
 
 					pvcUIDs := make(map[string]string)
@@ -2566,11 +2565,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						for ordinal := replicasSmall; ordinal < replicasLarge; ordinal++ {
 							var pvcSelector labels.Selector
 							pvcSelector, err = member.GetPVCSelectorForPod(tc, comp, int32(ordinal))
-							k8se2e.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
+							framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
 							pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
-							k8se2e.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+							framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 							if comp == v1alpha1.PDMemberType || comp == v1alpha1.TiKVMemberType {
-								k8se2e.ExpectNotEqual(len(pvcs.Items), 0, "expect at least one PVCs for %s", comp)
+								framework.ExpectNotEqual(len(pvcs.Items), 0, "expect at least one PVCs for %s", comp)
 							}
 							for _, pvc := range pvcs.Items {
 								annotations := pvc.GetObjectMeta().GetAnnotations()
@@ -2585,7 +2584,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						}
 						return true, nil
 					})
-					k8se2e.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
+					framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 
 					ginkgo.By(fmt.Sprintf("Scale out %s", comp))
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
@@ -2599,32 +2598,32 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						}
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to scale out %s for TidbCluster %s/%s", comp, ns, tc.Name)
+					framework.ExpectNoError(err, "failed to scale out %s for TidbCluster %s/%s", comp, ns, tc.Name)
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
 					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 10*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out %s", ns, tc.Name, comp)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale out %s", ns, tc.Name, comp)
 
 					ginkgo.By(fmt.Sprintf("Check PVCs are recreated for newly scaled out %s", comp))
 					for ordinal := replicasSmall; ordinal < replicasLarge; ordinal++ {
 						var pvcSelector labels.Selector
 						pvcSelector, err = member.GetPVCSelectorForPod(tc, comp, int32(ordinal))
-						k8se2e.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
+						framework.ExpectNoError(err, "failed to get PVC selector for tc %s/%s", tc.GetNamespace(), tc.GetName())
 						pvcs, err := c.CoreV1().PersistentVolumeClaims(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: pvcSelector.String()})
-						k8se2e.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
+						framework.ExpectNoError(err, "failed to list PVCs with selector: %v", pvcSelector)
 						if comp == v1alpha1.PDMemberType || comp == v1alpha1.TiKVMemberType {
-							k8se2e.ExpectNotEqual(len(pvcs.Items), 0, "expect at least one PVCs for %s", comp)
+							framework.ExpectNotEqual(len(pvcs.Items), 0, "expect at least one PVCs for %s", comp)
 						}
 						for _, pvc := range pvcs.Items {
 							annotations := pvc.GetObjectMeta().GetAnnotations()
 							log.Logf("pvc annotations: %+v", annotations)
 							_, ok := annotations["tidb.pingcap.com/pvc-defer-deleting"]
-							k8se2e.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
+							framework.ExpectEqual(ok, false, "expect PVC %s/%s not to have annotation tidb.pingcap.com/pvc-defer-deleting", pvc.GetNamespace(), pvc.GetName())
 							pvcUIDString := pvcUIDs[pvc.Name]
-							k8se2e.ExpectNotEqual(string(pvc.UID), pvcUIDString)
+							framework.ExpectNotEqual(string(pvc.UID), pvcUIDString)
 						}
 					}
 				})
@@ -2672,7 +2671,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						}
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
+					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
 
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
 					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
@@ -2689,11 +2688,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						}
 						return nil
 					})
-					k8se2e.ExpectNoError(err, "failed to upgrade %s for TidbCluster %s/%s", comp, ns, tc.Name)
+					framework.ExpectNoError(err, "failed to upgrade %s for TidbCluster %s/%s", comp, ns, tc.Name)
 
 					ginkgo.By("Wait for tc ready")
 					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-					k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in %s", ns, tc.Name, comp)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s ready after scale in %s", ns, tc.Name, comp)
 
 					ginkgo.By(fmt.Sprintf("Check %s Pods", comp))
 					var labelSelector string
@@ -2706,7 +2705,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 						labelSelector = labels.SelectorFromSet(label.New().Instance(tc.Name).TiDB().Labels()).String()
 					}
 					pods := utilpod.MustListPods(labelSelector, ns, c)
-					k8se2e.ExpectEqual(len(pods), int(replicasSmall), "there should be %d %s Pods", replicasSmall, comp)
+					framework.ExpectEqual(len(pods), int(replicasSmall), "there should be %d %s Pods", replicasSmall, comp)
 					for _, pod := range pods {
 						// some pods may have multiple containers
 						wrongImage := true
@@ -2717,7 +2716,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 								break
 							}
 						}
-						k8se2e.ExpectEqual(wrongImage, false, "%s Pod has wrong image, expected %s", comp, utilimage.TiDBLatest)
+						framework.ExpectEqual(wrongImage, false, "%s Pod has wrong image, expected %s", comp, utilimage.TiDBLatest)
 					}
 				})
 			}
@@ -2734,7 +2733,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.PD.Replicas = 0
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
+			framework.ExpectNoError(err, "failed to scale in PD for TidbCluster %s/%s", ns, tc.Name)
 
 			ginkgo.By("Wait for PD to be in ScalePhase")
 			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.ScalePhase, time.Minute, time.Second)
@@ -2759,35 +2758,35 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				}
 				return false, nil
 			})
-			k8se2e.ExpectNoError(err, "failed to wait for FailedScaleIn event")
+			framework.ExpectNoError(err, "failed to wait for FailedScaleIn event")
 		})
 
 		ginkgo.It("TiKV from >=3 replicas to <3 should be forbidden", func() {
 			ginkgo.By("Deploy initial tc")
 			tc := fixture.GetTidbCluster(ns, "scale-in-tikv", utilimage.TiDBLatest)
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-			k8se2e.ExpectNoError(err, "Expected create tidbcluster")
+			framework.ExpectNoError(err, "Expected create tidbcluster")
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "Expected tidbcluster ready")
+			framework.ExpectNoError(err, "Expected tidbcluster ready")
 
 			ginkgo.By("Scale in tikv to 2 replicas")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 				tc.Spec.TiKV.Replicas = 2
 				return nil
 			})
-			k8se2e.ExpectNoError(err, "failed to scale in tikv")
+			framework.ExpectNoError(err, "failed to scale in tikv")
 
 			ginkgo.By("Expect up stores number stays 3")
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tc.Name, false)
-			k8se2e.ExpectNoError(err, "create pdClient error")
+			framework.ExpectNoError(err, "create pdClient error")
 			defer cancel()
 
 			_ = wait.PollImmediate(15*time.Second, 3*time.Minute, func() (bool, error) {
 				storesInfo, err := pdClient.GetStores()
-				k8se2e.ExpectNoError(err, "get stores info error")
-				k8se2e.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
+				framework.ExpectNoError(err, "get stores info error")
+				framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
 				for _, store := range storesInfo.Stores {
-					k8se2e.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
+					framework.ExpectEqual(store.Store.StateName, "Up", "Expect state of stores are Up")
 				}
 				return false, nil
 			})
@@ -2816,12 +2815,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 			podList, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-			k8se2e.ExpectNoError(err, "failed to list pods: %+v")
+			framework.ExpectNoError(err, "failed to list pods: %+v")
 			for i := range podList.Items {
-				k8se2e.ExpectNotEqual(podList.Items[i].Spec.SecurityContext, nil, "Expected security context is not nil")
-				k8se2e.ExpectEqual(podList.Items[i].Spec.SecurityContext.RunAsUser, &userID, "Expected run as user ", userID)
-				k8se2e.ExpectEqual(podList.Items[i].Spec.SecurityContext.RunAsGroup, &groupID, "Expected run as group ", groupID)
-				k8se2e.ExpectEqual(podList.Items[i].Spec.SecurityContext.FSGroup, &groupID, "Expected fs group ", groupID)
+				framework.ExpectNotEqual(podList.Items[i].Spec.SecurityContext, nil, "Expected security context is not nil")
+				framework.ExpectEqual(podList.Items[i].Spec.SecurityContext.RunAsUser, &userID, "Expected run as user ", userID)
+				framework.ExpectEqual(podList.Items[i].Spec.SecurityContext.RunAsGroup, &groupID, "Expected run as group ", groupID)
+				framework.ExpectEqual(podList.Items[i].Spec.SecurityContext.FSGroup, &groupID, "Expected fs group ", groupID)
 			}
 		})
 	})
@@ -2831,11 +2830,11 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		ginkgo.BeforeEach(func() {
 			nodeList, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-			k8se2e.ExpectNoError(err, "failed to list nodes: %+v")
+			framework.ExpectNoError(err, "failed to list nodes: %+v")
 			for i := range nodeList.Items {
 				node := &nodeList.Items[i]
 				zone, ok := node.Labels[tests.LabelKeyTestingZone]
-				k8se2e.ExpectEqual(ok, true, "label %s should exist", tests.LabelKeyTestingZone)
+				framework.ExpectEqual(ok, true, "label %s should exist", tests.LabelKeyTestingZone)
 				nodeZoneMap[node.Name] = zone
 			}
 		})
@@ -2864,10 +2863,10 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 			podList, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-			k8se2e.ExpectNoError(err, "failed to list pods: %+v")
+			framework.ExpectNoError(err, "failed to list pods: %+v")
 
 			err = validatePodSpread(podList.Items, nodeZoneMap, []string{label.PDLabelVal}, 1)
-			k8se2e.ExpectNoError(err, "failed even spread pd pods: %v")
+			framework.ExpectNoError(err, "failed even spread pd pods: %v")
 
 			err = validatePodSpread(podList.Items, nodeZoneMap, []string{
 				label.TiDBLabelVal,
@@ -2876,7 +2875,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				label.TiCDCLabelVal,
 				label.PumpLabelVal,
 			}, 0)
-			k8se2e.ExpectNoError(err, "failed even spread pods: %v")
+			framework.ExpectNoError(err, "failed even spread pods: %v")
 		})
 	})
 
@@ -2887,9 +2886,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 5
 		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected create tidbcluster")
+		framework.ExpectNoError(err, "Expected create tidbcluster")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-		k8se2e.ExpectNoError(err, "Expected get tidbcluster")
+		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		ginkgo.By("Deploy tidbmonitor")
 		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
@@ -2897,13 +2896,13 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		pvpDelete := corev1.PersistentVolumeReclaimDelete
 		tm.Spec.PVReclaimPolicy = &pvpDelete
 		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(context.TODO(), tm, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected tidbmonitor deployed success")
+		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
-		k8se2e.ExpectNoError(err, "Expected tidbmonitor checked success")
+		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(context.TODO(), tm.Name, metav1.DeleteOptions{})
-		k8se2e.ExpectNoError(err, "delete tidbmonitor failed")
+		framework.ExpectNoError(err, "delete tidbmonitor failed")
 	})
 
 	ginkgo.It("deploy tidb monitor remote write successfully", func() {
@@ -2913,9 +2912,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
 		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected create tidbcluster")
+		framework.ExpectNoError(err, "Expected create tidbcluster")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-		k8se2e.ExpectNoError(err, "Expected get tidbcluster")
+		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		ginkgo.By("Deploy tidbmonitor")
 		tm := fixture.NewTidbMonitor("monitor-test", ns, tc, true, true, false)
@@ -2935,21 +2934,21 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		tm.Spec.PVReclaimPolicy = &pvpDelete
 		_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(context.TODO(), tm, metav1.CreateOptions{})
 
-		k8se2e.ExpectNoError(err, "Expected tidbmonitor deployed success")
+		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
-		k8se2e.ExpectNoError(err, "Expected tidbmonitor checked success")
+		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 
 		decode := k8sScheme.Codecs.UniversalDeserializer().Decode
 		thanosReceiverConfigmapObj, _, _ := decode([]byte(fmt.Sprintf(remotewrite.ThanosReceiverConfigmapYaml, ns)), nil, nil)
 		thanosReceiverConfigmap := thanosReceiverConfigmapObj.(*corev1.ConfigMap) // This fails
 		_, err = c.CoreV1().ConfigMaps(ns).Create(context.TODO(), thanosReceiverConfigmap, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected thanos receiver configmap created success")
+		framework.ExpectNoError(err, "Expected thanos receiver configmap created success")
 
 		decode = k8sScheme.Codecs.UniversalDeserializer().Decode
 		thanosReceiverStsObj, _, _ := decode([]byte(remotewrite.ThanosReceiverYaml), nil, nil)
 		thanosReceiverSts := thanosReceiverStsObj.(*v1.StatefulSet) // This fails
 		_, err = c.AppsV1().StatefulSets(ns).Create(context.TODO(), thanosReceiverSts, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected thanos receiver created success")
+		framework.ExpectNoError(err, "Expected thanos receiver created success")
 
 		err = wait.PollImmediate(15*time.Second, 3*time.Minute, func() (bool, error) {
 			receiverSts, err := c.AppsV1().StatefulSets(ns).Get(context.TODO(), thanosReceiverSts.Name, metav1.GetOptions{})
@@ -2961,19 +2960,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return false, nil
 		})
-		k8se2e.ExpectNoError(err, "Expected thanos receiver deployed ready success")
+		framework.ExpectNoError(err, "Expected thanos receiver deployed ready success")
 
 		decode = k8sScheme.Codecs.UniversalDeserializer().Decode
 		thanosReceiverServiceObj, _, _ := decode([]byte(remotewrite.ThanosReceiverServiceYaml), nil, nil)
 		thanosReceiverService := thanosReceiverServiceObj.(*corev1.Service) // This fails
 		_, err = c.CoreV1().Services(ns).Create(context.TODO(), thanosReceiverService, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected thanos receiver service created success")
+		framework.ExpectNoError(err, "Expected thanos receiver service created success")
 
 		decode = k8sScheme.Codecs.UniversalDeserializer().Decode
 		thanosQueryDeploymentObj, _, _ := decode([]byte(remotewrite.ThanosQueryYaml), nil, nil)
 		thanosQueryDeployment := thanosQueryDeploymentObj.(*v1.Deployment) // This fails
 		_, err = c.AppsV1().Deployments(ns).Create(context.TODO(), thanosQueryDeployment, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected thanos query created success")
+		framework.ExpectNoError(err, "Expected thanos query created success")
 		err = wait.PollImmediate(15*time.Second, 3*time.Minute, func() (bool, error) {
 			queryDeployment, err := c.AppsV1().Deployments(ns).Get(context.TODO(), thanosQueryDeployment.Name, metav1.GetOptions{})
 			if err != nil {
@@ -2984,31 +2983,31 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			}
 			return false, nil
 		})
-		k8se2e.ExpectNoError(err, "Expected thanos query deployed ready success")
+		framework.ExpectNoError(err, "Expected thanos query deployed ready success")
 
 		decode = k8sScheme.Codecs.UniversalDeserializer().Decode
 		thanosQueryServiceObj, _, _ := decode([]byte(remotewrite.ThanosQueryServiceYaml), nil, nil)
 		thanosQueryService := thanosQueryServiceObj.(*corev1.Service) // This fails
 		_, err = c.CoreV1().Services(ns).Create(context.TODO(), thanosQueryService, metav1.CreateOptions{})
-		k8se2e.ExpectNoError(err, "Expected thanos query service created success")
+		framework.ExpectNoError(err, "Expected thanos query service created success")
 
 		// Check 3 targets, 1 TiDB + 1 PD + 1 TiKV
 		err = tests.CheckThanosQueryData("thanos-query", tm.Namespace, fw, 3)
-		k8se2e.ExpectNoError(err, "Expected thanos query check success")
+		framework.ExpectNoError(err, "Expected thanos query check success")
 
 		ginkgo.By("Delete tidbmonitor")
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(context.TODO(), tm.Name, metav1.DeleteOptions{})
-		k8se2e.ExpectNoError(err, "delete tidbmonitor failed")
+		framework.ExpectNoError(err, "delete tidbmonitor failed")
 		ginkgo.By("Delete thanos query")
 		err = c.AppsV1().Deployments(ns).Delete(context.TODO(), thanosQueryService.Name, metav1.DeleteOptions{})
-		k8se2e.ExpectNoError(err, "delete thanos query failed")
+		framework.ExpectNoError(err, "delete thanos query failed")
 		err = c.CoreV1().Services(ns).Delete(context.TODO(), thanosQueryService.Name, metav1.DeleteOptions{})
-		k8se2e.ExpectNoError(err, "delete thanos query service failed")
+		framework.ExpectNoError(err, "delete thanos query service failed")
 		ginkgo.By("Delete thanos receiver")
 		err = c.AppsV1().StatefulSets(ns).Delete(context.TODO(), thanosReceiverSts.Name, metav1.DeleteOptions{})
-		k8se2e.ExpectNoError(err, "delete thanos receiver failed")
+		framework.ExpectNoError(err, "delete thanos receiver failed")
 		err = c.CoreV1().Services(ns).Delete(context.TODO(), thanosReceiverService.Name, metav1.DeleteOptions{})
-		k8se2e.ExpectNoError(err, "delete thanos receiver service failed")
+		framework.ExpectNoError(err, "delete thanos receiver service failed")
 	})
 
 	ginkgo.Describe("[Feature]: RandomPassword", func() {
@@ -3021,35 +3020,35 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TiDB.Initializer = &v1alpha1.TiDBInitializer{CreatePassword: true}
 
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-			k8se2e.ExpectNoError(err, "Expected create tidbcluster")
+			framework.ExpectNoError(err, "Expected create tidbcluster")
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "Expected get tidbcluster")
+			framework.ExpectNoError(err, "Expected get tidbcluster")
 
 			err = oa.WaitForTidbClusterInitRandomPassword(tc, fw, 10*time.Minute, 10*time.Second)
-			k8se2e.ExpectNoError(err, "Expected tidbcluster connect success")
+			framework.ExpectNoError(err, "Expected tidbcluster connect success")
 		})
 		ginkgo.It("deploy tls tidb cluster with random password", func() {
 			tcName := "tls-random-password"
 
 			ginkgo.By("Installing tidb CA certificate")
 			err := InstallTiDBIssuer(ns, tcName)
-			k8se2e.ExpectNoError(err, "failed to install CA certificate")
+			framework.ExpectNoError(err, "failed to install CA certificate")
 
 			ginkgo.By("Installing tidb server and client certificate")
 			err = InstallTiDBCertificates(ns, tcName)
-			k8se2e.ExpectNoError(err, "failed to install tidb server and client certificate")
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 			ginkgo.By("Installing tidbInitializer client certificate")
 			err = installTiDBInitializerCertificates(ns, tcName)
-			k8se2e.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+			framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
 
 			ginkgo.By("Installing dashboard client certificate")
 			err = installPDDashboardCertificates(ns, tcName)
-			k8se2e.ExpectNoError(err, "failed to install dashboard client certificate")
+			framework.ExpectNoError(err, "failed to install dashboard client certificate")
 
 			ginkgo.By("Installing tidb components certificates")
 			err = InstallTiDBComponentsCertificates(ns, tcName)
-			k8se2e.ExpectNoError(err, "failed to install tidb components certificates")
+			framework.ExpectNoError(err, "failed to install tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster with TLS enabled")
 			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
@@ -3063,12 +3062,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 
 			err = genericCli.Create(context.TODO(), tc)
-			k8se2e.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-			k8se2e.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
 
 			err = oa.WaitForTidbClusterInitRandomPassword(tc, fw, 10*time.Minute, 10*time.Second)
-			k8se2e.ExpectNoError(err, "Expected tidbcluster connect success")
+			framework.ExpectNoError(err, "Expected tidbcluster connect success")
 		})
 	})
 
@@ -3111,23 +3110,23 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 					ginkgo.By("Installing tidb CA certificate")
 					err := InstallTiDBIssuer(ns, tcName)
-					k8se2e.ExpectNoError(err, "failed to install CA certificate")
+					framework.ExpectNoError(err, "failed to install CA certificate")
 
 					ginkgo.By("Installing tidb server and client certificate")
 					err = InstallTiDBCertificates(ns, tcName)
-					k8se2e.ExpectNoError(err, "failed to install tidb server and client certificate")
+					framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 					ginkgo.By("Installing tidbInitializer client certificate")
 					err = installTiDBInitializerCertificates(ns, tcName)
-					k8se2e.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+					framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
 
 					ginkgo.By("Installing dashboard client certificate")
 					err = installPDDashboardCertificates(ns, tcName)
-					k8se2e.ExpectNoError(err, "failed to install dashboard client certificate")
+					framework.ExpectNoError(err, "failed to install dashboard client certificate")
 
 					ginkgo.By("Installing tidb components certificates")
 					err = InstallTiDBComponentsCertificates(ns, tcName)
-					k8se2e.ExpectNoError(err, "failed to install tidb components certificates")
+					framework.ExpectNoError(err, "failed to install tidb components certificates")
 				}
 
 				ginkgo.By("Deploy tidb cluster")
@@ -3153,47 +3152,47 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 					ginkgo.By("Installing tidb CA certificate")
 					err := InstallTiDBIssuer(ns, tcName)
-					k8se2e.ExpectNoError(err, "failed to install CA certificate")
+					framework.ExpectNoError(err, "failed to install CA certificate")
 
 					ginkgo.By("Installing tidb server and client certificate")
 					err = InstallTiDBCertificates(ns, tcName)
-					k8se2e.ExpectNoError(err, "failed to install tidb server and client certificate")
+					framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 					ginkgo.By("Installing tidbInitializer client certificate")
 					err = installTiDBInitializerCertificates(ns, tcName)
-					k8se2e.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+					framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
 
 					ginkgo.By("Installing dashboard client certificate")
 					err = installPDDashboardCertificates(ns, tcName)
-					k8se2e.ExpectNoError(err, "failed to install dashboard client certificate")
+					framework.ExpectNoError(err, "failed to install dashboard client certificate")
 
 					ginkgo.By("Installing tidb components certificates")
 					err = InstallTiDBComponentsCertificates(ns, tcName)
-					k8se2e.ExpectNoError(err, "failed to install tidb components certificates")
+					framework.ExpectNoError(err, "failed to install tidb components certificates")
 				}
 
 				ginkgo.By("Deploy tidb cluster")
 				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 				oldTC, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
-				k8se2e.ExpectNoError(err, "failed to get tc %s/%s", ns, tcName)
+				framework.ExpectNoError(err, "failed to get tc %s/%s", ns, tcName)
 
 				ginkgo.By("Update tc to use start script v2")
 				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 					tc.Spec.StartScriptVersion = v1alpha1.StartScriptV2
 					return nil
 				})
-				k8se2e.ExpectNoError(err, "failed to start script version to v2")
+				framework.ExpectNoError(err, "failed to start script version to v2")
 
 				ginkgo.By(fmt.Sprintf("Wait for phase is %q", v1alpha1.UpgradePhase))
 				utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
 
 				ginkgo.By("Wait for cluster is ready")
 				err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
-				k8se2e.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
+				framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 				ginkgo.By("Check status of components not changed")
 				err = utiltc.CheckComponentStatusNotChanged(cli, oldTC)
-				k8se2e.ExpectNoError(err, "failed to check component status of tc %s/%s not changed", ns, tcName)
+				framework.ExpectNoError(err, "failed to check component status of tc %s/%s not changed", ns, tcName)
 			})
 		}
 
@@ -3259,10 +3258,10 @@ func testBinlog(oa *tests.OperatorActions, tc *v1alpha1.TidbCluster, cli ctrlCli
 		tc.Spec.Pump = pumpSpec
 		return nil
 	})
-	k8se2e.ExpectNoError(err)
+	framework.ExpectNoError(err)
 	replicas := pumpSpec.Replicas
 	err = checkPumpStatus(pcli, ns, name, replicas)
-	k8se2e.ExpectNoError(err)
+	framework.ExpectNoError(err)
 
 	// start scale in and check status
 	err = controller.GuaranteedUpdate(cli, tc, func() error {
@@ -3270,9 +3269,9 @@ func testBinlog(oa *tests.OperatorActions, tc *v1alpha1.TidbCluster, cli ctrlCli
 		tc.Spec.Pump.Replicas = replicas
 		return nil
 	})
-	k8se2e.ExpectNoError(err)
+	framework.ExpectNoError(err)
 	err = checkPumpStatus(pcli, ns, name, replicas)
-	k8se2e.ExpectNoError(err)
+	framework.ExpectNoError(err)
 
 	// start scale out and check status
 	err = controller.GuaranteedUpdate(cli, tc, func() error {
@@ -3280,34 +3279,34 @@ func testBinlog(oa *tests.OperatorActions, tc *v1alpha1.TidbCluster, cli ctrlCli
 		tc.Spec.Pump.Replicas = replicas
 		return nil
 	})
-	k8se2e.ExpectNoError(err)
+	framework.ExpectNoError(err)
 	err = checkPumpStatus(pcli, ns, name, replicas)
-	k8se2e.ExpectNoError(err)
+	framework.ExpectNoError(err)
 
 	// start remove all pumps
 	err = controller.GuaranteedUpdate(cli, tc, func() error {
 		tc.Spec.TiDB.BinlogEnabled = pointer.BoolPtr(false)
 		return nil
 	})
-	k8se2e.ExpectNoError(err)
+	framework.ExpectNoError(err)
 	err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
-	k8se2e.ExpectNoError(err)
+	framework.ExpectNoError(err)
 
 	err = controller.GuaranteedUpdate(cli, tc, func() error {
 		replicas = 0
 		tc.Spec.Pump.Replicas = replicas
 		return nil
 	})
-	k8se2e.ExpectNoError(err)
+	framework.ExpectNoError(err)
 	err = checkPumpStatus(pcli, ns, name, replicas)
-	k8se2e.ExpectNoError(err)
+	framework.ExpectNoError(err)
 }
 
 func validatePodSpread(pods []corev1.Pod, nodeZoneMap map[string]string, componentLabels []string, maxSkew int) error {
 	zones := make([][2]int, len(componentLabels))
 	for i := range pods {
 		pod := &pods[i]
-		k8se2e.ExpectEqual(len(pod.Spec.TopologySpreadConstraints), 1, "Expected pod topology spread constraints are set")
+		framework.ExpectEqual(len(pod.Spec.TopologySpreadConstraints), 1, "Expected pod topology spread constraints are set")
 
 		c, ok := pod.Labels[label.ComponentLabelKey]
 		if !ok {
@@ -3366,8 +3365,8 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface, exp
 			LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Discovery().Labels()).String(),
 		}
 		list, err := c.CoreV1().Pods(tc.Namespace).List(context.TODO(), listOptions)
-		k8se2e.ExpectNoError(err)
-		k8se2e.ExpectNotEqual(len(list.Items), 0, "expect discovery exists")
+		framework.ExpectNoError(err)
+		framework.ExpectNotEqual(len(list.Items), 0, "expect discovery exists")
 		for _, pod := range list.Items {
 			checkErr = checkValue(fixture.ClusterCustomKey, expectValue, pod.Labels, pod.Annotations)
 			if checkErr != nil {
@@ -3380,8 +3379,8 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface, exp
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiDBLabelVal).Labels()).String(),
 			}
 			list, err = c.CoreV1().Pods(tc.Namespace).List(context.TODO(), listOptions)
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectNotEqual(len(list.Items), 0, "expect tidb pod exists")
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect tidb pod exists")
 			for _, pod := range list.Items {
 				for _, k := range []string{fixture.ClusterCustomKey, fixture.ComponentCustomKey} {
 					checkErr = checkValue(k, expectValue, pod.Labels, pod.Annotations)
@@ -3393,8 +3392,8 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface, exp
 
 			// check service
 			svcList, err := c.CoreV1().Services(tc.Namespace).List(context.TODO(), listOptions)
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectNotEqual(len(list.Items), 0, "expect tidb svc exists")
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect tidb svc exists")
 			for _, svc := range svcList.Items {
 				// skip the headless one
 				if svc.Spec.ClusterIP == "None" {
@@ -3413,8 +3412,8 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface, exp
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.TiKVLabelVal).Labels()).String(),
 			}
 			list, err = c.CoreV1().Pods(tc.Namespace).List(context.TODO(), listOptions)
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectNotEqual(len(list.Items), 0, "expect tikv pod exists")
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect tikv pod exists")
 			for _, pod := range list.Items {
 				for _, k := range []string{fixture.ClusterCustomKey, fixture.ComponentCustomKey} {
 					checkErr = checkValue(k, expectValue, pod.Labels, pod.Annotations)
@@ -3430,8 +3429,8 @@ func checkCustomLabelAndAnn(tc *v1alpha1.TidbCluster, c clientset.Interface, exp
 				LabelSelector: labels.SelectorFromSet(label.New().Instance(tc.Name).Component(label.PDLabelVal).Labels()).String(),
 			}
 			list, err = c.CoreV1().Pods(tc.Namespace).List(context.TODO(), listOptions)
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectNotEqual(len(list.Items), 0, "expect pd pod exists")
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(len(list.Items), 0, "expect pd pod exists")
 			for _, pod := range list.Items {
 				for _, k := range []string{fixture.ClusterCustomKey, fixture.ComponentCustomKey} {
 					checkErr = checkValue(k, expectValue, pod.Labels, pod.Annotations)
@@ -3457,28 +3456,28 @@ func checkMonitorCustomLabelAndAnn(tm *v1alpha1.TidbMonitor, c clientset.Interfa
 		LabelSelector: labels.SelectorFromSet(label.NewMonitor().Instance(tm.Name).Monitor().Labels()).String(),
 	}
 	pods, err := c.CoreV1().Pods(tm.Namespace).List(context.TODO(), listOptions)
-	k8se2e.ExpectNoError(err)
-	k8se2e.ExpectNotEqual(len(pods.Items), 0, "expect monitor pod exists")
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(pods.Items), 0, "expect monitor pod exists")
 	for _, pod := range pods.Items {
 		_, ok := pod.Labels[fixture.ClusterCustomKey]
-		k8se2e.ExpectEqual(ok, true)
+		framework.ExpectEqual(ok, true)
 		_, ok = pod.Annotations[fixture.ClusterCustomKey]
-		k8se2e.ExpectEqual(ok, true)
+		framework.ExpectEqual(ok, true)
 	}
 
 	svcs, err := c.CoreV1().Services(tm.Namespace).List(context.TODO(), listOptions)
-	k8se2e.ExpectNoError(err)
-	k8se2e.ExpectNotEqual(len(pods.Items), 0, "expect monitor svc exists")
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(pods.Items), 0, "expect monitor svc exists")
 	for _, svc := range svcs.Items {
 		_, ok := svc.Labels[fixture.ClusterCustomKey]
-		k8se2e.ExpectEqual(ok, true)
+		framework.ExpectEqual(ok, true)
 		_, ok = svc.Annotations[fixture.ClusterCustomKey]
-		k8se2e.ExpectEqual(ok, true)
+		framework.ExpectEqual(ok, true)
 
 		_, ok = svc.Labels[fixture.ComponentCustomKey]
-		k8se2e.ExpectEqual(ok, true)
+		framework.ExpectEqual(ok, true)
 		_, ok = svc.Annotations[fixture.ComponentCustomKey]
-		k8se2e.ExpectEqual(ok, true)
+		framework.ExpectEqual(ok, true)
 	}
 }
 
@@ -3488,13 +3487,13 @@ func checkInitializerCustomLabelAndAnn(ti *v1alpha1.TidbInitializer, c clientset
 		LabelSelector: labels.SelectorFromSet(label.NewInitializer().Instance(ti.Name).Initializer(ti.Name).Labels()).String(),
 	}
 	list, err := c.CoreV1().Pods(ti.Namespace).List(context.TODO(), listOptions)
-	k8se2e.ExpectNoError(err)
-	k8se2e.ExpectNotEqual(len(list.Items), 0, "expect initializer exists")
+	framework.ExpectNoError(err)
+	framework.ExpectNotEqual(len(list.Items), 0, "expect initializer exists")
 	for _, pod := range list.Items {
 		_, ok := pod.Labels[fixture.ClusterCustomKey]
-		k8se2e.ExpectEqual(ok, true)
+		framework.ExpectEqual(ok, true)
 		_, ok = pod.Annotations[fixture.ClusterCustomKey]
-		k8se2e.ExpectEqual(ok, true)
+		framework.ExpectEqual(ok, true)
 	}
 }
 

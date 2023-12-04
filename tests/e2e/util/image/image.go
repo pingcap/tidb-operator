@@ -22,9 +22,8 @@ import (
 
 	"github.com/ghodss/yaml"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/kubernetes/test/e2e/framework"
 
-	k8se2e "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
@@ -76,7 +75,7 @@ func ListImages() []string {
 	images = append(images, fmt.Sprintf("%s:%s", TiDBMonitorInitializerImage, TiDBMonitorInitializerVersion))
 	images = append(images, fmt.Sprintf("%s:%s", GrafanaImage, GrafanaVersion))
 	imagesFromOperator, err := readImagesFromValues(filepath.Join(framework.TestContext.RepoRoot, "charts/tidb-operator/values.yaml"), sets.NewString(".advancedStatefulset.image", ".admissionWebhook.jobImage"))
-	k8se2e.ExpectNoError(err, "failed to read images from values in charts/tidb-operator/values.yaml")
+	framework.ExpectNoError(err, "failed to read images from values in charts/tidb-operator/values.yaml")
 
 	images = append(images, imagesFromOperator...)
 

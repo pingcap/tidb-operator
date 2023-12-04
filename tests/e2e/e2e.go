@@ -42,7 +42,6 @@ import (
 	"k8s.io/component-base/logs"
 	"k8s.io/klog/v2"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
 	utilnet "k8s.io/utils/net"
 
 	// ensure auth plugins are loaded
@@ -59,7 +58,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	k8se2e "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	e2ekubectl "github.com/pingcap/tidb-operator/tests/third_party/k8s/kubectl"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	e2enode "github.com/pingcap/tidb-operator/tests/third_party/k8s/node"
@@ -114,12 +113,12 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 	// In large clusters we may get to this point but still have a bunch
 	// of nodes without Routes created. Since this would make a node
 	// unschedulable, we need to wait until all of them are schedulable.
-	k8se2e.ExpectNoError(framework.WaitForAllNodesSchedulable(c, framework.TestContext.NodeSchedulableTimeout), "some nodes are not schedulable")
+	framework.ExpectNoError(framework.WaitForAllNodesSchedulable(c, framework.TestContext.NodeSchedulableTimeout), "some nodes are not schedulable")
 
 	// If NumNodes is not specified then auto-detect how many are scheduleable and not tainted
 	if framework.TestContext.CloudConfig.NumNodes == framework.DefaultNumNodes {
 		nodes, err := e2enode.GetReadySchedulableNodes(c)
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 		framework.TestContext.CloudConfig.NumNodes = len(nodes.Items)
 	}
 
@@ -189,23 +188,23 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	// Get clients
 	config, err := framework.LoadConfig()
-	k8se2e.ExpectNoError(err, "failed to load config")
+	framework.ExpectNoError(err, "failed to load config")
 	config.QPS = 20
 	config.Burst = 50
 	cli, err := versioned.NewForConfig(config)
-	k8se2e.ExpectNoError(err, "failed to create clientset for pingcap")
+	framework.ExpectNoError(err, "failed to create clientset for pingcap")
 	kubeCli, err := kubernetes.NewForConfig(config)
-	k8se2e.ExpectNoError(err, "failed to create clientset for Kubernetes")
+	framework.ExpectNoError(err, "failed to create clientset for Kubernetes")
 	aggrCli, err := aggregatorclientset.NewForConfig(config)
-	k8se2e.ExpectNoError(err, "failed to create clientset for kube-aggregator")
+	framework.ExpectNoError(err, "failed to create clientset for kube-aggregator")
 	apiExtCli, err := apiextensionsclientset.NewForConfig(config)
-	k8se2e.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
+	framework.ExpectNoError(err, "failed to create clientset for apiextensions-apiserver")
 	asCli, err := asclientset.NewForConfig(config)
-	k8se2e.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
+	framework.ExpectNoError(err, "failed to create clientset for advanced-statefulset")
 	clientRawConfig, err := e2econfig.LoadClientRawConfig()
-	k8se2e.ExpectNoError(err, "failed to load raw config for tidb operator")
+	framework.ExpectNoError(err, "failed to load raw config for tidb operator")
 	fw, err := portforward.NewPortForwarder(context.Background(), e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
-	k8se2e.ExpectNoError(err, "failed to create port forwarder")
+	framework.ExpectNoError(err, "failed to create port forwarder")
 
 	setupSuite(kubeCli, cli, apiExtCli)
 	// override with hard-coded value
@@ -222,7 +221,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	ginkgo.By("Recycle all local PVs")
 	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
-	k8se2e.ExpectNoError(err, "failed to list persistent volumes")
+	framework.ExpectNoError(err, "failed to list persistent volumes")
 	for _, pv := range pvList.Items {
 		if pv.Spec.StorageClassName != "local-storage" {
 			continue
@@ -233,7 +232,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		log.Logf("Update reclaim policy of PV %s to %s", pv.Name, v1.PersistentVolumeReclaimDelete)
 		pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
 		_, err = kubeCli.CoreV1().PersistentVolumes().Update(context.TODO(), &pv, metav1.UpdateOptions{})
-		k8se2e.ExpectNoError(err, "failed to update pv %s", pv.Name)
+		framework.ExpectNoError(err, "failed to update pv %s", pv.Name)
 	}
 
 	ginkgo.By("Wait for all local PVs to be available")
@@ -252,7 +251,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		}
 		return true, nil
 	})
-	k8se2e.ExpectNoError(err, "failed to wait for all PVs to be available")
+	framework.ExpectNoError(err, "failed to wait for all PVs to be available")
 
 	ginkgo.By("Labeling nodes")
 	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, fw, nil)
@@ -298,7 +297,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	ginkgo.By("Installing cert-manager")
 	err = tidbcluster.InstallCertManager(kubeCli)
-	k8se2e.ExpectNoError(err, "failed to install cert-manager")
+	framework.ExpectNoError(err, "failed to install cert-manager")
 	return nil
 }, func(data []byte) {
 	// Run on all Ginkgo nodes
@@ -321,17 +320,17 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	if !ginkgo.CurrentGinkgoTestDescription().Failed {
 		ginkgo.By("Clean labels")
 		err := tests.CleanNodeLabels(kubeCli)
-		k8se2e.ExpectNoError(err, "failed to clean labels")
+		framework.ExpectNoError(err, "failed to clean labels")
 	}
 
 	ginkgo.By("Deleting cert-manager")
 	err := tidbcluster.DeleteCertManager(kubeCli)
-	k8se2e.ExpectNoError(err, "failed to delete cert-manager")
+	framework.ExpectNoError(err, "failed to delete cert-manager")
 
 	err = tests.CleanDMMySQL(kubeCli, tests.DMMySQLNamespace)
-	k8se2e.ExpectNoError(err, "failed to clean DM MySQL")
+	framework.ExpectNoError(err, "failed to clean DM MySQL")
 	err = tests.CleanDMTiDB(cli, kubeCli)
-	k8se2e.ExpectNoError(err, "failed to clean DM TiDB")
+	framework.ExpectNoError(err, "failed to clean DM TiDB")
 
 	ginkgo.By("Uninstalling tidb-operator")
 	ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
@@ -348,28 +347,28 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 		ginkgo.By("Dumping logs for tidb-operator")
 		logPath := filepath.Join(framework.TestContext.ReportDir, "logs", "tidb-operator")
 		// full permission (0777) for the log directory to avoid "permission denied" for later kubetest2 log dump.
-		k8se2e.ExpectNoError(os.MkdirAll(logPath, 0777), "failed to create log directory for tidb-operator components")
+		framework.ExpectNoError(os.MkdirAll(logPath, 0777), "failed to create log directory for tidb-operator components")
 
 		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(context.TODO(), metav1.ListOptions{})
-		k8se2e.ExpectNoError(err2, "failed to list pods for tidb-operator")
+		framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
 		for _, pod := range podList.Items {
 			log.Logf("dumping logs for pod %s/%s", pod.Namespace, pod.Name)
 			err2 = tests.DumpPod(logPath, &pod)
-			k8se2e.ExpectNoError(err2, "failed to dump log for pod %s/%s", pod.Namespace, pod.Name)
+			framework.ExpectNoError(err2, "failed to dump log for pod %s/%s", pod.Namespace, pod.Name)
 		}
 	}
 
 	ginkgo.By("Uninstalling tidb-operator")
 	err = tests.CleanOperator(ocfg)
-	k8se2e.ExpectNoError(err, "failed to uninstall operator")
+	framework.ExpectNoError(err, "failed to uninstall operator")
 
 	ginkgo.By("Wait for tidb-operator to be uninstalled")
 	err = wait.Poll(5*time.Second, 5*time.Minute, func() (bool, error) {
 		podList, err2 := kubeCli.CoreV1().Pods(ocfg.Namespace).List(context.TODO(), metav1.ListOptions{})
-		k8se2e.ExpectNoError(err2, "failed to list pods for tidb-operator")
+		framework.ExpectNoError(err2, "failed to list pods for tidb-operator")
 		return len(podList.Items) == 0, nil
 	})
-	k8se2e.ExpectNoError(err, "failed to wait for tidb-operator to be uninstalled")
+	framework.ExpectNoError(err, "failed to wait for tidb-operator to be uninstalled")
 })
 
 // TODO: refactor it to combine with code in /tests/e2e/br/framework/framework.go

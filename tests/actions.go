@@ -50,7 +50,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/slack"
-	k8se2e "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 
 	"github.com/ghodss/yaml"
@@ -67,7 +67,6 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 const (
@@ -116,7 +115,7 @@ func NewOperatorActions(cli versioned.Interface,
 	}
 	if fw != nil {
 		kubeCfg, err := framework.LoadConfig()
-		k8se2e.ExpectNoError(err, "failed to load config")
+		framework.ExpectNoError(err, "failed to load config")
 		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw, kubeCfg.TLSClientConfig.CAData)
 	} else {
 		oa.tidbControl = controller.NewDefaultTiDBControl(secretLister)
@@ -275,7 +274,7 @@ func (oa *OperatorActions) RunKubectlOrDie(args ...string) string {
 
 func (oa *OperatorActions) CleanCRDOrDie() {
 	crdList, err := oa.apiExtCli.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
-	k8se2e.ExpectNoError(err, "failed to list CRD")
+	framework.ExpectNoError(err, "failed to list CRD")
 	for _, crd := range crdList.Items {
 		if !strings.HasSuffix(crd.Name, ".pingcap.com") {
 			log.Logf("CRD %q ignored", crd.Name)
@@ -283,17 +282,17 @@ func (oa *OperatorActions) CleanCRDOrDie() {
 		}
 		log.Logf("Deleting CRD %q", crd.Name)
 		err = oa.apiExtCli.ApiextensionsV1().CustomResourceDefinitions().Delete(context.TODO(), crd.Name, metav1.DeleteOptions{})
-		k8se2e.ExpectNoError(err, "failed to delete CRD %q", crd.Name)
+		framework.ExpectNoError(err, "failed to delete CRD %q", crd.Name)
 		// Even if DELETE API request succeeds, the CRD object may still exists
 		// in ap server. We should wait for it to be gone.
 		err = e2eutil.WaitForCRDNotFound(oa.apiExtCli, crd.Name)
-		k8se2e.ExpectNoError(err, "failed to wait for CRD %q deleted", crd.Name)
+		framework.ExpectNoError(err, "failed to wait for CRD %q deleted", crd.Name)
 	}
 }
 
 func (oa *OperatorActions) ReplaceCRDOrDie(info *OperatorConfig) {
 	files, err := oa.crdFiles(info)
-	k8se2e.ExpectNoError(err, "failed to get CRD files")
+	framework.ExpectNoError(err, "failed to get CRD files")
 
 	for _, file := range files {
 		framework.RunKubectl("", "create", "-f", file) // exec `create` command to create new CRD
@@ -305,7 +304,7 @@ func (oa *OperatorActions) ReplaceCRDOrDie(info *OperatorConfig) {
 
 func (oa *OperatorActions) CreateCRDOrDie(info *OperatorConfig) {
 	files, err := oa.crdFiles(info)
-	k8se2e.ExpectNoError(err, "failed to get CRD files")
+	framework.ExpectNoError(err, "failed to get CRD files")
 
 	for _, file := range files {
 		oa.RunKubectlOrDie("create", "-f", file)
@@ -326,7 +325,7 @@ func (oa *OperatorActions) CreateReleasedCRDOrDie(version string) {
 		}
 		return true, nil
 	})
-	k8se2e.ExpectNoError(err, "failed to create CRD of version %s: %s", version, lastErr)
+	framework.ExpectNoError(err, "failed to create CRD of version %s: %s", version, lastErr)
 
 	oa.waitForCRDsReady()
 }

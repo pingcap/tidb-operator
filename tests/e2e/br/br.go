@@ -35,13 +35,12 @@ import (
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-	k8se2e "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 var (
@@ -131,12 +130,12 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		err := f.Storage.Init(ctx, f.Namespace.Name, accessKey, secretKey)
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 	})
 
 	ginkgo.JustAfterEach(func() {
 		err := f.Storage.Clean(context.Background(), f.Namespace.Name)
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 	})
 
 	cases := []*testcase{
@@ -185,47 +184,47 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		if tcase.enableXK8sMode {
 			ginkgo.By("Create TiDB cluster for backup and wait ready")
 			err := createXK8sTidbClusterWithComponentsReady(f, namespaces, backupClusterName, backupVersion, enableTLS)
-			k8se2e.ExpectNoError(err, "creating TiDB clsuter for backup")
+			framework.ExpectNoError(err, "creating TiDB clsuter for backup")
 
 			ginkgo.By("Create TiDB cluster for restore and wait ready")
 			err = createXK8sTidbClusterWithComponentsReady(f, namespaces, restoreClusterName, restoreVersion, enableTLS)
-			k8se2e.ExpectNoError(err, "creating TiDB clsuter for restore")
+			framework.ExpectNoError(err, "creating TiDB clsuter for restore")
 		} else {
 			ginkgo.By("Create TiDB cluster for backup")
 			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create TiDB cluster for restore")
 			err = createTidbCluster(f, restoreClusterName, restoreVersion, enableTLS, skipCA)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for backup TiDB cluster ready")
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for restore TiDB cluster ready")
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 		}
 
 		ginkgo.By("Forward backup TiDB cluster service")
 		backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(v1alpha1.DefaultTiDBServerPort))
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 		err = initDatabase(backupHost, dbName)
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 
 		ginkgo.By("Write data into backup TiDB cluster")
 		backupDSN := getDefaultDSN(backupHost, dbName)
 		err = blockwriter.New().Write(context.Background(), backupDSN)
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 
 		ginkgo.By("Create RBAC for backup and restore")
 		err = createRBAC(f)
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 
 		ginkgo.By("Create backup")
 		backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, tcase.configureBackup)
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 
 		if tcase.postBackup != nil {
 			tcase.postBackup(backup)
@@ -233,16 +232,16 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 		ginkgo.By("Create restore")
 		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName, nil)
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 
 		ginkgo.By("Forward restore TiDB cluster service")
 		restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), int(v1alpha1.DefaultTiDBServerPort))
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 
 		ginkgo.By("Validate restore result")
 		restoreDSN := getDefaultDSN(restoreHost, dbName)
 		err = checkDataIsSame(backupDSN, restoreDSN)
-		k8se2e.ExpectNoError(err)
+		framework.ExpectNoError(err)
 	}
 
 	for i := range cases {
@@ -265,8 +264,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			for _, ns := range namespaces[1:] {
 				ginkgo.By(fmt.Sprintf("Building namespace %s", ns))
 				_, existed, err := nsutil.CreateNamespaceIfNeeded(ns, f.ClientSet, nil)
-				k8se2e.ExpectEqual(existed, false, fmt.Sprintf("namespace %s is existed", ns))
-				k8se2e.ExpectNoError(err, fmt.Sprintf("failed to create namespace %s", ns))
+				framework.ExpectEqual(existed, false, fmt.Sprintf("namespace %s is existed", ns))
+				framework.ExpectNoError(err, fmt.Sprintf("failed to create namespace %s", ns))
 			}
 		})
 
@@ -276,7 +275,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				for _, ns := range namespaces[1:] {
 					ginkgo.By(fmt.Sprintf("Destroying namespace %s", ns))
 					_, err := nsutil.DeleteNamespace(ns, f.ClientSet)
-					k8se2e.ExpectNoError(err, fmt.Sprintf("failed to create namespace %s", ns))
+					framework.ExpectNoError(err, fmt.Sprintf("failed to create namespace %s", ns))
 				}
 			}
 		})
@@ -318,8 +317,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ginkgo.By("Check whether prefix of backup files in storage is right")
 			expectedPrefix := path.Join(middlePath, backup.Spec.StorageProvider.S3.Prefix)
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, expectedPrefix)
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(cleaned, false, "storage should have data")
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, false, "storage should have data")
 		}
 	})
 
@@ -339,41 +338,41 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Create TiDB cluster for backup")
 			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for backup TiDB cluster ready")
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Forward backup TiDB cluster service")
 			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(v1alpha1.DefaultTiDBServerPort))
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 			err = initDatabase(backupHost, dbName)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Write data into backup TiDB cluster")
 			backupDSN := getDefaultDSN(backupHost, dbName)
 			err = blockwriter.New().Write(context.Background(), backupDSN)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create RBAC for backup and restore")
 			err = createRBAC(f)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create backup with clean policy Delete")
 			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 			})
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Check if all backup files in storage is deleted")
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 
 	})
@@ -393,23 +392,23 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Create log-backup.enable TiDB cluster for log backup")
 			err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for backup TiDB cluster ready")
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create RBAC for log backup")
 			err = createRBAC(f)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Start log backup")
 			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 			})
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectNotEqual(backup.Status.CommitTs, "")
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
 
 			ginkgo.By("Truncate log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
@@ -417,8 +416,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 			})
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
 
 			ginkgo.By("Truncate log backup again")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
@@ -426,8 +425,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 			})
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
 
 			ginkgo.By("Stop log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
@@ -435,8 +434,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogStop = true
 			})
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(backup.Status.Phase, v1alpha1.BackupStopped)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupStopped)
 
 			ginkgo.By("Truncate log backup after stop")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
@@ -445,17 +444,17 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
 				backup.Spec.LogStop = false
 			})
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Check if all backup files in storage is deleted")
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 
 		// TODO: tikv error:[ERROR] [mod.rs:747] ["Status server error: TLS handshake error"], will open this test when this is fixed.
@@ -520,43 +519,43 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Create TiDB cluster")
 			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for TiDB cluster ready")
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create RBAC for backup")
 			err = createRBAC(f)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("delete backup pod")
 			err = brutil.WaitAndDeleteRunningBackupPod(f, backup, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait auto restart backup pod until backup complete")
 			err = brutil.WaitForBackupComplete(f.ExtClient, ns, backupName, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("make sure it's not restarted by backoff retry policy")
 			num, err := getBackoffRetryNum(f, backup)
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(num, 0)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(num, 0)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Check if all backup files in storage is deleted")
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 	})
 
@@ -575,53 +574,53 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Create TiDB cluster")
 			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for TiDB cluster ready")
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create RBAC for backup")
 			err = createRBAC(f)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait backup pod failed by simulate panic")
 			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodFailed, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("update backup evn, remove simulate panic")
 			backup, err = updateBackup(f, backup.Name, func(backup *v1alpha1.Backup) {
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait auto restart backup pod until running again")
 			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodRunning, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("make sure it's restarted by backoff retry policy")
 			num, err := getBackoffRetryNum(f, backup)
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(num, 1)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(num, 1)
 
 			ginkgo.By("wait auto restart backup pod until backup complete")
 			err = brutil.WaitForBackupComplete(f.ExtClient, ns, backupName, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Check if all backup files in storage is deleted")
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 
 		ginkgo.It("kill backup pod and exceed maxRetryTimes", func() {
@@ -638,15 +637,15 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Create TiDB cluster")
 			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for TiDB cluster ready")
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create RBAC for backup")
 			err = createRBAC(f)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
@@ -657,50 +656,50 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				}
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait backup pod failed by simulate panic")
 			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodFailed, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait auto restart backup pod until running again")
 			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodRunning, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("make sure it's restarted by backoff retry policy")
 			num, err := getBackoffRetryNum(f, backup)
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(num, 1)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(num, 1)
 
 			ginkgo.By("wait backup pod failed by simulate panic")
 			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodFailed, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait auto restart backup pod until running again")
 			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodRunning, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("make sure it's restarted by backoff retry policy")
 			num, err = getBackoffRetryNum(f, backup)
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(num, 2)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(num, 2)
 
 			ginkgo.By("wait backup pod failed by simulate panic")
 			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodFailed, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait auto restart backup pod until backup failed")
 			err = brutil.WaitForBackupFailed(f.ExtClient, ns, backupName, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Check if all backup files in storage is deleted")
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 
 		ginkgo.It("kill backup pod and exceed retryTimeout", func() {
@@ -717,15 +716,15 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Create TiDB cluster")
 			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for TiDB cluster ready")
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create RBAC for backup")
 			err = createRBAC(f)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
@@ -736,37 +735,37 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				}
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait backup pod failed by simulate panic")
 			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodFailed, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait auto restart backup pod until running again")
 			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodRunning, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("make sure it's restarted by backoff retry policy")
 			num, err := getBackoffRetryNum(f, backup)
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(num, 1)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(num, 1)
 
 			ginkgo.By("wait backup pod failed by simulate panic")
 			err = brutil.WaitBackupPodOnPhase(f, backup, v1.PodFailed, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait auto restart backup pod until backup failed")
 			err = brutil.WaitForBackupFailed(f.ExtClient, ns, backupName, backupCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Check if all backup files in storage is deleted")
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 	})
 
@@ -783,14 +782,14 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ginkgo.By("Create log-backup.enable TiDB cluster for pitr-master")
 			masterClusterName := "pitr-master"
 			err := createLogBackupEnableTidbCluster(f, masterClusterName, backupVersion, enableTLS, skipCA)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 			ginkgo.By("Wait for pitr-master TiDB cluster ready")
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, masterClusterName, tidbReadyTimeout, 0)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create RBAC for backup")
 			err = createRBAC(f)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			logBackupName := "log-backup"
 			typ := strings.ToLower(typeBR)
@@ -799,47 +798,47 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 			})
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectNotEqual(logBackup.Status.CommitTs, "")
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(logBackup.Status.CommitTs, "")
 
 			fullBackupName := "full-backup"
 			ginkgo.By("Start full backup")
 			fullBackup, err := createBackupAndWaitForComplete(f, fullBackupName, masterClusterName, typ, func(backup *v1alpha1.Backup) {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 			})
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectNotEqual(fullBackup.Status.CommitTs, "")
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(fullBackup.Status.CommitTs, "")
 
 			ginkgo.By("Forward master TiDB cluster service")
 			masterHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(masterClusterName), int(v1alpha1.DefaultTiDBServerPort))
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 			err = initDatabase(masterHost, dbName)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Write data into master TiDB cluster")
 			masterDSN := getDefaultDSN(masterHost, dbName)
 			err = blockwriter.New().Write(context.Background(), masterDSN)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Forward master PD service")
 			masterPDHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getPDServiceResourceName(masterClusterName), int(v1alpha1.DefaultPDClientPort))
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 			ginkgo.By("Wait log backup reach current ts")
 			currentTS := strconv.FormatUint(config.GoTimeToTS(time.Now()), 10)
 			err = brutil.WaitForLogBackupReachTS(logBackupName, masterPDHost, currentTS, logbackupCatchUpTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait log backup progress reach current ts")
 			err = brutil.WaitForLogBackupProgressReachTS(f.ExtClient, ns, logBackupName, currentTS, logbackupCatchUpTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create log-backup.enable TiDB cluster for pitr-backup")
 			backupClusterName := "pitr-backup"
 			err = createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 			ginkgo.By("Wait for pitr-backup TiDB cluster ready")
 			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Create pitr restore")
 			restoreName := "pitr-restore"
@@ -848,38 +847,38 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				restore.Spec.PitrFullBackupStorageProvider.S3 = fullBackup.Spec.S3
 				restore.Spec.PitrRestoredTs = currentTS
 			})
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("wait pitr restore progress done")
 			err = brutil.WaitForRestoreProgressDone(f.ExtClient, ns, restoreName, restoreCompleteTimeout)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Forward restore TiDB cluster service")
 			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(v1alpha1.DefaultTiDBServerPort))
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Validate pitr restore result")
 			backupDSN := getDefaultDSN(backupHost, dbName)
 			err = checkDataIsSame(masterDSN, backupDSN)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Delete pitr log backup")
 			err = deleteBackup(f, logBackupName)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Check if all pitr log backup files in storage is deleted")
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, logBackup.Spec.S3.Prefix) // now we only use s3
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 
 			ginkgo.By("Delete pitr full backup")
 			err = deleteBackup(f, fullBackupName)
-			k8se2e.ExpectNoError(err)
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Check if all pitr full backup files in storage is deleted")
 			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, fullBackup.Spec.S3.Prefix) // now we only use s3
-			k8se2e.ExpectNoError(err)
-			k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 	})
 })
