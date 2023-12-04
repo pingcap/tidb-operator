@@ -120,7 +120,7 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
-			name: "with PDAddresses and PDAddressesOverDiscovery and tls enabled",
+			name: "with PDAddresses and PDAddressesOverDiscovery",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}", "another.pd"}
 				tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{
