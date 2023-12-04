@@ -14,6 +14,7 @@
 package v1alpha1
 
 import (
+	"fmt"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -112,7 +113,7 @@ func PDMSMemberType(name string) MemberType {
 	case "scheduling":
 		return SchedulingMemberType
 	default:
-		panic("unknown pdms member type")
+		panic(fmt.Sprintf("unknown pd ms name %s", name))
 	}
 }
 

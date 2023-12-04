@@ -401,7 +401,7 @@ func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel 
 	return storeKind == componentLabel
 }
 
-// statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
+// StatefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
 func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, podTemplateCheckedAndNotEqual bool) {
 	// The annotations in old sts may include LastAppliedConfigAnnotation
 	tmpAnno := map[string]string{}

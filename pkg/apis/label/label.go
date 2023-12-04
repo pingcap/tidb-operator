@@ -405,7 +405,14 @@ func (l Label) IsPD() bool {
 }
 
 func (l Label) PDMS(name string) Label {
-	return l.Component(name)
+	switch name {
+	case "tso":
+		return l.Component(TSOLabelVal)
+	case "scheduling":
+		return l.Component(SchedulingLabelVal)
+	default:
+		panic(fmt.Sprintf("unknown pd ms name %s", name))
+	}
 }
 
 // TiProxy assigns tiproxy to component key in label

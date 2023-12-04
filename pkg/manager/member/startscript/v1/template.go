@@ -212,9 +212,9 @@ exec /pd-server ${ARGS}
 // msStartScriptTplText is the pd microservice start script.
 var msStartScriptTplText = `#!/bin/sh
 
-# This script is used to start tso containers in kubernetes cluster
+# This script is used to start ms containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# Use DownwardAPIVolumeFiles to store information of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -256,7 +256,7 @@ ARGS="` + pdEnableMicroService + `
 --config=/etc/pd/pd.toml \
 "
 
-echo "starting tso-server ..."
+echo "starting ms-server ..."
 sleep $((RANDOM % 10))
 echo "/ms-server ${ARGS}"
 exec /pd-server ${ARGS}

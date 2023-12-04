@@ -42,8 +42,6 @@ type pdMSMemberManager struct {
 	scaler    Scaler
 	upgrader  Upgrader
 	suspender suspender.Suspender
-	// current micro service spec
-	curSpec *v1alpha1.PDMSSpec
 }
 
 // NewPDMSMemberManager returns a *pdMSMemberManager
@@ -72,12 +70,12 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	for _, comp := range tc.Spec.PDMS {
-		m.curSpec = comp
-		if tc.Status.PDMS[m.curSpec.Name] == nil {
-			tc.Status.PDMS[m.curSpec.Name] = &v1alpha1.PDMSStatus{Name: m.curSpec.Name}
+		curSpec := comp
+		if tc.Status.PDMS[curSpec.Name] == nil {
+			tc.Status.PDMS[curSpec.Name] = &v1alpha1.PDMSStatus{Name: curSpec.Name}
 		}
-		if err := m.syncSingleService(tc); err != nil {
-			klog.Errorf("syncSingleService failed, error: %v, component: %s", err, m.curSpec.Name)
+		if err := m.syncSingleService(tc, curSpec); err != nil {
+			klog.Errorf("syncSingleService failed, error: %v, component: %s", err, curSpec.Name)
 			return err
 		}
 	}
@@ -86,34 +84,34 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 // syncSingleService for single PD Micro Service components.
-func (m *pdMSMemberManager) syncSingleService(tc *v1alpha1.TidbCluster) error {
-	metrics.ClusterUpdateErrors.WithLabelValues(tc.GetNamespace(), tc.GetName(), m.curSpec.Name).Inc()
+func (m *pdMSMemberManager) syncSingleService(tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) error {
+	metrics.ClusterUpdateErrors.WithLabelValues(tc.GetNamespace(), tc.GetName(), curSpec.Name).Inc()
 	// Skip sync if PD Micro Service is suspended
-	componentMemberType := v1alpha1.PDMSMemberType(m.curSpec.Name)
+	componentMemberType := v1alpha1.PDMSMemberType(curSpec.Name)
 	needSuspend, err := m.suspender.SuspendComponent(tc, componentMemberType)
 	if err != nil {
 		return fmt.Errorf("suspend %s failed: %v", componentMemberType, err)
 	}
 	if needSuspend {
-		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", m.curSpec.Name, tc.GetNamespace(), tc.GetName())
+		klog.Infof("component %s for cluster %s/%s is suspended, skip syncing", curSpec.Name, tc.GetNamespace(), tc.GetName())
 		return nil
 	}
 
 	// Sync PD Micro Service
-	if err := m.syncPDMSService(tc); err != nil {
+	if err := m.syncPDMSService(tc, curSpec); err != nil {
 		return err
 	}
 
 	// Sync PD Micro Service Headless Service
-	if err := m.syncPDMSHeadlessService(tc); err != nil {
+	if err := m.syncPDMSHeadlessService(tc, curSpec); err != nil {
 		return err
 	}
 
 	// Sync PD Micro Service StatefulSet
-	return m.syncPDMSStatefulSet(tc)
+	return m.syncPDMSStatefulSet(tc, curSpec)
 }
 
-func (m *pdMSMemberManager) syncPDMSService(tc *v1alpha1.TidbCluster) error {
+func (m *pdMSMemberManager) syncPDMSService(tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	if tc.Spec.Paused {
@@ -121,8 +119,8 @@ func (m *pdMSMemberManager) syncPDMSService(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	newSvc := m.getNewPDMSService(tc)
-	oldSvcTmp, err := m.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, m.curSpec.Name))
+	newSvc := m.getNewPDMSService(tc, curSpec)
+	oldSvcTmp, err := m.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, curSpec.Name))
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
@@ -131,7 +129,7 @@ func (m *pdMSMemberManager) syncPDMSService(tc *v1alpha1.TidbCluster) error {
 		return m.deps.ServiceControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
-		return fmt.Errorf("syncpdMSServiceForTidbCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.PDMSMemberName(tcName, m.curSpec.Name), ns, tcName, err)
+		return fmt.Errorf("syncpdMSServiceForTidbCluster: failed to get svc %s for cluster %s/%s, error: %s", controller.PDMSMemberName(tcName, curSpec.Name), ns, tcName, err)
 	}
 
 	oldSvc := oldSvcTmp.DeepCopy()
@@ -149,16 +147,16 @@ func (m *pdMSMemberManager) syncPDMSService(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (m *pdMSMemberManager) syncPDMSHeadlessService(tc *v1alpha1.TidbCluster) error {
+func (m *pdMSMemberManager) syncPDMSHeadlessService(tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	if tc.Spec.Paused {
-		klog.Infof("tidb cluster %s/%s is paused, skip syncing for %s headless service", ns, tcName, m.curSpec.Name)
+		klog.Infof("tidb cluster %s/%s is paused, skip syncing for %s headless service", ns, tcName, curSpec.Name)
 		return nil
 	}
 
-	newSvc := getNewPDMSHeadlessService(tc, m.curSpec.Name)
-	oldSvcTmp, err := m.deps.ServiceLister.Services(ns).Get(controller.PDMSPeerMemberName(tcName, m.curSpec.Name))
+	newSvc := getNewPDMSHeadlessService(tc, curSpec.Name)
+	oldSvcTmp, err := m.deps.ServiceLister.Services(ns).Get(controller.PDMSPeerMemberName(tcName, curSpec.Name))
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {
@@ -167,7 +165,7 @@ func (m *pdMSMemberManager) syncPDMSHeadlessService(tc *v1alpha1.TidbCluster) er
 		return m.deps.ServiceControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
-		return fmt.Errorf("syncpdMSHeadlessService: failed to get svc %s for cluster %s/%s, error: %s", controller.PDMSPeerMemberName(tcName, m.curSpec.Name), ns, tcName, err)
+		return fmt.Errorf("syncpdMSHeadlessService: failed to get svc %s for cluster %s/%s, error: %s", controller.PDMSPeerMemberName(tcName, curSpec.Name), ns, tcName, err)
 	}
 
 	oldSvc := oldSvcTmp.DeepCopy()
@@ -228,11 +226,12 @@ func getNewPDMSHeadlessService(tc *v1alpha1.TidbCluster, componentName string) *
 	return svc
 }
 
-func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster) error {
+func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	componentName := m.curSpec.Name
+	componentName := curSpec.Name
+
 	oldPDMSSetTmp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, componentName))
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("syncPDMSStatefulSet: fail to get sts %s for cluster %s/%s, error: %s", controller.PDMSMemberName(tcName, componentName), ns, tcName, err)
@@ -240,7 +239,8 @@ func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster) error 
 
 	setNotExist := errors.IsNotFound(err)
 	oldPDMSSet := oldPDMSSetTmp.DeepCopy()
-	if err := m.syncStatus(tc, oldPDMSSet); err != nil {
+
+	if err := m.syncStatus(tc, oldPDMSSet, curSpec); err != nil {
 		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status for %s, error: %v", ns, tcName, componentName, err)
 	}
 
@@ -249,12 +249,12 @@ func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster) error 
 		return nil
 	}
 
-	cm, err := m.syncPDMSConfigMap(tc, oldPDMSSet)
+	cm, err := m.syncPDMSConfigMap(tc, oldPDMSSet, curSpec)
 	if err != nil {
 		return err
 	}
 
-	newPDMSSet, err := m.getNewPDMSStatefulSet(tc, cm)
+	newPDMSSet, err := m.getNewPDMSStatefulSet(tc, cm, curSpec)
 	if err != nil {
 		return err
 	}
@@ -266,10 +266,10 @@ func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster) error 
 		if err := m.deps.StatefulSetControl.CreateStatefulSet(tc, newPDMSSet); err != nil {
 			return err
 		}
-		if tc.Status.PDMS[m.curSpec.Name] == nil {
-			tc.Status.PDMS[m.curSpec.Name] = &v1alpha1.PDMSStatus{Name: m.curSpec.Name}
+		if tc.Status.PDMS[componentName] == nil {
+			tc.Status.PDMS[componentName] = &v1alpha1.PDMSStatus{Name: componentName}
 		}
-		tc.Status.PDMS[m.curSpec.Name].StatefulSet = &apps.StatefulSetStatus{}
+		tc.Status.PDMS[componentName].StatefulSet = &apps.StatefulSetStatus{}
 
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PDMS cluster running", ns, tcName)
 	}
@@ -283,7 +283,7 @@ func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster) error 
 		return err
 	}
 
-	if !templateEqual(newPDMSSet, oldPDMSSet) || tc.Status.PDMS[m.curSpec.Name].Phase == v1alpha1.UpgradePhase {
+	if !templateEqual(newPDMSSet, oldPDMSSet) || tc.Status.PDMS[componentName].Phase == v1alpha1.UpgradePhase {
 		if err := m.upgrader.Upgrade(tc, oldPDMSSet, newPDMSSet); err != nil {
 			return err
 		}
@@ -292,46 +292,47 @@ func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster) error 
 	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdatePDMSSTS", newPDMSSet, oldPDMSSet)
 }
 
-func (m *pdMSMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) error {
+func (m *pdMSMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.StatefulSet, curSpec *v1alpha1.PDMSSpec) error {
 	if sts == nil {
 		// skip if not created yet
 		return nil
 	}
 
-	tc.Status.PDMS[m.curSpec.Name].Name = m.curSpec.Name
-	tc.Status.PDMS[m.curSpec.Name].StatefulSet = &sts.Status
-	upgrading, err := m.pdMSStatefulSetIsUpgrading(sts, tc)
+	curService := curSpec.Name
+	tc.Status.PDMS[curService].Name = curService
+	tc.Status.PDMS[curService].StatefulSet = &sts.Status
+	upgrading, err := m.pdMSStatefulSetIsUpgrading(sts, tc, curSpec)
 	if err != nil {
 		return err
 	}
 
 	// Scaling takes precedence over upgrading.
-	if tc.PDMSStsDesiredReplicas(m.curSpec.Name) != *sts.Spec.Replicas {
-		tc.Status.PDMS[m.curSpec.Name].Phase = v1alpha1.ScalePhase
+	if tc.PDMSStsDesiredReplicas(curService) != *sts.Spec.Replicas {
+		tc.Status.PDMS[curService].Phase = v1alpha1.ScalePhase
 	} else if upgrading {
-		tc.Status.PDMS[m.curSpec.Name].Phase = v1alpha1.UpgradePhase
+		tc.Status.PDMS[curService].Phase = v1alpha1.UpgradePhase
 	} else {
-		tc.Status.PDMS[m.curSpec.Name].Phase = v1alpha1.NormalPhase
+		tc.Status.PDMS[curService].Phase = v1alpha1.NormalPhase
 	}
 
 	pdClient := controller.GetPDClient(m.deps.PDControl, tc)
 	// pdMS member
-	members, err := pdClient.GetServiceMembers(m.curSpec.Name)
+	members, err := pdClient.GetServiceMembers(curService)
 	if err != nil {
 		return err
 	}
-	tc.Status.PDMS[m.curSpec.Name].Members = members
-	tc.Status.PDMS[m.curSpec.Name].Synced = true
+	tc.Status.PDMS[curService].Members = members
+	tc.Status.PDMS[curService].Synced = true
 	return nil
 }
 
 // syncPDMSConfigMap syncs the configmap of PDMS
-func (m *pdMSMemberManager) syncPDMSConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
+func (m *pdMSMemberManager) syncPDMSConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, curSpec *v1alpha1.PDMSSpec) (*corev1.ConfigMap, error) {
 	// For backward compatibility, only sync tidb configmap when .PDMS.config is non-nil
-	if m.curSpec.Config == nil {
+	if curSpec.Config == nil {
 		return nil, nil
 	}
-	newCm, err := m.getPDMSConfigMap(tc)
+	newCm, err := m.getPDMSConfigMap(tc, curSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -339,23 +340,24 @@ func (m *pdMSMemberManager) syncPDMSConfigMap(tc *v1alpha1.TidbCluster, set *app
 	var inUseName string
 	if set != nil {
 		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
-			return strings.HasPrefix(name, controller.PDMSMemberName(tc.Name, m.curSpec.Name))
+			return strings.HasPrefix(name, controller.PDMSMemberName(tc.Name, curSpec.Name))
 		})
 	}
 
-	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BasePDMSSpec(m.curSpec).ConfigUpdateStrategy(), inUseName, newCm)
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BasePDMSSpec(curSpec).ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
 	return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
-func (m *pdMSMemberManager) getNewPDMSService(tc *v1alpha1.TidbCluster) *corev1.Service {
+func (m *pdMSMemberManager) getNewPDMSService(tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
-	svcName := controller.PDMSMemberName(tcName, m.curSpec.Name)
+	curService := curSpec.Name
+	svcName := controller.PDMSMemberName(tcName, curService)
 	instanceName := tc.GetInstanceName()
-	pdMSSelector := label.New().Instance(instanceName).PDMS(m.curSpec.Name)
+	pdMSSelector := label.New().Instance(instanceName).PDMS(curService)
 	pdMSLabels := pdMSSelector.Copy().UsedByEndUser().Labels()
 
 	pdMSService := &corev1.Service{
@@ -366,7 +368,7 @@ func (m *pdMSMemberManager) getNewPDMSService(tc *v1alpha1.TidbCluster) *corev1.
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
-			Type: controller.GetServiceType(tc.Spec.Services, m.curSpec.Name),
+			Type: controller.GetServiceType(tc.Spec.Services, curService),
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "client",
@@ -380,7 +382,7 @@ func (m *pdMSMemberManager) getNewPDMSService(tc *v1alpha1.TidbCluster) *corev1.
 	}
 
 	// override fields with user-defined ServiceSpec
-	svcSpec := m.curSpec.Service
+	svcSpec := curSpec.Service
 	if svcSpec != nil {
 		if svcSpec.Type != "" {
 			pdMSService.Spec.Type = svcSpec.Type
@@ -405,14 +407,14 @@ func (m *pdMSMemberManager) getNewPDMSService(tc *v1alpha1.TidbCluster) *corev1.
 	return pdMSService
 }
 
-func (m *pdMSMemberManager) pdMSStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+func (m *pdMSMemberManager) pdMSStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) (bool, error) {
 	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
 	}
 	instanceName := tc.GetInstanceName()
 	selector, err := label.New().
 		Instance(instanceName).
-		PDMS(m.curSpec.Name).
+		PDMS(curSpec.Name).
 		Selector()
 	if err != nil {
 		return false, err
@@ -426,19 +428,20 @@ func (m *pdMSMemberManager) pdMSStatefulSetIsUpgrading(set *apps.StatefulSet, tc
 		if !exist {
 			return false, nil
 		}
-		if revisionHash != tc.Status.PDMS[m.curSpec.Name].StatefulSet.UpdateRevision {
+		if revisionHash != tc.Status.PDMS[curSpec.Name].StatefulSet.UpdateRevision {
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap, curSpec *v1alpha1.PDMSSpec) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
-	basePDMSSpec := tc.BasePDMSSpec(m.curSpec)
+	curService := curSpec.Name
+	basePDMSSpec := tc.BasePDMSSpec(curSpec)
 	instanceName := tc.GetInstanceName()
-	pdMSConfigMap := controller.MemberConfigMapName(tc, v1alpha1.PDMSMemberType(m.curSpec.Name))
+	pdMSConfigMap := controller.MemberConfigMapName(tc, v1alpha1.PDMSMemberType(curService))
 	if cm != nil {
 		pdMSConfigMap = cm.Name
 	}
@@ -459,7 +462,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
 		})
-		if m.curSpec.MountClusterClientSecret != nil && *m.curSpec.MountClusterClientSecret {
+		if curSpec.MountClusterClientSecret != nil && *curSpec.MountClusterClientSecret {
 			volMounts = append(volMounts, corev1.VolumeMount{
 				Name: util.ClusterClientVolName, ReadOnly: true, MountPath: util.ClusterClientTLSPath,
 			})
@@ -493,11 +496,11 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		vols = append(vols, corev1.Volume{
 			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDMSLabel(m.curSpec.Name)),
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDMSLabel(curService)),
 				},
 			},
 		})
-		if m.curSpec.MountClusterClientSecret != nil && *m.curSpec.MountClusterClientSecret && microServicesVersion {
+		if curSpec.MountClusterClientSecret != nil && *curSpec.MountClusterClientSecret && microServicesVersion {
 			vols = append(vols, corev1.Volume{
 				Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
@@ -511,7 +514,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.TiDBClientTLSSecretName(tc.Name, m.curSpec.TLSClientSecretName),
+					SecretName: util.TiDBClientTLSSecretName(tc.Name, curSpec.TLSClientSecretName),
 				},
 			},
 		})
@@ -543,7 +546,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 					// which means init containers can reserve resources for
 					// initialization that are not used during the life of the Pod.
 					// ref:https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
-					Resources: controller.ContainerResource(m.curSpec.ResourceRequirements),
+					Resources: controller.ContainerResource(curSpec.ResourceRequirements),
 				})
 			}
 		}
@@ -556,11 +559,11 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		podSecurityContext.Sysctls = []corev1.Sysctl{}
 	}
 
-	setName := controller.PDMSMemberName(tcName, m.curSpec.Name)
-	stsLabels := label.New().Instance(instanceName).PDMS(m.curSpec.Name)
+	setName := controller.PDMSMemberName(tcName, curService)
+	stsLabels := label.New().Instance(instanceName).PDMS(curService)
 	podLabels := util.CombineStringMap(stsLabels, basePDMSSpec.Labels())
 	podAnnotations := util.CombineStringMap(basePDMSSpec.Annotations(), controller.AnnProm(v1alpha1.DefaultPDClientPort, "/metrics"))
-	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDMSLabel(m.curSpec.Name))
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDMSLabel(curService))
 
 	deleteSlotsNumber, err := util.GetDeleteSlotsNumber(stsAnnotations)
 	if err != nil {
@@ -568,7 +571,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 	}
 
 	pdMSContainer := corev1.Container{
-		Name:            m.curSpec.Name,
+		Name:            curService,
 		Image:           tc.PDImage(),
 		ImagePullPolicy: basePDMSSpec.ImagePullPolicy(),
 		Command:         []string{"/bin/sh", "/usr/local/bin/pdMS_start_script.sh"},
@@ -580,10 +583,10 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 			},
 		},
 		VolumeMounts: volMounts,
-		Resources:    controller.ContainerResource(m.curSpec.ResourceRequirements),
+		Resources:    controller.ContainerResource(curSpec.ResourceRequirements),
 	}
 
-	headlessSvcName := controller.PDMSPeerMemberName(tcName, m.curSpec.Name)
+	headlessSvcName := controller.PDMSPeerMemberName(tcName, curService)
 	env := []corev1.EnvVar{
 		{
 			Name: "NAMESPACE",
@@ -595,11 +598,11 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		},
 		{
 			Name:  "PEER_SERVICE_NAME",
-			Value: controller.PDMSPeerMemberName(tcName, m.curSpec.Name),
+			Value: controller.PDMSPeerMemberName(tcName, curService),
 		},
 		{
 			Name:  "SERVICE_NAME",
-			Value: controller.PDMSMemberName(tcName, m.curSpec.Name),
+			Value: controller.PDMSMemberName(tcName, curService),
 		},
 		{
 			Name:  "SET_NAME",
@@ -638,9 +641,9 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		return nil, fmt.Errorf("failed to merge containers spec for PDMS of [%s/%s], error: %v", tc.Namespace, tc.Name, err)
 	}
 
-	podSpec.ServiceAccountName = m.curSpec.ServiceAccount
+	podSpec.ServiceAccountName = curSpec.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
-		podSpec.ServiceAccountName = m.curSpec.ServiceAccount
+		podSpec.ServiceAccountName = curSpec.ServiceAccount
 	}
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = append(initContainers, basePDMSSpec.InitContainers()...)
@@ -651,7 +654,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
 		updateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{
-			Partition: pointer.Int32Ptr(tc.PDMSStsDesiredReplicas(m.curSpec.Name) + deleteSlotsNumber),
+			Partition: pointer.Int32Ptr(tc.PDMSStsDesiredReplicas(curService) + deleteSlotsNumber),
 		}
 	}
 
@@ -664,7 +667,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(tc.PDMSStsDesiredReplicas(m.curSpec.Name)),
+			Replicas: pointer.Int32Ptr(tc.PDMSStsDesiredReplicas(curService)),
 			Selector: stsLabels.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -673,7 +676,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 				},
 				Spec: podSpec,
 			},
-			ServiceName:         controller.PDMSPeerMemberName(tcName, m.curSpec.Name),
+			ServiceName:         controller.PDMSPeerMemberName(tcName, curService),
 			PodManagementPolicy: basePDMSSpec.PodManagementPolicy(),
 			UpdateStrategy:      updateStrategy,
 		},
@@ -682,12 +685,13 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 	return pdMSSet, nil
 }
 
-func (m *pdMSMemberManager) getPDMSConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	if m.curSpec.Config == nil {
+func (m *pdMSMemberManager) getPDMSConfigMap(tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) (*corev1.ConfigMap, error) {
+	if curSpec.Config == nil {
 		return nil, nil
 	}
-	config := m.curSpec.Config.DeepCopy() // use copy to not update tc spec
+	config := curSpec.Config.DeepCopy() // use copy to not update tc spec
 
+	curService := curSpec.Name
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
 		config.Set("security.cacert-path", path.Join(pdClusterCertPath, tlsSecretRootCAKey))
@@ -700,16 +704,16 @@ func (m *pdMSMemberManager) getPDMSConfigMap(tc *v1alpha1.TidbCluster) (*corev1.
 		return nil, err
 	}
 
-	startScript, err := startscript.RenderPDMCSStartScript(tc, m.curSpec.Name)
+	startScript, err := startscript.RenderPDMSStartScript(tc, curService)
 	if err != nil {
 		return nil, err
 	}
 
 	instanceName := tc.GetInstanceName()
-	pdMSLabel := label.New().Instance(instanceName).PDMS(m.curSpec.Name).Labels()
+	pdMSLabel := label.New().Instance(instanceName).PDMS(curService).Labels()
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.PDMSMemberName(tc.Name, m.curSpec.Name),
+			Name:            controller.PDMSMemberName(tc.Name, curService),
 			Namespace:       tc.Namespace,
 			Labels:          pdMSLabel,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
@@ -722,7 +726,7 @@ func (m *pdMSMemberManager) getPDMSConfigMap(tc *v1alpha1.TidbCluster) (*corev1.
 	return cm, nil
 }
 
-// PDMSSupportMicroServices returns true if the given version of PDMS supports micro services.
+// PDMSSupportMicroServices returns true if the given version of PDMS supports microservices.
 func PDMSSupportMicroServices(version string) (bool, error) {
 	v, err := semver.NewVersion(version)
 	if err != nil {

@@ -80,7 +80,7 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	return pd[tc.StartScriptVersion()](tc)
 }
 
-func RenderPDMCSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error) {
+func RenderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error) {
 	return pdMS[name][tc.StartScriptVersion()](tc)
 }
 

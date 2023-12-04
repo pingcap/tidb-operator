@@ -47,7 +47,8 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS status is nil, can not to be upgraded", ns, tcName)
 	}
 
-	componentName := controller.PDMSTrimName(newSet.Spec.ServiceName)
+	componentName := controller.PDMSTrimName(newSet.Name)
+	klog.Info("gracefulUpgrade pdMS trim name", "componentName", componentName)
 	if tc.Status.PDMS[componentName] == nil {
 		tc.Status.PDMS[componentName] = &v1alpha1.PDMSStatus{Name: componentName}
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS component is nil, can not to be upgraded, component: %s", ns, tcName, componentName)
@@ -55,7 +56,12 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	if !tc.Status.PDMS[componentName].Synced {
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS status sync failed, can not to be upgraded, component: %s", ns, tcName, componentName)
 	}
-	if tc.PDMSScaling(controller.PDMSTrimName(oldSet.Spec.ServiceName)) {
+	oldTrimName := controller.PDMSTrimName(oldSet.Name)
+	if oldTrimName != componentName {
+		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS oldTrimName is %s, not equal to componentName: %s", ns, tcName, oldTrimName, componentName)
+	}
+	klog.Info("gracefulUpgrade pdMS trim name", "oldTrimName", oldTrimName)
+	if tc.PDMSScaling(oldTrimName) {
 		klog.Infof("TidbCluster: [%s/%s]'s pdMS status is %v, can not upgrade pdMS",
 			ns, tcName, tc.Status.PDMS[componentName].Phase)
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
@@ -85,7 +91,7 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
-		podName := PDMSPodName(tcName, i, oldSet.Spec.ServiceName)
+		podName := PDMSPodName(tcName, i, oldTrimName)
 		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
 			return fmt.Errorf("gracefulUpgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)

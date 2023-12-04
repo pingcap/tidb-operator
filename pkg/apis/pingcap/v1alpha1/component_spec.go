@@ -80,7 +80,7 @@ type ComponentAccessor interface {
 }
 
 func (tc *TidbCluster) AllComponentSpec() []ComponentAccessor {
-	components := []ComponentAccessor{}
+	var components []ComponentAccessor
 	components = append(components, tc.BaseDiscoverySpec())
 	if tc.Spec.PD != nil {
 		components = append(components, tc.BasePDSpec())

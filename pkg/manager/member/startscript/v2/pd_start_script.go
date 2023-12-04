@@ -249,7 +249,7 @@ ARGS="` + pdEnableMicroService + `
 --config=/etc/pd/pd.toml \
 "
 
-echo "starting tso-server ..."
+echo "starting ms-server ..."
 sleep $((RANDOM % 10))
 echo "/pdms-server ${ARGS}"
 exec /pd-server ${ARGS}

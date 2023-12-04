@@ -38,6 +38,20 @@ func TestNewSelector(t *testing.T) {
 			expected: "app.kubernetes.io/component=pd,app.kubernetes.io/instance=aaa,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/name=tidb-cluster",
 		},
 		{
+			desc:     "selector for tso",
+			instance: "aaa",
+			mt:       v1alpha1.TSOMemberType,
+
+			expected: "app.kubernetes.io/component=tso,app.kubernetes.io/instance=aaa,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/name=tidb-cluster",
+		},
+		{
+			desc:     "selector for scheduling",
+			instance: "aaa",
+			mt:       v1alpha1.SchedulingMemberType,
+
+			expected: "app.kubernetes.io/component=scheduling,app.kubernetes.io/instance=aaa,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/name=tidb-cluster",
+		},
+		{
 			desc:     "selector for tidb",
 			instance: "aaa",
 			mt:       v1alpha1.TiDBMemberType,

@@ -56,7 +56,7 @@ func TestPDMSMemberManagerSyncCreate(t *testing.T) {
 		tcName := tc.Name
 		oldSpec := tc.Spec
 
-		pmm, _, _ := newFakePDMSMemberManager(tc.Spec.PDMS)
+		pmm, _, _ := newFakePDMSMemberManager()
 		fakeSetControl := pmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
 		fakeSvcControl := pmm.deps.ServiceControl.(*controller.FakeServiceControl)
 		if test.errWhenCreateStatefulSet {
@@ -136,7 +136,7 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pmm, _, _ := newFakePDMSMemberManager(tc.Spec.PDMS)
+		pmm, _, _ := newFakePDMSMemberManager()
 		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
 		fakeSetControl := pmm.deps.StatefulSetControl.(*controller.FakeStatefulSetControl)
 		fakeSvcControl := pmm.deps.ServiceControl.(*controller.FakeServiceControl)
@@ -285,7 +285,7 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 		ns := tc.Namespace
 		tcName := tc.Name
 
-		pmm, _, _ := newFakePDMSMemberManager(tc.Spec.PDMS)
+		pmm, _, _ := newFakePDMSMemberManager()
 		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
 		pdClient.AddReaction(pdapi.GetServiceMembersActionType, func(action *pdapi.Action) (interface{}, error) {
@@ -301,7 +301,7 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		test.modify(tc)
-		err = pmm.syncPDMSStatefulSet(tc)
+		err = pmm.syncPDMSStatefulSet(tc, tc.Spec.PDMS[0])
 		if test.err {
 			g.Expect(err).To(HaveOccurred())
 		} else {
@@ -459,7 +459,7 @@ func TestGetNewPDMSHeadlessServiceForTidbCluster(t *testing.T) {
 	}
 }
 
-func newFakePDMSMemberManager(ms []*v1alpha1.PDMSSpec) (*pdMSMemberManager, cache.Indexer, cache.Indexer) {
+func newFakePDMSMemberManager() (*pdMSMemberManager, cache.Indexer, cache.Indexer) {
 	fakeDeps := controller.NewFakeDependencies()
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
@@ -468,9 +468,6 @@ func newFakePDMSMemberManager(ms []*v1alpha1.PDMSSpec) (*pdMSMemberManager, cach
 		scaler:    NewFakePDMSScaler(),
 		upgrader:  NewFakePDMSUpgrader(),
 		suspender: suspender.NewFakeSuspender(),
-	}
-	if ms != nil {
-		pdMSManager.curSpec = ms[0]
 	}
 	return pdMSManager, podIndexer, pvcIndexer
 }
@@ -1009,8 +1006,8 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
-			pdmm, _, _ := newFakePDMSMemberManager(tt.tc.Spec.PDMS)
-			sts, err := pdmm.getNewPDMSStatefulSet(&tt.tc, nil)
+			pdmm, _, _ := newFakePDMSMemberManager()
+			sts, err := pdmm.getNewPDMSStatefulSet(&tt.tc, nil, tt.tc.Spec.PDMS[0])
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("error %v, wantErr %v", err, tt.wantErr)
 			}
@@ -1127,11 +1124,8 @@ func TestGetPDMSConfigMap(t *testing.T) {
 	for i := range testCases {
 		tt := testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
-			pdmm, _, _ := newFakePDMSMemberManager(tt.tc.Spec.PDMS)
-			if tt.tc.Spec.PDMS != nil {
-				pdmm.curSpec = tt.tc.Spec.PDMS[0]
-			}
-			cm, err := pdmm.getPDMSConfigMap(&tt.tc)
+			pdmm, _, _ := newFakePDMSMemberManager()
+			cm, err := pdmm.getPDMSConfigMap(&tt.tc, tt.tc.Spec.PDMS[0])
 			g.Expect(err).To(Succeed())
 			if tt.expected == nil {
 				g.Expect(cm).To(BeNil())
@@ -1542,8 +1536,8 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
-			pdmm, _, _ := newFakePDMSMemberManager(tt.tc.Spec.PDMS)
-			svc := pdmm.getNewPDMSService(&tt.tc)
+			pdmm, _, _ := newFakePDMSMemberManager()
+			svc := pdmm.getNewPDMSService(&tt.tc, tt.tc.Spec.PDMS[0])
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
 				t.Errorf("unexpected Service (-want, +got): %s", diff)
 			}
