@@ -21,9 +21,9 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -90,22 +90,26 @@ func TestBackupControllerUpdateBackup(t *testing.T) {
 		}
 	}
 
-	// create a pod with failed status in the pod informer.
-	createFailedPod := func(g *GomegaWithT, rtc *Controller, backup *v1alpha1.Backup) {
-		pod := &corev1.Pod{
+	// create a job with failed status in the job informer.
+	createFailedJob := func(g *GomegaWithT, rtc *Controller, backup *v1alpha1.Backup) {
+		job := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      backup.Name,
+				Name:      backup.GetBackupJobName(),
 				Namespace: backup.Namespace,
-				Labels:    label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(backup.Name),
 			},
-			Status: corev1.PodStatus{
-				Phase: corev1.PodFailed,
+			Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{
+						Type:   batchv1.JobFailed,
+						Status: corev1.ConditionTrue,
+					},
+				},
 			},
 		}
-		_, err := rtc.deps.KubeClientset.CoreV1().Pods(backup.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+		_, err := rtc.deps.KubeClientset.BatchV1().Jobs(backup.Namespace).Create(context.TODO(), job, metav1.CreateOptions{})
 		g.Expect(err).To(Succeed())
 		rtc.deps.KubeInformerFactory.Start(context.TODO().Done())
-		cache.WaitForCacheSync(context.TODO().Done(), rtc.deps.KubeInformerFactory.Core().V1().Pods().Informer().HasSynced)
+		cache.WaitForCacheSync(context.TODO().Done(), rtc.deps.KubeInformerFactory.Batch().V1().Jobs().Informer().HasSynced)
 	}
 
 	updatingToFail := func(g *GomegaWithT, rtc *Controller, backup *v1alpha1.Backup) {
@@ -166,30 +170,30 @@ func TestBackupControllerUpdateBackup(t *testing.T) {
 			},
 		},
 		{
-			name:                 "backup has been scheduled with failed pod",
+			name:                 "backup has been scheduled with failed job",
 			backupHasBeenDeleted: false,
 			conditionType:        v1alpha1.BackupScheduled,
-			beforeUpdateFn:       createFailedPod,
+			beforeUpdateFn:       createFailedJob,
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
 				g.Expect(bkc.queue.Len()).To(Equal(0))
 			},
 			afterUpdateFn: updatingToFail,
 		},
 		{
-			name:                 "backup has is running with failed pod",
+			name:                 "backup has been running with failed job",
 			backupHasBeenDeleted: false,
 			conditionType:        v1alpha1.BackupRunning,
-			beforeUpdateFn:       createFailedPod,
+			beforeUpdateFn:       createFailedJob,
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
 				g.Expect(bkc.queue.Len()).To(Equal(0))
 			},
 			afterUpdateFn: updatingToFail,
 		},
 		{
-			name:                 "backup has is prepared with failed pod",
+			name:                 "backup has been prepared with failed job",
 			backupHasBeenDeleted: false,
 			conditionType:        v1alpha1.BackupPrepare,
-			beforeUpdateFn:       createFailedPod,
+			beforeUpdateFn:       createFailedJob,
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
 				g.Expect(bkc.queue.Len()).To(Equal(0))
 			},

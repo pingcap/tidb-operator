@@ -609,6 +609,13 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	volumes := []corev1.Volume{}
 	initContainers := []corev1.Container{}
 
+	if len(restore.Spec.AdditionalVolumes) > 0 {
+		volumes = append(volumes, restore.Spec.AdditionalVolumes...)
+	}
+	if len(restore.Spec.AdditionalVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
+	}
+
 	if restore.Spec.To.TLSClientSecretName != nil {
 		args = append(args, "--client-tls=true")
 		clientSecretName := *restore.Spec.To.TLSClientSecretName
@@ -844,6 +851,13 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	})
+
+	if len(restore.Spec.AdditionalVolumes) > 0 {
+		volumes = append(volumes, restore.Spec.AdditionalVolumes...)
+	}
+	if len(restore.Spec.AdditionalVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
+	}
 
 	// mount volumes if specified
 	if restore.Spec.Local != nil {
@@ -1112,6 +1126,15 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 		})
 	}
 
+	// all the warmup pods will attach the additional volumes
+	// if the volume source can't be attached to multi pods, the warmup pods may be stuck.
+	if len(r.Spec.AdditionalVolumes) > 0 {
+		podVolumes = append(podVolumes, r.Spec.AdditionalVolumes...)
+	}
+	if len(r.Spec.AdditionalVolumeMounts) > 0 {
+		podVolumeMounts = append(podVolumeMounts, r.Spec.AdditionalVolumeMounts...)
+	}
+
 	nodeSelector := make(map[string]string, len(tc.Spec.TiKV.NodeSelector))
 	for k, v := range tc.Spec.NodeSelector {
 		nodeSelector[k] = v
@@ -1212,6 +1235,15 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 		}
 	}
 
+	// all the warmup pods will attach the additional volumes
+	// if the volume source can't be attached to multi pods, the warmup pods may be stuck.
+	if len(r.Spec.AdditionalVolumes) > 0 {
+		warmUpVolumes = append(warmUpVolumes, r.Spec.AdditionalVolumes...)
+	}
+	if len(r.Spec.AdditionalVolumeMounts) > 0 {
+		warmUpVolumeMounts = append(warmUpVolumeMounts, r.Spec.AdditionalVolumeMounts...)
+	}
+
 	args, err := generateWarmUpArgs(r.Spec.WarmupStrategy, warmUpVolumeMounts)
 	if err != nil {
 		return nil, err
@@ -1267,7 +1299,7 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 		return err
 	}
 
-	jobs, err := rm.deps.JobLister.List(sel)
+	jobs, err := rm.deps.JobLister.Jobs(r.Namespace).List(sel)
 	if err != nil {
 		return err
 	}

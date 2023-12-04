@@ -21,7 +21,6 @@ set -e
 echo "hack/e2e-patch-codecov.sh: PWD $PWD"
 
 CONTROLLER_MANAGER_DEPLOYMENT=charts/tidb-operator/templates/controller-manager-deployment.yaml
-DISCOVERY_DEPLOYMENT=charts/tidb-cluster/templates/discovery-deployment.yaml
 ADMISSION_WEBHOOK_DEPLOYMENT=charts/tidb-operator/templates/admission/admission-webhook-deployment.yaml
 TMP_ADMISSION_WEBHOOK_DEPLOYMENT=/tmp/admission-webhook-deployment.yaml
 
@@ -37,8 +36,6 @@ TMP_BACKUP_CLEANER=/tmp/backup_cleaner.go
 echo "replace the entrypoint to generate and upload the coverage profile"
 sed -i 's/\/usr\/local\/bin\/tidb-controller-manager/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-controller-manager\n          - -test.coverprofile=\/coverage\/tidb-controller-manager.cov\n          - E2E/g' \
     $CONTROLLER_MANAGER_DEPLOYMENT
-sed -i 's/\/usr\/local\/bin\/tidb-discovery/\/e2e-entrypoint.sh\n          - \/usr\/local\/bin\/tidb-discovery\n          - -test.coverprofile=\/coverage\/tidb-discovery.cov\n          - E2E/g' \
-    $DISCOVERY_DEPLOYMENT
 sed -i 's/\/usr\/local\/bin\/tidb-admission-webhook/\/e2e-entrypoint.sh\n            - \/usr\/local\/bin\/tidb-admission-webhook\n            - -test.coverprofile=\/coverage\/tidb-admission-webhook.cov\n            - E2E/g' \
     $ADMISSION_WEBHOOK_DEPLOYMENT
 
