@@ -59,8 +59,6 @@ import (
 	"k8s.io/component-base/featuregate"
 	uexec "k8s.io/utils/exec"
 
-	// TODO: Remove the following imports (ref: https://github.com/kubernetes/kubernetes/issues/81245)
-
 	e2ekubectl "github.com/pingcap/tidb-operator/tests/third_party/k8s/kubectl"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	e2enode "github.com/pingcap/tidb-operator/tests/third_party/k8s/node"
