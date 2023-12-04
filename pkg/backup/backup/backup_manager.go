@@ -42,7 +42,7 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-const volumeBackupInitJobMaxActiveSeconds = 10 * 60
+const volumeBackupInitJobMaxActiveSeconds = 15 * 60
 
 type backupManager struct {
 	deps             *controller.Dependencies
