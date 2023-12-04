@@ -149,7 +149,7 @@ TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
 --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
 --host=0.0.0.0 \
---path=http://${PD_DOMAIN}:2379,http://another.pd:2379 \
+--path=${PD_DOMAIN}:2379,another.pd:2379 \
 --config=/etc/tidb/tidb.toml"
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}

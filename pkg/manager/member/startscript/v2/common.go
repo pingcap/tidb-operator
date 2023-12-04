@@ -126,11 +126,11 @@ func addressesWithSchemeAndPort(addresses []string, scheme string, port int32) [
 	for i, a := range addresses {
 		u, err := url.Parse(a)
 		if err != nil {
-			res[i] = fmt.Sprintf("%s://%s:%d", scheme, a, port)
+			res[i] = fmt.Sprintf("%s%s:%d", scheme, a, port)
 		} else if u.Hostname() != "" {
-			res[i] = fmt.Sprintf("%s://%s:%d", scheme, u.Hostname(), port)
+			res[i] = fmt.Sprintf("%s%s:%d", scheme, u.Hostname(), port)
 		} else {
-			res[i] = fmt.Sprintf("%s://%s:%d", scheme, u.Path, port)
+			res[i] = fmt.Sprintf("%s%s:%d", scheme, u.Path, port)
 		}
 
 	}
