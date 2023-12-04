@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// this file is copied (and modified) from k8s.io/kubernetes/test/e2e/framework/auth/helpers.go @v1.23.17
+
 package auth
 
 import (
