@@ -117,7 +117,7 @@ exec /pd-server ${ARGS}
 		{
 			name: "with PDAddresses but without preferPDAddressesOverDiscovery",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}:2380", "another.pd:2380"}
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}", "another.pd"}
 			},
 			expectScript: `#!/bin/sh
 
@@ -201,7 +201,7 @@ exec /pd-server ${ARGS}
 		{
 			name: "with PDAddresses and preferPDAddressesOverDiscovery",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}:2380", "another.pd:2380"}
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}", "another.pd"}
 				tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{
 					v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery,
 				}
@@ -265,7 +265,7 @@ ARGS="--data-dir=/var/lib/pd \
 --advertise-client-urls=http://${PD_DOMAIN}:2379 \
 --config=/etc/pd/pd.toml"
 
-ARGS="${ARGS} --join=${PD_DOMAIN}:2380,another.pd:2380"
+ARGS="${ARGS} --join=http://${PD_DOMAIN}:2380,http://another.pd:2380"
 
 echo "starting pd-server ..."
 sleep $((RANDOM % 10))

@@ -42,7 +42,8 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	preferPDAddressesOverDiscovery := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
 	if preferPDAddressesOverDiscovery {
-		m.PDAddresses = strings.Join(tc.Spec.PDAddresses, ",")
+		pdAddressesWithSchemeAndPort := addressesWithSchemeAndPort(tc.Spec.PDAddresses, tc.Scheme(), v1alpha1.DefaultPDClientPort)
+		m.PDAddresses = strings.Join(pdAddressesWithSchemeAndPort, ",")
 	}
 	if len(m.PDAddresses) == 0 {
 		if tc.AcrossK8s() {
