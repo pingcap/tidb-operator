@@ -977,5 +977,5 @@ func PrettyPrintJSON(metrics interface{}) string {
 		log.Logf("Error indenting: %v", err)
 		return ""
 	}
-	return string(formatted.Bytes())
+	return formatted.String()
 }

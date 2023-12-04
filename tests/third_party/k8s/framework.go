@@ -31,7 +31,6 @@ import (
 	"math/rand"
 	"path"
 	"strings"
-	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -91,9 +90,9 @@ type Framework struct {
 	// as expectations vary greatly. Constraints are grouped by the container names.
 	AddonResourceConstraints map[string]ResourceConstraint
 
-	logsSizeWaitGroup    sync.WaitGroup
-	logsSizeCloseChannel chan bool
-	logsSizeVerifier     *LogsSizeVerifier
+	// logsSizeWaitGroup    sync.WaitGroup
+	// logsSizeCloseChannel chan bool
+	// logsSizeVerifier     *LogsSizeVerifier
 
 	// Flaky operation failures in an e2e test can be captured through this.
 	flakeReport *FlakeReport
@@ -288,9 +287,9 @@ func (f *Framework) BeforeEach() {
 		}
 	}
 
-	if TestContext.GatherLogsSizes {
-		// TODO(pingcap): removed logsSizeVerifier
-	}
+	// if TestContext.GatherLogsSizes {
+	// 	// TODO(pingcap): removed logsSizeVerifier
+	// }
 
 	// TODO(pingcap): e2emetrics removed, add it back if needed
 
@@ -422,13 +421,13 @@ func (f *Framework) AfterEach() {
 		f.TestSummaries = append(f.TestSummaries, summary)
 	}
 
-	if TestContext.GatherLogsSizes {
-		// TODO(pingcap): removed logsSizeVerifier
-	}
+	// if TestContext.GatherLogsSizes {
+	// 	// TODO(pingcap): removed logsSizeVerifier
+	// }
 
-	if TestContext.GatherMetricsAfterTest != "false" {
-		// TODO(pingcap): removed metrics grabber
-	}
+	// if TestContext.GatherMetricsAfterTest != "false" {
+	// 	// TODO(pingcap): removed metrics grabber
+	// }
 
 	TestContext.CloudConfig.Provider.FrameworkAfterEach(f)
 
