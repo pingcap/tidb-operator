@@ -335,10 +335,8 @@ func (c *defaultTidbClusterControl) recordMetrics(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.PD != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "pd").Set(float64(tc.Spec.PD.Replicas))
 	}
-	if tc.Spec.PDMS != nil {
-		for _, component := range tc.Spec.PDMS {
-			metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, component.Name).Set(float64(component.Replicas))
-		}
+	for _, component := range tc.Spec.PDMS {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, component.Name).Set(float64(component.Replicas))
 	}
 	if tc.Spec.TiKV != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tikv").Set(float64(tc.Spec.TiKV.Replicas))

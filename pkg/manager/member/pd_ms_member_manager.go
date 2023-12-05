@@ -283,6 +283,8 @@ func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster, curSpe
 		return err
 	}
 
+	//TODO: Add FailOver logic
+
 	if !templateEqual(newPDMSSet, oldPDMSSet) || tc.Status.PDMS[componentName].Phase == v1alpha1.UpgradePhase {
 		if err := m.upgrader.Upgrade(tc, oldPDMSSet, newPDMSSet); err != nil {
 			return err
@@ -446,9 +448,9 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		pdMSConfigMap = cm.Name
 	}
 
-	microServicesVersion, err := PDMSSupportMicroServices(tc.PDMSVersion())
+	microServicesVersion, err := PDMSSupportMicroServices(tc.PDMSVersion(curService))
 	if err != nil {
-		klog.Errorf("cluster version: %s is not semantic versioning compatible", tc.PDMSVersion())
+		klog.Errorf("cluster version: %s is not semantic versioning compatible", tc.PDMSVersion(curService))
 		return nil, err
 	}
 
@@ -732,10 +734,9 @@ func PDMSSupportMicroServices(version string) (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	return v.Major() >= 7 && v.Minor() >= 1 && v.Patch() >= 0, nil
+	return v.Major() >= 7 && v.Minor() >= 2 && v.Patch() >= 0, nil
 }
 
-// TODO: seems not used
 type FakePDMSMemberManager struct {
 	err error
 }

@@ -37,7 +37,7 @@ type ComponentStatus interface {
 	//
 	// For tidb and pump, it is always true.
 	GetSynced() bool
-	// GetSynced returns `status.phase`
+	// GetPhase returns `status.phase`
 	GetPhase() MemberPhase
 	// GetVolumes return `status.volumes`
 	//
@@ -51,7 +51,7 @@ type ComponentStatus interface {
 	//
 	// NOTE: change the return will modify the status.
 	GetStatefulSet() *appsv1.StatefulSetStatus
-	// gets the status.VolReplaceInProgress
+	// GetVolReplaceInProgress gets the status.VolReplaceInProgress
 	GetVolReplaceInProgress() bool
 
 	// SetSynced set the `status.synced` field of the component
@@ -67,23 +67,21 @@ type ComponentStatus interface {
 	//    newCondition, LastTransitionTime is set to now if the new status differs from the old status)
 	// 2. if a condition of the specified type does not exist (LastTransitionTime is set to now() if unset, and newCondition is appended)
 	SetCondition(condition metav1.Condition)
-	// RemoveStatusCondition removes the corresponding conditionType from conditions.
+	// RemoveCondition removes the corresponding conditionType from conditions.
 	RemoveCondition(conditionType string)
 	// SetStatefulSet sets the `status.statefulset`
 	SetStatefulSet(sts *appsv1.StatefulSetStatus)
-	// sets the status.VolReplaceInProgress
+	// SetVolReplaceInProgress sets the status.VolReplaceInProgress
 	SetVolReplaceInProgress(status bool)
 }
 
 func (tc *TidbCluster) AllComponentStatus() []ComponentStatus {
-	components := []ComponentStatus{}
+	var components []ComponentStatus
 	if tc.Spec.PD != nil {
 		components = append(components, &tc.Status.PD)
 	}
-	if tc.Spec.PDMS != nil {
-		for _, component := range tc.Status.PDMS {
-			components = append(components, tc.Status.PDMS[component.Name])
-		}
+	for _, component := range tc.Status.PDMS {
+		components = append(components, tc.Status.PDMS[component.Name])
 	}
 	if tc.Spec.TiDB != nil {
 		components = append(components, &tc.Status.TiDB)

@@ -15,6 +15,7 @@ package v1alpha1
 
 import (
 	"fmt"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -571,6 +572,7 @@ type PDMSSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Name of the PD Micro Service
+	// +kubebuilder:validation:Enum:="tso";"scheduling"
 	Name string `json:"name"`
 
 	// Specify a Service Account for pd ms

@@ -214,6 +214,7 @@ const (
 	ApplicationLabelKey string = "app.kubernetes.io/app"
 )
 
+// PDMSLabel is the label for pd ms, identify the pd ms type
 func PDMSLabel(name string) string {
 	return name
 }

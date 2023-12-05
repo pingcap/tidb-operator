@@ -7994,6 +7994,9 @@ spec:
                     mountClusterClientSecret:
                       type: boolean
                     name:
+                      enum:
+                      - tso
+                      - scheduling
                       type: string
                     nodeSelector:
                       additionalProperties:

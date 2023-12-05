@@ -1263,7 +1263,7 @@ func TestRenderPDMSStartScript(t *testing.T) {
 			},
 			result: `#!/bin/sh
 
-# This script is used to start tso containers in kubernetes cluster
+# This script is used to start ms containers in kubernetes cluster
 
 # Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
@@ -1307,7 +1307,7 @@ ARGS=" services tso
 --config=/etc/pd/pd.toml \
 "
 
-echo "starting tso-server ..."
+echo "starting ms-server ..."
 sleep $((RANDOM % 10))
 echo "/ms-server ${ARGS}"
 exec /pd-server ${ARGS}

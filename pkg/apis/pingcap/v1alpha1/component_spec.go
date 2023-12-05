@@ -85,10 +85,8 @@ func (tc *TidbCluster) AllComponentSpec() []ComponentAccessor {
 	if tc.Spec.PD != nil {
 		components = append(components, tc.BasePDSpec())
 	}
-	if tc.Spec.PDMS != nil {
-		for _, service := range tc.Spec.PDMS {
-			components = append(components, tc.BasePDMSSpec(service))
-		}
+	for _, service := range tc.Spec.PDMS {
+		components = append(components, tc.BasePDMSSpec(service))
 	}
 	if tc.Spec.TiDB != nil {
 		components = append(components, tc.BaseTiDBSpec())

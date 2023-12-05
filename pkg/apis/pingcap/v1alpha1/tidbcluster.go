@@ -95,15 +95,37 @@ func (tc *TidbCluster) PDVersion() string {
 	return getImageVersion(tc.PDImage())
 }
 
-// PDMSVersion return the image version used by PD.
+// PDMSImage return the image used by specified PD MicroService.
 //
 // If PD isn't specified, return empty string.
-func (tc *TidbCluster) PDMSVersion() string {
-	if tc.Spec.PDMS == nil {
-		return ""
+func (tc *TidbCluster) PDMSImage(spec *PDMSSpec) string {
+	image := spec.Image
+	baseImage := *spec.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := spec.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
+	return image
+}
 
-	return getImageVersion(tc.PDImage())
+// PDMSVersion return the image version used by specified PD MicroService.
+//
+// If PD isn't specified, return empty string.
+func (tc *TidbCluster) PDMSVersion(name string) string {
+	for _, component := range tc.Spec.PDMS {
+		if component.Name == name {
+			return getImageVersion(tc.PDMSImage(component))
+		}
+	}
+	return ""
 }
 
 // TiKVImage return the image used by TiKV.
@@ -607,10 +629,6 @@ func (tc *TidbCluster) PDStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 }
 
 func (tc *TidbCluster) PDMSStsDesiredReplicas(componentName string) int32 {
-	if tc.Spec.PDMS == nil {
-		return 0
-	}
-
 	for _, component := range tc.Spec.PDMS {
 		if component.Name == componentName {
 			return component.Replicas
