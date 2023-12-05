@@ -265,7 +265,7 @@ ARGS="--data-dir=/var/lib/pd \
 --advertise-client-urls=http://${PD_DOMAIN}:2379 \
 --config=/etc/pd/pd.toml"
 
-ARGS="${ARGS} --join=${PD_DOMAIN}:2380,another.pd:2380"
+ARGS="${ARGS} --join=http://${PD_DOMAIN}:2380,http://another.pd:2380"
 
 echo "starting pd-server ..."
 sleep $((RANDOM % 10))
