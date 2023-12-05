@@ -204,6 +204,9 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
 					{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v7.3.0",
+						},
 						Name:     "tso",
 						Replicas: 5,
 					},
@@ -233,6 +236,9 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
 					{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v7.3.0",
+						},
 						Name:     "tso",
 						Replicas: 5,
 					},
@@ -324,6 +330,9 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 				tc.Spec.PD.Image = "pd-test-image:v2"
 				tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
 					{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v7.3.0",
+						},
 						Name:     "tso",
 						Replicas: 1,
 					},
@@ -497,7 +506,11 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					},
 					TiKV: &v1alpha1.TiKVSpec{},
 					TiDB: &v1alpha1.TiDBSpec{},
-					PDMS: []*v1alpha1.PDMSSpec{{Name: "tso"}},
+					PDMS: []*v1alpha1.PDMSSpec{{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v7.3.0",
+						},
+						Name: "tso"}},
 				},
 			},
 			testSts: testHostNetwork(t, false, ""),
@@ -522,6 +535,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 						{
 							Name: "tso",
 							ComponentSpec: v1alpha1.ComponentSpec{
+								Image: "pingcap/pd:v7.3.0",
 								Env: []corev1.EnvVar{
 									{
 										Name: "PDMS_SESSION_SECRET",
@@ -611,6 +625,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 						{
 							Name: "tso",
 							ComponentSpec: v1alpha1.ComponentSpec{
+								Image:                "pingcap/pd:v7.3.0",
 								AdditionalContainers: []corev1.Container{customSideCarContainers[0]},
 							},
 						},
@@ -639,6 +654,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 						{
 							Name: "tso",
 							ComponentSpec: v1alpha1.ComponentSpec{
+								Image: "pingcap/pd:v7.3.0",
 								PodSecurityContext: &corev1.PodSecurityContext{
 									RunAsNonRoot: &asNonRoot,
 									Sysctls: []corev1.Sysctl{
@@ -711,6 +727,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 						{
 							Name: "tso",
 							ComponentSpec: v1alpha1.ComponentSpec{
+								Image: "pingcap/pd:v7.3.0",
 								Annotations: map[string]string{
 									"tidb.pingcap.com/sysctl-init": "true",
 								},
@@ -750,7 +767,11 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					},
 					TiDB: &v1alpha1.TiDBSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
-					PDMS: []*v1alpha1.PDMSSpec{{Name: "tso"}},
+					PDMS: []*v1alpha1.PDMSSpec{{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v7.3.0",
+						},
+						Name: "tso"}},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -779,6 +800,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 						{
 							Name: "tso",
 							ComponentSpec: v1alpha1.ComponentSpec{
+								Image: "pingcap/pd:v7.3.0",
 								Annotations: map[string]string{
 									"tidb.pingcap.com/sysctl-init": "true",
 								},
@@ -850,6 +872,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 						{
 							Name: "tso",
 							ComponentSpec: v1alpha1.ComponentSpec{
+								Image: "pingcap/pd:v7.3.0",
 								Annotations: map[string]string{
 									"tidb.pingcap.com/sysctl-init": "true",
 								},
@@ -921,6 +944,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 						{
 							Name: "tso",
 							ComponentSpec: v1alpha1.ComponentSpec{
+								Image: "pingcap/pd:v7.3.0",
 								Annotations: map[string]string{
 									"tidb.pingcap.com/sysctl-init": "false",
 								},
@@ -992,7 +1016,11 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					},
 					TiDB: &v1alpha1.TiDBSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
-					PDMS: []*v1alpha1.PDMSSpec{{Name: "tso"}},
+					PDMS: []*v1alpha1.PDMSSpec{{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v7.3.0",
+						},
+						Name: "tso"}},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {

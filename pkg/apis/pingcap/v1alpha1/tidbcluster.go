@@ -100,9 +100,8 @@ func (tc *TidbCluster) PDVersion() string {
 // If PD isn't specified, return empty string.
 func (tc *TidbCluster) PDMSImage(spec *PDMSSpec) string {
 	image := spec.Image
-	baseImage := *spec.BaseImage
-	// base image takes higher priority
-	if baseImage != "" {
+	if spec.BaseImage != nil {
+		baseImage := *spec.BaseImage
 		version := spec.Version
 		if version == nil {
 			version = &tc.Spec.Version

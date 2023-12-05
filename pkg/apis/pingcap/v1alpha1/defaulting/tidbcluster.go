@@ -135,9 +135,6 @@ func setPDMSSpecDefault(tc *v1alpha1.TidbCluster) {
 				*component.BaseImage = defaultPDImage
 			}
 		}
-		if component.MaxFailoverCount == nil {
-			component.MaxFailoverCount = pointer.Int32Ptr(3)
-		}
 	}
 }
 
