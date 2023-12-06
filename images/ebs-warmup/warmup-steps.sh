@@ -34,6 +34,13 @@ Supported flags:
 EOF
 }
 
+# The trap command is to make sure the sidecars are terminated when the jobs are finished
+cleanup() {
+    touch /tmp/pod/main-terminated
+}
+
+trap cleanup EXIT
+
 operation=none
 while [ $# -gt 0 ]; do
     case $1 in
