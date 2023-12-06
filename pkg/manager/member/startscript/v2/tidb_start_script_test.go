@@ -77,7 +77,7 @@ exec /tidb-server ${ARGS}
 		{
 			name: "with PDAddresses but without PreferPDAddressesOverDiscovery",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}:2380", "another.pd:2380"}
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}", "another.pd"}
 			},
 			expectScript: `#!/bin/sh
 
@@ -120,7 +120,7 @@ exec /tidb-server ${ARGS}
 		{
 			name: "with PDAddresses and PreferPDAddressesOverDiscovery",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}:2380", "another.pd:2380"}
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}", "another.pd"}
 				tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{
 					v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery,
 				}
@@ -149,7 +149,7 @@ TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
 --advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
 --host=0.0.0.0 \
---path=${PD_DOMAIN}:2380,another.pd:2380 \
+--path=${PD_DOMAIN}:2379,another.pd:2379 \
 --config=/etc/tidb/tidb.toml"
 
 SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}

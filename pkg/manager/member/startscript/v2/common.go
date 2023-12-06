@@ -15,6 +15,8 @@ package v2
 
 import (
 	"bytes"
+	"fmt"
+	"net/url"
 	"text/template"
 )
 
@@ -117,4 +119,20 @@ func renderTemplateFunc(tpl *template.Template, model interface{}) (string, erro
 		return "", err
 	}
 	return buff.String(), nil
+}
+
+func addressesWithSchemeAndPort(addresses []string, scheme string, port int32) []string {
+	res := make([]string, len(addresses))
+	for i, a := range addresses {
+		u, err := url.Parse(a)
+		if err != nil {
+			res[i] = fmt.Sprintf("%s%s:%d", scheme, a, port)
+		} else if u.Hostname() != "" {
+			res[i] = fmt.Sprintf("%s%s:%d", scheme, u.Hostname(), port)
+		} else {
+			res[i] = fmt.Sprintf("%s%s:%d", scheme, u.Path, port)
+		}
+
+	}
+	return res
 }
