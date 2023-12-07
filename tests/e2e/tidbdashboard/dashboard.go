@@ -32,13 +32,13 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 
 	"github.com/onsi/ginkgo"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 

@@ -25,7 +25,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	cliflag "k8s.io/component-base/cli/flag"
-	"k8s.io/kubernetes/test/e2e/framework"
+
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 )
 
 // Global Test configuration.

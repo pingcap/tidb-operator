@@ -22,7 +22,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
+
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 func NewDefaultFramework(baseName string) *framework.Framework {
@@ -37,7 +39,7 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 		// if the PVC namespace does not exist anymore.
 		pvList, err := c.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
-			framework.Logf("failed to list pvs: %v", err)
+			log.Logf("failed to list pvs: %v", err)
 			return
 		}
 		var (
@@ -48,7 +50,7 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 			succeeded      int
 		)
 		defer func() {
-			framework.Logf("recycling orphan PVs (total: %d, retainReleased: %d, skipped: %d, failed: %d, succeeded: %d)", total, retainReleased, skipped, failed, succeeded)
+			log.Logf("recycling orphan PVs (total: %d, retainReleased: %d, skipped: %d, failed: %d, succeeded: %d)", total, retainReleased, skipped, failed, succeeded)
 		}()
 		for _, pv := range pvList.Items {
 			if pv.Spec.PersistentVolumeReclaimPolicy != v1.PersistentVolumeReclaimRetain || pv.Status.Phase != v1.VolumeReleased {
@@ -57,13 +59,13 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 			retainReleased++
 			pvcNamespaceName, ok := pv.Labels[label.NamespaceLabelKey]
 			if !ok {
-				framework.Logf("label %q does not exist in PV %q", label.NamespaceLabelKey, pv.Name)
+				log.Logf("label %q does not exist in PV %q", label.NamespaceLabelKey, pv.Name)
 				failed++
 				continue
 			}
 			_, err := c.CoreV1().Namespaces().Get(context.TODO(), pvcNamespaceName, metav1.GetOptions{})
 			if err != nil && !apierrors.IsNotFound(err) {
-				framework.Logf("failed to get namespace %q: %v", pvcNamespaceName, err)
+				log.Logf("failed to get namespace %q: %v", pvcNamespaceName, err)
 				failed++
 				continue
 			}
@@ -76,10 +78,10 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 			_, err = c.CoreV1().PersistentVolumes().Update(context.TODO(), &pv, metav1.UpdateOptions{})
 			if err != nil {
 				failed++
-				framework.Logf("failed to set PersistentVolumeReclaimPolicy of PV %q to Delete: %v", pv.Name, err)
+				log.Logf("failed to set PersistentVolumeReclaimPolicy of PV %q to Delete: %v", pv.Name, err)
 			} else {
 				succeeded++
-				framework.Logf("successfully set PersistentVolumeReclaimPolicy of PV %q to Delete", pv.Name)
+				log.Logf("successfully set PersistentVolumeReclaimPolicy of PV %q to Delete", pv.Name)
 			}
 		}
 	})

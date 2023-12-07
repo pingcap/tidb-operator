@@ -35,12 +35,12 @@ import (
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 var (
@@ -469,14 +469,14 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	ginkgo.By("Create log-backup.enable TiDB cluster with tls")
 		// 	masterClusterName := "tls-master"
 		// 	err := createLogBackupEnableTidbCluster(f, masterClusterName, backupVersion, enableTLS, skipCA)
-		// 	framework.ExpectNoError(err)
+		// 	k8se2e.ExpectNoError(err)
 		// 	ginkgo.By("Wait for tls-master TiDB cluster ready")
 		// 	err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, masterClusterName, tidbReadyTimeout, 0)
-		// 	framework.ExpectNoError(err)
+		// 	k8se2e.ExpectNoError(err)
 
 		// 	ginkgo.By("Create RBAC for backup")
 		// 	err = createRBAC(f)
-		// 	framework.ExpectNoError(err)
+		// 	k8se2e.ExpectNoError(err)
 
 		// 	logBackupName := "log-backup"
 		// 	typ := strings.ToLower(typeBR)
@@ -485,22 +485,22 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 		backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 		// 		backup.Spec.Mode = v1alpha1.BackupModeLog
 		// 	})
-		// 	framework.ExpectNoError(err)
-		// 	framework.ExpectNotEqual(logBackup.Status.CommitTs, "")
+		// 	k8se2e.ExpectNoError(err)
+		// 	k8se2e.ExpectNotEqual(logBackup.Status.CommitTs, "")
 
 		// 	ginkgo.By("wait log backup progress reach current ts")
 		// 	currentTS := strconv.FormatUint(config.GoTimeToTS(time.Now()), 10)
 		// 	err = brutil.WaitForLogBackupProgressReachTS(f.ExtClient, ns, logBackupName, currentTS, logbackupCatchUpTimeout)
-		// 	framework.ExpectNoError(err)
+		// 	k8se2e.ExpectNoError(err)
 
 		// 	ginkgo.By("Delete log backup")
 		// 	err = deleteBackup(f, logBackupName)
-		// 	framework.ExpectNoError(err)
+		// 	k8se2e.ExpectNoError(err)
 
 		// 	ginkgo.By("Check if all log backup files in storage is deleted")
 		// 	cleaned, err := f.Storage.IsDataCleaned(ctx, ns, logBackup.Spec.S3.Prefix) // now we only use s3
-		// 	framework.ExpectNoError(err)
-		// 	framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		// 	k8se2e.ExpectNoError(err)
+		// 	k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
 		// })
 	})
 

@@ -20,7 +20,6 @@ import (
 )
 
 var (
-	// SchemeBuilder and AddToScheme will stay in k8s.io/kubernetes.
 	SchemeBuilder      runtime.SchemeBuilder
 	localSchemeBuilder = &SchemeBuilder
 	// AddToScheme applies all the stored functions to the scheme.
