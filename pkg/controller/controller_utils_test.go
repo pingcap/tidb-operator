@@ -541,11 +541,12 @@ func TestSetIfNotEmpty(t *testing.T) {
 }
 
 func TestTrimName(t *testing.T) {
+	g := NewGomegaWithT(t)
 	name := "basic-tso-peer"
-	println(PDMSTrimName(name))
+	g.Expect(PDMSTrimName(name)).To(Equal("tso"))
 
 	name = "basic-tso"
-	println(PDMSTrimName(name))
+	g.Expect(PDMSTrimName(name)).To(Equal("tso"))
 }
 
 func collectEvents(source <-chan string) []string {

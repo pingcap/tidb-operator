@@ -23,8 +23,8 @@ const (
 	// PDDataVolumeMountPath is the mount path for pd data volume
 	PDDataVolumeMountPath = "/var/lib/pd"
 
-	// MCSDataVolumeMountPath is the mount path for pd data volume
-	MCSDataVolumeMountPath = "/var/lib/mcs"
+	// PDMSDataVolumeMountPath is the mount path for pd microservice data volume
+	PDMSDataVolumeMountPath = "/var/lib/pdms"
 
 	// TiCDCCertPath is the path for ticdc cert in container
 	TiCDCCertPath = "/var/lib/ticdc-tls"

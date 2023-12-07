@@ -38,7 +38,7 @@ func TestRenderTiDBStartScript(t *testing.T) {
 
 # This script is used to start tidb containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -94,7 +94,7 @@ exec /tidb-server ${ARGS}
 
 # This script is used to start tidb containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -151,7 +151,7 @@ exec /tidb-server ${ARGS}
 
 # This script is used to start tidb containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -217,7 +217,7 @@ exec /tidb-server ${ARGS}
 
 # This script is used to start tidb containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -314,7 +314,7 @@ func TestRenderTiKVStartScript(t *testing.T) {
 
 # This script is used to start tikv containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -369,7 +369,7 @@ exec /tikv-server ${ARGS}
 
 # This script is used to start tikv containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -426,7 +426,7 @@ exec /tikv-server ${ARGS}
 
 # This script is used to start tikv containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -481,7 +481,7 @@ exec /tikv-server ${ARGS}
 
 # This script is used to start tikv containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -536,7 +536,7 @@ exec /tikv-server ${ARGS}
 
 # This script is used to start tikv containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -601,7 +601,7 @@ exec /tikv-server ${ARGS}
 
 # This script is used to start tikv containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -665,7 +665,7 @@ exec /tikv-server ${ARGS}
 
 # This script is used to start tikv containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -751,7 +751,7 @@ func TestRenderPDStartScript(t *testing.T) {
 
 # This script is used to start pd containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -847,7 +847,7 @@ exec /pd-server ${ARGS}
 
 # This script is used to start pd containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -943,7 +943,7 @@ exec /pd-server ${ARGS}
 
 # This script is used to start pd containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -1040,7 +1040,7 @@ exec /pd-server ${ARGS}
 
 # This script is used to start pd containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -1137,7 +1137,7 @@ exec /pd-server ${ARGS}
 
 # This script is used to start pd containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -1265,7 +1265,7 @@ func TestRenderPDMSStartScript(t *testing.T) {
 
 # This script is used to start ms containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -1971,7 +1971,7 @@ func TestRenderDMMasterStartScript(t *testing.T) {
 
 # This script is used to start dm-master containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -2067,7 +2067,7 @@ exec /dm-master ${ARGS}
 
 # This script is used to start dm-master containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"

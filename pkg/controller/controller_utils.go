@@ -329,7 +329,6 @@ func PDMSTrimName(memberName string) string {
 		check := memberName[:strings.LastIndex(memberName, "-")]
 		name = check[strings.LastIndex(check, "-")+1:]
 	}
-	klog.Info("PDMSTrimName", "memberName", memberName, "name", name)
 	return name
 }
 

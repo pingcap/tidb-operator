@@ -41,7 +41,7 @@ var tidbStartScriptTpl = template.Must(template.New("tidb-start-script").Parse(`
 
 # This script is used to start tidb containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -120,7 +120,7 @@ var pdStartScriptTplText = `#!/bin/sh
 
 # This script is used to start pd containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -214,7 +214,7 @@ var msStartScriptTplText = `#!/bin/sh
 
 # This script is used to start ms containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -327,7 +327,7 @@ var tikvStartScriptTplText = `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -577,7 +577,7 @@ var dmMasterStartScriptTpl = template.Must(template.New("dm-master-start-script"
 
 # This script is used to start dm-master containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
@@ -692,7 +692,7 @@ var dmWorkerStartScriptTpl = template.Must(template.New("dm-worker-start-script"
 
 # This script is used to start dm-worker containers in kubernetes cluster
 
-# Use DownwardAPIVolumeFiles to store information of the cluster:
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
 #
 #   runmode="normal/debug"
