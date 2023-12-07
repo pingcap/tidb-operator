@@ -202,6 +202,9 @@ scheduler:
 #   kubectl apply -f manifests/advanced-statefulset-crd.v1.yaml
 advancedStatefulset:
   create: false
+  ## resourceLock indicates the type of resource object that will be used for locking during leader election.
+  ## If using "endpoints" before and want to migrate to "leases", you should migrate to "endpointsleases" first.
+  resourceLock: "endpointsleases"
   image: pingcap/advanced-statefulset:v0.4.0
   imagePullPolicy: IfNotPresent
   serviceAccount: advanced-statefulset-controller
