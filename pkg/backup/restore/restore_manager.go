@@ -1160,7 +1160,13 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 	}
 	resourceRequirements := getWarmUpResourceRequirements(tc)
 
+	jobAnnotations := r.Annotations
+	podAnnotations := jobAnnotations
+
 	warmUpPod := &corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: podAnnotations,
+		},
 		Spec: corev1.PodSpec{
 			Volumes:       podVolumes,
 			RestartPolicy: corev1.RestartPolicyNever,
