@@ -19,8 +19,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,8 +26,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/test/e2e/framework/log"
+
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 var statefulPodRegex = regexp.MustCompile("(.*)-([0-9]+)$")
@@ -64,8 +65,8 @@ func IsAllDesiredPodsRunningAndReady(c kubernetes.Interface, sts *appsv1.Statefu
 		return false
 	}
 	for _, pod := range actualPodList.Items {
-		if !podutil.IsPodReady(&pod) {
-			log.Logf("pod %s of sts %s/%s is not ready, got: %v", pod.Name, sts.Namespace, sts.Name, podutil.GetPodReadyCondition(pod.Status))
+		if !k8s.IsPodReady(&pod) {
+			log.Logf("pod %s of sts %s/%s is not ready, got: %v", pod.Name, sts.Namespace, sts.Name, k8s.GetPodReadyCondition(pod.Status))
 			return false
 		}
 	}

@@ -32,7 +32,8 @@ import (
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 	"k8s.io/kubectl/pkg/polymorphichelpers"
-	"k8s.io/kubernetes/test/e2e/framework/log"
+
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 const (

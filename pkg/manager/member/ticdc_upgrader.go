@@ -19,11 +19,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type ticdcUpgrader struct {
@@ -96,7 +96,7 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 		}
 
 		if revision == tc.Status.TiCDC.StatefulSet.UpdateRevision {
-			if !podutil.IsPodReady(pod) {
+			if !k8s.IsPodReady(pod) {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded ticdc pod: [%s] is not ready", ns, tcName, podName)
 			}
 			if _, exist := tc.Status.TiCDC.Captures[podName]; !exist {

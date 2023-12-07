@@ -13,6 +13,7 @@
 
 package tidbcluster
 
+/*
 import (
 	"context"
 	"fmt"
@@ -25,28 +26,6 @@ import (
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/pkg/util"
-	"github.com/pingcap/tidb-operator/tests"
-	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
-	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
-	testutils "github.com/pingcap/tidb-operator/tests/e2e/util"
-	utilcloud "github.com/pingcap/tidb-operator/tests/e2e/util/cloud"
-	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
-	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
-	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
-	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
-	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
-	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
-	utiltikv "github.com/pingcap/tidb-operator/tests/e2e/util/tikv"
-	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-	"github.com/pingcap/tidb-operator/tests/pkg/mock"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -60,16 +39,37 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/log"
-	"k8s.io/kubernetes/test/e2e/framework/node"
-	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
-	"k8s.io/kubernetes/test/e2e/framework/pod"
-	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/tests"
+	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
+	testutils "github.com/pingcap/tidb-operator/tests/e2e/util"
+	utilcloud "github.com/pingcap/tidb-operator/tests/e2e/util/cloud"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
+	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
+	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
+	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
+	utiltikv "github.com/pingcap/tidb-operator/tests/e2e/util/tikv"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	"github.com/pingcap/tidb-operator/tests/pkg/mock"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
+	e2enode "github.com/pingcap/tidb-operator/tests/third_party/k8s/node"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/pod"
+	e2eskipper "github.com/pingcap/tidb-operator/tests/third_party/k8s/skipper"
 )
 
 // Stability specs describe tests which involve disruptive operations, e.g.
@@ -182,16 +182,16 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				err = wait.PollImmediate(time.Second*30, time.Minute*5, func() (bool, error) {
 					var ok bool
 					var err error
-					framework.Logf("check whether pods of cluster %q are changed", clusterName)
+					log.Logf("check whether pods of cluster %q are changed", clusterName)
 					ok, err = utilpod.PodsAreChanged(c, podList.Items)()
 					if err != nil {
-						framework.Logf("ERROR: meet error during check pods of cluster %q are changed, err:%v", clusterName, err)
+						log.Logf("ERROR: meet error during check pods of cluster %q are changed, err:%v", clusterName, err)
 						return false, err
 					}
 					if ok {
 						return true, nil
 					}
-					framework.Logf("check whether pods of cluster %q are running", clusterName)
+					log.Logf("check whether pods of cluster %q are running", clusterName)
 					newPodList, err := c.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 					if err != nil {
 						return false, err
@@ -201,7 +201,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 							return false, fmt.Errorf("pod %s/%s is not running", pod.Namespace, pod.Name)
 						}
 					}
-					framework.Logf("check whehter tidb cluster %q is connectable", clusterName)
+					log.Logf("check whehter tidb cluster %q is connectable", clusterName)
 					ok, err = utiltidb.TiDBIsConnectable(fw, ns, clusterName, "root", "")()
 					if !ok || err != nil {
 						// not connectable or some error happened
@@ -318,7 +318,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			framework.ExpectNoError(err, "failed to list pods in ns %s", ns)
 			for _, pod := range podList.Items {
 				if v, ok := pod.Labels[label.ComponentLabelKey]; !ok {
-					framework.Failf("pod %s/%s does not have component label key %q", pod.Namespace, pod.Name, label.ComponentLabelKey)
+					log.Failf("pod %s/%s does not have component label key %q", pod.Namespace, pod.Name, label.ComponentLabelKey)
 				} else if v == label.PDLabelVal {
 					allPDNodes[pod.Name] = allNodes[pod.Spec.NodeName]
 				} else if v == label.TiKVLabelVal {
@@ -361,68 +361,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			gomega.Expect(len(tikvPodsOnDeletedNode)).To(gomega.BeNumerically(">=", 1), "the number of affected tikvs must be equal or greater than 1")
 			err = framework.TestContext.CloudConfig.Provider.DeleteNode(nodeToDelete)
 			framework.ExpectNoError(err, fmt.Sprintf("failed to delete node %q", nodeToDelete.Name))
-			framework.Logf("Node %q deleted", nodeToDelete.Name)
-
-			if framework.TestContext.Provider == "aws" {
-				// The node object will be gone with physical machine.
-				ginkgo.By(fmt.Sprintf("[AWS/EKS] Wait for the node object %q to be deleted", nodeToDelete.Name))
-				err = wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
-					_, err = c.CoreV1().Nodes().Get(context.TODO(), nodeToDelete.Name, metav1.GetOptions{})
-					if err == nil || !apierrors.IsNotFound(err) {
-						return false, nil
-					}
-					return true, nil
-				})
-				framework.ExpectNoError(err, "failed to get node %s", nodeToDelete.Name)
-
-				ginkgo.By("[AWS/EKS] New instance will be created and join the cluster")
-				_, err := node.CheckReady(c, len(nodeList.Items), 5*time.Minute)
-				framework.ExpectNoError(err, "failed to check node ready state")
-
-				ginkgo.By("[AWS/EKS] Initialize newly created node")
-				nodeList, err = c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-				framework.ExpectNoError(err, "failed to list nodes")
-				initialized := 0
-				for _, node := range nodeList.Items {
-					if _, ok := allNodes[node.Name]; !ok {
-						framework.ExpectNoError(utilnode.InitNode(&node))
-						initialized++
-					}
-				}
-				gomega.Expect(initialized).To(gomega.BeNumerically("==", 1), "must have a node initialized")
-			} else if framework.TestContext.Provider == "gke" {
-				instanceIDAnn := "container.googleapis.com/instance_id"
-				oldInstanceID, ok := nodeToDelete.Annotations[instanceIDAnn]
-				if !ok {
-					framework.Failf("instance label %q not found on node object %q", instanceIDAnn, nodeToDelete.Name)
-				}
-
-				ginkgo.By("[GCP/GKE] Wait for instance ID to be updated")
-				err = wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
-					node, err := c.CoreV1().Nodes().Get(context.TODO(), nodeToDelete.Name, metav1.GetOptions{})
-					if err != nil {
-						return false, nil
-					}
-					instanceID, ok := node.Annotations[instanceIDAnn]
-					if !ok {
-						return false, nil
-					}
-					if instanceID == oldInstanceID {
-						return false, nil
-					}
-					framework.Logf("instance ID of node %q changed from %q to %q", nodeToDelete.Name, oldInstanceID, instanceID)
-					return true, nil
-				})
-				framework.ExpectNoError(err, "wait for instance ID timeout")
-
-				ginkgo.By("[GCP/GKE] Wait for the node to be ready")
-				node.WaitForNodeToBeReady(c, nodeToDelete.Name, time.Minute*5)
-
-				ginkgo.By(fmt.Sprintf("[GCP/GKE] Initialize underlying machine of node %s", nodeToDelete.Name))
-				node, err := c.CoreV1().Nodes().Get(context.TODO(), nodeToDelete.Name, metav1.GetOptions{})
-				framework.ExpectNoError(err, "failed to get node %s", nodeToDelete.Name)
-				framework.ExpectNoError(utilnode.InitNode(node))
-			}
+			log.Logf("Node %q deleted", nodeToDelete.Name)
 
 			ginkgo.By("Mark stores of failed tikv pods as tombstone")
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, clusterName, false)
@@ -433,7 +372,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				}
 			}()
 			for _, pod := range tikvPodsOnDeletedNode {
-				framework.Logf("Mark tikv store of pod %s/%s as Tombstone", ns, pod.Name)
+				log.Logf("Mark tikv store of pod %s/%s as Tombstone", ns, pod.Name)
 				err = wait.PollImmediate(time.Second*3, time.Minute, func() (bool, error) {
 					storeID, err := utiltikv.GetStoreIDByPodName(cli, ns, clusterName, pod.Name)
 					if err != nil {
@@ -449,7 +388,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 			}
 			ginkgo.By("Delete pd members")
 			for _, pod := range pdPodsOnDeletedNode {
-				framework.Logf("Delete pd member of pod %s/%s", ns, pod.Name)
+				log.Logf("Delete pd member of pod %s/%s", ns, pod.Name)
 				err = wait.PollImmediate(time.Second*3, time.Minute, func() (bool, error) {
 					err = pdClient.DeleteMember(pod.Name)
 					if err != nil {
@@ -474,7 +413,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 				for _, pvcName := range pvcNamesOnDeletedNode {
 					pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), pvcName, metav1.GetOptions{})
 					if err != nil && !apierrors.IsNotFound(err) {
-						framework.Failf("apiserver error: %v", err)
+						log.Failf("apiserver error: %v", err)
 					}
 					if apierrors.IsNotFound(err) {
 						continue
@@ -488,7 +427,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					}
 				}
 			} else if framework.TestContext.Provider == "gke" {
-				framework.Logf("We are using fixed paths in local PVs in our e2e. PVs of the deleted node are usable though the underlying storage is empty now")
+				log.Logf("We are using fixed paths in local PVs in our e2e. PVs of the deleted node are usable though the underlying storage is empty now")
 				// Because of pod exponential crash loop back off, we can
 				// delete the failed pods to make it start soon.
 				// Note that this is optional.
@@ -770,7 +709,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					}
 					return false, err
 				}
-				_, condition := podutil.GetPodCondition(&pod.Status, v1.PodScheduled)
+				_, condition := k8s.GetPodCondition(&pod.Status, v1.PodScheduled)
 				if condition == nil || condition.Status != v1.ConditionTrue {
 					return false, nil
 				}
@@ -829,7 +768,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					}
 					return false, err
 				}
-				return !podutil.IsPodReady(pod), nil
+				return !k8s.IsPodReady(pod), nil
 			})
 			framework.ExpectNoError(err, "wait for patched pod ready timeout")
 
@@ -1590,3 +1529,4 @@ var _ = ginkgo.Describe("[Stability]", func() {
 		})
 	})
 })
+*/

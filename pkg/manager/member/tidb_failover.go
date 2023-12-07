@@ -19,10 +19,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type tidbFailover struct {
@@ -77,7 +77,7 @@ func (f *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 				return fmt.Errorf("tidbFailover.Failover: failed to get pods %s for cluster %s/%s, error: %s", tidbMember.Name, tc.GetNamespace(), tc.GetName(), err)
 			}
 
-			_, condition := podutil.GetPodCondition(&pod.Status, corev1.PodScheduled)
+			_, condition := k8s.GetPodCondition(&pod.Status, corev1.PodScheduled)
 			if condition == nil || condition.Status != corev1.ConditionTrue {
 				// if a member is unheathy because it's not scheduled yet, we
 				// should not create failover pod for it

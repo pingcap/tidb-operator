@@ -20,12 +20,12 @@ import (
 	"time"
 
 	podutil "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func (oa *OperatorActions) setCabundleFromApiServer(info *OperatorConfig) error {

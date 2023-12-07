@@ -21,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/util/slice"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -29,6 +28,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 )
 
 // ControlInterface implements the control logic for updating VolumeRestore
@@ -118,7 +118,7 @@ func (c *defaultRestoreControl) removeProtectionFinalizer(volumeRestore *v1alpha
 	name := volumeRestore.GetName()
 
 	if needToRemoveFinalizer(volumeRestore) {
-		volumeRestore.Finalizers = slice.RemoveString(volumeRestore.Finalizers, label.VolumeRestoreFederationFinalizer, nil)
+		volumeRestore.Finalizers = k8s.RemoveString(volumeRestore.Finalizers, label.VolumeRestoreFederationFinalizer, nil)
 		_, err := c.cli.FederationV1alpha1().VolumeRestores(ns).Update(context.TODO(), volumeRestore, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("remove VolumeRestore %s/%s protection finalizers failed, err: %v", ns, name, err)
@@ -131,7 +131,7 @@ func (c *defaultRestoreControl) removeProtectionFinalizer(volumeRestore *v1alpha
 
 func needToAddFinalizer(volumeRestore *v1alpha1.VolumeRestore) bool {
 	return volumeRestore.DeletionTimestamp == nil &&
-		!slice.ContainsString(volumeRestore.Finalizers, label.VolumeRestoreFederationFinalizer, nil)
+		!k8s.ContainsString(volumeRestore.Finalizers, label.VolumeRestoreFederationFinalizer, nil)
 }
 
 func needToRemoveFinalizer(volumeRestore *v1alpha1.VolumeRestore) bool {
@@ -139,7 +139,7 @@ func needToRemoveFinalizer(volumeRestore *v1alpha1.VolumeRestore) bool {
 }
 
 func isDeletionCandidate(volumeRestore *v1alpha1.VolumeRestore) bool {
-	return volumeRestore.DeletionTimestamp != nil && slice.ContainsString(volumeRestore.Finalizers, label.VolumeRestoreFederationFinalizer, nil)
+	return volumeRestore.DeletionTimestamp != nil && k8s.ContainsString(volumeRestore.Finalizers, label.VolumeRestoreFederationFinalizer, nil)
 }
 
 var _ ControlInterface = &defaultRestoreControl{}

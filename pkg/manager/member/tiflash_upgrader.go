@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/pkg/tiflashapi"
 	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
 
@@ -28,7 +29,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 const (
@@ -121,8 +121,8 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		}
 
 		if revision == tc.Status.TiFlash.StatefulSet.UpdateRevision {
-			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
-				readyCond := podutil.GetPodReadyCondition(pod.Status)
+			if !k8s.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
+				readyCond := k8s.GetPodReadyCondition(pod.Status)
 				if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
 					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tiflash pod: [%s] is not ready", ns, tcName, podName)
 

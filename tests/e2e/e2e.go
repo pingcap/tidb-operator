@@ -30,18 +30,7 @@ import (
 	"github.com/onsi/ginkgo/config"
 	"github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/gomega"
-	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/version"
-	"github.com/pingcap/tidb-operator/tests"
-	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
-	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
-	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
-	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
-	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	v1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,20 +42,27 @@ import (
 	"k8s.io/component-base/logs"
 	"k8s.io/klog/v2"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	storageutil "k8s.io/kubernetes/pkg/apis/storage/v1/util"
-	"k8s.io/kubernetes/test/e2e/framework"
-	e2ekubectl "k8s.io/kubernetes/test/e2e/framework/kubectl"
-	"k8s.io/kubernetes/test/e2e/framework/log"
-	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
-	"k8s.io/kubernetes/test/e2e/framework/pod"
 	utilnet "k8s.io/utils/net"
 
 	// ensure auth plugins are loaded
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	// ensure that cloud providers are loaded
-	_ "k8s.io/kubernetes/test/e2e/framework/providers/aws"
-	_ "k8s.io/kubernetes/test/e2e/framework/providers/gce"
+	// no cloud provider specific for now in real e2e
+
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/version"
+	"github.com/pingcap/tidb-operator/tests"
+	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	"github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	e2ekubectl "github.com/pingcap/tidb-operator/tests/third_party/k8s/kubectl"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
+	e2enode "github.com/pingcap/tidb-operator/tests/third_party/k8s/node"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/pod"
 )
 
 var (
@@ -145,52 +141,6 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 		log.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
 	}
 
-	ginkgo.By("Initializing all nodes")
-	nodeList, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-	framework.ExpectNoError(err, "failed to list nodes")
-	for _, node := range nodeList.Items {
-		framework.Logf("Initializing node %q", node.Name)
-		framework.ExpectNoError(utilnode.InitNode(&node), fmt.Sprintf("initializing node %s failed", node.Name))
-	}
-
-	// By using default storage class in GKE/EKS (aws), network attached storage
-	// which be used and we must clean them later.
-	// We set local-storage class as default for simplicity.
-	// The default storage class of kind is local-path-provisioner which
-	// consumes local storage like local-volume-provisioner. However, it's not
-	// stable in our e2e testing.
-	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" {
-		defaultSCName := "local-storage"
-		list, err := c.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
-		framework.ExpectNoError(err, "list storage class failed")
-		// only one storage class can be marked default
-		// https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/#changing-the-default-storageclass
-		var localStorageSC *storagev1.StorageClass
-		for i, sc := range list.Items {
-			if sc.Name == defaultSCName {
-				localStorageSC = &list.Items[i]
-			} else if storageutil.IsDefaultAnnotation(sc.ObjectMeta) {
-				delete(sc.ObjectMeta.Annotations, storageutil.IsDefaultStorageClassAnnotation)
-				_, err = c.StorageV1().StorageClasses().Update(context.TODO(), &sc, metav1.UpdateOptions{})
-				framework.ExpectNoError(err, "update storage class failed, %v", sc)
-			}
-		}
-		// nolint: staticcheck
-		// reason: SA5011(related information): this check suggests that the pointer can be nil
-		if localStorageSC == nil {
-			log.Failf("local-storage storage class not found")
-		}
-		// nolint: staticcheck
-		// reason: SA5011: possible nil pointer dereference
-		if localStorageSC.Annotations == nil {
-			localStorageSC.Annotations = map[string]string{}
-		}
-		localStorageSC.Annotations[storageutil.IsDefaultStorageClassAnnotation] = "true"
-		log.Logf("Setting %q as the default storage class", localStorageSC.Name)
-		_, err = c.StorageV1().StorageClasses().Update(context.TODO(), localStorageSC, metav1.UpdateOptions{})
-		framework.ExpectNoError(err, "update storage class failed, %v", localStorageSC)
-	}
-
 	// Log the version of the server and this client.
 	log.Logf("e2e test version: %s", version.Get().GitVersion)
 
@@ -232,7 +182,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		cmd := exec.Command("sh", "-c", p.cmd)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			framework.Failf("failed to %s (cmd: %q, error: %v, output: %s", p.text, p.cmd, err, string(output))
+			log.Failf("failed to %s (cmd: %q, error: %v, output: %s", p.text, p.cmd, err, string(output))
 		}
 	}
 
@@ -259,13 +209,13 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	setupSuite(kubeCli, cli, apiExtCli)
 	// override with hard-coded value
 	e2econfig.TestConfig.ManifestDir = "/manifests"
-	framework.Logf("====== e2e configuration ======")
-	framework.Logf("%s", e2econfig.TestConfig.MustPrettyPrintJSON())
+	log.Logf("====== e2e configuration ======")
+	log.Logf("%s", e2econfig.TestConfig.MustPrettyPrintJSON())
 	// preload images
 	if e2econfig.TestConfig.PreloadImages {
 		ginkgo.By("Preloading images")
 		if err := utilimage.PreloadImages(); err != nil {
-			framework.Failf("failed to pre-load images: %v", err)
+			log.Failf("failed to pre-load images: %v", err)
 		}
 	}
 
@@ -498,7 +448,7 @@ func getDefaultClusterIPFamily(c kubernetes.Interface) string {
 	// Get the ClusterIP of the kubernetes service created in the default namespace
 	svc, err := c.CoreV1().Services(metav1.NamespaceDefault).Get(context.TODO(), "kubernetes", metav1.GetOptions{})
 	if err != nil {
-		framework.Failf("Failed to get kubernetes service ClusterIP: %v", err)
+		log.Failf("Failed to get kubernetes service ClusterIP: %v", err)
 	}
 
 	if utilnet.IsIPv6String(svc.Spec.ClusterIP) {
@@ -518,25 +468,25 @@ func waitForDaemonSets(c kubernetes.Interface, ns string, allowedNotReadyNodes i
 	}
 
 	start := time.Now()
-	framework.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start",
+	log.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start",
 		timeout, ns)
 
 	return wait.PollImmediate(framework.Poll, timeout, func() (bool, error) {
 		dsList, err := c.AppsV1().DaemonSets(ns).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
-			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
+			log.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
 			return false, err
 		}
 		var notReadyDaemonSets []string
 		for _, ds := range dsList.Items {
-			framework.Logf("%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)", ds.Status.NumberReady, ds.Status.DesiredNumberScheduled, ns, ds.ObjectMeta.Name, int(time.Since(start).Seconds()))
+			log.Logf("%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)", ds.Status.NumberReady, ds.Status.DesiredNumberScheduled, ns, ds.ObjectMeta.Name, int(time.Since(start).Seconds()))
 			if ds.Status.DesiredNumberScheduled-ds.Status.NumberReady > allowedNotReadyNodes {
 				notReadyDaemonSets = append(notReadyDaemonSets, ds.ObjectMeta.Name)
 			}
 		}
 
 		if len(notReadyDaemonSets) > 0 {
-			framework.Logf("there are not ready daemonsets: %v", notReadyDaemonSets)
+			log.Logf("there are not ready daemonsets: %v", notReadyDaemonSets)
 			return false, nil
 		}
 
@@ -561,5 +511,5 @@ func setupSuitePerGinkgoNode() {
 		klog.Fatal("Error loading client: ", err)
 	}
 	framework.TestContext.IPFamily = getDefaultClusterIPFamily(c)
-	framework.Logf("Cluster IP family: %s", framework.TestContext.IPFamily)
+	log.Logf("Cluster IP family: %s", framework.TestContext.IPFamily)
 }
