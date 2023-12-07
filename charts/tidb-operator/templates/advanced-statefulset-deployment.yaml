@@ -38,6 +38,9 @@ spec:
         - --leader-elect
         - --leader-elect-resource-name=advanced-statefulset-controller
         - --leader-elect-resource-namespace=$(POD_NAMESPACE)
+        {{- if .Values.advancedStatefulset.resourceLock }}
+        - --leader-elect-resource-lock={{ .Values.advancedStatefulset.resourceLock }}
+        {{- end }}
         env:
         - name: POD_NAMESPACE
           valueFrom:
