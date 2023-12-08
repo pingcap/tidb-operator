@@ -21,18 +21,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingcap/kvproto/pkg/pdpb"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/tikvapi"
+	pd "github.com/tikv/pd/client/http"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type kvClient struct {
@@ -73,10 +74,10 @@ func TestTiKVPodSyncForEviction(t *testing.T) {
 	var tikvStatus atomic.Value
 	tikvStatus.Store(v1alpha1.TiKVStateDown)
 	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-		storesInfo := &pdapi.StoresInfo{
-			Stores: []*pdapi.StoreInfo{
+		storesInfo := &pd.StoresInfo{
+			Stores: []pd.StoreInfo{
 				{
-					Store: &pdapi.MetaStore{
+					Store: pd.MetaStore{
 						StateName: tikvStatus.Load().(string),
 					},
 				},
@@ -210,8 +211,8 @@ func TestTiKVPodSyncForReplaceVolume(t *testing.T) {
 		pdClient := pdapi.NewFakePDClient()
 		c.testPDClient = pdClient
 		pdClient.AddReaction(pdapi.GetStoreActionType, func(action *pdapi.Action) (interface{}, error) {
-			storeInfo := &pdapi.StoreInfo{
-				Store: &pdapi.MetaStore{
+			storeInfo := &pd.StoreInfo{
+				Store: pd.MetaStore{
 					StateName: tt.storeState,
 				},
 			}
@@ -452,7 +453,7 @@ func TestPDPodSyncForLeaderTransfer(t *testing.T) {
 				},
 				Members: make(map[string]v1alpha1.PDMember),
 			}
-			healths := make([]pdapi.MemberHealth, c.replicas)
+			healths := make([]pd.MemberHealth, c.replicas)
 			for i := 0; i < c.replicas; i++ {
 				member := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), i)
 				tc.Status.PD.Members[member] = v1alpha1.PDMember{
@@ -465,13 +466,13 @@ func TestPDPodSyncForLeaderTransfer(t *testing.T) {
 						health = false
 					}
 				}
-				healths[i] = pdapi.MemberHealth{
+				healths[i] = pd.MemberHealth{
 					Name:   member,
 					Health: health,
 				}
 			}
 			pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
-				return &pdapi.HealthInfo{Healths: healths}, nil
+				return &pd.HealthInfo{Healths: healths}, nil
 			})
 			for _, i := range c.failed {
 				member := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.Name), i)
@@ -764,7 +765,7 @@ func TestPdPodSyncForReplaceVolume(t *testing.T) {
 	})
 
 	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
-		return &pdapi.MembersInfo{
+		return &pd.MembersInfo{
 			Members: []*pdpb.Member{
 				{
 					MemberId: 123,

@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -127,19 +128,20 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		skipPreCheck = true
 	} else {
 		var err error
+		ctx := context.TODO()
 		pdClient := controller.GetPDClient(s.deps.PDControl, tc)
-		storesInfo, err := pdClient.GetStores()
+		storesInfo, err := pdClient.GetStores(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to get stores info in TidbCluster %s/%s", tc.GetNamespace(), tc.GetName())
 		}
-		config, err := pdClient.GetConfig()
+		config, err := pdClient.GetConfig(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to get config in TidbCluster %s/%s", tc.GetNamespace(), tc.GetName())
 		}
-		maxReplicas = int(*(config.Replication.MaxReplicas))
+		maxReplicas = int(config.Replication.MaxReplicas)
 		// filter out TiFlash
 		for _, store := range storesInfo.Stores {
-			if store.Store != nil && store.Store.StateName == v1alpha1.TiKVStateUp && util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiKVLabelVal) {
+			if store.Store.StateName == v1alpha1.TiKVStateUp && util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiKVLabelVal) {
 				upTikvStoreCount++
 			}
 		}
@@ -207,7 +209,7 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 				return deletedUpStore, err
 			}
 			if state != v1alpha1.TiKVStateOffline {
-				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(id); err != nil {
+				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(context.TODO(), id); err != nil {
 					klog.Errorf("tikvScaler.ScaleIn: failed to delete store %d, %v", id, err)
 					return deletedUpStore, err
 				}

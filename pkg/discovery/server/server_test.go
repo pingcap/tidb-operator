@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	pd "github.com/tikv/pd/client/http"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -79,7 +80,7 @@ func TestServer(t *testing.T) {
 	defer httpServer.Close()
 
 	var lock sync.RWMutex
-	pdMemberInfos := &pdapi.MembersInfo{
+	pdMemberInfos := &pd.MembersInfo{
 		Members: []*pdpb.Member{},
 	}
 	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {

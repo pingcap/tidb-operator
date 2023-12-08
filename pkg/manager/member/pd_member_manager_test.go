@@ -19,8 +19,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -32,6 +30,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 
+	"github.com/google/go-cmp/cmp"
+	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -40,6 +40,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	pd "github.com/tikv/pd/client/http"
 )
 
 func TestPDMemberManagerSyncCreate(t *testing.T) {
@@ -235,7 +236,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 	type testcase struct {
 		name                       string
 		modify                     func(cluster *v1alpha1.TidbCluster)
-		pdHealth                   *pdapi.HealthInfo
+		pdHealth                   *pd.HealthInfo
 		errWhenUpdateStatefulSet   bool
 		errWhenUpdatePDService     bool
 		errWhenUpdatePDPeerService bool
@@ -353,7 +354,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 					{Name: "pd", Type: string(corev1.ServiceTypeNodePort)},
 				}
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
 				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
 				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
@@ -389,7 +390,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 					{Name: "pd", Type: string(corev1.ServiceTypeNodePort)},
 				}
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
 				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
 				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
@@ -407,7 +408,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
 				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
 				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
@@ -473,7 +474,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 					}}},
 				}
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
 				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
 				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
@@ -505,7 +506,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 					{Name: "additional", Image: "test"},
 				}
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
 				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
 				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
@@ -641,7 +642,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 	type testcase struct {
 		name                string
 		modify              func(cluster *v1alpha1.TidbCluster)
-		pdHealth            *pdapi.HealthInfo
+		pdHealth            *pd.HealthInfo
 		err                 bool
 		statusChange        func(*apps.StatefulSet)
 		expectStatefulSetFn func(*GomegaWithT, *apps.StatefulSet, error)
@@ -701,7 +702,7 @@ func TestPDMemberManagerUpgrade(t *testing.T) {
 			modify: func(cluster *v1alpha1.TidbCluster) {
 				cluster.Spec.PD.Image = "pd-test-image:v2"
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: true},
 				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: true},
 				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://test-pd-3.test-pd-peer.default.svc:2379"}, Health: false},
@@ -740,7 +741,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 		name                string
 		preModify           func(cluster *v1alpha1.TidbCluster)
 		modify              func(cluster *v1alpha1.TidbCluster)
-		pdHealth            *pdapi.HealthInfo
+		pdHealth            *pd.HealthInfo
 		err                 bool
 		statusChange        func(*apps.StatefulSet)
 		expectStatefulSetFn func(*GomegaWithT, *apps.StatefulSet, error)
@@ -807,7 +808,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 				cluster.ObjectMeta.Annotations = make(map[string]string)
 				cluster.ObjectMeta.Annotations["tidb.pingcap.com/force-upgrade"] = "true"
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: false},
 				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: false},
 				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
@@ -839,7 +840,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 			modify: func(cluster *v1alpha1.TidbCluster) {
 				cluster.Spec.PD.Image = "pd-test-image:v2"
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: false},
 			}},
 			err: true,
@@ -869,7 +870,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 			modify: func(cluster *v1alpha1.TidbCluster) {
 				cluster.Spec.PD.Image = "pd-test-image:v2"
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: false},
 			}},
 			err: true,
@@ -896,7 +897,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 				cluster.Spec.PD.Image = "pd-test-image:v2"
 				cluster.Spec.PD.Replicas = 1
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: false},
 				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: false},
 				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
@@ -2693,7 +2694,7 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 	type testcase struct {
 		name                string
 		modify              func(cluster *v1alpha1.TidbCluster, podIndexer cache.Indexer, pvcIndexer cache.Indexer)
-		pdHealth            *pdapi.HealthInfo
+		pdHealth            *pd.HealthInfo
 		tcStatusChange      func(cluster *v1alpha1.TidbCluster)
 		err                 bool
 		expectTidbClusterFn func(*GomegaWithT, *v1alpha1.TidbCluster)
@@ -2791,7 +2792,7 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 					pvcIndexer.Add(pvc2)
 				}
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0:2379"}, Health: false},
 				{Name: "test-pd-1", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-1:2379"}, Health: false},
 			}},
@@ -2835,7 +2836,7 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 				}
 
 			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+			pdHealth: &pd.HealthInfo{Healths: []pd.MemberHealth{
 				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0.test-pd-peer.default.svc:2379"}, Health: false},
 				{Name: "test-pd-1", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-1.test-pd-peer.default.svc:2379"}, Health: false},
 				{Name: "test-pd-2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2.test-pd-peer.default.svc:2379"}, Health: false},

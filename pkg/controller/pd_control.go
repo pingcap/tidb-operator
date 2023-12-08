@@ -14,12 +14,15 @@
 package controller
 
 import (
+	"context"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	pd "github.com/tikv/pd/client/http"
 )
 
 // getPDClientFromService gets the pd client from the TidbCluster
-func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pd.Client {
 	if tc.Heterogeneous() && tc.WithoutLocalPD() {
 		return pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled(),
 			pdapi.TLSCertFromTC(pdapi.Namespace(tc.GetNamespace()), tc.GetName()),
@@ -35,21 +38,22 @@ func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.Tid
 // build another one with the ClientURL in the PeerMembers.
 // ClientURL example:
 // ClientURL: https://cluster2-pd-0.cluster2-pd-peer.pingcap.svc.cluster2.local
-func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pd.Client {
 	pdClient := getPDClientFromService(pdControl, tc)
 
 	if len(tc.Status.PD.PeerMembers) == 0 {
 		return pdClient
 	}
 
-	_, err := pdClient.GetHealth()
+	ctx := context.TODO()
+	_, err := pdClient.GetHealth(ctx)
 	if err == nil {
 		return pdClient
 	}
 
 	for _, pdMember := range tc.Status.PD.PeerMembers {
 		pdPeerClient := pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdapi.SpecifyClient(pdMember.ClientURL, pdMember.Name))
-		_, err := pdPeerClient.GetHealth()
+		_, err := pdPeerClient.GetHealth(ctx)
 		if err == nil {
 			return pdPeerClient
 		}
@@ -69,7 +73,7 @@ func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *
 	return pdClient
 }
 
-// NewFakePDClient creates a fake pdclient that is set as the pd client
+// NewFakePDClientWithAddress creates a fake pdclient that is set as the pd client
 func NewFakePDClientWithAddress(pdControl *pdapi.FakePDControl, peerURL string) *pdapi.FakePDClient {
 	pdClient := pdapi.NewFakePDClient()
 	pdControl.SetPDClientWithAddress(peerURL, pdClient)

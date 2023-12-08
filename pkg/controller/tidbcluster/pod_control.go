@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
+	pd "github.com/tikv/pd/client/http"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,7 +55,7 @@ type PodController struct {
 	podStats   map[string]stat
 
 	// only set in test
-	testPDClient                  pdapi.PDClient
+	testPDClient                  pd.Client
 	recheckLeaderCountDuration    time.Duration
 	recheckClusterStableDuration  time.Duration
 	recheckStoreTombstoneDuration time.Duration
@@ -230,7 +231,7 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	}
 }
 
-func (c *PodController) getPDClient(tc *v1alpha1.TidbCluster) pdapi.PDClient {
+func (c *PodController) getPDClient(tc *v1alpha1.TidbCluster) pd.Client {
 	if c.testPDClient != nil {
 		return c.testPDClient
 	}
@@ -282,7 +283,7 @@ func (c *PodController) syncPDPodForLeaderTransfer(ctx context.Context, pod *cor
 	var err error
 	pdName := getPdName(pod, tc)
 	if tc.Status.PD.Leader.Name == pod.Name || tc.Status.PD.Leader.Name == pdName {
-		err = transferPDLeader(tc, pdClient)
+		err = transferPDLeader(ctx, tc, pdClient)
 		if err != nil {
 			return reconcile.Result{}, nil
 		}
@@ -317,11 +318,11 @@ func (c *PodController) syncPDPodForReplaceVolume(ctx context.Context, pod *core
 		return reconcile.Result{}, fmt.Errorf("Could not parse memberID (%s) from label for pod %s/%s", memberIDStr, pod.Namespace, pod.Name)
 	}
 	pdClient := c.getPDClient(tc)
-	leader, err := pdClient.GetPDLeader()
+	leader, err := pdClient.GetPDLeader(ctx)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	membersInfo, err := pdClient.GetMembers()
+	membersInfo, err := pdClient.GetMembers(ctx)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -340,7 +341,9 @@ func (c *PodController) syncPDPodForReplaceVolume(ctx context.Context, pod *core
 			return reconcile.Result{Requeue: true}, fmt.Errorf("not all PDs ready before leader transfer")
 		}
 		klog.Infof("Transferring PD Leader from %s to %s", pod.Name, targetMemberName)
-		pdClient.TransferPDLeader(targetMemberName)
+		if err := pdClient.TransferPDLeader(ctx, targetMemberName); err != nil {
+			return reconcile.Result{}, err
+		}
 		// Wait for leader transfer.
 		return reconcile.Result{Requeue: true}, nil
 	}
@@ -356,7 +359,7 @@ func (c *PodController) syncPDPodForReplaceVolume(ctx context.Context, pod *core
 			return reconcile.Result{Requeue: true}, fmt.Errorf("not all PDs ready before delete member")
 		}
 		klog.Infof("Deleting PD Member ID: %d", memberID)
-		err = pdClient.DeleteMemberByID(memberID)
+		err = pdClient.DeleteMemberByID(ctx, memberID)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -429,7 +432,7 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 			klog.Infof("Cluster %s is unstable: %s", tc.Name, unstableReason)
 			return reconcile.Result{RequeueAfter: c.recheckClusterStableDuration}, nil
 		}
-		err = pdClient.BeginEvictLeader(storeID)
+		err = pdapi.BeginEvictLeader(ctx, pdClient, storeID)
 		if err != nil {
 			return reconcile.Result{}, perrors.Annotatef(err, "failed to evict leader for store %d (Pod %s/%s)", storeID, pod.Namespace, pod.Name)
 		}
@@ -465,7 +468,7 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 				return perrors.Annotatef(err, "failed to get tikv store id from status for pod %s/%s", pod.Namespace, pod.Name)
 			}
 
-			err = pdClient.EndEvictLeader(storeID)
+			err = pdapi.EndEvictLeader(ctx, pdClient, storeID)
 			if err != nil {
 				return perrors.Annotatef(err, "failed to remove evict leader scheduler for store %d, pod %s/%s", storeID, pod.Namespace, pod.Name)
 			}
@@ -547,7 +550,7 @@ func (c *PodController) syncTiKVPodForReplaceVolume(ctx context.Context, pod *co
 	if pod.Labels[label.StoreIDLabelKey] == "" {
 		return reconcile.Result{Requeue: true}, fmt.Errorf("StoreID not yet updated on pod label")
 	}
-	storeInfo, err := pdClient.GetStore(storeID)
+	storeInfo, err := pdClient.GetStore(ctx, storeID)
 	if err != nil {
 		return reconcile.Result{}, perrors.Annotatef(err, "failed to get tikv store info from pd for storeid %d pod %s/%s", storeID, pod.Namespace, pod.Name)
 	}
@@ -557,7 +560,9 @@ func (c *PodController) syncTiKVPodForReplaceVolume(ctx context.Context, pod *co
 		}
 		// 1. Delete store
 		klog.Infof("storeid %d is Up, deleting due to replace volume annotation.", storeID)
-		pdClient.DeleteStore(storeID)
+		if err := pdClient.DeleteStore(ctx, storeID); err != nil {
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to delete store %d", storeID)
+		}
 		return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
 	} else if storeInfo.Store.StateName == v1alpha1.TiKVStateOffline {
 		// 2. Wait for Tombstone
@@ -738,14 +743,14 @@ func needPDLeaderTransfer(pod *corev1.Pod) (string, bool) {
 	return value, true
 }
 
-func transferPDLeader(tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) error {
+func transferPDLeader(ctx context.Context, tc *v1alpha1.TidbCluster, pdClient pd.Client) error {
 	// find a target from peer members
 	target := pickNewLeader(tc)
 	if len(target) == 0 {
 		return fmt.Errorf("can't find a target pd for leader transfer")
 	}
 
-	return pdClient.TransferPDLeader(target)
+	return pdClient.TransferPDLeader(ctx, target)
 }
 
 func pickNewLeader(tc *v1alpha1.TidbCluster) string {

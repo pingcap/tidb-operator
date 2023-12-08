@@ -16,6 +16,7 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
@@ -396,7 +397,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to create proxied PD client")
 		defer cancel()
 
-		evictLeaderSchedulers, err := pdClient.GetEvictLeaderSchedulers()
+		evictLeaderSchedulers, err := pdapi.GetEvictLeaderSchedulers(context.TODO(), pdClient)
 		framework.ExpectNoError(err, "failed to get EvictLeader")
 		res := utiltc.MustPDHasScheduler(evictLeaderSchedulers, "evict-leader-scheduler")
 		framework.ExpectEqual(res, false)
@@ -1319,7 +1320,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, tcName, true)
 				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()
-				storeInfo, err := pdClient.GetStores()
+				storeInfo, err := pdClient.GetStores(context.TODO())
 				if err != nil {
 					log.Logf("failed to get stores, %v", err)
 				}
@@ -1547,7 +1548,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, originTc.Name, false)
 				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()
-				storeInfo, err := pdClient.GetStores()
+				storeInfo, err := pdClient.GetStores(context.TODO())
 				if err != nil {
 					log.Logf("failed to get stores, %v", err)
 				}
@@ -1605,7 +1606,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(secretLister, fw, ns, originTc.Name, false)
 				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()
-				storeInfo, err := pdClient.GetStores()
+				storeInfo, err := pdClient.GetStores(context.TODO())
 				if err != nil {
 					log.Logf("failed to get stores, %v", err)
 				}
@@ -2383,7 +2384,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "fail to create proxied pdClient")
 					defer cancel()
 					err = wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
-						schedulers, err := pdClient.GetEvictLeaderSchedulers()
+						schedulers, err := pdapi.GetEvictLeaderSchedulers(context.TODO(), pdClient)
 						framework.ExpectNoError(err, "failed to get evict leader schedulers")
 						if len(schedulers) != 0 {
 							log.Logf("there are %d evict leader left: %v", len(schedulers), schedulers)
@@ -2782,7 +2783,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			defer cancel()
 
 			_ = wait.PollImmediate(15*time.Second, 3*time.Minute, func() (bool, error) {
-				storesInfo, err := pdClient.GetStores()
+				storesInfo, err := pdClient.GetStores(context.TODO())
 				framework.ExpectNoError(err, "get stores info error")
 				framework.ExpectEqual(storesInfo.Count, 3, "Expect number of stores is 3")
 				for _, store := range storesInfo.Stores {

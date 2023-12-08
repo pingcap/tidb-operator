@@ -99,7 +99,7 @@ func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha
 func (am *autoScalerManager) syncPD(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
 	strategy := autoscalerToStrategy(tac, component)
 	// Request PD for auto-scaling plans
-	plans, err := controller.GetPDClient(am.deps.PDControl, tc).GetAutoscalingPlans(*strategy)
+	plans, err := controller.GetPDClient(am.deps.PDControl, tc).GetAutoscalingPlans(context.TODO(), *strategy)
 	if err != nil {
 		klog.Errorf("tac[%s/%s] cannot get auto-scaling plans for component %v err:%v", tac.Namespace, tac.Name, component, err)
 		return err

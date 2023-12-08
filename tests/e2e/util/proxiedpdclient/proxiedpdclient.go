@@ -17,6 +17,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	pd "github.com/tikv/pd/client/http"
 	"net/url"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -38,7 +39,7 @@ import (
 //			log.Fatal(err)
 //		  }
 //	   defer cancel()
-func NewProxiedPDClient(secretLister corelisterv1.SecretLister, fw utilportforward.PortForward, namespace string, tcName string, tlsEnabled bool) (pdapi.PDClient, context.CancelFunc, error) {
+func NewProxiedPDClient(secretLister corelisterv1.SecretLister, fw utilportforward.PortForward, namespace string, tcName string, tlsEnabled bool) (pd.Client, context.CancelFunc, error) {
 	var tlsConfig *tls.Config
 	var err error
 	scheme := "http"
@@ -57,9 +58,9 @@ func NewProxiedPDClient(secretLister corelisterv1.SecretLister, fw utilportforwa
 		Scheme: scheme,
 		Host:   fmt.Sprintf("%s:%d", localHost, localPort),
 	}
-	return pdapi.NewPDClient(u.String(), pdapi.DefaultTimeout, tlsConfig), cancel, nil
+	return pd.NewClient([]string{u.String()}, pd.WithTLSConfig(tlsConfig)), cancel, nil
 }
 
-func NewProxiedPDClientFromTidbCluster(fw utilportforward.PortForward, secretLister corelisterv1.SecretLister, tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
+func NewProxiedPDClientFromTidbCluster(fw utilportforward.PortForward, secretLister corelisterv1.SecretLister, tc *v1alpha1.TidbCluster) (pd.Client, context.CancelFunc, error) {
 	return NewProxiedPDClient(secretLister, fw, tc.GetNamespace(), tc.GetName(), tc.IsTLSClusterEnabled())
 }

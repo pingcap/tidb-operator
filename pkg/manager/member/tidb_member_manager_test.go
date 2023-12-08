@@ -33,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	pd "github.com/tikv/pd/client/http"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -180,8 +181,8 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		pdControl := tmm.deps.PDControl.(*pdapi.FakePDControl)
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &pdapi.PDConfigFromAPI{
-				Replication: &pdapi.PDReplicationConfig{},
+			return &pd.ServerConfig{
+				Replication: pd.ReplicationConfig{},
 			}, nil
 		})
 
@@ -2203,8 +2204,8 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 		pdControl := tmm.deps.PDControl.(*pdapi.FakePDControl)
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &pdapi.PDConfigFromAPI{
-				Replication: &pdapi.PDReplicationConfig{},
+			return &pd.ServerConfig{
+				Replication: pd.ReplicationConfig{},
 			}, nil
 		})
 
@@ -2691,8 +2692,8 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 				if len(labels) == 0 {
 					labels = []string{"topology.kubernetes.io/zone", corev1.LabelHostname}
 				}
-				return &pdapi.PDConfigFromAPI{
-					Replication: &pdapi.PDReplicationConfig{
+				return &pd.ServerConfig{
+					Replication: pd.ReplicationConfig{
 						LocationLabels: labels,
 					},
 				}, nil

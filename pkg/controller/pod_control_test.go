@@ -25,6 +25,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	pd "github.com/tikv/pd/client/http"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,7 +75,7 @@ func TestPodControlUpdateMetaInfo(t *testing.T) {
 					return cluster, nil
 				})
 				pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
-					membersInfo := &pdapi.MembersInfo{
+					membersInfo := &pd.MembersInfo{
 						Members: []*pdpb.Member{
 							{
 								MemberId: 111,
@@ -83,14 +85,12 @@ func TestPodControlUpdateMetaInfo(t *testing.T) {
 					return membersInfo, nil
 				})
 				pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-					storesInfo := &pdapi.StoresInfo{
-						Stores: []*pdapi.StoreInfo{
+					storesInfo := &pd.StoresInfo{
+						Stores: []pd.StoreInfo{
 							{
-								Store: &pdapi.MetaStore{
-									Store: &metapb.Store{
-										Id:      333,
-										Address: fmt.Sprintf("%s.web", TestPodName),
-									},
+								Store: pd.MetaStore{
+									ID:      333,
+									Address: fmt.Sprintf("%s.web", TestPodName),
 								},
 							},
 						},
@@ -209,7 +209,7 @@ func TestPodControlUpdateMetaInfoSuccess(t *testing.T) {
 		return cluster, nil
 	})
 	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
-		membersInfo := &pdapi.MembersInfo{
+		membersInfo := &pd.MembersInfo{
 			Members: []*pdpb.Member{
 				{
 					MemberId: 111,
@@ -219,14 +219,12 @@ func TestPodControlUpdateMetaInfoSuccess(t *testing.T) {
 		return membersInfo, nil
 	})
 	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-		storesInfo := &pdapi.StoresInfo{
-			Stores: []*pdapi.StoreInfo{
+		storesInfo := &pd.StoresInfo{
+			Stores: []pd.StoreInfo{
 				{
-					Store: &pdapi.MetaStore{
-						Store: &metapb.Store{
-							Id:      333,
-							Address: fmt.Sprintf("%s.web", TestPodName),
-						},
+					Store: pd.MetaStore{
+						ID:      333,
+						Address: fmt.Sprintf("%s.web", TestPodName),
 					},
 				},
 			},
@@ -252,7 +250,7 @@ func TestPodControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
 		return nil, errors.New("failed to get cluster info from PD server")
 	})
 	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
-		membersInfo := &pdapi.MembersInfo{
+		membersInfo := &pd.MembersInfo{
 			Members: []*pdpb.Member{
 				{
 					MemberId: 111,
@@ -262,14 +260,12 @@ func TestPodControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
 		return membersInfo, nil
 	})
 	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-		storesInfo := &pdapi.StoresInfo{
-			Stores: []*pdapi.StoreInfo{
+		storesInfo := &pd.StoresInfo{
+			Stores: []pd.StoreInfo{
 				{
-					Store: &pdapi.MetaStore{
-						Store: &metapb.Store{
-							Id:      333,
-							Address: fmt.Sprintf("%s.web", TestPodName),
-						},
+					Store: pd.MetaStore{
+						ID:      333,
+						Address: fmt.Sprintf("%s.web", TestPodName),
 					},
 				},
 			},
@@ -298,7 +294,7 @@ func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
 		return cluster, nil
 	})
 	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
-		membersInfo := &pdapi.MembersInfo{
+		membersInfo := &pd.MembersInfo{
 			Members: []*pdpb.Member{
 				{
 					MemberId: 111,
@@ -308,14 +304,12 @@ func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
 		return membersInfo, nil
 	})
 	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-		storesInfo := &pdapi.StoresInfo{
-			Stores: []*pdapi.StoreInfo{
+		storesInfo := &pd.StoresInfo{
+			Stores: []pd.StoreInfo{
 				{
-					Store: &pdapi.MetaStore{
-						Store: &metapb.Store{
-							Id:      333,
-							Address: fmt.Sprintf("%s.web", TestPodName),
-						},
+					Store: pd.MetaStore{
+						ID:      333,
+						Address: fmt.Sprintf("%s.web", TestPodName),
 					},
 				},
 			},

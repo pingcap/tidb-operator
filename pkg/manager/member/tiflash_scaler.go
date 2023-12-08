@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -145,7 +146,7 @@ func (s *tiflashScaler) scaleInOne(tc *v1alpha1.TidbCluster, ordinal int32) erro
 				return err
 			}
 			if state != v1alpha1.TiKVStateOffline {
-				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(id); err != nil {
+				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(context.TODO(), id); err != nil {
 					klog.Errorf("tiflash scale in: failed to delete store %d, %v", id, err)
 					return err
 				}

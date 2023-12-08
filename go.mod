@@ -31,12 +31,12 @@ require (
 	github.com/onsi/gomega v1.10.2
 	github.com/openshift/generic-admission-server v1.14.1-0.20210422140326-da96454c926d
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20231124094705-00595b4ef4ac
-	github.com/pingcap/errors v0.11.4
+	github.com/pingcap/errors v0.11.5-0.20211224045212-9687c2b0f87c
 	github.com/pingcap/kvproto v0.0.0-20231122054644-fb0f5c2a0a10
 	github.com/pingcap/tidb-operator/pkg/apis v1.6.0-alpha.8
 	github.com/pingcap/tidb-operator/pkg/client v1.6.0-alpha.8
 	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.11.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.28.0
 	github.com/prometheus/prom2json v1.3.0
@@ -45,10 +45,10 @@ require (
 	github.com/sethvargo/go-password v0.2.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.1
-	github.com/tikv/pd v2.1.17+incompatible
+	github.com/stretchr/testify v1.8.2
+	github.com/tikv/pd/client v0.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/client/v3 v3.5.0
-	go.uber.org/atomic v1.9.0
+	go.uber.org/atomic v1.10.0
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.3.0
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8
@@ -76,6 +76,7 @@ require (
 	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.2 // indirect
+	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
@@ -86,6 +87,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
+	github.com/pingcap/log v1.1.1-0.20221110025148-ca232912c9f3 // indirect
 	github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca // indirect
 	go.etcd.io/etcd/api/v3 v3.5.0 // indirect
 	go.opentelemetry.io/contrib v0.20.0 // indirect
@@ -135,11 +137,11 @@ require (
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
-	github.com/coreos/go-semver v0.3.0 // indirect
+	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/go-units v0.4.0
+	github.com/docker/go-units v0.5.0
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/elazarl/goproxy v0.0.0-20190421051319-9d40249d3c2f // indirect; indirectload
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
@@ -183,7 +185,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
-	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
@@ -194,8 +195,8 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.5 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	go.uber.org/multierr v1.8.0
-	go.uber.org/zap v1.23.0 // indirect
+	go.uber.org/multierr v1.11.0
+	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
@@ -209,7 +210,7 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog v1.0.0 // indirect
@@ -220,6 +221,8 @@ require (
 )
 
 replace github.com/pingcap/tidb-operator/pkg/apis => ./pkg/apis
+
+replace github.com/tikv/pd/client => github.com/HuSharp/pd/client v0.0.0-20231208071038-9ada30d08673
 
 replace github.com/pingcap/tidb-operator/pkg/client => ./pkg/client
 

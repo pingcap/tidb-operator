@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	pd "github.com/tikv/pd/client/http"
 
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
@@ -84,8 +85,8 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		newSet.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Int32Ptr(3)
 
 		pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
-			healthInfo := &pdapi.HealthInfo{
-				Healths: []pdapi.MemberHealth{
+			healthInfo := &pd.HealthInfo{
+				Healths: []pd.MemberHealth{
 					{
 						Name:   PdPodName(upgradeTcName, 1),
 						Health: !test.pdPeersAreUnstable,

@@ -16,11 +16,11 @@ package pdapi
 import (
 	"crypto/tls"
 	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	pd "github.com/tikv/pd/client/http"
 	"k8s.io/client-go/kubernetes"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
@@ -73,7 +73,7 @@ func UseHeadlessService(headless bool) Option {
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
-	GetPDClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) PDClient
+	GetPDClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) pd.Client
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
 	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) (PDEtcdClient, error)
 	// GetEndpoints return the endpoints and client tls.Config to connection pd/etcd.
@@ -141,7 +141,7 @@ type defaultPDControl struct {
 	secretLister corelisterv1.SecretLister
 
 	mutex     sync.Mutex
-	pdClients map[string]PDClient
+	pdClients map[string]pd.Client
 
 	etcdmutex     sync.Mutex
 	pdEtcdClients map[string]PDEtcdClient
@@ -157,12 +157,12 @@ func (c *noOpClose) Close() error {
 
 // NewDefaultPDControl returns a defaultPDControl instance
 func NewDefaultPDControl(secretLister corelisterv1.SecretLister) PDControlInterface {
-	return &defaultPDControl{secretLister: secretLister, pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
+	return &defaultPDControl{secretLister: secretLister, pdClients: map[string]pd.Client{}, pdEtcdClients: map[string]PDEtcdClient{}}
 }
 
-// NewDefaultPDControl returns a defaultPDControl instance
+// NewDefaultPDControlByCli returns a defaultPDControl instance
 func NewDefaultPDControlByCli(kubeCli kubernetes.Interface) PDControlInterface {
-	return &defaultPDControl{pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
+	return &defaultPDControl{pdClients: map[string]pd.Client{}, pdEtcdClients: map[string]PDEtcdClient{}}
 }
 
 func (pdc *defaultPDControl) GetEndpoints(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) (endpoints []string, tlsConfig *tls.Config, err error) {
@@ -216,7 +216,7 @@ func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string,
 }
 
 // GetPDClient provides a PDClient of real pd cluster, if the PDClient not existing, it will create new one.
-func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) PDClient {
+func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) pd.Client {
 	config := &clientConfig{}
 
 	config.tlsEnable = tlsEnabled
@@ -231,13 +231,13 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 		tlsConfig, err := GetTLSConfig(pdc.secretLister, config.tlsSecretNamespace, config.tlsSecretName)
 		if err != nil {
 			klog.Errorf("Unable to get tls config for tidb cluster %q in %s, pd client may not work: %v", tcName, namespace, err)
-			return &pdClient{url: config.clientURL, httpClient: &http.Client{Timeout: DefaultTimeout}}
+			return pd.NewClient([]string{config.clientURL})
 		}
 
-		return NewPDClient(config.clientURL, DefaultTimeout, tlsConfig)
+		return pd.NewClient([]string{config.clientURL}, pd.WithTLSConfig(tlsConfig))
 	}
 	if _, ok := pdc.pdClients[config.clientKey]; !ok {
-		pdc.pdClients[config.clientKey] = NewPDClient(config.clientURL, DefaultTimeout, nil)
+		pdc.pdClients[config.clientKey] = pd.NewClient([]string{config.clientURL})
 	}
 	return pdc.pdClients[config.clientKey]
 }
@@ -290,18 +290,18 @@ type FakePDControl struct {
 
 func NewFakePDControl(secretLister corelisterv1.SecretLister) *FakePDControl {
 	return &FakePDControl{
-		defaultPDControl{secretLister: secretLister, pdClients: map[string]PDClient{}},
+		defaultPDControl{secretLister: secretLister, pdClients: map[string]pd.Client{}},
 	}
 }
 
-func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclient PDClient) {
+func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclient pd.Client) {
 	fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, "")] = pdclient
 }
 
-func (fpc *FakePDControl) SetPDClientWithClusterDomain(namespace Namespace, tcName string, tcClusterDomain string, pdclient PDClient) {
+func (fpc *FakePDControl) SetPDClientWithClusterDomain(namespace Namespace, tcName string, tcClusterDomain string, pdclient pd.Client) {
 	fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, tcClusterDomain)] = pdclient
 }
 
-func (fpc *FakePDControl) SetPDClientWithAddress(peerURL string, pdclient PDClient) {
+func (fpc *FakePDControl) SetPDClientWithAddress(peerURL string, pdclient pd.Client) {
 	fpc.defaultPDControl.pdClients[peerURL] = pdclient
 }

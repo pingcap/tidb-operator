@@ -22,12 +22,13 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	perrors "github.com/pingcap/errors"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	pd "github.com/tikv/pd/client/http"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -625,26 +626,24 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			var replicas uint64 = 3
-			return &pdapi.PDConfigFromAPI{
-				Replication: &pdapi.PDReplicationConfig{
-					MaxReplicas: &replicas,
+			return &pd.ServerConfig{
+				Replication: pd.ReplicationConfig{
+					MaxReplicas: replicas,
 				},
 			}, nil
 		})
 
 		if test.getStoresFn == nil {
 			test.getStoresFn = func(action *pdapi.Action) (interface{}, error) {
-				store := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
+				store := pd.StoreInfo{
+					Store: pd.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tikv-0", "basic"),
-						},
+						Address:   fmt.Sprintf("%s-tikv-0", "basic"),
 					},
 				}
-				return &pdapi.StoresInfo{
+				return &pd.StoresInfo{
 					Count:  5,
-					Stores: []*pdapi.StoreInfo{store, store, store, store, store},
+					Stores: []pd.StoreInfo{store, store, store, store, store},
 				}, nil
 			}
 		}
@@ -886,17 +885,15 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			errExpectFn:   errExpectNotNil,
 			changed:       false,
 			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
-				store := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
+				store := pd.StoreInfo{
+					Store: pd.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tikv-0", "basic"),
-						},
+						Address:   fmt.Sprintf("%s-tikv-0", "basic"),
 					},
 				}
-				return &pdapi.StoresInfo{
+				return &pd.StoresInfo{
 					Count:  3,
-					Stores: []*pdapi.StoreInfo{store, store, store},
+					Stores: []pd.StoreInfo{store, store, store},
 				}, nil
 			},
 		},
@@ -913,31 +910,27 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			errExpectFn:   errExpectNotNil,
 			changed:       false,
 			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
-				store := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
+				store := pd.StoreInfo{
+					Store: pd.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tikv-0", "basic"),
-						},
+						Address:   fmt.Sprintf("%s-tikv-0", "basic"),
 					},
 				}
-				tiflashstore := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
+				tiflashStore := pd.StoreInfo{
+					Store: pd.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tiflash-0", "basic"),
-							Labels: []*metapb.StoreLabel{
-								{
-									Key:   "engine",
-									Value: "tiflash",
-								},
+						Address:   fmt.Sprintf("%s-tiflash-0", "basic"),
+						Labels: []pd.StoreLabel{
+							{
+								Key:   "engine",
+								Value: "tiflash",
 							},
 						},
 					},
 				}
-				return &pdapi.StoresInfo{
+				return pd.StoresInfo{
 					Count:  4,
-					Stores: []*pdapi.StoreInfo{store, store, store, tiflashstore},
+					Stores: []pd.StoreInfo{store, store, store, tiflashStore},
 				}, nil
 			},
 		},
@@ -1084,26 +1077,24 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			var replicas uint64 = 3
-			return &pdapi.PDConfigFromAPI{
-				Replication: &pdapi.PDReplicationConfig{
-					MaxReplicas: &replicas,
+			return &pd.ServerConfig{
+				Replication: pd.ReplicationConfig{
+					MaxReplicas: replicas,
 				},
 			}, nil
 		})
 
 		if test.getStoresFn == nil {
 			test.getStoresFn = func(action *pdapi.Action) (interface{}, error) {
-				store := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
+				store := pd.StoreInfo{
+					Store: pd.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tikv-0", "basic"),
-						},
+						Address:   fmt.Sprintf("%s-tikv-0", "basic"),
 					},
 				}
-				return &pdapi.StoresInfo{
+				return pd.StoresInfo{
 					Count:  5,
-					Stores: []*pdapi.StoreInfo{store, store, store, store, store},
+					Stores: []pd.StoreInfo{store, store, store, store, store},
 				}, nil
 			}
 		}
@@ -1391,17 +1382,15 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
-				store := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
+				store := pd.StoreInfo{
+					Store: pd.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tikv-0", "basic"),
-						},
+						Address:   fmt.Sprintf("%s-tikv-0", "basic"),
 					},
 				}
-				return &pdapi.StoresInfo{
+				return pd.StoresInfo{
 					Count:  6,
-					Stores: []*pdapi.StoreInfo{store, store, store, store, store, store},
+					Stores: []pd.StoreInfo{store, store, store, store, store, store},
 				}, nil
 			},
 			scaleInParallelism: 2,
@@ -1544,17 +1533,15 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
-				store := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
+				store := pd.StoreInfo{
+					Store: pd.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tikv-0", "basic"),
-						},
+						Address:   fmt.Sprintf("%s-tikv-0", "basic"),
 					},
 				}
-				return &pdapi.StoresInfo{
+				return pd.StoresInfo{
 					Count:  4,
-					Stores: []*pdapi.StoreInfo{store, store, store, store},
+					Stores: []pd.StoreInfo{store, store, store, store},
 				}, nil
 			},
 			scaleInParallelism: 2,
@@ -1609,31 +1596,27 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			getStoresFn: func(action *pdapi.Action) (interface{}, error) {
-				store := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
+				store := pd.StoreInfo{
+					Store: pd.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tikv-0", "basic"),
-						},
+						Address:   fmt.Sprintf("%s-tikv-0", "basic"),
 					},
 				}
-				tiflashstore := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
+				tiflashStore := pd.StoreInfo{
+					Store: pd.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tiflash-0", "basic"),
-							Labels: []*metapb.StoreLabel{
-								{
-									Key:   "engine",
-									Value: "tiflash",
-								},
+						Address:   fmt.Sprintf("%s-tiflash-0", "basic"),
+						Labels: []pd.StoreLabel{
+							{
+								Key:   "engine",
+								Value: "tiflash",
 							},
 						},
 					},
 				}
-				return &pdapi.StoresInfo{
+				return pd.StoresInfo{
 					Count:  5,
-					Stores: []*pdapi.StoreInfo{store, store, store, store, tiflashstore},
+					Stores: []pd.StoreInfo{store, store, store, store, tiflashStore},
 				}, nil
 			},
 			scaleInParallelism: 2,
@@ -1747,25 +1730,23 @@ func TestTiKVScalerScaleInSimultaneouslyExtra(t *testing.T) {
 		pdClient := controller.NewFakePDClient(pdControl, tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			var replicas uint64 = 3
-			return &pdapi.PDConfigFromAPI{
-				Replication: &pdapi.PDReplicationConfig{
-					MaxReplicas: &replicas,
+			return &pd.ServerConfig{
+				Replication: pd.ReplicationConfig{
+					MaxReplicas: replicas,
 				},
 			}, nil
 		})
 		if test.getStoresFn == nil {
 			test.getStoresFn = func(action *pdapi.Action) (interface{}, error) {
-				store := &pdapi.StoreInfo{
-					Store: &pdapi.MetaStore{
+				store := pd.StoreInfo{
+					Store: pd.MetaStore{
 						StateName: v1alpha1.TiKVStateUp,
-						Store: &metapb.Store{
-							Address: fmt.Sprintf("%s-tikv-0", "basic"),
-						},
+						Address:   fmt.Sprintf("%s-tikv-0", "basic"),
 					},
 				}
-				return &pdapi.StoresInfo{
+				return pd.StoresInfo{
 					Count:  5,
-					Stores: []*pdapi.StoreInfo{store, store, store, store, store},
+					Stores: []pd.StoreInfo{store, store, store, store, store},
 				}, nil
 			}
 		}

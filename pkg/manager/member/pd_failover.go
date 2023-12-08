@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -191,7 +192,7 @@ func (f *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 	// invoke deleteMember api to delete a member from the pd cluster
-	if err := controller.GetPDClient(f.deps.PDControl, tc).DeleteMemberByID(memberID); err != nil {
+	if err := controller.GetPDClient(f.deps.PDControl, tc).DeleteMemberByID(context.TODO(), memberID); err != nil {
 		klog.Errorf("pd failover[tryToDeleteAFailureMember]: failed to delete member %s/%s(%d), error: %v", ns, failurePodName, memberID, err)
 		return err
 	}
