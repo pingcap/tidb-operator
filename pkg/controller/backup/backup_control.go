@@ -23,10 +23,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/util/slice"
 )
 
 // ControlInterface implements the control logic for updating Backup
@@ -98,7 +98,7 @@ func (c *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup
 	name := backup.GetName()
 
 	if needToRemoveFinalizer(backup) {
-		backup.Finalizers = slice.RemoveString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
+		backup.Finalizers = k8s.RemoveString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
 		_, err := c.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("remove backup %s/%s protection finalizers failed, err: %v", ns, name, err)
@@ -110,7 +110,7 @@ func (c *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup
 }
 
 func needToAddFinalizer(backup *v1alpha1.Backup) bool {
-	return backup.DeletionTimestamp == nil && v1alpha1.IsCleanCandidate(backup) && !slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
+	return backup.DeletionTimestamp == nil && v1alpha1.IsCleanCandidate(backup) && !k8s.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
 }
 
 func needToRemoveFinalizer(backup *v1alpha1.Backup) bool {
@@ -119,7 +119,7 @@ func needToRemoveFinalizer(backup *v1alpha1.Backup) bool {
 }
 
 func isDeletionCandidate(backup *v1alpha1.Backup) bool {
-	return backup.DeletionTimestamp != nil && slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
+	return backup.DeletionTimestamp != nil && k8s.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
 }
 
 var _ ControlInterface = &defaultBackupControl{}

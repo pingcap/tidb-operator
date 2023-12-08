@@ -74,7 +74,8 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	preferPDAddressesOverDiscovery := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
 	if preferPDAddressesOverDiscovery {
-		m.PDAddresses = strings.Join(tc.Spec.PDAddresses, ",")
+		pdAddressesWithSchemeAndPort := addressesWithSchemeAndPort(tc.Spec.PDAddresses, tc.Scheme()+"://", v1alpha1.DefaultPDPeerPort)
+		m.PDAddresses = strings.Join(pdAddressesWithSchemeAndPort, ",")
 	}
 
 	m.DataDir = filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir)

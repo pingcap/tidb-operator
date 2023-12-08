@@ -20,10 +20,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 func MustWaitForNGMPhase(c versioned.Interface, tngm *v1alpha1.TidbNGMonitoring, phase v1alpha1.MemberPhase, timeout, pollInterval time.Duration) {

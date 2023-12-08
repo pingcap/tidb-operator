@@ -22,25 +22,25 @@ import (
 	"testing"
 	"time"
 
-	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/config"
-	"k8s.io/kubernetes/test/e2e/framework/log"
-	"k8s.io/kubernetes/test/e2e/framework/testfiles"
 
 	// test sources
 	_ "github.com/pingcap/tidb-operator/tests/e2e/br"
+	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/dmcluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbdashboard"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbngmonitoring"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tikv"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/config"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/testfiles"
 )
 
 // handleFlags sets up all flags and parses the command line.
@@ -90,10 +90,10 @@ func createTestingNS(baseName string, c clientset.Interface, labels map[string]s
 		if err != nil {
 			if apierrors.IsAlreadyExists(err) {
 				// regenerate on conflict
-				framework.Logf("Namespace name %q was already taken, generate a new name and retry", namespaceObj.Name)
+				log.Logf("Namespace name %q was already taken, generate a new name and retry", namespaceObj.Name)
 				namespaceObj.Name = fmt.Sprintf("%v-%v", baseName, framework.RandomSuffix())
 			} else {
-				framework.Logf("Unexpected error while creating namespace: %v", err)
+				log.Logf("Unexpected error while creating namespace: %v", err)
 			}
 			return false, nil
 		}

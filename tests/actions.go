@@ -50,6 +50,8 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/slack"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 
 	"github.com/ghodss/yaml"
 	_ "github.com/go-sql-driver/mysql"
@@ -65,8 +67,6 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -277,10 +277,10 @@ func (oa *OperatorActions) CleanCRDOrDie() {
 	framework.ExpectNoError(err, "failed to list CRD")
 	for _, crd := range crdList.Items {
 		if !strings.HasSuffix(crd.Name, ".pingcap.com") {
-			framework.Logf("CRD %q ignored", crd.Name)
+			log.Logf("CRD %q ignored", crd.Name)
 			continue
 		}
-		framework.Logf("Deleting CRD %q", crd.Name)
+		log.Logf("Deleting CRD %q", crd.Name)
 		err = oa.apiExtCli.ApiextensionsV1().CustomResourceDefinitions().Delete(context.TODO(), crd.Name, metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "failed to delete CRD %q", crd.Name)
 		// Even if DELETE API request succeeds, the CRD object may still exists
@@ -345,11 +345,11 @@ func (oa *OperatorActions) crdFiles(info *OperatorConfig) ([]string, error) {
 }
 
 func (oa *OperatorActions) waitForCRDsReady() {
-	framework.Logf("Wait for all CRDs are established")
+	log.Logf("Wait for all CRDs are established")
 	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
 
 	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
-	framework.Logf("force sync kubectl cache")
+	log.Logf("force sync kubectl cache")
 	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
 	if _, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput(); err != nil {
 		log.Failf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)

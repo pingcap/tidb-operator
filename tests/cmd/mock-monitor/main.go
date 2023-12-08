@@ -17,8 +17,8 @@ import (
 	"net/http"
 
 	"github.com/pingcap/tidb-operator/tests/pkg/mock"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	"k8s.io/apiserver/pkg/server/healthz"
-	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func main() {

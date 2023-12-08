@@ -78,7 +78,7 @@ exec /tikv-server ${ARGS}
 		{
 			name: "with PDAddresses but without PDAddressesOverDiscovery",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}:2380", "another.pd:2380"}
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}", "another.pd"}
 			},
 			expectScript: `#!/bin/sh
 
@@ -122,7 +122,7 @@ exec /tikv-server ${ARGS}
 		{
 			name: "with PDAddresses and PDAddressesOverDiscovery",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}:2380", "another.pd:2380"}
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}", "another.pd"}
 				tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{
 					v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery,
 				}
@@ -148,7 +148,7 @@ fi
 
 TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
 
-ARGS="--pd=${PD_DOMAIN}:2380,another.pd:2380 \
+ARGS="--pd=${PD_DOMAIN}:2379,another.pd:2379 \
 --advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \

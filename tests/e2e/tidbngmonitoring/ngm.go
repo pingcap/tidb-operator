@@ -36,6 +36,7 @@ import (
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	utiltngm "github.com/pingcap/tidb-operator/tests/e2e/util/tngm"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -44,7 +45,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 

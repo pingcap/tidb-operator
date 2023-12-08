@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
 	"github.com/Masterminds/semver"
@@ -41,7 +42,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 const (
@@ -311,7 +311,7 @@ func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelis
 			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
 			return false
 		}
-		if !podutil.IsPodReady(pod) {
+		if !k8s.IsPodReady(pod) {
 			return false
 		}
 		var exist bool
@@ -361,7 +361,7 @@ func shouldRecoverDM(dc *v1alpha1.DMCluster, component string, podLister corelis
 			klog.Errorf("pod %s/%s does not exist: %v", dc.Namespace, name, err)
 			return false
 		}
-		if !podutil.IsPodReady(pod) {
+		if !k8s.IsPodReady(pod) {
 			return false
 		}
 		var exist bool
