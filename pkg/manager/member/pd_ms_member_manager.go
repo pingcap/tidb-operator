@@ -62,9 +62,10 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	// Need to start PD API
 	if tc.Spec.PD == nil || tc.Spec.PD.Mode != "ms" {
+		klog.Infof("PD Micro Service is enabled, but PD is not enabled or not in `ms` mode, skip syncing PD Micro Service")
 		return nil
 	}
-	// init pdMS status
+	// init PD Micro Service status
 	if tc.Status.PDMS == nil {
 		tc.Status.PDMS = make(map[string]*v1alpha1.PDMSStatus)
 	}

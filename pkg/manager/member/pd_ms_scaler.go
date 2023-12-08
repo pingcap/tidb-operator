@@ -18,11 +18,9 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
+
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
 )
 
@@ -48,56 +46,43 @@ func (s *pdMSScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 
 // ScaleOut scales out of the statefulset.
 func (s *pdMSScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
-	resetReplicas(newSet, oldSet)
-	obj, ok := meta.(runtime.Object)
+	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
-		klog.Errorf("cluster[%s/%s] can't convert to runtime.Object", meta.GetNamespace(), meta.GetName())
 		return nil
 	}
+
+	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
+	resetReplicas(newSet, oldSet)
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
 	serviceName := controller.PDMSTrimName(oldSet.Name)
-	skipReason, err := s.deleteDeferDeletingPVC(obj, v1alpha1.PDMSMemberType(serviceName), ordinal)
-	if err != nil {
-		return err
-	} else if len(skipReason) != 1 || skipReason[ordinalPodName(v1alpha1.PDMSMemberType(serviceName), meta.GetName(), ordinal)] != skipReasonScalerPVCNotFound {
-		// wait for all PVCs to be deleted
-		return controller.RequeueErrorf("pdMSScaler.ScaleOut, cluster %s/%s ready to scale out, skip reason %v, wait for next round", meta.GetNamespace(), meta.GetName(), skipReason)
+
+	klog.Infof("scaling out PDMS component %s for cluster [%s/%s] statefulset, ordinal: %d (replicas: %d, delete slots: %v)", serviceName, oldSet.Namespace, tcName, ordinal, replicas, deleteSlots.List())
+	if !tc.Status.PDMS[serviceName].Synced {
+		return fmt.Errorf("PDMS component %s for cluster [%s/%s] status sync failed, can't scale out now", serviceName, ns, tcName)
 	}
+
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
 
 // ScaleIn scales in of the statefulset.
 func (s *pdMSScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	ns := meta.GetNamespace()
-	tcName := meta.GetName()
+	tc, ok := meta.(*v1alpha1.TidbCluster)
+	if !ok {
+		return nil
+	}
+
 	// NOW, we can only remove one member at a time when scaling in
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	serviceName := controller.PDMSTrimName(oldSet.Name)
 
-	// We need to remove member from cluster before reducing statefulset replicas
-	var podName string
-	switch meta.(type) {
-	case *v1alpha1.TidbCluster:
-		podName = ordinalPodName(v1alpha1.PDMSMemberType(controller.PDMSTrimName(oldSet.Name)), tcName, ordinal)
-	default:
-		klog.Errorf("pdMSScaler.ScaleIn: failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
-		return nil
-	}
-	pod, err := s.deps.PodLister.Pods(ns).Get(podName)
-	if err != nil {
-		return fmt.Errorf("pdMSScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
-	}
-
-	pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("pdMSScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
-	}
-	tc, _ := meta.(*v1alpha1.TidbCluster)
-	for _, pvc := range pvcs {
-		if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
-			return err
-		}
+	klog.Infof("scaling in PDMS component %s for cluster [%s/%s] statefulset, ordinal: %d (replicas: %d, delete slots: %v)", serviceName, oldSet.Namespace, tcName, ordinal, replicas, deleteSlots.List())
+	if !tc.Status.PDMS[serviceName].Synced {
+		return fmt.Errorf("PDMS component %s for cluster [%s/%s] status sync failed, can't scale in now", serviceName, ns, tcName)
 	}
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
