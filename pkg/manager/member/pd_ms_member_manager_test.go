@@ -150,7 +150,7 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
-		pdClient.AddReaction(pdapi.GetServiceMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+		pdClient.AddReaction(pdapi.GetPDMicroServiceMembersActionType, func(action *pdapi.Action) (interface{}, error) {
 			return []string{"tso"}, nil
 		})
 
@@ -294,7 +294,7 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 		pmm, _, _ := newFakePDMSMemberManager()
 		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
-		pdClient.AddReaction(pdapi.GetServiceMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+		pdClient.AddReaction(pdapi.GetPDMicroServiceMembersActionType, func(action *pdapi.Action) (interface{}, error) {
 			return []string{"tso"}, nil
 		})
 

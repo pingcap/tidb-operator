@@ -44,8 +44,7 @@ const (
 	TransferPDLeaderActionType                  ActionType = "TransferPDLeader"
 	GetAutoscalingPlansActionType               ActionType = "GetAutoscalingPlans"
 	GetRecoveringMarkActionType                 ActionType = "GetRecoveringMark"
-	// Mircro Service
-	GetServiceMembersActionType ActionType = "GetServiceMembers"
+	GetPDMicroServiceMembersActionType          ActionType = "GetPDMicroServiceMembers"
 )
 
 type NotFoundReaction struct {
@@ -68,6 +67,15 @@ type Reaction func(action *Action) (interface{}, error)
 // FakePDClient implements a fake version of PDClient.
 type FakePDClient struct {
 	reactions map[ActionType]Reaction
+}
+
+func (c *FakePDClient) GetMSMembers(_ string) ([]string, error) {
+	action := &Action{}
+	result, err := c.fakeAPI(GetPDMicroServiceMembersActionType, action)
+	if err != nil {
+		return nil, err
+	}
+	return result.([]string), nil
 }
 
 func NewFakePDClient() *FakePDClient {
@@ -124,15 +132,6 @@ func (c *FakePDClient) GetMembers() (*MembersInfo, error) {
 		return nil, err
 	}
 	return result.(*MembersInfo), nil
-}
-
-func (c *FakePDClient) GetServiceMembers(_ string) ([]string, error) {
-	action := &Action{}
-	result, err := c.fakeAPI(GetServiceMembersActionType, action)
-	if err != nil {
-		return nil, err
-	}
-	return result.([]string), nil
 }
 
 func (c *FakePDClient) GetStores() (*StoresInfo, error) {

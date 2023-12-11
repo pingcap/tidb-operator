@@ -325,7 +325,7 @@ func (m *pdMSMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.State
 
 	pdClient := controller.GetPDClient(m.deps.PDControl, tc)
 	// pdMS member
-	members, err := pdClient.GetServiceMembers(curService)
+	members, err := pdClient.GetMSMembers(curService)
 	if err != nil {
 		return err
 	}
@@ -586,7 +586,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		Name:            curService,
 		Image:           tc.PDImage(),
 		ImagePullPolicy: basePDMSSpec.ImagePullPolicy(),
-		Command:         []string{"/bin/sh", "/usr/local/bin/pdMS_start_script.sh"},
+		Command:         []string{"/bin/sh", "/usr/local/bin/pdms_start_script.sh"},
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "server",
