@@ -17,9 +17,11 @@ set -e
 
 # The trap command is to make sure the sidecars are terminated when the jobs are finished
 cleanup() {
-    echo "Sleeping for 30 seconds before exit..."
+    echo "Sleeping for 30 seconds to let sidecars upload metrics..."
     sleep 30
     touch /tmp/pod/main-terminated
+    echo "Sleeping for 30 seconds to let sidecars to terminates..."
+    sleep 30
 }
 
 trap cleanup EXIT
