@@ -73,6 +73,9 @@ spec:
          {{- if .Values.brFederationManager.leaderRetryPeriod }}
           - -leader-retry-period={{ .Values.brFederationManager.leaderRetryPeriod }}
          {{- end }}
+         {{- if .Values.brFederationManager.leaderResourceLock }}
+          - -leader-resource-lock={{ .Values.controllerManager.leaderResourceLock }}
+         {{- end }}
          {{- if .Values.brFederationManager.kubeClientQPS }}
           - -kube-client-qps={{ .Values.brFederationManager.kubeClientQPS }}
          {{- end }}

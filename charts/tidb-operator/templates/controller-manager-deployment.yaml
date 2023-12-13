@@ -106,6 +106,9 @@ spec:
          {{- if .Values.controllerManager.leaderRetryPeriod }}
           - -leader-retry-period={{ .Values.controllerManager.leaderRetryPeriod }}
          {{- end }}
+         {{- if .Values.controllerManager.leaderResourceLock }}
+          - -leader-resource-lock={{ .Values.controllerManager.leaderResourceLock }}
+         {{- end }}
          {{- if .Values.controllerManager.kubeClientQPS }}
           - -kube-client-qps={{ .Values.controllerManager.kubeClientQPS }}
          {{- end }}
