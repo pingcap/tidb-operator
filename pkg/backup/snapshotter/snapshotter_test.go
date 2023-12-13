@@ -15,6 +15,7 @@ package snapshotter
 
 import (
 	"encoding/json"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -286,14 +287,6 @@ func TestGetVolumeIDForCSI(t *testing.T) {
 
 func TestPrepareCSBK8SMeta(t *testing.T) {
 	b := &BaseSnapshotter{}
-	csb := &CloudSnapBackup{
-		Kubernetes: &KubernetesBackup{
-			PVs:          []*corev1.PersistentVolume{},
-			PVCs:         []*corev1.PersistentVolumeClaim{},
-			TiDBCluster:  &v1alpha1.TidbCluster{},
-			Unstructured: nil,
-		},
-	}
 	helper := newHelper(t)
 	defer helper.Close()
 	b.deps = helper.Deps
@@ -303,7 +296,7 @@ func TestPrepareCSBK8SMeta(t *testing.T) {
 			Namespace: "test-ns",
 		},
 	}
-	_, _, err := b.PrepareCSBK8SMeta(csb, tc)
+	_, _, _, _, err := b.PrepareCSBK8SMeta(tc)
 	assert.NoError(t, err)
 }
 
@@ -391,7 +384,9 @@ func TestPrepareCSBStoresMeta(t *testing.T) {
 	for _, vol := range vols {
 		volIDs = append(volIDs, vol.VolumeID)
 	}
-	csb.Kubernetes.PVs = pvs
+
+	require.Equal(t, len(pods)*2, len(csb.Kubernetes.PVCs))
+	require.Equal(t, len(pods)*2, len(csb.Kubernetes.PVs))
 	for _, pv := range csb.Kubernetes.PVs {
 		require.NotNil(t, pv.Annotations[constants.AnnTemporaryVolumeID])
 		assert.Contains(t, volIDs, pv.Annotations[constants.AnnTemporaryVolumeID])
@@ -509,6 +504,9 @@ func constructTidbClusterWithSpecTiKV() (
 		pvcs = append(pvcs, constructPVCs(i)...)
 		pvs = append(pvs, constructPVs(i)...)
 	}
+	// maybe there are old tikv pvcs or pvs still existing, we should handle this situation
+	pvcs = append(pvcs, constructPVCs(3)...)
+	pvs = append(pvs, constructRedundantPVs(0)...)
 
 	return
 }
@@ -566,6 +564,42 @@ func constructPVs(ordinal int) (pvs []*corev1.PersistentVolume) {
 	pvs = append(pvs, &corev1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pv-test-bbb" + strconv.Itoa(ordinal),
+			Labels: map[string]string{
+				label.ComponentLabelKey: label.TiKVLabelVal,
+			},
+		},
+		Spec: corev1.PersistentVolumeSpec{
+			PersistentVolumeSource: corev1.PersistentVolumeSource{
+				CSI: &corev1.CSIPersistentVolumeSource{
+					Driver:       "ebs.csi.aws.com",
+					VolumeHandle: "vol-0e444aca5b73fbbb" + strconv.Itoa(ordinal),
+				},
+			},
+		},
+	})
+	return
+}
+
+func constructRedundantPVs(ordinal int) (pvs []*corev1.PersistentVolume) {
+	pvs = append(pvs, &corev1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pv-test-redundant-aaa" + strconv.Itoa(ordinal),
+			Labels: map[string]string{
+				label.ComponentLabelKey: label.TiKVLabelVal,
+			},
+		},
+		Spec: corev1.PersistentVolumeSpec{
+			PersistentVolumeSource: corev1.PersistentVolumeSource{
+				CSI: &corev1.CSIPersistentVolumeSource{
+					Driver:       "ebs.csi.aws.com",
+					VolumeHandle: "vol-0e444aca5b73faaa" + strconv.Itoa(ordinal),
+				},
+			},
+		},
+	})
+	pvs = append(pvs, &corev1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pv-test-redundant-bbb" + strconv.Itoa(ordinal),
 			Labels: map[string]string{
 				label.ComponentLabelKey: label.TiKVLabelVal,
 			},
@@ -2318,4 +2352,42 @@ func TestCommitPVsAndPVCsToK8S(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, tc.pvcCount, len(pvcs))
 	}
+}
+
+func TestCSB(t *testing.T) {
+	csb := new(CloudSnapBackup)
+	content, err := os.ReadFile("/Users/wangle/Downloads/restoremeta (1).txt")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := json.Unmarshal(content, csb); err != nil {
+		t.Error("unmarshal csb", err)
+		return
+	}
+
+	pvMap := make(map[string]*corev1.PersistentVolume, len(csb.Kubernetes.PVs))
+	pvNameMap := make(map[string]struct{}, len(csb.Kubernetes.PVs))
+	for _, pv := range csb.Kubernetes.PVs {
+		pvMap[pv.Name] = pv
+		pvNameMap[pv.Name] = struct{}{}
+	}
+
+	pvcMap := make(map[string]*corev1.PersistentVolumeClaim, len(csb.Kubernetes.PVCs))
+	for _, pvc := range csb.Kubernetes.PVCs {
+		pvcMap[pvc.Name] = pvc
+		delete(pvNameMap, pvc.Spec.VolumeName)
+	}
+
+	for pvName, _ := range pvNameMap {
+		remainedPV := pvMap[pvName]
+		t.Log("remained pv", remainedPV)
+		pvc := pvcMap[remainedPV.Spec.ClaimRef.Name]
+		t.Log("pvc", pvc)
+		pv := pvMap[pvc.Spec.VolumeName]
+		t.Log("pv", pv)
+	}
+
+	t.Log("pvc", len(csb.Kubernetes.PVCs), "pv", len(csb.Kubernetes.PVs))
 }
