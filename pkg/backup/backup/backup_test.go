@@ -69,6 +69,33 @@ func (h *helper) deleteJob(job *batchv1.Job) {
 	}, time.Second*10).Should(BeNil())
 }
 
+func (h *helper) getJob(namespace, name string) *batchv1.Job {
+	g := NewGomegaWithT(h.T)
+	deps := h.Deps
+	job, err := deps.JobLister.Jobs(namespace).Get(name)
+	g.Expect(err).Should(BeNil())
+	return job
+}
+
+func (h *helper) updateJob(job *batchv1.Job, compare func(old, new *batchv1.Job) bool) {
+	g := NewGomegaWithT(h.T)
+	deps := h.Deps
+	_, err := deps.KubeClientset.BatchV1().Jobs(job.GetNamespace()).Update(context.TODO(), job, metav1.UpdateOptions{})
+	g.Expect(err).Should(BeNil())
+
+	g.Eventually(func() error {
+		newJob, err := deps.JobLister.Jobs(job.GetNamespace()).Get(job.GetName())
+		if err != nil {
+			return err
+		}
+		if compare(job, newJob) {
+			return nil
+		} else {
+			return fmt.Errorf("compare failed")
+		}
+	}, time.Second*10).Should(BeNil())
+}
+
 // TODO: refactor to reduce duplicated code with restore tests
 func (h *helper) hasCondition(ns string, name string, tp v1alpha1.BackupConditionType, reasonSub string) {
 	h.T.Helper()
@@ -365,4 +392,69 @@ func TestClean(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 	}
 
+}
+
+func genVolumeBackup() *v1alpha1.Backup {
+	b := &v1alpha1.Backup{
+		Spec: v1alpha1.BackupSpec{
+			FederalVolumeBackupPhase: v1alpha1.FederalVolumeBackupInitialize,
+			BR: &v1alpha1.BRConfig{
+				ClusterNamespace: "ns",
+				Cluster:          "tidb-test",
+			},
+			Mode: v1alpha1.BackupModeVolumeSnapshot,
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{
+					Bucket:   "s3",
+					Prefix:   "prefix-",
+					Endpoint: "s3://localhost:80",
+				},
+			},
+		},
+	}
+	b.Namespace = "ns"
+	b.Name = "test-volume-backup"
+	return b
+}
+
+func TestVolumeBackupInitFailed(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+	var err error
+
+	bm := NewBackupManager(deps).(*backupManager)
+	backup := genVolumeBackup()
+	_, err = deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(context.TODO(), backup, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+	helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster, true, false)
+
+	err = bm.syncBackupJob(backup)
+	g.Expect(err).Should(BeNil())
+
+	backup, err = deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Get(context.TODO(), backup.Name, metav1.GetOptions{})
+	g.Expect(err).Should(BeNil())
+	g.Expect(backup.Status.Phase).ShouldNot(Equal(v1alpha1.VolumeBackupInitializeFailed))
+
+	job := helper.getJob(backup.Namespace, backup.GetVolumeBackupInitializeJobName())
+	job.Status.Conditions = append(job.Status.Conditions, batchv1.JobCondition{
+		Type:   batchv1.JobFailed,
+		Status: corev1.ConditionTrue,
+	})
+	helper.updateJob(job, func(old, new *batchv1.Job) bool {
+		for _, condition := range new.Status.Conditions {
+			if condition.Type == batchv1.JobFailed {
+				return true
+			}
+		}
+		return false
+	})
+
+	err = bm.syncBackupJob(backup)
+	g.Expect(err).ShouldNot(BeNil())
+
+	backup, err = deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Get(context.TODO(), backup.Name, metav1.GetOptions{})
+	g.Expect(err).Should(BeNil())
+	g.Expect(backup.Status.Phase).Should(Equal(v1alpha1.VolumeBackupInitializeFailed))
 }
