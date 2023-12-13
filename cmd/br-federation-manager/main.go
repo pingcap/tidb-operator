@@ -176,8 +176,10 @@ func main() {
 	}
 	// leader election for multiple br-federation-manager instances
 	go wait.Forever(func() {
-		leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
-			Lock: &resourcelock.EndpointsLock{
+		var lock resourcelock.Interface
+		switch cliCfg.ResourceLock {
+		case resourcelock.EndpointsResourceLock:
+			lock = &resourcelock.EndpointsLock{
 				EndpointsMeta: metav1.ObjectMeta{
 					Namespace: ns,
 					Name:      endPointsName,
@@ -187,7 +189,51 @@ func main() {
 					Identity:      hostName,
 					EventRecorder: &record.FakeRecorder{},
 				},
-			},
+			}
+		case resourcelock.LeasesResourceLock:
+			lock = &resourcelock.LeaseLock{
+				LeaseMeta: metav1.ObjectMeta{
+					Namespace: ns,
+					Name:      endPointsName,
+				},
+				Client: kubeCli.CoordinationV1(),
+				LockConfig: resourcelock.ResourceLockConfig{
+					Identity:      hostName,
+					EventRecorder: &record.FakeRecorder{},
+				},
+			}
+		case resourcelock.EndpointsLeasesResourceLock:
+			lock = &resourcelock.MultiLock{
+				Primary: &resourcelock.EndpointsLock{
+					EndpointsMeta: metav1.ObjectMeta{
+						Namespace: ns,
+						Name:      endPointsName,
+					},
+					Client: kubeCli.CoreV1(),
+					LockConfig: resourcelock.ResourceLockConfig{
+						Identity:      hostName,
+						EventRecorder: &record.FakeRecorder{},
+					},
+				},
+				Secondary: &resourcelock.LeaseLock{
+					LeaseMeta: metav1.ObjectMeta{
+						Namespace: ns,
+						Name:      endPointsName,
+					},
+					Client: kubeCli.CoordinationV1(),
+					LockConfig: resourcelock.ResourceLockConfig{
+						Identity:      hostName,
+						EventRecorder: &record.FakeRecorder{},
+					},
+				},
+			}
+		default:
+			// we don't support configmap lock now
+			klog.Fatalf("only support endpoints, leases or endpointsleases for resource-lock, but got %s", cliCfg.ResourceLock)
+		}
+
+		leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
+			Lock:          lock,
 			LeaseDuration: cliCfg.LeaseDuration,
 			RenewDeadline: cliCfg.RenewDeadline,
 			RetryPeriod:   cliCfg.RetryPeriod,
