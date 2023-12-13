@@ -15,7 +15,6 @@ package snapshotter
 
 import (
 	"encoding/json"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -2352,42 +2351,4 @@ func TestCommitPVsAndPVCsToK8S(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, tc.pvcCount, len(pvcs))
 	}
-}
-
-func TestCSB(t *testing.T) {
-	csb := new(CloudSnapBackup)
-	content, err := os.ReadFile("/Users/wangle/Downloads/restoremeta (1).txt")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if err := json.Unmarshal(content, csb); err != nil {
-		t.Error("unmarshal csb", err)
-		return
-	}
-
-	pvMap := make(map[string]*corev1.PersistentVolume, len(csb.Kubernetes.PVs))
-	pvNameMap := make(map[string]struct{}, len(csb.Kubernetes.PVs))
-	for _, pv := range csb.Kubernetes.PVs {
-		pvMap[pv.Name] = pv
-		pvNameMap[pv.Name] = struct{}{}
-	}
-
-	pvcMap := make(map[string]*corev1.PersistentVolumeClaim, len(csb.Kubernetes.PVCs))
-	for _, pvc := range csb.Kubernetes.PVCs {
-		pvcMap[pvc.Name] = pvc
-		delete(pvNameMap, pvc.Spec.VolumeName)
-	}
-
-	for pvName, _ := range pvNameMap {
-		remainedPV := pvMap[pvName]
-		t.Log("remained pv", remainedPV)
-		pvc := pvcMap[remainedPV.Spec.ClaimRef.Name]
-		t.Log("pvc", pvc)
-		pv := pvMap[pvc.Spec.VolumeName]
-		t.Log("pv", pv)
-	}
-
-	t.Log("pvc", len(csb.Kubernetes.PVCs), "pv", len(csb.Kubernetes.PVs))
 }
