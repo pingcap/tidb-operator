@@ -152,7 +152,7 @@ controllerManager:
   # kubeClientBurst: 10
 
 scheduler:
-  create: true
+  create: false
   # With rbac.create=false, the user is responsible for creating this account
   # With rbac.create=true, this service account will be created
   # Also see rbac.create and clusterScoped

@@ -112,8 +112,8 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			Helper: &v1alpha1.HelperSpec{
 				Image: pointer.StringPtr(utilimage.HelperImage),
 			},
-			SchedulerName: "tidb-scheduler",
-			Timezone:      "Asia/Shanghai",
+			// SchedulerName: "tidb-scheduler", // use the default k8s scheduler now
+			Timezone: "Asia/Shanghai",
 			Labels: map[string]string{
 				ClusterCustomKey: "value",
 			},
@@ -204,8 +204,8 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 			Version:         version,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			PVReclaimPolicy: &deletePVP,
-			SchedulerName:   "tidb-scheduler",
-			Timezone:        "Asia/Shanghai",
+			// SchedulerName:   "tidb-scheduler",
+			Timezone: "Asia/Shanghai",
 			Labels: map[string]string{
 				ClusterCustomKey: "value",
 			},
