@@ -112,17 +112,13 @@ func getLastScheduledTime(vbs *v1alpha1.VolumeBackupSchedule, nowFn nowFn) (*tim
 	}
 
 	var scheduledTimes []time.Time
+	var warningPrinted = false
 	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
 		scheduledTimes = append(scheduledTimes, t)
 		// If there is a bug somewhere, or incorrect clock
 		// on controller's server or apiservers (for setting creationTimestamp)
 		// then there could be so many missed start times (it could be off
-		// by decades or more), that it would eat up all the CPU and memory
-		// of this controller. In that case, we want to not try to list
-		// all the missed start times.
-		//
-		// I've somewhat arbitrarily picked 100, as more than 80,
-		// but less than "lots".
+		// by decades or more).
 		if len(scheduledTimes) > 100 {
 			// We can't get the last backup schedule time
 			if vbs.Status.LastBackupTime == nil && vbs.Status.AllBackupCleanTime != nil {
@@ -130,8 +126,10 @@ func getLastScheduledTime(vbs *v1alpha1.VolumeBackupSchedule, nowFn nowFn) (*tim
 				vbs.Status.AllBackupCleanTime = &metav1.Time{Time: nowFn()}
 				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", ns, bsName)
 			}
-			klog.Error("Too many missed start backup schedule time (> 100). Check the clock.")
-			return nil, nil
+			if !warningPrinted {
+				klog.Warning("Too many missed start backup schedule time (> 100). Check the clock.")
+				warningPrinted = true
+			}
 		}
 	}
 
