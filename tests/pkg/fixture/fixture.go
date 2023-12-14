@@ -205,7 +205,7 @@ func GetDMCluster(ns, name, version string) *v1alpha1.DMCluster {
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			PVReclaimPolicy: &deletePVP,
 			// SchedulerName:   "tidb-scheduler",
-			Timezone:        "Asia/Shanghai",
+			Timezone: "Asia/Shanghai",
 			Labels: map[string]string{
 				ClusterCustomKey: "value",
 			},
