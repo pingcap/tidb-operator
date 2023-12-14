@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -362,7 +363,7 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 		tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))] = status
 	}
 
-	err := controller.GetPDClient(u.deps.PDControl, tc).BeginEvictLeader(storeID)
+	err := pdapi.BeginEvictLeader(context.TODO(), controller.GetPDClient(u.deps.PDControl, tc), storeID)
 	if err != nil {
 		klog.Errorf("beginEvictLeader: failed to begin evict leader: %d, %s/%s, %v",
 			storeID, ns, podName, err)
@@ -429,20 +430,19 @@ func endEvictLeaderForAllStore(deps *controller.Dependencies, tc *v1alpha1.TidbC
 		}
 	}
 
-	pdcli := controller.GetPDClient(deps.PDControl, tc)
-
-	scheduelrs, err := pdcli.GetEvictLeaderSchedulersForStores(storeIDs...)
+	pdClient := controller.GetPDClient(deps.PDControl, tc)
+	schedulers, err := pdapi.GetEvictLeaderSchedulersForStores(context.TODO(), pdClient, storeIDs...)
 	if err != nil {
 		return fmt.Errorf("get scheduler failed: %v", err)
 	}
-	if len(scheduelrs) == 0 {
+	if len(schedulers) == 0 {
 		klog.Infof("tikv: no evict leader scheduler exists for %s/%s", tc.Namespace, tc.Name)
 		return nil
 	}
 
 	errs := make([]error, 0)
-	for storeID := range scheduelrs {
-		err := pdcli.EndEvictLeader(storeID)
+	for storeID := range schedulers {
+		err := pdapi.EndEvictLeader(context.TODO(), pdClient, storeID)
 		if err != nil {
 			klog.Errorf("tikv: failed to end evict leader for store: %d of %s/%s, error: %v", storeID, tc.Namespace, tc.Name, err)
 			errs = append(errs, fmt.Errorf("end evict leader for store %d failed: %v", storeID, err))
@@ -478,7 +478,7 @@ func endEvictLeaderbyStoreID(deps *controller.Dependencies, tc *v1alpha1.TidbClu
 		time.Sleep(5 * time.Second)
 	}
 
-	err := controller.GetPDClient(deps.PDControl, tc).EndEvictLeader(storeID)
+	err := pdapi.EndEvictLeader(context.TODO(), controller.GetPDClient(deps.PDControl, tc), storeID)
 	if err != nil {
 		klog.Errorf("endEvictLeaderbyStoreID: failed to end evict leader for store: %d of %s/%s, error: %v", storeID, tc.Namespace, tc.Name, err)
 		return err

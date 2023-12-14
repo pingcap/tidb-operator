@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -176,7 +177,7 @@ func (sf *commonStoreFailover) invokeDeleteFailureStore(tc *v1alpha1.TidbCluster
 				return parseErr
 			}
 			pdCli := controller.GetPDClient(sf.deps.PDControl, tc)
-			if deleteErr := pdCli.DeleteStore(storeUintId); deleteErr != nil {
+			if deleteErr := pdCli.DeleteStore(context.TODO(), storeUintId); deleteErr != nil {
 				return deleteErr
 			}
 			msg := fmt.Sprintf("Invoked delete on %s store '%s' in cluster %s/%s", sf.storeAccess.GetMemberType(), failureStore.StoreID, ns, tcName)

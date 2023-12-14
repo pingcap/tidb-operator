@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -100,7 +101,8 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 	}
 
 	pdClient := controller.GetPDClient(s.deps.PDControl, tc)
-	leader, err := pdClient.GetPDLeader()
+	ctx := context.TODO()
+	leader, err := pdClient.GetPDLeader(ctx)
 	if err != nil {
 		return err
 	}
@@ -116,9 +118,9 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 			}
 			targetPdName := PdName(tcName, targetOrdinal, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)
 			if _, exist := tc.Status.PD.Members[targetPdName]; exist {
-				err = pdClient.TransferPDLeader(targetPdName)
+				err = pdClient.TransferPDLeader(ctx, targetPdName)
 			} else {
-				err = pdClient.TransferPDLeader(PdPodName(tcName, targetOrdinal))
+				err = pdClient.TransferPDLeader(ctx, PdPodName(tcName, targetOrdinal))
 			}
 			if err != nil {
 				return err
@@ -126,7 +128,7 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 		} else {
 			for _, member := range tc.Status.PD.PeerMembers {
 				if member.Health && member.Name != memberName {
-					err = pdClient.TransferPDLeader(member.Name)
+					err = pdClient.TransferPDLeader(ctx, member.Name)
 					if err != nil {
 						return err
 					}
@@ -136,7 +138,7 @@ func (s *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet 
 		}
 	}
 
-	err = pdClient.DeleteMember(memberName)
+	err = pdClient.DeleteMember(ctx, memberName)
 	if err != nil {
 		klog.Errorf("pdScaler.ScaleIn: failed to delete member %s, %v", memberName, err)
 		return err

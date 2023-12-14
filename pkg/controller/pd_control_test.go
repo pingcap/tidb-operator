@@ -14,12 +14,14 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	pd "github.com/tikv/pd/client/http"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
@@ -52,12 +54,12 @@ func TestGetPDClient(t *testing.T) {
 				pdClientCluster1 := NewFakePDClient(pdControl, tc)
 
 				pdClientCluster1.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
-					return &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+					return &pd.HealthInfo{Healths: []pd.MemberHealth{
 						{Name: "pd-0", MemberID: uint64(1), ClientUrls: []string{"http://pd-0.pd.pingcap.cluster1.com:2379"}, Health: true},
 					}}, nil
 				})
 				pdClient := GetPDClient(pdControl, tc)
-				_, err := pdClient.GetHealth()
+				_, err := pdClient.GetHealth(context.TODO())
 				g.Expect(err).To(BeNil())
 			},
 		},
@@ -76,12 +78,12 @@ func TestGetPDClient(t *testing.T) {
 				})
 				pdClientCluster2 := NewFakePDClientWithAddress(pdControl, "pd-0")
 				pdClientCluster2.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
-					return &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+					return &pd.HealthInfo{Healths: []pd.MemberHealth{
 						{Name: "pd-0", MemberID: uint64(1), ClientUrls: []string{"http://pd-0.pd.pingcap.cluster2.com:2379"}, Health: true},
 					}}, nil
 				})
 				pdClient := GetPDClient(pdControl, tc)
-				_, err := pdClient.GetHealth()
+				_, err := pdClient.GetHealth(context.TODO())
 				g.Expect(err).To(BeNil())
 			},
 		},
@@ -103,7 +105,7 @@ func TestGetPDClient(t *testing.T) {
 					return nil, fmt.Errorf("Fake cluster 2 PD crashed")
 				})
 				pdClient := GetPDClient(pdControl, tc)
-				_, err := pdClient.GetHealth()
+				_, err := pdClient.GetHealth(context.TODO())
 				g.Expect(err).To(HaveOccurred())
 			},
 		},

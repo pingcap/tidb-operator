@@ -22,7 +22,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	pd "github.com/tikv/pd/client/http"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -293,14 +294,14 @@ func validateTAC(tac *v1alpha1.TidbClusterAutoScaler) error {
 	return nil
 }
 
-func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) *pdapi.Strategy {
+func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) *pd.Strategy {
 	resources := getSpecResources(tac, component)
-	strategy := &pdapi.Strategy{
-		Resources: make([]*pdapi.Resource, 0, len(resources)),
+	strategy := &pd.Strategy{
+		Resources: make([]*pd.Resource, 0, len(resources)),
 	}
 
 	for typ, res := range resources {
-		resource := &pdapi.Resource{
+		resource := &pd.Resource{
 			CPU:          res.CPU.AsDec().UnscaledBig().Uint64(),
 			Memory:       res.Memory.AsDec().UnscaledBig().Uint64(),
 			Storage:      res.Storage.AsDec().UnscaledBig().Uint64(),
@@ -315,16 +316,16 @@ func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha
 
 	switch component {
 	case v1alpha1.TiDBMemberType:
-		strategy.Rules = []*pdapi.Rule{autoRulesToStrategyRule(component.String(), tac.Spec.TiDB.Rules)}
+		strategy.Rules = []*pd.StrategyRule{autoRulesToStrategyRule(component.String(), tac.Spec.TiDB.Rules)}
 	case v1alpha1.TiKVMemberType:
-		strategy.Rules = []*pdapi.Rule{autoRulesToStrategyRule(component.String(), tac.Spec.TiKV.Rules)}
+		strategy.Rules = []*pd.StrategyRule{autoRulesToStrategyRule(component.String(), tac.Spec.TiKV.Rules)}
 	}
 
 	return strategy
 }
 
-func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1alpha1.AutoRule) *pdapi.Rule {
-	result := &pdapi.Rule{
+func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1alpha1.AutoRule) *pd.StrategyRule {
+	result := &pd.StrategyRule{
 		Component: component,
 	}
 	for res, rule := range rules {
@@ -332,14 +333,14 @@ func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1a
 		case corev1.ResourceCPU:
 			// For CPU rule, users should both specify max_threshold and min_threshold
 			// Defaulting and validating make sure that the min_threshold is set
-			result.CPURule = &pdapi.CPURule{
+			result.CPURule = &pd.CPURule{
 				MaxThreshold:  rule.MaxThreshold,
 				MinThreshold:  *rule.MinThreshold,
 				ResourceTypes: rule.ResourceTypes,
 			}
 		case corev1.ResourceStorage:
 			// For storage rule, users need only set the max_threshold and we convert it to min_threshold for PD
-			result.StorageRule = &pdapi.StorageRule{
+			result.StorageRule = &pd.StorageRule{
 				MinThreshold:  1.0 - rule.MaxThreshold,
 				ResourceTypes: rule.ResourceTypes,
 			}

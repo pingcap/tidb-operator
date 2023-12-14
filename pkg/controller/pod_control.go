@@ -132,8 +132,9 @@ func (c *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Po
 
 	pdClient := GetPDClient(c.pdControl, tc)
 
+	ctx := context.TODO()
 	if labels[label.ClusterIDLabelKey] == "" {
-		cluster, err := pdClient.GetCluster()
+		cluster, err := pdClient.GetCluster(ctx)
 		if err != nil {
 			return pod, fmt.Errorf("failed to get tidb cluster info from pd, TidbCluster: %s/%s, err: %v", ns, tcName, err)
 		}

@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"reflect"
@@ -31,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	pd "github.com/tikv/pd/client/http"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -839,7 +841,7 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
 	// This only returns Up/Down/Offline stores
-	storesInfo, err := pdCli.GetStores()
+	storesInfo, err := pdCli.GetStores(context.TODO())
 	if err != nil {
 		if pdapi.IsTiKVNotBootstrappedError(err) {
 			klog.Infof("TiKV of Cluster %s/%s not bootstrapped yet", tc.Namespace, tc.Name)
@@ -877,23 +879,21 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
 		// So we check the store owner to make sure it.
-		if store.Store != nil {
-			if pattern.Match([]byte(store.Store.Address)) {
-				stores[status.ID] = *status
-			} else if util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiKVLabelVal) {
-				peerStores[status.ID] = *status
-			}
+		if pattern.Match([]byte(store.Store.Address)) {
+			stores[status.ID] = *status
+		} else if util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiKVLabelVal) {
+			peerStores[status.ID] = *status
 		}
 	}
 
 	// this returns all tombstone stores
-	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
+	tombstoneStoresInfo, err := pdCli.GetStoresByState(context.TODO(), metapb.StoreState_Tombstone)
 	if err != nil {
 		tc.Status.TiKV.Synced = false
 		return err
 	}
 	for _, store := range tombstoneStoresInfo.Stores {
-		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+		if !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
 		status := getTiKVStore(store)
@@ -928,12 +928,9 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 	return nil
 }
 
-func getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
-	if store.Store == nil || store.Status == nil {
-		return nil
-	}
-	storeID := fmt.Sprintf("%d", store.Store.GetId())
-	ip := strings.Split(store.Store.GetAddress(), ":")[0]
+func getTiKVStore(store pd.StoreInfo) *v1alpha1.TiKVStore {
+	storeID := fmt.Sprintf("%d", store.Store.ID)
+	ip := strings.Split(store.Store.Address, ":")[0]
 	podName := strings.Split(ip, ".")[0]
 
 	return &v1alpha1.TiKVStore{
@@ -961,12 +958,12 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 	}
 
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
-	storesInfo, err := pdCli.GetStores()
+	storesInfo, err := pdCli.GetStores(context.TODO())
 	if err != nil {
 		return setCount, err
 	}
 
-	config, err := pdCli.GetConfig()
+	config, err := pdCli.GetConfig(context.TODO())
 	if err != nil {
 		return setCount, err
 	}
@@ -983,7 +980,7 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 	for _, store := range storesInfo.Stores {
 		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
 		// So we check the store owner to make sure it.
-		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+		if !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
 		status := getTiKVStore(store)
@@ -1005,10 +1002,10 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 		}
 
 		if !m.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
-			set, err := pdCli.SetStoreLabels(store.Store.Id, ls)
+			set, err := pdCli.SetStoreLabels(context.TODO(), uint64(store.Store.ID), ls)
 			if err != nil {
 				msg := fmt.Sprintf("failed to set labels %v for store (id: %d, pod: %s/%s): %v ",
-					ls, store.Store.Id, ns, podName, err)
+					ls, store.Store.ID, ns, podName, err)
 				m.deps.Recorder.Event(tc, corev1.EventTypeWarning, FailedSetStoreLabels, msg)
 				continue
 			}
@@ -1024,12 +1021,12 @@ func (m *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (int
 
 // storeLabelsEqualNodeLabels compares store labels with node labels
 // for historic reasons, PD stores TiKV labels as []*StoreLabel which is a key-value pair slice
-func (m *tikvMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.StoreLabel, nodeLabels map[string]string) bool {
+func (m *tikvMemberManager) storeLabelsEqualNodeLabels(storeLabels []pd.StoreLabel, nodeLabels map[string]string) bool {
 	ls := map[string]string{}
 	for _, label := range storeLabels {
-		key := label.GetKey()
+		key := label.Key
 		if _, ok := nodeLabels[key]; ok {
-			val := label.GetValue()
+			val := label.Value
 			ls[key] = val
 		}
 	}

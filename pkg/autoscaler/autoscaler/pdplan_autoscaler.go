@@ -19,7 +19,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	pd "github.com/tikv/pd/client/http"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -53,9 +53,9 @@ func (am *autoScalerManager) getAutoScaledClusters(tac *v1alpha1.TidbClusterAuto
 	return
 }
 
-func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, plans []pdapi.Plan, component v1alpha1.MemberType) error {
+func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, plans []pd.Plan, component v1alpha1.MemberType) error {
 	planGroups := sets.String{}
-	groupPlanMap := make(map[string]pdapi.Plan)
+	groupPlanMap := make(map[string]pd.Plan)
 	for _, plan := range plans {
 		groupName := plan.Labels[groupLabelKey]
 		planGroups.Insert(groupName)
@@ -125,7 +125,7 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tac *v1alpha1.TidbCluster
 	return errorutils.NewAggregate(errs)
 }
 
-func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, groupsToUpdate []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pdapi.Plan) error {
+func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, groupsToUpdate []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pd.Plan) error {
 	var errs []error
 	for _, group := range groupsToUpdate {
 		actual, oldTc, plan := groupTcMap[group].DeepCopy(), groupTcMap[group], groupPlanMap[group]
@@ -164,7 +164,7 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 	return errorutils.NewAggregate(errs)
 }
 
-func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, groupsToCreate []string, groupPlanMap map[string]pdapi.Plan) error {
+func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, groupsToCreate []string, groupPlanMap map[string]pd.Plan) error {
 	var errs []error
 	for _, group := range groupsToCreate {
 		plan := groupPlanMap[group]

@@ -14,11 +14,13 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
 
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -29,8 +31,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	pd "github.com/tikv/pd/client/http"
 
-	"github.com/pingcap/kvproto/pkg/metapb"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -135,7 +137,7 @@ func (m *tiflashMemberManager) syncRecoveryForTiFlash(tc *v1alpha1.TidbCluster) 
 // pd recovering mark indicates the pd allcate id had been set properly.
 func (m *tiflashMemberManager) checkRecoveringMark(tc *v1alpha1.TidbCluster) (bool, error) {
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
-	mark, err := pdCli.GetRecoveringMark()
+	mark, err := pdCli.GetRecoveringMark(context.TODO())
 	if err != nil {
 		return false, err
 	}
@@ -145,17 +147,17 @@ func (m *tiflashMemberManager) checkRecoveringMark(tc *v1alpha1.TidbCluster) (bo
 
 func (m *tiflashMemberManager) enablePlacementRules(tc *v1alpha1.TidbCluster) error {
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
-	config, err := pdCli.GetConfig()
+	ctx := context.TODO()
+	config, err := pdCli.GetConfig(ctx)
 	if err != nil {
 		return err
 	}
-	if config.Replication.EnablePlacementRules != nil && (!*config.Replication.EnablePlacementRules) {
-		klog.Infof("Cluster %s/%s enable-placement-rules is %v, set it to true", tc.Namespace, tc.Name, *config.Replication.EnablePlacementRules)
-		enable := true
-		rep := pdapi.PDReplicationConfig{
-			EnablePlacementRules: &enable,
+	if !config.Replication.EnablePlacementRules {
+		klog.Infof("Cluster %s/%s enable-placement-rules is %v, set it to true", tc.Namespace, tc.Name, config.Replication.EnablePlacementRules)
+		rep := pd.ReplicationConfig{
+			EnablePlacementRules: true,
 		}
-		return pdCli.UpdateReplicationConfig(rep)
+		return pdCli.UpdateReplicationConfig(ctx, rep)
 	}
 	return nil
 }
@@ -741,8 +743,9 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
 
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
+	ctx := context.TODO()
 	// This only returns Up/Down/Offline stores
-	storesInfo, err := pdCli.GetStores()
+	storesInfo, err := pdCli.GetStores(ctx)
 	if err != nil {
 		tc.Status.TiFlash.Synced = false
 		klog.Warningf("Fail to GetStores for TidbCluster %s/%s: %s", tc.Namespace, tc.Name, err)
@@ -769,24 +772,23 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 			status.LastTransitionTime = oldStore.LastTransitionTime
 		}
 
-		if store.Store != nil {
-			if pattern.Match([]byte(store.Store.Address)) {
-				stores[status.ID] = *status
-			} else if util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiFlashLabelVal) {
-				peerStores[status.ID] = *status
-			}
+		if pattern.Match([]byte(store.Store.Address)) {
+			stores[status.ID] = *status
+		} else if util.MatchLabelFromStoreLabels(store.Store.Labels, label.TiFlashLabelVal) {
+			peerStores[status.ID] = *status
 		}
 	}
 
 	// this returns all tombstone stores
-	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
+	tombstoneStoresInfo, err := pdCli.GetStoresByState(ctx, metapb.StoreState_Tombstone)
+	pdCli.GetStores(ctx)
 	if err != nil {
 		tc.Status.TiFlash.Synced = false
 		klog.Warningf("Fail to GetTombStoneStores for TidbCluster %s/%s", tc.Namespace, tc.Name)
 		return err
 	}
 	for _, store := range tombstoneStoresInfo.Stores {
-		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+		if !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
 		status := m.getTiFlashStore(store)
@@ -820,12 +822,9 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	return nil
 }
 
-func (m *tiflashMemberManager) getTiFlashStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
-	if store.Store == nil || store.Status == nil {
-		return nil
-	}
-	storeID := fmt.Sprintf("%d", store.Store.GetId())
-	ip := strings.Split(store.Store.GetAddress(), ":")[0]
+func (m *tiflashMemberManager) getTiFlashStore(store pd.StoreInfo) *v1alpha1.TiKVStore {
+	storeID := fmt.Sprintf("%d", store.Store.ID)
+	ip := strings.Split(store.Store.Address, ":")[0]
 	podName := strings.Split(ip, ".")[0]
 
 	return &v1alpha1.TiKVStore{
@@ -848,12 +847,13 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 	setCount := 0
 
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
-	storesInfo, err := pdCli.GetStores()
+	ctx := context.TODO()
+	storesInfo, err := pdCli.GetStores(ctx)
 	if err != nil {
 		return setCount, err
 	}
 
-	config, err := pdCli.GetConfig()
+	config, err := pdCli.GetConfig(ctx)
 	if err != nil {
 		return setCount, err
 	}
@@ -870,7 +870,7 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 	for _, store := range storesInfo.Stores {
 		// In theory, the external tiflash can join the cluster, and the operator would only manage the internal tiflash.
 		// So we check the store owner to make sure it.
-		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+		if !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
 		status := m.getTiFlashStore(store)
@@ -892,7 +892,7 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 		}
 
 		if !m.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
-			set, err := pdCli.SetStoreLabels(store.Store.Id, ls)
+			set, err := pdCli.SetStoreLabels(context.TODO(), uint64(store.Store.ID), ls)
 			if err != nil {
 				klog.Warningf("failed to set pod: [%s/%s]'s store labels: %v", ns, podName, ls)
 				continue
@@ -909,12 +909,12 @@ func (m *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbCluster
 
 // storeLabelsEqualNodeLabels compares store labels with node labels
 // for historic reasons, PD stores TiFlash labels as []*StoreLabel which is a key-value pair slice
-func (m *tiflashMemberManager) storeLabelsEqualNodeLabels(storeLabels []*metapb.StoreLabel, nodeLabels map[string]string) bool {
+func (m *tiflashMemberManager) storeLabelsEqualNodeLabels(storeLabels []pd.StoreLabel, nodeLabels map[string]string) bool {
 	ls := map[string]string{}
 	for _, label := range storeLabels {
-		key := label.GetKey()
+		key := label.Key
 		if _, ok := nodeLabels[key]; ok {
-			val := label.GetValue()
+			val := label.Value
 			ls[key] = val
 		}
 	}

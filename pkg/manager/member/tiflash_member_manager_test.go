@@ -21,13 +21,14 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	pd "github.com/tikv/pd/client/http"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -288,7 +289,7 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		errWhenGetStores bool
 		hasNode          bool
 		hasPod           bool
-		storeInfo        *pdapi.StoresInfo
+		storeInfo        *pd.StoresInfo
 		errExpectFn      func(*GomegaWithT, error)
 		setCount         int
 		labelSetFailed   bool
@@ -297,8 +298,8 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		tc := newTidbClusterForPD()
 		pmm, _, _, pdClient, podIndexer, nodeIndexer := newFakeTiFlashMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &pdapi.PDConfigFromAPI{
-				Replication: &pdapi.PDReplicationConfig{
+			return &pd.ServerConfig{
+				Replication: pd.ReplicationConfig{
 					LocationLabels: []string{"region", "zone", "rack", "host"},
 				},
 			}, nil
@@ -372,11 +373,8 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		{
 			name:             "stores is empty",
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
-			hasNode: true,
-			hasPod:  true,
+			hasNode:          true,
+			hasPod:           true,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -386,15 +384,8 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		{
 			name:             "status is nil",
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
-					{
-						Status: nil,
-					},
-				},
-			},
-			hasNode: true,
-			hasPod:  true,
+			hasNode:          true,
+			hasPod:           true,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -404,15 +395,8 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		{
 			name:             "store is nil",
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
-					{
-						Store: nil,
-					},
-				},
-			},
-			hasNode: true,
-			hasPod:  true,
+			hasNode:          true,
+			hasPod:           true,
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -422,17 +406,15 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		{
 			name:             "don't have pod",
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        333,
+							Address:   fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LeaderCount:     1,
 							LastHeartbeatTS: time.Now(),
 						},
@@ -451,17 +433,15 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		{
 			name:             "don't have node",
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        333,
+							Address:   fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LeaderCount:     1,
 							LastHeartbeatTS: time.Now(),
 						},
@@ -479,35 +459,33 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		{
 			name:             "already has labels",
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-								Labels: []*metapb.StoreLabel{
-									{
-										Key:   "region",
-										Value: "region",
-									},
-									{
-										Key:   "zone",
-										Value: "zone",
-									},
-									{
-										Key:   "rack",
-										Value: "rack",
-									},
-									{
-										Key:   "host",
-										Value: "host",
-									},
+						Store: pd.MetaStore{
+							ID:      333,
+							Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
+							Labels: []pd.StoreLabel{
+								{
+									Key:   "region",
+									Value: "region",
+								},
+								{
+									Key:   "zone",
+									Value: "zone",
+								},
+								{
+									Key:   "rack",
+									Value: "rack",
+								},
+								{
+									Key:   "host",
+									Value: "host",
 								},
 							},
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LeaderCount:     1,
 							LastHeartbeatTS: time.Now(),
 						},
@@ -525,23 +503,21 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		{
 			name:             "labels not equal, but set failed",
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-								Labels: []*metapb.StoreLabel{
-									{
-										Key:   "region",
-										Value: "region",
-									},
+						Store: pd.MetaStore{
+							ID:      333,
+							Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
+							Labels: []pd.StoreLabel{
+								{
+									Key:   "region",
+									Value: "region",
 								},
 							},
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LeaderCount:     1,
 							LastHeartbeatTS: time.Now(),
 						},
@@ -559,23 +535,21 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 		{
 			name:             "labels not equal, set success",
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-								Labels: []*metapb.StoreLabel{
-									{
-										Key:   "region",
-										Value: "region",
-									},
+						Store: pd.MetaStore{
+							ID:      333,
+							Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
+							Labels: []pd.StoreLabel{
+								{
+									Key:   "region",
+									Value: "region",
 								},
 							},
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LeaderCount:     1,
 							LastHeartbeatTS: time.Now(),
 						},
@@ -605,9 +579,9 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		updateTC                  func(*v1alpha1.TidbCluster)
 		upgradingFn               func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 		errWhenGetStores          bool
-		storeInfo                 *pdapi.StoresInfo
+		storeInfo                 *pd.StoresInfo
 		errWhenGetTombstoneStores bool
-		tombstoneStoreInfo        *pdapi.StoresInfo
+		tombstoneStoreInfo        *pd.StoresInfo
 		errExpectFn               func(*GomegaWithT, error)
 		tcExpectFn                func(*GomegaWithT, *v1alpha1.TidbCluster)
 	}
@@ -754,12 +728,12 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
+			tombstoneStoreInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{},
 			},
 			errExpectFn: errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -774,19 +748,9 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
-			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
-					{
-						Store: nil,
-					},
-				},
-			},
+			errWhenGetStores:          false,
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
-			errExpectFn: errExpectNil,
+			errExpectFn:               errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(0))
 				g.Expect(len(tc.Status.TiFlash.TombstoneStores)).To(Equal(0))
@@ -799,19 +763,9 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
-			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
-					{
-						Status: nil,
-					},
-				},
-			},
+			errWhenGetStores:          false,
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
-			errExpectFn: errExpectNil,
+			errExpectFn:               errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(0))
 				g.Expect(len(tc.Status.TiFlash.TombstoneStores)).To(Equal(0))
@@ -829,38 +783,31 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:      333,
+							Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Time{},
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      330,
-								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        330,
+							Address:   fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
-			errExpectFn: errExpectNil,
+			errExpectFn:               errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(time.Time{}.IsZero()).To(BeTrue())
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))
@@ -878,38 +825,31 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:      333,
+							Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Time{},
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      330,
-								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        330,
+							Address:   fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
-			errExpectFn: errExpectNil,
+			errExpectFn:               errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(time.Time{}.IsZero()).To(BeTrue())
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))
@@ -927,38 +867,31 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:      333,
+							Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      330,
-								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        330,
+							Address:   fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
-			errExpectFn: errExpectNil,
+			errExpectFn:               errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(time.Time{}.IsZero()).To(BeTrue())
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))
@@ -976,38 +909,31 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:      333,
+							Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      330,
-								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        330,
+							Address:   fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
-			errExpectFn: errExpectNil,
+			errExpectFn:               errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))
 				g.Expect(tc.Status.TiFlash.Stores["333"].LastTransitionTime.Time.IsZero()).To(BeFalse())
@@ -1028,39 +954,32 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        333,
+							Address:   fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      330,
-								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        330,
+							Address:   fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
-			errExpectFn: errExpectNil,
+			errExpectFn:               errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))
 				g.Expect(tc.Status.TiFlash.Stores["333"].LastTransitionTime).To(Equal(now))
@@ -1081,39 +1000,32 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        333,
+							Address:   fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Down",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      330,
-								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        330,
+							Address:   fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
-			errExpectFn: errExpectNil,
+			errExpectFn:               errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))
 				g.Expect(tc.Status.TiFlash.Stores["333"].LastTransitionTime).NotTo(Equal(now))
@@ -1134,38 +1046,31 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        333,
+							Address:   fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      330,
-								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        330,
+							Address:   fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: true,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "failed to get tombstone stores")).To(BeTrue())
@@ -1183,58 +1088,50 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        333,
+							Address:   fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      330,
-								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        330,
+							Address:   fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			tombstoneStoreInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        333,
+							Address:   fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Tombstone",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      330,
-								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        330,
+							Address:   fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							StateName: "Tombstone",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
@@ -1256,63 +1153,54 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 				return false, nil
 			},
 			errWhenGetStores: false,
-			storeInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storeInfo: &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      333,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc.cluster1.com:20160", "test", "test", "default"),
-								Labels: []*metapb.StoreLabel{
-									{
-										Key:   "engine",
-										Value: "tiflash",
-									},
+						Store: pd.MetaStore{
+							ID:      333,
+							Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc.cluster1.com:20160", "test", "test", "default"),
+							Labels: []pd.StoreLabel{
+								{
+									Key:   "engine",
+									Value: "tiflash",
 								},
 							},
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      334,
-								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc.cluster2.com:20160", "test", "test", "default"),
-								Labels: []*metapb.StoreLabel{
-									{
-										Key:   "engine",
-										Value: "tiflash",
-									},
+						Store: pd.MetaStore{
+							ID:      334,
+							Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc.cluster2.com:20160", "test", "test", "default"),
+							Labels: []pd.StoreLabel{
+								{
+									Key:   "engine",
+									Value: "tiflash",
 								},
 							},
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 					{
-						Store: &pdapi.MetaStore{
-							Store: &metapb.Store{
-								Id:      330,
-								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc.cluster1.com:20160", "test", "test", "default"),
-							},
+						Store: pd.MetaStore{
+							ID:        330,
+							Address:   fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc.cluster1.com:20160", "test", "test", "default"),
 							StateName: "Up",
 						},
-						Status: &pdapi.StoreStatus{
+						Status: pd.StoreStatus{
 							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
 			},
 			errWhenGetTombstoneStores: false,
-			tombstoneStoreInfo: &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{},
-			},
-			errExpectFn: errExpectNil,
+			errExpectFn:               errExpectNil,
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(len(tc.Status.TiFlash.Stores)).To(Equal(1))
 				g.Expect(len(tc.Status.TiFlash.PeerStores)).To(Equal(1))

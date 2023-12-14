@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"regexp"
@@ -335,7 +336,8 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 
 	pdClient := controller.GetPDClient(m.deps.PDControl, tc)
 
-	healthInfo, err := pdClient.GetHealth()
+	ctx := context.TODO()
+	healthInfo, err := pdClient.GetHealth(ctx)
 	if err != nil {
 		tc.Status.PD.Synced = false
 		// get endpoints info
@@ -350,13 +352,13 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 		return err
 	}
 
-	cluster, err := pdClient.GetCluster()
+	cluster, err := pdClient.GetCluster(ctx)
 	if err != nil {
 		tc.Status.PD.Synced = false
 		return err
 	}
 	tc.Status.ClusterID = strconv.FormatUint(cluster.Id, 10)
-	leader, err := pdClient.GetPDLeader()
+	leader, err := pdClient.GetPDLeader(ctx)
 	if err != nil {
 		tc.Status.PD.Synced = false
 		return err

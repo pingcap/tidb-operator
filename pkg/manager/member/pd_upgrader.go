@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -158,7 +159,8 @@ func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSe
 }
 
 func (u *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName string) error {
-	return controller.GetPDClient(u.deps.PDControl, tc).TransferPDLeader(targetName)
+	ctx := context.TODO()
+	return controller.GetPDClient(u.deps.PDControl, tc).TransferPDLeader(ctx, targetName)
 }
 
 // choosePDToTransferFromMembers choose a pd to transfer leader from members

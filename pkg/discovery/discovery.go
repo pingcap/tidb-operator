@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	pd "github.com/tikv/pd/client/http"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
@@ -124,7 +125,7 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 
-	var pdClients []pdapi.PDClient
+	var pdClients []pd.Client
 
 	if tc.Spec.PD != nil {
 		// connect to pd of current cluster
@@ -150,9 +151,9 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(ns), tc.Name, tc.IsTLSClusterEnabled(), pdapi.SpecifyClient(pdMember.ClientURL, pdMember.Name)))
 	}
 
-	var membersInfo *pdapi.MembersInfo
+	var membersInfo *pd.MembersInfo
 	for _, client := range pdClients {
-		membersInfo, err = client.GetMembers()
+		membersInfo, err = client.GetMembers(context.TODO())
 		if err == nil {
 			break
 		}

@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/tikvapi"
+	pd "github.com/tikv/pd/client/http"
 
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
@@ -118,10 +119,10 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			tikvState = v1alpha1.TiKVStateUp
 		}
 		pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
-			storesInfo := &pdapi.StoresInfo{
-				Stores: []*pdapi.StoreInfo{
+			storesInfo := &pd.StoresInfo{
+				Stores: []pd.StoreInfo{
 					{
-						Store: &pdapi.MetaStore{
+						Store: pd.MetaStore{
 							StateName: tikvState,
 						},
 					},

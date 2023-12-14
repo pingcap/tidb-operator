@@ -1173,7 +1173,8 @@ func (m *tidbMemberManager) setServerLabels(tc *v1alpha1.TidbCluster) (int, erro
 	setCount := 0
 
 	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
-	config, err := pdCli.GetConfig()
+	ctx := context.TODO()
+	config, err := pdCli.GetConfig(ctx)
 	if err != nil {
 		return setCount, err
 	}

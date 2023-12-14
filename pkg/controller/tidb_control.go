@@ -41,7 +41,7 @@ type DBInfo struct {
 type TiDBControlInterface interface {
 	// GetHealth returns tidb's health info
 	GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error)
-	// Get TIDB info return tidb's DBInfo
+	// GetInfo Get TIDB info return tidb's DBInfo
 	GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error)
 	// SetServerLabels update TiDB's labels config
 	SetServerLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error

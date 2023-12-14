@@ -23,11 +23,12 @@ import (
 	"strings"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/sethvargo/go-password/password"
+	pd "github.com/tikv/pd/client/http"
+
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -374,7 +375,7 @@ func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 	}
 }
 
-func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel string) bool {
+func MatchLabelFromStoreLabels(storeLabels []pd.StoreLabel, componentLabel string) bool {
 	storeKind := label.TiKVLabelVal
 	for _, storeLabel := range storeLabels {
 		if storeLabel.Key == "engine" && storeLabel.Value == label.TiFlashLabelVal {
