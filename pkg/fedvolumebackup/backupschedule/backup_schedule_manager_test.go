@@ -170,10 +170,10 @@ func TestGetLastScheduledTime(t *testing.T) {
 	}
 
 	// test too many miss
-	bs.Status.LastBackupTime.Time = now.AddDate(-1000, 0, 0)
+	bs.Status.LastBackupTime.Time = now.AddDate(0, -12, 0)
 	getTime, err = getLastScheduledTime(bs, time.Now)
 	g.Expect(err).Should(BeNil())
-	g.Expect(getTime).Should(BeNil())
+	g.Expect(getTime).ShouldNot(BeNil())
 }
 
 func TestBuildBackup(t *testing.T) {
