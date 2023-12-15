@@ -72,8 +72,13 @@ func (h *helper) deleteJob(job *batchv1.Job) {
 func (h *helper) getJob(namespace, name string) *batchv1.Job {
 	g := NewGomegaWithT(h.T)
 	deps := h.Deps
-	job, err := deps.JobLister.Jobs(namespace).Get(name)
-	g.Expect(err).Should(BeNil())
+	var job *batchv1.Job
+	var err error
+
+	g.Eventually(func() error {
+		job, err = deps.JobLister.Jobs(namespace).Get(name)
+		return err
+	}, time.Second*5).Should(BeNil())
 	return job
 }
 
