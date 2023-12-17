@@ -1162,10 +1162,13 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 
 	jobAnnotations := r.Annotations
 	podAnnotations := jobAnnotations
+	jobLabels := r.Labels
+	podLabels := jobLabels
 
 	warmUpPod := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: podAnnotations,
+			Labels: podLabels,
 		},
 		Spec: corev1.PodSpec{
 			Volumes:       podVolumes,
@@ -1255,7 +1258,16 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 		return nil, err
 	}
 
+	jobAnnotations := r.Annotations
+	podAnnotations := jobAnnotations
+	jobLabels := r.Labels
+	podLabels := jobLabels
+
 	warmUpPod := &corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: podAnnotations,
+			Labels: podLabels,
+		},
 		Spec: corev1.PodSpec{
 			Volumes:       warmUpVolumes,
 			RestartPolicy: corev1.RestartPolicyNever,
