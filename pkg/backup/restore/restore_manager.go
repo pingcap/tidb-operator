@@ -1168,7 +1168,7 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 	warmUpPod := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: podAnnotations,
-			Labels: podLabels,
+			Labels:      podLabels,
 		},
 		Spec: corev1.PodSpec{
 			Volumes:       podVolumes,
@@ -1266,7 +1266,7 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 	warmUpPod := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: podAnnotations,
-			Labels: podLabels,
+			Labels:      podLabels,
 		},
 		Spec: corev1.PodSpec{
 			Volumes:       warmUpVolumes,
