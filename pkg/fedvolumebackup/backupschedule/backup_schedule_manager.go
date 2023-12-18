@@ -272,7 +272,7 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(vbs *v1alpha1.VolumeB
 			}
 			klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 
-			if len(expiredBackups) == 1 {
+			if len(expiredBackups) == 1 && len(backupsList) == 1 {
 				// All backups have been deleted, so the last backup information in the backupSchedule should be reset
 				bm.resetLastBackup(vbs)
 			}
