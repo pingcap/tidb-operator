@@ -16,6 +16,8 @@ package controller
 import (
 	"flag"
 	"time"
+
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
 const (
@@ -36,6 +38,7 @@ type BrFedCLIConfig struct {
 	LeaseDuration time.Duration
 	RenewDeadline time.Duration
 	RetryPeriod   time.Duration
+	ResourceLock  string
 	WaitDuration  time.Duration
 	// ResyncDuration is the resync time of informer
 	ResyncDuration time.Duration
@@ -56,6 +59,7 @@ func DefaultBrFedCLIConfig() *BrFedCLIConfig {
 		LeaseDuration:  15 * time.Second,
 		RenewDeadline:  10 * time.Second,
 		RetryPeriod:    2 * time.Second,
+		ResourceLock:   resourcelock.EndpointsResourceLock,
 		WaitDuration:   5 * time.Second,
 		ResyncDuration: 30 * time.Second,
 
@@ -75,6 +79,7 @@ func (c *BrFedCLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.DurationVar(&c.LeaseDuration, "leader-lease-duration", c.LeaseDuration, "leader-lease-duration is the duration that non-leader candidates will wait to force acquire leadership")
 	flag.DurationVar(&c.RenewDeadline, "leader-renew-deadline", c.RenewDeadline, "leader-renew-deadline is the duration that the acting master will retry refreshing leadership before giving up")
 	flag.DurationVar(&c.RetryPeriod, "leader-retry-period", c.RetryPeriod, "leader-retry-period is the duration the LeaderElector clients should wait between tries of actions")
+	flag.StringVar(&c.ResourceLock, "leader-resource-lock", c.ResourceLock, "The type of resource object that is used for locking during leader election")
 	flag.Float64Var(&c.KubeClientQPS, "kube-client-qps", c.KubeClientQPS, "The maximum QPS to the kubenetes API server from client")
 	flag.IntVar(&c.KubeClientBurst, "kube-client-burst", c.KubeClientBurst, "The maximum burst for throttle to the kubenetes API server from client")
 
