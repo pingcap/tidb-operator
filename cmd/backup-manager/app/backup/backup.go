@@ -111,6 +111,10 @@ func (bo *Options) backupData(
 		progressCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		go bo.updateProgressFromFile(progressCtx.Done(), backup, progressFile, progressStep, statusUpdater)
+	} else if bo.Mode == string(v1alpha1.BackupModeSnapshot) {
+		if backup.Spec.CommitTs != "" {
+			specificArgs = append(specificArgs, fmt.Sprintf("--backupts=%s", backup.Spec.CommitTs))
+		}
 	}
 
 	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
