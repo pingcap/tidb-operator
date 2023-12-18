@@ -112,24 +112,25 @@ func getLastScheduledTime(vbs *v1alpha1.VolumeBackupSchedule, nowFn nowFn) (*tim
 	}
 
 	var scheduledTimes []time.Time
-	var warningPrinted = false
 	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
 		scheduledTimes = append(scheduledTimes, t)
 		// If there is a bug somewhere, or incorrect clock
 		// on controller's server or apiservers (for setting creationTimestamp)
 		// then there could be so many missed start times (it could be off
-		// by decades or more).
-		if len(scheduledTimes) > 100 {
+		// by decades or more). So, we need to set LastBackupTime to now() in order to let
+		// next reconcile succeed.
+		if len(scheduledTimes) > 1000 {
 			// We can't get the last backup schedule time
 			if vbs.Status.LastBackupTime == nil && vbs.Status.AllBackupCleanTime != nil {
 				// Recovery backup schedule from pause status, should refresh AllBackupCleanTime to avoid unschedulable problem
 				vbs.Status.AllBackupCleanTime = &metav1.Time{Time: nowFn()}
 				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", ns, bsName)
 			}
-			if !warningPrinted {
-				klog.Warning("Too many missed start backup schedule time (> 100). Check the clock.")
-				warningPrinted = true
-			}
+
+			klog.Warning("Too many missed start backup schedule time (> 1000). Fail current one.")
+			offset := sched.Next(t).Sub(t)
+			vbs.Status.LastBackupTime = &metav1.Time{Time: time.Now().Add(-offset)}
+			return nil, nil
 		}
 	}
 
