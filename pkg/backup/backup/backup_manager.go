@@ -244,7 +244,7 @@ func (bm *backupManager) checkVolumeBackupInitializeJobRunning(backup *v1alpha1.
 		// all the volume snapshots has created
 		return nil
 	}
-	if !v1alpha1.IsVolumeBackupInitialized(backup) || v1alpha1.IsVolumeBackupInitializeFailed(backup) {
+	if !v1alpha1.IsBackupScheduled(backup) || v1alpha1.IsVolumeBackupInitializeFailed(backup) {
 		return nil
 	}
 
