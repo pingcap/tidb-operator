@@ -17,6 +17,9 @@ set -e
 
 # The trap command is to make sure the sidecars are terminated when the jobs are finished
 cleanup() {
+    if [ ! -d "/tmp/pod" ]; then
+        mkdir -p /tmp/pod
+    fi
     touch /tmp/pod/main-terminated
 }
 
