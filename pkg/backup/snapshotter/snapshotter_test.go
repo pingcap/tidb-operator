@@ -286,14 +286,6 @@ func TestGetVolumeIDForCSI(t *testing.T) {
 
 func TestPrepareCSBK8SMeta(t *testing.T) {
 	b := &BaseSnapshotter{}
-	csb := &CloudSnapBackup{
-		Kubernetes: &KubernetesBackup{
-			PVs:          []*corev1.PersistentVolume{},
-			PVCs:         []*corev1.PersistentVolumeClaim{},
-			TiDBCluster:  &v1alpha1.TidbCluster{},
-			Unstructured: nil,
-		},
-	}
 	helper := newHelper(t)
 	defer helper.Close()
 	b.deps = helper.Deps
@@ -303,7 +295,7 @@ func TestPrepareCSBK8SMeta(t *testing.T) {
 			Namespace: "test-ns",
 		},
 	}
-	_, _, err := b.PrepareCSBK8SMeta(csb, tc)
+	_, _, _, _, err := b.PrepareCSBK8SMeta(tc)
 	assert.NoError(t, err)
 }
 
@@ -391,7 +383,9 @@ func TestPrepareCSBStoresMeta(t *testing.T) {
 	for _, vol := range vols {
 		volIDs = append(volIDs, vol.VolumeID)
 	}
-	csb.Kubernetes.PVs = pvs
+
+	require.Equal(t, len(pods)*2, len(csb.Kubernetes.PVCs))
+	require.Equal(t, len(pods)*2, len(csb.Kubernetes.PVs))
 	for _, pv := range csb.Kubernetes.PVs {
 		require.NotNil(t, pv.Annotations[constants.AnnTemporaryVolumeID])
 		assert.Contains(t, volIDs, pv.Annotations[constants.AnnTemporaryVolumeID])
@@ -509,6 +503,9 @@ func constructTidbClusterWithSpecTiKV() (
 		pvcs = append(pvcs, constructPVCs(i)...)
 		pvs = append(pvs, constructPVs(i)...)
 	}
+	// maybe there are old tikv pvcs or pvs still existing, we should handle this situation
+	pvcs = append(pvcs, constructPVCs(3)...)
+	pvs = append(pvs, constructRedundantPVs(0)...)
 
 	return
 }
@@ -566,6 +563,42 @@ func constructPVs(ordinal int) (pvs []*corev1.PersistentVolume) {
 	pvs = append(pvs, &corev1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pv-test-bbb" + strconv.Itoa(ordinal),
+			Labels: map[string]string{
+				label.ComponentLabelKey: label.TiKVLabelVal,
+			},
+		},
+		Spec: corev1.PersistentVolumeSpec{
+			PersistentVolumeSource: corev1.PersistentVolumeSource{
+				CSI: &corev1.CSIPersistentVolumeSource{
+					Driver:       "ebs.csi.aws.com",
+					VolumeHandle: "vol-0e444aca5b73fbbb" + strconv.Itoa(ordinal),
+				},
+			},
+		},
+	})
+	return
+}
+
+func constructRedundantPVs(ordinal int) (pvs []*corev1.PersistentVolume) {
+	pvs = append(pvs, &corev1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pv-test-redundant-aaa" + strconv.Itoa(ordinal),
+			Labels: map[string]string{
+				label.ComponentLabelKey: label.TiKVLabelVal,
+			},
+		},
+		Spec: corev1.PersistentVolumeSpec{
+			PersistentVolumeSource: corev1.PersistentVolumeSource{
+				CSI: &corev1.CSIPersistentVolumeSource{
+					Driver:       "ebs.csi.aws.com",
+					VolumeHandle: "vol-0e444aca5b73faaa" + strconv.Itoa(ordinal),
+				},
+			},
+		},
+	})
+	pvs = append(pvs, &corev1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pv-test-redundant-bbb" + strconv.Itoa(ordinal),
 			Labels: map[string]string{
 				label.ComponentLabelKey: label.TiKVLabelVal,
 			},
