@@ -192,20 +192,18 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule, nowFn nowFn) (*time.Time,
 		// If there is a bug somewhere, or incorrect clock
 		// on controller's server or apiservers (for setting creationTimestamp)
 		// then there could be so many missed start times (it could be off
-		// by decades or more), that it would eat up all the CPU and memory
-		// of this controller. In that case, we want to not try to list
-		// all the missed start times.
-		//
-		// I've somewhat arbitrarily picked 100, as more than 80,
-		// but less than "lots".
-		if len(scheduledTimes) > 100 {
+		// by decades or more). So, we need to set LastBackupTime to now() in order to let
+		// next reconcile succeed.
+		if len(scheduledTimes) > 1000 {
 			// We can't get the last backup schedule time
 			if bs.Status.LastBackupTime == nil && bs.Status.AllBackupCleanTime != nil {
 				// Recovery backup schedule from pause status, should refresh AllBackupCleanTime to avoid unschedulable problem
 				bs.Status.AllBackupCleanTime = &metav1.Time{Time: nowFn()}
 				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", ns, bsName)
 			}
-			klog.Error("Too many missed start backup schedule time (> 100). Check the clock.")
+			klog.Warning("Too many missed start backup schedule time (> 1000). Fail current one.")
+			offset := sched.Next(t).Sub(t)
+			bs.Status.LastBackupTime = &metav1.Time{Time: time.Now().Add(-offset)}
 			return nil, nil
 		}
 	}
