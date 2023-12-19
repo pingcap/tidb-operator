@@ -73,6 +73,15 @@ locals {
       max_size      = var.cdc_count
       node_taints   = "dedicated=${var.cluster_name}-cdc:NoSchedule"
       node_labels   = "dedicated=${var.cluster_name}-cdc"
-    }
+    },
+    {
+      name          = "${var.cluster_name}-tiproxy"
+      enable        = var.create_tiproxy_node_pool
+      instance_type = var.tiproxy_instance_type
+      min_size      = var.tiproxy_count
+      max_size      = var.tiproxy_count
+      node_taints   = "dedicated=${var.cluster_name}-tiproxy:NoSchedule"
+      node_labels   = "dedicated=${var.cluster_name}-tiproxy"
+    },
   ]
 }

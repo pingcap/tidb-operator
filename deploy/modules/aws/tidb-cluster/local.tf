@@ -151,6 +151,24 @@ locals {
       )
       asg_desired_capacity = var.cdc_count
       asg_max_size         = var.cdc_count + 2
+    },
+    {
+      name             = "${var.cluster_name}-tiproxy"
+      enable           = var.create_tiproxy_node_pool
+      key_name         = var.ssh_key_name
+      instance_type    = var.tiproxy_instance_type
+      root_volume_size = "50"
+      public_ip        = false
+      # the space separator is safe when the extra args is empty or prefixed by spaces (the same hereafter)
+      kubelet_extra_args = join(" ",
+        [
+          "--register-with-taints=dedicated=${var.cluster_name}-tiproxy:NoSchedule",
+          "--node-labels=dedicated=${var.cluster_name}-tiproxy,zone=${local.aws_zone_getter}",
+          lookup(var.group_kubelet_extra_args, "tiproxy", var.kubelet_extra_args)
+        ]
+      )
+      asg_desired_capacity = var.tiproxy_count
+      asg_max_size         = var.tiproxy_count + 2
     }
   ]
 
