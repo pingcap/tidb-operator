@@ -27,6 +27,7 @@ const (
 	GetConfigActionType                         ActionType = "GetConfig"
 	GetClusterActionType                        ActionType = "GetCluster"
 	GetMembersActionType                        ActionType = "GetMembers"
+	GetPDMicroServiceMembersActionType          ActionType = "GetPDMicroServiceMembers"
 	GetStoresActionType                         ActionType = "GetStores"
 	GetTombStoneStoresActionType                ActionType = "GetTombStoneStores"
 	GetStoreActionType                          ActionType = "GetStore"
@@ -44,7 +45,6 @@ const (
 	TransferPDLeaderActionType                  ActionType = "TransferPDLeader"
 	GetAutoscalingPlansActionType               ActionType = "GetAutoscalingPlans"
 	GetRecoveringMarkActionType                 ActionType = "GetRecoveringMark"
-	GetPDMicroServiceMembersActionType          ActionType = "GetPDMicroServiceMembers"
 )
 
 type NotFoundReaction struct {

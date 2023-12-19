@@ -115,7 +115,7 @@ var (
 	autoscalingPrefix                = "autoscaling"
 	recoveringMarkPrefix             = "pd/api/v1/admin/cluster/markers/snapshot-recovering"
 	// Micro Service
-	MicroServicePrefix = "pd/api/v1/ms"
+	MicroServicePrefix = "pd/api/v2/ms"
 )
 
 // pdClient is default implementation of PDClient

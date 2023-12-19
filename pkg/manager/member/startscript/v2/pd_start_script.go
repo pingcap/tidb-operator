@@ -140,7 +140,7 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 
 	m.ListenAddr = fmt.Sprintf("%s://0.0.0.0:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 
-	m.AdvertiseListenAddr = fmt.Sprintf("%s://${PDMS_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
+	m.AdvertiseListenAddr = fmt.Sprintf("%s://${PDMS_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 
 	m.DiscoveryAddr = fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS)
 
@@ -149,7 +149,7 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 	msStartSubScript := ``
 	msStartScriptTpl := template.Must(
 		template.Must(
-			template.New("ms-start-script").Parse(msStartSubScript),
+			template.New("pdms-start-script").Parse(msStartSubScript),
 		).Parse(
 			componentCommonScript +
 				enableMicroServiceModeDynamic(name, msStartScriptTplText)))
@@ -167,7 +167,7 @@ waitThreshold={{ .PDStartTimeout }}
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 ` + componentCommonWaitForDnsIpMatchScript
 
-	pdEnableMicroServiceSubScript = " services "
+	pdEnableMicroServiceSubScript = "services"
 
 	pdWaitForDnsOnlySubScript = `
 
@@ -206,8 +206,7 @@ done
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN={{ .PDDomain }}` +
 		dnsAwaitPart + `
-ARGS="` + pdEnableMicroService + `
---data-dir={{ .DataDir }} \
+ARGS="` + pdEnableMicroService + `--data-dir={{ .DataDir }} \
 --name={{ .PDName }} \
 --peer-urls={{ .PeerURL }} \
 --advertise-peer-urls={{ .AdvertisePeerURL }} \
@@ -243,10 +242,9 @@ exec /pd-server ${ARGS}
 
 	// msStartScriptTplText is the template of pd microservices start script.
 	msStartScriptTplText = `
-ARGS="` + pdEnableMicroService + `
---listen-addr={{ .ListenAddr }} \
+ARGS="` + pdEnableMicroService + `--listen-addr={{ .ListenAddr }} \
 --advertise-listen-addr={{ .AdvertiseListenAddr }} \
---backend-endpoints=${ .BackendEndpoints } \
+--backend-endpoints={{ .BackendEndpoints }} \
 --config=/etc/pd/pd.toml \
 "
 

@@ -17,7 +17,7 @@ spec:
     image: alpine:3.16.0
   pd:
     baseImage: hub.pingcap.net/devbuild/pd
-    version: v7.5.0-2849
+    version: nightly
     maxFailoverCount: 0
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
@@ -29,12 +29,12 @@ spec:
   pdms:
     - name: "tso"
       baseImage: hub.pingcap.net/devbuild/pd
-      version: v7.5.0-2849
+      version: nightly
       replicas: 2
       config: {}
     - name: "scheduling"
       baseImage: hub.pingcap.net/devbuild/pd
-      version: v7.5.0-2849
+      version: nightly
       replicas: 2
       config: {}
   tikv:

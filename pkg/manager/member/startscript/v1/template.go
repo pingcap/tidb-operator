@@ -52,7 +52,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -132,7 +132,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -175,8 +175,7 @@ echo "nslookup domain ${domain} failed" >&2
 fi {{- else}}{{.CheckDomainScript}}{{end}}
 done
 
-ARGS="` + pdEnableMicroService + `
---data-dir={{ .DataDir }} \
+ARGS="` + pdEnableMicroService + `--data-dir={{ .DataDir }} \
 --name={{- if or .AcrossK8s .ClusterDomain }}${domain}{{- else }}${POD_NAME}{{- end }} \
 --peer-urls={{ .Scheme }}://0.0.0.0:2380 \
 --advertise-peer-urls={{ .Scheme }}://${domain}:2380 \
@@ -226,7 +225,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -249,8 +248,7 @@ sleep $((RANDOM % 5))
 done
 
 domain="${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}"
-ARGS="` + pdEnableMicroService + `
---listen-addr={{ .Scheme }}://0.0.0.0:2379 \
+ARGS="` + pdEnableMicroService + `--listen-addr={{ .Scheme }}://0.0.0.0:2379 \
 --advertise-listen-addr={{ .Scheme }}://${domain}:2379 \
 --backend-endpoints=${result} \
 --config=/etc/pd/pd.toml \
@@ -258,7 +256,7 @@ ARGS="` + pdEnableMicroService + `
 
 echo "starting ms-server ..."
 sleep $((RANDOM % 10))
-echo "/ms-server ${ARGS}"
+echo "/pdms-server ${ARGS}"
 exec /pd-server ${ARGS}
 exit 0
 `
@@ -339,7 +337,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -589,7 +587,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -704,7 +702,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null

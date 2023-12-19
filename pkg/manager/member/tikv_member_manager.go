@@ -119,7 +119,8 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	for _, pdms := range tc.Spec.PDMS {
 		_, err = controller.GetPDMSClient(m.deps.PDControl, tc, pdms.Name)
 		if err != nil {
-			return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD micro service cluster running, error: %v", ns, tcName, err)
+			return controller.RequeueErrorf("PDMS component %s for TidbCluster: [%s/%s], "+
+				"waiting for PD micro service cluster running, error: %v", pdms.Name, ns, tcName, err)
 		}
 	}
 

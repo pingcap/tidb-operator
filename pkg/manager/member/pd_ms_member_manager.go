@@ -76,6 +76,7 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 			tc.Status.PDMS[curSpec.Name] = &v1alpha1.PDMSStatus{Name: curSpec.Name}
 		}
 		if err := m.syncSingleService(tc, curSpec); err != nil {
+			metrics.ClusterUpdateErrors.WithLabelValues(tc.GetNamespace(), tc.GetName(), curSpec.Name).Inc()
 			klog.Errorf("syncSingleService failed, error: %v, component: %s for cluster %s/%s", err, curSpec.Name, tc.GetNamespace(), tc.GetName())
 			return err
 		}
@@ -87,7 +88,6 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 // syncSingleService for single PD Micro Service components.
 func (m *pdMSMemberManager) syncSingleService(tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) error {
 	curService := curSpec.Name
-	metrics.ClusterUpdateErrors.WithLabelValues(tc.GetNamespace(), tc.GetName(), curService).Inc()
 	// Skip sync if PD Micro Service is suspended
 	componentMemberType := v1alpha1.PDMSMemberType(curService)
 	needSuspend, err := m.suspender.SuspendComponent(tc, componentMemberType)
@@ -520,15 +520,6 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 				},
 			})
 		}
-	}
-	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
-		vols = append(vols, corev1.Volume{
-			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.TiDBClientTLSSecretName(tc.Name, curSpec.TLSClientSecretName),
-				},
-			},
-		})
 	}
 
 	sysctls := "sysctl -w"

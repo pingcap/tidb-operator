@@ -42,7 +42,7 @@ set -uo pipefail
 ANNOTATIONS="/etc/podinfo/annotations"
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -116,8 +116,7 @@ while true; do
     fi
 done
 
-ARGS="
---data-dir=/var/lib/pd \
+ARGS="--data-dir=/var/lib/pd \
 --name=${PD_POD_NAME} \
 --peer-urls=http://0.0.0.0:2380 \
 --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
@@ -157,7 +156,7 @@ set -uo pipefail
 ANNOTATIONS="/etc/podinfo/annotations"
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -231,8 +230,7 @@ while true; do
     fi
 done
 
-ARGS="
---data-dir=/var/lib/pd \
+ARGS="--data-dir=/var/lib/pd \
 --name=${PD_POD_NAME} \
 --peer-urls=https://0.0.0.0:2380 \
 --advertise-peer-urls=https://${PD_DOMAIN}:2380 \
@@ -272,7 +270,7 @@ set -uo pipefail
 ANNOTATIONS="/etc/podinfo/annotations"
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -346,8 +344,7 @@ while true; do
     fi
 done
 
-ARGS="
---data-dir=/var/lib/pd/pd-data \
+ARGS="--data-dir=/var/lib/pd/pd-data \
 --name=${PD_POD_NAME} \
 --peer-urls=http://0.0.0.0:2380 \
 --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
@@ -387,7 +384,7 @@ set -uo pipefail
 ANNOTATIONS="/etc/podinfo/annotations"
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -461,8 +458,7 @@ while true; do
     fi
 done
 
-ARGS="
---data-dir=/var/lib/pd \
+ARGS="--data-dir=/var/lib/pd \
 --name=${PD_DOMAIN} \
 --peer-urls=http://0.0.0.0:2380 \
 --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
@@ -503,7 +499,7 @@ set -uo pipefail
 ANNOTATIONS="/etc/podinfo/annotations"
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -577,8 +573,7 @@ while true; do
     fi
 done
 
-ARGS="
---data-dir=/var/lib/pd \
+ARGS="--data-dir=/var/lib/pd \
 --name=${PD_DOMAIN} \
 --peer-urls=http://0.0.0.0:2380 \
 --advertise-peer-urls=http://${PD_DOMAIN}:2380 \
@@ -619,7 +614,7 @@ set -uo pipefail
 ANNOTATIONS="/etc/podinfo/annotations"
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -693,8 +688,7 @@ while true; do
     fi
 done
 
-ARGS="
---data-dir=/var/lib/pd \
+ARGS="--data-dir=/var/lib/pd \
 --name=${PD_DOMAIN} \
 --peer-urls=http://0.0.0.0:2380 \
 --advertise-peer-urls=http://${PD_DOMAIN}:2380 \

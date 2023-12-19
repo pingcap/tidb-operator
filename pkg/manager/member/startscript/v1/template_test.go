@@ -49,7 +49,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -105,7 +105,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -162,7 +162,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -228,7 +228,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -326,7 +326,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -381,7 +381,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -438,7 +438,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -493,7 +493,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -548,7 +548,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -613,7 +613,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -677,7 +677,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -763,7 +763,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -804,8 +804,7 @@ echo "nslookup domain ${domain} failed" >&2
 fi
 done
 
-ARGS="
---data-dir=/var/lib/pd \
+ARGS="--data-dir=/var/lib/pd \
 --name=${POD_NAME} \
 --peer-urls=https://0.0.0.0:2380 \
 --advertise-peer-urls=https://${domain}:2380 \
@@ -859,7 +858,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -900,8 +899,7 @@ echo "nslookup domain ${domain} failed" >&2
 fi
 done
 
-ARGS="
---data-dir=/var/lib/pd/data \
+ARGS="--data-dir=/var/lib/pd/data \
 --name=${POD_NAME} \
 --peer-urls=http://0.0.0.0:2380 \
 --advertise-peer-urls=http://${domain}:2380 \
@@ -955,7 +953,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -996,8 +994,7 @@ echo "nslookup domain ${domain} failed" >&2
 fi
 done
 
-ARGS="
---data-dir=/var/lib/pd \
+ARGS="--data-dir=/var/lib/pd \
 --name=${domain} \
 --peer-urls=http://0.0.0.0:2380 \
 --advertise-peer-urls=http://${domain}:2380 \
@@ -1052,7 +1049,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -1093,8 +1090,7 @@ echo "nslookup domain ${domain} failed" >&2
 fi
 done
 
-ARGS="
---data-dir=/var/lib/pd \
+ARGS="--data-dir=/var/lib/pd \
 --name=${domain} \
 --peer-urls=http://0.0.0.0:2380 \
 --advertise-peer-urls=http://${domain}:2380 \
@@ -1149,7 +1145,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -1190,8 +1186,7 @@ echo "nslookup domain ${domain} failed" >&2
 fi
 done
 
-ARGS="
---data-dir=/var/lib/pd \
+ARGS="--data-dir=/var/lib/pd \
 --name=${domain} \
 --peer-urls=http://0.0.0.0:2380 \
 --advertise-peer-urls=http://${domain}:2380 \
@@ -1256,7 +1251,7 @@ func TestRenderPDMSStartScript(t *testing.T) {
 		result   string
 	}{
 		{
-			name: "https scheme",
+			name: "pdms basic",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 
@@ -1277,7 +1272,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -1300,8 +1295,7 @@ sleep $((RANDOM % 5))
 done
 
 domain="${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
-ARGS=" services tso 
---listen-addr=https://0.0.0.0:2379 \
+ARGS=" services tso --listen-addr=https://0.0.0.0:2379 \
 --advertise-listen-addr=https://${domain}:2379 \
 --backend-endpoints=${result} \
 --config=/etc/pd/pd.toml \
@@ -1309,7 +1303,7 @@ ARGS=" services tso
 
 echo "starting ms-server ..."
 sleep $((RANDOM % 10))
-echo "/ms-server ${ARGS}"
+echo "/pdms-server ${ARGS}"
 exec /pd-server ${ARGS}
 exit 0
 `,
@@ -1983,7 +1977,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
@@ -2079,7 +2073,7 @@ ANNOTATIONS="/etc/podinfo/annotations"
 
 if [[ ! -f "${ANNOTATIONS}" ]]
 then
-    echo "${ANNOTATIONS} doesn't exist, exiting."
+    echo "${ANNOTATIONS} does't exist, exiting."
     exit 1
 fi
 source ${ANNOTATIONS} 2>/dev/null
