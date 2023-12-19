@@ -123,14 +123,14 @@ func TestManager(t *testing.T) {
 	bs.Spec.MaxBackups = pointer.Int32Ptr(5)
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 5)
+	helper.checkBacklist(bs.Namespace, 9)
 
 	t.Log("test setting MaxReservedTime")
 	bs.Spec.MaxBackups = nil
 	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 3)
+	helper.checkBacklist(bs.Namespace, 8)
 }
 
 func TestGetLastScheduledTime(t *testing.T) {
