@@ -248,7 +248,7 @@ ARGS="` + pdEnableMicroService + `--listen-addr={{ .ListenAddr }} \
 --config=/etc/pd/pd.toml \
 "
 
-echo "starting ms-server ..."
+echo "starting pdms-server ..."
 sleep $((RANDOM % 10))
 echo "/pdms-server ${ARGS}"
 exec /pd-server ${ARGS}

@@ -292,10 +292,10 @@ func genEtcdClientKey(namespace Namespace, clusterName string, clusterDomain str
 func genClientUrl(namespace Namespace, clusterName, scheme, clusterDomain, serviceName string, headlessSvc bool) string {
 	svc := "pd"
 	if serviceName != "" && checkServiceName(serviceName) {
-		svc = serviceName
+		svc = "pdms-" + serviceName
 	}
 	if headlessSvc {
-		svc = fmt.Sprintf("%s-peer", svc)
+		svc = fmt.Sprintf("pdms-%s-peer", svc)
 	}
 
 	if len(namespace) == 0 {

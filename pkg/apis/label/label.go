@@ -157,10 +157,10 @@ const (
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
-	// TSOLabelVal is PD MS TSO label value
-	TSOLabelVal string = "tso"
-	// SchedulingLabelVal is PD  label value
-	SchedulingLabelVal string = "scheduling"
+	// PDMSTSOLabelVal is pd microservice tso member type
+	PDMSTSOLabelVal string = "pdms-tso"
+	// PDMSSchedulingLabelVal is pd microservice scheduling member type
+	PDMSSchedulingLabelVal string = "pdms-scheduling"
 	// TiDBLabelVal is TiDB label value
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
@@ -408,9 +408,9 @@ func (l Label) IsPD() bool {
 func (l Label) PDMS(name string) Label {
 	switch name {
 	case "tso":
-		return l.Component(TSOLabelVal)
+		return l.Component(PDMSTSOLabelVal)
 	case "scheduling":
-		return l.Component(SchedulingLabelVal)
+		return l.Component(PDMSSchedulingLabelVal)
 	default:
 		panic(fmt.Sprintf("unknown pd ms name %s", name))
 	}

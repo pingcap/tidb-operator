@@ -602,7 +602,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					},
 				},
 			},
-				v1alpha1.TSOMemberType,
+				v1alpha1.PDMSTSOMemberType,
 			),
 		},
 		{

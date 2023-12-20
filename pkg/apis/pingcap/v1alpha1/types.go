@@ -70,10 +70,10 @@ const (
 	DiscoveryMemberType MemberType = "discovery"
 	// PDMemberType is pd member type
 	PDMemberType MemberType = "pd"
-	// TSOMemberType is tso member type
-	TSOMemberType MemberType = "tso"
-	// SchedulingMemberType is scheduling member type
-	SchedulingMemberType MemberType = "scheduling"
+	// PDMSTSOMemberType is pd microservice tso member type
+	PDMSTSOMemberType MemberType = "pdms-tso"
+	// PDMSSchedulingMemberType is pd microservice scheduling member type
+	PDMSSchedulingMemberType MemberType = "pdms-scheduling"
 	// TiDBMemberType is tidb member type
 	TiDBMemberType MemberType = "tidb"
 	// TiKVMemberType is tikv member type
@@ -110,16 +110,16 @@ const (
 func PDMSMemberType(name string) MemberType {
 	switch name {
 	case "tso":
-		return TSOMemberType
+		return PDMSTSOMemberType
 	case "scheduling":
-		return SchedulingMemberType
+		return PDMSSchedulingMemberType
 	default:
 		panic(fmt.Sprintf("unknown pd ms name %s", name))
 	}
 }
 
 func IsPDMSMemberType(name MemberType) bool {
-	return name == TSOMemberType || name == SchedulingMemberType
+	return name == PDMSTSOMemberType || name == PDMSSchedulingMemberType
 }
 
 // MemberPhase is the current state of member

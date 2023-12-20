@@ -514,9 +514,9 @@ func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32)
 	var key string
 	if component == label.PDLabelVal {
 		key = label.AnnPDDeleteSlots
-	} else if component == label.TSOLabelVal {
+	} else if component == label.PDMSTSOLabelVal {
 		key = label.AnnTSODeleteSlots
-	} else if component == label.SchedulingLabelVal {
+	} else if component == label.PDMSSchedulingLabelVal {
 		key = label.AnnSchedulingDeleteSlots
 	} else if component == label.TiDBLabelVal {
 		key = label.AnnTiDBDeleteSlots

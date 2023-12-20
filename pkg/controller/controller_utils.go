@@ -313,12 +313,12 @@ func PDPeerMemberName(clusterName string) string {
 
 // PDMSMemberName returns pd member name
 func PDMSMemberName(clusterName string, serviceName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, serviceName)
+	return fmt.Sprintf("%s-pdms-%s", clusterName, serviceName)
 }
 
 // PDMSPeerMemberName returns pd peer service name
 func PDMSPeerMemberName(clusterName string, serviceName string) string {
-	return fmt.Sprintf("%s-%s-peer", clusterName, serviceName)
+	return fmt.Sprintf("%s-pdms-%s-peer", clusterName, serviceName)
 }
 
 // PDMSTrimName returns last `-` separated string for `PDMSMemberName`
@@ -608,10 +608,10 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 		if err != nil {
 			if errors.IsNotFound(err) {
 				klog.V(4).Infof("controller %s/%s of %s/%s not found, ignore",
-					meta.GetNamespace(), ref.Name, meta.GetNamespace(), meta.GetName())
+					meta.GetNamespace(), ref.Name, meta.GetLabels(), meta.GetName())
 			} else {
 				utilruntime.HandleError(fmt.Errorf("cannot get controller %s/%s of %s/%s",
-					meta.GetNamespace(), ref.Name, meta.GetNamespace(), meta.GetName()))
+					meta.GetNamespace(), ref.Name, meta.GetLabels(), meta.GetName()))
 			}
 			return
 		}

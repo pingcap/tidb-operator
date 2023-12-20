@@ -40,14 +40,14 @@ func TestNewSelector(t *testing.T) {
 		{
 			desc:     "selector for tso",
 			instance: "aaa",
-			mt:       v1alpha1.TSOMemberType,
+			mt:       v1alpha1.PDMSTSOMemberType,
 
 			expected: "app.kubernetes.io/component=tso,app.kubernetes.io/instance=aaa,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/name=tidb-cluster",
 		},
 		{
 			desc:     "selector for scheduling",
 			instance: "aaa",
-			mt:       v1alpha1.SchedulingMemberType,
+			mt:       v1alpha1.PDMSSchedulingMemberType,
 
 			expected: "app.kubernetes.io/component=scheduling,app.kubernetes.io/instance=aaa,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/name=tidb-cluster",
 		},

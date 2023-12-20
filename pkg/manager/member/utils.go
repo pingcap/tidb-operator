@@ -193,9 +193,9 @@ func getStsAnnotations(tcAnns map[string]string, component string) map[string]st
 	switch component {
 	case label.PDLabelVal:
 		key = label.AnnPDDeleteSlots
-	case label.TSOLabelVal:
+	case label.PDMSTSOLabelVal:
 		key = label.AnnTSODeleteSlots
-	case label.SchedulingLabelVal:
+	case label.PDMSSchedulingLabelVal:
 		key = label.AnnSchedulingDeleteSlots
 	case label.TiDBLabelVal:
 		key = label.AnnTiDBDeleteSlots

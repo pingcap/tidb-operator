@@ -475,10 +475,10 @@ func getComponentLabelValue(c MemberType) string {
 	switch c {
 	case PDMemberType:
 		return label.PDLabelVal
-	case TSOMemberType:
-		return label.TSOLabelVal
-	case SchedulingMemberType:
-		return label.SchedulingLabelVal
+	case PDMSTSOMemberType:
+		return label.PDMSTSOLabelVal
+	case PDMSSchedulingMemberType:
+		return label.PDMSSchedulingLabelVal
 	case TiDBMemberType:
 		return label.TiDBLabelVal
 	case TiKVMemberType:

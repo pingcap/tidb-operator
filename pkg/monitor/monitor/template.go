@@ -44,7 +44,7 @@ var (
 	portPattern      = "([^:]+)(?::\\d+)?;(\\d+)"
 	tikvPattern      = "tikv"
 	tiproxyPattern   = "tiproxy"
-	pdPattern        = "pd"
+	pdPattern        = "pd*"
 	tidbPattern      = "tidb"
 	addressPattern   = "(.+);(.+);(.+);(.+)"
 	tiflashPattern   = "tiflash"

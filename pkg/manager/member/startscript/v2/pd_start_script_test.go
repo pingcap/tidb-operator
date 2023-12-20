@@ -762,7 +762,7 @@ ARGS=" services tso --listen-addr=https://0.0.0.0:2379 \
 --config=/etc/pd/pd.toml \
 "
 
-echo "starting ms-server ..."
+echo "starting pdms-server ..."
 sleep $((RANDOM % 10))
 echo "/pdms-server ${ARGS}"
 exec /pd-server ${ARGS}

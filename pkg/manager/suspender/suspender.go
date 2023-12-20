@@ -34,8 +34,8 @@ var (
 		v1alpha1.TiKVMemberType,
 		v1alpha1.PumpMemberType,
 		v1alpha1.PDMemberType,
-		v1alpha1.TSOMemberType,
-		v1alpha1.SchedulingMemberType,
+		v1alpha1.PDMSTSOMemberType,
+		v1alpha1.PDMSSchedulingMemberType,
 	}
 	suspendOrderForDM = []v1alpha1.MemberType{
 		v1alpha1.DMWorkerMemberType,
@@ -166,7 +166,7 @@ func (s *suspender) suspendSts(ctx *suspendComponentCtx) error {
 		case v1alpha1.PDMemberType:
 			ctx.status.(*v1alpha1.PDStatus).Members = nil
 			ctx.status.(*v1alpha1.PDStatus).Leader = v1alpha1.PDMember{}
-		case v1alpha1.TSOMemberType, v1alpha1.SchedulingMemberType:
+		case v1alpha1.PDMSTSOMemberType, v1alpha1.PDMSSchedulingMemberType:
 			ctx.status.(*v1alpha1.PDMSStatus).Members = nil
 		case v1alpha1.TiDBMemberType:
 			ctx.status.(*v1alpha1.TiDBStatus).Members = nil
