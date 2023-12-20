@@ -24,7 +24,6 @@ import (
 	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -176,60 +175,17 @@ func main() {
 	}
 	// leader election for multiple br-federation-manager instances
 	go wait.Forever(func() {
-		var lock resourcelock.Interface
-		switch cliCfg.ResourceLock {
-		case resourcelock.EndpointsResourceLock:
-			lock = &resourcelock.EndpointsLock{
-				EndpointsMeta: metav1.ObjectMeta{
-					Namespace: ns,
-					Name:      endPointsName,
-				},
-				Client: kubeCli.CoreV1(),
-				LockConfig: resourcelock.ResourceLockConfig{
-					Identity:      hostName,
-					EventRecorder: &record.FakeRecorder{},
-				},
-			}
-		case resourcelock.LeasesResourceLock:
-			lock = &resourcelock.LeaseLock{
-				LeaseMeta: metav1.ObjectMeta{
-					Namespace: ns,
-					Name:      endPointsName,
-				},
-				Client: kubeCli.CoordinationV1(),
-				LockConfig: resourcelock.ResourceLockConfig{
-					Identity:      hostName,
-					EventRecorder: &record.FakeRecorder{},
-				},
-			}
-		case resourcelock.EndpointsLeasesResourceLock:
-			lock = &resourcelock.MultiLock{
-				Primary: &resourcelock.EndpointsLock{
-					EndpointsMeta: metav1.ObjectMeta{
-						Namespace: ns,
-						Name:      endPointsName,
-					},
-					Client: kubeCli.CoreV1(),
-					LockConfig: resourcelock.ResourceLockConfig{
-						Identity:      hostName,
-						EventRecorder: &record.FakeRecorder{},
-					},
-				},
-				Secondary: &resourcelock.LeaseLock{
-					LeaseMeta: metav1.ObjectMeta{
-						Namespace: ns,
-						Name:      endPointsName,
-					},
-					Client: kubeCli.CoordinationV1(),
-					LockConfig: resourcelock.ResourceLockConfig{
-						Identity:      hostName,
-						EventRecorder: &record.FakeRecorder{},
-					},
-				},
-			}
-		default:
-			// we don't support configmap lock now
-			klog.Fatalf("only support endpoints, leases or endpointsleases for resource-lock, but got %s", cliCfg.ResourceLock)
+		lock, err := resourcelock.New(cliCfg.ResourceLock,
+			ns,
+			endPointsName,
+			kubeCli.CoreV1(),
+			kubeCli.CoordinationV1(),
+			resourcelock.ResourceLockConfig{
+				Identity:      hostName,
+				EventRecorder: &record.FakeRecorder{},
+			})
+		if err != nil {
+			klog.Fatalf("failed to create lock: %v", err)
 		}
 
 		leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
