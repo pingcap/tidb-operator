@@ -32,7 +32,9 @@ const (
 )
 
 func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
-	externalTcName := fmt.Sprintf(externalTcNamePattern, tc.ClusterName, component.String())
+	// `ClusterName` has been removed in `ObjectMeta`, use `Name` instead
+	// ref https://github.com/kubernetes/kubernetes/pull/108717
+	externalTcName := fmt.Sprintf(externalTcNamePattern, tc.Name, component.String())
 	externalTc, err := am.deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(externalTcName)
 	if err != nil {
 		if errors.IsNotFound(err) {
