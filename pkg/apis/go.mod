@@ -11,14 +11,14 @@ require (
 	github.com/onsi/gomega v1.10.2
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
-	github.com/prometheus/common v0.28.0
+	github.com/prometheus/common v0.32.1
 	github.com/prometheus/prometheus v1.8.2
-	k8s.io/api v0.23.17
-	k8s.io/apiextensions-apiserver v0.23.17
-	k8s.io/apimachinery v0.23.17
-	k8s.io/klog/v2 v2.30.0
-	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65
-	k8s.io/utils v0.0.0-20211116205334-6203023598ed
+	k8s.io/api v0.24.17
+	k8s.io/apiextensions-apiserver v0.24.17
+	k8s.io/apimachinery v0.24.17
+	k8s.io/klog/v2 v2.60.1
+	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42
+	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 	sigs.k8s.io/yaml v1.2.0
 )
 
@@ -44,6 +44,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
+	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
