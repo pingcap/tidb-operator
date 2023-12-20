@@ -201,7 +201,7 @@ AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
 AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
 AWS_REGION=${AWS_REGION:-}
 AWS_ZONE=${AWS_ZONE:-}
-KUBE_VERSION=${KUBE_VERSION:-v1.24.15}
+KUBE_VERSION=${KUBE_VERSION:-v1.27.1}
 KUBE_WORKERS=${KUBE_WORKERS:-3}
 DOCKER_IO_MIRROR=${DOCKER_IO_MIRROR:-}
 GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
@@ -249,6 +249,7 @@ kind_node_images["v1.21.14"]="kindest/node:v1.21.14@sha256:8a4e9bb3f415d2bb81629
 kind_node_images["v1.22.17"]="kindest/node:v1.22.17@sha256:f5b2e5698c6c9d6d0adc419c0deae21a425c07d81bbf3b6a6834042f25d4fba2"
 kind_node_images["v1.23.17"]="kindest/node:v1.23.17@sha256:59c989ff8a517a93127d4a536e7014d28e235fb3529d9fba91b3951d461edfdb"
 kind_node_images["v1.24.15"]="kindest/node:v1.24.15@sha256:7db4f8bea3e14b82d12e044e25e34bd53754b7f2b0e9d56df21774e6f66a70ab" # no image for v1.24.17 yet
+kind_node_images["v1.27.1"]="kindest/node:v1.27.1@sha256:b7d12ed662b873bd8510879c1846e87c7e676a79fefc93e17b2a52989d3ff42b"
 
 function e2e::image_build() {
     if [ -n "$SKIP_BUILD" ]; then
