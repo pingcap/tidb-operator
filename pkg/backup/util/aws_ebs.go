@@ -14,6 +14,7 @@
 package util
 
 import (
+	"context"
 	"os"
 	"strings"
 	"sync"
@@ -147,10 +148,11 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 		lock       sync.Mutex
 	)
 
-	eg := new(errgroup.Group)
+	eg, _ := errgroup.WithContext(context.Background())
+	workerPool := NewWorkerPool(e.concurrency, "delete snapshots")
 	for volID := range snapIDMap {
 		snapID := snapIDMap[volID]
-		eg.Go(func() error {
+		workerPool.ApplyOnErrorGroup(eg, func() error {
 			_, err := e.EC2.DeleteSnapshot(&ec2.DeleteSnapshotInput{
 				SnapshotId: &snapID,
 			})
@@ -187,7 +189,8 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 
 func (e *EC2Session) AddTags(resourcesTags map[string]TagMap) error {
 
-	eg := new(errgroup.Group)
+	eg, _ := errgroup.WithContext(context.Background())
+	workerPool := NewWorkerPool(e.concurrency, "add tags")
 	for resourceID := range resourcesTags {
 		id := resourceID
 		tagMap := resourcesTags[resourceID]
@@ -204,7 +207,7 @@ func (e *EC2Session) AddTags(resourcesTags map[string]TagMap) error {
 			Tags:      tags,
 		}
 
-		eg.Go(func() error {
+		workerPool.ApplyOnErrorGroup(eg, func() error {
 			_, err := e.EC2.CreateTags(input)
 			if err != nil {
 				klog.Errorf("failed to create tags for resource id=%s, %v", id, err)
