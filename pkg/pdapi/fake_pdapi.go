@@ -27,7 +27,7 @@ const (
 	GetConfigActionType                         ActionType = "GetConfig"
 	GetClusterActionType                        ActionType = "GetCluster"
 	GetMembersActionType                        ActionType = "GetMembers"
-	GetPDMicroServiceMembersActionType          ActionType = "GetPDMicroServiceMembers"
+	GetPDMSMembersActionType                    ActionType = "GetPDMSMembers"
 	GetStoresActionType                         ActionType = "GetStores"
 	GetTombStoneStoresActionType                ActionType = "GetTombStoneStores"
 	GetStoreActionType                          ActionType = "GetStore"
@@ -71,7 +71,7 @@ type FakePDClient struct {
 
 func (c *FakePDClient) GetMSMembers(_ string) ([]string, error) {
 	action := &Action{}
-	result, err := c.fakeAPI(GetPDMicroServiceMembersActionType, action)
+	result, err := c.fakeAPI(GetPDMSMembersActionType, action)
 	if err != nil {
 		return nil, err
 	}

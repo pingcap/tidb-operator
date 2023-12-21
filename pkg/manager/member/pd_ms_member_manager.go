@@ -264,7 +264,9 @@ func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster, curSpe
 	if err != nil {
 		return err
 	}
+	println("newPDMSSet", curService)
 	if setNotExist {
+		println("setNotExist", curService)
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newPDMSSet)
 		if err != nil {
 			return err
@@ -574,7 +576,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 	}
 
 	pdMSContainer := corev1.Container{
-		Name:            curService,
+		Name:            v1alpha1.PDMSMemberType(curService).String(),
 		Image:           tc.PDImage(),
 		ImagePullPolicy: basePDMSSpec.ImagePullPolicy(),
 		Command:         []string{"/bin/sh", "/usr/local/bin/pdms_start_script.sh"},

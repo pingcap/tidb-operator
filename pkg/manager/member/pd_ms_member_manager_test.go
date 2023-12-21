@@ -150,7 +150,7 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
-		pdClient.AddReaction(pdapi.GetPDMicroServiceMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+		pdClient.AddReaction(pdapi.GetPDMSMembersActionType, func(action *pdapi.Action) (interface{}, error) {
 			return []string{"tso"}, nil
 		})
 
@@ -294,7 +294,7 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 		pmm, _, _ := newFakePDMSMemberManager()
 		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
-		pdClient.AddReaction(pdapi.GetPDMicroServiceMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+		pdClient.AddReaction(pdapi.GetPDMSMembersActionType, func(action *pdapi.Action) (interface{}, error) {
 			return []string{"tso"}, nil
 		})
 
@@ -405,13 +405,13 @@ func TestGetNewPDMSHeadlessServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-tso-peer",
+					Name:      "foo-pdms-tso-peer",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 						"app.kubernetes.io/used-by":    "peer",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -449,7 +449,7 @@ func TestGetNewPDMSHeadlessServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 					},
 					PublishNotReadyAddresses: true,
 				},
@@ -526,7 +526,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					PD: &v1alpha1.PDSpec{
 						Mode: "ms",
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: "pingcap/pd:v7.2.0",
+							Image: "pingcap/pd:v7.3.0",
 						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -569,15 +569,15 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 				},
 				{
 					Name:  "PEER_SERVICE_NAME",
-					Value: "tc-tso-peer",
+					Value: "tc-pdms-tso-peer",
 				},
 				{
 					Name:  "SERVICE_NAME",
-					Value: "tc-tso",
+					Value: "tc-pdms-tso",
 				},
 				{
 					Name:  "SET_NAME",
-					Value: "tc-tso",
+					Value: "tc-pdms-tso",
 				},
 				{
 					Name: "TZ",
@@ -588,7 +588,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 				},
 				{
 					Name:  "HEADLESS_SERVICE_NAME",
-					Value: "tc-tso-peer",
+					Value: "tc-pdms-tso-peer",
 				},
 				{
 					Name: "PDMS_SESSION_SECRET",
@@ -1111,13 +1111,13 @@ func TestGetPDMSConfigMap(t *testing.T) {
 			},
 			expected: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-tso",
+					Name:      "foo-pdms-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1204,13 +1204,13 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-tso",
+					Name:      "foo-pdms-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1242,7 +1242,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 					},
 				},
 			},
@@ -1280,13 +1280,13 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-tso",
+					Name:      "foo-pdms-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1319,7 +1319,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 					},
 				},
 			},
@@ -1357,13 +1357,13 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-tso",
+					Name:      "foo-pdms-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1396,7 +1396,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 					},
 				},
 			},
@@ -1435,13 +1435,13 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-tso",
+					Name:      "foo-pdms-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1474,7 +1474,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 					},
 				},
 			},
@@ -1515,13 +1515,13 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-tso",
+					Name:      "foo-pdms-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1554,7 +1554,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "tso",
+						"app.kubernetes.io/component":  "pdms-tso",
 					},
 				},
 			},

@@ -56,6 +56,7 @@ func (s *pdMSScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	serviceName := controller.PDMSTrimName(oldSet.Name)
+	println("scaleOne", serviceName)
 
 	klog.Infof("scaling out PDMS component %s for cluster [%s/%s] statefulset, ordinal: %d (replicas: %d, delete slots: %v)", serviceName, oldSet.Namespace, tcName, ordinal, replicas, deleteSlots.List())
 	if !tc.Status.PDMS[serviceName].Synced {
