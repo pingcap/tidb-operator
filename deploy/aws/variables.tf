@@ -145,3 +145,16 @@ variable "cluster_cdc_instance_type" {
 variable "cluster_tiflash_instance_type" {
   default = "i3.4xlarge"
 }
+
+variable "create_tiproxy_node_pool" {
+  description = "whether creating node pool for tiproxy"
+  default     = false
+}
+
+variable "cluster_tiproxy_count" {
+  default = 3
+}
+
+variable "cluster_tiproxy_instance_type" {
+  default = "m5.xlarge"
+}
