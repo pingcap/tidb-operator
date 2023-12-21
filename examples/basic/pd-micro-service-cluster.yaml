@@ -35,7 +35,7 @@ spec:
     - name: "scheduling"
       baseImage: hub.pingcap.net/devbuild/pd
       version: v7.5.0-2975
-      replicas: 2
+      replicas: 1
       config: {}
   tikv:
     baseImage: pingcap/tikv

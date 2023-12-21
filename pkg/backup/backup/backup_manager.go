@@ -240,11 +240,16 @@ func (bm *backupManager) checkVolumeBackupInitializeJobRunning(backup *v1alpha1.
 	if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
 		return nil
 	}
+	if backup.Spec.FederalVolumeBackupPhase != v1alpha1.FederalVolumeBackupInitialize &&
+		!v1alpha1.IsVolumeBackupInitialized(backup) {
+		// the backup isn't responsible for initialization
+		return nil
+	}
 	if v1alpha1.IsVolumeBackupSnapshotsCreated(backup) && backup.Spec.ResumeGcSchedule {
 		// all the volume snapshots has created
 		return nil
 	}
-	if !v1alpha1.IsVolumeBackupInitialized(backup) || v1alpha1.IsVolumeBackupInitializeFailed(backup) {
+	if !v1alpha1.IsBackupScheduled(backup) || v1alpha1.IsVolumeBackupInitializeFailed(backup) {
 		return nil
 	}
 

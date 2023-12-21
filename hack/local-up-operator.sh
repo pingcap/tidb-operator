@@ -184,7 +184,7 @@ $HELM_BIN template tidb-operator-dev ./charts/tidb-operator/ ${helm_template_arg
 
 deploys=(
     tidb-controller-manager
-    tidb-scheduler
+    # tidb-scheduler
 )
 for deploy in ${deploys[@]}; do
     echo "info: waiting for $NAMESPACE/$deploy to be ready"

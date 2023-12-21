@@ -110,48 +110,49 @@ func NewSnapshotterForRestore(m v1alpha1.RestoreMode, d *controller.Dependencies
 	return s, "", nil
 }
 
-func (s *BaseSnapshotter) PrepareCSBK8SMeta(csb *CloudSnapBackup, tc *v1alpha1.TidbCluster) ([]*corev1.Pod, string, error) {
+func (s *BaseSnapshotter) PrepareCSBK8SMeta(tc *v1alpha1.TidbCluster) (
+	[]*corev1.Pod,
+	[]*corev1.PersistentVolumeClaim,
+	[]*corev1.PersistentVolume,
+	string, error) {
 	if s.deps == nil {
-		return nil, "NotExistDependencies", fmt.Errorf("unexpected error for nil dependencies")
+		return nil, nil, nil, "NotExistDependencies", fmt.Errorf("unexpected error for nil dependencies")
 	}
 
 	sel, err := label.New().Instance(tc.Name).TiKV().Selector()
 	if err != nil {
-		return nil, fmt.Sprintf("unexpected error generating pvc label selector: %v", err), err
+		return nil, nil, nil, fmt.Sprintf("unexpected error generating pvc label selector: %v", err), err
 	}
-
 	pvcs, err := s.deps.PVCLister.PersistentVolumeClaims(tc.Namespace).List(sel)
-
 	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch pvcs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
+		return nil, nil, nil, fmt.Sprintf("failed to fetch pvcs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
-	csb.Kubernetes.PVCs = pvcs
 
 	pvSels, err := label.New().Instance(tc.Name).Namespace(tc.Namespace).TiKV().Selector()
 	if err != nil {
-		return nil, fmt.Sprintf("unexpected error generating pv label selector: %v", err), err
+		return nil, nil, nil, fmt.Sprintf("unexpected error generating pv label selector: %v", err), err
 	}
 	pvs, err := s.deps.PVLister.List(pvSels)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch pvs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
+		return nil, nil, nil, fmt.Sprintf("failed to fetch pvs %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
-	csb.Kubernetes.PVs = pvs
+
 	pods, err := s.deps.PodLister.Pods(tc.Namespace).List(sel)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch pods %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
+		return nil, nil, nil, fmt.Sprintf("failed to fetch pods %s:%s", label.ComponentLabelKey, label.TiKVLabelVal), err
 	}
-	return pods, "", nil
+	return pods, pvcs, pvs, "", nil
 }
 
 func (s *BaseSnapshotter) generateBackupMetadata(
 	b *v1alpha1.Backup, tc *v1alpha1.TidbCluster, execr Snapshotter) (*CloudSnapBackup, string, error) {
 	csb := NewCloudSnapshotBackup(tc)
-	pods, reason, err := s.PrepareCSBK8SMeta(csb, tc)
+	pods, pvcs, pvs, reason, err := s.PrepareCSBK8SMeta(tc)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	m := NewBackupStoresMixture(tc, csb.Kubernetes.PVCs, csb.Kubernetes.PVs, execr)
+	m := NewBackupStoresMixture(tc, pvcs, pvs, execr)
 	if reason, err := m.PrepareCSBStoresMeta(csb, pods); err != nil {
 		return nil, reason, err
 	}
@@ -368,18 +369,14 @@ func NewCloudSnapshotBackup(tc *v1alpha1.TidbCluster) (csb *CloudSnapBackup) {
 type StoresMixture struct {
 	// TidbCluster as CRD
 	tc *v1alpha1.TidbCluster
-	// Pod as resource native to Kubernetes
-	pod *corev1.Pod
 	// PersistentVolumeClaim as resource native to Kubernetes
-	pvcs []*corev1.PersistentVolumeClaim
+	pvcs map[string]*corev1.PersistentVolumeClaim
 	// PersistentVolume as resource native to Kubernetes
-	pvs []*corev1.PersistentVolume
+	pvs map[string]*corev1.PersistentVolume
 	// key: volumeName, value: mountPath
 	volsMap map[string]string
 	// key: mountPath, value: dirConfigType
 	mpTypeMap map[string]string
-	// key: mountPath, value: volumeID
-	mpVolIDMap map[string]string
 	// key: volumeID, value: restoreVolumeID, for restore
 	rsVolIDMap map[string]string
 	// support snapshot for the cloudprovider
@@ -391,13 +388,21 @@ func NewBackupStoresMixture(
 	pvcs []*corev1.PersistentVolumeClaim,
 	pvs []*corev1.PersistentVolume,
 	s Snapshotter) *StoresMixture {
+	pvcMap := make(map[string]*corev1.PersistentVolumeClaim, len(pvcs))
+	for _, pvc := range pvcs {
+		pvcMap[pvc.Name] = pvc
+	}
+	pvMap := make(map[string]*corev1.PersistentVolume, len(pvs))
+	for _, pv := range pvs {
+		pvMap[pv.Name] = pv
+	}
+
 	return &StoresMixture{
 		tc:          tc,
-		pvcs:        pvcs,
-		pvs:         pvs,
+		pvcs:        pvcMap,
+		pvs:         pvMap,
 		volsMap:     make(map[string]string),
 		mpTypeMap:   make(map[string]string),
-		mpVolIDMap:  make(map[string]string),
 		snapshotter: s,
 	}
 }
@@ -407,10 +412,6 @@ func NewRestoreStoresMixture(s Snapshotter) *StoresMixture {
 		rsVolIDMap:  make(map[string]string),
 		snapshotter: s,
 	}
-}
-
-func (m *StoresMixture) SetPod(pod *corev1.Pod) {
-	m.pod = pod
 }
 
 func (m *StoresMixture) collectVolumesInfo() {
@@ -430,37 +431,52 @@ func (m *StoresMixture) collectVolumesInfo() {
 	m.mpTypeMap[constants.TiKVDataVolumeMountPath] = constants.TiKVDataVolumeConfType
 }
 
-func (m *StoresMixture) extractVolumeIDs() (string, error) {
+func (m *StoresMixture) extractVolumes(pod *corev1.Pod) (
+	pvcs []*corev1.PersistentVolumeClaim,
+	pvs []*corev1.PersistentVolume,
+	mpVolIDMap map[string]string,
+	reason string,
+	err error) {
 	// key: volumePVCClaimName, value: mountPath
 	claimMpMap := make(map[string]string)
-	for _, vol := range m.pod.Spec.Volumes {
+	for _, vol := range pod.Spec.Volumes {
 		if mp, ok := m.volsMap[vol.Name]; ok {
 			claimMpMap[vol.VolumeSource.PersistentVolumeClaim.ClaimName] = mp
 		}
 	}
 
-	// key: pvcName, value: mountPath
-	pvcMpMap := make(map[string]string)
-	for _, pvc := range m.pvcs {
-		if mp, ok := claimMpMap[pvc.Name]; ok {
-			pvcMpMap[pvc.Spec.VolumeName] = mp
+	// key: pv name, value: mountPath
+	pvMpMap := make(map[string]string)
+	for pvcName, mountPath := range claimMpMap {
+		pvc, ok := m.pvcs[pvcName]
+		if !ok {
+			return nil, nil, nil, "PVCNotFound",
+				fmt.Errorf("can't find pvc %s of tikv pod %s/%s", pvcName, pod.Namespace, pod.Name)
 		}
+
+		pvMpMap[pvc.Spec.VolumeName] = mountPath
+		pvcs = append(pvcs, pvc)
 	}
 
 	// key: mountPath, value: PV
 	mpPVMap := make(map[string]*corev1.PersistentVolume)
-	for _, pv := range m.pvs {
-		if mp, ok := pvcMpMap[pv.Name]; ok {
-			mpPVMap[mp] = pv
+	for pvName, mountPath := range pvMpMap {
+		pv, ok := m.pvs[pvName]
+		if !ok {
+			return nil, nil, nil, "PVNotFound",
+				fmt.Errorf("can't find pv %s of tikv pod %s/%s", pvName, pod.Namespace, pod.Name)
 		}
+
+		mpPVMap[mountPath] = pv
+		pvs = append(pvs, pv)
 	}
 
 	// key: mountPath, value: volumeID
-	mpVolIDMap := make(map[string]string)
+	mpVolIDMap = make(map[string]string)
 	for mp, pv := range mpPVMap {
 		volID, err := m.snapshotter.GetVolumeID(pv)
 		if err != nil {
-			return "GetVolumeIDFailed", err
+			return nil, nil, nil, "GetVolumeIDFailed", err
 		}
 		mpVolIDMap[mp] = volID
 
@@ -472,8 +488,7 @@ func (m *StoresMixture) extractVolumeIDs() (string, error) {
 		pv.Annotations[constants.AnnTemporaryVolumeID] = volID
 	}
 
-	m.mpVolIDMap = mpVolIDMap
-	return "", nil
+	return
 }
 
 func (m *StoresMixture) PrepareCSBStoresMeta(csb *CloudSnapBackup, pods []*corev1.Pod) (string, error) {
@@ -484,18 +499,19 @@ func (m *StoresMixture) PrepareCSBStoresMeta(csb *CloudSnapBackup, pods []*corev
 	m.collectVolumesInfo()
 
 	for _, pod := range pods {
-		m.SetPod(pod)
-		reason, err := m.extractVolumeIDs()
+		pvcs, pvs, mpVolIDMap, reason, err := m.extractVolumes(pod)
 		if err != nil {
 			return reason, err
 		}
+		csb.Kubernetes.PVCs = append(csb.Kubernetes.PVCs, pvcs...)
+		csb.Kubernetes.PVs = append(csb.Kubernetes.PVs, pvs...)
 
 		storeID, _ := strconv.ParseUint(pod.Labels[label.StoreIDLabelKey], 10, 64)
 		stores := &StoresBackup{
 			StoreID: storeID,
 			Volumes: []*VolumeBackup{},
 		}
-		for mp, volID := range m.mpVolIDMap {
+		for mp, volID := range mpVolIDMap {
 			vol := &VolumeBackup{
 				VolumeID:  volID,
 				Type:      m.mpTypeMap[mp],

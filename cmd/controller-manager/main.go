@@ -221,18 +221,21 @@ func main() {
 	}
 	// leader election for multiple tidb-controller-manager instances
 	go wait.Forever(func() {
+		lock, err := resourcelock.New(cliCfg.ResourceLock,
+			ns,
+			endPointsName,
+			kubeCli.CoreV1(),
+			kubeCli.CoordinationV1(),
+			resourcelock.ResourceLockConfig{
+				Identity:      hostName,
+				EventRecorder: &record.FakeRecorder{},
+			})
+		if err != nil {
+			klog.Fatalf("failed to create lock: %v", err)
+		}
+
 		leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
-			Lock: &resourcelock.EndpointsLock{
-				EndpointsMeta: metav1.ObjectMeta{
-					Namespace: ns,
-					Name:      endPointsName,
-				},
-				Client: kubeCli.CoreV1(),
-				LockConfig: resourcelock.ResourceLockConfig{
-					Identity:      hostName,
-					EventRecorder: &record.FakeRecorder{},
-				},
-			},
+			Lock:          lock,
 			LeaseDuration: cliCfg.LeaseDuration,
 			RenewDeadline: cliCfg.RenewDeadline,
 			RetryPeriod:   cliCfg.RetryPeriod,

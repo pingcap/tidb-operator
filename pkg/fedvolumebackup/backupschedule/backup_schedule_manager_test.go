@@ -123,14 +123,14 @@ func TestManager(t *testing.T) {
 	bs.Spec.MaxBackups = pointer.Int32Ptr(5)
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 5)
+	helper.checkBacklist(bs.Namespace, 9)
 
 	t.Log("test setting MaxReservedTime")
 	bs.Spec.MaxBackups = nil
 	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
-	helper.checkBacklist(bs.Namespace, 3)
+	helper.checkBacklist(bs.Namespace, 8)
 }
 
 func TestGetLastScheduledTime(t *testing.T) {
@@ -170,10 +170,14 @@ func TestGetLastScheduledTime(t *testing.T) {
 	}
 
 	// test too many miss
-	bs.Status.LastBackupTime.Time = now.AddDate(-1000, 0, 0)
+	bs.Status.LastBackupTime.Time = now.AddDate(-10, 0, 0)
 	getTime, err = getLastScheduledTime(bs, time.Now)
 	g.Expect(err).Should(BeNil())
 	g.Expect(getTime).Should(BeNil())
+	getTime, err = getLastScheduledTime(bs, time.Now)
+	// next reconcile should succeed
+	g.Expect(err).Should(BeNil())
+	g.Expect(getTime).ShouldNot(BeNil())
 }
 
 func TestBuildBackup(t *testing.T) {
