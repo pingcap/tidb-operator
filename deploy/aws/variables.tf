@@ -152,7 +152,7 @@ variable "create_tiproxy_node_pool" {
 }
 
 variable "cluster_tiproxy_count" {
-  default = 2
+  default = 3
 }
 
 variable "cluster_tiproxy_instance_type" {
