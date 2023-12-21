@@ -10959,18 +10959,6 @@ string
 </tr>
 <tr>
 <td>
-<code>volumes</code></br>
-<em>
-<a href="#storagevolumestatus">
-map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
 <code>conditions</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#condition-v1-meta">
@@ -10981,17 +10969,6 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <td>
 <em>(Optional)</em>
 <p>Represents the latest available observations of a component&rsquo;s state.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>volReplaceInProgress</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>Indicates that a Volume replace using VolumeReplacing feature is in progress.</p>
 </td>
 </tr>
 </tbody>
@@ -15670,7 +15647,6 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#masterstatus">MasterStatus</a>, 
-<a href="#pdmsstatus">PDMSStatus</a>, 
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
 <a href="#ticdcstatus">TiCDCStatus</a>, 

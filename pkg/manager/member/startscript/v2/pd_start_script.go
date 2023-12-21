@@ -152,7 +152,7 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 			template.New("pdms-start-script").Parse(msStartSubScript),
 		).Parse(
 			componentCommonScript +
-				enableMicroServiceModeDynamic(name, msStartScriptTplText)))
+				enableMicroServiceModeDynamic(name, pdmsStartScriptTplText)))
 
 	return renderTemplateFunc(msStartScriptTpl, m)
 }
@@ -240,17 +240,17 @@ echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `
 
-	// msStartScriptTplText is the template of pd microservices start script.
-	msStartScriptTplText = `
+	// pdmsStartScriptTplText is the template of pd microservices start script.
+	pdmsStartScriptTplText = `
 ARGS="` + pdEnableMicroService + `--listen-addr={{ .ListenAddr }} \
 --advertise-listen-addr={{ .AdvertiseListenAddr }} \
 --backend-endpoints={{ .BackendEndpoints }} \
 --config=/etc/pd/pd.toml \
 "
 
-echo "starting pdms-server ..."
+echo "starting pd-server ..."
 sleep $((RANDOM % 10))
-echo "/pdms-server ${ARGS}"
+echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 exit 0
 `

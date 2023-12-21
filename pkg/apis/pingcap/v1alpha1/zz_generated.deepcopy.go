@@ -3426,21 +3426,6 @@ func (in *PDMSStatus) DeepCopyInto(out *PDMSStatus) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Volumes != nil {
-		in, out := &in.Volumes, &out.Volumes
-		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))
-		for key, val := range *in {
-			var outVal *StorageVolumeStatus
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				in, out := &val, &outVal
-				*out = new(StorageVolumeStatus)
-				(*in).DeepCopyInto(*out)
-			}
-			(*out)[key] = outVal
-		}
-	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]metav1.Condition, len(*in))

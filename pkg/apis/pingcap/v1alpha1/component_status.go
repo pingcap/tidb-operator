@@ -195,18 +195,14 @@ func (s *PDMSStatus) GetSynced() bool {
 func (s *PDMSStatus) GetPhase() MemberPhase {
 	return s.Phase
 }
-func (s *PDMSStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus {
-	return s.Volumes
-}
+func (s *PDMSStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus { return nil }
 func (s *PDMSStatus) GetConditions() []metav1.Condition {
 	return s.Conditions
 }
 func (s *PDMSStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
 }
-func (s *PDMSStatus) GetVolReplaceInProgress() bool {
-	return s.VolReplaceInProgress
-}
+func (s *PDMSStatus) GetVolReplaceInProgress() bool { return false }
 func (s *PDMSStatus) SetSynced(synced bool) {
 	s.Synced = synced
 }
@@ -232,12 +228,8 @@ func (s *PDMSStatus) SetPhase(phase MemberPhase) {
 func (s *PDMSStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 	s.StatefulSet = sts
 }
-func (s *PDMSStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
-	s.Volumes = vols
-}
-func (s *PDMSStatus) SetVolReplaceInProgress(status bool) {
-	s.VolReplaceInProgress = status
-}
+func (s *PDMSStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {}
+func (s *PDMSStatus) SetVolReplaceInProgress(status bool)                        {}
 
 func (s *TiKVStatus) MemberType() MemberType {
 	return TiKVMemberType

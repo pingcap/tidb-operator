@@ -208,10 +208,10 @@ echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `
 
-// msStartScriptTplText is the pd microservice start script.
-var msStartScriptTplText = `#!/bin/sh
+// pdmsStartScriptTplText is the pd microservice start script.
+var pdmsStartScriptTplText = `#!/bin/sh
 
-# This script is used to start ms containers in kubernetes cluster
+# This script is used to start pdms containers in kubernetes cluster
 
 # Use DownwardAPIVolumeFiles to store informations of the cluster:
 # https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
@@ -254,9 +254,9 @@ ARGS="` + pdEnableMicroService + `--listen-addr={{ .Scheme }}://0.0.0.0:2379 \
 --config=/etc/pd/pd.toml \
 "
 
-echo "starting pdms-server ..."
+echo "starting pd-server ..."
 sleep $((RANDOM % 10))
-echo "/pdms-server ${ARGS}"
+echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 exit 0
 `

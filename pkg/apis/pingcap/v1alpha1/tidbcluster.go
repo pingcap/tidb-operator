@@ -97,8 +97,12 @@ func (tc *TidbCluster) PDVersion() string {
 
 // PDMSImage return the image used by specified PD MicroService.
 //
-// If PD isn't specified, return empty string.
+// If PDMS isn't specified, return empty string.
 func (tc *TidbCluster) PDMSImage(spec *PDMSSpec) string {
+	if spec == nil {
+		return ""
+	}
+
 	image := spec.Image
 	if spec.BaseImage != nil {
 		baseImage := *spec.BaseImage
@@ -117,7 +121,7 @@ func (tc *TidbCluster) PDMSImage(spec *PDMSSpec) string {
 
 // PDMSVersion return the image version used by specified PD MicroService.
 //
-// If PD isn't specified, return empty string.
+// If PDMS isn't specified, return empty string.
 func (tc *TidbCluster) PDMSVersion(name string) string {
 	for _, component := range tc.Spec.PDMS {
 		if component.Name == name {

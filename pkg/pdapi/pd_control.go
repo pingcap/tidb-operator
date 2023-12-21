@@ -295,7 +295,7 @@ func genClientUrl(namespace Namespace, clusterName, scheme, clusterDomain, servi
 		svc = "pdms-" + serviceName
 	}
 	if headlessSvc {
-		svc = fmt.Sprintf("pdms-%s-peer", svc)
+		svc = fmt.Sprintf("%s-peer", svc)
 	}
 
 	if len(namespace) == 0 {

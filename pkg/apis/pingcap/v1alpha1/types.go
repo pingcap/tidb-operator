@@ -1415,15 +1415,12 @@ type PDMSStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	// Members contains other service in current TidbCluster
-	Members []string                                   `json:"members,omitempty"`
-	Image   string                                     `json:"image,omitempty"`
-	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	Members []string `json:"members,omitempty"`
+	Image   string   `json:"image,omitempty"`
 	// Represents the latest available observations of a component's state.
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
-	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
 // PDMember is PD member

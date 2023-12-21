@@ -94,8 +94,8 @@ type ClusterRegexInfo struct {
 func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
 	var scrapeJobs []yaml.MapSlice
 	scrapeJobs = append(scrapeJobs, scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfigByComponent("pd"))...)
-	scrapeJobs = append(scrapeJobs, scrapeJob("pdms-scheduling", pdmsSchedulingPattern, cmodel, buildAddressRelabelConfigByComponent("pdms-scheduling"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("pdms-tso", pdmsTSOPattern, cmodel, buildAddressRelabelConfigByComponent("pdms-tso"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("pdms-scheduling", pdmsSchedulingPattern, cmodel, buildAddressRelabelConfigByComponent("pdms-scheduling"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfigByComponent("tikv"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tiproxy", tiproxyPattern, cmodel, buildAddressRelabelConfigByComponent("tiproxy"))...)

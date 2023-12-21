@@ -264,9 +264,7 @@ func (m *pdMSMemberManager) syncPDMSStatefulSet(tc *v1alpha1.TidbCluster, curSpe
 	if err != nil {
 		return err
 	}
-	println("newPDMSSet", curService)
 	if setNotExist {
-		println("setNotExist", curService)
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newPDMSSet)
 		if err != nil {
 			return err

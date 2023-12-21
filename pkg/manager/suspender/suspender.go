@@ -86,7 +86,7 @@ func (s *suspender) SuspendComponent(cluster v1alpha1.Cluster, comp v1alpha1.Mem
 		status:    cluster.ComponentStatus(comp),
 	}
 	if ctx.spec == nil || ctx.status == nil {
-		return false, fmt.Errorf("spec or status for component %s is not found spec: %v, status: %v", ctx.ComponentID(), ctx.spec, ctx.status)
+		return false, fmt.Errorf("spec or status for component %s is not found", ctx.ComponentID())
 	}
 
 	suspending := cluster.ComponentIsSuspending(comp)

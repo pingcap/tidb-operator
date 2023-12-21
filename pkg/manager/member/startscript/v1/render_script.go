@@ -116,7 +116,7 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 	msStartScriptTpl := template.Must(
 		template.Must(
 			template.New("ms-start-script").Parse(msStartSubScript),
-		).Parse(enableMicroServiceModeDynamic(name, msStartScriptTplText)))
+		).Parse(enableMicroServiceModeDynamic(name, pdmsStartScriptTplText)))
 	return renderTemplateFunc(msStartScriptTpl, model)
 }
 
