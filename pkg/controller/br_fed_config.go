@@ -59,7 +59,7 @@ func DefaultBrFedCLIConfig() *BrFedCLIConfig {
 		LeaseDuration:  15 * time.Second,
 		RenewDeadline:  10 * time.Second,
 		RetryPeriod:    2 * time.Second,
-		ResourceLock:   resourcelock.EndpointsResourceLock,
+		ResourceLock:   resourcelock.EndpointsLeasesResourceLock,
 		WaitDuration:   5 * time.Second,
 		ResyncDuration: 30 * time.Second,
 
