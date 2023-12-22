@@ -594,7 +594,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		pdConfigMap = cm.Name
 	}
 
-	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
+	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion(), tc.Spec.PD.Mode)
 	if err != nil {
 		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
 	}
@@ -873,7 +873,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 	config := tc.Spec.PD.Config.DeepCopy() // use copy to not update tc spec
 
-	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
+	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion(), tc.Spec.PD.Mode)
 	if err != nil {
 		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
 	}
@@ -924,9 +924,9 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	return cm, nil
 }
 
-func clusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
-	// TODO: remove when support pd microservice docker
-	if version == "nightly" {
+func clusterVersionGreaterThanOrEqualTo4(version, model string) (bool, error) {
+	// TODO: remove `model` and `nightly` when support pd microservice docker
+	if model == "ms" && version == "nightly" {
 		return true, nil
 	}
 	v, err := semver.NewVersion(version)
