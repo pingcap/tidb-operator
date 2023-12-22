@@ -925,6 +925,10 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 func clusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
+	// TODO: remove when support pd microservice docker
+	if version == "nightly" {
+		return true, nil
+	}
 	v, err := semver.NewVersion(version)
 	if err != nil {
 		return true, err

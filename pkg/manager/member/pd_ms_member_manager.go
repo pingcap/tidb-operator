@@ -456,12 +456,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		pdMSConfigMap = cm.Name
 	}
 
-	microServicesVersion, err := PDMSSupportMicroServices(tc.PDMSVersion(curService))
-	if err != nil {
-		klog.Errorf("PDMS component %s for cluster [%s/%s] version: %s is not semantic versioning compatible",
-			curService, ns, tcName, tc.PDMSVersion(curService))
-		return nil, err
-	}
+	// TODO: Add version check
 
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
@@ -511,7 +506,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 				},
 			},
 		})
-		if curSpec.MountClusterClientSecret != nil && *curSpec.MountClusterClientSecret && microServicesVersion {
+		if curSpec.MountClusterClientSecret != nil && *curSpec.MountClusterClientSecret {
 			vols = append(vols, corev1.Volume{
 				Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{

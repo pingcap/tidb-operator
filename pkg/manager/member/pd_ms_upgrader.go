@@ -49,7 +49,7 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	}
 
 	componentName := controller.PDMSTrimName(newSet.Name)
-	klog.Info("gracefulUpgrade pdMS trim name", "componentName", componentName)
+	klog.Infof("gracefulUpgrade pdMS trim name, componentName: %s", componentName)
 	if tc.Status.PDMS[componentName] == nil {
 		tc.Status.PDMS[componentName] = &v1alpha1.PDMSStatus{Name: componentName}
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS component is nil, can not to be upgraded, component: %s", ns, tcName, componentName)
@@ -61,7 +61,7 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	if oldTrimName != componentName {
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS oldTrimName is %s, not equal to componentName: %s", ns, tcName, oldTrimName, componentName)
 	}
-	klog.Info("gracefulUpgrade pdMS trim name", "oldTrimName", oldTrimName)
+	klog.Infof("gracefulUpgrade pdMS trim name oldTrimName: %s", oldTrimName)
 	if tc.PDMSScaling(oldTrimName) {
 		klog.Infof("TidbCluster: [%s/%s]'s pdMS status is %v, can not upgrade pdMS",
 			ns, tcName, tc.Status.PDMS[componentName].Phase)
