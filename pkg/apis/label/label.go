@@ -216,7 +216,14 @@ const (
 
 // PDMSLabel is the label for pd ms, identify the pd ms type
 func PDMSLabel(name string) string {
-	return name
+	switch name {
+	case "tso":
+		return PDMSTSOLabelVal
+	case "scheduling":
+		return PDMSSchedulingLabelVal
+	default:
+		panic(fmt.Sprintf("unknown pd ms name %s", name))
+	}
 }
 
 // Label is the label field in metadata
