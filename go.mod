@@ -28,9 +28,9 @@ require (
 	github.com/minio/minio-go/v6 v6.0.55
 	github.com/ncw/directio v1.0.5
 	github.com/onsi/ginkgo v1.14.1
-	github.com/onsi/gomega v1.10.2
+	github.com/onsi/gomega v1.20.1
 	github.com/openshift/generic-admission-server v1.14.1-0.20210422140326-da96454c926d
-	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20231207074614-075934ad31d3
+	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20231225055809-9650ebc5f0ea
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/kvproto v0.0.0-20231122054644-fb0f5c2a0a10
 	github.com/pingcap/tidb-operator/pkg/apis v1.6.0-alpha.10
@@ -47,7 +47,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.1
 	github.com/tikv/pd v2.1.17+incompatible
-	go.etcd.io/etcd/client/v3 v3.5.1
+	go.etcd.io/etcd/client/v3 v3.5.4
 	go.uber.org/atomic v1.9.0
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.3.0
@@ -55,19 +55,19 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.1.0
 	google.golang.org/grpc v1.59.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.24.17
-	k8s.io/apiextensions-apiserver v0.24.17
-	k8s.io/apimachinery v0.24.17
-	k8s.io/apiserver v0.24.17
-	k8s.io/cli-runtime v0.24.17
-	k8s.io/client-go v0.24.17
-	k8s.io/component-base v0.24.17
-	k8s.io/klog/v2 v2.60.1
-	k8s.io/kube-aggregator v0.24.17
-	k8s.io/kube-scheduler v0.24.17
-	k8s.io/kubectl v0.24.17
-	k8s.io/kubelet v0.24.17
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
+	k8s.io/api v0.25.16
+	k8s.io/apiextensions-apiserver v0.25.16
+	k8s.io/apimachinery v0.25.16
+	k8s.io/apiserver v0.25.16
+	k8s.io/cli-runtime v0.25.16
+	k8s.io/client-go v0.25.16
+	k8s.io/component-base v0.25.16
+	k8s.io/klog/v2 v2.70.1
+	k8s.io/kube-aggregator v0.25.16
+	k8s.io/kube-scheduler v0.25.16
+	k8s.io/kubectl v0.25.16
+	k8s.io/kubelet v0.25.16
+	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
 	mvdan.cc/sh/v3 v3.4.3
 	sigs.k8s.io/controller-runtime v0.7.2
 )
@@ -78,9 +78,10 @@ require (
 	cloud.google.com/go/iam v1.1.2 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
+	github.com/emicklei/go-restful/v3 v3.8.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
-	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
+	github.com/golang-jwt/jwt/v4 v4.2.0 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
@@ -88,8 +89,8 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
-	github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca // indirect
-	go.etcd.io/etcd/api/v3 v3.5.1 // indirect
+	github.com/xlab/treeprint v1.1.0 // indirect
+	go.etcd.io/etcd/api/v3 v3.5.4 // indirect
 	go.opentelemetry.io/contrib v0.20.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.20.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.20.0 // indirect
@@ -104,9 +105,9 @@ require (
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231002182017-d307bd883b97 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231016165738-49dd2c1f3d0b // indirect
-	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
-	sigs.k8s.io/kustomize/api v0.11.4 // indirect
-	sigs.k8s.io/kustomize/kyaml v0.13.6 // indirect
+	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
+	sigs.k8s.io/kustomize/api v0.12.1 // indirect
+	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
 )
 
 require (
@@ -114,14 +115,14 @@ require (
 	github.com/Azure/azure-pipeline-go v0.2.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
-	github.com/Azure/go-autorest/autorest v0.11.18 // indirect
-	github.com/Azure/go-autorest/autorest/adal v0.9.13 // indirect
+	github.com/Azure/go-autorest/autorest v0.11.27 // indirect
+	github.com/Azure/go-autorest/autorest/adal v0.9.20 // indirect
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.1 // indirect
 	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
+	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
@@ -135,7 +136,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.13 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
+	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.0 // indirect
@@ -147,7 +148,7 @@ require (
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
-	github.com/go-logr/logr v1.2.0 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.14 // indirect
@@ -213,7 +214,7 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog v1.0.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect
+	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.37 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect

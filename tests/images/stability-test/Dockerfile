@@ -1,6 +1,6 @@
 FROM alpine:3.10
 
-ENV KUBECTL_VERSION=v1.24.17
+ENV KUBECTL_VERSION=v1.25.16
 ENV HELM_VERSION=v3.11.0
 
 RUN apk update && apk add --no-cache ca-certificates curl git openssl bash mysql-client
