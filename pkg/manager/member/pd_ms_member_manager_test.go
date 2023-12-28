@@ -327,11 +327,11 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 		{
 			name: "normal",
 			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Image = "pd-test-image:v2"
+				tc.Spec.PD.Image = "pingcap/pd:v7.3.0"
 				tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
 					{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: "pingcap/pd:v7.3.0",
+							Image: "pd-test-image",
 						},
 						Name:     "tso",
 						Replicas: 1,
@@ -341,7 +341,29 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 			err: false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("pd-test-image:v2"))
+				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("pd-test-image"))
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(2)))
+			},
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.PDMS["tso"].Phase).To(Equal(v1alpha1.ScalePhase))
+			},
+		},
+		{
+			name: "emptyImage",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PD.Image = "pingcap/pd:v7.3.0"
+				tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
+					{
+						ComponentSpec: v1alpha1.ComponentSpec{},
+						Name:          "tso",
+						Replicas:      1,
+					},
+				}
+			},
+			err: false,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("pingcap/pd:v7.3.0"))
 				g.Expect(*set.Spec.Replicas).To(Equal(int32(2)))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {

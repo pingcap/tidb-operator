@@ -570,7 +570,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 
 	pdMSContainer := corev1.Container{
 		Name:            v1alpha1.PDMSMemberType(curService).String(),
-		Image:           tc.PDImage(),
+		Image:           tc.PDMSImage(curSpec),
 		ImagePullPolicy: basePDMSSpec.ImagePullPolicy(),
 		Command:         []string{"/bin/sh", "/usr/local/bin/pdms_start_script.sh"},
 		Ports: []corev1.ContainerPort{

@@ -116,6 +116,11 @@ func (tc *TidbCluster) PDMSImage(spec *PDMSSpec) string {
 			image = fmt.Sprintf("%s:%s", baseImage, *version)
 		}
 	}
+
+	if image == "" {
+		image = tc.PDImage()
+	}
+
 	return image
 }
 

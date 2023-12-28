@@ -193,8 +193,8 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - create or update the pdms headless service
 	//   - create the pdms statefulset
 	//   - sync pdms cluster status from pdms to TidbCluster object
-	//   - upgrade the pd cluster
-	//   - scale out/in the pd cluster
+	//   - upgrade the pdms cluster
+	//   - scale out/in the pdms cluster
 	if err := c.pdMSMemberManager.Sync(tc); err != nil {
 		return err
 	}

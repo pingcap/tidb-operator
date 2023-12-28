@@ -112,7 +112,7 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 	// Need to wait for PDMS
-	if tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS == nil {
+	if tc.Spec.PD != nil && tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS == nil {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], please make sure pdms is not nil, "+
 			"then now waiting for PD's micro service running", ns, tcName)
 	}
