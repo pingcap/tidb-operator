@@ -90,7 +90,7 @@ func (tmc *FakeTidbMonitorControl) SetReconcileTidbMonitorError(err error) {
 	tmc.err = err
 }
 
-// CreateBackup adds the backup to BackupIndexer
+// ReconcileTidbMonitor adds the backup to BackupIndexer
 func (tmc *FakeTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 	if tmc.err != nil {
 		return tmc.err
@@ -98,7 +98,7 @@ func (tmc *FakeTidbMonitorControl) ReconcileTidbMonitor(tm *v1alpha1.TidbMonitor
 	return nil
 }
 
-// CreateBackup adds the backup to BackupIndexer
+// UpdateTidbMonitor adds the backup to BackupIndexer
 func (tmc *FakeTidbMonitorControl) UpdateTidbMonitor(tm *v1alpha1.TidbMonitor) (*v1alpha1.TidbMonitor, error) {
 	return nil, nil
 }

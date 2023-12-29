@@ -30,6 +30,11 @@ func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.Tid
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
 }
 
+// getPDClientFromService gets the pd client from the TidbCluster
+func getPDMSClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, serviceName string) pdapi.PDMSClient {
+	return pdControl.GetPDMSClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), serviceName, tc.IsTLSClusterEnabled())
+}
+
 // GetPDClient tries to return an available PDClient
 // If the pdClient built from the PD service name is unavailable, try to
 // build another one with the ClientURL in the PeerMembers.
@@ -49,13 +54,25 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 
 	for _, pdMember := range tc.Status.PD.PeerMembers {
 		pdPeerClient := pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdapi.SpecifyClient(pdMember.ClientURL, pdMember.Name))
-		_, err := pdPeerClient.GetHealth()
+		_, err = pdPeerClient.GetHealth()
 		if err == nil {
 			return pdPeerClient
 		}
 	}
 
 	return pdClient
+}
+
+// GetPDMSClient tries to return an available PDMSClient
+func GetPDMSClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, serviceName string) (pdapi.PDMSClient, error) {
+	pdMSClient := getPDMSClientFromService(pdControl, tc, serviceName)
+
+	err := pdMSClient.GetHealth()
+	if err == nil {
+		return pdMSClient, nil
+	}
+
+	return nil, err
 }
 
 // NewFakePDClient creates a fake pdclient that is set as the pd client
@@ -69,7 +86,7 @@ func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *
 	return pdClient
 }
 
-// NewFakePDClient creates a fake pdclient that is set as the pd client
+// NewFakePDClientWithAddress creates a fake pdclient that is set as the pd client
 func NewFakePDClientWithAddress(pdControl *pdapi.FakePDControl, peerURL string) *pdapi.FakePDClient {
 	pdClient := pdapi.NewFakePDClient()
 	pdControl.SetPDClientWithAddress(peerURL, pdClient)

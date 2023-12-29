@@ -5,6 +5,7 @@ apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
   name: basic
+  namespace: pingcap
 spec:
   version: v7.1.1
   timezone: UTC
@@ -15,7 +16,9 @@ spec:
   helper:
     image: alpine:3.16.0
   pd:
+    # TODO: use a stable version
     baseImage: pingcap/pd
+    version: nightly
     maxFailoverCount: 0
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
@@ -23,8 +26,21 @@ spec:
     requests:
       storage: "1Gi"
     config: {}
+    mode: "ms"
+  pdms:
+    - name: "tso"
+      baseImage: pingcap/pd
+      version: nightly
+      replicas: 2
+      config: {}
+    - name: "scheduling"
+      baseImage: pingcap/pd
+      version: nightly
+      replicas: 1
+      config: {}
   tikv:
     baseImage: pingcap/tikv
+    version: v7.4.0
     maxFailoverCount: 0
     # If only 1 TiKV is deployed, the TiKV region leader
     # cannot be transferred during upgrade, so we have
@@ -47,6 +63,7 @@ spec:
         max-open-files: 256
   tidb:
     baseImage: pingcap/tidb
+    version: v7.4.0
     maxFailoverCount: 0
     replicas: 1
     service:
