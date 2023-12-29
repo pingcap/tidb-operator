@@ -66,6 +66,10 @@ func (p *pvcModifier) Sync(tc *v1alpha1.TidbCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
+		if v1alpha1.IsPDMSMemberType(comp.MemberType()) {
+			// not need storage
+			continue
+		}
 		ctx, err := p.utils.BuildContextForTC(tc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by modifier for %s/%s:%s failed: %w", tc.Namespace, tc.Name, comp.MemberType(), err))

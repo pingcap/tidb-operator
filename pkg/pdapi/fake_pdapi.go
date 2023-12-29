@@ -27,6 +27,7 @@ const (
 	GetConfigActionType                         ActionType = "GetConfig"
 	GetClusterActionType                        ActionType = "GetCluster"
 	GetMembersActionType                        ActionType = "GetMembers"
+	GetPDMSMembersActionType                    ActionType = "GetPDMSMembers"
 	GetStoresActionType                         ActionType = "GetStores"
 	GetTombStoneStoresActionType                ActionType = "GetTombStoneStores"
 	GetStoreActionType                          ActionType = "GetStore"
@@ -66,6 +67,15 @@ type Reaction func(action *Action) (interface{}, error)
 // FakePDClient implements a fake version of PDClient.
 type FakePDClient struct {
 	reactions map[ActionType]Reaction
+}
+
+func (c *FakePDClient) GetMSMembers(_ string) ([]string, error) {
+	action := &Action{}
+	result, err := c.fakeAPI(GetPDMSMembersActionType, action)
+	if err != nil {
+		return nil, err
+	}
+	return result.([]string), nil
 }
 
 func NewFakePDClient() *FakePDClient {

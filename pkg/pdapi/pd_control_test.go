@@ -198,7 +198,7 @@ func TestPDControl(t *testing.T) {
 			pdClient.applyOptions(c.options...)
 			etcdClient.applyOptions(c.options...)
 
-			pdClient.completeForPDClient(c.tcNS, c.tcName)
+			pdClient.completeForPDClient(c.tcNS, c.tcName, "")
 			etcdClient.completeForEtcdClient(c.tcNS, c.tcName)
 
 			c.expectConfig(pdClient, etcdClient)
