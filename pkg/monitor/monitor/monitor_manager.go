@@ -292,7 +292,7 @@ func (m *MonitorManager) syncTidbMonitorConfig(monitor *v1alpha1.TidbMonitor, st
 		// Get all autoscaling clusters for TC, and add them to .Spec.Clusters to
 		// generate Prometheus config without modifying the original TidbMonitor
 		cloned := monitor.DeepCopy()
-		autoTcRefs := []v1alpha1.TidbClusterRef{}
+		var autoTcRefs []v1alpha1.TidbClusterRef
 		for _, tcRef := range monitor.Spec.Clusters {
 			r1, err := labels.NewRequirement(label.AutoInstanceLabelKey, selection.Exists, nil)
 			if err != nil {

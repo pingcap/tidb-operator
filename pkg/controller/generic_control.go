@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// GenericControlInterface is a wrapper to manage typed object that managed by an arbitrary controller
+// TypedControlInterface is a wrapper to manage typed object that managed by an arbitrary controller
 type TypedControlInterface interface {
 	// CreateOrUpdateSecret create the desired secret or update the current one to desired state if already existed
 	CreateOrUpdateSecret(controller client.Object, secret *corev1.Secret) (*corev1.Secret, error)
