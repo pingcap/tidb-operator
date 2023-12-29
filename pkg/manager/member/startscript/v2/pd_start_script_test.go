@@ -719,3 +719,75 @@ exec /pd-server ${ARGS}
 		g.Expect(validateScript(script)).Should(gomega.Succeed())
 	}
 }
+
+func TestRenderPDMSStartScript(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type testcase struct {
+		name string
+
+		modifyTC     func(tc *v1alpha1.TidbCluster)
+		expectScript string
+	}
+
+	cases := []testcase{
+		{
+			name: "pdms basic",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+ARGS=" services tso --listen-addr=https://0.0.0.0:2379 \
+--advertise-listen-addr=https://${PDMS_DOMAIN}:2379 \
+--backend-endpoints=https://${PDMS_DOMAIN}:2380 \
+--config=/etc/pd/pd.toml \
+"
+
+echo "starting pd-server ..."
+sleep $((RANDOM % 10))
+echo "/pd-server ${ARGS}"
+exec /pd-server ${ARGS}
+exit 0
+`,
+		},
+	}
+
+	for _, c := range cases {
+		t.Logf("test case: %s", c.name)
+
+		tc := &v1alpha1.TidbCluster{
+			Spec: v1alpha1.TidbClusterSpec{},
+		}
+		tc.Name = "start-script-test"
+		tc.Namespace = "start-script-test-ns"
+		if c.modifyTC != nil {
+			c.modifyTC(tc)
+		}
+
+		script, err := RenderPDTSOStartScript(tc)
+		g.Expect(err).Should(gomega.Succeed())
+		if diff := cmp.Diff(c.expectScript, script); diff != "" {
+			t.Errorf("unexpected (-want, +got): %s", diff)
+		}
+		g.Expect(validateScript(script)).Should(gomega.Succeed())
+	}
+}

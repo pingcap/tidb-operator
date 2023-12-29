@@ -76,6 +76,10 @@ func (p *pvcReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
 	errs := []error{}
 
 	for _, comp := range components {
+		if v1alpha1.IsPDMSMemberType(comp.MemberType()) {
+			// not need storage
+			continue
+		}
 		status, err := p.getVolReplaceStatusForComponent(tc, comp)
 		if err != nil {
 			errs = append(errs, err)
@@ -101,6 +105,10 @@ func (p *pvcReplacer) Sync(tc *v1alpha1.TidbCluster) error {
 	// Note: implicit ordering of tc components PD > TiDB > TiKV ... important for correct order of syncing.
 	for _, comp := range components {
 		if !comp.GetVolReplaceInProgress() {
+			continue
+		}
+		if v1alpha1.IsPDMSMemberType(comp.MemberType()) {
+			// not need storage
 			continue
 		}
 		ctx, err := p.utils.BuildContextForTC(tc, comp)

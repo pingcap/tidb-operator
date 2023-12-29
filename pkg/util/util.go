@@ -105,6 +105,22 @@ func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (s
 	if memberType == v1alpha1.PDMemberType {
 		ann = label.AnnPDDeleteSlots
 		replicas = tc.Spec.PD.Replicas
+	} else if memberType == v1alpha1.PDMSTSOMemberType {
+		for _, component := range tc.Spec.PDMS {
+			if strings.Contains(memberType.String(), component.Name) {
+				replicas = component.Replicas
+				ann = label.AnnTSODeleteSlots
+				break
+			}
+		}
+	} else if memberType == v1alpha1.PDMSSchedulingMemberType {
+		for _, component := range tc.Spec.PDMS {
+			if strings.Contains(memberType.String(), component.Name) {
+				replicas = component.Replicas
+				ann = label.AnnSchedulingDeleteSlots
+				break
+			}
+		}
 	} else if memberType == v1alpha1.TiKVMemberType {
 		ann = label.AnnTiKVDeleteSlots
 		replicas = tc.Spec.TiKV.Replicas
@@ -385,7 +401,7 @@ func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel 
 	return storeKind == componentLabel
 }
 
-// statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
+// StatefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
 func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, podTemplateCheckedAndNotEqual bool) {
 	// The annotations in old sts may include LastAppliedConfigAnnotation
 	tmpAnno := map[string]string{}

@@ -94,6 +94,8 @@ type PDClient interface {
 	GetAutoscalingPlans(strategy Strategy) ([]Plan, error)
 	// GetRecoveringMark return the pd recovering mark
 	GetRecoveringMark() (bool, error)
+	// GetMSMembers returns all PD members from cluster by micro service
+	GetMSMembers(service string) ([]string, error)
 }
 
 var (
@@ -112,6 +114,8 @@ var (
 	evictLeaderSchedulerConfigPrefix = "pd/api/v1/scheduler-config/evict-leader-scheduler/list"
 	autoscalingPrefix                = "autoscaling"
 	recoveringMarkPrefix             = "pd/api/v1/admin/cluster/markers/snapshot-recovering"
+	// Micro Service
+	MicroServicePrefix = "pd/api/v2/ms"
 )
 
 // pdClient is default implementation of PDClient
@@ -304,6 +308,20 @@ func (c *pdClient) GetMembers() (*MembersInfo, error) {
 	}
 	members := &MembersInfo{}
 	err = json.Unmarshal(body, members)
+	if err != nil {
+		return nil, err
+	}
+	return members, nil
+}
+
+func (c *pdClient) GetMSMembers(service string) ([]string, error) {
+	apiURL := fmt.Sprintf("%s/%s/members/%s", c.url, MicroServicePrefix, service)
+	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
+	if err != nil {
+		return nil, err
+	}
+	var members []string
+	err = json.Unmarshal(body, &members)
 	if err != nil {
 		return nil, err
 	}
