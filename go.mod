@@ -231,8 +231,6 @@ replace github.com/renstrom/dedent => github.com/lithammer/dedent v1.1.0
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v14.2.0+incompatible
 
-replace github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.1
-
 // workaround for github.com/advisories/GHSA-25xm-hr59-7c27
 // TODO: remove it after upgrading github.com/mholt/archiver greater than v3.5.0
 replace github.com/ulikunitz/xz => github.com/ulikunitz/xz v0.5.8
