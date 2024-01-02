@@ -18,6 +18,7 @@ import (
 	stderrs "errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	fedv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
@@ -310,6 +311,27 @@ func PDPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-pd-peer", clusterName)
 }
 
+// PDMSMemberName returns pd microservice member name
+func PDMSMemberName(clusterName string, serviceName string) string {
+	return fmt.Sprintf("%s-pdms-%s", clusterName, serviceName)
+}
+
+// PDMSPeerMemberName returns pd microservice peer service name
+func PDMSPeerMemberName(clusterName string, serviceName string) string {
+	return fmt.Sprintf("%s-pdms-%s-peer", clusterName, serviceName)
+}
+
+// PDMSTrimName returns last `-` separated string for `PDMSMemberName`
+func PDMSTrimName(memberName string) string {
+	name := memberName[strings.LastIndex(memberName, "-")+1:]
+	if name == "peer" {
+		// get middle serviceName
+		check := memberName[:strings.LastIndex(memberName, "-")]
+		name = check[strings.LastIndex(check, "-")+1:]
+	}
+	return name
+}
+
 // TiKVMemberName returns tikv member name
 func TiKVMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tikv", clusterName)
@@ -585,11 +607,9 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 		controllerObj, err := fn(meta.GetNamespace(), ref.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				klog.V(4).Infof("controller %s/%s of %s/%s not found, ignore",
-					meta.GetNamespace(), ref.Name, meta.GetNamespace(), meta.GetName())
+				klog.V(4).Infof("controller %s/%s of %s not found, ignore", meta.GetNamespace(), ref.Name, meta.GetName())
 			} else {
-				utilruntime.HandleError(fmt.Errorf("cannot get controller %s/%s of %s/%s",
-					meta.GetNamespace(), ref.Name, meta.GetNamespace(), meta.GetName()))
+				utilruntime.HandleError(fmt.Errorf("cannot get controller %s/%s of %s", meta.GetNamespace(), ref.Name, meta.GetName()))
 			}
 			return
 		}

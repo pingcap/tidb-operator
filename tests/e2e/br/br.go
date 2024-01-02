@@ -543,10 +543,15 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			err = brutil.WaitForBackupComplete(f.ExtClient, ns, backupName, backupCompleteTimeout)
 			framework.ExpectNoError(err)
 
+			// the behavior of recreate a pod when the old one is deleted for a Job has been changed since k8s 1.25.
+			// ref:
+			// - https://github.com/kubernetes/kubernetes/pull/110948
+			// - https://github.com/kubernetes/kubernetes/blob/v1.25.0/pkg/controller/job/job_controller.go#L720-L727
+			// - https://github.com/kubernetes/kubernetes/blob/v1.25.0/pkg/controller/job/job_controller.go#L781-L785
 			ginkgo.By("make sure it's not restarted by backoff retry policy")
 			num, err := getBackoffRetryNum(f, backup)
 			framework.ExpectNoError(err)
-			framework.ExpectEqual(num, 0)
+			framework.ExpectEqual(num <= 1, true)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)

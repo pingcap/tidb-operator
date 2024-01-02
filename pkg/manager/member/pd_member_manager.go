@@ -80,6 +80,10 @@ func (m *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	if tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS == nil {
+		return fmt.Errorf("tidbcluster: [%s/%s]'s enable micro service but pdMS spec is nil, please check `PDMS`", tc.GetNamespace(), tc.GetName())
+	}
+
 	// skip sync if pd is suspended
 	component := v1alpha1.PDMemberType
 	needSuspend, err := m.suspender.SuspendComponent(tc, component)
@@ -222,7 +226,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 
 	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
 	if !tc.Status.PD.Synced && !templateEqual(newPDSet, oldPDSet) {
-		// upgrade forcedly only when `Synced` is false, because unable to upgrade gracefully
+		// upgrade forced only when `Synced` is false, because unable to upgrade gracefully
 		forceUpgradeAnnoSet := NeedForceUpgrade(tc.Annotations)
 		onlyOnePD := *oldPDSet.Spec.Replicas < 2 && len(tc.Status.PD.PeerMembers) == 0 // it's acceptable to use old record about peer members
 
@@ -336,6 +340,7 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 	pdClient := controller.GetPDClient(m.deps.PDControl, tc)
 
 	healthInfo, err := pdClient.GetHealth()
+
 	if err != nil {
 		tc.Status.PD.Synced = false
 		// get endpoints info
@@ -589,7 +594,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		pdConfigMap = cm.Name
 	}
 
-	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
+	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion(), tc.Spec.PD.Mode)
 	if err != nil {
 		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
 	}
@@ -868,7 +873,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 	config := tc.Spec.PD.Config.DeepCopy() // use copy to not update tc spec
 
-	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
+	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion(), tc.Spec.PD.Mode)
 	if err != nil {
 		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
 	}
@@ -919,7 +924,11 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	return cm, nil
 }
 
-func clusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
+func clusterVersionGreaterThanOrEqualTo4(version, model string) (bool, error) {
+	// TODO: remove `model` and `nightly` when support pd microservice docker
+	if model == "ms" && version == "nightly" {
+		return true, nil
+	}
 	v, err := semver.NewVersion(version)
 	if err != nil {
 		return true, err

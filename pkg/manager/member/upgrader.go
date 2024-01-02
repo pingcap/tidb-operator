@@ -24,7 +24,7 @@ type Upgrader interface {
 	Upgrade(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
 }
 
-// Upgrader implements the logic for upgrading the dm cluster.
+// DMUpgrader implements the logic for upgrading the dm cluster.
 type DMUpgrader interface {
 	Upgrade(*v1alpha1.DMCluster, *apps.StatefulSet, *apps.StatefulSet) error
 }

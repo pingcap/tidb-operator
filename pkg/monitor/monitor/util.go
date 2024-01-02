@@ -1479,7 +1479,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 }
 
 func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapItem, error) {
-	cfgs := []yaml.MapSlice{}
+	var cfgs []yaml.MapSlice
 	version, err := semver.NewVersion(monitor.Spec.Prometheus.Version)
 	if err != nil {
 		return yaml.MapItem{}, err
@@ -1505,7 +1505,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 		}
 
 		if spec.WriteRelabelConfigs != nil {
-			relabelings := []yaml.MapSlice{}
+			var relabelings []yaml.MapSlice
 			for _, c := range spec.WriteRelabelConfigs {
 				relabeling := yaml.MapSlice{}
 
