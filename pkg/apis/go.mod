@@ -8,28 +8,26 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/google/gofuzz v1.1.0
 	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
-	github.com/onsi/gomega v1.20.1
+	github.com/onsi/gomega v1.23.0
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
-	github.com/prometheus/common v0.32.1
+	github.com/prometheus/common v0.37.0
 	github.com/prometheus/prometheus v1.8.2
-	k8s.io/api v0.25.16
-	k8s.io/apiextensions-apiserver v0.25.16
-	k8s.io/apimachinery v0.25.16
-	k8s.io/klog/v2 v2.70.1
-	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1
-	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
-	sigs.k8s.io/yaml v1.2.0
+	k8s.io/api v0.26.12
+	k8s.io/apiextensions-apiserver v0.26.12
+	k8s.io/apimachinery v0.26.12
+	k8s.io/klog/v2 v2.80.1
+	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
+	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d
+	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
-	github.com/PuerkitoBio/purell v1.1.1 // indirect
-	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/aws/aws-sdk-go v1.44.72 // indirect
-	github.com/emicklei/go-restful/v3 v3.8.0 // indirect
+	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.19.5 // indirect
+	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/swag v0.19.14 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
