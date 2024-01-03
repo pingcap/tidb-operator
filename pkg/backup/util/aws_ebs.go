@@ -17,7 +17,6 @@ import (
 	"context"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -32,7 +31,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"go.uber.org/atomic"
-	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -148,8 +146,6 @@ func NewEC2Session(concurrency uint) (*EC2Session, error) {
 func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 	var (
 		deletedCnt atomic.Int32
-		errs       error
-		lock       sync.Mutex
 	)
 
 	eg, _ := errgroup.WithContext(context.Background())
@@ -187,22 +183,14 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 			err := retry.OnError(backoff, isRetry, delSnapshots)
 			if err != nil {
 				klog.Errorf("failed to delete snapshot id=%s, error=%s", snapID, err.Error())
-				lock.Lock()
-				defer lock.Unlock()
-				errs = multierr.Combine(errs, err)
 			}
-
-			return errs
+			return err
 		})
 	}
 
 	if err := eg.Wait(); err != nil {
 		klog.Errorf("failed to delete snapshots error=%s, already delete=%d", err, deletedCnt.Load())
 		return err
-	}
-
-	if errs != nil {
-		return errs
 	}
 	return nil
 }

@@ -129,7 +129,7 @@ func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta) error {
 		return err
 	}
 	if err = ec2Session.DeleteSnapshots(newVolumeIDMap); err != nil {
-		klog.Errorf("delete snapshot failure.")
+		klog.Errorf("delete snapshots failure.")
 		return err
 	}
 
