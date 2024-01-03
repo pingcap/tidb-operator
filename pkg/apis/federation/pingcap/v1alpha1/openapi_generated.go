@@ -355,6 +355,13 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeBackupMemberSpec(ref common.R
 							},
 						},
 					},
+					"volumeBackupInitJobMaxActiveSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 			},
 		},

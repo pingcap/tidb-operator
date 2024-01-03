@@ -1646,6 +1646,8 @@ spec:
                       type: array
                     toolImage:
                       type: string
+                    volumeBackupInitJobMaxActiveSeconds:
+                      type: integer
                   type: object
               type: object
             maxBackups:
