@@ -42,8 +42,6 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-const volumeBackupInitJobMaxActiveSeconds = 10 * 60
-
 type backupManager struct {
 	deps             *controller.Dependencies
 	backupCleaner    BackupCleaner
@@ -866,7 +864,8 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupInitialize {
 		bm.setBackupPodResourceRequirementsEmpty(&job.Spec.Template)
 		// for volume backup initializing job, set deadline of the job in case it blocks GC and pd schedule indefinitely
-		job.Spec.ActiveDeadlineSeconds = pointer.Int64(int64(volumeBackupInitJobMaxActiveSeconds))
+		job.Spec.ActiveDeadlineSeconds = pointer.Int64(int64(backup.Spec.VolumeBackupInitJobMaxActiveSeconds))
+		klog.Infof("init job [%s] deadline is %d", job.Name, *job.Spec.ActiveDeadlineSeconds)
 	}
 
 	return job, "", nil
