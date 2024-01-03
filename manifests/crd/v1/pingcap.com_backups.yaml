@@ -2091,6 +2091,9 @@ spec:
                 type: string
               useKMS:
                 type: boolean
+              volumeBackupInitJobMaxActiveSeconds:
+                default: 600
+                type: integer
             type: object
           status:
             properties:
