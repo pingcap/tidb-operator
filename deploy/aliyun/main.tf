@@ -85,9 +85,12 @@ module "tidb-cluster" {
   monitor_instance_type       = var.monitor_instance_type
   create_tidb_cluster_release = var.create_tidb_cluster_release
   create_tiflash_node_pool    = var.create_tiflash_node_pool
-  create_cdc_node_pool        = var.create_cdc_node_pool
   tiflash_count               = var.tiflash_count
+  tiflash_instance_type       = var.tiflash_instance_type
+  create_cdc_node_pool        = var.create_cdc_node_pool
   cdc_count                   = var.cdc_count
   cdc_instance_type           = var.cdc_instance_type
-  tiflash_instance_type       = var.tiflash_instance_type
+  create_tiproxy_node_pool    = var.create_tiproxy_node_pool
+  tiproxy_count               = var.tiproxy_count
+  tiproxy_instance_type       = var.tiproxy_instance_type
 }

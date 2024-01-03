@@ -59,7 +59,7 @@ func DefaultBrFedCLIConfig() *BrFedCLIConfig {
 		LeaseDuration:  15 * time.Second,
 		RenewDeadline:  10 * time.Second,
 		RetryPeriod:    2 * time.Second,
-		ResourceLock:   resourcelock.EndpointsLeasesResourceLock,
+		ResourceLock:   resourcelock.LeasesResourceLock, // k8s uses leases by default from v1.20
 		WaitDuration:   5 * time.Second,
 		ResyncDuration: 30 * time.Second,
 
