@@ -595,7 +595,8 @@ func TestGetNewPumpHeadlessService(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			svc := getNewPumpHeadlessService(&tt.tc)
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
@@ -717,7 +718,8 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getNewPumpConfigMap(&tt.tc)
 			g.Expect(err).To(Succeed())

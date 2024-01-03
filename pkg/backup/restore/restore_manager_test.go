@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -521,7 +522,7 @@ func TestInvalidReplicasBRRestoreByEBS(t *testing.T) {
 		helper.CreateRestore(cases[0].restore)
 		m := NewRestoreManager(deps)
 		err := m.Sync(cases[0].restore)
-		g.Expect(err).Should(MatchError("tikv replica missmatched"))
+		g.Expect(err).Should(MatchError("tikv replica mismatch"))
 	})
 }
 
@@ -597,4 +598,129 @@ func TestInvalidModeBRRestoreByEBS(t *testing.T) {
 		err := m.Sync(cases[0].restore)
 		g.Expect(err).Should(MatchError("recovery mode is off"))
 	})
+}
+
+func TestVolumeNumMismatchBRRestoreByEBS(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	cases := []struct {
+		name    string
+		restore *v1alpha1.Restore
+	}{
+		{
+			name: "restore-volume",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1",
+					Namespace: "ns-1",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-1",
+						Cluster:          "cluster-1",
+					},
+					StorageProvider: v1alpha1.StorageProvider{
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{},
+			},
+		},
+	}
+
+	// Verify invalid tc with mismatch tikv replicas
+	//generate the restore meta in local nfs, with 3 volumes for each tikv
+	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreTiKVVolumesMetaWithStr()), 0644) //nolint:gosec
+	g.Expect(err).To(Succeed())
+
+	//generate the backup meta in local nfs, tiflash check need backupmeta to validation
+	err = os.WriteFile("/tmp/backupmeta", []byte(testutils.ConstructRestoreTiKVVolumesMetaWithStr()), 0644) //nolint:gosec
+	g.Expect(err).To(Succeed())
+	defer func() {
+		err = os.Remove("/tmp/restoremeta")
+		g.Expect(err).To(Succeed())
+
+		err = os.Remove("/tmp/backupmeta")
+		g.Expect(err).To(Succeed())
+	}()
+
+	t.Run(cases[0].name, func(t *testing.T) {
+		helper.CreateTC(cases[0].restore.Spec.BR.ClusterNamespace, cases[0].restore.Spec.BR.Cluster, true, true)
+		helper.CreateRestore(cases[0].restore)
+		m := NewRestoreManager(deps)
+		err := m.Sync(cases[0].restore)
+		g.Expect(err).Should(MatchError("additional volumes mismatched"))
+	})
+}
+
+func TestGenerateWarmUpArgs(t *testing.T) {
+	mountPoints := []corev1.VolumeMount{
+		{
+			Name:      "data",
+			MountPath: constants.TiKVDataVolumeMountPath,
+		},
+		{
+			Name:      "logs",
+			MountPath: "/logs",
+		},
+	}
+	testCases := []struct {
+		name     string
+		strategy v1alpha1.RestoreWarmupStrategy
+		expected []string
+		errMsg   string
+	}{
+		{
+			name:     "all by block",
+			strategy: v1alpha1.RestoreWarmupStrategyFio,
+			expected: []string{"--block", constants.TiKVDataVolumeMountPath, "--block", "/logs"},
+		},
+		{
+			name:     "data by fsr other by block",
+			strategy: v1alpha1.RestoreWarmupStrategyFsr,
+			expected: []string{"--block", "/logs"},
+		},
+		{
+			name:     "data by fs other by block",
+			strategy: v1alpha1.RestoreWarmupStrategyHybrid,
+			expected: []string{"--fs", constants.TiKVDataVolumeMountPath, "--block", "/logs"},
+		},
+		{
+			name:     "unknown strategy",
+			strategy: "unknown",
+			errMsg:   `unknown warmup strategy "unknown"`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			args, err := generateWarmUpArgs(tc.strategy, mountPoints)
+			if tc.errMsg != "" {
+				require.EqualError(t, err, tc.errMsg)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, args)
+		})
+	}
 }

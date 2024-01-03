@@ -117,6 +117,12 @@ type VolumeBackupMemberSpec struct {
 	// +optional
 	// +kubebuilder:default="all"
 	CalcSizeLevel string `json:"calcSizeLevel,omitempty"`
+	// Additional volumes of component pods, and the volume source must support to be attached to multiple pods.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+	// Additional volume mounts of component pods.
+	// +optional
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
 // BRConfig contains config for BR
@@ -199,6 +205,8 @@ const (
 	VolumeBackupInvalid VolumeBackupConditionType = "Invalid"
 	// VolumeBackupRunning means the VolumeBackup is running
 	VolumeBackupRunning VolumeBackupConditionType = "Running"
+	// VolumeBackupSnapshotsCreated means the all the volume snapshots have created, and we have safely resumed GC and PD scheduler
+	VolumeBackupSnapshotsCreated VolumeBackupConditionType = "SnapshotsCreated"
 	// VolumeBackupComplete means all the backups in data plane are complete and the VolumeBackup is complete
 	VolumeBackupComplete VolumeBackupConditionType = "Complete"
 	// VolumeBackupFailed means one of backup in data plane is failed and the VolumeBackup is failed
@@ -367,6 +375,15 @@ type VolumeRestoreMemberSpec struct {
 	// WarmupImage represents using what image to initialize TiKV volumes
 	// +optional
 	WarmupImage string `json:"warmupImage,omitempty"`
+	// WarmupStrategy
+	// +kubebuilder:default=hybrid
+	WarmupStrategy pingcapv1alpha1.RestoreWarmupStrategy `json:"warmupStrategy,omitempty"`
+	// Additional volumes of component pods, and the volume source must support to be attached to multiple pods.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+	// Additional volume mounts of component pods.
+	// +optional
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
 type VolumeRestoreMemberBackupInfo struct {

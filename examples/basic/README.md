@@ -10,7 +10,7 @@ The following steps will create a TiDB cluster with monitoring, the monitoring d
 - Has TiDB operator `v1.1.0-beta.1` or higher version installed. [Doc](https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-tidb-operator/)
 - Has default `StorageClass` configured, and there are enough PVs (by default, 6 PVs are required) of that storageClass:
   
-  This could by verified by the following command:
+  This could be verified by the following command:
   
   ```bash
   > kubectl get storageclass

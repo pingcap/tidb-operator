@@ -556,7 +556,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, shard int32) c
 	}
 
 	//Add readiness probe. LivenessProbe probe will affect prom wal replay,ref: https://github.com/prometheus-operator/prometheus-operator/pull/3502
-	var readinessProbeHandler core.Handler
+	var readinessProbeHandler core.ProbeHandler
 	{
 		readyPath := "/-/ready"
 		readinessProbeHandler.HTTPGet = &core.HTTPGetAction{
@@ -566,7 +566,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, shard int32) c
 
 	}
 	readinessProbe := &core.Probe{
-		Handler:          readinessProbeHandler,
+		ProbeHandler:     readinessProbeHandler,
 		TimeoutSeconds:   3,
 		PeriodSeconds:    5,
 		FailureThreshold: 120, // Allow up to 10m on startup for data recovery
@@ -677,7 +677,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 		},
 	}
 
-	var probeHandler core.Handler
+	var probeHandler core.ProbeHandler
 	{
 		readyPath := "/api/health"
 		probeHandler.HTTPGet = &core.HTTPGetAction{
@@ -688,7 +688,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	}
 	//add readiness probe
 	readinessProbe := &core.Probe{
-		Handler:          probeHandler,
+		ProbeHandler:     probeHandler,
 		TimeoutSeconds:   5,
 		PeriodSeconds:    10,
 		SuccessThreshold: 1,
@@ -697,7 +697,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 
 	//add liveness probe
 	livenessProbe := &core.Probe{
-		Handler:             probeHandler,
+		ProbeHandler:        probeHandler,
 		TimeoutSeconds:      5,
 		FailureThreshold:    10,
 		PeriodSeconds:       10,
@@ -1479,7 +1479,7 @@ func buildExternalLabels(monitor *v1alpha1.TidbMonitor) model.LabelSet {
 }
 
 func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapItem, error) {
-	cfgs := []yaml.MapSlice{}
+	var cfgs []yaml.MapSlice
 	version, err := semver.NewVersion(monitor.Spec.Prometheus.Version)
 	if err != nil {
 		return yaml.MapItem{}, err
@@ -1505,7 +1505,7 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 		}
 
 		if spec.WriteRelabelConfigs != nil {
-			relabelings := []yaml.MapSlice{}
+			var relabelings []yaml.MapSlice
 			for _, c := range spec.WriteRelabelConfigs {
 				relabeling := yaml.MapSlice{}
 

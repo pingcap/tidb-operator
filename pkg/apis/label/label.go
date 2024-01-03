@@ -115,6 +115,10 @@ const (
 
 	// AnnPDDeleteSlots is annotation key of pd delete slots.
 	AnnPDDeleteSlots = "pd.tidb.pingcap.com/delete-slots"
+	// AnnTSODeleteSlots is annotation key of pd ms tso delete slots.
+	AnnTSODeleteSlots = "tso.tidb.pingcap.com/delete-slots"
+	// AnnSchedulingDeleteSlots is annotation key of pd ms scheduling delete slots.
+	AnnSchedulingDeleteSlots = "scheduling.tidb.pingcap.com/delete-slots"
 	// AnnTiDBDeleteSlots is annotation key of tidb delete slots.
 	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
 	// AnnTiKVDeleteSlots is annotation key of tikv delete slots.
@@ -147,8 +151,16 @@ const (
 	// NOTE: this annotation should only be used for existing TiFlash v7.1.0+ clusters with ports config items.
 	AnnoTiFlash710KeepPortsKey = "tidb.pingcap.com/tiflash-710-keep-ports"
 
+	// AnnTiKVNoActiveStoreSince is the annotation key to indicate the time since a pod does not have a valid store
+	// Listed from store status, but has a store id in label. This is an alternate way to detect tombstone stores.
+	AnnTiKVNoActiveStoreSince = "tidb.pingcap.com/tikv-no-active-store-since"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
+	// PDMSTSOLabelVal is pd microservice tso member type
+	PDMSTSOLabelVal string = "pdms-tso"
+	// PDMSSchedulingLabelVal is pd microservice scheduling member type
+	PDMSSchedulingLabelVal string = "pdms-scheduling"
 	// TiDBLabelVal is TiDB label value
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
@@ -201,6 +213,18 @@ const (
 	// ApplicationLabelKey is App label key
 	ApplicationLabelKey string = "app.kubernetes.io/app"
 )
+
+// PDMSLabel is the label for pd ms, identify the pd ms type
+func PDMSLabel(name string) string {
+	switch name {
+	case "tso":
+		return PDMSTSOLabelVal
+	case "scheduling":
+		return PDMSSchedulingLabelVal
+	default:
+		panic(fmt.Sprintf("unknown pd ms name %s", name))
+	}
+}
 
 // Label is the label field in metadata
 type Label map[string]string
@@ -386,6 +410,17 @@ func (l Label) PD() Label {
 // IsPD returns whether label is a PD component
 func (l Label) IsPD() bool {
 	return l[ComponentLabelKey] == PDLabelVal
+}
+
+func (l Label) PDMS(name string) Label {
+	switch name {
+	case "tso":
+		return l.Component(PDMSTSOLabelVal)
+	case "scheduling":
+		return l.Component(PDMSSchedulingLabelVal)
+	default:
+		panic(fmt.Sprintf("unknown pd ms name %s", name))
+	}
 }
 
 // TiProxy assigns tiproxy to component key in label

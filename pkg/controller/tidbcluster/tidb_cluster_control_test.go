@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -310,6 +311,7 @@ func newFakeTidbClusterControl() (
 
 	tcUpdater := controller.NewFakeTidbClusterControl(tcInformer)
 	pdMemberManager := mm.NewFakePDMemberManager()
+	pdMSMemberManager := mm.NewFakePDMSMemberManager()
 	tikvMemberManager := mm.NewFakeTiKVMemberManager()
 	tidbMemberManager := mm.NewFakeTiDBMemberManager()
 	reclaimPolicyManager := meta.NewFakeReclaimPolicyManager()
@@ -323,9 +325,11 @@ func newFakeTidbClusterControl() (
 	discoveryManager := mm.NewFakeDiscoveryManger()
 	statusManager := mm.NewFakeTidbClusterStatusManager()
 	pvcResizer := mm.NewFakePVCResizer()
+	pvcReplacer := volumes.NewFakePVCReplacer()
 	control := NewDefaultTidbClusterControl(
 		tcUpdater,
 		pdMemberManager,
+		pdMSMemberManager,
 		tikvMemberManager,
 		tidbMemberManager,
 		tiproxyMemberManager,
@@ -334,6 +338,7 @@ func newFakeTidbClusterControl() (
 		orphanPodCleaner,
 		pvcCleaner,
 		pvcResizer,
+		pvcReplacer,
 		pumpMemberManager,
 		tiflashMemberManager,
 		ticdcMemberManager,

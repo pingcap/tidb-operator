@@ -44,6 +44,8 @@ type Options struct {
 	Prepare bool
 	// TargetAZ indicates which az the volume snapshots restore to. It's used in volume-snapshot mode.
 	TargetAZ string
+	// UseFSR to indicate if use FSR for TiKV data volumes during EBS snapshot restore
+	UseFSR bool
 }
 
 func (ro *Options) restoreData(
@@ -106,6 +108,11 @@ func (ro *Options) restoreData(
 			csbPath = path.Join(util.BRBinPath, "csb_restore.json")
 			args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
 			args = append(args, fmt.Sprintf("--target-az=%s", ro.TargetAZ))
+			if ro.UseFSR {
+				args = append(args, "--use-fsr=true")
+			} else {
+				args = append(args, "--use-fsr=false")
+			}
 			progressStep = "Volume Restore"
 		} else {
 			progressStep = "Data Restore"
@@ -120,7 +127,7 @@ func (ro *Options) restoreData(
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
 	bin := path.Join(util.BRBinPath, "br")
-	cmd := exec.CommandContext(ctx, bin, fullArgs...)
+	cmd := exec.Command(bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
@@ -151,6 +158,9 @@ func (ro *Options) restoreData(
 		}()
 	}
 
+	stdErrCh := make(chan []byte, 1)
+	go backupUtil.ReadAllStdErrToChannel(stdErr, stdErrCh)
+
 	var errMsg string
 	reader := bufio.NewReader(stdOut)
 	for {
@@ -164,11 +174,14 @@ func (ro *Options) restoreData(
 			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
 		}
 		klog.Info(strings.Replace(line, "\n", "", -1))
-		if err != nil || io.EOF == err {
+		if err != nil {
+			if err != io.EOF {
+				klog.Errorf("read stdout error: %s", err.Error())
+			}
 			break
 		}
 	}
-	tmpErr, _ := io.ReadAll(stdErr)
+	tmpErr := <-stdErrCh
 	if len(tmpErr) > 0 {
 		klog.Info(string(tmpErr))
 		errMsg += string(tmpErr)

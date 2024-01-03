@@ -31,9 +31,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/log"
-	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -49,6 +46,9 @@ import (
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	utiltc "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
+	e2esset "github.com/pingcap/tidb-operator/tests/third_party/k8s/statefulset"
 )
 
 var _ = ginkgo.Describe("[Stability]", func() {
@@ -324,7 +324,7 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					for _, oldPod := range oldPodList.Items {
 						// if the pod is not new or deleted in scaling, it should not be affected
 						if oldPod.Name == newPod.Name && oldPod.UID != newPod.UID {
-							framework.Failf("pod %s/%s should not be affected (UID: %s, OLD UID: %s)", newPod.Namespace, newPod.Name, newPod.UID, oldPod.UID)
+							log.Failf("pod %s/%s should not be affected (UID: %s, OLD UID: %s)", newPod.Namespace, newPod.Name, newPod.UID, oldPod.UID)
 						}
 					}
 				}

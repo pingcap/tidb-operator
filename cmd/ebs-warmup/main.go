@@ -16,9 +16,15 @@ package main
 import (
 	"context"
 	"math"
+	"os"
+	"os/signal"
 
 	"github.com/pingcap/tidb-operator/cmd/ebs-warmup/filereader"
 	"github.com/spf13/pflag"
+	"k8s.io/klog/v2"
+
+	// Enable FIPS when necessary
+	_ "github.com/pingcap/tidb-operator/pkg/fips"
 )
 
 var (
@@ -44,6 +50,15 @@ func main() {
 		CheckpointFile:  *checkpointFile,
 	}
 
-	rd := filereader.New(context.Background(), config)
-	rd.Run()
+	rd := filereader.New(config)
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	go func() {
+		<-ch
+		klog.Warning("Received interrupt, stopping...")
+		signal.Stop(ch)
+		cancel()
+	}()
+	rd.RunAndClose(ctx)
 }

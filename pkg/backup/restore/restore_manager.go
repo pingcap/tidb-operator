@@ -338,36 +338,10 @@ func (rm *restoreManager) readRestoreMetaFromExternalStorage(r *v1alpha1.Restore
 }
 func (rm *restoreManager) validateRestore(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
 	// check tiflash and tikv replicas
-	tiflashReplicas, tikvReplicas, reason, err := rm.readTiFlashAndTiKVReplicasFromBackupMeta(r)
+	err := rm.checkTiFlashAndTiKVReplicasFromBackupMeta(r, tc)
 	if err != nil {
-		klog.Errorf("read tiflash replica failure with reason %s", reason)
+		klog.Errorf("check tikv/tiflash failure with reason %v", err)
 		return err
-	}
-
-	if tc.Spec.TiFlash == nil {
-		if tiflashReplicas != 0 {
-			klog.Errorf("tiflash is not configured, backupmeta has %d tiflash", tiflashReplicas)
-			return fmt.Errorf("tiflash replica missmatched")
-		}
-
-	} else {
-		if tc.Spec.TiFlash.Replicas != tiflashReplicas {
-			klog.Errorf("cluster has %d tiflash configured, backupmeta has %d tiflash", tc.Spec.TiFlash.Replicas, tiflashReplicas)
-			return fmt.Errorf("tiflash replica missmatched")
-		}
-	}
-
-	if tc.Spec.TiKV == nil {
-		if tikvReplicas != 0 {
-			klog.Errorf("tikv is not configured, backupmeta has %d tikv", tikvReplicas)
-			return fmt.Errorf("tikv replica missmatched")
-		}
-
-	} else {
-		if tc.Spec.TiKV.Replicas != tikvReplicas {
-			klog.Errorf("cluster has %d tikv configured, backupmeta has %d tikv", tc.Spec.TiKV.Replicas, tikvReplicas)
-			return fmt.Errorf("tikv replica missmatched")
-		}
 	}
 
 	// Check recovery mode is on for EBS br across k8s
@@ -437,27 +411,50 @@ func (rm *restoreManager) checkTiKVEncryption(r *v1alpha1.Restore, tc *v1alpha1.
 	return nil
 }
 
-func (rm *restoreManager) readTiFlashAndTiKVReplicasFromBackupMeta(r *v1alpha1.Restore) (int32, int32, string, error) {
+func (rm *restoreManager) checkTiFlashAndTiKVReplicasFromBackupMeta(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) error {
 	metaInfo, err := backuputil.GetVolSnapBackupMetaData(r, rm.deps.SecretLister)
 	if err != nil {
-		return 0, 0, "GetVolSnapBackupMetaData failed", err
+		klog.Errorf("GetVolSnapBackupMetaData failed")
+		return err
 	}
 
-	var tiflashReplicas, tikvReplicas int32
-
-	if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash == nil {
-		tiflashReplicas = 0
-	} else {
-		tiflashReplicas = metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas
+	// Check mismatch of tiflash config
+	if (metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash == nil ||
+		metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas == 0) &&
+		tc.Spec.TiFlash != nil && tc.Spec.TiFlash.Replicas > 0 {
+		klog.Errorf("tiflash is enabled in TC but disabled in backup metadata")
+		return fmt.Errorf("tiflash replica mismatched")
+	} else if (tc.Spec.TiFlash == nil || tc.Spec.TiFlash.Replicas == 0) &&
+		metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash != nil &&
+		metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas > 0 {
+		klog.Errorf("tiflash is disabled in TC enabled in backup metadata")
+		return fmt.Errorf("tiflash replica mismatched")
+	} else if tc.Spec.TiFlash != nil && metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash != nil &&
+		tc.Spec.TiFlash.Replicas != metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas {
+		klog.Errorf("tiflash number in TC is %d but is %d in backup metadata", tc.Spec.TiFlash.Replicas, metaInfo.KubernetesMeta.TiDBCluster.Spec.TiFlash.Replicas)
+		return fmt.Errorf("tiflash replica mismatched")
 	}
 
-	if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV == nil {
-		tikvReplicas = 0
-	} else {
-		tikvReplicas = metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas
+	// TiKV node must be there
+	if tc.Spec.TiKV == nil || tc.Spec.TiKV.Replicas == 0 {
+		klog.Errorf("ebs snapshot restore doesn't support cluster without tikv nodes")
+		return fmt.Errorf("restore to no tikv cluster")
+	} else if metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV == nil ||
+		metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas == 0 {
+		klog.Errorf("backup source tc has no tikv nodes")
+		return fmt.Errorf("backup source tc has no tivk nodes")
+	} else if tc.Spec.TiKV.Replicas != metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas {
+		klog.Errorf("mismatch tikv replicas, tc has %d, while backup has %d", tc.Spec.TiKV.Replicas, metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV)
+		return fmt.Errorf("tikv replica mismatch")
 	}
 
-	return tiflashReplicas, tikvReplicas, "", nil
+	// Check volume number
+	if len(tc.Spec.TiKV.StorageVolumes) != len(metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.StorageVolumes) {
+		klog.Errorf("additional volumes # not match. tc has %d, and backup has %d", len(tc.Spec.TiKV.StorageVolumes), len(metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.StorageVolumes))
+		return fmt.Errorf("additional volumes mismatched")
+	}
+
+	return nil
 }
 
 func (rm *restoreManager) readTiKVConfigFromBackupMeta(r *v1alpha1.Restore) (*v1alpha1.TiKVConfigWraper, string, error) {
@@ -513,10 +510,13 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		}
 
 		// restore TidbCluster completed
+		newStatus := &controller.RestoreUpdateStatus{
+			TimeCompleted: &metav1.Time{Time: time.Now()},
+		}
 		if err := rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
 			Type:   v1alpha1.RestoreComplete,
 			Status: corev1.ConditionTrue,
-		}, nil); err != nil {
+		}, newStatus); err != nil {
 			return "UpdateRestoreCompleteFailed", err
 		}
 		return "", nil
@@ -608,6 +608,13 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
 	initContainers := []corev1.Container{}
+
+	if len(restore.Spec.AdditionalVolumes) > 0 {
+		volumes = append(volumes, restore.Spec.AdditionalVolumes...)
+	}
+	if len(restore.Spec.AdditionalVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
+	}
 
 	if restore.Spec.To.TLSClientSecretName != nil {
 		args = append(args, "--client-tls=true")
@@ -778,6 +785,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			if restore.Spec.VolumeAZ != "" {
 				args = append(args, fmt.Sprintf("--target-az=%s", restore.Spec.VolumeAZ))
 			}
+			if restore.Spec.WarmupStrategy == v1alpha1.RestoreWarmupStrategyFsr {
+				args = append(args, "--use-fsr=true")
+			}
 		}
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))
@@ -841,6 +851,13 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	})
+
+	if len(restore.Spec.AdditionalVolumes) > 0 {
+		volumes = append(volumes, restore.Spec.AdditionalVolumes...)
+	}
+	if len(restore.Spec.AdditionalVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
+	}
 
 	// mount volumes if specified
 	if restore.Spec.Local != nil {
@@ -1063,6 +1080,32 @@ func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alph
 	}, nil)
 }
 
+func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []corev1.VolumeMount) ([]string, error) {
+	res := make([]string, 0, len(mountPoints))
+	for _, p := range mountPoints {
+		switch strategy {
+		case v1alpha1.RestoreWarmupStrategyFio:
+			res = append(res, "--block", p.MountPath)
+		case v1alpha1.RestoreWarmupStrategyHybrid:
+			if p.MountPath == constants.TiKVDataVolumeMountPath {
+				res = append(res, "--fs", constants.TiKVDataVolumeMountPath)
+			} else {
+				res = append(res, "--block", p.MountPath)
+			}
+		case v1alpha1.RestoreWarmupStrategyFsr:
+			if p.MountPath == constants.TiKVDataVolumeMountPath {
+				// data volume has been warmed up by enabling FSR
+				continue
+			} else {
+				res = append(res, "--block", p.MountPath)
+			}
+		default:
+			return nil, fmt.Errorf("unknown warmup strategy %q", strategy)
+		}
+	}
+	return res, nil
+}
+
 func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster, pvcs []*pvcInfo, warmUpJobName, warmUpImage string) (*batchv1.Job, error) {
 	podVolumes := make([]corev1.Volume, 0, len(pvcs))
 	podVolumeMounts := make([]corev1.VolumeMount, 0, len(pvcs))
@@ -1081,6 +1124,15 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 			Name:      pvc.volumeName,
 			MountPath: mountPath,
 		})
+	}
+
+	// all the warmup pods will attach the additional volumes
+	// if the volume source can't be attached to multi pods, the warmup pods may be stuck.
+	if len(r.Spec.AdditionalVolumes) > 0 {
+		podVolumes = append(podVolumes, r.Spec.AdditionalVolumes...)
+	}
+	if len(r.Spec.AdditionalVolumeMounts) > 0 {
+		podVolumeMounts = append(podVolumeMounts, r.Spec.AdditionalVolumeMounts...)
 	}
 
 	nodeSelector := make(map[string]string, len(tc.Spec.TiKV.NodeSelector))
@@ -1102,18 +1154,9 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 		}
 	}
 
-	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
-
-	fioPaths := make([]string, 0, len(podVolumeMounts))
-	for _, volumeMount := range podVolumeMounts {
-		if volumeMount.MountPath == constants.TiKVDataVolumeMountPath {
-			continue
-		}
-		fioPaths = append(fioPaths, volumeMount.MountPath)
-	}
-	if len(fioPaths) > 0 {
-		args = append(args, "--block")
-		args = append(args, fioPaths...)
+	args, err := generateWarmUpArgs(r.Spec.WarmupStrategy, podVolumeMounts)
+	if err != nil {
+		return nil, err
 	}
 	resourceRequirements := getWarmUpResourceRequirements(tc)
 
@@ -1192,17 +1235,18 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 		}
 	}
 
-	args := []string{"--fs", constants.TiKVDataVolumeMountPath}
-	fioPaths := make([]string, 0, len(warmUpPaths))
-	for _, warmUpPath := range warmUpPaths {
-		if warmUpPath == constants.TiKVDataVolumeMountPath {
-			continue
-		}
-		fioPaths = append(fioPaths, warmUpPath)
+	// all the warmup pods will attach the additional volumes
+	// if the volume source can't be attached to multi pods, the warmup pods may be stuck.
+	if len(r.Spec.AdditionalVolumes) > 0 {
+		warmUpVolumes = append(warmUpVolumes, r.Spec.AdditionalVolumes...)
 	}
-	if len(fioPaths) > 0 {
-		args = append(args, "--block")
-		args = append(args, fioPaths...)
+	if len(r.Spec.AdditionalVolumeMounts) > 0 {
+		warmUpVolumeMounts = append(warmUpVolumeMounts, r.Spec.AdditionalVolumeMounts...)
+	}
+
+	args, err := generateWarmUpArgs(r.Spec.WarmupStrategy, warmUpVolumeMounts)
+	if err != nil {
+		return nil, err
 	}
 
 	warmUpPod := &corev1.PodTemplateSpec{
@@ -1255,7 +1299,7 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 		return err
 	}
 
-	jobs, err := rm.deps.JobLister.List(sel)
+	jobs, err := rm.deps.JobLister.Jobs(r.Namespace).List(sel)
 	if err != nil {
 		return err
 	}

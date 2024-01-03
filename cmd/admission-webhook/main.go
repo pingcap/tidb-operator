@@ -25,6 +25,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/webhook/strategy"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog/v2"
+
+	// Enable FIPS when necessary
+	_ "github.com/pingcap/tidb-operator/pkg/fips"
 )
 
 var (
@@ -34,6 +37,7 @@ var (
 )
 
 func init() {
+	klog.InitFlags(nil)
 	flag.CommandLine.Init(os.Args[0], flag.ContinueOnError)
 	// Define the flag "secure-port" to avoid the `flag.Parse()` reporting error
 	// TODO: remove this flag after we don't use the lib "github.com/openshift/generic-admission-server"

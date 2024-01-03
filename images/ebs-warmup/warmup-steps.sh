@@ -34,6 +34,16 @@ Supported flags:
 EOF
 }
 
+# The trap command is to make sure the sidecars are terminated when the jobs are finished
+cleanup() {
+    if [ ! -d "/tmp/pod" ]; then
+        mkdir -p /tmp/pod
+    fi
+    touch /tmp/pod/main-terminated
+}
+
+trap cleanup EXIT
+
 operation=none
 while [ $# -gt 0 ]; do
     case $1 in
@@ -51,7 +61,7 @@ while [ $# -gt 0 ]; do
             die "unsupported flag $1"
             ;;
         *)
-            echo "spawning wram up task: operation = $operation; file path = $1"
+            echo "spawning warm up task: operation = $operation; file path = $1"
             case "$operation" in
                 fio) 
                     device=$(dev_name_by_mount_point "$1")
@@ -66,7 +76,7 @@ while [ $# -gt 0 ]; do
                     ;;
                 fs) /warmup --type=whole --files="$1" -P256 --direct &
                     ;;
-                *) die "internal error: unsupported operation $1; forgot to call --fio or --fs?"
+                *) die "internal error: unsupported operation $1; forgot to call --block or --fs?"
                     ;;
             esac
             ;;

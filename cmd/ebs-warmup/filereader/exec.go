@@ -38,6 +38,8 @@ const (
 	defaultSegmentCount = 16
 )
 
+type sendFileHook func(tasks.ReadFile) (brk bool)
+
 type StatedFile struct {
 	Info os.FileInfo
 	Path string
@@ -68,36 +70,31 @@ func StatFilesByGlob(glob string) ([]StatedFile, error) {
 	return stats, nil
 }
 
-func WarmUpFooters(glob string, sendToWorker func(tasks.ReadFile)) error {
+func WarmUpFooters(glob string, sendToWorker sendFileHook) error {
 	files, err := StatFilesByGlob(glob)
 	if err != nil {
 		return errors.Annotatef(err, "failed to stat files with glob %s", glob)
 	}
 	for _, file := range files {
-		sendToWorker(tasks.ReadFile{
+		shouldBrk := sendToWorker(tasks.ReadFile{
 			Type:     tasks.ReadLastNBytes(16 * 1024),
 			File:     file.Info,
 			FilePath: file.Path,
 		})
+		if shouldBrk {
+			return nil
+		}
 	}
 	return nil
 }
 
-func WarmUpWholeFile(glob string, sendToWorker func(tasks.ReadFile)) error {
-	return warmUpWholeFileBy(glob, func(sf StatedFile) {
-		sendFileWithSegmenting(sf, defaultSegmentCount, sendToWorker)
+func WarmUpWholeFile(glob string, sendToWorker sendFileHook) error {
+	return warmUpWholeFileBy(glob, func(sf StatedFile) bool {
+		return sendFileWithSegmenting(sf, defaultSegmentCount, sendToWorker)
 	})
 }
 
-func WarmUpWholeFileAfter(glob string, after time.Time, sendToWorker func(tasks.ReadFile)) error {
-	return warmUpWholeFileBy(glob, func(sf StatedFile) {
-		if sf.Info.ModTime().After(after) {
-			sendFileWithSegmenting(sf, defaultSegmentCount, sendToWorker)
-		}
-	})
-}
-
-func warmUpWholeFileBy(glob string, onFile func(StatedFile)) error {
+func warmUpWholeFileBy(glob string, onFile func(StatedFile) (brk bool)) error {
 	files, err := StatFilesByGlob(glob)
 	if err != nil {
 		return errors.Annotatef(err, "failed to stat files with glob %s", glob)
@@ -107,12 +104,14 @@ func warmUpWholeFileBy(glob string, onFile func(StatedFile)) error {
 		return files[i].Info.ModTime().After(files[j].Info.ModTime())
 	})
 	for _, file := range files {
-		onFile(file)
+		if onFile(file) {
+			return context.Canceled
+		}
 	}
 	return nil
 }
 
-func sendFileWithSegmenting(file StatedFile, partitions int, sendToWorker func(tasks.ReadFile)) {
+func sendFileWithSegmenting(file StatedFile, partitions int, sendToWorker sendFileHook) (brk bool) {
 	partitionSize := file.Info.Size() / int64(partitions)
 	if partitionSize < minimalSegmentSize {
 		partitionSize = minimalSegmentSize
@@ -123,7 +122,7 @@ func sendFileWithSegmenting(file StatedFile, partitions int, sendToWorker func(t
 		if offset+partitionSize > file.Info.Size() {
 			length = file.Info.Size() - offset
 		}
-		sendToWorker(
+		shouldBrk := sendToWorker(
 			tasks.ReadFile{
 				Type: tasks.ReadOffsetAndLength{
 					Offset: offset,
@@ -133,13 +132,18 @@ func sendFileWithSegmenting(file StatedFile, partitions int, sendToWorker func(t
 				FilePath: file.Path,
 			},
 		)
+		if shouldBrk {
+			return true
+		}
 		offset += partitionSize
 	}
+	return false
 }
 
 type WorkersOpt struct {
 	ObserveTotalSize *uint64
 	RateLimitInMiB   float64
+	OnStep           worker.OnStepHook
 }
 
 func CreateWorkers(ctx context.Context, n int, opt WorkersOpt) ([]chan<- tasks.ReadFile, *errgroup.Group) {
@@ -160,6 +164,9 @@ func CreateWorkers(ctx context.Context, n int, opt WorkersOpt) ([]chan<- tasks.R
 			wr := worker.New(ch)
 			wr.RateLimiter = limiter
 			wr.OnStep = func(file os.FileInfo, readBytes int, take time.Duration) {
+				if opt.OnStep != nil {
+					opt.OnStep(file, readBytes, take)
+				}
 				if opt.ObserveTotalSize != nil {
 					new := atomic.AddUint64(opt.ObserveTotalSize, uint64(readBytes))
 					if atomic.AddUint64(&loopCounter, 1)%2048 == 0 {
@@ -200,7 +207,7 @@ func RoundRobin[T any](ts []T) func() T {
 	return choose
 }
 
-func TrySync(workers []chan<- tasks.ReadFile) {
+func TrySync(ctx context.Context, workers []chan<- tasks.ReadFile) error {
 	chs := make([]chan struct{}, 0)
 	for _, w := range workers {
 		ch := make(chan struct{})
@@ -208,8 +215,13 @@ func TrySync(workers []chan<- tasks.ReadFile) {
 		chs = append(chs, ch)
 	}
 	for _, ch := range chs {
-		<-ch
+		select {
+		case <-ch:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
+	return nil
 }
 
 type ExecContext struct {
@@ -222,6 +234,8 @@ type ExecContext struct {
 	chooser  func() chan<- tasks.ReadFile
 	lastSent uint64
 	start    time.Time
+
+	cancel context.CancelFunc
 }
 
 func (execCtx *ExecContext) perhapsCheckpoint() (uint64, error) {
@@ -241,7 +255,8 @@ func (execCtx *ExecContext) checkpoint() uint64 {
 	ckp, err := execCtx.perhapsCheckpoint()
 	if err != nil {
 		klog.InfoS("Failed to read checkpoint file. Will use time.Now() as checkpoint.", "err", err)
-		return uint64(time.Now().UnixMilli())
+		// add a 1s offset for newly created files. (usually in test)
+		return uint64(time.Now().UnixMilli() + 1000)
 	}
 	return ckp
 }
@@ -250,34 +265,38 @@ func (execCtx *ExecContext) saveCheckpoint(ckp uint64) error {
 	return os.WriteFile(execCtx.config.CheckpointFile, []byte(fmt.Sprintf("%d", ckp)), 0o644)
 }
 
-func New(masterCtx context.Context, config Config) *ExecContext {
+func New(config Config) *ExecContext {
 	execCtx := &ExecContext{
 		config: config,
 	}
-	execCtx.wkrs, execCtx.eg = CreateWorkers(masterCtx, execCtx.config.NWorkers, WorkersOpt{
+	wCtx, cancel := context.WithCancel(context.Background())
+	execCtx.wkrs, execCtx.eg = CreateWorkers(wCtx, execCtx.config.NWorkers, WorkersOpt{
 		ObserveTotalSize: &execCtx.total,
 		RateLimitInMiB:   execCtx.config.RateLimit,
+		OnStep:           config.OnStep,
 	})
 	execCtx.start = time.Now()
 	execCtx.chooser = RoundRobin(execCtx.wkrs)
 	execCtx.cnt = uint64(0)
 	execCtx.lastSent = execCtx.checkpoint()
+	execCtx.cancel = cancel
 	return execCtx
 }
 
-func (execCtx *ExecContext) Run() {
-	total := uint64(0)
+func (execCtx *ExecContext) RunAndClose(ctx context.Context) {
+	defer execCtx.cancel()
 
+	total := uint64(0)
 	klog.InfoS("Using checkpoint.", "checkpoint", execCtx.lastSent, "time", time.UnixMilli(int64(execCtx.lastSent)).String())
 
 	switch execCtx.config.Type {
 	case "footer":
-		WarmUpFooters(execCtx.config.Files, func(rf tasks.ReadFile) {
-			execCtx.sendToWorker(rf)
+		WarmUpFooters(execCtx.config.Files, func(rf tasks.ReadFile) bool {
+			return execCtx.sendToWorker(ctx, rf)
 		})
 	case "whole":
-		WarmUpWholeFile(execCtx.config.Files, func(rf tasks.ReadFile) {
-			execCtx.sendToWorker(rf)
+		WarmUpWholeFile(execCtx.config.Files, func(rf tasks.ReadFile) bool {
+			return execCtx.sendToWorker(ctx, rf)
 		})
 	}
 
@@ -291,21 +310,35 @@ func (execCtx *ExecContext) Run() {
 	klog.InfoS("Done.", "take", take, "total", total, "rate", fmt.Sprintf("%s/s", units.HumanSize(rate)))
 }
 
-func (execCtx *ExecContext) sendToWorker(rf tasks.ReadFile) {
-	createTs := rf.File.ModTime().UnixMilli()
-	if createTs > int64(execCtx.checkpoint()) {
-		return
-	}
+func (execCtx *ExecContext) checkpointTick(ctx context.Context) {
 	execCtx.cnt += 1
 	if execCtx.cnt%execCtx.config.CheckpointEvery == 0 {
 		ckp := execCtx.lastSent
 		now := time.Now()
-		TrySync(execCtx.wkrs)
+		if err := TrySync(ctx, execCtx.wkrs); err != nil {
+			klog.ErrorS(err, "skip saving checkpoint: the worker is closing", "err", err)
+			return
+		}
 		err := execCtx.saveCheckpoint(ckp)
 		if err != nil {
 			klog.ErrorS(err, "Failed to save checkpoint.", "checkpoint", ckp, "take", time.Since(now))
 		}
 	}
+}
+
+func (execCtx *ExecContext) sendToWorker(ctx context.Context, rf tasks.ReadFile) bool {
+	createTs := rf.File.ModTime().UnixMilli()
+	if execCtx.config.OnFireRequest != nil {
+		execCtx.config.OnFireRequest(&rf)
+	}
+	if ctx.Err() != nil {
+		klog.InfoS("early exit due to context canceled.", "err", ctx.Err())
+		return true
+	}
+	if createTs > int64(execCtx.lastSent) {
+		return false
+	}
+	execCtx.checkpointTick(ctx)
 	rf.Direct = execCtx.config.Direct
 	execCtx.chooser() <- rf
 	if execCtx.lastSent < uint64(createTs) {
@@ -313,4 +346,5 @@ func (execCtx *ExecContext) sendToWorker(rf tasks.ReadFile) {
 			"createTs=", uint64(createTs), "lastSent=", execCtx.lastSent)
 	}
 	execCtx.lastSent = uint64(createTs)
+	return false
 }

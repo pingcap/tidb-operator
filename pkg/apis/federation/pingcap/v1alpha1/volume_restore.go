@@ -120,7 +120,7 @@ func UpdateVolumeRestoreMemberStatus(volumeRestoreStatus *VolumeRestoreStatus, k
 	}
 
 	for i := range volumeRestoreStatus.Restores {
-		if volumeRestoreStatus.Restores[i].RestoreName == restoreMemberStatus.RestoreName {
+		if volumeRestoreStatus.Restores[i].RestoreName == restoreMemberStatus.RestoreName && volumeRestoreStatus.Restores[i].K8sClusterName == k8sClusterName {
 			volumeRestoreStatus.Restores[i] = restoreMemberStatus
 			return
 		}

@@ -35,7 +35,7 @@ jobs:
       uses: actions/setup-go@v3
       with:
         go-version-file: go/src/github.com/${{ github.repository }}/go.mod
-        check-latest: true
+        go-version: 1.21.3
     - name: Set vars
       run: |
         echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_ENV
@@ -57,7 +57,7 @@ jobs:
         if [[ "$job" == "verify" ]]; then
           make check-setup check
         elif [[ "$job" == "build" ]]; then
-          make docker e2e-docker cli debug-build-docker
+          make docker e2e-docker debug-build-docker
         elif [[ "$job" == "test" ]]; then
           make test GOFLAGS=-race GO_COVER=y
         else

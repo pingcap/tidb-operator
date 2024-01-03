@@ -14,6 +14,7 @@
 package tidbcluster
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/features"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -43,6 +44,7 @@ type ControlInterface interface {
 func NewDefaultTidbClusterControl(
 	tcControl controller.TidbClusterControlInterface,
 	pdMemberManager manager.Manager,
+	pdMSMemberManager manager.Manager,
 	tikvMemberManager manager.Manager,
 	tidbMemberManager manager.Manager,
 	tiproxyMemberManager manager.Manager,
@@ -52,6 +54,7 @@ func NewDefaultTidbClusterControl(
 	pvcCleaner member.PVCCleanerInterface,
 	// pvcResizer member.PVCResizerInterface,
 	pvcModifier volumes.PVCModifierInterface,
+	pvcReplacer volumes.PVCReplacerInterface,
 	pumpMemberManager manager.Manager,
 	tiflashMemberManager manager.Manager,
 	ticdcMemberManager manager.Manager,
@@ -62,6 +65,7 @@ func NewDefaultTidbClusterControl(
 	return &defaultTidbClusterControl{
 		tcControl:                tcControl,
 		pdMemberManager:          pdMemberManager,
+		pdMSMemberManager:        pdMSMemberManager,
 		tikvMemberManager:        tikvMemberManager,
 		tidbMemberManager:        tidbMemberManager,
 		tiproxyMemberManager:     tiproxyMemberManager,
@@ -70,6 +74,7 @@ func NewDefaultTidbClusterControl(
 		orphanPodsCleaner:        orphanPodsCleaner,
 		pvcCleaner:               pvcCleaner,
 		pvcModifier:              pvcModifier,
+		pvcReplacer:              pvcReplacer,
 		pumpMemberManager:        pumpMemberManager,
 		tiflashMemberManager:     tiflashMemberManager,
 		ticdcMemberManager:       ticdcMemberManager,
@@ -83,6 +88,7 @@ func NewDefaultTidbClusterControl(
 type defaultTidbClusterControl struct {
 	tcControl                controller.TidbClusterControlInterface
 	pdMemberManager          manager.Manager
+	pdMSMemberManager        manager.Manager
 	tikvMemberManager        manager.Manager
 	tidbMemberManager        manager.Manager
 	tiproxyMemberManager     manager.Manager
@@ -91,6 +97,7 @@ type defaultTidbClusterControl struct {
 	orphanPodsCleaner        member.OrphanPodsCleaner
 	pvcCleaner               member.PVCCleanerInterface
 	pvcModifier              volumes.PVCModifierInterface
+	pvcReplacer              volumes.PVCReplacerInterface
 	pumpMemberManager        manager.Manager
 	tiflashMemberManager     manager.Manager
 	ticdcMemberManager       manager.Manager
@@ -100,7 +107,7 @@ type defaultTidbClusterControl struct {
 	recorder                 record.EventRecorder
 }
 
-// UpdateStatefulSet executes the core logic loop for a tidbcluster.
+// UpdateTidbCluster executes the core logic loop for a tidbcluster.
 func (c *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
 	c.defaulting(tc)
 	if !c.validate(tc) {
@@ -171,6 +178,24 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	// reconcile TiDB discovery service
 	if err := c.discoveryManager.Reconcile(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "discovery").Inc()
+		return err
+	}
+
+	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) {
+		if err := c.pvcReplacer.UpdateStatus(tc); err != nil {
+			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_replacer_updatestatus").Inc()
+			return err
+		}
+	}
+
+	// works that should be done to make the pd microservice current state match the desired state:
+	//   - create or update the pdms service
+	//   - create or update the pdms headless service
+	//   - create the pdms statefulset
+	//   - sync pdms cluster status from pdms to TidbCluster object
+	//   - upgrade the pdms cluster
+	//   - scale out/in the pdms cluster
+	if err := c.pdMSMemberManager.Sync(tc); err != nil {
 		return err
 	}
 
@@ -281,6 +306,14 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
+	// Replace volumes if necessary. Note: if enabled, takes precedence over pvcModifier.
+	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) {
+		if err := c.pvcReplacer.Sync(tc); err != nil {
+			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_replacer_sync").Inc()
+			return err
+		}
+	}
+
 	// modify volumes if necessary
 	if err := c.pvcModifier.Sync(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_modifier").Inc()
@@ -302,11 +335,17 @@ func (c *defaultTidbClusterControl) recordMetrics(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.PD != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "pd").Set(float64(tc.Spec.PD.Replicas))
 	}
+	for _, component := range tc.Spec.PDMS {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, component.Name).Set(float64(component.Replicas))
+	}
 	if tc.Spec.TiKV != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tikv").Set(float64(tc.Spec.TiKV.Replicas))
 	}
 	if tc.Spec.TiDB != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tidb").Set(float64(tc.Spec.TiDB.Replicas))
+	}
+	if tc.Spec.TiProxy != nil {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tiproxy").Set(float64(tc.Spec.TiProxy.Replicas))
 	}
 	if tc.Spec.TiFlash != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tiflash").Set(float64(tc.Spec.TiFlash.Replicas))

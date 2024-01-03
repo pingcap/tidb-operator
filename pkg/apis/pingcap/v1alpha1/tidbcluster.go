@@ -95,6 +95,47 @@ func (tc *TidbCluster) PDVersion() string {
 	return getImageVersion(tc.PDImage())
 }
 
+// PDMSImage return the image used by specified PD MicroService.
+//
+// If PDMS isn't specified, return empty string.
+func (tc *TidbCluster) PDMSImage(spec *PDMSSpec) string {
+	if spec == nil {
+		return ""
+	}
+
+	image := spec.Image
+	if spec.BaseImage != nil {
+		baseImage := *spec.BaseImage
+		version := spec.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
+	}
+
+	if image == "" {
+		image = tc.PDImage()
+	}
+
+	return image
+}
+
+// PDMSVersion return the image version used by specified PD MicroService.
+//
+// If PDMS isn't specified, return empty string.
+func (tc *TidbCluster) PDMSVersion(name string) string {
+	for _, component := range tc.Spec.PDMS {
+		if component.Name == name {
+			return getImageVersion(tc.PDMSImage(component))
+		}
+	}
+	return ""
+}
+
 // TiKVImage return the image used by TiKV.
 //
 // If TiKV isn't specified, return empty string.
@@ -390,6 +431,13 @@ func (tc *TidbCluster) PDScaling() bool {
 	return tc.Status.PD.Phase == ScalePhase
 }
 
+func (tc *TidbCluster) PDMSScaling(name string) bool {
+	if tc.Status.PDMS[name] != nil {
+		return tc.Status.PDMS[name].Phase == ScalePhase
+	}
+	return false
+}
+
 func (tc *TidbCluster) TiKVUpgrading() bool {
 	return tc.Status.TiKV.Phase == UpgradePhase
 }
@@ -475,6 +523,10 @@ func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32)
 	var key string
 	if component == label.PDLabelVal {
 		key = label.AnnPDDeleteSlots
+	} else if component == label.PDMSTSOLabelVal {
+		key = label.AnnTSODeleteSlots
+	} else if component == label.PDMSSchedulingLabelVal {
+		key = label.AnnSchedulingDeleteSlots
 	} else if component == label.TiDBLabelVal {
 		key = label.AnnTiDBDeleteSlots
 	} else if component == label.TiKVLabelVal {
@@ -558,7 +610,11 @@ func (tc *TidbCluster) PDStsDesiredReplicas() int32 {
 	if tc.Spec.PD == nil {
 		return 0
 	}
-	return tc.Spec.PD.Replicas + tc.GetPDDeletedFailureReplicas()
+	var spareReplaceReplicas int32 = 0
+	if tc.Status.PD.VolReplaceInProgress {
+		spareReplaceReplicas = 1
+	}
+	return tc.Spec.PD.Replicas + tc.GetPDDeletedFailureReplicas() + spareReplaceReplicas
 }
 
 func (tc *TidbCluster) PDStsActualReplicas() int32 {
@@ -578,6 +634,23 @@ func (tc *TidbCluster) PDStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 		replicas = tc.PDStsDesiredReplicas()
 	}
 	return GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.PDLabelVal))
+}
+
+func (tc *TidbCluster) PDMSStsDesiredReplicas(componentName string) int32 {
+	for _, component := range tc.Spec.PDMS {
+		if component.Name == componentName {
+			return component.Replicas
+		}
+	}
+	return 0
+}
+
+func (tc *TidbCluster) PDMSStsActualReplicas(componentName string) int32 {
+	stsStatus := tc.Status.PDMS[componentName].StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
 }
 
 // TiKVAllPodsStarted return whether all pods of TiKV are started.
@@ -615,7 +688,11 @@ func (tc *TidbCluster) TiKVStsDesiredReplicas() int32 {
 	if tc.Spec.TiKV == nil {
 		return 0
 	}
-	return tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores))
+	var spareReplaceReplicas int32 = 0
+	if tc.Status.TiKV.VolReplaceInProgress {
+		spareReplaceReplicas = 1
+	}
+	return tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores)) + spareReplaceReplicas
 }
 
 func (tc *TidbCluster) TiKVStsActualReplicas() int32 {
@@ -1107,7 +1184,7 @@ func (tidbSvc *TiDBServiceSpec) GetStatusNodePort() int32 {
 	return int32(*statusNodePort)
 }
 
-// GetPort returns the service port name in spec.tidb.service
+// GetPortName returns the service port name in spec.tidb.service
 func (tidbSvc *TiDBServiceSpec) GetPortName() string {
 	portName := "mysql-client"
 	if tidbSvc.PortName != nil {

@@ -102,7 +102,7 @@ func (c *FakeDataResources) Update(ctx context.Context, dataResource *v1alpha1.D
 // Delete takes name of the dataResource and deletes it. Returns an error if one occurs.
 func (c *FakeDataResources) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(dataresourcesResource, c.ns, name), &v1alpha1.DataResource{})
+		Invokes(testing.NewDeleteActionWithOptions(dataresourcesResource, c.ns, name, opts), &v1alpha1.DataResource{})
 
 	return err
 }

@@ -1,12 +1,16 @@
 # Default values for br-federation
 
+# clusterScoped is whether federation-manager should manage kubernetes cluster wide
+# Also see rbac.create and brFederationManager.serviceAccount.
+clusterScoped: true
+
 rbac:
   create: true
 
 # timezone is the default system timzone
 timezone: UTC
 
-image: pingcap/br-federation-manager:v1.6.0-alpha.6
+image: pingcap/br-federation-manager:v1.6.0-alpha.10
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
@@ -16,7 +20,7 @@ brFederationManager:
   create: true
   # With rbac.create=false, the user is responsible for creating this account
   # With rbac.create=true, this service account will be created
-  # Also see rbac.create
+  # Also see rbac.create and clusterScoped
   serviceAccount: br-federation-manager
 
   # Secret name of the kubeconfig for the federation Kubernetes clusters
@@ -43,6 +47,9 @@ brFederationManager:
   # leaderRenewDeadline: 10s
   ## leaderRetryPeriod is the duration the LeaderElector clients should wait between tries of actions
   # leaderRetryPeriod: 2s
+  ## leaderResourceLock is the type of resource object that will be used for locking during leader election
+  ## If using "endpoints" before and want to migrate to "leases", you should migrate to "endpointsleases" first
+  # leaderResourceLock: "leases"
 
   ## number of workers that are allowed to sync concurrently. default 5
   # workers: 5

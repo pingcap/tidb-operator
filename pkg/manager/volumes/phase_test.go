@@ -227,7 +227,8 @@ func TestGetVolumePhase(t *testing.T) {
 	}
 
 	g := NewGomegaWithT(t)
-	for _, c := range cases {
+	for i := range cases {
+		c := &cases[i]
 		actual := ActualVolume{
 			PVC:          c.pvc,
 			StorageClass: c.oldSc,

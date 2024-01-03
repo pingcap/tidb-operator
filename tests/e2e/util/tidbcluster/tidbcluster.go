@@ -21,9 +21,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/kubernetes/test/e2e/framework"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 

@@ -24,9 +24,8 @@ import (
 	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/slack"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	"gopkg.in/yaml.v2"
-
-	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (

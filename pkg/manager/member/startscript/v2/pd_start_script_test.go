@@ -115,6 +115,165 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
+			name: "with PDAddresses but without preferPDAddressesOverDiscovery",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}", "another.pd"}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+PD_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
+
+elapseTime=0
+period=1
+threshold=30
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${threshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${PD_DOMAIN} no record return"
+    else
+        echo "domain resolve ${PD_DOMAIN} success"
+        echo "$digRes"
+        break
+    fi
+done
+
+ARGS="--data-dir=/var/lib/pd \
+--name=${PD_POD_NAME} \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${PD_DOMAIN}:2379 \
+--config=/etc/pd/pd.toml"
+
+if [[ -f /var/lib/pd/join ]]; then
+    join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
+    join=${join%,}
+    ARGS="${ARGS} --join=${join}"
+elif [[ ! -d /var/lib/pd/member/wal ]]; then
+    encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
+
+    until result=$(wget -qO- -T 3 http://start-script-test-discovery.start-script-test-ns:10261/new/${encoded_domain_url} 2>/dev/null); do
+        echo "waiting for discovery service to return start args ..."
+        sleep $((RANDOM % 5))
+    done
+    ARGS="${ARGS} ${result}"
+fi
+
+echo "starting pd-server ..."
+sleep $((RANDOM % 10))
+echo "/pd-server ${ARGS}"
+exec /pd-server ${ARGS}
+`,
+		},
+		{
+			name: "with PDAddresses and preferPDAddressesOverDiscovery",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}", "another.pd"}
+				tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{
+					v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery,
+				}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+PD_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
+
+elapseTime=0
+period=1
+threshold=30
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${threshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${PD_DOMAIN} no record return"
+    else
+        echo "domain resolve ${PD_DOMAIN} success"
+        echo "$digRes"
+        break
+    fi
+done
+
+ARGS="--data-dir=/var/lib/pd \
+--name=${PD_POD_NAME} \
+--peer-urls=http://0.0.0.0:2380 \
+--advertise-peer-urls=http://${PD_DOMAIN}:2380 \
+--client-urls=http://0.0.0.0:2379 \
+--advertise-client-urls=http://${PD_DOMAIN}:2379 \
+--config=/etc/pd/pd.toml"
+
+ARGS="${ARGS} --join=http://${PD_DOMAIN}:2380,http://another.pd:2380"
+
+echo "starting pd-server ..."
+sleep $((RANDOM % 10))
+echo "/pd-server ${ARGS}"
+exec /pd-server ${ARGS}
+`,
+		},
+		{
 			name: "enable tls",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
@@ -553,6 +712,78 @@ exec /pd-server ${ARGS}
 		}
 
 		script, err := RenderPDStartScript(tc)
+		g.Expect(err).Should(gomega.Succeed())
+		if diff := cmp.Diff(c.expectScript, script); diff != "" {
+			t.Errorf("unexpected (-want, +got): %s", diff)
+		}
+		g.Expect(validateScript(script)).Should(gomega.Succeed())
+	}
+}
+
+func TestRenderPDMSStartScript(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type testcase struct {
+		name string
+
+		modifyTC     func(tc *v1alpha1.TidbCluster)
+		expectScript string
+	}
+
+	cases := []testcase{
+		{
+			name: "pdms basic",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+ARGS=" services tso --listen-addr=https://0.0.0.0:2379 \
+--advertise-listen-addr=https://${PDMS_DOMAIN}:2379 \
+--backend-endpoints=https://${PDMS_DOMAIN}:2380 \
+--config=/etc/pd/pd.toml \
+"
+
+echo "starting pd-server ..."
+sleep $((RANDOM % 10))
+echo "/pd-server ${ARGS}"
+exec /pd-server ${ARGS}
+exit 0
+`,
+		},
+	}
+
+	for _, c := range cases {
+		t.Logf("test case: %s", c.name)
+
+		tc := &v1alpha1.TidbCluster{
+			Spec: v1alpha1.TidbClusterSpec{},
+		}
+		tc.Name = "start-script-test"
+		tc.Namespace = "start-script-test-ns"
+		if c.modifyTC != nil {
+			c.modifyTC(tc)
+		}
+
+		script, err := RenderPDTSOStartScript(tc)
 		g.Expect(err).Should(gomega.Succeed())
 		if diff := cmp.Diff(c.expectScript, script); diff != "" {
 			t.Errorf("unexpected (-want, +got): %s", diff)

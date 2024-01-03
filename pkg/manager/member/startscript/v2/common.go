@@ -15,6 +15,8 @@ package v2
 
 import (
 	"bytes"
+	"fmt"
+	"net/url"
 	"text/template"
 )
 
@@ -38,6 +40,67 @@ then
     tail -f /dev/null
 fi
 `
+	dnsAwaitPart = "<<dns-await-part>>"
+
+	pdEnableMicroService = "<<pd-enable-micro-service>>"
+
+	componentCommonWaitForDnsIpMatchScript = `
+elapseTime=0
+period=1
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${waitThreshold} ]]; then
+        echo "waiting for cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(eval "$nsLookupCmd")
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${componentDomain} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${componentDomain} no record return"
+    else
+        echo "domain resolve ${componentDomain} success"
+        echo "$digRes"
+
+        # now compare resolved IPs with host IPs
+        hostnameIRes=($(hostname -I))
+        hostIps=()
+        while IFS= read -r line; do
+            hostIps+=("$line")
+        done <<< "$hostnameIRes"
+        echo "hostIps: ${hostIps[@]}"
+
+        resolvedIps=()
+        while IFS= read -r line; do
+            resolvedIps+=("$line")
+        done <<< "$digRes"
+        echo "resolvedIps: ${resolvedIps[@]}"
+
+        foundIp=false
+        for element in "${resolvedIps[@]}"
+        do
+            if [[ " ${hostIps[@]} " =~ " ${element} " ]]; then
+                foundIp=true
+                break
+            fi
+        done
+        if [ "$foundIp" = true ]; then
+            echo "Success: Resolved IP matches one of podIPs"
+            break
+        else
+            echo "Resolved IP does not match any of podIPs"
+        fi
+    fi
+done
+`
 )
 
 // AcrossK8sScriptModel contain fields for rendering subscript
@@ -58,4 +121,20 @@ func renderTemplateFunc(tpl *template.Template, model interface{}) (string, erro
 		return "", err
 	}
 	return buff.String(), nil
+}
+
+func addressesWithSchemeAndPort(addresses []string, scheme string, port int32) []string {
+	res := make([]string, len(addresses))
+	for i, a := range addresses {
+		u, err := url.Parse(a)
+		if err != nil {
+			res[i] = fmt.Sprintf("%s%s:%d", scheme, a, port)
+		} else if u.Hostname() != "" {
+			res[i] = fmt.Sprintf("%s%s:%d", scheme, u.Hostname(), port)
+		} else {
+			res[i] = fmt.Sprintf("%s%s:%d", scheme, u.Path, port)
+		}
+
+	}
+	return res
 }

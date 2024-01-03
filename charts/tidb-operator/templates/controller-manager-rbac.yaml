@@ -38,6 +38,9 @@ rules:
 - apiGroups: [""]
   resources: ["endpoints","configmaps"]
   verbs: ["create", "get", "list", "watch", "update","delete"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create", "get", "list", "watch", "update","delete"]
 - apiGroups: [""]
   resources: ["serviceaccounts"]
   verbs: ["create","get","update","delete"]
@@ -143,7 +146,7 @@ rules:
   {{- if (eq (include "controller-manager.cluster-permissions.persistentvolumes" . | trim) "true") }}
   - apiGroups: [""]
     resources: ["persistentvolumes"]
-    verbs: ["get", "list", "watch", "patch","update"]
+    verbs: ["create", "get", "list", "watch", "patch", "update"]
   {{- end }}
   {{- if (eq (include "controller-manager.cluster-permissions.storageclasses" . | trim) "true") }}
   - apiGroups: ["storage.k8s.io"]
@@ -195,6 +198,9 @@ rules:
 - apiGroups: [""]
   resources: ["endpoints","configmaps"]
   verbs: ["create", "get", "list", "watch", "update", "delete"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create", "get", "list", "watch", "update","delete"]
 - apiGroups: [""]
   resources: ["serviceaccounts"]
   verbs: ["create","get","update","delete"]

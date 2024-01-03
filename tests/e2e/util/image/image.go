@@ -22,8 +22,9 @@ import (
 
 	"github.com/ghodss/yaml"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/log"
+
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 var (
@@ -77,11 +78,7 @@ func ListImages() []string {
 	framework.ExpectNoError(err, "failed to read images from values in charts/tidb-operator/values.yaml")
 
 	images = append(images, imagesFromOperator...)
-	imageKeysFromTiDBCluster := sets.NewString(".pd.image", ".tikv.image", ".tidb.image")
-	imagesFromTiDBCluster, err := readImagesFromValues(filepath.Join(framework.TestContext.RepoRoot, "charts/tidb-cluster/values.yaml"), imageKeysFromTiDBCluster)
-	framework.ExpectNoError(err, "failed to read images from values in charts/tidb-cluster/values.yaml")
 
-	images = append(images, imagesFromTiDBCluster...)
 	return sets.NewString(images...).List()
 }
 

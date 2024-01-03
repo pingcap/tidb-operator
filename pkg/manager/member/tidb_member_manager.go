@@ -34,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
 
@@ -46,7 +47,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 
 	// for sql/driver
@@ -305,6 +305,16 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 		}
 	}
 
+	if tc.Status.TiDB.VolReplaceInProgress {
+		// Volume Replace in Progress, so do not make any changes to Sts spec, overwrite with old pod spec
+		// config as we are not ready to upgrade yet.
+		_, podSpec, err := GetLastAppliedConfig(oldTiDBSet)
+		if err != nil {
+			return err
+		}
+		newTiDBSet.Spec.Template.Spec = *podSpec
+	}
+
 	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		if err := m.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
 			return err
@@ -440,7 +450,7 @@ func (m *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
 			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
 			return false
 		}
-		if !podutil.IsPodReady(pod) {
+		if !k8s.IsPodReady(pod) {
 			return false
 		}
 		status, ok := tc.Status.TiDB.Members[pod.Name]
@@ -986,7 +996,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
 		EnvFrom:      baseTiDBSpec.EnvFrom(),
 		ReadinessProbe: &corev1.Probe{
-			Handler:             buildTiDBReadinessProbHandler(tc),
+			ProbeHandler:        buildTiDBReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),
 		},
 	}
@@ -1031,7 +1041,9 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if baseTiDBSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+	if tc.Status.TiDB.VolReplaceInProgress {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else if baseTiDBSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
@@ -1254,12 +1266,12 @@ func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.State
 	return false, nil
 }
 
-func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
+func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.ProbeHandler {
 	if tc.Spec.TiDB.ReadinessProbe != nil {
 		if tp := tc.Spec.TiDB.ReadinessProbe.Type; tp != nil {
 			if *tp == v1alpha1.CommandProbeType {
 				command := buildTiDBProbeCommand(tc)
-				return corev1.Handler{
+				return corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
 						Command: command,
 					},
@@ -1269,7 +1281,7 @@ func buildTiDBReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
 	}
 
 	// fall to default case v1alpha1.TCPProbeType
-	return corev1.Handler{
+	return corev1.ProbeHandler{
 		TCPSocket: &corev1.TCPSocketAction{
 			Port: intstr.FromInt(int(v1alpha1.DefaultTiDBServerPort)),
 		},

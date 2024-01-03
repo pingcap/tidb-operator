@@ -243,6 +243,22 @@ func IsVolumeBackupInitializeFailed(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+func IsVolumeBackupSnapshotsCreated(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeVolumeSnapshot {
+		return false
+	}
+	_, condition := GetBackupCondition(&backup.Status, VolumeBackupSnapshotsCreated)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+func IsVolumeBackupInitializeComplete(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeVolumeSnapshot {
+		return false
+	}
+	_, condition := GetBackupCondition(&backup.Status, VolumeBackupInitializeComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsVolumeBackupComplete returns true if volume backup is complete
 func IsVolumeBackupComplete(backup *Backup) bool {
 	if backup.Spec.Mode != BackupModeVolumeSnapshot {
@@ -293,7 +309,7 @@ func NeedNotClean(backup *Backup) bool {
 	return backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure && !IsBackupFailed(backup)
 }
 
-// ParseLogBackupSubCommand parse the log backup subcommand from cr.
+// ParseLogBackupSubcommand parse the log backup subcommand from cr.
 // The parse priority of the command is stop > truncate > start.
 func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	if backup.Spec.Mode != BackupModeLog {
@@ -366,7 +382,7 @@ func IsLogBackupAlreadyTruncate(backup *Backup) bool {
 	return specTS <= startCommitTS || specTS <= successedTS
 }
 
-// IsLogBackupAlreadyStop return whether log backup has already stoped.
+// IsLogBackupAlreadyStop return whether log backup has already stopped.
 func IsLogBackupAlreadyStop(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupStopped
 }

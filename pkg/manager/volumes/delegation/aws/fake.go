@@ -85,7 +85,8 @@ func (m *FakeEC2VolumeAPI) ModifyVolume(ctx context.Context, param *ec2.ModifyVo
 func (m *FakeEC2VolumeAPI) DescribeVolumesModifications(ctx context.Context, param *ec2.DescribeVolumesModificationsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeVolumesModificationsOutput, error) {
 	mods := []types.VolumeModification{}
 	for _, id := range param.VolumeIds {
-		for _, v := range m.vs {
+		for i := range m.vs {
+			v := m.vs[i]
 			if v.VolumeId != id {
 				continue
 			}

@@ -21,12 +21,12 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	flag "github.com/spf13/pflag"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/component-base/logs"
-	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var (

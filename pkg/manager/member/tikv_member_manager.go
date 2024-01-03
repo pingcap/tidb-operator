@@ -111,6 +111,19 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
+	// Need to wait for PDMS
+	if tc.Spec.PD != nil && tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS == nil {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], please make sure pdms is not nil, "+
+			"then now waiting for PD's micro service running", ns, tcName)
+	}
+	// Check if all PD Micro Services are available
+	for _, pdms := range tc.Spec.PDMS {
+		_, err = controller.GetPDMSClient(m.deps.PDControl, tc, pdms.Name)
+		if err != nil {
+			return controller.RequeueErrorf("PDMS component %s for TidbCluster: [%s/%s], "+
+				"waiting for PD micro service cluster running, error: %v", pdms.Name, ns, tcName, err)
+		}
+	}
 
 	// Check TidbCluster Recovery
 	if err := m.checkRecoveryForTidbCluster(tc); err != nil {
@@ -264,6 +277,16 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 				return err
 			}
 		}
+	}
+
+	if tc.Status.TiKV.VolReplaceInProgress {
+		// Volume Replace in Progress, so do not make any changes to Sts spec, overwrite with old pod spec
+		// config as we are not ready to upgrade yet.
+		_, podSpec, err := GetLastAppliedConfig(oldSet)
+		if err != nil {
+			return err
+		}
+		newSet.Spec.Template.Spec = *podSpec
 	}
 
 	if !templateEqual(newSet, oldSet) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
@@ -623,7 +646,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	if tc.Spec.TiKV.ReadinessProbe != nil {
 		tikvContainer.ReadinessProbe = &corev1.Probe{
-			Handler:             buildTiKVReadinessProbHandler(tc),
+			ProbeHandler:        buildTiKVReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),
 		}
 	}
@@ -677,7 +700,9 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	updateStrategy := apps.StatefulSetUpdateStrategy{}
-	if baseTiKVSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
+	if tc.Status.TiKV.VolReplaceInProgress {
+		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
+	} else if baseTiKVSpec.StatefulSetUpdateStrategy() == apps.OnDeleteStatefulSetStrategyType {
 		updateStrategy.Type = apps.OnDeleteStatefulSetStrategyType
 	} else {
 		updateStrategy.Type = apps.RollingUpdateStatefulSetStrategyType
@@ -1051,8 +1076,8 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 }
 
 // TODO: Support check tikv status http request in future.
-func buildTiKVReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.Handler {
-	return corev1.Handler{
+func buildTiKVReadinessProbHandler(tc *v1alpha1.TidbCluster) corev1.ProbeHandler {
+	return corev1.ProbeHandler{
 		TCPSocket: &corev1.TCPSocketAction{
 			Port: intstr.FromInt(int(v1alpha1.DefaultTiKVServerPort)),
 		},

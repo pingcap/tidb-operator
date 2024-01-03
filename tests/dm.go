@@ -40,7 +40,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -50,6 +49,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 const (

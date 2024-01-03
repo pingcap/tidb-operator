@@ -114,7 +114,7 @@ func (c *FakeTidbDashboards) UpdateStatus(ctx context.Context, tidbDashboard *v1
 // Delete takes name of the tidbDashboard and deletes it. Returns an error if one occurs.
 func (c *FakeTidbDashboards) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(tidbdashboardsResource, c.ns, name), &v1alpha1.TidbDashboard{})
+		Invokes(testing.NewDeleteActionWithOptions(tidbdashboardsResource, c.ns, name, opts), &v1alpha1.TidbDashboard{})
 
 	return err
 }

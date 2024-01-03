@@ -114,7 +114,7 @@ func (c *FakeVolumeBackupSchedules) UpdateStatus(ctx context.Context, volumeBack
 // Delete takes name of the volumeBackupSchedule and deletes it. Returns an error if one occurs.
 func (c *FakeVolumeBackupSchedules) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(volumebackupschedulesResource, c.ns, name), &v1alpha1.VolumeBackupSchedule{})
+		Invokes(testing.NewDeleteActionWithOptions(volumebackupschedulesResource, c.ns, name, opts), &v1alpha1.VolumeBackupSchedule{})
 
 	return err
 }

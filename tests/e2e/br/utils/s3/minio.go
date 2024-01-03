@@ -21,13 +21,14 @@ import (
 
 	"github.com/minio/minio-go/v6"
 	"github.com/onsi/ginkgo"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	podutil "k8s.io/kubernetes/test/e2e/framework/pod"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
+	podutil "github.com/pingcap/tidb-operator/tests/third_party/k8s/pod"
 )
 
 const (
@@ -247,7 +248,7 @@ func getMinioPod(ns string) *corev1.Pod {
 						},
 					},
 					ReadinessProbe: &corev1.Probe{
-						Handler: corev1.Handler{
+						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
 								Path: "/minio/health/ready",
 								Port: intstr.FromInt(9000),
@@ -255,7 +256,7 @@ func getMinioPod(ns string) *corev1.Pod {
 						},
 					},
 					LivenessProbe: &corev1.Probe{
-						Handler: corev1.Handler{
+						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
 								Path: "/minio/health/live",
 								Port: intstr.FromInt(9000),

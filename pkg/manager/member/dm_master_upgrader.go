@@ -20,10 +20,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type masterUpgrader struct {
@@ -62,10 +62,6 @@ func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.St
 		return nil
 	}
 
-	if dc.Status.Master.StatefulSet.UpdateRevision == dc.Status.Master.StatefulSet.CurrentRevision {
-		return nil
-	}
-
 	if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
 		// Manually bypass tidb-operator to modify statefulset directly, such as modify dm-master statefulset's RollingUpdate straregy to OnDelete strategy,
 		// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
@@ -92,7 +88,7 @@ func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.St
 		}
 
 		if revision == dc.Status.Master.StatefulSet.UpdateRevision {
-			if !podutil.IsPodReady(pod) {
+			if !k8s.IsPodReady(pod) {
 				return controller.RequeueErrorf("dmcluster: [%s/%s]'s upgraded dm pod: [%s] is not ready", ns, dcName, podName)
 			}
 			if member, exist := dc.Status.Master.Members[podName]; !exist || !member.Health {

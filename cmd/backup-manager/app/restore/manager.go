@@ -291,7 +291,6 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 			restoreType = v1alpha1.RestoreVolumeComplete
 		} else {
 			restoreType = v1alpha1.RestoreDataComplete
-			allFinished = true
 		}
 	default:
 		ts, err := util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
@@ -314,8 +313,10 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	}
 
 	updateStatus := &controller.RestoreUpdateStatus{
-		TimeStarted: &metav1.Time{Time: started},
-		CommitTs:    commitTS,
+		CommitTs: commitTS,
+	}
+	if restore.Status.TimeStarted.Unix() <= 0 {
+		updateStatus.TimeStarted = &metav1.Time{Time: started}
 	}
 	if allFinished {
 		updateStatus.TimeCompleted = &metav1.Time{Time: time.Now()}

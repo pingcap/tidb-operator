@@ -148,6 +148,9 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.PDAddresses != nil {
 		allErrs = append(allErrs, validatePDAddresses(spec.PDAddresses, fldPath.Child("pdAddresses"))...)
 	}
+	if spec.StartScriptV2FeatureFlags != nil {
+		allErrs = append(allErrs, validateStartScriptFeatureFlags(spec.StartScriptV2FeatureFlags, fldPath.Child("startScriptV2FeatureFlags"))...)
+	}
 	return allErrs
 }
 
@@ -187,6 +190,18 @@ func validatePDAddresses(arrayOfAddresses []string, fldPath *field.Path) field.E
 	return allErrs
 }
 
+func validateStartScriptFeatureFlags(featureFlags []v1alpha1.StartScriptV2FeatureFlag, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, ff := range featureFlags {
+		idxPath := fldPath.Index(i)
+		if ff != v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch &&
+			ff != v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery {
+			allErrs = append(allErrs, field.Invalid(idxPath, ff, "Invalid start script feature flag"))
+		}
+	}
+	return allErrs
+}
+
 func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
@@ -217,6 +232,14 @@ func validateTiFlashSpec(spec *v1alpha1.TiFlashSpec, fldPath *field.Path) field.
 			spec.StorageClaims, "storageClaims should be configured at least one item."))
 	}
 	allErrs = append(allErrs, validateScalePolicy(&spec.ScalePolicy, fldPath.Child("scalePolicy"))...)
+
+	// fix storageClaim
+	for _, storageClaim := range spec.StorageClaims {
+		if _, ok := storageClaim.Resources.Requests["storage"]; !ok {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.StorageClaims.Resources.Requests"),
+				spec.StorageClaims, "spec.tiflash.storageClaims.resources[storage]: Required value."))
+		}
+	}
 	return allErrs
 }
 

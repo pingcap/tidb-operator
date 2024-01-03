@@ -16,26 +16,26 @@ endif
 export GO111MODULE := on
 GOOS ?= linux
 GOARCH ?= $(shell go env GOARCH)
-GOENV  := CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
+GOENV  := GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO     := $(GOENV) go
-GO_BUILD := $(GO) build -trimpath
+ifeq ("${ENABLE_FIPS}", "1")
+GO_BUILD := GOEXPERIMENT=boringcrypto CGO_ENABLED=1 $(GO) build -trimpath -tags boringcrypto
+else
+GO_BUILD := CGO_ENABLED=0 $(GO) build -trimpath
+endif
 GO_SUBMODULES = github.com/pingcap/tidb-operator/pkg/apis github.com/pingcap/tidb-operator/pkg/client
 GO_SUBMODULE_DIRS = pkg/apis pkg/client
 
 DOCKER_REGISTRY ?= localhost:5000
 DOCKER_REPO ?= ${DOCKER_REGISTRY}/pingcap
 IMAGE_TAG ?= latest
-TEST_COVER_PACKAGES := go list ./cmd/... ./pkg/... $(foreach mod, $(GO_SUBMODULES), $(mod)/...) | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis/pingcap" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
+TEST_COVER_PACKAGES := go list ./cmd/... ./pkg/... $(foreach mod, $(GO_SUBMODULES), $(mod)/...) | grep -vE "pkg/client" | grep -vE "pkg/apis/pingcap" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
 
 # NOTE: coverage report generated for E2E tests (with `-c`) may not stable, see
 # https://github.com/golang/go/issues/23883#issuecomment-381766556
 GO_TEST := $(GO) test -cover -covermode=atomic -coverpkg=$$($(TEST_COVER_PACKAGES))
 
 default: build
-
-
-
-
 
 ifeq ($(NO_BUILD),y)
 operator-docker:
@@ -156,12 +156,8 @@ else
 e2e-docker: e2e-build ## Build tidb-operator-e2e image
 endif
 	[ -d tests/images/e2e/tidb-operator ] && rm -r tests/images/e2e/tidb-operator || true
-	[ -d tests/images/e2e/tidb-cluster ] && rm -r tests/images/e2e/tidb-cluster || true
-	[ -d tests/images/e2e/tidb-backup ] && rm -r tests/images/e2e/tidb-backup || true
 	[ -d tests/images/e2e/manifests ] && rm -r tests/images/e2e/manifests || true
 	cp -r charts/tidb-operator tests/images/e2e
-	cp -r charts/tidb-cluster tests/images/e2e
-	cp -r charts/tidb-backup tests/images/e2e
 	cp -r charts/tidb-drainer tests/images/e2e
 	cp -r manifests tests/images/e2e
 	docker build -t "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
@@ -175,17 +171,10 @@ e2e-build: ## Build binaries for test
 
 
 debug-docker-push: debug-build-docker
-	docker push "${DOCKER_REPO}/debug-launcher:latest"
 	docker push "${DOCKER_REPO}/tidb-control:latest"
-	docker push "${DOCKER_REPO}/tidb-debug:latest"
 
-debug-build-docker: debug-build
-	docker build -t "${DOCKER_REPO}/debug-launcher:latest" misc/images/debug-launcher
+debug-build-docker:
 	docker build -t "${DOCKER_REPO}/tidb-control:latest" misc/images/tidb-control
-	docker build -t "${DOCKER_REPO}/tidb-debug:latest" misc/images/tidb-debug
-
-debug-build: ## Build binaries for debug
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
 
 kubekins-e2e-docker:
 	docker build -t "${DOCKER_REPO}/kubekins-e2e:latest" tests/images/kubekins-e2e
@@ -208,7 +197,7 @@ fault-trigger:
 # 		`-race` for race detector.
 # GO_COVER: Whether to run tests with code coverage. Set to 'y' to enable coverage collection.
 #
-test: TEST_PACKAGES = ./cmd/backup-manager/app ./pkg
+test: TEST_PACKAGES = ./cmd/backup-manager/app ./pkg ./cmd/ebs-warmup/internal/tests
 test: ## Run unit tests
 	@echo "Run unit tests"
 ifeq ($(GO_COVER),y)
@@ -249,16 +238,13 @@ tidy: ## Run go mod tidy and verify the result
 	cd pkg/apis && go mod tidy && git diff -U --exit-code go.mod go.sum
 	cd pkg/client && go mod tidy && git diff -U --exit-code go.mod go.sum
 
-cli: ## Build tkctl
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
-
 
 ##@ Release
 
 docker-release:
 	docker buildx build --platform linux/amd64,linux/arm64 --push -t "$(DOCKER_REPO)/tidb-operator:$(IMAGE_TAG)" --build-arg "GOPROXY=$(shell go env GOPROXY)" --build-arg "LDFLAGS=$(LDFLAGS)" -f images/tidb-operator/Dockerfile.new .
 
-.PHONY: check check-setup build e2e-build debug-build cli e2e gocovmerge test docker e2e-docker debug-build-docker
+.PHONY: check check-setup build e2e-build e2e gocovmerge test docker e2e-docker debug-build-docker
 
 # The help target prints out all targets with their descriptions organized
 # beneath their categories. The categories are represented by '##@' and the

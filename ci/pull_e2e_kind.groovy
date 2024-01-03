@@ -54,7 +54,7 @@ metadata:
 spec:
   containers:
   - name: main
-    image: hub-new.pingcap.net/tidb-operator/kubekins-e2e:v5-go1.19
+    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v6-go1.21.3
     command:
     - runner.sh
     - exec
@@ -145,13 +145,13 @@ String buildPodYAML(Map m = [:]) {
 
 e2ePodResources = [
     requests: [
-        cpu: "8",
-        memory: "16Gi",
+        cpu: "16",
+        memory: "32Gi",
         storage: "250Gi"
     ],
     limits: [
-        cpu: "24",
-        memory: "48Gi",
+        cpu: "32",
+        memory: "64Gi",
         storage: "250Gi"
     ],
 ]

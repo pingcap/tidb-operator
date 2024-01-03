@@ -287,6 +287,7 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 				},
 			},
 			TiKV: &v1alpha1.TiKVSpec{
+				Replicas: 1,
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},

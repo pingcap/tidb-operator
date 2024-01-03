@@ -102,7 +102,7 @@ func (c *FakeVolumeRestores) Update(ctx context.Context, volumeRestore *v1alpha1
 // Delete takes name of the volumeRestore and deletes it. Returns an error if one occurs.
 func (c *FakeVolumeRestores) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(volumerestoresResource, c.ns, name), &v1alpha1.VolumeRestore{})
+		Invokes(testing.NewDeleteActionWithOptions(volumerestoresResource, c.ns, name, opts), &v1alpha1.VolumeRestore{})
 
 	return err
 }

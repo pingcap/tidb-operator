@@ -17,8 +17,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/log"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 func getClusterLocation() string {
@@ -69,7 +69,7 @@ func DisableNodeAutoRepair() {
 		framework.ExpectNoError(err, "failed to get gcloud command: %q", gcloudCommand)
 	} else {
 		// TODO support AWS (EKS)
-		framework.Failf("unsupported provider %q", framework.TestContext.Provider)
+		log.Failf("unsupported provider %q", framework.TestContext.Provider)
 	}
 }
 
@@ -86,6 +86,6 @@ func EnableNodeAutoRepair() {
 		framework.ExpectNoError(err, "failed to get gcloud command: %q", gcloudCommand)
 	} else {
 		// TODO support AWS (EKS)
-		framework.Failf("unsupported provider %q", framework.TestContext.Provider)
+		log.Failf("unsupported provider %q", framework.TestContext.Provider)
 	}
 }

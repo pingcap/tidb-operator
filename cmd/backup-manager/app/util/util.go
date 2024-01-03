@@ -16,8 +16,10 @@ package util
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
 	"path/filepath"
@@ -29,7 +31,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/gogo/protobuf/proto"
 	"github.com/pingcap/errors"
-	kvbackup "github.com/pingcap/kvproto/pkg/backup"
+	kvbackup "github.com/pingcap/kvproto/pkg/brpb"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -65,6 +67,10 @@ func validCmdFlagFunc(flag *pflag.Flag) {
 	}
 	// optional flag
 	if flag.Name == "target-az" {
+		return
+	}
+
+	if flag.Name == "use-fsr" {
 		return
 	}
 
@@ -346,6 +352,10 @@ func GetCommitTsFromMetadata(backupPath string) (string, error) {
 
 // GetBRArchiveSize returns the total size of the backup archive.
 func GetBRArchiveSize(meta *kvbackup.BackupMeta) uint64 {
+	if meta.BackupSize != 0 {
+		return meta.BackupSize
+	}
+	// ASSERT: the version of meta must be v1
 	total := uint64(meta.Size())
 	for _, file := range meta.Files {
 		total += file.Size_
@@ -508,6 +518,28 @@ func ParseRestoreProgress(line string) (step, progress string) {
 	}
 	step, progress = matchs[1], matchs[2]
 	return
+}
+
+// ReadAllStdErrToChannel read the stdErr and send the output to channel
+func ReadAllStdErrToChannel(stdErr io.Reader, errMsgCh chan []byte) {
+	errMsg, err := io.ReadAll(stdErr)
+	if err != nil {
+		klog.Errorf("read stderr error: %s", err.Error())
+	}
+	errMsgCh <- errMsg
+	close(errMsgCh)
+}
+
+// GracefullyShutDownSubProcess just send SIGTERM to the process of cmd when context done
+// the caller should wait the process of cmd to shut down
+func GracefullyShutDownSubProcess(ctx context.Context, cmd *exec.Cmd) {
+	<-ctx.Done()
+	klog.Errorf("context done, err: %s. start to shut down sub process gracefully", ctx.Err().Error())
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		klog.Errorf("send SIGTERM to sub process error: %s", err.Error())
+	} else {
+		klog.Infof("send SIGTERM to sub process successfully")
+	}
 }
 
 const (

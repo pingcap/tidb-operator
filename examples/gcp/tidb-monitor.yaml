@@ -30,7 +30,7 @@ spec:
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
     imagePullPolicy: IfNotPresent
-    version: v6.5.0
+    version: v7.1.1
   kubePrometheusURL: ""
   persistent: true
   prometheus:

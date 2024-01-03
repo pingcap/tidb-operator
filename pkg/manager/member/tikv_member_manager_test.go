@@ -408,6 +408,26 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			},
 			expectTidbClusterFn: nil,
 		},
+		{
+			name: "template updates blocked on volume replace",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				// Random test change to affect pod spec template.
+				tc.Spec.TiKV.ServiceAccount = "test_new_account"
+				tc.Status.TiKV.VolReplaceInProgress = true
+			},
+			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			tombstoneStores:              &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
+			errWhenUpdateStatefulSet:     false,
+			errWhenUpdateTiKVPeerService: false,
+			errWhenGetStores:             false,
+			err:                          false,
+			expectTiKVPeerServiceFn:      nil,
+			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(set.Spec.Template.Spec.ServiceAccountName).To(Equal(""))
+			},
+			expectTidbClusterFn: nil,
+		},
 	}
 
 	for i := range tests {
@@ -1702,7 +1722,8 @@ func TestGetNewTiKVServiceForTidbCluster(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			svc := getNewServiceForTidbCluster(&tt.tc, tt.svcConfig)
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
@@ -2114,14 +2135,41 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
 				g.Expect(sts.Spec.Template.Spec.Containers[0].ReadinessProbe).To(Equal(&corev1.Probe{
-					Handler:             buildTiKVReadinessProbHandler(nil),
+					ProbeHandler:        buildTiKVReadinessProbHandler(nil),
 					InitialDelaySeconds: int32(10),
 				}))
 			},
 		},
+		{
+			name: "TiKV VolumeReplace modifications to sts",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						Replicas: 3,
+					},
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiKV: v1alpha1.TiKVStatus{
+						VolReplaceInProgress: true,
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(int(*sts.Spec.Replicas)).To(Equal(4))
+				g.Expect(sts.Spec.UpdateStrategy.Type).To(Equal(apps.OnDeleteStatefulSetStrategyType))
+			},
+		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sts, err := getNewTiKVSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
@@ -2460,7 +2508,8 @@ func TestTiKVInitContainers(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			sts, err := getNewTiKVSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
@@ -2570,7 +2619,8 @@ func TestGetTiKVConfigMap(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
+	for i := range testCases {
+		tt := &testCases[i]
 		t.Run(tt.name, func(t *testing.T) {
 			cm, err := getTikVConfigMap(&tt.tc)
 			g.Expect(err).To(Succeed())

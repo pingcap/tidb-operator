@@ -548,6 +548,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		errExpectFn   func(*GomegaWithT, error)
 		changed       bool
 		getStoresFn   func(action *pdapi.Action) (interface{}, error)
+		NoActiveAnn   bool
 	}
 
 	resyncDuration := time.Duration(0)
@@ -571,7 +572,11 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 				Name:              TikvPodName(tc.GetName(), 4),
 				Namespace:         corev1.NamespaceDefault,
 				CreationTimestamp: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+				Annotations:       map[string]string{},
 			},
+		}
+		if test.NoActiveAnn {
+			pod.Annotations[label.AnnTiKVNoActiveStoreSince] = time.Now().Add(-1 * time.Hour).Format(time.RFC3339)
 		}
 
 		readyPodFunc(pod)
@@ -935,6 +940,33 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 					Stores: []*pdapi.StoreInfo{store, store, store, tiflashstore},
 				}, nil
 			},
+		},
+		{
+			name:          "store info missing scale not allowed",
+			tikvUpgrading: false,
+			storeFun:      notReadyStoreFun,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			isPodReady:    true,
+			hasSynced:     true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNotNil,
+			changed:       false,
+		},
+		{
+			name:          "store info missing no active annotation scale allowed",
+			tikvUpgrading: false,
+			storeFun:      notReadyStoreFun,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			isPodReady:    true,
+			hasSynced:     true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNil,
+			changed:       true,
+			NoActiveAnn:   true,
 		},
 	}
 
@@ -2018,11 +2050,17 @@ func TestTiKVScalerScaleInSimultaneouslyExtra(t *testing.T) {
 	}
 }
 
+// Reuse podCtlMock from ticdc_scaler_test
+func (p *podCtlMock) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.Pod, error) {
+	return pod, nil
+}
+
 func newFakeTiKVScaler(resyncDuration ...time.Duration) (*tikvScaler, *pdapi.FakePDControl, cache.Indexer, cache.Indexer, *controller.FakePVCControl) {
 	fakeDeps := controller.NewFakeDependencies()
 	if len(resyncDuration) > 0 {
 		fakeDeps.CLIConfig.ResyncDuration = resyncDuration[0]
 	}
+	fakeDeps.PodControl = &podCtlMock{} // So that UpdateMetaInfo is no-op instead of changing labels.
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)

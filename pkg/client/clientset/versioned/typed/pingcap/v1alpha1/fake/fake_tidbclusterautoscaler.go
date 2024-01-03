@@ -114,7 +114,7 @@ func (c *FakeTidbClusterAutoScalers) UpdateStatus(ctx context.Context, tidbClust
 // Delete takes name of the tidbClusterAutoScaler and deletes it. Returns an error if one occurs.
 func (c *FakeTidbClusterAutoScalers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(tidbclusterautoscalersResource, c.ns, name), &v1alpha1.TidbClusterAutoScaler{})
+		Invokes(testing.NewDeleteActionWithOptions(tidbclusterautoscalersResource, c.ns, name, opts), &v1alpha1.TidbClusterAutoScaler{})
 
 	return err
 }

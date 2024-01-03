@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"time"
 
-	perrors "github.com/pingcap/errors"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +26,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -56,6 +56,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 		control: NewDefaultTidbClusterControl(
 			deps.TiDBClusterControl,
 			mm.NewPDMemberManager(deps, mm.NewPDScaler(deps), mm.NewPDUpgrader(deps), mm.NewPDFailover(deps), suspender, podVolumeModifier),
+			mm.NewPDMSMemberManager(deps, mm.NewPDMSScaler(deps), mm.NewPDMSUpgrader(deps), suspender),
 			mm.NewTiKVMemberManager(deps, mm.NewTiKVFailover(deps), mm.NewTiKVScaler(deps), mm.NewTiKVUpgrader(deps, podVolumeModifier), suspender, podVolumeModifier),
 			mm.NewTiDBMemberManager(deps, mm.NewTiDBScaler(deps), mm.NewTiDBUpgrader(deps), mm.NewTiDBFailover(deps), suspender, podVolumeModifier),
 			mm.NewTiProxyMemberManager(deps, mm.NewTiProxyScaler(deps), mm.NewTiProxyUpgrader(deps), suspender),
@@ -64,6 +65,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 			mm.NewOrphanPodsCleaner(deps),
 			mm.NewRealPVCCleaner(deps),
 			volumes.NewPVCModifier(deps),
+			volumes.NewPVCReplacer(deps),
 			mm.NewPumpMemberManager(deps, mm.NewPumpScaler(deps), suspender, podVolumeModifier),
 			mm.NewTiFlashMemberManager(deps, mm.NewTiFlashFailover(deps), mm.NewTiFlashScaler(deps), mm.NewTiFlashUpgrader(deps), suspender, podVolumeModifier),
 			mm.NewTiCDCMemberManager(deps, mm.NewTiCDCScaler(deps), mm.NewTiCDCUpgrader(deps), suspender, podVolumeModifier),

@@ -21,8 +21,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 // OperatorKillerConfig describes configuration for operator killer.
@@ -68,23 +69,23 @@ func (k *OperatorKiller) Run(stopCh <-chan struct{}) {
 	wait.JitterUntil(func() {
 		pods, err := k.podLister()
 		if err != nil {
-			framework.Logf("failed to list operator pods: %v", err)
+			log.Logf("failed to list operator pods: %v", err)
 			return
 		}
-		framework.Logf("Trying to kill tidb-operator pods (%d)", len(pods))
+		log.Logf("Trying to kill tidb-operator pods (%d)", len(pods))
 		for _, pod := range pods {
-			if !podutil.IsPodReady(&pod) || hasBeenRestarted(&pod) {
+			if !k8s.IsPodReady(&pod) || hasBeenRestarted(&pod) {
 				// deleting the pod will recreate it, we should skip if the pod
 				// is not ready or has been restarted before, otherwise
 				// potential errors (e.g. panic) in operator may be hidden.
-				framework.Logf("pod %s/%s is not ready or crashed before, skip deleting", pod.Namespace, pod.Name)
+				log.Logf("pod %s/%s is not ready or crashed before, skip deleting", pod.Namespace, pod.Name)
 				continue
 			}
 			err = k.client.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 			if err != nil {
-				framework.Logf("failed to delete pod %s/%s: %v", pod.Namespace, pod.Name, err)
+				log.Logf("failed to delete pod %s/%s: %v", pod.Namespace, pod.Name, err)
 			} else {
-				framework.Logf("successfully deleted pod %s/%s", pod.Namespace, pod.Name)
+				log.Logf("successfully deleted pod %s/%s", pod.Namespace, pod.Name)
 			}
 		}
 	}, k.config.Interval, k.config.JitterFactor, true, stopCh)

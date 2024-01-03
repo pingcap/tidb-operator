@@ -12,12 +12,12 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.6.0-alpha.6
+operatorImage: pingcap/tidb-operator:v1.6.0-alpha.10
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.6.0-alpha.6
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.6.0-alpha.10
 
 #
 # Enable or disable tidb-operator features:
@@ -35,11 +35,21 @@ tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.6.0-alpha.6
 #   VolumeModifying (default false)
 #     If enabled, tidb-operator support to increase the size or performance of volumes
 #     for specific volume provisioner.
+#
+#   VolumeReplacing (default false)
+#     If enabled, tidb-operator support generic volume changes (size, storageclass & number of volumes)
+#     by deleting old pod + pvc completely and replacing with new pods/PVCs.
+#     pd, tikv, tidb supported. If enabled, takes precedence over volume resizing & modifying.
+#     This works by deleting pod+volumes one at a time (similar to scale-in), and recreating it.
+#     For PD & TiKV this will first create one new spare replica to take the load before deleting existing ones
+#     Safely deleting a volume and replacing them can take a long time (Especially TiKV to move regions)
+#
 features: []
 # - AdvancedStatefulSet=false
 # - StableScheduling=true
 # - AutoScaling=false
 # - VolumeModifying=false
+# - VolumeReplacing=false
 
 appendReleaseSuffix: false
 
@@ -74,6 +84,9 @@ controllerManager:
   # leaderRenewDeadline: 10s
   ## leaderRetryPeriod is the duration the LeaderElector clients should wait between tries of actions
   # leaderRetryPeriod: 2s
+  ## leaderResourceLock is the type of resource object that will be used for locking during leader election
+  ## If using "endpoints" before and want to migrate to "leases", you should migrate to "endpointsleases" first
+  # leaderResourceLock: "leases"
 
   ## number of workers that are allowed to sync concurrently. default 5
   # workers: 5
@@ -139,7 +152,7 @@ controllerManager:
   # kubeClientBurst: 10
 
 scheduler:
-  create: true
+  create: false
   # With rbac.create=false, the user is responsible for creating this account
   # With rbac.create=true, this service account will be created
   # Also see rbac.create and clusterScoped
@@ -192,6 +205,9 @@ scheduler:
 #   kubectl apply -f manifests/advanced-statefulset-crd.v1.yaml
 advancedStatefulset:
   create: false
+  ## resourceLock indicates the type of resource object that will be used for locking during leader election.
+  ## If using "endpoints" before and want to migrate to "leases", you should migrate to "endpointsleases" first.
+  # resourceLock: "leases"
   image: pingcap/advanced-statefulset:v0.4.0
   imagePullPolicy: IfNotPresent
   serviceAccount: advanced-statefulset-controller

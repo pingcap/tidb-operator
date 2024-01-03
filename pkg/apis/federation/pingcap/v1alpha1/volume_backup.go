@@ -76,7 +76,7 @@ func UpdateVolumeBackupMemberStatus(volumeBackupStatus *VolumeBackupStatus, k8sC
 	}
 
 	for i := range volumeBackupStatus.Backups {
-		if volumeBackupStatus.Backups[i].BackupName == backupMember.Name {
+		if volumeBackupStatus.Backups[i].BackupName == backupMember.Name && volumeBackupStatus.Backups[i].K8sClusterName == k8sClusterName {
 			volumeBackupStatus.Backups[i] = backupMemberStatus
 			return
 		}
@@ -94,6 +94,12 @@ func IsVolumeBackupInvalid(volumeBackup *VolumeBackup) bool {
 // IsVolumeBackupRunning returns true if VolumeBackup is running
 func IsVolumeBackupRunning(volumeBackup *VolumeBackup) bool {
 	_, condition := GetVolumeBackupCondition(&volumeBackup.Status, VolumeBackupRunning)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsVolumeBackupSnapshotsCreated returns true if VolumeBackup's snapshots are all created
+func IsVolumeBackupSnapshotsCreated(volumeBackup *VolumeBackup) bool {
+	_, condition := GetVolumeBackupCondition(&volumeBackup.Status, VolumeBackupSnapshotsCreated)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 

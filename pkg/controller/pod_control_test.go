@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -145,6 +146,46 @@ func TestPodControlUpdateMetaInfo(t *testing.T) {
 				updatePod, err := control.UpdateMetaInfo(tc, pod)
 				g.Expect(err).To(Succeed())
 				g.Expect(updatePod.Labels[label.MemberIDLabelKey]).To(Equal("333"))
+			},
+		},
+		{
+			name: "Test PodControl UpdateMetaInfo TiKV No Active Store Since annotation added",
+			update: func(tc *v1alpha1.TidbCluster) {
+				pod.Name = TestPodName
+				pod.Labels[label.ComponentLabelKey] = label.TiKVLabelVal
+				pod.Labels[label.StoreIDLabelKey] = "333"
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				updatePod, err := control.UpdateMetaInfo(tc, pod)
+				g.Expect(err).To(Succeed())
+				_, err = time.Parse(time.RFC3339, updatePod.Annotations[label.AnnTiKVNoActiveStoreSince])
+				g.Expect(err).To(Succeed())
+			},
+		},
+		{
+			name: "Test PodControl UpdateMetaInfo TiKV No Active Store Since annotation not updated",
+			update: func(tc *v1alpha1.TidbCluster) {
+				pod.Annotations[label.AnnTiKVNoActiveStoreSince] = "test_annotation"
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				updatePod, err := control.UpdateMetaInfo(tc, pod)
+				g.Expect(err).To(Succeed())
+				g.Expect(updatePod.Annotations[label.AnnTiKVNoActiveStoreSince]).To(Equal("test_annotation"))
+			},
+		},
+		{
+			name: "Test PodControl UpdateMetaInfo TiKV No Active Store Since annotation deleted",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+					"333": {PodName: TestPodName, ID: "333"},
+				}
+				pod.Annotations[label.AnnTiKVNoActiveStoreSince] = "test_annotation"
+			},
+			expectFn: func(g *GomegaWithT, b bool) {
+				updatePod, err := control.UpdateMetaInfo(tc, pod)
+				g.Expect(err).To(Succeed())
+				g.Expect(updatePod.Annotations).To(Not(HaveKey(label.AnnTiKVNoActiveStoreSince)))
 			},
 		},
 	}
@@ -359,6 +400,7 @@ func newPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 				label.ManagedByLabelKey: TestManagedByName,
 				label.InstanceLabelKey:  tc.GetName(),
 			},
+			Annotations: map[string]string{},
 		},
 		Spec: newPodSpec(v1alpha1.PDMemberType.String(), "pvc-1"),
 	}

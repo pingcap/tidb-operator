@@ -24,7 +24,6 @@ import (
 	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -44,10 +43,14 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/fedvolumerestore"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/version"
+
+	// Enable FIPS when necessary
+	_ "github.com/pingcap/tidb-operator/pkg/fips"
 )
 
 func main() {
 	var cfg *rest.Config
+	klog.InitFlags(nil)
 	cliCfg := controller.DefaultBrFedCLIConfig()
 	cliCfg.AddFlag(flag.CommandLine)
 	flag.Parse()
@@ -115,7 +118,7 @@ func main() {
 		klog.Fatalf("failed to init federation kube clients: %v", err)
 	}
 
-	deps := controller.NewBrFedDependencies(cliCfg, cli, kubeCli, genericCli, fedClients)
+	deps := controller.NewBrFedDependencies(ns, cliCfg, cli, kubeCli, genericCli, fedClients)
 
 	onStarted := func(ctx context.Context) {
 		// Define some nested types to simplify the codebase
@@ -172,18 +175,21 @@ func main() {
 	}
 	// leader election for multiple br-federation-manager instances
 	go wait.Forever(func() {
+		lock, err := resourcelock.New(cliCfg.ResourceLock,
+			ns,
+			endPointsName,
+			kubeCli.CoreV1(),
+			kubeCli.CoordinationV1(),
+			resourcelock.ResourceLockConfig{
+				Identity:      hostName,
+				EventRecorder: &record.FakeRecorder{},
+			})
+		if err != nil {
+			klog.Fatalf("failed to create lock: %v", err)
+		}
+
 		leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
-			Lock: &resourcelock.EndpointsLock{
-				EndpointsMeta: metav1.ObjectMeta{
-					Namespace: ns,
-					Name:      endPointsName,
-				},
-				Client: kubeCli.CoreV1(),
-				LockConfig: resourcelock.ResourceLockConfig{
-					Identity:      hostName,
-					EventRecorder: &record.FakeRecorder{},
-				},
-			},
+			Lock:          lock,
 			LeaseDuration: cliCfg.LeaseDuration,
 			RenewDeadline: cliCfg.RenewDeadline,
 			RetryPeriod:   cliCfg.RetryPeriod,

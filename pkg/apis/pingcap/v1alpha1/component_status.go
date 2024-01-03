@@ -37,7 +37,7 @@ type ComponentStatus interface {
 	//
 	// For tidb and pump, it is always true.
 	GetSynced() bool
-	// GetSynced returns `status.phase`
+	// GetPhase returns `status.phase`
 	GetPhase() MemberPhase
 	// GetVolumes return `status.volumes`
 	//
@@ -51,6 +51,8 @@ type ComponentStatus interface {
 	//
 	// NOTE: change the return will modify the status.
 	GetStatefulSet() *appsv1.StatefulSetStatus
+	// GetVolReplaceInProgress gets the status.VolReplaceInProgress
+	GetVolReplaceInProgress() bool
 
 	// SetSynced set the `status.synced` field of the component
 	//
@@ -65,16 +67,21 @@ type ComponentStatus interface {
 	//    newCondition, LastTransitionTime is set to now if the new status differs from the old status)
 	// 2. if a condition of the specified type does not exist (LastTransitionTime is set to now() if unset, and newCondition is appended)
 	SetCondition(condition metav1.Condition)
-	// RemoveStatusCondition removes the corresponding conditionType from conditions.
+	// RemoveCondition removes the corresponding conditionType from conditions.
 	RemoveCondition(conditionType string)
 	// SetStatefulSet sets the `status.statefulset`
 	SetStatefulSet(sts *appsv1.StatefulSetStatus)
+	// SetVolReplaceInProgress sets the status.VolReplaceInProgress
+	SetVolReplaceInProgress(status bool)
 }
 
 func (tc *TidbCluster) AllComponentStatus() []ComponentStatus {
-	components := []ComponentStatus{}
+	var components []ComponentStatus
 	if tc.Spec.PD != nil {
 		components = append(components, &tc.Status.PD)
+	}
+	for _, component := range tc.Status.PDMS {
+		components = append(components, tc.Status.PDMS[component.Name])
 	}
 	if tc.Spec.TiDB != nil {
 		components = append(components, &tc.Status.TiDB)
@@ -144,6 +151,9 @@ func (s *PDStatus) GetConditions() []metav1.Condition {
 func (s *PDStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
 }
+func (s *PDStatus) GetVolReplaceInProgress() bool {
+	return s.VolReplaceInProgress
+}
 func (s *PDStatus) SetSynced(synced bool) {
 	s.Synced = synced
 }
@@ -172,6 +182,54 @@ func (s *PDStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *PDStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *PDStatus) SetVolReplaceInProgress(status bool) {
+	s.VolReplaceInProgress = status
+}
+
+func (s *PDMSStatus) MemberType() MemberType {
+	return PDMSMemberType(s.Name)
+}
+func (s *PDMSStatus) GetSynced() bool {
+	return s.Synced
+}
+func (s *PDMSStatus) GetPhase() MemberPhase {
+	return s.Phase
+}
+func (s *PDMSStatus) GetVolumes() map[StorageVolumeName]*StorageVolumeStatus { return nil }
+func (s *PDMSStatus) GetConditions() []metav1.Condition {
+	return s.Conditions
+}
+func (s *PDMSStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
+	return s.StatefulSet
+}
+func (s *PDMSStatus) GetVolReplaceInProgress() bool { return false }
+func (s *PDMSStatus) SetSynced(synced bool) {
+	s.Synced = synced
+}
+func (s *PDMSStatus) SetCondition(newCondition metav1.Condition) {
+	if s.Conditions == nil {
+		s.Conditions = []metav1.Condition{}
+	}
+	conditions := s.Conditions
+	meta.SetStatusCondition(&conditions, newCondition)
+	s.Conditions = conditions
+}
+func (s *PDMSStatus) RemoveCondition(conditionType string) {
+	if s.Conditions == nil {
+		return
+	}
+	conditions := s.Conditions
+	meta.RemoveStatusCondition(&conditions, conditionType)
+	s.Conditions = conditions
+}
+func (s *PDMSStatus) SetPhase(phase MemberPhase) {
+	s.Phase = phase
+}
+func (s *PDMSStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
+	s.StatefulSet = sts
+}
+func (s *PDMSStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {}
+func (s *PDMSStatus) SetVolReplaceInProgress(status bool)                        {}
 
 func (s *TiKVStatus) MemberType() MemberType {
 	return TiKVMemberType
@@ -190,6 +248,9 @@ func (s *TiKVStatus) GetConditions() []metav1.Condition {
 }
 func (s *TiKVStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *TiKVStatus) GetVolReplaceInProgress() bool {
+	return s.VolReplaceInProgress
 }
 func (s *TiKVStatus) SetSynced(synced bool) {
 	s.Synced = synced
@@ -219,6 +280,9 @@ func (s *TiKVStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *TiKVStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *TiKVStatus) SetVolReplaceInProgress(status bool) {
+	s.VolReplaceInProgress = status
+}
 
 func (s *TiDBStatus) MemberType() MemberType {
 	return TiDBMemberType
@@ -237,6 +301,9 @@ func (s *TiDBStatus) GetConditions() []metav1.Condition {
 }
 func (s *TiDBStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *TiDBStatus) GetVolReplaceInProgress() bool {
+	return s.VolReplaceInProgress
 }
 func (s *TiDBStatus) SetSynced(synced bool) {}
 func (s *TiDBStatus) SetCondition(newCondition metav1.Condition) {
@@ -264,6 +331,9 @@ func (s *TiDBStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *TiDBStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *TiDBStatus) SetVolReplaceInProgress(status bool) {
+	s.VolReplaceInProgress = status
+}
 
 func (s *PumpStatus) MemberType() MemberType {
 	return PumpMemberType
@@ -282,6 +352,9 @@ func (s *PumpStatus) GetConditions() []metav1.Condition {
 }
 func (s *PumpStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *PumpStatus) GetVolReplaceInProgress() bool {
+	return false
 }
 func (s *PumpStatus) SetSynced(synced bool) {}
 func (s *PumpStatus) SetCondition(newCondition metav1.Condition) {
@@ -309,6 +382,7 @@ func (s *PumpStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *PumpStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *PumpStatus) SetVolReplaceInProgress(status bool) {}
 
 func (s *TiFlashStatus) MemberType() MemberType {
 	return TiFlashMemberType
@@ -327,6 +401,9 @@ func (s *TiFlashStatus) GetConditions() []metav1.Condition {
 }
 func (s *TiFlashStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *TiFlashStatus) GetVolReplaceInProgress() bool {
+	return false
 }
 func (s *TiFlashStatus) SetSynced(synced bool) {
 	s.Synced = synced
@@ -356,6 +433,7 @@ func (s *TiFlashStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *TiFlashStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *TiFlashStatus) SetVolReplaceInProgress(status bool) {}
 
 func (s *TiCDCStatus) MemberType() MemberType {
 	return TiCDCMemberType
@@ -374,6 +452,9 @@ func (s *TiCDCStatus) GetConditions() []metav1.Condition {
 }
 func (s *TiCDCStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *TiCDCStatus) GetVolReplaceInProgress() bool {
+	return false
 }
 func (s *TiCDCStatus) SetSynced(synced bool) {
 	s.Synced = synced
@@ -403,6 +484,7 @@ func (s *TiCDCStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *TiCDCStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *TiCDCStatus) SetVolReplaceInProgress(status bool) {}
 
 func (s *MasterStatus) MemberType() MemberType {
 	return DMMasterMemberType
@@ -421,6 +503,9 @@ func (s *MasterStatus) GetConditions() []metav1.Condition {
 }
 func (s *MasterStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *MasterStatus) GetVolReplaceInProgress() bool {
+	return false
 }
 func (s *MasterStatus) SetSynced(synced bool) {
 	s.Synced = synced
@@ -450,6 +535,7 @@ func (s *MasterStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *MasterStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *MasterStatus) SetVolReplaceInProgress(status bool) {}
 
 func (s *WorkerStatus) MemberType() MemberType {
 	return DMWorkerMemberType
@@ -468,6 +554,9 @@ func (s *WorkerStatus) GetConditions() []metav1.Condition {
 }
 func (s *WorkerStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *WorkerStatus) GetVolReplaceInProgress() bool {
+	return false
 }
 func (s *WorkerStatus) SetSynced(synced bool) {
 	s.Synced = synced
@@ -497,6 +586,8 @@ func (s *WorkerStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *WorkerStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *WorkerStatus) SetVolReplaceInProgress(status bool) {}
+
 func (s *TiProxyStatus) MemberType() MemberType {
 	return TiProxyMemberType
 }
@@ -514,6 +605,9 @@ func (s *TiProxyStatus) GetConditions() []metav1.Condition {
 }
 func (s *TiProxyStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
+}
+func (s *TiProxyStatus) GetVolReplaceInProgress() bool {
+	return false
 }
 func (s *TiProxyStatus) SetSynced(synced bool) {
 	s.Synced = synced
@@ -543,3 +637,4 @@ func (s *TiProxyStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *TiProxyStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
+func (s *TiProxyStatus) SetVolReplaceInProgress(status bool) {}

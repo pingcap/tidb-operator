@@ -16,10 +16,16 @@ package main
 import (
 	"os"
 
+	"k8s.io/klog/v2"
+
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app"
+
+	// Enable FIPS when necessary
+	_ "github.com/pingcap/tidb-operator/pkg/fips"
 )
 
 func main() {
+	klog.InitFlags(nil)
 	if err := app.Run(); err != nil {
 		os.Exit(1)
 	}

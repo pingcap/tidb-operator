@@ -21,11 +21,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 const (
@@ -65,10 +65,6 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return nil
 	}
 
-	if tc.Status.TiProxy.StatefulSet.UpdateRevision == tc.Status.TiProxy.StatefulSet.CurrentRevision {
-		return nil
-	}
-
 	minReadySeconds := int(newSet.Spec.MinReadySeconds)
 	s, ok := tc.Annotations[annoKeyTiProxyMinReadySeconds]
 	if ok {
@@ -96,7 +92,7 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		}
 
 		if revision == tc.Status.TiProxy.StatefulSet.UpdateRevision {
-			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
+			if !k8s.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tiproxy pod: [%s] is not ready", ns, tcName, podName)
 			}
 			continue

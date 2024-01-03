@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -29,7 +30,6 @@ import (
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 type tikvScaler struct {
@@ -187,10 +187,21 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 		return deletedUpStore, fmt.Errorf("tikvScaler.ScaleIn: failed to pass up stores check , pod %s, cluster %s/%s", podName, ns, tcName)
 	}
 
+	// Below code depends on tikv StoreIDLabelKey & AnnTiKVNoActiveStoreSince to be correctly updated, so manually
+	// update it once here (to avoid a dependency on metaManager to sync it first instead)
+	pod, err = s.deps.PodControl.UpdateMetaInfo(tc, pod)
+	if err != nil {
+		klog.Errorf("tikvScaler.ScaleIn: failed to update pod MetaInfo for, pod %s, cluster %s/%s", podName, ns, tcName)
+		return deletedUpStore, nil
+	}
+
 	// call PD API to delete the store of the TiKV Pod to be scaled in
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.PodName == podName {
 			state := store.State
+			if pod.Labels[label.StoreIDLabelKey] == "" {
+				return deletedUpStore, fmt.Errorf("StoreID not yet updated on pod label")
+			}
 			id, err := strconv.ParseUint(store.ID, 10, 64)
 			if err != nil {
 				return deletedUpStore, err
@@ -251,7 +262,10 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 	//    In this situation return error to wait for another round for safety.
 	// 2. TiKV pod is not ready, such as in pending state.
 	//    In this situation we should delete this TiKV pod immediately to avoid blocking the subsequent operations.
-	if !podutil.IsPodReady(pod) {
+	// 3. TiKV pod has a valid store in label, but no active stores from PD (via status).
+	//    In this situation we assume that store has been Tombstone'd but pd has gc'ed it, so not available in
+	//    TombstoneStores. We delete the pod in this case.
+	if !k8s.IsPodReady(pod) {
 		if tc.TiKVBootStrapped() {
 			safeTimeDeadline := pod.CreationTimestamp.Add(5 * s.deps.CLIConfig.ResyncDuration)
 			if time.Now().Before(safeTimeDeadline) {
@@ -278,6 +292,27 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 		}
 		return deletedUpStore, nil
 	}
+
+	noActiveStoreSinceAnnValue, exists := pod.Annotations[label.AnnTiKVNoActiveStoreSince]
+	if exists {
+		noActiveStoreSinceTime, err := time.Parse(time.RFC3339, noActiveStoreSinceAnnValue)
+		if err == nil {
+			// Wait for 5 resync periods to ensure that the store is really not showing up in status.
+			if metav1.Now().Time.After(noActiveStoreSinceTime.Add(5 * s.deps.CLIConfig.ResyncDuration)) {
+				pvcs, err := util.ResolvePVCFromPod(pod, s.deps.PVCLister)
+				if err != nil {
+					return deletedUpStore, fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
+				}
+				for _, pvc := range pvcs {
+					if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
+						return deletedUpStore, err
+					}
+				}
+				return deletedUpStore, nil
+			}
+		}
+	}
+
 	return deletedUpStore, fmt.Errorf("TiKV %s/%s not found in cluster", ns, podName)
 }
 

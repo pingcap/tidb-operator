@@ -60,6 +60,7 @@ spec:
         command:
           - /usr/local/bin/br-federation-manager
           - -v={{ .Values.brFederationManager.logLevel }}
+          - -cluster-scoped={{ .Values.clusterScoped }}
           {{- if .Values.brFederationManager.workers }}
           - -workers={{ .Values.brFederationManager.workers | default 5 }}
           {{- end }}
@@ -71,6 +72,9 @@ spec:
          {{- end }}
          {{- if .Values.brFederationManager.leaderRetryPeriod }}
           - -leader-retry-period={{ .Values.brFederationManager.leaderRetryPeriod }}
+         {{- end }}
+         {{- if .Values.brFederationManager.leaderResourceLock }}
+          - -leader-resource-lock={{ .Values.controllerManager.leaderResourceLock }}
          {{- end }}
          {{- if .Values.brFederationManager.kubeClientQPS }}
           - -kube-client-qps={{ .Values.brFederationManager.kubeClientQPS }}

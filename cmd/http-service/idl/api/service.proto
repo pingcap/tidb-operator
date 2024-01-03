@@ -1,0 +1,1127 @@
+syntax = "proto3";
+
+package api;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/pingcap/tidb-operator/http-service/api;api";
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "TiDB Operator API",
+    description: "This is the TiDB Operator API.",
+    version: "v1-beta";
+  };
+};
+
+service Cluster {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {description: "Create, get, modify, and delete TiDB clusters."};
+
+  rpc CreateCluster(CreateClusterReq) returns (CreateClusterResp) {
+    option (google.api.http) = {
+      post: "/v1beta/clusters"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "CreateCluster"
+      summary: "Create a cluster."
+    };
+  }
+
+  rpc UpdateCluster(UpdateClusterReq) returns (UpdateClusterResp) {
+    option (google.api.http) = {
+      put: "/v1beta/clusters/{cluster_id}"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "UpdateCluster"
+      summary: "Update a cluster."
+    };
+  }
+
+  rpc GetCluster(GetClusterReq) returns (GetClusterResp) {
+    option (google.api.http) = {get: "/v1beta/clusters/{cluster_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "GetCluster"
+      summary: "Get a cluster."
+    };
+  }
+
+  rpc DeleteCluster(DeleteClusterReq) returns (DeleteClusterResp) {
+    option (google.api.http) = {delete: "/v1beta/clusters/{cluster_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "DeleteCluster"
+      summary: "Delete a cluster."
+    };
+  }
+
+  rpc RestartCluster(RestartClusterReq) returns (RestartClusterResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}:restart"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "RestartCluster"
+      summary: "Restart a cluster."
+    };
+  }
+
+  rpc PauseCluster(PauseClusterReq) returns (PauseClusterResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}:pause"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "PauseCluster"
+      summary: "Pause a cluster."
+    };
+  }
+
+  rpc ResumeCluster(ResumeClusterReq) returns (ResumeClusterResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}:resume"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "ResumeCluster"
+      summary: "Resume a cluster."
+    };
+  }
+
+  rpc CreateBackup(CreateBackupReq) returns (CreateBackupResp) {
+    option (google.api.http) = {
+      post: "/v1beta/clusters/{cluster_id}/backups"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "CreateBackup"
+      summary: "Create a backup."
+    };
+  }
+
+  rpc CreateRestore(CreateRestoreReq) returns (CreateRestoreResp) {
+    option (google.api.http) = {
+      post: "/v1beta/clusters/{cluster_id}/restores"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "CreateRestore"
+      summary: "Create a restore."
+    };
+  }
+
+  rpc GetBackup(GetBackupReq) returns (GetBackupResp) {
+    option (google.api.http) = {get: "/v1beta/clusters/{cluster_id}/backups/{backup_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "GetBackup"
+      summary: "Get a backup."
+    };
+  }
+
+  rpc GetRestore(GetRestoreReq) returns (GetRestoreResp) {
+    option (google.api.http) = {get: "/v1beta/clusters/{cluster_id}/restores/{restore_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "GetRestore"
+      summary: "Get a restore."
+    };
+  }
+
+  rpc StopBackup(StopBackupReq) returns (StopBackupResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}/backups/{backup_id}:stop"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "StopBackup"
+      summary: "Stop a backup."
+    };
+  }
+
+  rpc StopRestore(StopRestoreReq) returns (StopRestoreResp) {
+    option (google.api.http) = {post: "/v1beta/clusters/{cluster_id}/restores/{restore_id}:stop"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "StopRestore"
+      summary: "Stop a restore."
+    };
+  }
+
+  rpc DeleteBackup(DeleteBackupReq) returns (DeleteBackupResp) {
+    option (google.api.http) = {delete: "/v1beta/clusters/{cluster_id}/backups/{backup_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "DeleteBackup"
+      summary: "Delete a backup."
+    };
+  }
+}
+
+message User {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "User"
+      description: "User is the username and password of the cluster."
+      required: [
+          "username"
+          "password"
+]
+    }
+  };
+
+  string username = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The username of the cluster.",
+    example: "\"root\""
+  }];
+  string password = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The password of the cluster.",
+    example: "\"123456\""
+  }];
+}
+
+message Resource {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "Resource"
+      description: "Resource is the resource of the component for each replica."
+      required: [
+          "cpu"
+          "memory"
+]
+    }
+  };
+
+  uint32 cpu = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of CPU cores for each replica.",
+    example: "2"
+  }];
+  uint32 memory = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The amount of memory for each replica. unit: Gi",
+    example: "4"
+  }];
+  optional uint32 storage = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The amount of storage for each replica. unit: Gi. This is used for PD, TiKV and TiFlash now.",
+    example: "100"
+  }];
+}
+
+message Component {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "Component"
+      description: "Component is the component of the cluster."
+    }
+  };
+
+  optional uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of replicas of the component.",
+    example: "3"
+  }];
+  optional Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
+  map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component. JSON format."}];
+  optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the component. Only used for TiDB now."}];
+}
+
+// extension for TiFlash as TiFlash with another learner config field.
+message TiFlashComponent {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "Component"
+      description: "Component is the component of the cluster."
+    }
+  };
+
+  optional uint32 replicas = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of replicas of the component.",
+    example: "3"
+  }];
+  optional Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the component for each replica."}];
+  map<string, google.protobuf.Value> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the component. JSON format."}];
+  map<string, google.protobuf.Value> learner_config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash learner config of the component. JSON format."}];
+}
+
+message Prometheus {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "Prometheus"
+      description: "Prometheus is the Prometheus component of the cluster."
+      required: [
+          "version"
+          "resource"
+]
+    }
+  };
+
+  string version = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the Prometheus. Only official versions are supported now.",
+    example: "\"v2.27.1\""
+  }];
+  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Prometheus."}];
+  map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The command options config of the Prometheus. ref https://prometheus.io/docs/prometheus/latest/command-line/prometheus/",
+    example: "{\"web.read-timeout\": \"5m\"}"
+  }];
+}
+
+message Grafana {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "Grafana"
+      description: "Grafana is the Grafana component of the cluster."
+      required: [
+          "version"
+          "resource"
+]
+    }
+  };
+
+  string version = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the Grafana. Only official versions are supported now.",
+    example: "\"7.5.11\""
+  }];
+  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Grafana."}];
+  map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The environment variables config of the Grafana. ref https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#override-configuration-with-environment-variables",
+    example: "{\"GF_SECURITY_ADMIN_USER\": \"admin\"}"
+  }];
+  optional uint32 port = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The port of the Grafana."}];
+}
+
+message CreateClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateClusterReq"
+      description: "CreateClusterReq is the request for creating cluster."
+      required: [
+          "cluster_id"
+          "version"
+          "pd"
+          "tikv"
+          "tidb"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+  string version = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the TiDB cluster. Only official versions are supported now.",
+    example: "\"v7.1.1\""
+  }];
+  optional User user = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The username and password of the cluster."}];
+
+  Component pd = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The PD component of the cluster."}];
+  Component tikv = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiKV component of the cluster."}];
+  optional TiFlashComponent tiflash = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash component of the cluster."}];
+  Component tidb = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiDB component of the cluster."}];
+  optional Prometheus prometheus = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Prometheus component of the cluster."}];
+  optional Grafana grafana = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Grafana component of the cluster."}];
+}
+
+message CreateClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateClusterResp"
+      description: "CreateClusterResp is the response for creating cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message UpdateClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "UpdateClusterReq"
+      description: "UpdateClusterReq is the request for updating cluster."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+  optional string version = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the TiDB cluster. Only official versions are supported now.",
+    example: "\"v7.1.1\""
+  }];
+  optional Component pd = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The PD component of the cluster."}];
+  optional Component tikv = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiKV component of the cluster."}];
+  optional TiFlashComponent tiflash = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash component of the cluster."}];
+  optional Component tidb = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiDB component of the cluster."}];
+}
+
+message UpdateClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "UpdateClusterResp"
+      description: "UpdateClusterResp is the response for updating cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message GetClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "GetClusterReq"
+      description: "GetClusterReq is the request for getting cluster."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+}
+
+message GetClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "GetClusterResp"
+      description: "GetClusterResp is the response for getting cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+  optional ClusterInfo data = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The information of the cluster."}];
+}
+
+message ClusterInfo {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "ClusterInfo"
+      description: "ClusterInfo is the information of the cluster."
+      required: [
+          "cluster_id"
+          "version"
+          "status"
+          "pd"
+          "tikv"
+          "tidb"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+  string version = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the TiDB cluster.",
+    example: "\"v7.1.1\""
+  }];
+  string status = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The status of the TiDB cluster. Values include \"creating\", \"running\", \"deleting\", \"scaling\", \"upgrading\" and \"unavailable\".",
+    example: "\"running\""
+  }];
+  PDStatus pd = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The PD component of the cluster."}];
+  TiKVStatus tikv = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiKV component of the cluster."}];
+  optional TiFlashStatus tiflash = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash component of the cluster."}];
+  TiDBStatus tidb = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiDB component of the cluster."}];
+  optional PrometheusStatus prometheus = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Prometheus component of the cluster."}];
+  optional GrafanaStatus grafana = 9 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The Grafana component of the cluster."}];
+}
+
+message PDStatus {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "PDStatus"
+      description: "PDStatus is the status of the PD component."
+      required: [
+          "phase"
+          "replicas"
+          "resource"
+          "members"
+]
+    }
+  };
+
+  string phase = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The phase of the PD component. Values include \"Normal\", \"Scale\" and \"Upgrade\".",
+    example: "\"Normal\""
+  }];
+  uint32 replicas = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of replicas of the PD component.",
+    example: "3"
+  }];
+  Resource resource = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the PD component for each replica."}];
+  map<string, google.protobuf.Value> config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the PD component. JSON format."}];
+  repeated PDMember members = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the PD component."}];
+}
+
+message PDMember {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "PDMember"
+      description: "PDMember is a member status of the PD component."
+      required: [
+          "name"
+          "id"
+          "start_time"
+          "health"
+]
+    }
+  };
+
+  string name = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The name of the PD member.",
+    example: "\"pd-0\""
+  }];
+  uint64 id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The ID of the PD member.",
+    example: "123"
+  }];
+  string start_time = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The latest start time of the PD member.",
+    example: "\"2023-11-01T00:00:00Z\""
+  }];
+  bool health = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the PD member is healthy.",
+    example: "true"
+  }];
+}
+
+message TiKVStatus {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "TiKVStatus"
+      description: "TiKVStatus is the status of the TiKV component."
+      required: [
+          "phase"
+          "replicas"
+          "resource"
+          "members"
+]
+    }
+  };
+
+  string phase = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The phase of the TiKV component. Values include \"Normal\", \"Scale\" and \"Upgrade\".",
+    example: "\"Normal\""
+  }];
+  uint32 replicas = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of replicas of the TiKV component.",
+    example: "3"
+  }];
+  Resource resource = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the TiKV component for each replica."}];
+  map<string, google.protobuf.Value> config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the TiKV component. JSON format."}];
+  repeated TiKVMember members = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the TiKV component."}];
+}
+
+message TiKVMember {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "TiKVMember"
+      description: "TiKVMember is a member status of the TiKV component."
+      required: [
+          "name"
+          "id"
+          "start_time"
+          "state"
+]
+    }
+  };
+
+  string name = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The name of the TiKV member.",
+    example: "\"tikv-0\""
+  }];
+  uint64 id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The ID of the TiKV member.",
+    example: "123"
+  }];
+  string start_time = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The latest start time of the TiKV member.",
+    example: "\"2023-11-01T00:00:00Z\""
+  }];
+  string state = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The state of the TiKV member.",
+    example: "\"Up\""
+  }];
+}
+
+message TiFlashStatus {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "TiFlashStatus"
+      description: "TiFlashStatus is the status of the TiFlash component."
+      required: [
+          "phase"
+          "replicas"
+          "resource"
+          "members"
+]
+    }
+  };
+
+  string phase = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The phase of the TiFlash component. Values include \"Normal\", \"Scale\" and \"Upgrade\".",
+    example: "\"Normal\""
+  }];
+  uint32 replicas = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of replicas of the TiFlash component.",
+    example: "2"
+  }];
+  Resource resource = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the TiFlash component for each replica."}];
+  map<string, google.protobuf.Value> config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the TiFlash component. JSON format."}];
+  map<string, google.protobuf.Value> learner_config = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The TiFlash learner config of the TiFlash component. JSON format."}];
+  repeated TiFlashMember members = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the TiFlash component."}];
+}
+
+message TiFlashMember {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "TiFlashMember"
+      description: "TiFlashMember is a member status of the TiFlash component."
+      required: [
+          "name"
+          "id"
+          "start_time"
+          "state"
+]
+    }
+  };
+
+  string name = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The name of the TiFlash member.",
+    example: "\"tiflash-0\""
+  }];
+  uint64 id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The ID of the TiFlash member.",
+    example: "123"
+  }];
+  string start_time = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The latest start time of the TiFlash member.",
+    example: "\"2023-11-01T00:00:00Z\""
+  }];
+  string state = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The state of the TiFlash member.",
+    example: "\"Up\""
+  }];
+}
+
+message TiDBStatus {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "TiDBStatus"
+      description: "TiDBStatus is the status of the TiDB component."
+      required: [
+          "phase"
+          "replicas"
+          "resource"
+          "host"
+          "node_port"
+          "members"
+]
+    }
+  };
+
+  string phase = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The phase of the TiDB component. Values include \"Normal\", \"Scale\" and \"Upgrade\".",
+    example: "\"Normal\""
+  }];
+  uint32 replicas = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of replicas of the TiDB component.",
+    example: "1"
+  }];
+  Resource resource = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the TiDB component for each replica."}];
+  map<string, google.protobuf.Value> config = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The config of the TiDB component. JSON format."}];
+  string host = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The host of the TiDB component. One of the TiDB nodes will be selected as the host."}];
+  uint32 node_port = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The node port of the TiDB component assigned by Kubernetes.",
+    example: "4000"
+  }];
+  repeated TiDBMember members = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The members of the TiDB component."}];
+}
+
+message TiDBMember {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "TiDBMember"
+      description: "TiDBMember is a member status of the TiDB component."
+      required: [
+          "name"
+          "start_time"
+          "health"
+]
+    }
+  };
+
+  string name = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The name of the TiDB member.",
+    example: "\"tidb-0\""
+  }];
+  string start_time = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The latest start time of the TiDB member.",
+    example: "\"2023-11-01T00:00:00Z\""
+  }];
+  bool health = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the TiDB member is healthy.",
+    example: "true"
+  }];
+}
+
+message PrometheusStatus {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "PrometheusStatus"
+      description: "PrometheusStatus is the status of the Prometheus component."
+      required: [
+          "version"
+          "resource"
+]
+    }
+  };
+
+  string version = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the Prometheus component.",
+    example: "\"v2.27.1\""
+  }];
+  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Prometheus component."}];
+  map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The command options config of the Prometheus. ref https://prometheus.io/docs/prometheus/latest/command-line/prometheus/"}];
+}
+
+message GrafanaStatus {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "GrafanaStatus"
+      description: "GrafanaStatus is the status of the Grafana component."
+      required: [
+          "version"
+          "resource"
+          "host"
+          "node_port"
+]
+    }
+  };
+
+  string version = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The version of the Grafana component.",
+    example: "\"7.5.11\""
+  }];
+  Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Grafana component."}];
+  map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The environment variables config of the Grafana. ref https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#override-configuration-with-environment-variables"}];
+  string host = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The host of the Grafana component."}];
+  uint32 node_port = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The node port of the Grafana assigned by Kubernetes.",
+    example: "3000"
+  }];
+}
+
+message DeleteClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "DeleteClusterReq"
+      description: "DeleteClusterReq is the request for deleting cluster."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+}
+
+message DeleteClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "DeleteClusterResp"
+      description: "DeleteClusterResp is the response for deleting cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message RestartClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "RestartClusterReq"
+      description: "RestartClusterReq is the request for restarting cluster."
+      required: [
+          "cluster_id"
+          "component"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+
+  repeated string component = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Components that need to be restarted.",
+    example: "[\"tidb\"]",
+  }];
+}
+
+message RestartClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "RestartClusterResp"
+      description: "RestartClusterResp is the response for restarting cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message PauseClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "PauseClusterReq"
+      description: "PauseClusterReq is the request for stopping cluster."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+}
+
+message PauseClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "PauseClusterResp"
+      description: "PauseClusterResp is the response for pausing cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message ResumeClusterReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "ResumeClusterReq"
+      description: "ResumeClusterReq is the request for starting cluster."
+      required: ["cluster_id"]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+}
+
+message ResumeClusterResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "ResumeClusterResp"
+      description: "ResumeClusterResp is the response for start cluster."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message CreateBackupReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateBackupReq"
+      description: "CreateBackupReq is the request for creating backup."
+      required: [
+          "cluster_id"
+          "backup_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+  string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID of the backup for this cluster.",
+    example: "\"backup-123\""
+  }];
+  string access_key = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The access key of the backup storage.",
+    example: "\"access-key-123\""
+  }];
+  string secret_key = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The secret key of the backup storage."}];
+  optional string endpoint = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The endpoint of the backup storage.",
+    example: "\"https://s3.compatible.com\""
+  }];
+  string bucket = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The bucket of the backup storage.",
+    example: "\"backup-bucket-123\""
+  }];
+  string prefix = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The prefix of the backup storage.",
+    example: "\"path-prefix-to-backup\""
+  }];
+}
+
+message CreateBackupResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateBackupResp"
+      description: "CreateBackupResp is the response for creating backup."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message CreateRestoreReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateRestoreReq"
+      description: "CreateRestoreReq is the request for creating restore."
+      required: [
+          "cluster_id"
+          "restore_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID or name of the cluster.",
+    example: "\"tidb-clsuter-123\""
+  }];
+  string restore_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The unique ID of the restore for this cluster.",
+    example: "\"restore-123\""
+  }];
+  string access_key = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The access key of the backup storage.",
+    example: "\"access-key-123\""
+  }];
+  string secret_key = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The secret key of the backup storage."}];
+  optional string endpoint = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The endpoint of the backup storage.",
+    example: "\"https://s3.compatible.com\""
+  }];
+  string bucket = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The bucket of the backup storage.",
+    example: "\"backup-bucket-123\""
+  }];
+  string prefix = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The prefix of the backup storage.",
+    example: "\"path-prefix-to-backup\""
+  }];
+}
+
+message CreateRestoreResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "CreateRestoreResp"
+      description: "CreateRestoreResp is the response for creating restore."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is successful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message GetBackupReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "GetBackupReq"
+      description: "GetBackupReq is the request for getting backup."
+      required: [
+          "cluster_id"
+          "backup_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the backup."}];
+}
+
+message GetBackupResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "GetBackupResp"
+      description: "GetBackupResp is the response for getting backup."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "Whether the request is successful."}];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+  optional BackupInfo data = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The information of the backup."}];
+}
+
+message BackupInfo {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "BackupInfo"
+      description: "BackupInfo is the information of the backup."
+      required: [
+          "cluster_id"
+          "backup_id"
+          "status"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the backup."}];
+  string status = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The status of the backup."}];
+  string size = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The size of the backup."}];
+  string backup_path = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The path of the backup."}];
+  string commit_ts = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The commit ts of the backup."}];
+  string started_at = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The start time of the backup."}];
+  string completed_at = 8 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The completed time of the backup."}];
+}
+
+message GetRestoreReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "GetRestoreReq"
+      description: "GetRestoreReq is the request for getting restore."
+      required: [
+          "cluster_id"
+          "restore_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string restore_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the restore."}];
+}
+
+message GetRestoreResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "GetRestoreResp"
+      description: "GetRestoreResp is the response for getting restore."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "Whether the request is successful."}];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+  optional RestoreInfo data = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The information of the restore."}];
+}
+
+message RestoreInfo {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "RestoreInfo"
+      description: "RestoreInfo is the information of the restore."
+      required: [
+          "cluster_id"
+          "restore_id"
+          "status"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string restore_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the restore."}];
+  string status = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The status of the restore."}];
+  string commit_ts = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The commit ts of the restore."}];
+  string started_at = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The start time of the restore."}];
+  string completed_at = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The completed time of the restore."}];
+}
+
+message StopBackupReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "StopBackupReq"
+      description: "StopBackupReq is the request for stopping backup."
+      required: [
+          "cluster_id"
+          "backup_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the backup."}];
+}
+
+message StopBackupResp {
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is ssuccessful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message StopRestoreReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "StopRestoreReq"
+      description: "StopRestoreReq is the request for stopping restore."
+      required: [
+          "cluster_id"
+          "restore_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string restore_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the restore."}];
+}
+
+message StopRestoreResp {
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is ssuccessful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
+
+message DeleteBackupReq {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "DeleteBackupReq"
+      description: "DeleteBackupReq is the request for deleting backup."
+      required: [
+          "cluster_id"
+          "backup_id"
+]
+    }
+  };
+
+  string cluster_id = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID or name of the cluster."}];
+  string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the backup."}];
+}
+
+message DeleteBackupResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "DeleteBackupResp"
+      description: "DeleteBackupResp is the response for deleting backup."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "Whether the request is successful."}];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}

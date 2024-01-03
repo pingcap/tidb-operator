@@ -114,7 +114,7 @@ func (c *FakeTidbMonitors) UpdateStatus(ctx context.Context, tidbMonitor *v1alph
 // Delete takes name of the tidbMonitor and deletes it. Returns an error if one occurs.
 func (c *FakeTidbMonitors) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(tidbmonitorsResource, c.ns, name), &v1alpha1.TidbMonitor{})
+		Invokes(testing.NewDeleteActionWithOptions(tidbmonitorsResource, c.ns, name, opts), &v1alpha1.TidbMonitor{})
 
 	return err
 }

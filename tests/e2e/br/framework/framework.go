@@ -19,15 +19,6 @@ import (
 	"strings"
 
 	"github.com/onsi/ginkgo"
-	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
-	onceutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/once"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/s3"
-	tlsutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/tls"
-	yamlutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/yaml"
 	v1 "k8s.io/api/core/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -37,8 +28,19 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	apiregistration "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
+
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
+	onceutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/once"
+	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
+	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/s3"
+	tlsutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/tls"
+	yamlutil "github.com/pingcap/tidb-operator/tests/e2e/br/utils/yaml"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 type Framework struct {
@@ -151,26 +153,26 @@ func (f *Framework) AfterEach() {
 		ginkgo.By("Try to clean up all backups")
 		f.ForceCleanBackups(f.Namespace.Name)
 	} else {
-		framework.Logf("Skip cleaning up backup")
+		log.Logf("Skip cleaning up backup")
 	}
 }
 
 func (f *Framework) ForceCleanBackups(ns string) {
 	bl, err := f.ExtClient.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		framework.Logf("failed to list backups in namespace %s: %v", ns, err)
+		log.Logf("failed to list backups in namespace %s: %v", ns, err)
 		return
 	}
 	for i := range bl.Items {
 		name := bl.Items[i].Name
 		if err := f.ExtClient.PingcapV1alpha1().Backups(ns).Delete(context.TODO(), name, metav1.DeleteOptions{}); err != nil {
-			framework.Logf("failed to delete backup(%s) in namespace %s: %v", name, ns, err)
+			log.Logf("failed to delete backup(%s) in namespace %s: %v", name, ns, err)
 			return
 		}
 		// use patch to avoid update conflicts
 		patch := []byte(`[{"op":"remove","path":"/metadata/finalizers"}]`)
 		if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Patch(context.TODO(), name, types.JSONPatchType, patch, metav1.PatchOptions{}); err != nil {
-			framework.Logf("failed to clean backup(%s) finalizers in namespace %s: %v", name, ns, err)
+			log.Logf("failed to clean backup(%s) finalizers in namespace %s: %v", name, ns, err)
 			return
 		}
 	}
@@ -183,7 +185,7 @@ func (f *Framework) RecycleReleasedPV() {
 	c := f.ClientSet
 	pvList, err := c.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		framework.Logf("failed to list pvs: %v", err)
+		log.Logf("failed to list pvs: %v", err)
 		return
 	}
 	var (
@@ -194,7 +196,7 @@ func (f *Framework) RecycleReleasedPV() {
 		succeeded      int
 	)
 	defer func() {
-		framework.Logf("recycling orphan PVs (total: %d, retainReleased: %d, skipped: %d, failed: %d, succeeded: %d)", total, retainReleased, skipped, failed, succeeded)
+		log.Logf("recycling orphan PVs (total: %d, retainReleased: %d, skipped: %d, failed: %d, succeeded: %d)", total, retainReleased, skipped, failed, succeeded)
 	}()
 	for _, pv := range pvList.Items {
 		if pv.Spec.PersistentVolumeReclaimPolicy != v1.PersistentVolumeReclaimRetain || pv.Status.Phase != v1.VolumeReleased {
@@ -203,13 +205,13 @@ func (f *Framework) RecycleReleasedPV() {
 		retainReleased++
 		pvcNamespaceName, ok := pv.Labels[label.NamespaceLabelKey]
 		if !ok {
-			framework.Logf("label %q does not exist in PV %q", label.NamespaceLabelKey, pv.Name)
+			log.Logf("label %q does not exist in PV %q", label.NamespaceLabelKey, pv.Name)
 			failed++
 			continue
 		}
 		_, err := c.CoreV1().Namespaces().Get(context.TODO(), pvcNamespaceName, metav1.GetOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
-			framework.Logf("failed to get namespace %q: %v", pvcNamespaceName, err)
+			log.Logf("failed to get namespace %q: %v", pvcNamespaceName, err)
 			failed++
 			continue
 		}
@@ -222,10 +224,10 @@ func (f *Framework) RecycleReleasedPV() {
 		_, err = c.CoreV1().PersistentVolumes().Update(context.TODO(), &pv, metav1.UpdateOptions{})
 		if err != nil {
 			failed++
-			framework.Logf("failed to set PersistentVolumeReclaimPolicy of PV %q to Delete: %v", pv.Name, err)
+			log.Logf("failed to set PersistentVolumeReclaimPolicy of PV %q to Delete: %v", pv.Name, err)
 		} else {
 			succeeded++
-			framework.Logf("successfully set PersistentVolumeReclaimPolicy of PV %q to Delete", pv.Name)
+			log.Logf("successfully set PersistentVolumeReclaimPolicy of PV %q to Delete", pv.Name)
 		}
 	}
 }
