@@ -18,9 +18,11 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ebs"
 	"github.com/aws/aws-sdk-go/service/ebs/ebsiface"
@@ -34,6 +36,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
 
@@ -153,26 +157,42 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 	for volID := range snapIDMap {
 		snapID := snapIDMap[volID]
 		workerPool.ApplyOnErrorGroup(eg, func() error {
-			_, err := e.EC2.DeleteSnapshot(&ec2.DeleteSnapshotInput{
-				SnapshotId: &snapID,
-			})
-			if err != nil {
-				if strings.Contains(err.Error(), "NotFound") {
-					klog.Warningf("snapshot %s not found, err: %s", snapID, err.Error())
+			// use exponential backoff, every retry duration is duration * factor ^ (used_step - 1)
+			backoff := wait.Backoff{
+				Duration: time.Second,
+				Steps:    8,
+				Factor:   2.0,
+				Cap:      time.Minute,
+			}
+			delSnapshots := func() error {
+				_, err := e.EC2.DeleteSnapshot(&ec2.DeleteSnapshotInput{
+					SnapshotId: &snapID,
+				})
+				if err != nil {
+					if strings.Contains(err.Error(), "NotFound") {
+						klog.Warningf("snapshot %s not found, err: %s", snapID, err.Error())
+						return nil
+					}
+					return err
+				} else {
+					deletedCnt.Add(1)
 					return nil
 				}
+			}
 
-				klog.Errorf("failed to delete snapshot id=%s, error=%s", snapID, err)
-				// todo: we can only retry for a few times, might fail still, need to handle error from outside.
-				// we don't return error if it fails to make sure all snapshot got chance to delete.
+			isRetry := func(err error) bool {
+				return request.IsErrorThrottle(err)
+			}
+
+			err := retry.OnError(backoff, isRetry, delSnapshots)
+			if err != nil {
+				klog.Errorf("failed to delete snapshot id=%s, error=%s", snapID, err.Error())
 				lock.Lock()
 				defer lock.Unlock()
 				errs = multierr.Combine(errs, err)
-				return nil
-			} else {
-				deletedCnt.Add(1)
 			}
-			return nil
+
+			return errs
 		})
 	}
 
