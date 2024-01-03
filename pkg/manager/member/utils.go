@@ -128,6 +128,10 @@ func PdPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.PDMemberName(tcName), ordinal)
 }
 
+func PDMSPodName(tcName string, ordinal int32, component string) string {
+	return fmt.Sprintf("%s-%d", controller.PDMSMemberName(tcName, component), ordinal)
+}
+
 func tidbPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
 }
@@ -189,6 +193,10 @@ func getStsAnnotations(tcAnns map[string]string, component string) map[string]st
 	switch component {
 	case label.PDLabelVal:
 		key = label.AnnPDDeleteSlots
+	case label.PDMSTSOLabelVal:
+		key = label.AnnTSODeleteSlots
+	case label.PDMSSchedulingLabelVal:
+		key = label.AnnSchedulingDeleteSlots
 	case label.TiDBLabelVal:
 		key = label.AnnTiDBDeleteSlots
 	case label.TiKVLabelVal:

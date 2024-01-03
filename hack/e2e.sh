@@ -201,7 +201,7 @@ AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
 AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
 AWS_REGION=${AWS_REGION:-}
 AWS_ZONE=${AWS_ZONE:-}
-KUBE_VERSION=${KUBE_VERSION:-v1.24.13}
+KUBE_VERSION=${KUBE_VERSION:-v1.26.4}
 KUBE_WORKERS=${KUBE_WORKERS:-3}
 DOCKER_IO_MIRROR=${DOCKER_IO_MIRROR:-}
 GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
@@ -244,7 +244,6 @@ echo "ARTIFACTS: $ARTIFACTS"
 
 # https://github.com/kubernetes-sigs/kind/releases/tag/v0.19.0
 declare -A kind_node_images
-kind_node_images["v1.21.14"]="kindest/node:v1.21.14@sha256:220cfafdf6e3915fbce50e13d1655425558cb98872c53f802605aa2fb2d569cf"
 kind_node_images["v1.22.17"]="kindest/node:v1.22.17@sha256:9af784f45a584f6b28bce2af84c494d947a05bd709151466489008f80a9ce9d5"
 kind_node_images["v1.23.17"]="kindest/node:v1.23.17@sha256:f77f8cf0b30430ca4128cc7cfafece0c274a118cd0cdb251049664ace0dee4ff"
 kind_node_images["v1.24.13"]="kindest/node:v1.24.13@sha256:cea86276e698af043af20143f4bf0509e730ec34ed3b7fa790cc0bea091bc5dd"

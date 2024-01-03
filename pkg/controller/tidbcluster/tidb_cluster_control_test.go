@@ -311,6 +311,7 @@ func newFakeTidbClusterControl() (
 
 	tcUpdater := controller.NewFakeTidbClusterControl(tcInformer)
 	pdMemberManager := mm.NewFakePDMemberManager()
+	pdMSMemberManager := mm.NewFakePDMSMemberManager()
 	tikvMemberManager := mm.NewFakeTiKVMemberManager()
 	tidbMemberManager := mm.NewFakeTiDBMemberManager()
 	reclaimPolicyManager := meta.NewFakeReclaimPolicyManager()
@@ -328,6 +329,7 @@ func newFakeTidbClusterControl() (
 	control := NewDefaultTidbClusterControl(
 		tcUpdater,
 		pdMemberManager,
+		pdMSMemberManager,
 		tikvMemberManager,
 		tidbMemberManager,
 		tiproxyMemberManager,
