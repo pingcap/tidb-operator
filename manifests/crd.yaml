@@ -2245,6 +2245,9 @@ spec:
                 type: string
               useKMS:
                 type: boolean
+              volumeBackupInitJobMaxActiveSeconds:
+                default: 600
+                type: integer
             type: object
           status:
             properties:
@@ -4613,6 +4616,9 @@ spec:
                     type: string
                   useKMS:
                     type: boolean
+                  volumeBackupInitJobMaxActiveSeconds:
+                    default: 600
+                    type: integer
                 type: object
               imagePullSecrets:
                 items:
@@ -6785,6 +6791,9 @@ spec:
                     type: string
                   useKMS:
                     type: boolean
+                  volumeBackupInitJobMaxActiveSeconds:
+                    default: 600
+                    type: integer
                 type: object
               maxBackups:
                 format: int32

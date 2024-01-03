@@ -735,6 +735,17 @@ string
 <p>Additional volume mounts of component pods.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumeBackupInitJobMaxActiveSeconds</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="volumebackupmemberstatus">VolumeBackupMemberStatus</h3>

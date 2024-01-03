@@ -391,6 +391,9 @@ func (bm *backupManager) teardownVolumeBackup(ctx context.Context, volumeBackup 
 		}
 
 		backupCR := backupMember.backup.DeepCopy()
+		if pingcapv1alpha1.IsVolumeBackupInitialized(backupCR) {
+			backupCR.Spec.ResumeGcSchedule = true
+		}
 		backupCR.Spec.FederalVolumeBackupPhase = pingcapv1alpha1.FederalVolumeBackupTeardown
 		kubeClient := bm.deps.FedClientset[backupMember.k8sClusterName]
 		if _, err := kubeClient.PingcapV1alpha1().Backups(backupCR.Namespace).Update(ctx, backupCR, metav1.UpdateOptions{}); err != nil {
@@ -525,6 +528,7 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 	backupMember.Spec.S3.Prefix = fmt.Sprintf("%s-%s", backupMember.Spec.S3.Prefix, clusterMember.K8sClusterName)
 	if initialize {
 		backupMember.Spec.FederalVolumeBackupPhase = pingcapv1alpha1.FederalVolumeBackupInitialize
+		backupMember.Spec.VolumeBackupInitJobMaxActiveSeconds = backupTemplate.VolumeBackupInitJobMaxActiveSeconds
 	}
 	return backupMember
 }
