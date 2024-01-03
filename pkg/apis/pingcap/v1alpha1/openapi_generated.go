@@ -1234,6 +1234,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							},
 						},
 					},
+					"volumeBackupInitJobMaxActiveSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 			},
 		},
