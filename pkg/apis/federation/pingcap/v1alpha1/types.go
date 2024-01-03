@@ -123,6 +123,9 @@ type VolumeBackupMemberSpec struct {
 	// Additional volume mounts of component pods.
 	// +optional
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
+	// VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job
+	// +kubebuilder:default=600
+	VolumeBackupInitJobMaxActiveSeconds int `json:"volumeBackupInitJobMaxActiveSeconds,omitempty"`
 }
 
 // BRConfig contains config for BR
