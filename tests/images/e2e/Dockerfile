@@ -1,6 +1,6 @@
 FROM debian:buster-slim
 
-ENV KUBECTL_VERSION=v1.25.16
+ENV KUBECTL_VERSION=v1.26.12
 ENV HELM_VERSION=v3.11.0
 
 # python is required by gcloud
