@@ -21,7 +21,6 @@ import (
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -33,9 +32,9 @@ type FakeDMClusters struct {
 	ns   string
 }
 
-var dmclustersResource = schema.GroupVersionResource{Group: "pingcap.com", Version: "v1alpha1", Resource: "dmclusters"}
+var dmclustersResource = v1alpha1.SchemeGroupVersion.WithResource("dmclusters")
 
-var dmclustersKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1alpha1", Kind: "DMCluster"}
+var dmclustersKind = v1alpha1.SchemeGroupVersion.WithKind("DMCluster")
 
 // Get takes name of the dMCluster, and returns the corresponding dMCluster object, and an error if there is any.
 func (c *FakeDMClusters) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.DMCluster, err error) {

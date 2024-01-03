@@ -2713,7 +2713,7 @@ func (in *MasterServiceSpec) DeepCopyInto(out *MasterServiceSpec) {
 	in.ServiceSpec.DeepCopyInto(&out.ServiceSpec)
 	if in.ExternalTrafficPolicy != nil {
 		in, out := &in.ExternalTrafficPolicy, &out.ExternalTrafficPolicy
-		*out = new(v1.ServiceExternalTrafficPolicyType)
+		*out = new(v1.ServiceExternalTrafficPolicy)
 		**out = **in
 	}
 	if in.MasterNodePort != nil {
@@ -5993,7 +5993,7 @@ func (in *TiDBServiceSpec) DeepCopyInto(out *TiDBServiceSpec) {
 	in.ServiceSpec.DeepCopyInto(&out.ServiceSpec)
 	if in.ExternalTrafficPolicy != nil {
 		in, out := &in.ExternalTrafficPolicy, &out.ExternalTrafficPolicy
-		*out = new(v1.ServiceExternalTrafficPolicyType)
+		*out = new(v1.ServiceExternalTrafficPolicy)
 		**out = **in
 	}
 	if in.ExposeStatus != nil {
