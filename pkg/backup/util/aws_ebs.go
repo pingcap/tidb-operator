@@ -169,11 +169,14 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 				klog.Warningf("snapshot %s failed, err: %s", snapID, err.Error())
 				return err
 			} else {
+				klog.Infof("snapshot %s is deleted", snapID)
 				deletedCnt++
 				// Check flow every 10 deletions, we try to make no more than 1 deletion/second.
 				if deletedCnt%SnapshotDeletionFlowControlInterval == 0 {
-					if time.Since(lastFlowCheck) < SnapshotDeletionFlowControlInterval*time.Second {
-						suspension := SnapshotDeletionFlowControlInterval*time.Second - time.Since(lastFlowCheck)
+					lastRoundDuration := time.Since(lastFlowCheck)
+					klog.Infof("deletion count is %d, last round costs %s", deletedCnt, lastRoundDuration)
+					if lastRoundDuration < SnapshotDeletionFlowControlInterval*time.Second {
+						suspension := SnapshotDeletionFlowControlInterval*time.Second - lastRoundDuration
 						klog.Infof("Snapshot deletion flow control for %s", suspension)
 						time.Sleep(suspension)
 					}
