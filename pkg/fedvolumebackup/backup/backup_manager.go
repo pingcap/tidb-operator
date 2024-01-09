@@ -410,6 +410,7 @@ func (bm *backupManager) teardownVolumeBackup(ctx context.Context, volumeBackup 
 }
 
 func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) error {
+	isBackupRunning := false
 	for _, backupMember := range backupMembers {
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
@@ -418,13 +419,19 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 			return nil
 		}
 		if !pingcapv1alpha1.IsBackupComplete(backupMember.backup) {
-			return controller.IgnoreErrorf(
-				"backup member %s of cluster %s is not complete", backupMember.backup.Name, backupMember.k8sClusterName)
+			isBackupRunning = true
+			klog.Infof(
+				"VolumeBackup %s/%s backup member %s of cluster %s is not complete",
+				volumeBackup.Namespace, volumeBackup.Name, backupMember.backup.Name, backupMember.k8sClusterName)
 		}
 	}
 
-	klog.Infof("VolumeBackup %s/%s backup complete", volumeBackup.Namespace, volumeBackup.Name)
-	return bm.setVolumeBackupComplete(&volumeBackup.Status, backupMembers)
+	if isBackupRunning {
+		return controller.IgnoreErrorf("wait VolumeBackup complete")
+	} else {
+		klog.Infof("VolumeBackup %s/%s backup complete", volumeBackup.Namespace, volumeBackup.Name)
+		return bm.setVolumeBackupComplete(&volumeBackup.Status, backupMembers)
+	}
 }
 
 func (bm *backupManager) setVolumeBackupSnapshotCreated(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
