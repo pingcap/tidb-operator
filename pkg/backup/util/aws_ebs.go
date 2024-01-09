@@ -148,6 +148,7 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 	lastFlowCheck := time.Now()
 	for volID := range snapIDMap {
 		snapID := snapIDMap[volID]
+		klog.Infof("deleting snapshot %s ", snapID)
 		// use exponential backoff, every retry duration is duration * factor ^ (used_step - 1)
 		backoff := wait.Backoff{
 			Duration: time.Second,
@@ -166,7 +167,7 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 						return nil
 					}
 				}
-				klog.Warningf("snapshot %s failed, err: %s", snapID, err.Error())
+				klog.Warningf("delete snapshot %s failed, err: %s", snapID, err.Error())
 				return err
 			} else {
 				klog.Infof("snapshot %s is deleted", snapID)
@@ -193,8 +194,8 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 		err := retry.OnError(backoff, isRetry, delSnapshots)
 		if err != nil {
 			klog.Errorf("failed to delete snapshot id=%s, error=%s", snapID, err.Error())
+			return err
 		}
-		return err
 	}
 
 	return nil
