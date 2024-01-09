@@ -159,6 +159,7 @@ func TestCheckpoint(t *testing.T) {
 
 	require.Len(t, coll.records, 43)
 	coll.CheckWith(t, tw.files[:43])
+	require.NoFileExists(t, cfg.CheckpointFile)
 }
 
 func TestSigAndCheckpoint(t *testing.T) {
@@ -184,6 +185,7 @@ func TestSigAndCheckpoint(t *testing.T) {
 	runner.RunAndClose(ctx)
 	// Some of file might not be saved.
 	coll.CheckWith(t, tw.files[101:])
+	require.FileExists(t, cfg.CheckpointFile)
 
 	ctx = context.Background()
 	coll2 := NewCollector()
@@ -191,4 +193,5 @@ func TestSigAndCheckpoint(t *testing.T) {
 	runner2 := filereader.New(cfg)
 	runner2.RunAndClose(ctx)
 	coll2.CheckWith(t, tw.files[:101])
+	require.NoFileExists(t, cfg.CheckpointFile)
 }
