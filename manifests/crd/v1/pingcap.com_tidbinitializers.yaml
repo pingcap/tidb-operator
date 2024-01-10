@@ -215,6 +215,8 @@ spec:
               failed:
                 format: int32
                 type: integer
+              failedIndexes:
+                type: string
               phase:
                 type: string
               ready:
@@ -224,6 +226,9 @@ spec:
                 format: date-time
                 type: string
               succeeded:
+                format: int32
+                type: integer
+              terminating:
                 format: int32
                 type: integer
               uncountedTerminatedPods:
