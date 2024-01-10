@@ -58,6 +58,9 @@ spec:
           periodSeconds: 10
           failureThreshold: 10
         command:
+          - "/bin/sh"
+          - "-c"
+          - "$GOPATH/bin/dlv --listen=:2345 --continue --headless=true --accept-multiclient --api-version=2 exec /usr/local/bin/tidb-controller-manager --"
           - /usr/local/bin/tidb-controller-manager
           {{- if .Values.tidbBackupManagerImage }}
           - -tidb-backup-manager-image={{ .Values.tidbBackupManagerImage }}

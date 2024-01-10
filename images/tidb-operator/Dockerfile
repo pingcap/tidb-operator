@@ -2,6 +2,11 @@ FROM pingcap/pingcap-base:v1
 
 ARG TARGETARCH
 RUN dnf install -y tzdata bind-utils && dnf clean all
+RUN dnf install -y golang git
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+ENV GOPATH=/root/go
+
 ADD bin/${TARGETARCH}/tidb-scheduler /usr/local/bin/tidb-scheduler
 ADD bin/${TARGETARCH}/tidb-discovery /usr/local/bin/tidb-discovery
 ADD bin/${TARGETARCH}/tidb-controller-manager /usr/local/bin/tidb-controller-manager
