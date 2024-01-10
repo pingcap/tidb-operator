@@ -30,7 +30,6 @@ const (
 	CloudAPIConcurrency = 8
 	PVCTagKey           = "CSIVolumeName"
 	PodTagKey           = "kubernetes.io/created-for/pvc/name"
-	PVAvailableStatus   = "Available"
 )
 
 // AWSSnapshotter is the snapshotter for creating snapshots from volumes (during a backup)
@@ -103,10 +102,6 @@ func (s *AWSSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
 	resourcesTags := make(map[string]util.TagMap)
 
 	for _, pv := range pvs {
-		// Only tagging to available volumes
-		if pv.Status.Phase != PVAvailableStatus {
-			continue
-		}
 		podName := pv.GetAnnotations()[label.AnnPodNameKey]
 		pvcName := pv.GetName()
 		volId := pv.Spec.CSI.VolumeHandle
