@@ -30,7 +30,7 @@ require (
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.27.6
 	github.com/openshift/generic-admission-server v1.14.1-0.20230920151207-22a210ddee02
-	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20240110020731-9c1b9a3470ad
+	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20240110031508-90a78e33c3fd
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/kvproto v0.0.0-20231122054644-fb0f5c2a0a10
 	github.com/pingcap/tidb-operator/pkg/apis v1.6.0-alpha.10
