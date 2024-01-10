@@ -21,7 +21,6 @@ import (
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -33,9 +32,9 @@ type FakeTidbClusters struct {
 	ns   string
 }
 
-var tidbclustersResource = schema.GroupVersionResource{Group: "pingcap.com", Version: "v1alpha1", Resource: "tidbclusters"}
+var tidbclustersResource = v1alpha1.SchemeGroupVersion.WithResource("tidbclusters")
 
-var tidbclustersKind = schema.GroupVersionKind{Group: "pingcap.com", Version: "v1alpha1", Kind: "TidbCluster"}
+var tidbclustersKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
 
 // Get takes name of the tidbCluster, and returns the corresponding tidbCluster object, and an error if there is any.
 func (c *FakeTidbClusters) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TidbCluster, err error) {
