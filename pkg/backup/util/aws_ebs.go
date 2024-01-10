@@ -146,6 +146,7 @@ func NewEC2Session(concurrency uint) (*EC2Session, error) {
 func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 	var deletedCnt int32
 	lastFlowCheck := time.Now()
+	klog.Infof("Start deleting snapshots, total is %d", len(snapIDMap))
 	for volID := range snapIDMap {
 		snapID := snapIDMap[volID]
 		klog.Infof("deleting snapshot %s ", snapID)
