@@ -2013,6 +2013,9 @@ type CleanOption struct {
 	BackoffEnabled bool `json:"backoffEnabled,omitempty"`
 
 	BatchDeleteOption `json:",inline"`
+
+	// SnapshotsDeleteRatio represents the number of snapshots deleted per second
+	SnapshotsDeleteRatio float64 `json:"snapshotsDeleteRatio,omitempty"`
 }
 
 type Progress struct {

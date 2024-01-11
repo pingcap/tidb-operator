@@ -126,6 +126,9 @@ type VolumeBackupMemberSpec struct {
 	// VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job
 	// +kubebuilder:default=600
 	VolumeBackupInitJobMaxActiveSeconds int `json:"volumeBackupInitJobMaxActiveSeconds,omitempty"`
+	// SnapshotsDeleteRatio represents the number of snapshots deleted per second
+	// +kubebuilder:default=1.0
+	SnapshotsDeleteRatio float64 `json:"snapshotsDeleteRatio,omitempty"`
 }
 
 // BRConfig contains config for BR

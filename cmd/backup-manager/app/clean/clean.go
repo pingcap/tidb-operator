@@ -105,7 +105,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	}
 
 	//2. delete the snapshot
-	if err = bo.deleteVolumeSnapshots(metaInfo); err != nil {
+	if err = bo.deleteVolumeSnapshots(metaInfo, backup.Spec.CleanOption.SnapshotsDeleteRatio); err != nil {
 		klog.Errorf("delete volume snapshot failure, a mannual check or delete aciton require.")
 		return err
 	}
@@ -118,7 +118,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	return nil
 }
 
-func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta) error {
+func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta, deleteRatio float64) error {
 	newVolumeIDMap := make(map[string]string)
 	for i := range meta.TiKVComponent.Stores {
 		store := meta.TiKVComponent.Stores[i]
@@ -133,7 +133,7 @@ func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta) error {
 		klog.Errorf("new a ec2 session failure.")
 		return err
 	}
-	if err = ec2Session.DeleteSnapshots(newVolumeIDMap); err != nil {
+	if err = ec2Session.DeleteSnapshots(newVolumeIDMap, deleteRatio); err != nil {
 		klog.Errorf("delete snapshots failure.")
 		return err
 	}

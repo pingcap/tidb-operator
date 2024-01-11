@@ -143,7 +143,7 @@ func NewEC2Session(concurrency uint) (*EC2Session, error) {
 	return &EC2Session{EC2: ec2Session, concurrency: concurrency}, nil
 }
 
-func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
+func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string, deleteRatio float64) error {
 	var deletedCnt int32
 	lastFlowCheck := time.Now()
 	klog.Infof("Start deleting snapshots, total is %d", len(snapIDMap))
@@ -176,9 +176,11 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
 				// Check flow every 10 deletions, we try to make no more than 1 deletion/second.
 				if deletedCnt%SnapshotDeletionFlowControlInterval == 0 {
 					lastRoundDuration := time.Since(lastFlowCheck)
-					klog.Infof("deletion count is %d, last round costs %s", deletedCnt, lastRoundDuration)
-					if lastRoundDuration < SnapshotDeletionFlowControlInterval*time.Second {
-						suspension := SnapshotDeletionFlowControlInterval*time.Second - lastRoundDuration
+					expectedET := time.Duration(SnapshotDeletionFlowControlInterval/deleteRatio) * time.Second
+					//* time.Second
+					klog.Infof("deletion count is %d, last round costs %s, expected %s", deletedCnt, lastRoundDuration, expectedET)
+					if lastRoundDuration < expectedET {
+						suspension := expectedET - lastRoundDuration
 						klog.Infof("Snapshot deletion flow control for %s", suspension)
 						time.Sleep(suspension)
 					}
