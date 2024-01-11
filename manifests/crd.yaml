@@ -1239,6 +1239,7 @@ spec:
                     format: int32
                     type: integer
                   snapshotsDeleteRatio:
+                    default: 1
                     type: number
                 type: object
               cleanPolicy:
@@ -3612,6 +3613,7 @@ spec:
                         format: int32
                         type: integer
                       snapshotsDeleteRatio:
+                        default: 1
                         type: number
                     type: object
                   cleanPolicy:
@@ -5789,6 +5791,7 @@ spec:
                         format: int32
                         type: integer
                       snapshotsDeleteRatio:
+                        default: 1
                         type: number
                     type: object
                   cleanPolicy:
