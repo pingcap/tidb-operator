@@ -173,7 +173,7 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string, deleteRatio fl
 			} else {
 				klog.Infof("snapshot %s is deleted", snapID)
 				deletedCnt++
-				// Check flow every 10 deletions, we try to make no more than 1 deletion/second.
+				// Check flow every 10 deletions, we try to make no more than deleteRatio deletion/second.
 				if deletedCnt%SnapshotDeletionFlowControlInterval == 0 {
 					lastRoundDuration := time.Since(lastFlowCheck)
 					expectedET := time.Duration(SnapshotDeletionFlowControlInterval/deleteRatio) * time.Second

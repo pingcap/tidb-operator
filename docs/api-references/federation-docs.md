@@ -746,6 +746,17 @@ int
 <p>VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>snapshotsDeleteRatio</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<p>SnapshotsDeleteRatio represents the number of snapshots deleted per second</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="volumebackupmemberstatus">VolumeBackupMemberStatus</h3>

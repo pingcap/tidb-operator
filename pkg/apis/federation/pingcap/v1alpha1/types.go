@@ -127,7 +127,7 @@ type VolumeBackupMemberSpec struct {
 	// +kubebuilder:default=600
 	VolumeBackupInitJobMaxActiveSeconds int `json:"volumeBackupInitJobMaxActiveSeconds,omitempty"`
 	// SnapshotsDeleteRatio represents the number of snapshots deleted per second
-	// +kubebuilder:default=1.0
+	// +kubebuilder:default=1
 	SnapshotsDeleteRatio float64 `json:"snapshotsDeleteRatio,omitempty"`
 }
 
