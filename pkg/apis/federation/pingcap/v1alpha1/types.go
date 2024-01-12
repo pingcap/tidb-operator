@@ -126,7 +126,7 @@ type VolumeBackupMemberSpec struct {
 	// VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job
 	// +kubebuilder:default=600
 	VolumeBackupInitJobMaxActiveSeconds int `json:"volumeBackupInitJobMaxActiveSeconds,omitempty"`
-	// SnapshotsDeleteRatio represents the number of snapshots deleted per second
+	// SnapshotsDeleteRatio represents the number of snapshots deleted per second in every data plane
 	// +kubebuilder:default=1
 	SnapshotsDeleteRatio float64 `json:"snapshotsDeleteRatio,omitempty"`
 }
