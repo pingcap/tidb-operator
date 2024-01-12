@@ -51,7 +51,6 @@ require (
 	github.com/tikv/pd v2.1.17+incompatible
 	github.com/yisaer/crd-validation v0.0.3
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200910180754-dd1b699fc489
-	go.uber.org/atomic v1.9.0
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
@@ -77,6 +76,7 @@ require (
 
 require (
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
+	go.uber.org/atomic v1.9.0 // indirect
 	k8s.io/controller-manager v0.20.15 // indirect
 	k8s.io/kubelet v0.0.0 // indirect
 )
@@ -181,7 +181,7 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.5 // indirect
 	go.opencensus.io v0.22.3 // indirect
-	go.uber.org/multierr v1.8.0
+	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect

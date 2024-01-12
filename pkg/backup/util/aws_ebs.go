@@ -16,11 +16,12 @@ package util
 import (
 	"context"
 	"os"
-	"strings"
-	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ebs"
 	"github.com/aws/aws-sdk-go/service/ebs/ebsiface"
@@ -29,11 +30,11 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	"go.uber.org/atomic"
-	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
 
@@ -41,10 +42,11 @@ import (
 type EBSVolumeType string
 
 const (
-	GP3Volume           EBSVolumeType = "gp3"
-	IO1Volume           EBSVolumeType = "io1"
-	IO2Volume           EBSVolumeType = "io2"
-	CloudAPIConcurrency               = 3
+	GP3Volume                           EBSVolumeType = "gp3"
+	IO1Volume                           EBSVolumeType = "io1"
+	IO2Volume                           EBSVolumeType = "io2"
+	CloudAPIConcurrency                               = 3
+	SnapshotDeletionFlowControlInterval               = 10
 )
 
 func (t EBSVolumeType) Valid() bool {
@@ -141,49 +143,64 @@ func NewEC2Session(concurrency uint) (*EC2Session, error) {
 	return &EC2Session{EC2: ec2Session, concurrency: concurrency}, nil
 }
 
-func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string) error {
-	var (
-		deletedCnt atomic.Int32
-		errs       error
-		lock       sync.Mutex
-	)
-
-	eg, _ := errgroup.WithContext(context.Background())
-	workerPool := NewWorkerPool(e.concurrency, "delete snapshots")
+func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string, deleteRatio float64) error {
+	var deletedCnt int32
+	lastFlowCheck := time.Now()
+	klog.Infof("Start deleting snapshots, total is %d", len(snapIDMap))
 	for volID := range snapIDMap {
 		snapID := snapIDMap[volID]
-		workerPool.ApplyOnErrorGroup(eg, func() error {
+		klog.Infof("deleting snapshot %s ", snapID)
+		// use exponential backoff, every retry duration is duration * factor ^ (used_step - 1)
+		backoff := wait.Backoff{
+			Duration: time.Second,
+			Steps:    8,
+			Factor:   2.0,
+			Cap:      time.Minute,
+		}
+		delSnapshots := func() error {
 			_, err := e.EC2.DeleteSnapshot(&ec2.DeleteSnapshotInput{
 				SnapshotId: &snapID,
 			})
 			if err != nil {
-				if strings.Contains(err.Error(), "NotFound") {
-					klog.Warningf("snapshot %s not found, err: %s", snapID, err.Error())
-					return nil
+				if aErr, ok := err.(awserr.Error); ok {
+					if aErr.Code() == "InvalidSnapshot.NotFound" {
+						klog.Warningf("snapshot %s not found", snapID, err.Error())
+						return nil
+					}
 				}
-
-				klog.Errorf("failed to delete snapshot id=%s, error=%s", snapID, err)
-				// todo: we can only retry for a few times, might fail still, need to handle error from outside.
-				// we don't return error if it fails to make sure all snapshot got chance to delete.
-				lock.Lock()
-				defer lock.Unlock()
-				errs = multierr.Combine(errs, err)
-				return nil
+				klog.Warningf("delete snapshot %s failed, err: %s", snapID, err.Error())
+				return err
 			} else {
-				deletedCnt.Add(1)
+				klog.Infof("snapshot %s is deleted", snapID)
+				deletedCnt++
+				// Check flow every 10 deletions, we try to make no more than deleteRatio deletion/second.
+				if deletedCnt%SnapshotDeletionFlowControlInterval == 0 {
+					lastRoundDuration := time.Since(lastFlowCheck)
+					expectedET := time.Duration(SnapshotDeletionFlowControlInterval/deleteRatio) * time.Second
+					//* time.Second
+					klog.Infof("deletion count is %d, last round costs %s, expected %s", deletedCnt, lastRoundDuration, expectedET)
+					if lastRoundDuration < expectedET {
+						suspension := expectedET - lastRoundDuration
+						klog.Infof("Snapshot deletion flow control for %s", suspension)
+						time.Sleep(suspension)
+					}
+					lastFlowCheck = time.Now()
+				}
+				return nil
 			}
-			return nil
-		})
+		}
+
+		isRetry := func(err error) bool {
+			return request.IsErrorThrottle(err)
+		}
+
+		err := retry.OnError(backoff, isRetry, delSnapshots)
+		if err != nil {
+			klog.Errorf("failed to delete snapshot id=%s, error=%s", snapID, err.Error())
+			return err
+		}
 	}
 
-	if err := eg.Wait(); err != nil {
-		klog.Errorf("failed to delete snapshots error=%s, already delete=%d", err, deletedCnt.Load())
-		return err
-	}
-
-	if errs != nil {
-		return errs
-	}
 	return nil
 }
 
