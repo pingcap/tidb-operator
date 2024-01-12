@@ -19,10 +19,4 @@ package fips
 import (
 	// Restricts all TLS configuration to FIPS-approved settings
 	_ "crypto/tls/fipsonly"
-
-	"github.com/pingcap/tidb-operator/pkg/version"
 )
-
-func init() {
-	version.SetVersionSuffix("-fips")
-}
