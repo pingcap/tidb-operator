@@ -754,7 +754,7 @@ float64
 </em>
 </td>
 <td>
-<p>SnapshotsDeleteRatio represents the number of snapshots deleted per second</p>
+<p>SnapshotsDeleteRatio represents the number of snapshots deleted per second in every data plane</p>
 </td>
 </tr>
 </tbody>
