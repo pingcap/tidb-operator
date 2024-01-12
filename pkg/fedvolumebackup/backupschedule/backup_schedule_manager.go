@@ -19,7 +19,6 @@ import (
 	"sort"
 	"time"
 
-	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -313,10 +312,7 @@ func calculateExpiredBackups(backupsList []*v1alpha1.VolumeBackup, reservedTime 
 	expiredTS := config.TSToTSO(time.Now().Add(-1 * reservedTime).Unix())
 	i := 0
 	for ; i < len(backupsList); i++ {
-		startTS, err := config.ParseTSString(backupsList[i].Status.CommitTs)
-		if err != nil {
-			return nil, perrors.Annotatef(err, "parse start tso: %s", backupsList[i].Status.CommitTs)
-		}
+		startTS := config.TSToTSO(backupsList[i].CreationTimestamp.Unix())
 		if startTS >= expiredTS {
 			break
 		}
