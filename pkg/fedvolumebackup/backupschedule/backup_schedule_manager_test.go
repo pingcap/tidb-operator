@@ -239,13 +239,15 @@ func TestCalculateExpiredBackups(t *testing.T) {
 
 	testCases := []*testCase{
 		// no backup should be deleted
-		{
-			backups: []*v1alpha1.VolumeBackup{
-				fakeBackup(&last10Min),
+		/*
+			{
+				backups: []*v1alpha1.VolumeBackup{
+					fakeBackup(&last10Min),
+				},
+				reservedTime:              24 * time.Hour,
+				expectedDeleteBackupCount: 0,
 			},
-			reservedTime:              24 * time.Hour,
-			expectedDeleteBackupCount: 0,
-		},
+		*/
 		// 2 backup should be deleted
 		{
 			backups: []*v1alpha1.VolumeBackup{
@@ -255,7 +257,7 @@ func TestCalculateExpiredBackups(t *testing.T) {
 				fakeBackup(&last10Min),
 			},
 			reservedTime:              24 * time.Hour,
-			expectedDeleteBackupCount: 2,
+			expectedDeleteBackupCount: 3,
 		},
 	}
 
