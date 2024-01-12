@@ -356,7 +356,7 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(vbs *v1alpha1.VolumeBackup
 	// In order to avoid throttling, we choose to do delete volumebackup one by one.
 	// Delete the oldest expired backup
 	if len(backupsList) > int(*vbs.Spec.MaxBackups) {
-		backup := backupsList[int(*vbs.Spec.MaxBackups)]
+		backup := backupsList[len(backupsList)-1]
 		if backup.DeletionTimestamp != nil {
 			klog.Infof("Deletion is ongoing for backup schedule %s/%s, backup %s", ns, bsName, backup.GetName())
 			return
