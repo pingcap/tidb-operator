@@ -30,6 +30,7 @@ const (
 	CloudAPIConcurrency = 8
 	PVCTagKey           = "CSIVolumeName"
 	PodTagKey           = "kubernetes.io/created-for/pvc/name"
+	PodNSTagKey         = "kubernetes.io/created-for/pvc/namespace"
 )
 
 // AWSSnapshotter is the snapshotter for creating snapshots from volumes (during a backup)
@@ -102,15 +103,12 @@ func (s *AWSSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
 	resourcesTags := make(map[string]util.TagMap)
 
 	for _, pv := range pvs {
-		podName := pv.GetAnnotations()[label.AnnPodNameKey]
-		pvcName := pv.GetName()
-		volId := pv.Spec.CSI.VolumeHandle
-
 		tags := make(map[string]string)
-		tags[PVCTagKey] = pvcName
-		tags[PodTagKey] = podName
+		tags[PVCTagKey] = pv.GetName()
+		tags[PodTagKey] = pv.GetAnnotations()[label.AnnPodNameKey]
+		tags[PodNSTagKey] = pv.GetAnnotations()[label.NamespaceLabelKey]
 
-		resourcesTags[volId] = tags
+		resourcesTags[pv.Spec.CSI.VolumeHandle] = tags
 	}
 	ec2Session, err := util.NewEC2Session(CloudAPIConcurrency)
 	if err != nil {
