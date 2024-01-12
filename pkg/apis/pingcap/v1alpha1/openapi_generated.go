@@ -1498,6 +1498,13 @@ func schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref common.ReferenceCallback) 
 							Format:      "int64",
 						},
 					},
+					"snapshotsDeleteRatio": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SnapshotsDeleteRatio represents the number of snapshots deleted per second",
+							Type:        []string{"number"},
+							Format:      "double",
+						},
+					},
 				},
 			},
 		},
