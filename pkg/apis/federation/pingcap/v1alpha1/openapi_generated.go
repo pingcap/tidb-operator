@@ -362,6 +362,13 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeBackupMemberSpec(ref common.R
 							Format:      "int32",
 						},
 					},
+					"snapshotsDeleteRatio": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SnapshotsDeleteRatio represents the number of snapshots deleted per second in every data plane",
+							Type:        []string{"number"},
+							Format:      "double",
+						},
+					},
 				},
 			},
 		},

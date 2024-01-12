@@ -1122,6 +1122,9 @@ spec:
                   routineConcurrency:
                     format: int32
                     type: integer
+                  snapshotsDeleteRatio:
+                    default: 1
+                    type: number
                 type: object
               cleanPolicy:
                 type: string
@@ -3339,6 +3342,9 @@ spec:
                       routineConcurrency:
                         format: int32
                         type: integer
+                      snapshotsDeleteRatio:
+                        default: 1
+                        type: number
                     type: object
                   cleanPolicy:
                     type: string
@@ -5360,6 +5366,9 @@ spec:
                       routineConcurrency:
                         format: int32
                         type: integer
+                      snapshotsDeleteRatio:
+                        default: 1
+                        type: number
                     type: object
                   cleanPolicy:
                     type: string

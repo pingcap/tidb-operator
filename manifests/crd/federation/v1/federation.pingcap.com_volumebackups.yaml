@@ -1621,6 +1621,9 @@ spec:
                     type: object
                   serviceAccount:
                     type: string
+                  snapshotsDeleteRatio:
+                    default: 1
+                    type: number
                   tolerations:
                     items:
                       properties:

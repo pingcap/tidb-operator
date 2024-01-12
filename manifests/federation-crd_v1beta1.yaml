@@ -1620,6 +1620,8 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
+                snapshotsDeleteRatio:
+                  type: number
                 tolerations:
                   items:
                     properties:
@@ -3359,6 +3361,8 @@ spec:
                       type: object
                     serviceAccount:
                       type: string
+                    snapshotsDeleteRatio:
+                      type: number
                     tolerations:
                       items:
                         properties:

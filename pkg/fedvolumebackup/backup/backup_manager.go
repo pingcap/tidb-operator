@@ -34,7 +34,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
 )
 
-const reasonVolumeBackupMemberFailed = "VolumeBackupMemberFailed"
+const (
+	reasonVolumeBackupMemberFailed        = "VolumeBackupMemberFailed"
+	snapshotsDeletionFlowControlLowBound  = 0.1
+	snapshotsDeletionFlowControlHighBound = 2.0
+	snapshotsDeletionFlowControlDefault   = 1.0
+)
 
 type backupManager struct {
 	deps *controller.BrFedDependencies
@@ -506,6 +511,12 @@ func (bm *backupManager) updateVolumeBackupMembersToStatus(volumeBackupStatus *v
 }
 
 func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMember *v1alpha1.VolumeBackupMemberCluster, backupTemplate *v1alpha1.VolumeBackupMemberSpec, annotations map[string]string, labels map[string]string, initialize bool) *pingcapv1alpha1.Backup {
+	// Adjust for snapshots deletion flow control
+	if backupTemplate.SnapshotsDeleteRatio < snapshotsDeletionFlowControlLowBound || backupTemplate.SnapshotsDeleteRatio > snapshotsDeletionFlowControlHighBound {
+		klog.Warningf("%f is invalid for snapshot deletion flow control. Reset to the default value %f", backupTemplate.SnapshotsDeleteRatio, backupTemplate.SnapshotsDeleteRatio)
+		backupTemplate.SnapshotsDeleteRatio = snapshotsDeletionFlowControlDefault
+	}
+
 	backupMember := &pingcapv1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        bm.generateBackupMemberName(volumeBackupName),
@@ -530,6 +541,7 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 			CalcSizeLevel:            backupTemplate.CalcSizeLevel,
 			AdditionalVolumes:        backupTemplate.AdditionalVolumes,
 			AdditionalVolumeMounts:   backupTemplate.AdditionalVolumeMounts,
+			CleanOption:              &pingcapv1alpha1.CleanOption{SnapshotsDeleteRatio: backupTemplate.SnapshotsDeleteRatio},
 		},
 	}
 	backupMember.Spec.S3.Prefix = fmt.Sprintf("%s-%s", backupMember.Spec.S3.Prefix, clusterMember.K8sClusterName)
