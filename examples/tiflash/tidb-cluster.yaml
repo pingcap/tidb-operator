@@ -62,4 +62,4 @@ spec:
       storage: 100Gi
     storageClassName: local-storage
   timezone: UTC
-  version: v7.1.1
+  version: v7.5.0
