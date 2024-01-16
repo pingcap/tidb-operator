@@ -108,7 +108,7 @@ func (s *AWSSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
 		tags[PodTagKey] = pv.GetAnnotations()[label.AnnPodNameKey]
 		tags[PodNSTagKey] = pv.GetAnnotations()[label.NamespaceLabelKey]
 
-		resourcesTags[pv.Spec.CSI.VolumeHandle] = tags
+		resourcesTags[pv.GetAnnotations()[constants.AnnRestoredVolumeID]] = tags
 	}
 	ec2Session, err := util.NewEC2Session(CloudAPIConcurrency)
 	if err != nil {
