@@ -15,6 +15,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"math"
 	"os"
 	"os/signal"
@@ -38,6 +39,8 @@ var (
 )
 
 func main() {
+	klog.InitFlags(nil)
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
 	config := filereader.Config{
@@ -60,5 +63,7 @@ func main() {
 		signal.Stop(ch)
 		cancel()
 	}()
-	rd.RunAndClose(ctx)
+	if err := rd.RunAndClose(ctx); err != nil {
+		klog.ErrorS(err, "Failed to warmup. The checkpoint maybe stored.")
+	}
 }
