@@ -106,7 +106,7 @@ func (s *AWSSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
 		tags := make(map[string]string)
 		tags[PVCTagKey] = pv.GetName()
 		tags[PodTagKey] = pv.GetAnnotations()[label.AnnPodNameKey]
-		tags[PodNSTagKey] = pv.GetAnnotations()[label.NamespaceLabelKey]
+		tags[PodNSTagKey] = pv.GetLabels()[label.NamespaceLabelKey]
 
 		resourcesTags[pv.GetAnnotations()[constants.AnnRestoredVolumeID]] = tags
 	}
