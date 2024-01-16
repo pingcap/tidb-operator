@@ -34,7 +34,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
 )
 
-const reasonVolumeBackupMemberFailed = "VolumeBackupMemberFailed"
+const (
+	reasonVolumeBackupMemberFailed        = "VolumeBackupMemberFailed"
+	snapshotsDeletionFlowControlLowBound  = 0.1
+	snapshotsDeletionFlowControlHighBound = 2.0
+	snapshotsDeletionFlowControlDefault   = 1.0
+)
 
 type backupManager struct {
 	deps *controller.BrFedDependencies
@@ -410,6 +415,7 @@ func (bm *backupManager) teardownVolumeBackup(ctx context.Context, volumeBackup 
 }
 
 func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) error {
+	isBackupRunning := false
 	for _, backupMember := range backupMembers {
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
@@ -418,13 +424,19 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 			return nil
 		}
 		if !pingcapv1alpha1.IsBackupComplete(backupMember.backup) {
-			return controller.IgnoreErrorf(
-				"backup member %s of cluster %s is not complete", backupMember.backup.Name, backupMember.k8sClusterName)
+			isBackupRunning = true
+			klog.Infof(
+				"VolumeBackup %s/%s backup member %s of cluster %s is not complete",
+				volumeBackup.Namespace, volumeBackup.Name, backupMember.backup.Name, backupMember.k8sClusterName)
 		}
 	}
 
-	klog.Infof("VolumeBackup %s/%s backup complete", volumeBackup.Namespace, volumeBackup.Name)
-	return bm.setVolumeBackupComplete(&volumeBackup.Status, backupMembers)
+	if isBackupRunning {
+		return controller.IgnoreErrorf("wait VolumeBackup complete")
+	} else {
+		klog.Infof("VolumeBackup %s/%s backup complete", volumeBackup.Namespace, volumeBackup.Name)
+		return bm.setVolumeBackupComplete(&volumeBackup.Status, backupMembers)
+	}
 }
 
 func (bm *backupManager) setVolumeBackupSnapshotCreated(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
@@ -499,6 +511,12 @@ func (bm *backupManager) updateVolumeBackupMembersToStatus(volumeBackupStatus *v
 }
 
 func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMember *v1alpha1.VolumeBackupMemberCluster, backupTemplate *v1alpha1.VolumeBackupMemberSpec, annotations map[string]string, labels map[string]string, initialize bool) *pingcapv1alpha1.Backup {
+	// Adjust for snapshots deletion flow control
+	if backupTemplate.SnapshotsDeleteRatio < snapshotsDeletionFlowControlLowBound || backupTemplate.SnapshotsDeleteRatio > snapshotsDeletionFlowControlHighBound {
+		klog.Warningf("%f is invalid for snapshot deletion flow control. Reset to the default value %f", backupTemplate.SnapshotsDeleteRatio, backupTemplate.SnapshotsDeleteRatio)
+		backupTemplate.SnapshotsDeleteRatio = snapshotsDeletionFlowControlDefault
+	}
+
 	backupMember := &pingcapv1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        bm.generateBackupMemberName(volumeBackupName),
@@ -523,6 +541,7 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 			CalcSizeLevel:            backupTemplate.CalcSizeLevel,
 			AdditionalVolumes:        backupTemplate.AdditionalVolumes,
 			AdditionalVolumeMounts:   backupTemplate.AdditionalVolumeMounts,
+			CleanOption:              &pingcapv1alpha1.CleanOption{SnapshotsDeleteRatio: backupTemplate.SnapshotsDeleteRatio},
 		},
 	}
 	backupMember.Spec.S3.Prefix = fmt.Sprintf("%s-%s", backupMember.Spec.S3.Prefix, clusterMember.K8sClusterName)
