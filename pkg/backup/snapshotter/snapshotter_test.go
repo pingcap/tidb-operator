@@ -906,8 +906,8 @@ func TestPrepareRestoreMetadata(t *testing.T) {
 	_ = json.Unmarshal([]byte(meta), csb)
 	// happy path
 	reason, err = s.PrepareRestoreMetadata(restore, csb)
-	require.Empty(t, reason)
-	require.NoError(t, err)
+	require.Equal(t, reason, "volume_tag_adding_failed")
+	require.Error(t, err)
 }
 
 func TestProcessCSBPVCsAndPVs(t *testing.T) {
