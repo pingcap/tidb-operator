@@ -19,9 +19,7 @@ import (
 	"sort"
 	"time"
 
-	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/robfig/cron"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -310,14 +308,11 @@ func sortAllSnapshotBackups(backupsList []*v1alpha1.VolumeBackup) []*v1alpha1.Vo
 }
 
 func calculateExpiredBackups(backupsList []*v1alpha1.VolumeBackup, reservedTime time.Duration) ([]*v1alpha1.VolumeBackup, error) {
-	expiredTS := config.TSToTSO(time.Now().Add(-1 * reservedTime).Unix())
+	expiredTS := time.Now().Add(-1 * reservedTime)
 	i := 0
 	for ; i < len(backupsList); i++ {
-		startTS, err := config.ParseTSString(backupsList[i].Status.CommitTs)
-		if err != nil {
-			return nil, perrors.Annotatef(err, "parse start tso: %s", backupsList[i].Status.CommitTs)
-		}
-		if startTS >= expiredTS {
+		startTS := backupsList[i].CreationTimestamp
+		if startTS.Compare(expiredTS) >= 0 {
 			break
 		}
 	}
