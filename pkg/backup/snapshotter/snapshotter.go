@@ -175,6 +175,11 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, csb *Cloud
 		return reason, err
 	}
 
+	// add volume tags here
+	if err := m.snapshotter.AddVolumeTags(csb.Kubernetes.PVs); err != nil {
+		return "volume_tag_adding_failed", err
+	}
+
 	return "", nil
 }
 
