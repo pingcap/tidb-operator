@@ -219,7 +219,14 @@ func generateTiDBDashboardStatefulSet(td *v1alpha1.TidbDashboard, tc *v1alpha1.T
 		experimental = *td.Spec.Experimental
 	}
 
-	startArgs := dashboardStartArgs(port, tc.Spec.Version, pathPrefix, clusterTLSEnabled, mysqlTLSEnabled, telemetry, experimental, tc)
+	var listenHost string
+	if td.Spec.ListenOnLocalhostOnly {
+		listenHost = "127.0.0.1"
+	} else {
+		listenHost = "0.0.0.0"
+	}
+
+	startArgs := dashboardStartArgs(listenHost, port, tc.Spec.Version, pathPrefix, clusterTLSEnabled, mysqlTLSEnabled, telemetry, experimental, tc)
 	spec := td.BaseTidbDashboardSpec()
 	meta, stsLabels := generateTiDBDashboardMeta(td, StatefulSetName(td.Name))
 
@@ -414,6 +421,7 @@ func generateTiDBDashboardService(td *v1alpha1.TidbDashboard) *corev1.Service {
 }
 
 func dashboardStartArgs(
+	listenHost string,
 	port int,
 	featureVersion, pathPrefix string,
 	clusterTLSEnable, mysqlTLSEnable, telemetry, experimental bool,
@@ -422,7 +430,7 @@ func dashboardStartArgs(
 	pdAddress := fmt.Sprintf("%s.%s:%d", controller.PDMemberName(tc.Name), tc.Namespace, v1alpha1.DefaultPDClientPort)
 
 	base := []string{
-		"-h=0.0.0.0",
+		fmt.Sprintf("-h=%s", listenHost),
 		fmt.Sprintf("-p=%d", port),
 		fmt.Sprintf("--data-dir=%s", dataPVCMountPath),
 		fmt.Sprintf("--temp-dir=%s", dataPVCMountPath),
