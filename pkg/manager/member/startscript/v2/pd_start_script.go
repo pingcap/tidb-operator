@@ -45,8 +45,6 @@ type PDMSStartScriptModel struct {
 	PDMSDomain string
 	PDMSName   string
 
-	DataDir string
-
 	ListenAddr          string
 	AdvertiseListenAddr string
 	BackendEndpoints    string
@@ -127,7 +125,6 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 	tcNS := tc.Namespace
 	peerServiceName := controller.PDMSMemberName(tcName, name)
 
-	m.DataDir = constants.PDMSDataVolumeMountPath
 	m.PDMSDomain = fmt.Sprintf("${PDMS_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
 		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
