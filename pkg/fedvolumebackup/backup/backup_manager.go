@@ -171,10 +171,15 @@ func (bm *backupManager) cleanVolumeBackup(ctx context.Context, volumeBackup *v1
 		return nil
 	}
 
+	cleanFailed := false
 	for _, backupMember := range backupMembers {
 		if backupMember.backup.DeletionTimestamp != nil {
+			if pingcapv1alpha1.IsBackupCleanFailed(backupMember.backup) {
+				cleanFailed = true
+			}
 			continue
 		}
+
 		// delete data plane backup,
 		// backup member existing means it's kube client must exist, we don't need to check it
 		kubeClient := bm.deps.FedClientset[backupMember.k8sClusterName]
@@ -182,6 +187,10 @@ func (bm *backupManager) cleanVolumeBackup(ctx context.Context, volumeBackup *v1
 			Delete(ctx, backupMember.backup.Name, metav1.DeleteOptions{}); err != nil {
 			return controller.RequeueErrorf("delete backup member %s of cluster %s error: %s", backupMember.backup.Name, backupMember.k8sClusterName, err.Error())
 		}
+	}
+
+	if cleanFailed {
+		bm.setVolumeBackupCleanFailed(&volumeBackup.Status)
 	}
 	return nil
 }
@@ -475,6 +484,13 @@ func (bm *backupManager) setVolumeBackupFailed(volumeBackupStatus *v1alpha1.Volu
 func (bm *backupManager) setVolumeBackupCleaned(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
 	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
 		Type:   v1alpha1.VolumeBackupCleaned,
+		Status: corev1.ConditionTrue,
+	})
+}
+
+func (bm *backupManager) setVolumeBackupCleanFailed(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
+	v1alpha1.UpdateVolumeBackupCondition(volumeBackupStatus, &v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupCleanFailed,
 		Status: corev1.ConditionTrue,
 	})
 }
