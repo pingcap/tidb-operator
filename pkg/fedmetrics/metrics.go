@@ -19,6 +19,11 @@ var (
 		Subsystem: "volume_backup",
 		Name:      "total_time_sec",
 	}, []string{LabelNamespace, LabelTC})
+	FedVolumeBackupTotalSizeCounterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "fed",
+		Subsystem: "volume_backup",
+		Name:      "size_gb",
+	}, []string{LabelNamespace, LabelTC})
 	FedVolumeBackupCleanupStatusCounterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "fed",
 		Subsystem: "volume_backup_cleanup",
@@ -35,6 +40,7 @@ func init() {
 	prometheus.MustRegister(
 		FedVolumeBackupStatusCounterVec,
 		FedVolumeBackupTotalTimeCounterVec,
+		FedVolumeBackupTotalSizeCounterVec,
 		FedVolumeBackupCleanupStatusCounterVec,
 		FedVolumeBackupCleanupTotalTimeCounterVec,
 	)

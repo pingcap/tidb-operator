@@ -16,6 +16,7 @@ package fedvolumebackup
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -123,6 +124,10 @@ func (c *defaultBackupControl) updateVolumeBackupMetrics(volumeBackup *v1alpha1.
 	fedmetrics.FedVolumeBackupStatusCounterVec.WithLabelValues(ns, tcName, status).Inc()
 	fedmetrics.FedVolumeBackupTotalTimeCounterVec.WithLabelValues(ns, tcName).
 		Add(volumeBackup.Status.TimeCompleted.Sub(volumeBackup.Status.TimeStarted.Time).Seconds())
+	if volumeBackup.Status.BackupSize > 0 {
+		fedmetrics.FedVolumeBackupTotalSizeCounterVec.WithLabelValues(ns, tcName).Add(
+			float64(volumeBackup.Status.BackupSize) / math.Pow(1024, 3))
+	}
 }
 
 func (c *defaultBackupControl) updateVolumeBackupCleanupMetrics(volumeBackup *v1alpha1.VolumeBackup) {
