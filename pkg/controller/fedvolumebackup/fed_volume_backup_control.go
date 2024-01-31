@@ -29,8 +29,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/federation/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/fedmetrics"
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 )
 
@@ -121,11 +121,11 @@ func (c *defaultBackupControl) updateVolumeBackupMetrics(volumeBackup *v1alpha1.
 	ns := volumeBackup.Namespace
 	tcName := volumeBackup.GetCombinedTCName()
 	status := string(volumeBackup.Status.Phase)
-	fedmetrics.FedVolumeBackupStatusCounterVec.WithLabelValues(ns, tcName, status).Inc()
-	fedmetrics.FedVolumeBackupTotalTimeCounterVec.WithLabelValues(ns, tcName).
+	metrics.FedVolumeBackupStatusCounterVec.WithLabelValues(ns, tcName, status).Inc()
+	metrics.FedVolumeBackupTotalTimeCounterVec.WithLabelValues(ns, tcName).
 		Add(volumeBackup.Status.TimeCompleted.Sub(volumeBackup.Status.TimeStarted.Time).Seconds())
 	if volumeBackup.Status.BackupSize > 0 {
-		fedmetrics.FedVolumeBackupTotalSizeCounterVec.WithLabelValues(ns, tcName).Add(
+		metrics.FedVolumeBackupTotalSizeCounterVec.WithLabelValues(ns, tcName).Add(
 			float64(volumeBackup.Status.BackupSize) / math.Pow(1024, 3))
 	}
 }
@@ -134,9 +134,9 @@ func (c *defaultBackupControl) updateVolumeBackupCleanupMetrics(volumeBackup *v1
 	ns := volumeBackup.Namespace
 	tcName := volumeBackup.GetCombinedTCName()
 	status := string(volumeBackup.Status.Phase)
-	fedmetrics.FedVolumeBackupCleanupStatusCounterVec.WithLabelValues(ns, tcName, status).Inc()
-	fedmetrics.FedVolumeBackupCleanupTotalTimeCounterVec.WithLabelValues(ns, tcName).
-		Add(time.Now().Sub(volumeBackup.DeletionTimestamp.Time).Seconds())
+	metrics.FedVolumeBackupCleanupStatusCounterVec.WithLabelValues(ns, tcName, status).Inc()
+	metrics.FedVolumeBackupCleanupTotalTimeCounterVec.WithLabelValues(ns, tcName).
+		Add(time.Since(volumeBackup.DeletionTimestamp.Time).Seconds())
 }
 
 // addProtectionFinalizer will be called when the VolumeBackup CR is created

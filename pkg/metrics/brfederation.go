@@ -11,14 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fedmetrics
+package metrics
 
 import "github.com/prometheus/client_golang/prometheus"
 
 const (
-	LabelNamespace = "namespace"
-	LabelTC        = "tc"
-	LabelStatus    = "status"
+	LabelTC     = "tc"
+	LabelStatus = "status"
 )
 
 var (
