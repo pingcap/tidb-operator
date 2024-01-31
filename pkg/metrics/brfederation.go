@@ -34,7 +34,7 @@ var (
 	FedVolumeBackupTotalSizeCounterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "fed",
 		Subsystem: "volume_backup",
-		Name:      "size_gb",
+		Name:      "total_size_gb",
 	}, []string{LabelNamespace, LabelTC})
 	FedVolumeBackupCleanupStatusCounterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "fed",
