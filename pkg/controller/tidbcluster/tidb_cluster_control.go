@@ -44,6 +44,7 @@ type ControlInterface interface {
 func NewDefaultTidbClusterControl(
 	tcControl controller.TidbClusterControlInterface,
 	pdMemberManager manager.Manager,
+	pdMSMemberManager manager.Manager,
 	tikvMemberManager manager.Manager,
 	tidbMemberManager manager.Manager,
 	tiproxyMemberManager manager.Manager,
@@ -64,6 +65,7 @@ func NewDefaultTidbClusterControl(
 	return &defaultTidbClusterControl{
 		tcControl:                tcControl,
 		pdMemberManager:          pdMemberManager,
+		pdMSMemberManager:        pdMSMemberManager,
 		tikvMemberManager:        tikvMemberManager,
 		tidbMemberManager:        tidbMemberManager,
 		tiproxyMemberManager:     tiproxyMemberManager,
@@ -86,6 +88,7 @@ func NewDefaultTidbClusterControl(
 type defaultTidbClusterControl struct {
 	tcControl                controller.TidbClusterControlInterface
 	pdMemberManager          manager.Manager
+	pdMSMemberManager        manager.Manager
 	tikvMemberManager        manager.Manager
 	tidbMemberManager        manager.Manager
 	tiproxyMemberManager     manager.Manager
@@ -104,7 +107,7 @@ type defaultTidbClusterControl struct {
 	recorder                 record.EventRecorder
 }
 
-// UpdateStatefulSet executes the core logic loop for a tidbcluster.
+// UpdateTidbCluster executes the core logic loop for a tidbcluster.
 func (c *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
 	c.defaulting(tc)
 	if !c.validate(tc) {
@@ -185,15 +188,16 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
-	// syncing the labels from Pod to PVC and PV, these labels include:
-	//   - label.StoreIDLabelKey
-	//   - label.MemberIDLabelKey
-	//   - label.NamespaceLabelKey
-	// Note this sync is called twice, once here and once after all the member syncs. The call here won't block on
-	// error to avoid potential deadlock with dependency on member manager. However, the next call will return if error.
-	// This also updates the TiKV pod annotation for label.AnnTiKVNoActiveStoreSince if store is missing. So we
-	// sometimes depend on this to be run before tikv member manager which will wait on this.
-	c.metaManager.Sync(tc) // Silently ignore error.
+	// works that should be done to make the pd microservice current state match the desired state:
+	//   - create or update the pdms service
+	//   - create or update the pdms headless service
+	//   - create the pdms statefulset
+	//   - sync pdms cluster status from pdms to TidbCluster object
+	//   - upgrade the pdms cluster
+	//   - scale out/in the pdms cluster
+	if err := c.pdMSMemberManager.Sync(tc); err != nil {
+		return err
+	}
 
 	// works that should be done to make the pd cluster current state match the desired state:
 	//   - create or update the pd service
@@ -285,7 +289,6 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - label.StoreIDLabelKey
 	//   - label.MemberIDLabelKey
 	//   - label.NamespaceLabelKey
-	// Note: This is second run, where errors should block, see also previous run above.
 	if err := c.metaManager.Sync(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "meta").Inc()
 		return err
@@ -331,6 +334,9 @@ func (c *defaultTidbClusterControl) recordMetrics(tc *v1alpha1.TidbCluster) {
 	tcName := tc.GetName()
 	if tc.Spec.PD != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "pd").Set(float64(tc.Spec.PD.Replicas))
+	}
+	for _, component := range tc.Spec.PDMS {
+		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, component.Name).Set(float64(component.Replicas))
 	}
 	if tc.Spec.TiKV != nil {
 		metrics.ClusterSpecReplicas.WithLabelValues(ns, tcName, "tikv").Set(float64(tc.Spec.TiKV.Replicas))

@@ -86,8 +86,13 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	contents, err := os.ReadFile(metaFile)
 
 	if errors.Is(err, os.ErrNotExist) {
-		klog.Errorf("read metadata file %s failed, err: %s, a manual check or delete action required.", metaFile, err)
-		return err
+		if v1alpha1.IsBackupFailed(backup) {
+			klog.Warningf("read meta file %s not found from a failed backup, a manual check to snapshots might be needed.", metaFile)
+			return nil
+		} else {
+			klog.Errorf("read metadata file %s failed, err: %s, a manual check or delete action required.", metaFile, err)
+			return err
+		}
 	} else if err != nil { // will retry it
 		klog.Errorf("read metadata file %s failed, err: %s", metaFile, err)
 		return err
@@ -100,7 +105,11 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	}
 
 	//2. delete the snapshot
-	if err = bo.deleteVolumeSnapshots(metaInfo); err != nil {
+	var deleteRatio = 1.0
+	if backup.Spec.CleanOption != nil {
+		deleteRatio = backup.Spec.CleanOption.SnapshotsDeleteRatio
+	}
+	if err = bo.deleteVolumeSnapshots(metaInfo, deleteRatio); err != nil {
 		klog.Errorf("delete volume snapshot failure, a mannual check or delete aciton require.")
 		return err
 	}
@@ -113,7 +122,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 	return nil
 }
 
-func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta) error {
+func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta, deleteRatio float64) error {
 	newVolumeIDMap := make(map[string]string)
 	for i := range meta.TiKVComponent.Stores {
 		store := meta.TiKVComponent.Stores[i]
@@ -128,8 +137,8 @@ func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta) error {
 		klog.Errorf("new a ec2 session failure.")
 		return err
 	}
-	if err = ec2Session.DeleteSnapshots(newVolumeIDMap); err != nil {
-		klog.Errorf("delete snapshot failure.")
+	if err = ec2Session.DeleteSnapshots(newVolumeIDMap, deleteRatio); err != nil {
+		klog.Errorf("delete snapshots failure.")
 		return err
 	}
 

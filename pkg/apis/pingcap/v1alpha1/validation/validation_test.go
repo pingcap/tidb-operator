@@ -585,6 +585,14 @@ func newDMCluster() *v1alpha1.DMCluster {
 	return dc
 }
 
+func newTidbClusterWithTiflash() *v1alpha1.TidbCluster {
+	tc := newTidbCluster()
+	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
+		Replicas: 1,
+	}
+	return tc
+}
+
 func TestValidateLocalDescendingPath(t *testing.T) {
 	successCases := []string{
 		"data",
@@ -709,6 +717,37 @@ func TestValidatePDAddresses(t *testing.T) {
 	}
 }
 
+func TestValidateStartScriptFeatureFlags(t *testing.T) {
+	successCases := [][]v1alpha1.StartScriptV2FeatureFlag{
+		{
+			v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch,
+			v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery,
+		},
+		{}, //empty
+	}
+
+	for _, c := range successCases {
+		errs := validateStartScriptFeatureFlags(c, field.NewPath("startScriptFeatureFlags"))
+		if len(errs) > 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := [][]v1alpha1.StartScriptV2FeatureFlag{
+		{
+			v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch,
+			"wrong",
+		},
+	}
+
+	for _, c := range errorCases {
+		errs := validateStartScriptFeatureFlags(c, field.NewPath("startScriptFeatureFlags"))
+		if len(errs) != 1 {
+			t.Errorf("expected 1 failure for %s but there was %d", c, len(errs))
+		}
+	}
+}
+
 func TestValidatePDSpec(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tests := []struct {
@@ -750,6 +789,62 @@ func TestValidatePDSpec(t *testing.T) {
 				LoadBalancerSourceRanges: tt.LoadBalancerSourceRanges,
 			}
 			err := validatePDSpec(tc.Spec.PD, field.NewPath("pd"))
+			r := len(err)
+			g.Expect(r).Should(Equal(tt.expectedErrors))
+		})
+	}
+}
+
+func TestValidateTiFlashSpec(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tests := []struct {
+		name           string
+		replicas       int32
+		expectedErrors int
+		storageClaims  []v1alpha1.StorageClaim
+	}{
+		{
+			name:           "has valid storage",
+			replicas:       1,
+			expectedErrors: 0,
+			storageClaims: []v1alpha1.StorageClaim{
+				{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("2G"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "no storage",
+			replicas:       1,
+			expectedErrors: 3,
+			storageClaims: []v1alpha1.StorageClaim{
+				{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{},
+					},
+				},
+				{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{},
+					},
+				},
+				{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := newTidbClusterWithTiflash()
+			tc.Spec.TiFlash.StorageClaims = tt.storageClaims
+			err := validateTiFlashSpec(tc.Spec.TiFlash, field.NewPath("spec", "tiflash"))
 			r := len(err)
 			g.Expect(r).Should(Equal(tt.expectedErrors))
 		})

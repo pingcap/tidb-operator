@@ -34,7 +34,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
 )
 
-const reasonVolumeBackupMemberFailed = "VolumeBackupMemberFailed"
+const (
+	reasonVolumeBackupMemberFailed        = "VolumeBackupMemberFailed"
+	snapshotsDeletionFlowControlLowBound  = 0.1
+	snapshotsDeletionFlowControlHighBound = 2.0
+	snapshotsDeletionFlowControlDefault   = 1.0
+)
 
 type backupManager struct {
 	deps *controller.BrFedDependencies
@@ -206,7 +211,7 @@ func (bm *backupManager) listAllBackupMembers(ctx context.Context, volumeBackup 
 		if existedBackupMember, ok := existedMembers[k8sClusterName]; ok {
 			backupMemberName = existedBackupMember.BackupName
 		} else {
-			backupMemberName = bm.generateBackupMemberName(volumeBackup.Name, k8sClusterName)
+			backupMemberName = bm.generateBackupMemberName(volumeBackup.Name)
 		}
 		backupMember, err := kubeClient.PingcapV1alpha1().Backups(memberCluster.TCNamespace).Get(ctx, backupMemberName, metav1.GetOptions{})
 		if err != nil {
@@ -231,7 +236,7 @@ func (bm *backupManager) initializeVolumeBackup(ctx context.Context, volumeBacku
 	if err != nil {
 		return controller.RequeueErrorf("create initialize backup member %s to cluster %s error: %s", backupMember.Name, initializeMember.K8sClusterName, err.Error())
 	}
-	klog.Infof("VolumeBackup %s/%s create backup member %s to initialize", volumeBackup.Namespace, volumeBackup.Name, backupMember.Name)
+	klog.Infof("VolumeBackup %s/%s create backup member %s in cluster %s to initialize", volumeBackup.Namespace, volumeBackup.Name, backupMember.Name, initializeMember.K8sClusterName)
 	v1alpha1.UpdateVolumeBackupMemberStatus(&volumeBackup.Status, initializeMember.K8sClusterName, backupMember)
 	return nil
 }
@@ -270,15 +275,15 @@ func (bm *backupManager) executeVolumeBackup(ctx context.Context, volumeBackup *
 				return false, controller.RequeueErrorf("update backup member %s of cluster %s to execute phase error: %s", backupCR.Name, backupMember.k8sClusterName, err.Error())
 			}
 			newMemberCreatedOrUpdated = true
-			klog.Infof("VolumeBackup %s/%s update backup member %s to execute volume backup", volumeBackup.Namespace, volumeBackup.Name, backupCR.Name)
+			klog.Infof("VolumeBackup %s/%s update backup member %s of cluster %s to execute volume backup", volumeBackup.Namespace, volumeBackup.Name, backupCR.Name, backupMember.k8sClusterName)
 		}
-		backupMemberMap[backupMember.backup.Name] = backupMember
+		backupMemberMap[backupMember.k8sClusterName] = backupMember
 	}
 
 	for i := range volumeBackup.Spec.Clusters {
 		memberCluster := volumeBackup.Spec.Clusters[i]
-		backupMemberName := bm.generateBackupMemberName(volumeBackup.Name, memberCluster.K8sClusterName)
-		if _, ok := backupMemberMap[backupMemberName]; ok {
+		k8sClusterName := memberCluster.K8sClusterName
+		if _, ok := backupMemberMap[k8sClusterName]; ok {
 			continue
 		}
 
@@ -288,7 +293,7 @@ func (bm *backupManager) executeVolumeBackup(ctx context.Context, volumeBackup *
 			return false, controller.RequeueErrorf("create backup member %s to cluster %s error: %s", backupMember.Name, memberCluster.K8sClusterName, err.Error())
 		}
 		newMemberCreatedOrUpdated = true
-		klog.Infof("VolumeBackup %s/%s create backup member %s to execute volume backup", volumeBackup.Namespace, volumeBackup.Name, backupMember.Name)
+		klog.Infof("VolumeBackup %s/%s create backup member %s to execute volume backup to cluster %s", volumeBackup.Namespace, volumeBackup.Name, backupMember.Name, k8sClusterName)
 		v1alpha1.UpdateVolumeBackupMemberStatus(&volumeBackup.Status, memberCluster.K8sClusterName, backupMember)
 	}
 	return
@@ -318,7 +323,9 @@ func (bm *backupManager) resumeGCSchedule(ctx context.Context, volumeBackup *v1a
 			"update backup member %s of cluster %s to resume gc and pd scheduler error: %s",
 			backupCR.Name, initializedBackupMember.k8sClusterName, err.Error())
 	}
-	klog.Infof("VolumeBackup %s/%s update backup member %s to resume gc and pd scheduler", volumeBackup.Namespace, volumeBackup.Name, backupCR.Name)
+	klog.Infof(
+		"VolumeBackup %s/%s update backup member %s of cluster %s to resume gc and pd scheduler",
+		volumeBackup.Namespace, volumeBackup.Name, backupCR.Name, initializedBackupMember.k8sClusterName)
 	return true, nil
 }
 
@@ -334,7 +341,9 @@ func (bm *backupManager) waitVolumeSnapshotsCreated(backupMembers []*volumeBacku
 			}
 		}
 		if !pingcapv1alpha1.IsVolumeBackupSnapshotsCreated(backupMember.backup) {
-			return controller.IgnoreErrorf("backup member %s of cluster %s is not volume snapshots created", backupMember.backup.Name, backupMember.k8sClusterName)
+			return controller.IgnoreErrorf(
+				"backup member %s of cluster %s is not volume snapshots created",
+				backupMember.backup.Name, backupMember.k8sClusterName)
 		}
 	}
 	return nil
@@ -387,18 +396,26 @@ func (bm *backupManager) teardownVolumeBackup(ctx context.Context, volumeBackup 
 		}
 
 		backupCR := backupMember.backup.DeepCopy()
+		if pingcapv1alpha1.IsVolumeBackupInitialized(backupCR) {
+			backupCR.Spec.ResumeGcSchedule = true
+		}
 		backupCR.Spec.FederalVolumeBackupPhase = pingcapv1alpha1.FederalVolumeBackupTeardown
 		kubeClient := bm.deps.FedClientset[backupMember.k8sClusterName]
 		if _, err := kubeClient.PingcapV1alpha1().Backups(backupCR.Namespace).Update(ctx, backupCR, metav1.UpdateOptions{}); err != nil {
-			return false, controller.RequeueErrorf("update backup member %s of cluster %s to teardown phase error: %s", backupCR.Name, backupMember.k8sClusterName, err.Error())
+			return false, controller.RequeueErrorf(
+				"update backup member %s of cluster %s to teardown phase error: %s",
+				backupCR.Name, backupMember.k8sClusterName, err.Error())
 		}
 		memberUpdated = true
-		klog.Infof("VolumeBackup %s/%s update backup member %s to teardown volume backup", volumeBackup.Namespace, volumeBackup.Name, backupCR.Name)
+		klog.Infof(
+			"VolumeBackup %s/%s update backup member %s of cluster %s to teardown volume backup",
+			volumeBackup.Namespace, volumeBackup.Name, backupCR.Name, backupMember.k8sClusterName)
 	}
 	return
 }
 
 func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) error {
+	isBackupRunning := false
 	for _, backupMember := range backupMembers {
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
@@ -407,12 +424,19 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 			return nil
 		}
 		if !pingcapv1alpha1.IsBackupComplete(backupMember.backup) {
-			return controller.IgnoreErrorf("backup member %s of cluster %s is not complete", backupMember.backup.Name, backupMember.k8sClusterName)
+			isBackupRunning = true
+			klog.Infof(
+				"VolumeBackup %s/%s backup member %s of cluster %s is not complete",
+				volumeBackup.Namespace, volumeBackup.Name, backupMember.backup.Name, backupMember.k8sClusterName)
 		}
 	}
 
-	klog.Infof("VolumeBackup %s/%s backup complete", volumeBackup.Namespace, volumeBackup.Name)
-	return bm.setVolumeBackupComplete(&volumeBackup.Status, backupMembers)
+	if isBackupRunning {
+		return controller.IgnoreErrorf("wait VolumeBackup complete")
+	} else {
+		klog.Infof("VolumeBackup %s/%s backup complete", volumeBackup.Namespace, volumeBackup.Name)
+		return bm.setVolumeBackupComplete(&volumeBackup.Status, backupMembers)
+	}
 }
 
 func (bm *backupManager) setVolumeBackupSnapshotCreated(volumeBackupStatus *v1alpha1.VolumeBackupStatus) {
@@ -487,9 +511,15 @@ func (bm *backupManager) updateVolumeBackupMembersToStatus(volumeBackupStatus *v
 }
 
 func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMember *v1alpha1.VolumeBackupMemberCluster, backupTemplate *v1alpha1.VolumeBackupMemberSpec, annotations map[string]string, labels map[string]string, initialize bool) *pingcapv1alpha1.Backup {
+	// Adjust for snapshots deletion flow control
+	if backupTemplate.SnapshotsDeleteRatio < snapshotsDeletionFlowControlLowBound || backupTemplate.SnapshotsDeleteRatio > snapshotsDeletionFlowControlHighBound {
+		klog.Warningf("%f is invalid for snapshot deletion flow control. Reset to the default value %f", backupTemplate.SnapshotsDeleteRatio, backupTemplate.SnapshotsDeleteRatio)
+		backupTemplate.SnapshotsDeleteRatio = snapshotsDeletionFlowControlDefault
+	}
+
 	backupMember := &pingcapv1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        bm.generateBackupMemberName(volumeBackupName, clusterMember.K8sClusterName),
+			Name:        bm.generateBackupMemberName(volumeBackupName),
 			Namespace:   clusterMember.TCNamespace,
 			Annotations: annotations,
 			Labels:      labels,
@@ -509,11 +539,15 @@ func (bm *backupManager) buildBackupMember(volumeBackupName string, clusterMembe
 			CleanPolicy:              backupTemplate.CleanPolicy,
 			PriorityClassName:        backupTemplate.PriorityClassName,
 			CalcSizeLevel:            backupTemplate.CalcSizeLevel,
+			AdditionalVolumes:        backupTemplate.AdditionalVolumes,
+			AdditionalVolumeMounts:   backupTemplate.AdditionalVolumeMounts,
+			CleanOption:              &pingcapv1alpha1.CleanOption{SnapshotsDeleteRatio: backupTemplate.SnapshotsDeleteRatio},
 		},
 	}
 	backupMember.Spec.S3.Prefix = fmt.Sprintf("%s-%s", backupMember.Spec.S3.Prefix, clusterMember.K8sClusterName)
 	if initialize {
 		backupMember.Spec.FederalVolumeBackupPhase = pingcapv1alpha1.FederalVolumeBackupInitialize
+		backupMember.Spec.VolumeBackupInitJobMaxActiveSeconds = backupTemplate.VolumeBackupInitJobMaxActiveSeconds
 	}
 	return backupMember
 }
@@ -522,8 +556,8 @@ func (bm *backupManager) skipSync(volumeBackup *v1alpha1.VolumeBackup) bool {
 	return volumeBackup.DeletionTimestamp == nil && (v1alpha1.IsVolumeBackupComplete(volumeBackup) || v1alpha1.IsVolumeBackupFailed(volumeBackup))
 }
 
-func (bm *backupManager) generateBackupMemberName(volumeBackupName, k8sClusterName string) string {
-	return fmt.Sprintf("fed-%s-%s", volumeBackupName, k8sClusterName)
+func (bm *backupManager) generateBackupMemberName(volumeBackupName string) string {
+	return fmt.Sprintf("fed-%s", volumeBackupName)
 }
 
 type volumeBackupMember struct {

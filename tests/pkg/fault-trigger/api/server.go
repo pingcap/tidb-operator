@@ -29,8 +29,9 @@ import (
 	"net/http"
 
 	restful "github.com/emicklei/go-restful"
+
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
-	"k8s.io/kubernetes/test/e2e/framework/log"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 // Server is a web service to control fault trigger

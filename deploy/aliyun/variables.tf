@@ -10,7 +10,7 @@ variable "bastion_cpu_core_count" {
 
 variable "operator_version" {
   type    = string
-  default = "v1.6.0-alpha.8"
+  default = "v1.6.0-alpha.10"
 }
 
 variable "operator_helm_values" {
@@ -147,4 +147,17 @@ variable "cdc_instance_type" {
 
 variable "tiflash_instance_type" {
   default = "ecs.i2.2xlarge"
+}
+
+variable "create_tiproxy_node_pool" {
+  description = "whether creating node pool for tiproxy"
+  default     = false
+}
+
+variable "tiproxy_count" {
+  default = 3
+}
+
+variable "tiproxy_instance_type" {
+  default = "ecs.g5.large"
 }

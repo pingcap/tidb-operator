@@ -19,9 +19,7 @@ import (
 	"sort"
 	"time"
 
-	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
-	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/robfig/cron"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -117,20 +115,19 @@ func getLastScheduledTime(vbs *v1alpha1.VolumeBackupSchedule, nowFn nowFn) (*tim
 		// If there is a bug somewhere, or incorrect clock
 		// on controller's server or apiservers (for setting creationTimestamp)
 		// then there could be so many missed start times (it could be off
-		// by decades or more), that it would eat up all the CPU and memory
-		// of this controller. In that case, we want to not try to list
-		// all the missed start times.
-		//
-		// I've somewhat arbitrarily picked 100, as more than 80,
-		// but less than "lots".
-		if len(scheduledTimes) > 100 {
+		// by decades or more). So, we need to set LastBackupTime to now() in order to let
+		// next reconcile succeed.
+		if len(scheduledTimes) > 1000 {
 			// We can't get the last backup schedule time
 			if vbs.Status.LastBackupTime == nil && vbs.Status.AllBackupCleanTime != nil {
 				// Recovery backup schedule from pause status, should refresh AllBackupCleanTime to avoid unschedulable problem
 				vbs.Status.AllBackupCleanTime = &metav1.Time{Time: nowFn()}
 				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", ns, bsName)
 			}
-			klog.Error("Too many missed start backup schedule time (> 100). Check the clock.")
+
+			klog.Warning("Too many missed start backup schedule time (> 1000). Fail current one.")
+			offset := sched.Next(t).Sub(t)
+			vbs.Status.LastBackupTime = &metav1.Time{Time: time.Now().Add(-offset)}
 			return nil, nil
 		}
 	}
@@ -258,18 +255,25 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(vbs *v1alpha1.VolumeB
 		return
 	}
 
-	for _, backup := range expiredBackups {
-		// delete the expired backup
-		if err = bm.deps.FedVolumeBackupControl.DeleteVolumeBackup(backup); err != nil {
-			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+	// In order to avoid throttling, we choose to do delete volumebackup one by one.
+	// Delete the oldest expired backup
+	if len(expiredBackups) > 0 {
+		backup := expiredBackups[0]
+		if backup.DeletionTimestamp != nil {
+			klog.Infof("Deletion is ongoing for backup schedule %s/%s, backup %s", ns, bsName, backup.GetName())
 			return
-		}
-		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
-	}
+		} else {
+			if err = bm.deps.FedVolumeBackupControl.DeleteVolumeBackup(backup); err != nil {
+				klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+				return
+			}
+			klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 
-	if len(expiredBackups) == len(backupsList) && len(expiredBackups) > 0 {
-		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
-		bm.resetLastBackup(vbs)
+			if len(expiredBackups) == 1 && len(backupsList) == 1 {
+				// All backups have been deleted, so the last backup information in the backupSchedule should be reset
+				bm.resetLastBackup(vbs)
+			}
+		}
 	}
 }
 
@@ -304,14 +308,11 @@ func sortAllSnapshotBackups(backupsList []*v1alpha1.VolumeBackup) []*v1alpha1.Vo
 }
 
 func calculateExpiredBackups(backupsList []*v1alpha1.VolumeBackup, reservedTime time.Duration) ([]*v1alpha1.VolumeBackup, error) {
-	expiredTS := config.TSToTSO(time.Now().Add(-1 * reservedTime).Unix())
+	expiredTS := time.Now().Add(-1 * reservedTime)
 	i := 0
 	for ; i < len(backupsList); i++ {
-		startTS, err := config.ParseTSString(backupsList[i].Status.CommitTs)
-		if err != nil {
-			return nil, perrors.Annotatef(err, "parse start tso: %s", backupsList[i].Status.CommitTs)
-		}
-		if startTS >= expiredTS {
+		startTS := backupsList[i].CreationTimestamp
+		if startTS.Compare(expiredTS) >= 0 {
 			break
 		}
 	}
@@ -346,23 +347,26 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(vbs *v1alpha1.VolumeBackup
 	}
 
 	sort.Sort(byCreateTimeDesc(backupsList))
-	var deleteCount int
-	for i, backup := range backupsList {
-		if i < int(*vbs.Spec.MaxBackups) {
-			continue
-		}
-		// delete the backup
-		if err := bm.deps.FedVolumeBackupControl.DeleteVolumeBackup(backup); err != nil {
-			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
-			return
-		}
-		deleteCount += 1
-		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
-	}
 
-	if deleteCount == len(backupsList) && deleteCount > 0 {
-		// All backups have been deleted, so the last backup information in the backupSchedule should be reset
-		bm.resetLastBackup(vbs)
+	// In order to avoid throttling, we choose to do delete volumebackup one by one.
+	// Delete the oldest expired backup
+	if len(backupsList) > int(*vbs.Spec.MaxBackups) {
+		backup := backupsList[len(backupsList)-1]
+		if backup.DeletionTimestamp != nil {
+			klog.Infof("Deletion is ongoing for backup schedule %s/%s, backup %s", ns, bsName, backup.GetName())
+			return
+		} else {
+			if err = bm.deps.FedVolumeBackupControl.DeleteVolumeBackup(backup); err != nil {
+				klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+				return
+			}
+			klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+
+			if len(backupsList) == 1 {
+				// All backups have been deleted, so the last backup information in the backupSchedule should be reset
+				bm.resetLastBackup(vbs)
+			}
+		}
 	}
 }
 

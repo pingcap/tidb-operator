@@ -26,17 +26,18 @@ import (
 	"text/template"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	clientset "k8s.io/client-go/kubernetes"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/pod"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/pod"
 )
 
 var tidbIssuerTmpl = `
@@ -570,7 +571,7 @@ func DeleteCertManager(cli clientset.Interface) error {
 		for _, _pod := range podList.Items {
 			err := pod.WaitForPodNotFoundInNamespace(cli, _pod.Name, "cert-manager", 5*time.Minute)
 			if err != nil {
-				framework.Logf("failed to wait for pod cert-manager/%s disappear", _pod.Name)
+				log.Logf("failed to wait for pod cert-manager/%s disappear", _pod.Name)
 				return false, nil
 			}
 		}
@@ -661,7 +662,7 @@ func installCert(tmplStr string, tp interface{}) error {
 		return err
 	}
 	if data, err := exec.Command("sh", "-c", fmt.Sprintf("kubectl apply -f %s", tmpFile.Name())).CombinedOutput(); err != nil {
-		framework.Logf("failed to create certificate: %s, %v", string(data), err)
+		log.Logf("failed to create certificate: %s, %v", string(data), err)
 		return err
 	}
 
@@ -693,7 +694,7 @@ func tidbIsTLSEnabled(fw portforward.PortForward, c clientset.Interface, ns, tcN
 					return true, fmt.Errorf("the connection to tidb server is not ssl %s/%s", ns, tcName)
 				}
 
-				framework.Logf("The connection to TiDB Server is TLS enabled.")
+				log.Logf("The connection to TiDB Server is TLS enabled.")
 				return true, nil
 			}
 		}
@@ -706,7 +707,7 @@ func insertIntoDataToSourceDB(fw portforward.PortForward, c clientset.Interface,
 	return func() (bool, error) {
 		db, cancel, err := connectToTiDBWithTLSSupport(fw, c, ns, tcName, passwd, tlsEnabled)
 		if err != nil {
-			framework.Logf("failed to connect to source db: %v", err)
+			log.Logf("failed to connect to source db: %v", err)
 			return false, nil
 		}
 		defer db.Close()
@@ -714,13 +715,13 @@ func insertIntoDataToSourceDB(fw portforward.PortForward, c clientset.Interface,
 
 		res, err := db.Exec("CREATE TABLE test.city (name VARCHAR(64) PRIMARY KEY)")
 		if err != nil {
-			framework.Logf("can't create table in source db: %v, %v", res, err)
+			log.Logf("can't create table in source db: %v, %v", res, err)
 			return false, nil
 		}
 
 		res, err = db.Exec("INSERT INTO test.city (name) VALUES (\"beijing\")")
 		if err != nil {
-			framework.Logf("can't insert into table tls in source db: %v, %v", res, err)
+			log.Logf("can't insert into table tls in source db: %v, %v", res, err)
 			return false, nil
 		}
 
@@ -732,7 +733,7 @@ func dataInClusterIsCorrect(fw portforward.PortForward, c clientset.Interface, n
 	return func() (bool, error) {
 		db, cancel, err := connectToTiDBWithTLSSupport(fw, c, ns, tcName, passwd, tlsEnabled)
 		if err != nil {
-			framework.Logf("can't connect to %s/%s, %v", ns, tcName, err)
+			log.Logf("can't connect to %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
 		defer db.Close()
@@ -743,11 +744,11 @@ func dataInClusterIsCorrect(fw portforward.PortForward, c clientset.Interface, n
 
 		err = row.Scan(&name)
 		if err != nil {
-			framework.Logf("can't scan from %s/%s, %v", ns, tcName, err)
+			log.Logf("can't scan from %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
 
-		framework.Logf("TABLE test.city name = %s", name)
+		log.Logf("TABLE test.city name = %s", name)
 		if name == "beijing" {
 			return true, nil
 		}

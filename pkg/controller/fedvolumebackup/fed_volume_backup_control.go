@@ -21,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/util/slice"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -29,6 +28,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
+	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 )
 
 // ControlInterface implements the control logic for updating VolumeBackup
@@ -119,7 +119,7 @@ func (c *defaultBackupControl) removeProtectionFinalizer(volumeBackup *v1alpha1.
 	name := volumeBackup.GetName()
 
 	if needToRemoveFinalizer(volumeBackup) {
-		volumeBackup.Finalizers = slice.RemoveString(volumeBackup.Finalizers, label.BackupProtectionFinalizer, nil)
+		volumeBackup.Finalizers = k8s.RemoveString(volumeBackup.Finalizers, label.BackupProtectionFinalizer, nil)
 		_, err := c.cli.FederationV1alpha1().VolumeBackups(ns).Update(context.TODO(), volumeBackup, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("remove VolumeBackup %s/%s protection finalizers failed, err: %v", ns, name, err)
@@ -132,7 +132,7 @@ func (c *defaultBackupControl) removeProtectionFinalizer(volumeBackup *v1alpha1.
 
 func needToAddFinalizer(volumeBackup *v1alpha1.VolumeBackup) bool {
 	return volumeBackup.DeletionTimestamp == nil &&
-		!slice.ContainsString(volumeBackup.Finalizers, label.BackupProtectionFinalizer, nil)
+		!k8s.ContainsString(volumeBackup.Finalizers, label.BackupProtectionFinalizer, nil)
 }
 
 func needToRemoveFinalizer(volumeBackup *v1alpha1.VolumeBackup) bool {
@@ -140,7 +140,7 @@ func needToRemoveFinalizer(volumeBackup *v1alpha1.VolumeBackup) bool {
 }
 
 func isDeletionCandidate(volumeBackup *v1alpha1.VolumeBackup) bool {
-	return volumeBackup.DeletionTimestamp != nil && slice.ContainsString(volumeBackup.Finalizers, label.BackupProtectionFinalizer, nil)
+	return volumeBackup.DeletionTimestamp != nil && k8s.ContainsString(volumeBackup.Finalizers, label.BackupProtectionFinalizer, nil)
 }
 
 var _ ControlInterface = &defaultBackupControl{}

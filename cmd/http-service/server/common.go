@@ -30,7 +30,7 @@ import (
 const (
 	HeaderKeyKubernetesID = "kubernetes-id"
 
-	// if we return an error in the gRPC service, the HTTP response body will be something like
+	// ResponseKeyStatusCode if we return an error in the gRPC service, the HTTP response body will be something like
 	// `{"code":2, "message":"k8s client not found", "details":[]}`.
 	// so we choose to return a nil error and set the HTTP status code in the response header.
 	ResponseKeyStatusCode = "x-http-code"

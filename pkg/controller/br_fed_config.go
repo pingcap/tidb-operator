@@ -16,6 +16,8 @@ package controller
 import (
 	"flag"
 	"time"
+
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
 const (
@@ -29,10 +31,14 @@ type BrFedCLIConfig struct {
 	// Larger number = more responsive management, but more CPU
 	// (and network) load
 	Workers int
+	// Controls whether operator should manage kubernetes cluster
+	// wide TiDB clusters
+	ClusterScoped bool
 
 	LeaseDuration time.Duration
 	RenewDeadline time.Duration
 	RetryPeriod   time.Duration
+	ResourceLock  string
 	WaitDuration  time.Duration
 	// ResyncDuration is the resync time of informer
 	ResyncDuration time.Duration
@@ -49,9 +55,11 @@ type BrFedCLIConfig struct {
 func DefaultBrFedCLIConfig() *BrFedCLIConfig {
 	return &BrFedCLIConfig{
 		Workers:        5,
+		ClusterScoped:  true,
 		LeaseDuration:  15 * time.Second,
 		RenewDeadline:  10 * time.Second,
 		RetryPeriod:    2 * time.Second,
+		ResourceLock:   resourcelock.LeasesResourceLock, // k8s uses leases by default from v1.20
 		WaitDuration:   5 * time.Second,
 		ResyncDuration: 30 * time.Second,
 
@@ -64,12 +72,14 @@ func (c *BrFedCLIConfig) AddFlag(_ *flag.FlagSet) {
 	flag.BoolVar(&c.PrintVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&c.PrintVersion, "version", false, "Show version and quit")
 	flag.IntVar(&c.Workers, "workers", c.Workers, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
+	flag.BoolVar(&c.ClusterScoped, "cluster-scoped", c.ClusterScoped, "Whether br-federation-manager should manage kubernetes cluster-wide resources")
 	flag.DurationVar(&c.ResyncDuration, "resync-duration", c.ResyncDuration, "Resync time of informer")
 
 	// see https://pkg.go.dev/k8s.io/client-go/tools/leaderelection#LeaderElectionConfig for the config
 	flag.DurationVar(&c.LeaseDuration, "leader-lease-duration", c.LeaseDuration, "leader-lease-duration is the duration that non-leader candidates will wait to force acquire leadership")
 	flag.DurationVar(&c.RenewDeadline, "leader-renew-deadline", c.RenewDeadline, "leader-renew-deadline is the duration that the acting master will retry refreshing leadership before giving up")
 	flag.DurationVar(&c.RetryPeriod, "leader-retry-period", c.RetryPeriod, "leader-retry-period is the duration the LeaderElector clients should wait between tries of actions")
+	flag.StringVar(&c.ResourceLock, "leader-resource-lock", c.ResourceLock, "The type of resource object that is used for locking during leader election")
 	flag.Float64Var(&c.KubeClientQPS, "kube-client-qps", c.KubeClientQPS, "The maximum QPS to the kubenetes API server from client")
 	flag.IntVar(&c.KubeClientBurst, "kube-client-burst", c.KubeClientBurst, "The maximum burst for throttle to the kubenetes API server from client")
 

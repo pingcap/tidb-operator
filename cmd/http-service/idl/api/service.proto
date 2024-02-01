@@ -1066,7 +1066,13 @@ message StopBackupReq {
   string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the backup."}];
 }
 
-message StopBackupResp {}
+message StopBackupResp {
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is ssuccessful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
 
 message StopRestoreReq {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
@@ -1084,7 +1090,13 @@ message StopRestoreReq {
   string restore_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the restore."}];
 }
 
-message StopRestoreResp {}
+message StopRestoreResp {
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether the request is ssuccessful.",
+    example: "true"
+  }];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}
 
 message DeleteBackupReq {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
@@ -1102,4 +1114,14 @@ message DeleteBackupReq {
   string backup_id = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The unique ID of the backup."}];
 }
 
-message DeleteBackupResp {}
+message DeleteBackupResp {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      title: "DeleteBackupResp"
+      description: "DeleteBackupResp is the response for deleting backup."
+    }
+  };
+
+  bool success = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "Whether the request is successful."}];
+  optional string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The message of the response."}];
+}

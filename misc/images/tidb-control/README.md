@@ -45,4 +45,4 @@ pflag: help requested
 $ docker run -v $(pwd)/ca.pem:$(pwd)/ca.pem -v $(pwd)/client.pem:$(pwd)/client.pem -it --rm pingcap/tidb-control:latest
 ```
 
-PS: `library/bash` is a `busybox` based image, so some dynamic linked binaries like `tikv-ctl` cannot work in this minimal image. If you are looking for `tikv-ctl` or more tools, take a look at [tidb-debug](../tidb-debug/).
+PS: `library/bash` is a `busybox` based image, so some dynamic linked binaries like `tikv-ctl` cannot work in this minimal image.

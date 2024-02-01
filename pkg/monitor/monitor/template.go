@@ -39,23 +39,24 @@ const (
 )
 
 var (
-	truePattern      = "true"
-	allMatchPattern  = "(.+)"
-	portPattern      = "([^:]+)(?::\\d+)?;(\\d+)"
-	tikvPattern      = "tikv"
-	tiproxyPattern   = "tiproxy"
-	pdPattern        = "pd"
-	tidbPattern      = "tidb"
-	addressPattern   = "(.+);(.+);(.+);(.+)"
-	tiflashPattern   = "tiflash"
-	pumpPattern      = "pump"
-	drainerPattern   = "drainer"
-	cdcPattern       = "ticdc"
-	importerPattern  = "importer"
-	lightningPattern = "tidb-lightning"
-	dmWorkerPattern  = dmWorker
-	dmMasterPattern  = dmMaster
-	dashBoardConfig  = `{
+	truePattern           = "true"
+	allMatchPattern       = "(.+)"
+	portPattern           = "([^:]+)(?::\\d+)?;(\\d+)"
+	tikvPattern           = "tikv"
+	tiproxyPattern        = "tiproxy"
+	pdPattern             = "pd"
+	pdmsTSOPattern        = "pdms-tso"
+	pdmsSchedulingPattern = "pdms-scheduling"
+	tidbPattern           = "tidb"
+	addressPattern        = "(.+);(.+);(.+);(.+)"
+	tiflashPattern        = "tiflash"
+	pumpPattern           = "pump"
+	drainerPattern        = "drainer"
+	cdcPattern            = "ticdc"
+	lightningPattern      = "tidb-lightning"
+	dmWorkerPattern       = dmWorker
+	dmMasterPattern       = dmMaster
+	dashBoardConfig       = `{
     "apiVersion": 1,
     "providers": [
         {
@@ -93,6 +94,8 @@ type ClusterRegexInfo struct {
 func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
 	var scrapeJobs []yaml.MapSlice
 	scrapeJobs = append(scrapeJobs, scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfigByComponent("pd"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("pdms-tso", pdmsTSOPattern, cmodel, buildAddressRelabelConfigByComponent("pdms-tso"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("pdms-scheduling", pdmsSchedulingPattern, cmodel, buildAddressRelabelConfigByComponent("pdms-scheduling"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfigByComponent("tikv"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tiproxy", tiproxyPattern, cmodel, buildAddressRelabelConfigByComponent("tiproxy"))...)
@@ -101,7 +104,6 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
 	scrapeJobs = append(scrapeJobs, scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfigByComponent("pump"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("drainer", drainerPattern, cmodel, buildAddressRelabelConfigByComponent("drainer"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc"))...)
-	scrapeJobs = append(scrapeJobs, scrapeJob("importer", importerPattern, cmodel, buildAddressRelabelConfigByComponent("importer"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob(dmWorker, dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent(dmWorker))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob(dmMaster, dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent(dmMaster))...)
@@ -137,7 +139,7 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 	}
 
 	switch strings.ToLower(kind) {
-	case "pd":
+	case "pd", "pdms-scheduling", "pdms-tso":
 		return f()
 	case "tidb":
 		return f()
@@ -170,19 +172,6 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 			{Key: "action", Value: "replace"},
 			{Key: "regex", Value: addressPattern},
 			{Key: "replacement", Value: "$1.$2-pump.$3:$4"},
-			{Key: "target_label", Value: "__address__"},
-			{Key: "source_labels", Value: []string{
-				podNameLabel,
-				instanceLabel,
-				namespaceLabel,
-				portLabel,
-			}},
-		}
-	case "importer":
-		return yaml.MapSlice{
-			{Key: "action", Value: "replace"},
-			{Key: "regex", Value: addressPattern},
-			{Key: "replacement", Value: "$1.$2-importer.$3:$4"},
 			{Key: "target_label", Value: "__address__"},
 			{Key: "source_labels", Value: []string{
 				podNameLabel,

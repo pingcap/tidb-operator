@@ -35,12 +35,12 @@ import (
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 var (
@@ -469,14 +469,14 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	ginkgo.By("Create log-backup.enable TiDB cluster with tls")
 		// 	masterClusterName := "tls-master"
 		// 	err := createLogBackupEnableTidbCluster(f, masterClusterName, backupVersion, enableTLS, skipCA)
-		// 	framework.ExpectNoError(err)
+		// 	k8se2e.ExpectNoError(err)
 		// 	ginkgo.By("Wait for tls-master TiDB cluster ready")
 		// 	err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, masterClusterName, tidbReadyTimeout, 0)
-		// 	framework.ExpectNoError(err)
+		// 	k8se2e.ExpectNoError(err)
 
 		// 	ginkgo.By("Create RBAC for backup")
 		// 	err = createRBAC(f)
-		// 	framework.ExpectNoError(err)
+		// 	k8se2e.ExpectNoError(err)
 
 		// 	logBackupName := "log-backup"
 		// 	typ := strings.ToLower(typeBR)
@@ -485,22 +485,22 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 		backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 		// 		backup.Spec.Mode = v1alpha1.BackupModeLog
 		// 	})
-		// 	framework.ExpectNoError(err)
-		// 	framework.ExpectNotEqual(logBackup.Status.CommitTs, "")
+		// 	k8se2e.ExpectNoError(err)
+		// 	k8se2e.ExpectNotEqual(logBackup.Status.CommitTs, "")
 
 		// 	ginkgo.By("wait log backup progress reach current ts")
 		// 	currentTS := strconv.FormatUint(config.GoTimeToTS(time.Now()), 10)
 		// 	err = brutil.WaitForLogBackupProgressReachTS(f.ExtClient, ns, logBackupName, currentTS, logbackupCatchUpTimeout)
-		// 	framework.ExpectNoError(err)
+		// 	k8se2e.ExpectNoError(err)
 
 		// 	ginkgo.By("Delete log backup")
 		// 	err = deleteBackup(f, logBackupName)
-		// 	framework.ExpectNoError(err)
+		// 	k8se2e.ExpectNoError(err)
 
 		// 	ginkgo.By("Check if all log backup files in storage is deleted")
 		// 	cleaned, err := f.Storage.IsDataCleaned(ctx, ns, logBackup.Spec.S3.Prefix) // now we only use s3
-		// 	framework.ExpectNoError(err)
-		// 	framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		// 	k8se2e.ExpectNoError(err)
+		// 	k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
 		// })
 	})
 
@@ -543,10 +543,15 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			err = brutil.WaitForBackupComplete(f.ExtClient, ns, backupName, backupCompleteTimeout)
 			framework.ExpectNoError(err)
 
+			// the behavior of recreate a pod when the old one is deleted for a Job has been changed since k8s 1.25.
+			// ref:
+			// - https://github.com/kubernetes/kubernetes/pull/110948
+			// - https://github.com/kubernetes/kubernetes/blob/v1.25.0/pkg/controller/job/job_controller.go#L720-L727
+			// - https://github.com/kubernetes/kubernetes/blob/v1.25.0/pkg/controller/job/job_controller.go#L781-L785
 			ginkgo.By("make sure it's not restarted by backoff retry policy")
 			num, err := getBackoffRetryNum(f, backup)
 			framework.ExpectNoError(err)
-			framework.ExpectEqual(num, 0)
+			framework.ExpectEqual(num <= 1, true)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)
@@ -595,7 +600,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("update backup evn, remove simulate panic")
-			backup, err = updateBackup(f, backup, func(backup *v1alpha1.Backup) {
+			backup, err = updateBackup(f, backup.Name, func(backup *v1alpha1.Backup) {
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
 			framework.ExpectNoError(err)
@@ -1185,14 +1190,19 @@ func continueLogBackupAndWaitForComplete(f *e2eframework.Framework, backup *v1al
 }
 
 // updateBackup update backup cr
-func updateBackup(f *e2eframework.Framework, backup *v1alpha1.Backup, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
+func updateBackup(f *e2eframework.Framework, backupName string, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
 	ns := f.Namespace.Name
+	ctx := context.TODO()
+	backup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(ctx, backupName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
 
 	if configure != nil {
 		configure(backup)
 	}
 
-	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{}); err != nil {
+	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Update(ctx, backup, metav1.UpdateOptions{}); err != nil {
 		return nil, err
 	}
 

@@ -15,6 +15,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"math"
 	"os"
 	"os/signal"
@@ -22,6 +23,9 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/ebs-warmup/filereader"
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
+
+	// Enable FIPS when necessary
+	_ "github.com/pingcap/tidb-operator/pkg/fips"
 )
 
 var (
@@ -35,6 +39,8 @@ var (
 )
 
 func main() {
+	klog.InitFlags(nil)
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
 	config := filereader.Config{
@@ -57,5 +63,7 @@ func main() {
 		signal.Stop(ch)
 		cancel()
 	}()
-	rd.RunAndClose(ctx)
+	if err := rd.RunAndClose(ctx); err != nil {
+		klog.ErrorS(err, "Failed to warmup. The checkpoint maybe stored.")
+	}
 }

@@ -26,7 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 // WaitForAPIServicesAvaiable waits for apiservices to be available
@@ -51,12 +52,12 @@ func WaitForAPIServicesAvaiable(client aggregatorclientset.Interface, selector l
 		}
 		for _, apiService := range apiServiceList.Items {
 			if !isAvaiable(apiService.Status) {
-				framework.Logf("APIService %q is not available yet", apiService.Name)
+				log.Logf("APIService %q is not available yet", apiService.Name)
 				return false, nil
 			}
 		}
 		for _, apiService := range apiServiceList.Items {
-			framework.Logf("APIService %q is available", apiService.Name)
+			log.Logf("APIService %q is available", apiService.Name)
 		}
 		return true, nil
 	})
@@ -84,12 +85,12 @@ func WaitForCRDsEstablished(client apiextensionsclientset.Interface, selector la
 		}
 		for _, crd := range crdList.Items {
 			if !isEstalbished(crd.Status) {
-				framework.Logf("CRD %q is not established yet", crd.Name)
+				log.Logf("CRD %q is not established yet", crd.Name)
 				return false, nil
 			}
 		}
 		for _, crd := range crdList.Items {
-			framework.Logf("CRD %q is established", crd.Name)
+			log.Logf("CRD %q is established", crd.Name)
 		}
 		return true, nil
 	})

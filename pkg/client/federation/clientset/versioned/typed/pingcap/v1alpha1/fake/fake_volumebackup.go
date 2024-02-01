@@ -21,7 +21,6 @@ import (
 	v1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -33,9 +32,9 @@ type FakeVolumeBackups struct {
 	ns   string
 }
 
-var volumebackupsResource = schema.GroupVersionResource{Group: "federation.pingcap.com", Version: "v1alpha1", Resource: "volumebackups"}
+var volumebackupsResource = v1alpha1.SchemeGroupVersion.WithResource("volumebackups")
 
-var volumebackupsKind = schema.GroupVersionKind{Group: "federation.pingcap.com", Version: "v1alpha1", Kind: "VolumeBackup"}
+var volumebackupsKind = v1alpha1.SchemeGroupVersion.WithKind("VolumeBackup")
 
 // Get takes name of the volumeBackup, and returns the corresponding volumeBackup object, and an error if there is any.
 func (c *FakeVolumeBackups) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.VolumeBackup, err error) {

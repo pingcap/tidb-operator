@@ -27,6 +27,7 @@ func TestScriptFormat(t *testing.T) {
 
 	scripts := []string{
 		componentCommonScript,
+		componentCommonWaitForDnsIpMatchScript,
 		pdStartScript,
 		pdStartSubScript,
 		pumpStartScript,
@@ -59,4 +60,13 @@ func TestScriptFormat(t *testing.T) {
 func validateScript(script string) error {
 	_, err := syntax.NewParser().Parse(strings.NewReader(script), "")
 	return err
+}
+
+func TestAddressesWithSchemeAndPort(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	result := addressesWithSchemeAndPort([]string{"example.com", "http://test.com:7777", "https://blah.com"}, "https://", 8080)
+
+	expected := []string{"https://example.com:8080", "https://test.com:8080", "https://blah.com:8080"}
+	g.Expect(result).Should(gomega.Equal(expected))
 }

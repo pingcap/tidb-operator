@@ -126,6 +126,18 @@ spec:
                 type: object
               resources:
                 properties:
+                  claims:
+                    items:
+                      properties:
+                        name:
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   limits:
                     additionalProperties:
                       anyOf:
@@ -203,6 +215,8 @@ spec:
               failed:
                 format: int32
                 type: integer
+              failedIndexes:
+                type: string
               phase:
                 type: string
               ready:
@@ -212,6 +226,9 @@ spec:
                 format: date-time
                 type: string
               succeeded:
+                format: int32
+                type: integer
+              terminating:
                 format: int32
                 type: integer
               uncountedTerminatedPods:

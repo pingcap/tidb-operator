@@ -117,6 +117,18 @@ type VolumeBackupMemberSpec struct {
 	// +optional
 	// +kubebuilder:default="all"
 	CalcSizeLevel string `json:"calcSizeLevel,omitempty"`
+	// Additional volumes of component pods, and the volume source must support to be attached to multiple pods.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+	// Additional volume mounts of component pods.
+	// +optional
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
+	// VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job
+	// +kubebuilder:default=600
+	VolumeBackupInitJobMaxActiveSeconds int `json:"volumeBackupInitJobMaxActiveSeconds,omitempty"`
+	// SnapshotsDeleteRatio represents the number of snapshots deleted per second in every data plane
+	// +kubebuilder:default=1
+	SnapshotsDeleteRatio float64 `json:"snapshotsDeleteRatio,omitempty"`
 }
 
 // BRConfig contains config for BR
@@ -372,6 +384,12 @@ type VolumeRestoreMemberSpec struct {
 	// WarmupStrategy
 	// +kubebuilder:default=hybrid
 	WarmupStrategy pingcapv1alpha1.RestoreWarmupStrategy `json:"warmupStrategy,omitempty"`
+	// Additional volumes of component pods, and the volume source must support to be attached to multiple pods.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+	// Additional volume mounts of component pods.
+	// +optional
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
 type VolumeRestoreMemberBackupInfo struct {

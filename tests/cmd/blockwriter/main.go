@@ -27,9 +27,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	flag "github.com/spf13/pflag"
 	"k8s.io/component-base/logs"
-	"k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var (

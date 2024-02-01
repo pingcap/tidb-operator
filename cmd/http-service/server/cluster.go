@@ -42,17 +42,17 @@ import (
 type ClusterStatus string
 
 const (
-	// the cluster is still being created
+	// ClusterStatusCreating the cluster is still being created
 	ClusterStatusCreating ClusterStatus = "creating"
-	// all components are running
+	// ClusterStatusRunning all components are running
 	ClusterStatusRunning ClusterStatus = "running"
-	// some components are deleting
+	// ClusterStatusDeleting some components are deleting
 	ClusterStatusDeleting ClusterStatus = "deleting"
-	// some components are scaling
+	// ClusterStatusScaling some components are scaling
 	ClusterStatusScaling ClusterStatus = "scaling"
-	// some components are upgrading
+	// ClusterStatusUpgrading some components are upgrading
 	ClusterStatusUpgrading ClusterStatus = "upgrading"
-	// some components are unavailable
+	// ClusterStatusUnavailable some components are unavailable
 	ClusterStatusUnavailable ClusterStatus = "unavailable"
 
 	helperImage = "busybox:1.36"
@@ -297,12 +297,12 @@ func (s *ClusterServer) ResumeCluster(ctx context.Context, req *api.ResumeCluste
 }
 
 func assembleTidbCluster(req *api.CreateClusterReq) (*v1alpha1.TidbCluster, error) {
-	pdRes, tikvRes, tidbRes, tiflashRes, err := convertClusterComponetsResources(req)
+	pdRes, tikvRes, tidbRes, tiflashRes, err := convertClusterComponentsResources(req)
 	if err != nil {
 		return nil, errors.New("invalid resource requirements")
 	}
 
-	pdCfg, tikvCfg, tidbCfg, tiflashCfg := convertClusterComponetsConfig(req)
+	pdCfg, tikvCfg, tidbCfg, tiflashCfg := convertClusterComponentsConfig(req)
 	tidbPort := int32(4000)
 	if req.Tidb.Port != nil {
 		tidbPort = int32(*req.Tidb.Port)
@@ -409,7 +409,7 @@ func assembleTidbMonitor(req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, erro
 		return nil, errors.New("prometheus must be specified if grafana is specified")
 	}
 
-	promRes, grafanaRes, err := convertMonitorComponetsResources(req)
+	promRes, grafanaRes, err := convertMonitorComponentsResources(req)
 	if err != nil {
 		return nil, errors.New("invalid resource requirements")
 	}
@@ -490,7 +490,7 @@ func assembleTidbMonitor(req *api.CreateClusterReq) (*v1alpha1.TidbMonitor, erro
 	return tm, nil
 }
 
-func convertClusterComponetsResources(req *api.CreateClusterReq) (pdRes, tikvRes, tidbRes, tiflash corev1.ResourceRequirements, err error) {
+func convertClusterComponentsResources(req *api.CreateClusterReq) (pdRes, tikvRes, tidbRes, tiflash corev1.ResourceRequirements, err error) {
 	if req.Pd == nil || req.Tikv == nil || req.Tidb == nil ||
 		req.Pd.Replicas == nil || req.Tikv.Replicas == nil || req.Tidb.Replicas == nil ||
 		*req.Pd.Replicas <= 0 || *req.Tikv.Replicas <= 0 || *req.Tidb.Replicas <= 0 ||
@@ -543,7 +543,7 @@ func convertConfigValue(x *structpb.Value) interface{} {
 	}
 }
 
-func convertClusterComponetsConfig(req *api.CreateClusterReq) (
+func convertClusterComponentsConfig(req *api.CreateClusterReq) (
 	pdCfg *v1alpha1.PDConfigWraper, tikvCfg *v1alpha1.TiKVConfigWraper,
 	tidbCfg *v1alpha1.TiDBConfigWraper, tiflashCfg *v1alpha1.TiFlashConfigWraper) {
 
@@ -575,7 +575,7 @@ func convertClusterComponetsConfig(req *api.CreateClusterReq) (
 	return
 }
 
-func convertMonitorComponetsResources(req *api.CreateClusterReq) (promRes, grafanaRes corev1.ResourceRequirements, err error) {
+func convertMonitorComponentsResources(req *api.CreateClusterReq) (promRes, grafanaRes corev1.ResourceRequirements, err error) {
 	if req.Prometheus != nil {
 		promRes, err = convertResourceRequirements(req.Prometheus.Resource)
 		if err != nil {
@@ -753,6 +753,24 @@ func (s *ClusterServer) GetCluster(ctx context.Context, req *api.GetClusterReq) 
 	tc, err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Get(ctx, tidbClusterName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
+			// assume ti's secret wouldn't block the deletion of the TidbCluster
+			existing, err := checkPodPVCExisting(ctx, kubeCli, req.ClusterId)
+			if err != nil {
+				logger.Error("Check pods and pvcs failed", zap.Error(err))
+				message := fmt.Sprintf("check pods and pvcs failed: %s", err.Error())
+				setResponseStatusCodes(ctx, http.StatusInternalServerError)
+				return &api.GetClusterResp{Success: false, Message: &message}, nil
+			}
+			if existing {
+				// if tc not found, but Pods or PVCs exist, return with Deleting status
+				return &api.GetClusterResp{
+					Success: true,
+					Data: &api.ClusterInfo{
+						ClusterId: req.ClusterId,
+						Status:    string(ClusterStatusDeleting),
+					}}, nil
+			}
+
 			logger.Warn("TidbCluster not found", zap.Error(err))
 			message := fmt.Sprintf("TidbCluster %s not found", req.ClusterId)
 			setResponseStatusCodes(ctx, http.StatusNotFound)
@@ -842,7 +860,7 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 			Name:      strings.TrimPrefix(member.PodName, namePrefix),
 			Id:        id,
 			StartTime: getPodStartTime(podList, member.PodName),
-			State:     string(member.State),
+			State:     member.State,
 		})
 	}
 
@@ -882,7 +900,7 @@ func convertToClusterInfo(logger *zap.Logger, kubeCli kubernetes.Interface, tc *
 				Name:      strings.TrimPrefix(member.PodName, namePrefix),
 				Id:        id,
 				StartTime: getPodStartTime(podList, member.PodName),
-				State:     string(member.State),
+				State:     member.State,
 			})
 			if member.State == v1alpha1.TiKVStateUp {
 				tiflashReadyCount++
@@ -1101,6 +1119,43 @@ func getPodStartTime(podList *corev1.PodList, name string) string {
 	return ""
 }
 
+func checkPodPVCExisting(ctx context.Context, kubeCli kubernetes.Interface, namespace string) (bool, error) {
+	ls := metav1.FormatLabelSelector(&metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      label.InstanceLabelKey,
+				Operator: metav1.LabelSelectorOpIn,
+				Values: []string{
+					tidbClusterName,
+					tidbMonitorName,
+					tidbInitializerName,
+				},
+			},
+		},
+	})
+
+	podList, err := kubeCli.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: ls,
+	})
+	if err != nil {
+		return false, err
+	}
+	if len(podList.Items) > 0 {
+		return true, nil
+	}
+
+	pvcList, err := kubeCli.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: ls,
+	})
+	if err != nil {
+		return false, err
+	}
+	if len(pvcList.Items) > 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteClusterReq) (*api.DeleteClusterResp, error) {
 	k8sID := getKubernetesID(ctx)
 	opCli := s.KubeClient.GetOperatorClient(k8sID)
@@ -1145,6 +1200,30 @@ func (s *ClusterServer) DeleteCluster(ctx context.Context, req *api.DeleteCluste
 			return &api.DeleteClusterResp{Success: false, Message: &message}, nil
 		}
 	}
+
+	// get restores for this cluster
+	// NOTE: we list all restores in the cluster's ns now as we only have one cluster in one ns
+	restoreList, err := opCli.PingcapV1alpha1().Restores(req.ClusterId).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		logger.Error("List TidbRestore failed", zap.Error(err))
+		setResponseStatusCodes(ctx, http.StatusInternalServerError)
+		message := fmt.Sprintf("list TidbRestore failed: %s", err.Error())
+		return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+	}
+	for _, restore := range restoreList.Items {
+		// delete restore for this cluster
+		if err := opCli.PingcapV1alpha1().Restores(req.ClusterId).Delete(ctx, restore.Name, metav1.DeleteOptions{}); err != nil {
+			if apierrors.IsNotFound(err) {
+				logger.Info("TidbRestore not found", zap.String("restore", restore.Name), zap.Error(err))
+			} else {
+				logger.Error("Delete TidbRestore failed", zap.String("restore", restore.Name), zap.Error(err))
+				setResponseStatusCodes(ctx, http.StatusInternalServerError)
+				message := fmt.Sprintf("delete TidbRestore %s failed: %s", restore.Name, err.Error())
+				return &api.DeleteClusterResp{Success: false, Message: &message}, nil
+			}
+		}
+	}
+
 	// delete tc
 	if err := opCli.PingcapV1alpha1().TidbClusters(req.ClusterId).Delete(ctx, tidbClusterName, metav1.DeleteOptions{}); err != nil {
 		if apierrors.IsNotFound(err) {

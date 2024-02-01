@@ -14,6 +14,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -68,6 +70,10 @@ const (
 	DiscoveryMemberType MemberType = "discovery"
 	// PDMemberType is pd member type
 	PDMemberType MemberType = "pd"
+	// PDMSTSOMemberType is pd microservice tso member type
+	PDMSTSOMemberType MemberType = "pdms-tso"
+	// PDMSSchedulingMemberType is pd microservice scheduling member type
+	PDMSSchedulingMemberType MemberType = "pdms-scheduling"
 	// TiDBMemberType is tidb member type
 	TiDBMemberType MemberType = "tidb"
 	// TiKVMemberType is tikv member type
@@ -101,6 +107,21 @@ const (
 	UnknownMemberType MemberType = "unknown"
 )
 
+func PDMSMemberType(name string) MemberType {
+	switch name {
+	case "tso":
+		return PDMSTSOMemberType
+	case "scheduling":
+		return PDMSSchedulingMemberType
+	default:
+		panic(fmt.Sprintf("unknown pd ms name %s", name))
+	}
+}
+
+func IsPDMSMemberType(name MemberType) bool {
+	return name == PDMSTSOMemberType || name == PDMSSchedulingMemberType
+}
+
 // MemberPhase is the current state of member
 type MemberPhase string
 
@@ -131,6 +152,13 @@ type StartScriptVersion string
 const (
 	StartScriptV1 StartScriptVersion = "v1"
 	StartScriptV2 StartScriptVersion = "v2"
+)
+
+type StartScriptV2FeatureFlag string
+
+const (
+	StartScriptV2FeatureFlagWaitForDnsNameIpMatch          = "WaitForDnsNameIpMatch"
+	StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery = "PreferPDAddressesOverDiscovery"
 )
 
 // +genclient
@@ -192,6 +220,10 @@ type TidbClusterSpec struct {
 	// PD cluster spec
 	// +optional
 	PD *PDSpec `json:"pd,omitempty"`
+
+	// PDMS cluster spec
+	// +optional
+	PDMS []*PDMSSpec `json:"pdms,omitempty"`
 
 	// TiDB cluster spec
 	// +optional
@@ -375,12 +407,19 @@ type TidbClusterSpec struct {
 
 	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
 	PreferIPv6 bool `json:"preferIPv6,omitempty"`
+
+	// Feature flags used by v2 startup script to enable various features.
+	// Examples of supported feature flags:
+	// - WaitForDnsNameIpMatch indicates whether PD and TiKV has to wait until local IP address matches the one published to external DNS
+	// - PreferPDAddressesOverDiscovery advises start script to use TidbClusterSpec.PDAddresses (if supplied) as argument for pd-server, tikv-server and tidb-server commands
+	StartScriptV2FeatureFlags []StartScriptV2FeatureFlag `json:"startScriptV2FeatureFlags,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
 	ClusterID  string                    `json:"clusterID,omitempty"`
 	PD         PDStatus                  `json:"pd,omitempty"`
+	PDMS       map[string]*PDMSStatus    `json:"pdms,omitempty"`
 	TiKV       TiKVStatus                `json:"tikv,omitempty"`
 	TiDB       TiDBStatus                `json:"tidb,omitempty"`
 	Pump       PumpStatus                `json:"pump,omitempty"`
@@ -506,6 +545,69 @@ type PDSpec struct {
 	// Note that this is deprecated, we should just set `dashboard.internal-proxy` in `pd.config`.
 	// +optional
 	EnableDashboardInternalProxy *bool `json:"enableDashboardInternalProxy,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
+	// Start up script version
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1"
+	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
+
+	// Timeout threshold when pd get started
+	// +kubebuilder:default=30
+	StartTimeout int `json:"startTimeout,omitempty"`
+
+	// Mode is the mode of PD cluster
+	// +optional
+	// +kubebuilder:validation:Enum:="";"ms"
+	Mode string `json:"mode,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// PDMSSpec contains details of PD Micro Service
+type PDMSSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Name of the PD Micro Service
+	// +kubebuilder:validation:Enum:="tso";"scheduling"
+	Name string `json:"name"`
+
+	// Specify a Service Account for pd ms
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/pd
+	// +optional
+	BaseImage *string `json:"baseImage"`
+
+	// Service defines a Kubernetes service of PD cluster.
+	// Optional: Defaults to `.spec.services` in favor of backward compatibility
+	// +optional
+	Service *ServiceSpec `json:"service,omitempty"`
+
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
+	// Config is the Configuration of pd-servers
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Config *PDConfigWraper `json:"config,omitempty"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// which used by Dashboard.
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 
 	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
 	// +optional
@@ -1305,6 +1407,22 @@ type PDStatus struct {
 	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
+// PDMSStatus is PD Micro Service Status
+type PDMSStatus struct {
+	Name string `json:"name,omitempty"`
+	// +optional
+	Synced      bool                    `json:"synced"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	// Members contains other service in current TidbCluster
+	Members []string `json:"members,omitempty"`
+	Image   string   `json:"image,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
 // PDMember is PD member
 type PDMember struct {
 	Name string `json:"name"`
@@ -1895,6 +2013,10 @@ type CleanOption struct {
 	BackoffEnabled bool `json:"backoffEnabled,omitempty"`
 
 	BatchDeleteOption `json:",inline"`
+
+	// SnapshotsDeleteRatio represents the number of snapshots deleted per second
+	// +kubebuilder:default=1
+	SnapshotsDeleteRatio float64 `json:"snapshotsDeleteRatio,omitempty"`
 }
 
 type Progress struct {
@@ -2009,6 +2131,16 @@ type BackupSpec struct {
 
 	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
 	BackoffRetryPolicy BackoffRetryPolicy `json:"backoffRetryPolicy,omitempty"`
+
+	// Additional volumes of component pod.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+	// Additional volume mounts of component pod.
+	// +optional
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
+	// VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job
+	// +kubebuilder:default=600
+	VolumeBackupInitJobMaxActiveSeconds int `json:"volumeBackupInitJobMaxActiveSeconds,omitempty"`
 }
 
 // FederalVolumeBackupPhase represents a phase to execute in federal volume backup
@@ -2489,6 +2621,13 @@ type RestoreSpec struct {
 
 	// PriorityClassName of Restore Job Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// Additional volumes of component pod.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+	// Additional volume mounts of component pod.
+	// +optional
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
 // FederalVolumeRestorePhase represents a phase to execute in federal volume restore

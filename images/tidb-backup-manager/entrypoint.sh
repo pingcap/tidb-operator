@@ -15,6 +15,16 @@
 
 set -e
 
+# The trap command is to make sure the sidecars are terminated when the jobs are finished
+cleanup() {
+    if [ ! -d "/tmp/pod" ]; then
+        mkdir -p /tmp/pod
+    fi
+    touch /tmp/pod/main-terminated
+}
+
+trap cleanup EXIT
+
 export GOOGLE_APPLICATION_CREDENTIALS=/tmp/google-credentials.json
 echo "Create rclone.conf file."
 cat <<EOF > /tmp/rclone.conf

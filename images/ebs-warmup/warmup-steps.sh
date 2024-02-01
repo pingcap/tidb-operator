@@ -34,6 +34,22 @@ Supported flags:
 EOF
 }
 
+warmup_by_file() {
+    checkpoint=.com.pingcap.tidb.operator.ebs.warmup.checkpoint
+    /warmup --type=whole --files="$1" -P256 --direct --checkpoint.at="$1/$checkpoint"
+}
+
+
+# The trap command is to make sure the sidecars are terminated when the jobs are finished
+cleanup() {
+    if [ ! -d "/tmp/pod" ]; then
+        mkdir -p /tmp/pod
+    fi
+    touch /tmp/pod/main-terminated
+}
+
+trap cleanup EXIT
+
 operation=none
 while [ $# -gt 0 ]; do
     case $1 in
@@ -64,7 +80,7 @@ while [ $# -gt 0 ]; do
                             --thread=1 --filename=/dev/"$device" &
                     fi
                     ;;
-                fs) /warmup --type=whole --files="$1" -P256 --direct &
+                fs) warmup_by_file "$1" &
                     ;;
                 *) die "internal error: unsupported operation $1; forgot to call --block or --fs?"
                     ;;

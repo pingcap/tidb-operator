@@ -1,6 +1,6 @@
 FROM debian:buster-slim
 
-ENV KUBECTL_VERSION=v1.23.17
+ENV KUBECTL_VERSION=v1.28.5
 ENV HELM_VERSION=v3.11.0
 
 # python is required by gcloud
@@ -27,8 +27,6 @@ RUN curl -L "https://github.com/jetstack/cert-manager/releases/download/v1.12.2/
 ADD minio /minio
 
 ADD tidb-operator /charts/e2e/tidb-operator
-ADD tidb-cluster /charts/e2e/tidb-cluster
-ADD tidb-backup /charts/e2e/tidb-backup
 ADD tidb-drainer /charts/e2e/tidb-drainer
 ADD manifests /manifests/e2e
 

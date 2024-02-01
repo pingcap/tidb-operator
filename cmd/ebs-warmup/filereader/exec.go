@@ -46,11 +46,13 @@ type StatedFile struct {
 }
 
 func StatFilesByGlob(glob string) ([]StatedFile, error) {
+	klog.V(1).InfoS("Entering dir.", "recPath", glob)
 	files, err := filepath.Glob(glob)
 	if err != nil {
 		return nil, errors.Annotatef(err, "failed to glob files with glob %s", glob)
 	}
 	stats := make([]StatedFile, 0, len(files))
+	klog.V(3).InfoS("Working over files.", "files", files)
 	for _, file := range files {
 		s, err := os.Stat(file)
 		if err != nil {
@@ -58,6 +60,7 @@ func StatFilesByGlob(glob string) ([]StatedFile, error) {
 		}
 		if s.IsDir() {
 			recPath := filepath.Join(file, "*")
+			klog.V(2).InfoS("Recursively entering dir.", "recPath", recPath)
 			recContent, err := StatFilesByGlob(recPath)
 			if err != nil {
 				return nil, errors.Annotatef(err, "failed to stat files in dir %s (globing %s)", file, recPath)
@@ -283,31 +286,40 @@ func New(config Config) *ExecContext {
 	return execCtx
 }
 
-func (execCtx *ExecContext) RunAndClose(ctx context.Context) {
+func (execCtx *ExecContext) RunAndClose(ctx context.Context) error {
 	defer execCtx.cancel()
 
-	total := uint64(0)
 	klog.InfoS("Using checkpoint.", "checkpoint", execCtx.lastSent, "time", time.UnixMilli(int64(execCtx.lastSent)).String())
-
+	var err error
 	switch execCtx.config.Type {
 	case "footer":
-		WarmUpFooters(execCtx.config.Files, func(rf tasks.ReadFile) bool {
+		err = WarmUpFooters(execCtx.config.Files, func(rf tasks.ReadFile) bool {
 			return execCtx.sendToWorker(ctx, rf)
 		})
 	case "whole":
-		WarmUpWholeFile(execCtx.config.Files, func(rf tasks.ReadFile) bool {
+		err = WarmUpWholeFile(execCtx.config.Files, func(rf tasks.ReadFile) bool {
 			return execCtx.sendToWorker(ctx, rf)
 		})
+	}
+	if err != nil {
+		klog.ErrorS(err, "Failed to initialize the task.")
+		return err
 	}
 
 	for _, wkr := range execCtx.wkrs {
 		close(wkr)
 	}
-	execCtx.eg.Wait()
+	if err := execCtx.eg.Wait(); err != nil {
+		return err
+	}
 
 	take := time.Since(execCtx.start)
+	total := atomic.LoadUint64(&execCtx.total)
 	rate := float64(total) / take.Seconds()
 	klog.InfoS("Done.", "take", take, "total", total, "rate", fmt.Sprintf("%s/s", units.HumanSize(rate)))
+	err = os.Remove(execCtx.config.CheckpointFile)
+	klog.InfoS("Try remove the checkpoint file.", "err", err, "file", execCtx.config.CheckpointFile)
+	return nil
 }
 
 func (execCtx *ExecContext) checkpointTick(ctx context.Context) {
