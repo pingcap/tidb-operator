@@ -110,7 +110,7 @@ func (bo *Options) deleteSnapshotsAndBackupMeta(ctx context.Context, backup *v1a
 		deleteRatio = backup.Spec.CleanOption.SnapshotsDeleteRatio
 	}
 	if err = bo.deleteVolumeSnapshots(metaInfo, deleteRatio); err != nil {
-		klog.Errorf("delete volume snapshot failure, a mannual check or delete aciton require.")
+		klog.Errorf("delete volume snapshot failure, a manual check or delete action require.")
 		return err
 	}
 
