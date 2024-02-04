@@ -32,12 +32,10 @@ spec:
       baseImage: pingcap/pd
       version: nightly
       replicas: 2
-      config: {}
     - name: "scheduling"
       baseImage: pingcap/pd
       version: nightly
       replicas: 1
-      config: {}
   tikv:
     baseImage: pingcap/tikv
     version: v7.4.0

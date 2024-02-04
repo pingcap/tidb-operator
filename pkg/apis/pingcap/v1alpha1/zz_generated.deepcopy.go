@@ -3400,6 +3400,18 @@ func (in *PDMSSpec) DeepCopyInto(out *PDMSSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.StorageClassName != nil {
+		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
+	if in.StorageVolumes != nil {
+		in, out := &in.StorageVolumes, &out.StorageVolumes
+		*out = make([]StorageVolume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -3420,6 +3432,21 @@ func (in *PDMSStatus) DeepCopyInto(out *PDMSStatus) {
 		in, out := &in.StatefulSet, &out.StatefulSet
 		*out = new(appsv1.StatefulSetStatus)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.Volumes != nil {
+		in, out := &in.Volumes, &out.Volumes
+		*out = make(map[StorageVolumeName]*StorageVolumeStatus, len(*in))
+		for key, val := range *in {
+			var outVal *StorageVolumeStatus
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = new(StorageVolumeStatus)
+				(*in).DeepCopyInto(*out)
+			}
+			(*out)[key] = outVal
+		}
 	}
 	if in.Members != nil {
 		in, out := &in.Members, &out.Members

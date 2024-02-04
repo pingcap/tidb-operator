@@ -101,8 +101,7 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
-		Scheme:  tc.Scheme(),
-		DataDir: constants.PDMSDataVolumeMountPath,
+		Scheme: tc.Scheme(),
 	}
 
 	model.PDAddress = fmt.Sprintf("%s://%s-pd:%d", tc.Scheme(), tc.GetName(), v1alpha1.DefaultPDClientPort)

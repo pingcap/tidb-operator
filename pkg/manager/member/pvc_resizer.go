@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -202,6 +203,19 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, status v1alpha1
 			ctx.desiredVolumeQuantity[v1alpha1.GetStorageVolumeName("", v1alpha1.PDMemberType)] = quantity
 		}
 		storageVolumes = tc.Spec.PD.StorageVolumes
+	// PD Micro Service
+	case v1alpha1.PDMSTSOMemberType, v1alpha1.PDMSSchedulingMemberType:
+		pdmsRequirement := util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PDMSLabel(comp.String())})
+		ctx.selector = selector.Add(*pdmsRequirement)
+		for _, component := range tc.Spec.PDMS {
+			if strings.Contains(comp.String(), component.Name) {
+				if tc.Status.PDMS[comp.String()].Volumes == nil {
+					tc.Status.PDMS[comp.String()].Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
+				}
+				storageVolumes = component.StorageVolumes
+				break
+			}
+		}
 	case v1alpha1.TiDBMemberType:
 		ctx.selector = selector.Add(*tidbRequirement)
 		if tc.Status.TiDB.Volumes == nil {
