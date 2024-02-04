@@ -10827,7 +10827,7 @@ ServiceSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Service defines a Kubernetes service of PD cluster.
+<p>Service defines a Kubernetes service of PD Micro Service cluster.
 Optional: Defaults to <code>.spec.services</code> in favor of backward compatibility</p>
 </td>
 </tr>
@@ -10855,7 +10855,7 @@ PDConfigWraper
 </td>
 <td>
 <em>(Optional)</em>
-<p>Config is the Configuration of pd-servers</p>
+<p>Config is the Configuration of pd Micro Service servers</p>
 </td>
 </tr>
 <tr>
@@ -10893,6 +10893,33 @@ string
 <td>
 <em>(Optional)</em>
 <p>Start up script version</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for PD Micro Service log storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes configure additional storage for PD Micro Service pods.</p>
 </td>
 </tr>
 <tr>
@@ -10967,6 +10994,19 @@ Kubernetes apps/v1.StatefulSetStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
 </td>
 </tr>
 <tr>
@@ -15604,6 +15644,7 @@ LocalStorageProvider
 <p>
 (<em>Appears on:</em>
 <a href="#ngmonitoringspec">NGMonitoringSpec</a>, 
+<a href="#pdmsspec">PDMSSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
@@ -15680,6 +15721,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#masterstatus">MasterStatus</a>, 
+<a href="#pdmsstatus">PDMSStatus</a>, 
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
 <a href="#ticdcstatus">TiCDCStatus</a>, 
