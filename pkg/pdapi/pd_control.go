@@ -267,6 +267,16 @@ func (pdc *defaultPDControl) GetPDMSClient(namespace Namespace, tcName, serviceN
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
+	if config.tlsEnable {
+		tlsConfig, err := GetTLSConfig(pdc.secretLister, config.tlsSecretNamespace, config.tlsSecretName)
+		if err != nil {
+			klog.Errorf("Unable to get tls config for tidb cluster %q in %s, pdms client may not work: %v", tcName, namespace, err)
+			return &pdMSClient{url: config.clientURL, httpClient: &http.Client{Timeout: DefaultTimeout}}
+		}
+
+		return NewPDMSClient(serviceName, config.clientURL, DefaultTimeout, tlsConfig)
+	}
+
 	if _, ok := pdc.pdMSClients[config.clientURL]; !ok {
 		pdc.pdMSClients[config.clientURL] = NewPDMSClient(serviceName, config.clientURL, DefaultTimeout, nil)
 	}
