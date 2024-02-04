@@ -499,10 +499,11 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		},
 	}
 	if tc.IsTLSClusterEnabled() {
+		// reuse the secret created for pd
 		vols = append(vols, corev1.Volume{
 			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDMSLabel(curService)),
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
 				},
 			},
 		})
