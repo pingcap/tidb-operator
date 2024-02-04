@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -495,10 +496,11 @@ func newFakePDMSMemberManager() (*pdMSMemberManager, cache.Indexer, cache.Indexe
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	pdMSManager := &pdMSMemberManager{
-		deps:      fakeDeps,
-		scaler:    NewFakePDMSScaler(),
-		upgrader:  NewFakePDMSUpgrader(),
-		suspender: suspender.NewFakeSuspender(),
+		deps:              fakeDeps,
+		scaler:            NewFakePDMSScaler(),
+		upgrader:          NewFakePDMSUpgrader(),
+		suspender:         suspender.NewFakeSuspender(),
+		podVolumeModifier: &volumes.FakePodVolumeModifier{},
 	}
 	return pdMSManager, podIndexer, pvcIndexer
 }
@@ -1093,7 +1095,36 @@ func TestGetPDMSConfigMap(t *testing.T) {
 					PDMS: []*v1alpha1.PDMSSpec{{Name: "tso"}},
 				},
 			},
-			expected: nil,
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pdms-tso",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pdms-tso",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file":    "",
+				},
+			},
 		},
 		{
 			name: "basic",

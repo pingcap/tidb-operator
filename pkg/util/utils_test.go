@@ -652,6 +652,42 @@ func TestBuildAdditionalVolumeAndVolumeMount(t *testing.T) {
 			},
 		},
 		{
+			name: "pdms spec storageVolumes",
+			storageVolumes: []v1alpha1.StorageVolume{
+				{
+					Name:        "log",
+					StorageSize: "2Gi",
+					MountPath:   "/var/lib/log",
+				}},
+			memberType: v1alpha1.PDMSTSOMemberType,
+			testResult: func(volMounts []corev1.VolumeMount, volumeClaims []corev1.PersistentVolumeClaim) {
+				g := NewGomegaWithT(t)
+				q, _ := resource.ParseQuantity("2Gi")
+				g.Expect(volumeClaims).To(Equal([]corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: v1alpha1.PDMSTSOMemberType.String() + "-log",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: q,
+								},
+							},
+						},
+					},
+				}))
+				g.Expect(volMounts).To(Equal([]corev1.VolumeMount{
+					{
+						Name: fmt.Sprintf("%s-%s", v1alpha1.PDMSTSOMemberType, "log"), MountPath: "/var/lib/log",
+					},
+				}))
+			},
+		},
+		{
 			name:             "tikv spec multiple storageVolumes",
 			storageClassName: pointer.StringPtr("ns2"),
 			storageVolumes: []v1alpha1.StorageVolume{
