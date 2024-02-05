@@ -713,7 +713,12 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 }
 
 func (m *pdMSMemberManager) getPDMSConfigMap(tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) (*corev1.ConfigMap, error) {
-	config := curSpec.Config.DeepCopy() // use copy to not update tc spec
+	var config *v1alpha1.PDConfigWraper
+	if curSpec.Config != nil {
+		config = curSpec.Config.DeepCopy() // use copy to not update tc spec
+	} else {
+		config = v1alpha1.NewPDConfig()
+	}
 
 	curService := curSpec.Name
 	// override CA if tls enabled
