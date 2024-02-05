@@ -1200,6 +1200,61 @@ func TestGetPDMSConfigMap(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "enable is tls",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v7.2.0",
+						},
+						Mode: "ms",
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+					PDMS: []*v1alpha1.PDMSSpec{{Name: "tso"}},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pdms-tso",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pdms-tso",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file": `[security]
+  cacert-path = "/var/lib/pd-tls/ca.crt"
+  cert-path = "/var/lib/pd-tls/tls.crt"
+  key-path = "/var/lib/pd-tls/tls.key"
+`,
+				},
+			},
+		},
 	}
 
 	for i := range testCases {
