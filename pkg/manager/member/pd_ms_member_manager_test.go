@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -495,10 +496,11 @@ func newFakePDMSMemberManager() (*pdMSMemberManager, cache.Indexer, cache.Indexe
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	pdMSManager := &pdMSMemberManager{
-		deps:      fakeDeps,
-		scaler:    NewFakePDMSScaler(),
-		upgrader:  NewFakePDMSUpgrader(),
-		suspender: suspender.NewFakeSuspender(),
+		deps:              fakeDeps,
+		scaler:            NewFakePDMSScaler(),
+		upgrader:          NewFakePDMSUpgrader(),
+		suspender:         suspender.NewFakeSuspender(),
+		podVolumeModifier: &volumes.FakePodVolumeModifier{},
 	}
 	return pdMSManager, podIndexer, pvcIndexer
 }
@@ -1093,7 +1095,36 @@ func TestGetPDMSConfigMap(t *testing.T) {
 					PDMS: []*v1alpha1.PDMSSpec{{Name: "tso"}},
 				},
 			},
-			expected: nil,
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pdms-tso",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pdms-tso",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file":    "",
+				},
+			},
 		},
 		{
 			name: "basic",
@@ -1165,6 +1196,141 @@ func TestGetPDMSConfigMap(t *testing.T) {
 [schedule]
   disable-remove-down-replica = true
   max-store-down-time = "5m"
+`,
+				},
+			},
+		},
+		{
+			name: "enable tls when config is nil",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v7.2.0",
+						},
+						Mode: "ms",
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+					PDMS: []*v1alpha1.PDMSSpec{{Name: "tso"}},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pdms-tso",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pdms-tso",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file": `[security]
+  cacert-path = "/var/lib/pd-tls/ca.crt"
+  cert-path = "/var/lib/pd-tls/tls.crt"
+  key-path = "/var/lib/pd-tls/tls.key"
+`,
+				},
+			},
+		},
+		{
+			name: "basic config with tls",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v7.2.0",
+						},
+						Mode: "ms",
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+					PDMS: []*v1alpha1.PDMSSpec{
+						{
+							Name: "tso",
+							ComponentSpec: v1alpha1.ComponentSpec{
+								ConfigUpdateStrategy: &updateStrategy,
+							},
+							Config: mustPDConfig(&v1alpha1.PDConfig{
+								Schedule: &v1alpha1.PDScheduleConfig{
+									MaxStoreDownTime:         pointer.StringPtr("5m"),
+									DisableRemoveDownReplica: pointer.BoolPtr(true),
+								},
+								Replication: &v1alpha1.PDReplicationConfig{
+									MaxReplicas:    func() *uint64 { i := uint64(5); return &i }(),
+									LocationLabels: []string{"node", "rack"},
+								},
+							}),
+						},
+					},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pdms-tso",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pdms-tso",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file": `[replication]
+  location-labels = ["node", "rack"]
+  max-replicas = 5
+
+[schedule]
+  disable-remove-down-replica = true
+  max-store-down-time = "5m"
+
+[security]
+  cacert-path = "/var/lib/pd-tls/ca.crt"
+  cert-path = "/var/lib/pd-tls/tls.crt"
+  key-path = "/var/lib/pd-tls/tls.key"
 `,
 				},
 			},

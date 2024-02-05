@@ -317,7 +317,6 @@ type PdMSStartScriptModel struct {
 	CommonModel
 
 	Scheme    string
-	DataDir   string
 	PDAddress string
 }
 

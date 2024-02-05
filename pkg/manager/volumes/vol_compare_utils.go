@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -234,7 +235,14 @@ func (u *volCompareUtils) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha
 		desiredVolumes = append(desiredVolumes, d)
 
 		storageVolumes = tc.Spec.PD.StorageVolumes
-
+	case v1alpha1.PDMSSchedulingMemberType, v1alpha1.PDMSTSOMemberType:
+		for _, component := range tc.Spec.PDMS {
+			if strings.Contains(mt.String(), component.Name) {
+				defaultScName = component.StorageClassName
+				storageVolumes = component.StorageVolumes
+				break
+			}
+		}
 	case v1alpha1.TiDBMemberType:
 		defaultScName = tc.Spec.TiDB.StorageClassName
 		storageVolumes = tc.Spec.TiDB.StorageVolumes
