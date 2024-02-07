@@ -163,91 +163,14 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 	}
 
 	var errs []error
-	oldTikvGCTime, err := bm.GetTikvGCLifeTime(ctx, db)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TikvGCVariable, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetTikvGCLifeTimeFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-	klog.Infof("cluster %s %s is %s", bm, constants.TikvGCVariable, oldTikvGCTime)
-
-	oldTikvGCTimeDuration, err := time.ParseDuration(oldTikvGCTime)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("cluster %s parse old %s failed, err: %s", bm, constants.TikvGCVariable, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "ParseOldTikvGCLifeTimeFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-
-	var tikvGCTimeDuration time.Duration
-	var tikvGCLifeTime string
-	if backup.Spec.TikvGCLifeTime != nil {
-		tikvGCLifeTime = *backup.Spec.TikvGCLifeTime
-		tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("cluster %s parse configured %s failed, err: %s", bm, constants.TikvGCVariable, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
-				Message: err.Error(),
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-	} else {
-		tikvGCLifeTime = constants.TikvGCLifeTime
-		tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("cluster %s parse default %s failed, err: %s", bm, constants.TikvGCVariable, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "ParseDefaultTikvGCLifeTimeFailed",
-				Message: err.Error(),
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-	}
-
-	if oldTikvGCTimeDuration < tikvGCTimeDuration {
-		err = bm.SetTikvGCLifeTime(ctx, db, tikvGCLifeTime)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", bm, constants.TikvGCLifeTime, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "SetTikvGCLifeTimeFailed",
-				Message: err.Error(),
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-		klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
-	}
 
 	backupFullPath := bm.getBackupFullPath()
 	// TODO: Concurrent get file size and upload backup data to speed up processing time
-	archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
-	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
+	// archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
+	// remotePath := strings.TrimPrefix(backupFullPath, constants.BackupRootPath+"/")
+	remotePath := bm.getBucketPath()
 	bucketURI := bm.getDestBucketURI(remotePath)
+	klog.Infof("remote path is %s, bucketURI is %s", remotePath, bucketURI)
 	updatePathStatus := &controller.BackupUpdateStatus{
 		BackupPath: &bucketURI,
 	}
@@ -260,29 +183,6 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 	}
 
 	backupErr := bm.dumpTidbClusterData(ctx, backupFullPath, backup)
-	if oldTikvGCTimeDuration < tikvGCTimeDuration {
-		// use another context to revert `tikv_gc_life_time` back.
-		// `DefaultTerminationGracePeriodSeconds` for a pod is 30, so we use a smaller timeout value here.
-		ctx2, cancel2 := context.WithTimeout(context.Background(), 25*time.Second)
-		defer cancel2()
-		err = bm.SetTikvGCLifeTime(ctx2, db, oldTikvGCTime)
-		if err != nil {
-			if backupErr != nil {
-				errs = append(errs, backupErr)
-			}
-			errs = append(errs, err)
-			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", bm, oldTikvGCTime, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "ResetTikvGCLifeTimeFailed",
-				Message: err.Error(),
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-		klog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
-	}
 
 	if backupErr != nil {
 		errs = append(errs, backupErr)
@@ -313,26 +213,27 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 	}
 	klog.Infof("get cluster %s commitTs %s success", bm, commitTs)
 
-	err = archiveBackupData(backupFullPath, archiveBackupPath)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("archive cluster %s backup data %s failed, err: %s", bm, archiveBackupPath, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "ArchiveBackupDataFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-	klog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
+	// err = archiveBackupData(backupFullPath, archiveBackupPath)
+	// if err != nil {
+	// 	errs = append(errs, err)
+	// 	klog.Errorf("archive cluster %s backup data %s failed, err: %s", bm, archiveBackupPath, err)
+	// 	uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	// 		Type:    v1alpha1.BackupFailed,
+	// 		Status:  corev1.ConditionTrue,
+	// 		Reason:  "ArchiveBackupDataFailed",
+	// 		Message: err.Error(),
+	// 	}, nil)
+	// 	errs = append(errs, uerr)
+	// 	return errorutils.NewAggregate(errs)
+	// }
+	// klog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
 
 	opts := util.GetOptions(backup.Spec.StorageProvider)
-	size, err := getBackupSize(ctx, archiveBackupPath, opts)
+	// size, err := getBackupSize(ctx, archiveBackupPath, opts)
+	size, err := getBackupSize(ctx, backupFullPath, opts)
 	if err != nil {
 		errs = append(errs, err)
-		klog.Errorf("get cluster %s archived backup file %s size %d failed, err: %s", bm, archiveBackupPath, size, err)
+		klog.Errorf("get cluster %s backup file %s size %d failed, err: %s", bm, backupFullPath, size, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -342,12 +243,13 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
-	klog.Infof("get cluster %s archived backup file %s size %d success", bm, archiveBackupPath, size)
+	klog.Infof("get cluster %s backup file %s size %d success", bm, backupFullPath, size)
 
 	// archive backup data successfully, origin dir can be deleted safely
-	os.RemoveAll(backupFullPath)
+	// os.RemoveAll(backupFullPath)
 
-	err = bm.backupDataToRemote(ctx, archiveBackupPath, bucketURI, opts)
+	// err = bm.backupDataToRemote(ctx, archiveBackupPath, bucketURI, opts)
+	err = bm.backupDataToRemote(ctx, backupFullPath, bucketURI, opts)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("backup cluster %s data to %s failed, err: %s", bm, bm.StorageType, err)
@@ -362,7 +264,7 @@ func (bm *BackupManager) performBackup(ctx context.Context, backup *v1alpha1.Bac
 	}
 	klog.Infof("backup cluster %s data to %s success", bm, bm.StorageType)
 	// backup to remote succeed, archive can be deleted now
-	os.RemoveAll(archiveBackupPath)
+	os.RemoveAll(backupFullPath)
 
 	finish := time.Now()
 
