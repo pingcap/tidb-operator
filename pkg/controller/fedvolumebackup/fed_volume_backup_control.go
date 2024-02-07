@@ -31,11 +31,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
-<<<<<<< HEAD
-=======
 	"github.com/pingcap/tidb-operator/pkg/metrics"
-	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
->>>>>>> e755e2a1c (br: add metrics for volume backup (#5534))
 )
 
 // ControlInterface implements the control logic for updating VolumeBackup
