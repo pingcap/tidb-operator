@@ -9350,6 +9350,16 @@ func (in *TidbDashboardSpec) DeepCopyInto(out *TidbDashboardSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ListenOnLocalhostOnly != nil {
+		in, out := &in.ListenOnLocalhostOnly, &out.ListenOnLocalhostOnly
+		*out = new(bool)
+		**out = **in
+	}
+	if in.KeyVisualizer != nil {
+		in, out := &in.KeyVisualizer, &out.KeyVisualizer
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 

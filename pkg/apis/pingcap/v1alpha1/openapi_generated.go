@@ -15347,7 +15347,14 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbDashboardSpec(ref common.ReferenceCall
 					},
 					"listenOnLocalhostOnly": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ListenOnLocalhostOnly whether to expose dashboard to 0.0.0.0 or limit it to localhost only which means it will be accessible only via port-forwarding",
+							Description: "ListenOnLocalhostOnly whether to expose dashboard to 0.0.0.0 or limit it to localhost only which means it will be accessible only via port-forwarding Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"keyVisualizer": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KeyVisualizer is whether to enable Key Visualizer. Optional: Defaults to true",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

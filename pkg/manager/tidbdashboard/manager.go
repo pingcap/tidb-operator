@@ -219,14 +219,21 @@ func generateTiDBDashboardStatefulSet(td *v1alpha1.TidbDashboard, tc *v1alpha1.T
 		experimental = *td.Spec.Experimental
 	}
 
+	var keyVisualizer bool
+	if td.Spec.KeyVisualizer == nil {
+		keyVisualizer = true
+	} else {
+		keyVisualizer = *td.Spec.Experimental
+	}
+
 	var listenHost string
-	if td.Spec.ListenOnLocalhostOnly {
+	if *td.Spec.ListenOnLocalhostOnly {
 		listenHost = "127.0.0.1"
 	} else {
 		listenHost = "0.0.0.0"
 	}
 
-	startArgs := dashboardStartArgs(listenHost, port, tc.Spec.Version, pathPrefix, clusterTLSEnabled, mysqlTLSEnabled, telemetry, experimental, tc)
+	startArgs := dashboardStartArgs(listenHost, port, tc.Spec.Version, pathPrefix, clusterTLSEnabled, mysqlTLSEnabled, telemetry, experimental, keyVisualizer, tc)
 	spec := td.BaseTidbDashboardSpec()
 	meta, stsLabels := generateTiDBDashboardMeta(td, StatefulSetName(td.Name))
 
@@ -424,7 +431,7 @@ func dashboardStartArgs(
 	listenHost string,
 	port int,
 	featureVersion, pathPrefix string,
-	clusterTLSEnable, mysqlTLSEnable, telemetry, experimental bool,
+	clusterTLSEnable, mysqlTLSEnable, telemetry, experimental, keyVisualizer bool,
 	tc *v1alpha1.TidbCluster,
 ) []string {
 	pdAddress := fmt.Sprintf("%s.%s:%d", controller.PDMemberName(tc.Name), tc.Namespace, v1alpha1.DefaultPDClientPort)
@@ -438,6 +445,7 @@ func dashboardStartArgs(
 		fmt.Sprintf("--feature-version=%s", featureVersion),
 		fmt.Sprintf("--experimental=%t", experimental),
 		fmt.Sprintf("--telemetry=%t", telemetry),
+		fmt.Sprintf("--keyVisualizer=%t", keyVisualizer),
 	}
 
 	// WARNING(@sabaping): the data key of the secret object must be "ca.crt", "tls.crt" and "tls.key" separately.

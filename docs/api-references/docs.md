@@ -24823,8 +24823,23 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>ListenOnLocalhostOnly whether to expose dashboard to 0.0.0.0 or limit it to localhost only
-which means it will be accessible only via port-forwarding</p>
+which means it will be accessible only via port-forwarding
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>keyVisualizer</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>KeyVisualizer is whether to enable Key Visualizer.
+Optional: Defaults to true</p>
 </td>
 </tr>
 </table>
@@ -25027,8 +25042,23 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>ListenOnLocalhostOnly whether to expose dashboard to 0.0.0.0 or limit it to localhost only
-which means it will be accessible only via port-forwarding</p>
+which means it will be accessible only via port-forwarding
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>keyVisualizer</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>KeyVisualizer is whether to enable Key Visualizer.
+Optional: Defaults to true</p>
 </td>
 </tr>
 </tbody>

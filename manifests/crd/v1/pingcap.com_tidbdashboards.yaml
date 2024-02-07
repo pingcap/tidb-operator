@@ -2480,6 +2480,8 @@ spec:
                   - name
                   type: object
                 type: array
+              keyVisualizer:
+                type: boolean
               labels:
                 additionalProperties:
                   type: string
