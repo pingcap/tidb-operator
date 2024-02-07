@@ -130,6 +130,11 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.PD != nil {
 		allErrs = append(allErrs, validatePDSpec(spec.PD, fldPath.Child("pd"))...)
 	}
+	if spec.PDMS != nil {
+		for _, comp := range spec.PDMS {
+			allErrs = append(allErrs, validatePDMSSpec(comp, fldPath.Child(comp.Name))...)
+		}
+	}
 	if spec.TiKV != nil {
 		allErrs = append(allErrs, validateTiKVSpec(spec.TiKV, fldPath.Child("tikv"))...)
 	}
@@ -171,6 +176,15 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 	}
 	if spec.Service != nil {
 		allErrs = append(allErrs, validateService(spec.Service, fldPath)...)
+	}
+	return allErrs
+}
+
+func validatePDMSSpec(spec *v1alpha1.PDMSSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	if len(spec.StorageVolumes) > 0 {
+		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
 	}
 	return allErrs
 }
