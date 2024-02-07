@@ -14,6 +14,9 @@
 package v1alpha1
 
 import (
+	"sort"
+	"strings"
+
 	pingcapv1alpha1 "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,6 +32,20 @@ func (bc *BRConfig) ToBRMemberConfig(tcName, tcNamespace string) *pingcapv1alpha
 		SendCredToTikv:    bc.SendCredToTikv,
 		Options:           bc.Options,
 	}
+}
+
+func (vb *VolumeBackup) GetCombinedTCName() string {
+	tcNames := make([]string, 0, len(vb.Spec.Clusters))
+	for _, cluster := range vb.Spec.Clusters {
+		tcNames = append(tcNames, cluster.TCName)
+	}
+	if len(tcNames) == 0 {
+		return ""
+	}
+	sort.Slice(tcNames, func(i, j int) bool {
+		return tcNames[i] < tcNames[j]
+	})
+	return strings.Join(tcNames, ",")
 }
 
 // UpdateVolumeBackupCondition adds new condition or update condition if it exists in status
@@ -118,6 +135,12 @@ func IsVolumeBackupFailed(volumeBackup *VolumeBackup) bool {
 // IsVolumeBackupCleaned returns true if all the Backup CRs in data plane has cleaned
 func IsVolumeBackupCleaned(volumeBackup *VolumeBackup) bool {
 	_, condition := GetVolumeBackupCondition(&volumeBackup.Status, VolumeBackupCleaned)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsVolumeBackupCleanFailed returns true if one of Backup CR in data plane has failed to clean up
+func IsVolumeBackupCleanFailed(volumeBackup *VolumeBackup) bool {
+	_, condition := GetVolumeBackupCondition(&volumeBackup.Status, VolumeBackupCleanFailed)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 

@@ -294,6 +294,12 @@ func IsBackupClean(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsBackupCleanFailed returns true if a Backup has failed to clean up
+func IsBackupCleanFailed(backup *Backup) bool {
+	_, condition := GetBackupCondition(&backup.Status, BackupCleanFailed)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsCleanCandidate returns true if a Backup should be added to clean candidate according to cleanPolicy
 func IsCleanCandidate(backup *Backup) bool {
 	switch backup.Spec.CleanPolicy {

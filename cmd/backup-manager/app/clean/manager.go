@@ -101,7 +101,7 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 		errs = append(errs, err)
 		klog.Errorf("clean cluster %s backup %s failed, err: %s", bm, backup.Status.BackupPath, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
+			Type:    v1alpha1.BackupCleanFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CleanBackupDataFailed",
 			Message: err.Error(),
