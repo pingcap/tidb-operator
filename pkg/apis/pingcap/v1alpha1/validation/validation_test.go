@@ -541,6 +541,7 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 			PD:   &v1alpha1.PDSpec{},
 			TiKV: &v1alpha1.TiKVSpec{},
 			TiDB: &v1alpha1.TiDBSpec{},
+			PDMS: []*v1alpha1.PDMSSpec{},
 		},
 	}
 	tc.Name = "test-validate-requests-storage"

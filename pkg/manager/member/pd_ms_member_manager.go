@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/member/startscript"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -38,19 +39,21 @@ import (
 )
 
 type pdMSMemberManager struct {
-	deps      *controller.Dependencies
-	scaler    Scaler
-	upgrader  Upgrader
-	suspender suspender.Suspender
+	deps              *controller.Dependencies
+	scaler            Scaler
+	upgrader          Upgrader
+	suspender         suspender.Suspender
+	podVolumeModifier volumes.PodVolumeModifier
 }
 
 // NewPDMSMemberManager returns a *pdMSMemberManager
-func NewPDMSMemberManager(dependencies *controller.Dependencies, pdMSScaler Scaler, pdMSUpgrader Upgrader, spder suspender.Suspender) manager.Manager {
+func NewPDMSMemberManager(dependencies *controller.Dependencies, pdMSScaler Scaler, pdMSUpgrader Upgrader, spder suspender.Suspender, pvm volumes.PodVolumeModifier) manager.Manager {
 	return &pdMSMemberManager{
-		deps:      dependencies,
-		scaler:    pdMSScaler,
-		upgrader:  pdMSUpgrader,
-		suspender: spder,
+		deps:              dependencies,
+		scaler:            pdMSScaler,
+		upgrader:          pdMSUpgrader,
+		suspender:         spder,
+		podVolumeModifier: pvm,
 	}
 }
 
@@ -331,15 +334,18 @@ func (m *pdMSMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.State
 	}
 	tc.Status.PDMS[curService].Members = members
 	tc.Status.PDMS[curService].Synced = true
+
+	// sync volumes
+	err = volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.PDMSMemberType(curService))
+	if err != nil {
+		return fmt.Errorf("failed to sync volume status for pd: %v", err)
+	}
+
 	return nil
 }
 
 // syncPDMSConfigMap syncs the configmap of PDMS
 func (m *pdMSMemberManager) syncPDMSConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, curSpec *v1alpha1.PDMSSpec) (*corev1.ConfigMap, error) {
-	// For backward compatibility, only sync tidb configmap when .PDMS.config is non-nil
-	if curSpec.Config == nil {
-		return nil, nil
-	}
 	newCm, err := m.getPDMSConfigMap(tc, curSpec)
 	if err != nil {
 		return nil, err
@@ -499,10 +505,11 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 		},
 	}
 	if tc.IsTLSClusterEnabled() {
+		// reuse the secret created for pd
 		vols = append(vols, corev1.Volume{
 			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDMSLabel(curService)),
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
 				},
 			},
 		})
@@ -515,6 +522,16 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 				},
 			})
 		}
+	}
+
+	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
+	var additionalPVCs []corev1.PersistentVolumeClaim
+	// default in nil
+	if curSpec.StorageVolumes != nil {
+		storageVolMounts, addPVCs := util.BuildStorageVolumeAndVolumeMount(curSpec.StorageVolumes, curSpec.StorageClassName, v1alpha1.PDMSMemberType(curService))
+		volMounts = append(volMounts, storageVolMounts...)
+		volMounts = append(volMounts, curSpec.AdditionalVolumeMounts...)
+		additionalPVCs = addPVCs
 	}
 
 	sysctls := "sysctl -w"
@@ -679,15 +696,29 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 			UpdateStrategy:      updateStrategy,
 		},
 	}
+	// default in nil
+	if curSpec.StorageVolumes != nil {
+		storageRequest, err := controller.ParseStorageRequest(curSpec.Requests)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse storage request for PD, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
+		}
+		dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.PDMSMemberType(curService)))
+		pdMSSet.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+			util.VolumeClaimTemplate(storageRequest, dataVolumeName, tc.Spec.PD.StorageClassName),
+		}
+		pdMSSet.Spec.VolumeClaimTemplates = append(pdMSSet.Spec.VolumeClaimTemplates, additionalPVCs...)
+	}
 
 	return pdMSSet, nil
 }
 
 func (m *pdMSMemberManager) getPDMSConfigMap(tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) (*corev1.ConfigMap, error) {
-	if curSpec.Config == nil {
-		return nil, nil
+	var config *v1alpha1.PDConfigWraper
+	if curSpec.Config != nil {
+		config = curSpec.Config.DeepCopy() // use copy to not update tc spec
+	} else {
+		config = v1alpha1.NewPDConfig()
 	}
-	config := curSpec.Config.DeepCopy() // use copy to not update tc spec
 
 	curService := curSpec.Name
 	// override CA if tls enabled
