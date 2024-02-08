@@ -219,6 +219,8 @@ const (
 	VolumeBackupFailed VolumeBackupConditionType = "Failed"
 	// VolumeBackupCleaned means all the resources about VolumeBackup have cleaned
 	VolumeBackupCleaned VolumeBackupConditionType = "Cleaned"
+	// VolumeBackupCleanFailed means one of backup cleanup in data plane is failed
+	VolumeBackupCleanFailed VolumeBackupConditionType = "CleanFailed"
 )
 
 // +genclient
