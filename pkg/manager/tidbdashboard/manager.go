@@ -227,7 +227,7 @@ func generateTiDBDashboardStatefulSet(td *v1alpha1.TidbDashboard, tc *v1alpha1.T
 	}
 
 	var listenHost string
-	if *td.Spec.ListenOnLocalhostOnly {
+	if td.Spec.ListenOnLocalhostOnly != nil && *td.Spec.ListenOnLocalhostOnly {
 		listenHost = "127.0.0.1"
 	} else {
 		listenHost = "0.0.0.0"
