@@ -94,7 +94,7 @@ type PDClient interface {
 	GetAutoscalingPlans(strategy Strategy) ([]Plan, error)
 	// GetRecoveringMark return the pd recovering mark
 	GetRecoveringMark() (bool, error)
-	// GetMSMembers returns all PD members from cluster by micro service
+	// GetMSMembers returns all PD members service-addr from cluster by specific Micro Service
 	GetMSMembers(service string) ([]string, error)
 }
 
@@ -196,6 +196,15 @@ type MembersInfo struct {
 	Members    []*pdpb.Member       `json:"members,omitempty"`
 	Leader     *pdpb.Member         `json:"leader,omitempty"`
 	EtcdLeader *pdpb.Member         `json:"etcd_leader,omitempty"`
+}
+
+// ServiceRegistryEntry is the registry entry of PD Micro Service
+type ServiceRegistryEntry struct {
+	ServiceAddr    string `json:"service-addr"`
+	Version        string `json:"version"`
+	GitHash        string `json:"git-hash"`
+	DeployPath     string `json:"deploy-path"`
+	StartTimestamp int64  `json:"start-timestamp"`
 }
 
 // below copied from github.com/tikv/pd/pkg/autoscaling
@@ -320,12 +329,16 @@ func (c *pdClient) GetMSMembers(service string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var members []string
+	var members []ServiceRegistryEntry
 	err = json.Unmarshal(body, &members)
 	if err != nil {
 		return nil, err
 	}
-	return members, nil
+	var addrs []string
+	for _, member := range members {
+		addrs = append(addrs, member.ServiceAddr)
+	}
+	return addrs, nil
 }
 
 func (c *pdClient) getStores(apiURL string) (*StoresInfo, error) {
