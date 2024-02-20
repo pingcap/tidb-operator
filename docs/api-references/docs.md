@@ -24873,15 +24873,15 @@ Optional: Defaults to false</p>
 </tr>
 <tr>
 <td>
-<code>keyVisualizer</code></br>
+<code>disableKeyVisualizer</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>KeyVisualizer is whether to enable Key Visualizer.
-Optional: Defaults to true</p>
+<p>DisableKeyVisualizer is whether to disable Key Visualizer.
+Optional: Defaults to false</p>
 </td>
 </tr>
 </table>
@@ -25092,15 +25092,15 @@ Optional: Defaults to false</p>
 </tr>
 <tr>
 <td>
-<code>keyVisualizer</code></br>
+<code>disableKeyVisualizer</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>KeyVisualizer is whether to enable Key Visualizer.
-Optional: Defaults to true</p>
+<p>DisableKeyVisualizer is whether to disable Key Visualizer.
+Optional: Defaults to false</p>
 </td>
 </tr>
 </tbody>

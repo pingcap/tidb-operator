@@ -9382,8 +9382,8 @@ func (in *TidbDashboardSpec) DeepCopyInto(out *TidbDashboardSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.KeyVisualizer != nil {
-		in, out := &in.KeyVisualizer, &out.KeyVisualizer
+	if in.DisableKeyVisualizer != nil {
+		in, out := &in.DisableKeyVisualizer, &out.DisableKeyVisualizer
 		*out = new(bool)
 		**out = **in
 	}

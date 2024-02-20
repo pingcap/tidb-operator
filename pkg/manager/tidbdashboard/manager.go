@@ -220,10 +220,10 @@ func generateTiDBDashboardStatefulSet(td *v1alpha1.TidbDashboard, tc *v1alpha1.T
 	}
 
 	var keyVisualizer bool
-	if td.Spec.KeyVisualizer == nil {
+	if td.Spec.DisableKeyVisualizer == nil {
 		keyVisualizer = true
 	} else {
-		keyVisualizer = *td.Spec.Experimental
+		keyVisualizer = !(*td.Spec.DisableKeyVisualizer)
 	}
 
 	var listenHost string

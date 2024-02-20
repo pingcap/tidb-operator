@@ -15373,9 +15373,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbDashboardSpec(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
-					"keyVisualizer": {
+					"disableKeyVisualizer": {
 						SchemaProps: spec.SchemaProps{
-							Description: "KeyVisualizer is whether to enable Key Visualizer. Optional: Defaults to true",
+							Description: "DisableKeyVisualizer is whether to disable Key Visualizer. Optional: Defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

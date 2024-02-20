@@ -114,10 +114,10 @@ type TidbDashboardSpec struct {
 	// +optional
 	ListenOnLocalhostOnly *bool `json:"listenOnLocalhostOnly,omitempty" default:"false"`
 
-	// KeyVisualizer is whether to enable Key Visualizer.
-	// Optional: Defaults to true
+	// DisableKeyVisualizer is whether to disable Key Visualizer.
+	// Optional: Defaults to false
 	// +optional
-	KeyVisualizer *bool `json:"keyVisualizer,omitempty" default:"true"`
+	DisableKeyVisualizer *bool `json:"disableKeyVisualizer,omitempty" default:"false"`
 }
 
 // TidbDashboardStatus is status of tidb dashboard.

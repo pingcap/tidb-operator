@@ -1748,6 +1748,8 @@ spec:
                 type: array
               configUpdateStrategy:
                 type: string
+              disableKeyVisualizer:
+                type: boolean
               dnsConfig:
                 properties:
                   nameservers:
@@ -2480,8 +2482,6 @@ spec:
                   - name
                   type: object
                 type: array
-              keyVisualizer:
-                type: boolean
               labels:
                 additionalProperties:
                   type: string
