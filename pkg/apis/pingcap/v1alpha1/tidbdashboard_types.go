@@ -107,6 +107,17 @@ type TidbDashboardSpec struct {
 
 	// PreferIPv6 indicates whether to prefer IPv6 addresses for all components.
 	PreferIPv6 bool `json:"preferIPv6,omitempty"`
+
+	//ListenOnLocalhostOnly whether to expose dashboard to 0.0.0.0 or limit it to localhost only
+	// which means it will be accessible only via port-forwarding
+	// Optional: Defaults to false
+	// +optional
+	ListenOnLocalhostOnly *bool `json:"listenOnLocalhostOnly,omitempty" default:"false"`
+
+	// DisableKeyVisualizer is whether to disable Key Visualizer.
+	// Optional: Defaults to false
+	// +optional
+	DisableKeyVisualizer *bool `json:"disableKeyVisualizer,omitempty" default:"false"`
 }
 
 // TidbDashboardStatus is status of tidb dashboard.
