@@ -24467,6 +24467,33 @@ bool
 <p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>listenOnLocalhostOnly</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ListenOnLocalhostOnly whether to expose dashboard to 0.0.0.0 or limit it to localhost only
+which means it will be accessible only via port-forwarding
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>disableKeyVisualizer</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisableKeyVisualizer is whether to disable Key Visualizer.
+Optional: Defaults to false</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -24657,6 +24684,33 @@ bool
 </td>
 <td>
 <p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>listenOnLocalhostOnly</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ListenOnLocalhostOnly whether to expose dashboard to 0.0.0.0 or limit it to localhost only
+which means it will be accessible only via port-forwarding
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>disableKeyVisualizer</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisableKeyVisualizer is whether to disable Key Visualizer.
+Optional: Defaults to false</p>
 </td>
 </tr>
 </tbody>
