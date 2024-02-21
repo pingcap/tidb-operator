@@ -1067,7 +1067,9 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 		if !exist {
 			return false, nil
 		}
-		if revisionHash != tc.Status.TiKV.StatefulSet.UpdateRevision {
+		if revisionHash != tc.Status.TiKV.StatefulSet.UpdateRevision &&
+			// In case tc.Status.TiKV.StatefulSet is stale
+			tc.Status.TiKV.StatefulSet.UpdateRevision != "" {
 			return true, nil
 		}
 	}
