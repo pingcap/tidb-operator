@@ -1748,6 +1748,8 @@ spec:
                 type: array
               configUpdateStrategy:
                 type: string
+              disableKeyVisualizer:
+                type: boolean
               dnsConfig:
                 properties:
                   nameservers:
@@ -2492,6 +2494,8 @@ spec:
                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                   x-kubernetes-int-or-string: true
                 type: object
+              listenOnLocalhostOnly:
+                type: boolean
               nodeSelector:
                 additionalProperties:
                   type: string
