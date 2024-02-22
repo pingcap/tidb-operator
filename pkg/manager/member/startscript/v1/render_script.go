@@ -233,7 +233,34 @@ done
 }
 
 func RenderTiFlashStartScript(tc *v1alpha1.TidbCluster) (string, error) {
+	if tc.Spec.TiFlash.IsInitScriptDisabled() {
+		return RenderTiFlashStartScriptWithStartArgs(tc)
+	}
 	return "/tiflash/tiflash server --config-file /data0/config.toml", nil
+}
+
+func RenderTiFlashStartScriptWithStartArgs(tc *v1alpha1.TidbCluster) (string, error) {
+	model := &TiflashStartScriptModel{
+		CommonModel: CommonModel{
+			AcrossK8s:     tc.AcrossK8s(),
+			ClusterDomain: tc.Spec.ClusterDomain,
+		},
+		AdvertiseAddr:             fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d", controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiFlashProxyPort),
+		EnableAdvertiseStatusAddr: false,
+	}
+	// only the tiflash learner supports dynamic configuration
+	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
+		model.AdvertiseStatusAddr = fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d", controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiFlashProxyStatusPort)
+		model.EnableAdvertiseStatusAddr = true
+	}
+
+	listenHost := "0.0.0.0"
+	if tc.Spec.PreferIPv6 {
+		listenHost = "[::]"
+	}
+	model.Addr = fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort)
+
+	return renderTemplateFunc(tiflashStartScriptTpl, model)
 }
 
 func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
