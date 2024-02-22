@@ -403,7 +403,8 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			Name: tiflashCertVolumeName, ReadOnly: true, MountPath: tiflashCertPath,
 		})
 	}
-	// mount config ConfigMap into tiflash container if the init container is disabled
+	// with initContainerDisabled enabled, the tiflash container should directly read config from `/etc/tiflash/xxx.toml` mounted from ConfigMap
+	// rather than `/data0/xxx.toml` created by initContainer.
 	if initContainerDisabled {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "config", ReadOnly: true, MountPath: "/etc/tiflash",
@@ -470,6 +471,8 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		podSecurityContext.Sysctls = []corev1.Sysctl{}
 	}
 
+	// the work of initContainer is substituted by new start scripts which moves the configuration items depending on running env
+	// to command args.
 	if !initContainerDisabled {
 		// Append init container for config files initialization
 		initVolMounts := []corev1.VolumeMount{
