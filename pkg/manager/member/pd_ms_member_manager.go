@@ -64,10 +64,35 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	// Need to start PD API
-	if tc.Spec.PD == nil || tc.Spec.PD.Mode != "ms" {
+	if tc.Spec.PD == nil {
 		klog.Infof("PD Micro Service is enabled, but PD is not enabled or not in `ms` mode, skip syncing PD Micro Service")
 		return nil
 	}
+	if tc.Spec.PD.Mode != "ms" {
+		// remove all micro service components
+		for _, comp := range tc.Spec.PDMS {
+			ns := tc.GetNamespace()
+			tcName := tc.GetName()
+			curService := comp.Name
+
+			oldPDMSSetTmp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, curService))
+			if err != nil && !errors.IsNotFound(err) {
+				return fmt.Errorf("syncPDMSStatefulSet: fail to get sts %s PDMS component %s for cluster [%s/%s], error: %s",
+					controller.PDMSMemberName(tcName, curService), curService, ns, tcName, err)
+			}
+
+			oldPDMSSet := oldPDMSSetTmp.DeepCopy()
+			newPDMSSet := oldPDMSSetTmp.DeepCopy()
+			*newPDMSSet.Spec.Replicas = 0
+			if err := m.scaler.Scale(tc, oldPDMSSet, newPDMSSet); err != nil {
+				return err
+			}
+			mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdatePDMSSTS", newPDMSSet, oldPDMSSet)
+		}
+		klog.Infof("PD Micro Service is enabled, but PD is not enabled or not in `ms` mode, skip syncing PD Micro Service")
+		return nil
+	}
+
 	// init PD Micro Service status
 	if tc.Status.PDMS == nil {
 		tc.Status.PDMS = make(map[string]*v1alpha1.PDMSStatus)
