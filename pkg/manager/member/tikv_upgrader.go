@@ -87,7 +87,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 
 	tc, _ := meta.(*v1alpha1.TidbCluster)
 
-	// upgrade tikv without evicting leader when only one tikv is exist
+	// upgrade tikv without evicting leader when only one tikv exists
 	// NOTE: If `TiKVStatus.Synced`` is false, it's acceptable to use old record about peer stores
 	if *oldSet.Spec.Replicas < 2 && len(tc.Status.TiKV.PeerStores) == 0 {
 		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for tc %s/%s", ns, tcName)
@@ -115,16 +115,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return nil
 	}
 
-	minReadySeconds := 0
-	s, ok := tc.Annotations[annoKeyTiKVMinReadySeconds]
-	if ok {
-		i, err := strconv.Atoi(s)
-		if err != nil {
-			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", ns, tcName, annoKeyTiKVMinReadySeconds, err)
-		} else {
-			minReadySeconds = i
-		}
-	}
+	minReadySeconds := getMinReadySeconds(tc)
 
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
@@ -146,14 +137,8 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		}
 
 		if revision == status.StatefulSet.UpdateRevision {
-
-			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
-				readyCond := podutil.GetPodReadyCondition(pod.Status)
-				if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
-					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
-
-				}
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not available, last transition time is %v", ns, tcName, podName, readyCond.LastTransitionTime)
+			if err := isPodAvailable(pod, minReadySeconds, tc); err != nil {
+				return err
 			}
 			if store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
@@ -458,7 +443,50 @@ func endEvictLeaderForAllStore(deps *controller.Dependencies, tc *v1alpha1.TidbC
 	return nil
 }
 
+func getMinReadySeconds(tc *v1alpha1.TidbCluster) int {
+	minReadySeconds := 0
+	s, ok := tc.Annotations[annoKeyTiKVMinReadySeconds]
+	if ok {
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", tc.Namespace, tc.Name, annoKeyTiKVMinReadySeconds, err)
+		} else {
+			minReadySeconds = i
+		}
+	}
+	return minReadySeconds
+}
+
+func isPodAvailable(pod *corev1.Pod, minReadySeconds int, tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	podName := pod.GetName()
+	if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
+		readyCond := podutil.GetPodReadyCondition(pod.Status)
+		if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
+
+		}
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not available, last transition time is %v", ns, tcName, podName, readyCond.LastTransitionTime)
+	}
+	return nil
+}
+
 func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ordinal int32) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	podName := TikvPodName(tcName, ordinal)
+
+	minReadySeconds := getMinReadySeconds(tc)
+
+	pod, err := deps.PodLister.Pods(ns).Get(podName)
+	if err != nil {
+		return fmt.Errorf("endEvictLeader: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
+	}
+	if err := isPodAvailable(pod, minReadySeconds, tc); err != nil {
+		return err
+	}
+
 	store := getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
 	if store == nil {
 		klog.Errorf("endEvictLeader: no store found for TiKV ordinal %v of %s/%s", ordinal, tc.Namespace, tc.Name)
