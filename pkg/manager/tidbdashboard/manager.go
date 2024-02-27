@@ -449,7 +449,7 @@ func dashboardStartArgs(
 	if !keyVisualizer {
 		// append to args only if keyVisualizer needs to be disabled as it's enabled by default
 		// we try to avoid dashboard restart when operator gets deployed but it does not disable keyVisualizer
-		base = append(base, fmt.Sprintf("--keyVisualizer=%t", keyVisualizer))
+		base = append(base, fmt.Sprintf("--keyviz=%t", keyVisualizer))
 	}
 
 	// WARNING(@sabaping): the data key of the secret object must be "ca.crt", "tls.crt" and "tls.key" separately.
