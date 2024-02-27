@@ -31,7 +31,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 )
 
@@ -137,19 +136,8 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		}
 
 		if revision == status.StatefulSet.UpdateRevision {
-
-<<<<<<< HEAD
-			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
-				readyCond := podutil.GetPodReadyCondition(pod.Status)
-				if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
-					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
-
-				}
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not available, last transition time is %v", ns, tcName, podName, readyCond.LastTransitionTime)
-=======
 			if err := isPodAvailable(pod, minReadySeconds, tc); err != nil {
 				return err
->>>>>>> 09cc73d93 (fix: minreadyseconds for last TiKV (#5544))
 			}
 			if store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
