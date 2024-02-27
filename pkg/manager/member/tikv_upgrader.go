@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 )
 
@@ -460,8 +461,8 @@ func isPodAvailable(pod *corev1.Pod, minReadySeconds int, tc *v1alpha1.TidbClust
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	podName := pod.GetName()
-	if !k8s.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
-		readyCond := k8s.GetPodReadyCondition(pod.Status)
+	if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
+		readyCond := podutil.GetPodReadyCondition(pod.Status)
 		if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
 
