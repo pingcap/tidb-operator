@@ -723,14 +723,6 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 	}
 	// default in nil
 	if curSpec.StorageVolumes != nil {
-		storageRequest, err := controller.ParseStorageRequest(curSpec.Requests)
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse storage request for PD, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
-		}
-		dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.PDMSMemberType(curService)))
-		pdMSSet.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
-			util.VolumeClaimTemplate(storageRequest, dataVolumeName, tc.Spec.PD.StorageClassName),
-		}
 		pdMSSet.Spec.VolumeClaimTemplates = append(pdMSSet.Spec.VolumeClaimTemplates, additionalPVCs...)
 	}
 
