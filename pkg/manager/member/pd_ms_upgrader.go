@@ -15,13 +15,13 @@ package member
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
-
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog/v2"
 )
@@ -61,7 +61,7 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	if oldTrimName != componentName {
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS oldTrimName is %s, not equal to componentName: %s", ns, tcName, oldTrimName, componentName)
 	}
-	klog.Infof("gracefulUpgrade pdMS trim name oldTrimName: %s", oldTrimName)
+	klog.Infof("gracefulUpgrade pdMS trim name, oldTrimName: %s", oldTrimName)
 	if tc.PDMSScaling(oldTrimName) {
 		klog.Infof("TidbCluster: [%s/%s]'s pdMS status is %v, can not upgrade pdMS",
 			ns, tcName, tc.Status.PDMS[componentName].Phase)
@@ -107,14 +107,21 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 			if !k8s.IsPodReady(pod) {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pdMS pod: [%s] is not ready", ns, tcName, podName)
 			}
+
+			var exist bool
 			for _, member := range tc.Status.PDMS[componentName].Members {
-				if member == podName {
-					continue
+				if strings.Contains(member, podName) {
+					exist = true
 				}
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pdMS upgraded pod: [%s] is not health", ns, tcName, podName)
+			}
+			if !exist {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pdMS upgraded pod: [%s] is not exist, all members: %v",
+					ns, tcName, podName, tc.Status.PDMS[componentName].Members)
 			}
 			continue
 		}
+		mngerutils.SetUpgradePartition(newSet, i)
+		return nil
 	}
 
 	return nil
