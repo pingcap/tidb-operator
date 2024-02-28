@@ -65,7 +65,7 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 	// Need to start PD API
 	if tc.Spec.PD == nil {
-		klog.Infof("PD Micro Service is enabled, but PD is not enabled or not in `ms` mode, skip syncing PD Micro Service")
+		klog.Infof("PD Micro Service is enabled, but PD is not enabled, skip syncing PD Micro Service")
 		return nil
 	}
 	if tc.Spec.PD.Mode != "ms" {
@@ -89,7 +89,7 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 			}
 			mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdatePDMSSTS", newPDMSSet, oldPDMSSet)
 		}
-		klog.Infof("PD Micro Service is enabled, but PD is not enabled or not in `ms` mode, skip syncing PD Micro Service")
+		klog.Infof("PD Micro Service is enabled, but PD is not in `ms` mode, skip syncing PD Micro Service")
 		return nil
 	}
 
