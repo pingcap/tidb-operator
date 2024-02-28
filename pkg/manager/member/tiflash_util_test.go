@@ -21,6 +21,7 @@ import (
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -1581,6 +1582,49 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					[server]
 					  advertise-status-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20292"
 					  engine-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+					  status-addr = "0.0.0.0:20292"`,
+			},
+			{
+				name: "config is nil and cluster enable tls and annotate mountCMInTiflash",
+				setTC: func(tc *v1alpha1.TidbCluster) {
+					tc.Spec.TiFlash.Config = nil
+					tc.Spec.TiFlash.Annotations = map[string]string{
+						label.AnnTiflashMountCMInTiflashContainer: "true",
+					}
+					tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+				},
+				expectCommonCfg: `
+					tmp_path = "/data0/tmp"
+					[flash]
+					  service_addr = "0.0.0.0:3930"
+					  tidb_status_addr = "test-tidb.default.svc:10080"
+					  [flash.flash_cluster]
+						log = "/data0/logs/flash_cluster_manager.log"
+					  [flash.proxy]
+						addr = "0.0.0.0:20170"
+						config = "/etc/proxy_templ.toml"
+						data-dir = "/data0/proxy"
+					[logger]
+					  errorlog = "/data0/logs/error.log"
+					  log = "/data0/logs/server.log"
+					[raft]
+					  pd_addr = "test-pd.default.svc:2379"
+					[security]
+					  ca_path = "/var/lib/tiflash-tls/ca.crt"
+					  cert_path = "/var/lib/tiflash-tls/tls.crt"
+					  key_path = "/var/lib/tiflash-tls/tls.key"
+					[storage]
+					  [storage.main]
+						dir = ["/data0/db"]
+					  [storage.raft]
+						dir = ["/data0/kvstore"]`,
+				expectProxyCfg: `
+					log-level = "info"
+					[security]
+					  ca-path = "/var/lib/tiflash-tls/ca.crt"
+					  cert-path = "/var/lib/tiflash-tls/tls.crt"
+					  key-path = "/var/lib/tiflash-tls/tls.key"
+					[server]
 					  status-addr = "0.0.0.0:20292"`,
 			},
 			{

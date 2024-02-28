@@ -195,7 +195,11 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 				controller.TiFlashPeerMemberName(name), ns, controller.FormatClusterDomain(clusterDomain), v1alpha1.DefaultTiFlashProxyPort))
 		}
 		common.SetIfNil("flash.proxy.data-dir", "/data0/proxy")
-		common.SetIfNil("flash.proxy.config", "/data0/proxy.toml")
+		if !mountCMInTiflashContainer {
+			common.SetIfNil("flash.proxy.config", "/data0/proxy.toml")
+		} else {
+			common.SetIfNil("flash.proxy.config", "/etc/proxy_templ.toml")
+		}
 
 		// logger
 		common.SetIfNil("logger.errorlog", defaultErrorLog)
