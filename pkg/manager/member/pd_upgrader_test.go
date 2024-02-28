@@ -66,7 +66,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			})
 		}
 
-		pods := getPods()
+		pods := getPDPods()
 		if test.changePods != nil {
 			test.changePods(pods)
 		}
@@ -539,7 +539,7 @@ func newTidbClusterForPDUpgrader() *v1alpha1.TidbCluster {
 	}
 }
 
-func getPods() []*corev1.Pod {
+func getPDPods() []*corev1.Pod {
 	lc := label.New().Instance(upgradeInstanceName).PD().Labels()
 	lc[apps.ControllerRevisionHashLabelKey] = "1"
 	lu := label.New().Instance(upgradeInstanceName).PD().Labels()
