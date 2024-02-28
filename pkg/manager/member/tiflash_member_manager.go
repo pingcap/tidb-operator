@@ -373,7 +373,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	tcName := tc.GetName()
 	baseTiFlashSpec := tc.BaseTiFlashSpec()
 	spec := tc.Spec.TiFlash
-	initContainerDisabled := spec.IsInitScriptDisabled()
+	mountCMInTiflashContainer := spec.DoesMountCMInTiflashContainer()
 
 	tiflashConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiFlashMemberType)
 	if cm != nil {
@@ -403,9 +403,9 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			Name: tiflashCertVolumeName, ReadOnly: true, MountPath: tiflashCertPath,
 		})
 	}
-	// with initContainerDisabled enabled, the tiflash container should directly read config from `/etc/tiflash/xxx.toml` mounted from ConfigMap
+	// with mountCMInTiflashContainer enabled, the tiflash container should directly read config from `/etc/tiflash/xxx.toml` mounted from ConfigMap
 	// rather than `/data0/xxx.toml` created by initContainer.
-	if initContainerDisabled {
+	if mountCMInTiflashContainer {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "config", ReadOnly: true, MountPath: "/etc/tiflash",
 		})
@@ -473,7 +473,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 
 	// the work of initContainer is substituted by new start scripts which moves the configuration items depending on running env
 	// to command args.
-	if !initContainerDisabled {
+	if !mountCMInTiflashContainer {
 		// Append init container for config files initialization
 		initVolMounts := []corev1.VolumeMount{
 			{Name: "data0", MountPath: "/data0"},

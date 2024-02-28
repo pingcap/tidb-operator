@@ -129,7 +129,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 	if config.Proxy == nil {
 		config.Proxy = v1alpha1.NewTiFlashProxyConfig()
 	}
-	initContainerDisabled := tc.Spec.TiFlash.IsInitScriptDisabled()
+	mountCMInTiflashContainer := tc.Spec.TiFlash.DoesMountCMInTiflashContainer()
 	common := config.Common
 	proxy := config.Proxy
 
@@ -190,7 +190,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		common.SetIfNil("flash.service_addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort))
 		common.SetIfNil("flash.flash_cluster.log", defaultClusterLog)
 		common.SetIfNil("flash.proxy.addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashProxyPort))
-		if !initContainerDisabled {
+		if !mountCMInTiflashContainer {
 			common.SetIfNil("flash.proxy.advertise-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d", controller.TiFlashMemberName(name),
 				controller.TiFlashPeerMemberName(name), ns, controller.FormatClusterDomain(clusterDomain), v1alpha1.DefaultTiFlashProxyPort))
 		}
@@ -220,7 +220,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 	// proxy
 	{
 		proxy.SetIfNil("log-level", "info")
-		if !initContainerDisabled {
+		if !mountCMInTiflashContainer {
 			proxy.SetIfNil("server.engine-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d", controller.TiFlashMemberName(name), controller.TiFlashPeerMemberName(name), ns,
 				controller.FormatClusterDomain(clusterDomain), v1alpha1.DefaultTiFlashFlashPort))
 			proxy.SetIfNil("server.advertise-status-addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d", controller.TiFlashMemberName(name), controller.TiFlashPeerMemberName(name), ns,

@@ -233,7 +233,7 @@ done
 }
 
 func RenderTiFlashStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	if tc.Spec.TiFlash.IsInitScriptDisabled() {
+	if tc.Spec.TiFlash.DoesMountCMInTiflashContainer() {
 		return RenderTiFlashStartScriptWithStartArgs(tc)
 	}
 	return "/tiflash/tiflash server --config-file /data0/config.toml", nil
@@ -252,6 +252,13 @@ func RenderTiFlashStartScriptWithStartArgs(tc *v1alpha1.TidbCluster) (string, er
 	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
 		model.AdvertiseStatusAddr = fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d", controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiFlashProxyStatusPort)
 		model.EnableAdvertiseStatusAddr = true
+	}
+
+	model.PDAddress = fmt.Sprintf("%s://${CLUSTER_NAME}-pd:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
+	if tc.AcrossK8s() {
+		model.PDAddress = fmt.Sprintf("%s://${CLUSTER_NAME}-pd:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		model.PDAddress = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	listenHost := "0.0.0.0"

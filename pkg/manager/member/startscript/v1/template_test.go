@@ -1688,6 +1688,339 @@ func TestRenderTiFlashStartScript(t *testing.T) {
 	}
 }
 
+func TestRenderTiFlashStartScriptWithStartArgs(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type testcase struct {
+		name string
+
+		modifyTC     func(tc *v1alpha1.TidbCluster)
+		expectScript string
+	}
+
+	cases := []testcase{
+		{
+			name:     "basic",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {},
+			expectScript: `#!/bin/sh
+
+# This script is used to start tiflash containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_ADDRESS="http://${CLUSTER_NAME}-pd:2379"
+
+ARGS="server --config-file /etc/tiflash/config_templ.toml \
+-- \
+--flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20170 \
+--flash.service_addr=0.0.0.0:3930 \
+--raft.pd_addr=${PD_ADDRESS}
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tiflash-server ..."
+echo "/tiflash/tiflash ${ARGS}"
+exec /tiflash/tiflash ${ARGS}
+`,
+		},
+		{
+			name: "enable AdvertiseAddr",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				enable := true
+				tc.Spec.EnableDynamicConfiguration = &enable
+			},
+			expectScript: `#!/bin/sh
+
+# This script is used to start tiflash containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_ADDRESS="http://${CLUSTER_NAME}-pd:2379"
+
+ARGS="server --config-file /etc/tiflash/config_templ.toml \
+-- \
+--flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20170 \
+--flash.proxy.advertise-status-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20292 \
+--flash.service_addr=0.0.0.0:3930 \
+--raft.pd_addr=${PD_ADDRESS}
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tiflash-server ..."
+echo "/tiflash/tiflash ${ARGS}"
+exec /tiflash/tiflash ${ARGS}
+`,
+		},
+		{
+			name: "across k8s",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+				tc.Spec.AcrossK8s = true
+			},
+			expectScript: `#!/bin/sh
+
+# This script is used to start tiflash containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_ADDRESS="http://${CLUSTER_NAME}-pd:2379"
+pd_url="http://${CLUSTER_NAME}-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
+
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+PD_ADDRESS=${result}
+
+
+ARGS="server --config-file /etc/tiflash/config_templ.toml \
+-- \
+--flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:20170 \
+--flash.service_addr=0.0.0.0:3930 \
+--raft.pd_addr=${PD_ADDRESS}
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tiflash-server ..."
+echo "/tiflash/tiflash ${ARGS}"
+exec /tiflash/tiflash ${ARGS}
+`,
+		},
+		{
+			name: "across k8s with tls enabled",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+				tc.Spec.AcrossK8s = true
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+			},
+			expectScript: `#!/bin/sh
+
+# This script is used to start tiflash containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_ADDRESS="https://${CLUSTER_NAME}-pd:2379"
+pd_url="https://${CLUSTER_NAME}-pd:2379"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
+
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+PD_ADDRESS=${result}
+
+
+ARGS="server --config-file /etc/tiflash/config_templ.toml \
+-- \
+--flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:20170 \
+--flash.service_addr=0.0.0.0:3930 \
+--raft.pd_addr=${PD_ADDRESS}
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tiflash-server ..."
+echo "/tiflash/tiflash ${ARGS}"
+exec /tiflash/tiflash ${ARGS}
+`,
+		},
+		{
+			name: "basic with ipv6",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PreferIPv6 = true
+			},
+			expectScript: `#!/bin/sh
+
+# This script is used to start tiflash containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_ADDRESS="http://${CLUSTER_NAME}-pd:2379"
+
+ARGS="server --config-file /etc/tiflash/config_templ.toml \
+-- \
+--flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20170 \
+--flash.service_addr=[::]:3930 \
+--raft.pd_addr=${PD_ADDRESS}
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tiflash-server ..."
+echo "/tiflash/tiflash ${ARGS}"
+exec /tiflash/tiflash ${ARGS}
+`,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Logf("test case: %s", c.name)
+
+			tc := &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiFlash: &v1alpha1.TiFlashSpec{},
+				},
+			}
+			tc.Name = "start-script-test"
+			tc.Namespace = "start-script-test-ns"
+
+			if c.modifyTC != nil {
+				c.modifyTC(tc)
+			}
+
+			script, err := RenderTiFlashStartScriptWithStartArgs(tc)
+			g.Expect(err).Should(gomega.Succeed())
+			if diff := cmp.Diff(c.expectScript, script); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+				t.Logf("got: %s", script)
+			}
+			g.Expect(validateScript(script)).Should(gomega.Succeed())
+		})
+	}
+}
+
 func TestRenderTiFlashInitScript(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 

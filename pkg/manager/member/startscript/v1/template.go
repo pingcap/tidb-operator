@@ -767,17 +767,30 @@ source ${ANNOTATIONS} 2>/dev/null
 runmode=${runmode:-normal}
 if [[ X${runmode} == Xdebug ]]
 then
-	echo "entering debug mode."
-	tail -f /dev/null
+    echo "entering debug mode."
+    tail -f /dev/null
 fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_ADDRESS="{{ .PDAddress }}"{{ if .AcrossK8s }}
+pd_url="{{ .PDAddress }}"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
+
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+PD_ADDRESS=${result}
+{{ end }}
+
 ARGS="server --config-file /etc/tiflash/config_templ.toml \
 -- \
 --flash.proxy.advertise-addr={{ .AdvertiseAddr }} \{{if .EnableAdvertiseStatusAddr }}
 --flash.proxy.advertise-status-addr={{ .AdvertiseStatusAddr }} \{{end}}
---flash.service_addr={{ .Addr }}
+--flash.service_addr={{ .Addr }} \
+--raft.pd_addr=${PD_ADDRESS}
 "
 
 if [ ! -z "${STORE_LABELS:-}" ]; then
@@ -799,4 +812,5 @@ type TiflashStartScriptModel struct {
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	Addr                      string
+	PDAddress                 string
 }
