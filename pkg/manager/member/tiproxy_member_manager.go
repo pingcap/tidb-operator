@@ -125,23 +125,20 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 		cfgWrapper.Set("proxy.require-backend-tls", false)
 	}
 
-	if tc.IsTLSClusterEnabled() {
+	tlsCluster := tc.IsTLSClusterEnabled()
+	tlsTiDB := tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled()
+	if tlsCluster {
 		cfgWrapper.Set("security.cluster-tls.ca", path.Join(util.ClusterClientTLSPath, "ca.crt"))
 		cfgWrapper.Set("security.cluster-tls.key", path.Join(util.ClusterClientTLSPath, "tls.key"))
 		cfgWrapper.Set("security.cluster-tls.cert", path.Join(util.ClusterClientTLSPath, "tls.crt"))
 	}
-	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() {
+	if tlsTiDB {
 		cfgWrapper.Set("security.server-tls.ca", path.Join(tiproxyServerPath, "ca.crt"))
 		cfgWrapper.Set("security.server-tls.key", path.Join(tiproxyServerPath, "tls.key"))
 		cfgWrapper.Set("security.server-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
 		if cfgWrapper.Get("security.server-tls.skip-ca") == nil {
 			cfgWrapper.Set("security.server-tls.skip-ca", true)
 		}
-
-		cfgWrapper.Set("security.server-http-tls.ca", path.Join(tiproxyServerPath, "ca.crt"))
-		cfgWrapper.Set("security.server-http-tls.key", path.Join(tiproxyServerPath, "tls.key"))
-		cfgWrapper.Set("security.server-http-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
-		cfgWrapper.Set("security.server-http-tls.skip-ca", true)
 
 		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
 			if cfgWrapper.Get("security.sql-tls.skip-ca") == nil && tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
@@ -154,6 +151,14 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 				cfgWrapper.Set("security.sql-tls.cert", path.Join(tiproxySQLPath, "tls.crt"))
 			}
 		}
+	}
+	// TODO: this should only be set on `tlsCluster`. `tlsTiDB` check is for backward compatibility.
+	// and it should be removed in the future.
+	if tlsCluster || tlsTiDB {
+		cfgWrapper.Set("security.server-http-tls.ca", path.Join(tiproxyServerPath, "ca.crt"))
+		cfgWrapper.Set("security.server-http-tls.key", path.Join(tiproxyServerPath, "tls.key"))
+		cfgWrapper.Set("security.server-http-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
+		cfgWrapper.Set("security.server-http-tls.skip-ca", true)
 	}
 
 	cfgBytes, err := cfgWrapper.MarshalTOML()
