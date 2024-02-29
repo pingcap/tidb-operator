@@ -55,6 +55,7 @@ const (
 	DMV2                          = TiDBLatest
 	TiDBNGMonitoringLatest        = TiDBLatest
 	HelperImage                   = "alpine:3.16.0"
+	PDMSImage                     = "nightly"
 )
 
 func ListImages() []string {

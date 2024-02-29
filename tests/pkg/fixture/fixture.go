@@ -15,6 +15,7 @@ package fixture
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/Masterminds/semver"
 	corev1 "k8s.io/api/core/v1"
@@ -99,7 +100,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	// workaround for https://docs.pingcap.com/tidb/stable/backup-and-restore-faq#why-does-br-report-new_collations_enabled_on_first_bootstrap-mismatch
 	tidbConfig.Set("new_collations_enabled_on_first_bootstrap", true)
 
-	return &v1alpha1.TidbCluster{
+	tc := &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
@@ -190,6 +191,14 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			},
 		},
 	}
+
+	random := rand.Intn(2)
+	if random != 0 && version == utilimage.PDMSImage {
+		// 50% random in pdms mode
+		tc = AddPDMSForTidbCluster(tc)
+	}
+
+	return tc
 }
 
 // GetDMCluster returns a DmCluster resource configured for testing.
@@ -773,5 +782,39 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 			"heartbeat-interval": 2,
 		}),
 	}
+	return tc
+}
+
+const (
+	tsoService        = "tso"
+	schedulingService = "scheduling"
+)
+
+func AddPDMSForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
+	if tc.Spec.PDMS != nil {
+		return tc
+	}
+	tc.Spec.PD.Mode = "ms"
+	tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
+		{
+			Name: tsoService,
+			ComponentSpec: v1alpha1.ComponentSpec{
+				// TODO: specific version which supported pdms
+				Image: "pingcap/pd:nightly",
+			},
+			Replicas:             2,
+			ResourceRequirements: WithStorage(BurstableSmall, "10Gi"),
+		},
+		{
+			Name: schedulingService,
+			ComponentSpec: v1alpha1.ComponentSpec{
+				// TODO: specific version which supported pdms
+				Image: "pingcap/pd:nightly",
+			},
+			Replicas:             1,
+			ResourceRequirements: WithStorage(BurstableSmall, "10Gi"),
+		},
+	}
+
 	return tc
 }
