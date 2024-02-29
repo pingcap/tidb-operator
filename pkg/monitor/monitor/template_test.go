@@ -150,7 +150,7 @@ scrape_configs:
     - __tmp_hash
     regex: $(SHARD)
     action: keep
-- job_name: ns1-target-pdms-tso
+- job_name: ns1-target-tso
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -178,10 +178,10 @@ scrape_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_component
     action: keep
-    regex: pdms-tso
+    regex: tso
   - action: replace
     regex: (.+);(.+);(.+);(.+)
-    replacement: $1.$2-pdms-tso-peer.$3:$4
+    replacement: $1.$2-tso-peer.$3:$4
     target_label: __address__
     source_labels:
     - __meta_kubernetes_pod_name
@@ -223,7 +223,7 @@ scrape_configs:
     - __tmp_hash
     regex: $(SHARD)
     action: keep
-- job_name: ns1-target-pdms-scheduling
+- job_name: ns1-target-scheduling
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -251,10 +251,10 @@ scrape_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_component
     action: keep
-    regex: pdms-scheduling
+    regex: scheduling
   - action: replace
     regex: (.+);(.+);(.+);(.+)
-    replacement: $1.$2-pdms-scheduling-peer.$3:$4
+    replacement: $1.$2-scheduling-peer.$3:$4
     target_label: __address__
     source_labels:
     - __meta_kubernetes_pod_name
@@ -1267,7 +1267,7 @@ scrape_configs:
     - __tmp_hash
     regex: $(SHARD)
     action: keep
-- job_name: ns1-target-pdms-tso
+- job_name: ns1-target-tso
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -1295,10 +1295,10 @@ scrape_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_component
     action: keep
-    regex: pdms-tso
+    regex: tso
   - action: replace
     regex: (.+);(.+);(.+);(.+)
-    replacement: $1.$2-pdms-tso-peer.$3:$4
+    replacement: $1.$2-tso-peer.$3:$4
     target_label: __address__
     source_labels:
     - __meta_kubernetes_pod_name
@@ -1340,7 +1340,7 @@ scrape_configs:
     - __tmp_hash
     regex: $(SHARD)
     action: keep
-- job_name: ns1-target-pdms-scheduling
+- job_name: ns1-target-scheduling
   honor_labels: true
   scrape_interval: 15s
   scheme: http
@@ -1368,10 +1368,10 @@ scrape_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_component
     action: keep
-    regex: pdms-scheduling
+    regex: scheduling
   - action: replace
     regex: (.+);(.+);(.+);(.+)
-    replacement: $1.$2-pdms-scheduling-peer.$3:$4
+    replacement: $1.$2-scheduling-peer.$3:$4
     target_label: __address__
     source_labels:
     - __meta_kubernetes_pod_name
@@ -2382,7 +2382,7 @@ scrape_configs:
     - __tmp_hash
     regex: $(SHARD)
     action: keep
-- job_name: ns1-target-pdms-tso
+- job_name: ns1-target-tso
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -2412,10 +2412,10 @@ scrape_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_component
     action: keep
-    regex: pdms-tso
+    regex: tso
   - action: replace
     regex: (.+);(.+);(.+);(.+)
-    replacement: $1.$2-pdms-tso-peer.$3:$4
+    replacement: $1.$2-tso-peer.$3:$4
     target_label: __address__
     source_labels:
     - __meta_kubernetes_pod_name
@@ -2457,7 +2457,7 @@ scrape_configs:
     - __tmp_hash
     regex: $(SHARD)
     action: keep
-- job_name: ns1-target-pdms-scheduling
+- job_name: ns1-target-scheduling
   honor_labels: true
   scrape_interval: 15s
   scheme: https
@@ -2487,10 +2487,10 @@ scrape_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_component
     action: keep
-    regex: pdms-scheduling
+    regex: scheduling
   - action: replace
     regex: (.+);(.+);(.+);(.+)
-    replacement: $1.$2-pdms-scheduling-peer.$3:$4
+    replacement: $1.$2-scheduling-peer.$3:$4
     target_label: __address__
     source_labels:
     - __meta_kubernetes_pod_name

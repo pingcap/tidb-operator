@@ -45,8 +45,8 @@ var (
 	tikvPattern           = "tikv"
 	tiproxyPattern        = "tiproxy"
 	pdPattern             = "pd"
-	pdmsTSOPattern        = "pdms-tso"
-	pdmsSchedulingPattern = "pdms-scheduling"
+	pdmsTSOPattern        = "tso"
+	pdmsSchedulingPattern = "scheduling"
 	tidbPattern           = "tidb"
 	addressPattern        = "(.+);(.+);(.+);(.+)"
 	tiflashPattern        = "tiflash"
@@ -94,8 +94,8 @@ type ClusterRegexInfo struct {
 func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
 	var scrapeJobs []yaml.MapSlice
 	scrapeJobs = append(scrapeJobs, scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfigByComponent("pd"))...)
-	scrapeJobs = append(scrapeJobs, scrapeJob("pdms-tso", pdmsTSOPattern, cmodel, buildAddressRelabelConfigByComponent("pdms-tso"))...)
-	scrapeJobs = append(scrapeJobs, scrapeJob("pdms-scheduling", pdmsSchedulingPattern, cmodel, buildAddressRelabelConfigByComponent("pdms-scheduling"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tso", pdmsTSOPattern, cmodel, buildAddressRelabelConfigByComponent("tso"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("scheduling", pdmsSchedulingPattern, cmodel, buildAddressRelabelConfigByComponent("scheduling"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfigByComponent("tikv"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("tiproxy", tiproxyPattern, cmodel, buildAddressRelabelConfigByComponent("tiproxy"))...)
@@ -139,7 +139,7 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 	}
 
 	switch strings.ToLower(kind) {
-	case "pd", "pdms-scheduling", "pdms-tso":
+	case "pd", "scheduling", "tso":
 		return f()
 	case "tidb":
 		return f()

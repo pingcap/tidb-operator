@@ -71,9 +71,9 @@ const (
 	// PDMemberType is pd member type
 	PDMemberType MemberType = "pd"
 	// PDMSTSOMemberType is pd microservice tso member type
-	PDMSTSOMemberType MemberType = "pdms-tso"
+	PDMSTSOMemberType MemberType = "tso"
 	// PDMSSchedulingMemberType is pd microservice scheduling member type
-	PDMSSchedulingMemberType MemberType = "pdms-scheduling"
+	PDMSSchedulingMemberType MemberType = "scheduling"
 	// TiDBMemberType is tidb member type
 	TiDBMemberType MemberType = "tidb"
 	// TiKVMemberType is tikv member type
