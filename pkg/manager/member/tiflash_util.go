@@ -198,7 +198,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		if !mountCMInTiflashContainer {
 			common.SetIfNil("flash.proxy.config", "/data0/proxy.toml")
 		} else {
-			common.SetIfNil("flash.proxy.config", "/etc/proxy_templ.toml")
+			common.SetIfNil("flash.proxy.config", "/etc/tiflash/proxy_templ.toml")
 		}
 
 		// logger

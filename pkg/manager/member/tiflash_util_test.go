@@ -1602,7 +1602,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 						log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
 						addr = "0.0.0.0:20170"
-						config = "/etc/proxy_templ.toml"
+						config = "/etc/tiflash/proxy_templ.toml"
 						data-dir = "/data0/proxy"
 					[logger]
 					  errorlog = "/data0/logs/error.log"
