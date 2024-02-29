@@ -313,12 +313,12 @@ func PDPeerMemberName(clusterName string) string {
 
 // PDMSMemberName returns pd microservice member name
 func PDMSMemberName(clusterName string, serviceName string) string {
-	return fmt.Sprintf("%s-pdms-%s", clusterName, serviceName)
+	return fmt.Sprintf("%s-%s", clusterName, serviceName)
 }
 
 // PDMSPeerMemberName returns pd microservice peer service name
 func PDMSPeerMemberName(clusterName string, serviceName string) string {
-	return fmt.Sprintf("%s-pdms-%s-peer", clusterName, serviceName)
+	return fmt.Sprintf("%s-%s-peer", clusterName, serviceName)
 }
 
 // PDMSTrimName returns last `-` separated string for `PDMSMemberName`
