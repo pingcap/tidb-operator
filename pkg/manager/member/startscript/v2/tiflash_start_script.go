@@ -86,11 +86,7 @@ func RenderTiFlashStartScriptWithStartArgs(tc *v1alpha1.TidbCluster) (string, er
 		}
 	}
 
-	listenHost := "0.0.0.0"
-	if tc.Spec.PreferIPv6 {
-		listenHost = "[::]"
-	}
-	m.Addr = fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort)
+	m.Addr = fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d", controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiFlashFlashPort)
 
 	return renderTemplateFunc(tiflashStartScriptWithStartArgsTpl, m)
 }

@@ -1737,7 +1737,7 @@ PD_ADDRESS="http://${CLUSTER_NAME}-pd:2379"
 ARGS="server --config-file /etc/tiflash/config_templ.toml \
 -- \
 --flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20170 \
---flash.service_addr=0.0.0.0:3930 \
+--flash.service_addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:3930 \
 --raft.pd_addr=${PD_ADDRESS}
 "
 
@@ -1793,7 +1793,7 @@ ARGS="server --config-file /etc/tiflash/config_templ.toml \
 -- \
 --flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20170 \
 --flash.proxy.advertise-status-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20292 \
---flash.service_addr=0.0.0.0:3930 \
+--flash.service_addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:3930 \
 --raft.pd_addr=${PD_ADDRESS}
 "
 
@@ -1858,7 +1858,7 @@ PD_ADDRESS=${result}
 ARGS="server --config-file /etc/tiflash/config_templ.toml \
 -- \
 --flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:20170 \
---flash.service_addr=0.0.0.0:3930 \
+--flash.service_addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:3930 \
 --raft.pd_addr=${PD_ADDRESS}
 "
 
@@ -1924,7 +1924,7 @@ PD_ADDRESS=${result}
 ARGS="server --config-file /etc/tiflash/config_templ.toml \
 -- \
 --flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:20170 \
---flash.service_addr=0.0.0.0:3930 \
+--flash.service_addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:3930 \
 --raft.pd_addr=${PD_ADDRESS}
 "
 
@@ -1978,7 +1978,7 @@ PD_ADDRESS="http://${CLUSTER_NAME}-pd:2379"
 ARGS="server --config-file /etc/tiflash/config_templ.toml \
 -- \
 --flash.proxy.advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20170 \
---flash.service_addr=[::]:3930 \
+--flash.service_addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:3930 \
 --raft.pd_addr=${PD_ADDRESS}
 "
 

@@ -1596,7 +1596,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					tmp_path = "/data0/tmp"
 					[flash]
-					  service_addr = "0.0.0.0:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
