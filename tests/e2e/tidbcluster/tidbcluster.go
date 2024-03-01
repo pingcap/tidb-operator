@@ -3198,14 +3198,15 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	})
 
-	ginkgo.Describe("[Feature]: Mount ConfigMap in tiflash container", func() {
-		ginkgo.It("deploy tidb cluster with random password", func() {
+	ginkgo.Describe("Mount ConfigMap in tiflash container", func() {
+		ginkgo.It("deploy tidb cluster", func() {
 			ginkgo.By("Deploy initial tc")
 			tc := fixture.GetTidbCluster(ns, "mount-cm-in-tiflash-container", utilimage.TiDBLatest)
+			fixture.AddTiFlashForTidbCluster(tc)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
-			tc.Spec.TiFlash.Replicas = 1
+			tc.Spec.TiFlash.Replicas = 2
 			if tc.Spec.TiFlash.Annotations == nil {
 				tc.Spec.TiFlash.Annotations = map[string]string{}
 			}
