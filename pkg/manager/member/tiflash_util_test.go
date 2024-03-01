@@ -1541,6 +1541,43 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					status-addr = "0.0.0.0:20292"`,
 			},
 			{
+				name: "config is with PreferPDAddressesOverDiscovery",
+				setTC: func(tc *v1alpha1.TidbCluster) {
+					tc.Spec.TiFlash.Config = nil
+					tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery}
+					tc.Spec.PDAddresses = []string{"test-pd.another-ns.svc:2379"}
+				},
+				expectCommonCfg: `
+					tmp_path = "/data0/tmp"
+					[flash]
+					  service_addr = "0.0.0.0:3930"
+					  tidb_status_addr = "test-tidb.default.svc:10080"
+					  [flash.flash_cluster]
+						log = "/data0/logs/flash_cluster_manager.log"
+					  [flash.proxy]
+						addr = "0.0.0.0:20170"
+						advertise-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20170"
+						config = "/data0/proxy.toml"
+						data-dir = "/data0/proxy"
+					[logger]
+					  errorlog = "/data0/logs/error.log"
+					  log = "/data0/logs/server.log"
+					[raft]
+					  pd_addr = "test-pd.another-ns.svc:2379"
+					[storage]
+					  [storage.main]
+						dir = ["/data0/db"]
+					  [storage.raft]
+						dir = ["/data0/kvstore"]`,
+				expectProxyCfg: `
+					log-level = "info"
+
+					[server]
+					advertise-status-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:20292"
+					engine-addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+					status-addr = "0.0.0.0:20292"`,
+			},
+			{
 				name: "config is nil and cluster enable tls",
 				setTC: func(tc *v1alpha1.TidbCluster) {
 					tc.Spec.TiFlash.Config = nil
