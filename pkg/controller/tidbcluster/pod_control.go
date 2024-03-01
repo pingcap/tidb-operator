@@ -437,7 +437,7 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 		// delete pod after eviction finished if needed
 		if value == v1alpha1.EvictLeaderValueDeletePod {
 			tlsEnabled := tc.IsTLSClusterEnabled()
-			kvClient := c.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, tlsEnabled)
+			kvClient := c.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, tc.Spec.ClusterDomain, tlsEnabled)
 			leaderCount, err := kvClient.GetLeaderCount()
 			if err != nil {
 				return reconcile.Result{}, perrors.Annotatef(err, "failed to get leader count for pod %s/%s", pod.Namespace, pod.Name)
