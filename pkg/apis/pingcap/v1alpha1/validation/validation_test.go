@@ -688,6 +688,13 @@ func TestValidatePDAddresses(t *testing.T) {
 			"http://test-pd-0.test-pd-peer.default.svc:2380",
 			"http://test:2379",
 		},
+		{
+			"https://1.2.3.4:2379",
+		},
+		{
+			"http://1.2.3.4:2380",
+			"https://1.2.3.4:2379",
+		},
 	}
 
 	for _, c := range successCases {
@@ -698,13 +705,6 @@ func TestValidatePDAddresses(t *testing.T) {
 	}
 
 	errorCases := [][]string{
-		{
-			"https://1.2.3.4:2379",
-		},
-		{
-			"http://1.2.3.4:2380",
-			"https://1.2.3.4:2379",
-		},
 		{
 			"test-pd-0.test-pd-peer.default.svc:2380",
 		},
