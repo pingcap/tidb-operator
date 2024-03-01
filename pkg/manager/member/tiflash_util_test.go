@@ -1544,6 +1544,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				name: "config is with PreferPDAddressesOverDiscovery",
 				setTC: func(tc *v1alpha1.TidbCluster) {
 					tc.Spec.TiFlash.Config = nil
+					tc.Spec.StartScriptVersion = v1alpha1.StartScriptV2
 					tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery}
 					tc.Spec.PDAddresses = []string{"test-pd.another-ns.svc:2379"}
 				},

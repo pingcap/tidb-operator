@@ -210,7 +210,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 
 		preferPDAddressesOverDiscovery := slices.Contains(
 			tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
-		if preferPDAddressesOverDiscovery {
+		if preferPDAddressesOverDiscovery && tc.Spec.StartScriptVersion == v1alpha1.StartScriptV2 {
 			pdAddr = strings.Join(tc.Spec.PDAddresses, ",")
 		}
 		common.SetIfNil("raft.pd_addr", pdAddr)
