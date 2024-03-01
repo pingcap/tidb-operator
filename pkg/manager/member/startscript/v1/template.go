@@ -742,3 +742,75 @@ type DMWorkerStartScriptModel struct {
 func RenderDMWorkerStartScript(model *DMWorkerStartScriptModel) (string, error) {
 	return renderTemplateFunc(dmWorkerStartScriptTpl, model)
 }
+
+var tiflashStartScriptTplText = `#!/bin/sh
+
+# This script is used to start tiflash containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_ADDRESS="{{ .PDAddress }}"{{ if .AcrossK8s }}
+pd_url="{{ .PDAddress }}"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
+
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+PD_ADDRESS=${result}
+{{ end }}
+
+ARGS="server --config-file /etc/tiflash/config_templ.toml \
+-- \
+--flash.proxy.advertise-addr={{ .AdvertiseAddr }} \{{if .EnableAdvertiseStatusAddr }}
+--flash.proxy.advertise-status-addr={{ .AdvertiseStatusAddr }} \{{end}}
+--flash.service_addr={{ .Addr }} \
+--raft.pd_addr=${PD_ADDRESS}
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tiflash-server ..."
+echo "/tiflash/tiflash ${ARGS}"
+exec /tiflash/tiflash ${ARGS}
+`
+
+var tiflashStartScriptTpl = template.Must(template.New("tiflash-start-script").Parse(tiflashStartScriptTplText))
+
+type TiflashStartScriptModel struct {
+	CommonModel
+
+	AdvertiseAddr             string
+	EnableAdvertiseStatusAddr bool
+	AdvertiseStatusAddr       string
+	Addr                      string
+	PDAddress                 string
+}
