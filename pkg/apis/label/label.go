@@ -158,9 +158,9 @@ const (
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// PDMSTSOLabelVal is pd microservice tso member type
-	PDMSTSOLabelVal string = "pdms-tso"
+	PDMSTSOLabelVal string = "tso"
 	// PDMSSchedulingLabelVal is pd microservice scheduling member type
-	PDMSSchedulingLabelVal string = "pdms-scheduling"
+	PDMSSchedulingLabelVal string = "scheduling"
 	// TiDBLabelVal is TiDB label value
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
