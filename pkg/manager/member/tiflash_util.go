@@ -213,9 +213,6 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		if preferPDAddressesOverDiscovery && tc.Spec.StartScriptVersion == v1alpha1.StartScriptV2 {
 			pdAddr = strings.Join(tc.Spec.PDAddresses, ",")
 		}
-		// tiflash require at least one configuration item in ["raft"] config group, otherwise
-		// tiflash with version less than v7.1.0 may encounter schema sync problems. So we keep this item
-		// even if this item is configured via command line args.
 		common.SetIfNil("raft.pd_addr", pdAddr)
 
 		if listenHost == listenHostForIPv6 {
