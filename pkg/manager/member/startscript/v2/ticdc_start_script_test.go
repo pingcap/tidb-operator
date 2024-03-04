@@ -69,6 +69,85 @@ exec /cdc server ${ARGS}
 `,
 		},
 		{
+			name: "with PDAddresses but without PDAddressesOverDiscovery",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}:2380", "another.pd:2380"}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+TICDC_POD_NAME=${POD_NAME}
+
+ARGS="--addr=0.0.0.0:8301 \
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
+--gc-ttl=86400 \
+--log-file= \
+--log-level=info \
+--pd=http://start-script-test-pd:2379"
+
+echo "start ticdc-server ..."
+echo "/cdc server ${ARGS}"
+exec /cdc server ${ARGS}
+`,
+		},
+		{
+			name: "with PDAddresses and PDAddressesOverDiscovery",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.PDAddresses = []string{"${PD_DOMAIN}:2380", "another.pd:2380"}
+				tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{
+					v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery,
+				}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+TICDC_POD_NAME=${POD_NAME}
+
+ARGS="--addr=0.0.0.0:8301 \
+--advertise-addr=${TICDC_POD_NAME}.start-script-test-ticdc-peer.start-script-test-ns.svc:8301 \
+--gc-ttl=86400 \
+--log-file= \
+--log-level=info \
+--pd=${PD_DOMAIN}:2380,another.pd:2380"
+
+echo "start ticdc-server ..."
+echo "/cdc server ${ARGS}"
+exec /cdc server ${ARGS}
+`,
+		},
+		{
 			name: "set cluster domain",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.ClusterDomain = "cluster.local"

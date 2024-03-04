@@ -27,9 +27,19 @@ func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.Tid
 			pdapi.UseHeadlessService(tc.Spec.AcrossK8s),
 		)
 	}
-	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+	// cluster domain may be empty
+	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
 }
 
+<<<<<<< HEAD
+=======
+// getPDClientFromService gets the pd client from the TidbCluster
+func getPDMSClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, serviceName string) pdapi.PDMSClient {
+	return pdControl.GetPDMSClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), serviceName,
+		tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
+}
+
+>>>>>>> f588fed6f (fix: append cluster domain for PD/TiKV/TiDB/etcd URL; prefer PD address for TiFlash/TiCDC (#5560))
 // GetPDClient tries to return an available PDClient
 // If the pdClient built from the PD service name is unavailable, try to
 // build another one with the ClientURL in the PeerMembers.
@@ -63,6 +73,9 @@ func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *
 	pdClient := pdapi.NewFakePDClient()
 	if tc.Spec.Cluster != nil {
 		pdControl.SetPDClientWithClusterDomain(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, pdClient)
+	}
+	if tc.Spec.ClusterDomain != "" {
+		pdControl.SetPDClientWithClusterDomain(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, pdClient)
 	}
 	pdControl.SetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), pdClient)
 
