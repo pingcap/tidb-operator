@@ -373,6 +373,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	tcName := tc.GetName()
 	baseTiFlashSpec := tc.BaseTiFlashSpec()
 	spec := tc.Spec.TiFlash
+	mountCMInTiflashContainer := spec.DoesMountCMInTiflashContainer()
 
 	tiflashConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiFlashMemberType)
 	if cm != nil {
@@ -400,6 +401,13 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: tiflashCertVolumeName, ReadOnly: true, MountPath: tiflashCertPath,
+		})
+	}
+	// with mountCMInTiflashContainer enabled, the tiflash container should directly read config from `/etc/tiflash/xxx.toml` mounted from ConfigMap
+	// rather than `/data0/xxx.toml` created by initContainer.
+	if mountCMInTiflashContainer {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "config", ReadOnly: true, MountPath: "/etc/tiflash",
 		})
 	}
 
@@ -463,43 +471,47 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		podSecurityContext.Sysctls = []corev1.Sysctl{}
 	}
 
-	// Append init container for config files initialization
-	initVolMounts := []corev1.VolumeMount{
-		{Name: "data0", MountPath: "/data0"},
-		{Name: "config", ReadOnly: true, MountPath: "/etc/tiflash"},
-	}
-	initEnv := []corev1.EnvVar{
-		{
-			Name: "POD_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.name",
+	// the work of initContainer is substituted by new start scripts which moves the configuration items depending on running env
+	// to command args.
+	if !mountCMInTiflashContainer {
+		// Append init container for config files initialization
+		initVolMounts := []corev1.VolumeMount{
+			{Name: "data0", MountPath: "/data0"},
+			{Name: "config", ReadOnly: true, MountPath: "/etc/tiflash"},
+		}
+		initEnv := []corev1.EnvVar{
+			{
+				Name: "POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
 				},
 			},
-		},
-	}
+		}
 
-	// NOTE: the config content should respect the init script
-	initScript, err := startscript.RenderTiFlashInitScript(tc)
-	if err != nil {
-		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
-	}
+		// NOTE: the config content should respect the init script
+		initScript, err := startscript.RenderTiFlashInitScript(tc)
+		if err != nil {
+			return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
+		}
 
-	initializer := corev1.Container{
-		Name:  "init",
-		Image: tc.HelperImage(),
-		Command: []string{
-			"sh",
-			"-c",
-			initScript,
-		},
-		Env:          initEnv,
-		VolumeMounts: initVolMounts,
+		initializer := corev1.Container{
+			Name:  "init",
+			Image: tc.HelperImage(),
+			Command: []string{
+				"sh",
+				"-c",
+				initScript,
+			},
+			Env:          initEnv,
+			VolumeMounts: initVolMounts,
+		}
+		if spec.Initializer != nil {
+			initializer.Resources = controller.ContainerResource(spec.Initializer.ResourceRequirements)
+		}
+		initContainers = append(initContainers, initializer)
 	}
-	if spec.Initializer != nil {
-		initializer.Resources = controller.ContainerResource(spec.Initializer.ResourceRequirements)
-	}
-	initContainers = append(initContainers, initializer)
 
 	stsLabels := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)
