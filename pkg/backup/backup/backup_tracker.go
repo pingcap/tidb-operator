@@ -199,7 +199,8 @@ func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 func (bt *backupTracker) doRefreshLogBackupCheckpointTs(backup *v1alpha1.Backup, dep *trackDepends) {
 	ns := backup.Namespace
 	name := backup.Name
-	etcdCli, err := bt.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(dep.tc.Namespace), dep.tc.Name, dep.tc.IsTLSClusterEnabled())
+	etcdCli, err := bt.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(dep.tc.Namespace), dep.tc.Name,
+		dep.tc.IsTLSClusterEnabled(), pdapi.ClusterRef(dep.tc.Spec.ClusterDomain))
 	if err != nil {
 		klog.Errorf("get log backup %s/%s pd cli error %v", ns, name, err)
 		return

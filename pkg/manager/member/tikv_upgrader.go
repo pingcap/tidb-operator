@@ -232,7 +232,8 @@ func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgrad
 		}
 	}
 
-	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, upgradePod.Name, tc.IsTLSClusterEnabled()).GetLeaderCount()
+	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name,
+		upgradePod.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled()).GetLeaderCount()
 	if err != nil {
 		klog.Warningf("%s: failed to get leader count, error: %v", logPrefix, err)
 		return false, nil
