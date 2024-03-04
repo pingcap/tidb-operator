@@ -791,25 +791,32 @@ const (
 )
 
 func AddPDMSForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
+	tc.Spec.PD.Mode = "ms"
 	if tc.Spec.PDMS != nil {
 		return tc
 	}
-	tc.Spec.PD.Mode = "ms"
+	pdmsImage := "hub-new.pingcap.net/orchestration/pd"
+	version := "v8.0.0"
+	// TODO: remove pd version when released pdms
+	tc.Spec.PD.BaseImage = "hub-new.pingcap.net/orchestration/pd"
+	tc.Spec.PD.Version = &version
 	tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
 		{
 			Name: tsoService,
+			// TODO: replace pdms image when released pdms
+			BaseImage: &pdmsImage,
 			ComponentSpec: v1alpha1.ComponentSpec{
-				// TODO: specific version which supported pdms
-				Image: "pingcap/pd:nightly",
+				Version: &version,
 			},
 			Replicas:             2,
 			ResourceRequirements: WithStorage(BurstableSmall, "10Gi"),
 		},
 		{
 			Name: schedulingService,
+			// TODO: replace pdms image when released pdms
+			BaseImage: &pdmsImage,
 			ComponentSpec: v1alpha1.ComponentSpec{
-				// TODO: specific version which supported pdms
-				Image: "pingcap/pd:nightly",
+				Version: &version,
 			},
 			Replicas:             1,
 			ResourceRequirements: WithStorage(BurstableSmall, "10Gi"),

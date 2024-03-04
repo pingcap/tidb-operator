@@ -14,21 +14,20 @@
 package tidbcluster
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
+	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
-
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
-	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/manager"
-	"github.com/pingcap/tidb-operator/pkg/manager/member"
-	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
-	"github.com/pingcap/tidb-operator/pkg/metrics"
 )
 
 // ControlInterface implements the control logic for updating TidbClusters and their children StatefulSets.
@@ -188,17 +187,6 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
-	// works that should be done to make the pd microservice current state match the desired state:
-	//   - create or update the pdms service
-	//   - create or update the pdms headless service
-	//   - create the pdms statefulset
-	//   - sync pdms cluster status from pdms to TidbCluster object
-	//   - upgrade the pdms cluster
-	//   - scale out/in the pdms cluster
-	if err := c.pdMSMemberManager.Sync(tc); err != nil {
-		return err
-	}
-
 	// works that should be done to make the pd cluster current state match the desired state:
 	//   - create or update the pd service
 	//   - create or update the pd headless service
@@ -212,6 +200,17 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - failover the pd cluster
 	if err := c.pdMemberManager.Sync(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pd").Inc()
+		return err
+	}
+
+	// works that should be done to make the pd microservice current state match the desired state:
+	//   - create or update the pdms service
+	//   - create or update the pdms headless service
+	//   - create the pdms statefulset
+	//   - sync pdms cluster status from pdms to TidbCluster object
+	//   - upgrade the pdms cluster
+	//   - scale out/in the pdms cluster
+	if err := c.pdMSMemberManager.Sync(tc); err != nil {
 		return err
 	}
 

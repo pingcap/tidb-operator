@@ -684,18 +684,19 @@ func (oa *OperatorActions) memberCheckContextForTC(tc *v1alpha1.TidbCluster, com
 		services = []string{controller.PDMemberName(name), controller.PDPeerMemberName(name)}
 		checkComponent = oa.isPDMembersReady
 	case v1alpha1.PDMSTSOMemberType, v1alpha1.PDMSSchedulingMemberType:
-		curService := component.String()
 		skip = true
-		for _, service := range tc.Spec.PDMS {
-			log.Logf("check pdms service ready, curService: %s, service.Name: %s", curService, service.Name)
-			if curService == service.Name {
-				skip = false
-				break
+		if tc.Spec.PD != nil && tc.Spec.PD.Mode == "ms" {
+			curService := component.String()
+			for _, service := range tc.Spec.PDMS {
+				if curService == service.Name {
+					skip = false
+					break
+				}
 			}
+			expectedImage = tc.PDImage()
+			services = []string{controller.PDMSMemberName(name, curService), controller.PDMSPeerMemberName(name, curService)}
+			checkComponent = oa.isPDMSMembersReady
 		}
-		expectedImage = tc.PDImage()
-		services = []string{controller.PDMSMemberName(name, curService), controller.PDMSPeerMemberName(name, curService)}
-		checkComponent = oa.isPDMSMembersReady
 	case v1alpha1.TiDBMemberType:
 		skip = tc.Spec.TiDB == nil
 		expectedImage = tc.TiDBImage()
@@ -1363,47 +1364,6 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 
 		components := []v1alpha1.MemberType{
-			v1alpha1.PDMemberType,
-			v1alpha1.TiKVMemberType,
-			v1alpha1.TiDBMemberType,
-			v1alpha1.TiDBMemberType,
-			v1alpha1.TiFlashMemberType,
-			v1alpha1.PumpMemberType,
-			v1alpha1.TiCDCMemberType,
-		}
-
-		for _, component := range components {
-			if err := oa.IsMembersReady(local, component); err != nil {
-				checkErr = fmt.Errorf("%s members for tc %q are not ready: %v", component, tcID, err)
-				return false, nil
-			}
-		}
-
-		log.Logf("TidbCluster %q is ready", tcID)
-		return true, nil
-	})
-
-	if err == wait.ErrWaitTimeout {
-		err = checkErr
-	}
-
-	return err
-}
-
-func (oa *OperatorActions) WaitForPDMSClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
-	if tc == nil {
-		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
-	}
-	var checkErr, err error
-	var local *v1alpha1.TidbCluster
-	tcID := fmt.Sprintf("%s/%s", tc.Namespace, tc.Name)
-	err = wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
-		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{}); err != nil {
-			checkErr = fmt.Errorf("failed to get TidbCluster: %q, %v", tcID, err)
-			return false, nil
-		}
-
-		components := []v1alpha1.MemberType{
 			v1alpha1.PDMSTSOMemberType,
 			v1alpha1.PDMSSchedulingMemberType,
 			v1alpha1.PDMemberType,
@@ -1417,7 +1377,6 @@ func (oa *OperatorActions) WaitForPDMSClusterReady(tc *v1alpha1.TidbCluster, tim
 
 		for _, component := range components {
 			if err := oa.IsMembersReady(local, component); err != nil {
-				log.Logf("%s members for tc %q are not ready: %v", component, tcID, err)
 				checkErr = fmt.Errorf("%s members for tc %q are not ready: %v", component, tcID, err)
 				return false, nil
 			}
