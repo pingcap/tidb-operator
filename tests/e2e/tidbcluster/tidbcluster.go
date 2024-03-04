@@ -3197,6 +3197,28 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		}
 
 	})
+
+	ginkgo.Describe("Mount ConfigMap in tiflash container", func() {
+		ginkgo.It("deploy tidb cluster", func() {
+			ginkgo.By("Deploy initial tc")
+			tc := fixture.GetTidbCluster(ns, "mount-cm-in-tiflash-container", utilimage.TiDBLatest)
+			fixture.AddTiFlashForTidbCluster(tc)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TiFlash.Replicas = 2
+			if tc.Spec.TiFlash.Annotations == nil {
+				tc.Spec.TiFlash.Annotations = map[string]string{}
+			}
+			tc.Spec.TiFlash.Annotations[label.AnnTiflashMountCMInTiflashContainer] = "true"
+
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
+			framework.ExpectNoError(err, "Expected create tidbcluster")
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "Expected get tidbcluster")
+		})
+	})
+
 })
 
 // checkPumpStatus check there are onlineNum online pump instance running now.

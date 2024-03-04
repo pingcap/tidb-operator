@@ -1158,6 +1158,10 @@ func (tiflash *TiFlashSpec) GetScaleOutParallelism() int {
 	return int(*(tiflash.ScalePolicy.ScaleOutParallelism))
 }
 
+func (tiflash *TiFlashSpec) DoesMountCMInTiflashContainer() bool {
+	return tiflash.Annotations[label.AnnTiflashMountCMInTiflashContainer] == "true"
+}
+
 func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {
 	exposeStatus := tidbSvc.ExposeStatus
 	if exposeStatus == nil {
