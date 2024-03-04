@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -214,6 +215,12 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
 			pdAddr = fmt.Sprintf("%s.%s.svc%s:%d", controller.PDMemberName(ref.Name), ref.Namespace,
 				controller.FormatClusterDomain(ref.ClusterDomain), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
+		}
+
+		preferPDAddressesOverDiscovery := slices.Contains(
+			tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
+		if preferPDAddressesOverDiscovery && tc.Spec.StartScriptVersion == v1alpha1.StartScriptV2 {
+			pdAddr = strings.Join(tc.Spec.PDAddresses, ",")
 		}
 		// tiflash require at least one configuration item in ["raft"] config group, otherwise
 		// tiflash with version less than v7.1.0 may encounter schema sync problems. So we keep this item

@@ -197,8 +197,8 @@ func validatePDAddresses(arrayOfAddresses []string, fldPath *field.Path) field.E
 		example := " PD address format example: http://{ADDRESS}:{PORT}"
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(idxPath, address, err.Error()+example))
-		} else if u.Scheme != "http" {
-			allErrs = append(allErrs, field.Invalid(idxPath, address, "Support 'http' scheme only."+example))
+		} else if u.Scheme != "http" && u.Scheme != "https" {
+			allErrs = append(allErrs, field.Invalid(idxPath, address, "Support 'http'/'https' scheme only."+example))
 		}
 	}
 	return allErrs

@@ -167,7 +167,8 @@ func buildBinlogClient(tc *v1alpha1.TidbCluster, control pdapi.PDControlInterfac
 			pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
 		)
 	} else {
-		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+		endpoints, tlsConfig, err = control.GetEndpoints(pdapi.Namespace(tc.Namespace), tc.Name,
+			tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
 	}
 	if err != nil {
 		return nil, err

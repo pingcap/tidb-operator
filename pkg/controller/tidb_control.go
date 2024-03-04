@@ -149,7 +149,11 @@ func (c *defaultTiDBControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32)
 	scheme := tc.Scheme()
 	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
 
-	return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, hostName, TiDBPeerMemberName(tcName), ns, v1alpha1.DefaultTiDBStatusPort)
+	baseURL := fmt.Sprintf("%s://%s.%s.%s:%d", scheme, hostName, TiDBPeerMemberName(tcName), ns, v1alpha1.DefaultTiDBStatusPort)
+	if tc.Spec.ClusterDomain != "" {
+		baseURL = fmt.Sprintf("%s://%s.%s.%s.svc.%s:%d", scheme, hostName, TiDBPeerMemberName(tcName), ns, tc.Spec.ClusterDomain, v1alpha1.DefaultTiDBStatusPort)
+	}
+	return baseURL
 }
 
 // FakeTiDBControl is a fake implementation of TiDBControlInterface.

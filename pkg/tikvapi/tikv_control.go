@@ -28,7 +28,7 @@ import (
 // TiKVControlInterface is an interface that knows how to manage and get client for TiKV
 type TiKVControlInterface interface {
 	// GetTiKVPodClient provides TiKVClient of the TiKV cluster.
-	GetTiKVPodClient(namespace string, tcName string, podName string, tlsEnabled bool) TiKVClient
+	GetTiKVPodClient(namespace string, tcName string, podName, clusterDomain string, tlsEnabled bool) TiKVClient
 }
 
 // defaultTiKVControl is the default implementation of TiKVControlInterface.
@@ -43,7 +43,7 @@ func NewDefaultTiKVControl(secretLister corelisterv1.SecretLister) TiKVControlIn
 	return &defaultTiKVControl{secretLister: secretLister, tikvClients: map[string]TiKVClient{}}
 }
 
-func (tc *defaultTiKVControl) GetTiKVPodClient(namespace string, tcName string, podName string, tlsEnabled bool) TiKVClient {
+func (tc *defaultTiKVControl) GetTiKVPodClient(namespace string, tcName string, podName, clusterDomain string, tlsEnabled bool) TiKVClient {
 	tc.mutex.Lock()
 	defer tc.mutex.Unlock()
 
@@ -56,13 +56,13 @@ func (tc *defaultTiKVControl) GetTiKVPodClient(namespace string, tcName string, 
 		tlsConfig, err = pdapi.GetTLSConfig(tc.secretLister, pdapi.Namespace(namespace), util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for TiKV cluster %q, tikv client may not work: %v", tcName, err)
-			return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme), DefaultTimeout, tlsConfig, true)
+			return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme, clusterDomain), DefaultTimeout, tlsConfig, true)
 		}
 
-		return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme), DefaultTimeout, tlsConfig, true)
+		return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme, clusterDomain), DefaultTimeout, tlsConfig, true)
 	}
 
-	return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme), DefaultTimeout, tlsConfig, true)
+	return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme, clusterDomain), DefaultTimeout, tlsConfig, true)
 }
 
 func tikvPodClientKey(schema, namespace, clusterName, podName string) string {
@@ -70,7 +70,10 @@ func tikvPodClientKey(schema, namespace, clusterName, podName string) string {
 }
 
 // TiKVPodClientURL builds the url of tikv pod client
-func TiKVPodClientURL(namespace, clusterName, podName, scheme string) string {
+func TiKVPodClientURL(namespace, clusterName, podName, scheme, clusterDomain string) string {
+	if clusterDomain != "" {
+		return fmt.Sprintf("%s://%s.%s-tikv-peer.%s.svc.%s:%d", scheme, podName, clusterName, namespace, clusterDomain, v1alpha1.DefaultTiKVStatusPort)
+	}
 	return fmt.Sprintf("%s://%s.%s-tikv-peer.%s:%d", scheme, podName, clusterName, namespace, v1alpha1.DefaultTiKVStatusPort)
 }
 
@@ -91,6 +94,6 @@ func (ftc *FakeTiKVControl) SetTiKVPodClient(namespace, tcName, podName string, 
 	ftc.tikvPodClients[tikvPodClientKey("http", namespace, tcName, podName)] = tikvPodClient
 }
 
-func (ftc *FakeTiKVControl) GetTiKVPodClient(namespace, tcName, podName string, tlsEnabled bool) TiKVClient {
+func (ftc *FakeTiKVControl) GetTiKVPodClient(namespace, tcName, podName, clusterDomain string, tlsEnabled bool) TiKVClient {
 	return ftc.tikvPodClients[tikvPodClientKey("http", namespace, tcName, podName)]
 }
