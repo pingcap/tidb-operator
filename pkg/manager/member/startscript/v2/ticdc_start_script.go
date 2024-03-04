@@ -16,6 +16,7 @@ package v2
 import (
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -32,7 +33,7 @@ type TiCDCStartScriptModel struct {
 	GCTTL         int32
 	LogFile       string
 	LogLevel      string
-	PDAddr        string
+	PDAddresses   string
 	ExtraArgs     string
 
 	AcrossK8s *AcrossK8sScriptModel
@@ -58,15 +59,23 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.LogLevel = tc.TiCDCLogLevel()
 
-	m.PDAddr = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort)
-	if tc.AcrossK8s() {
-		m.AcrossK8s = &AcrossK8sScriptModel{
-			PDAddr:        fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
-			DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+	preferPDAddressesOverDiscovery := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
+	if preferPDAddressesOverDiscovery {
+		m.PDAddresses = strings.Join(tc.Spec.PDAddresses, ",")
+	}
+	if len(m.PDAddresses) == 0 {
+		if tc.AcrossK8s() {
+			m.AcrossK8s = &AcrossK8sScriptModel{
+				PDAddr:        fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
+				DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+			}
+			m.PDAddresses = "${result}" // get pd addr in subscript
+		} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+			m.PDAddresses = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
+		} else {
+			m.PDAddresses = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort)
 		}
-		m.PDAddr = "${result}" // get pd addr in subscript
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		m.PDAddr = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
 	extraArgs := []string{}
@@ -110,7 +119,7 @@ ARGS="--addr=0.0.0.0:8301 \
 --gc-ttl={{ .GCTTL }} \
 --log-file={{ .LogFile }} \
 --log-level={{ .LogLevel }} \
---pd={{ .PDAddr }}"
+--pd={{ .PDAddresses }}"
 {{- if .ExtraArgs }}
 ARGS="${ARGS} {{ .ExtraArgs }}"
 {{- end }}

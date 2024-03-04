@@ -127,8 +127,8 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	var pdClients []pdapi.PDClient
 
 	if tc.Spec.PD != nil {
-		// connect to pd of current cluster
-		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()))
+		// connect to pd of current cluster, `ClusterDomain` may be empty
+		pdClients = append(pdClients, d.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain)))
 	}
 
 	if tc.Heterogeneous() {
