@@ -187,6 +187,17 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		}
 	}
 
+	// works that should be done to make the pd microservice current state match the desired state:
+	//   - create or update the pdms service
+	//   - create or update the pdms headless service
+	//   - create the pdms statefulset
+	//   - sync pdms cluster status from pdms to TidbCluster object
+	//   - upgrade the pdms cluster
+	//   - scale out/in the pdms cluster
+	if err := c.pdMSMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
 	// works that should be done to make the pd cluster current state match the desired state:
 	//   - create or update the pd service
 	//   - create or update the pd headless service
@@ -200,17 +211,6 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	//   - failover the pd cluster
 	if err := c.pdMemberManager.Sync(tc); err != nil {
 		metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pd").Inc()
-		return err
-	}
-
-	// works that should be done to make the pd microservice current state match the desired state:
-	//   - create or update the pdms service
-	//   - create or update the pdms headless service
-	//   - create the pdms statefulset
-	//   - sync pdms cluster status from pdms to TidbCluster object
-	//   - upgrade the pdms cluster
-	//   - scale out/in the pdms cluster
-	if err := c.pdMSMemberManager.Sync(tc); err != nil {
 		return err
 	}
 
