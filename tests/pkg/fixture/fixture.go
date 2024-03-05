@@ -29,6 +29,7 @@ import (
 	tcconfig "github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 var (
@@ -194,6 +195,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 
 	random := rand.Intn(2)
 	if random != 0 && version == utilimage.PDMSImage {
+		log.Logf("[GetTidbCluster] tidbcluster's pd mode is micro-service in this situation, version: %s", version)
 		// 50% random in pdms mode
 		tc = AddPDMSForTidbCluster(tc)
 	}

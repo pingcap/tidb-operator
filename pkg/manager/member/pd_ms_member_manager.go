@@ -66,7 +66,7 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 	// remove all micro service components if PDMS is not enabled
 	// PDMS need to be enabled when PD.Mode is ms && PDMS is not nil
-	if tc.Spec.PDMS == nil || tc.Spec.PD != nil && tc.Spec.PD.Mode != "ms" {
+	if tc.Spec.PDMS == nil || (tc.Spec.PD != nil && tc.Spec.PD.Mode != "ms") {
 		for _, comp := range tc.Status.PDMS {
 			ns := tc.GetNamespace()
 			tcName := tc.GetName()
