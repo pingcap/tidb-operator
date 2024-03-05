@@ -195,7 +195,8 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 
 	random := rand.Intn(2)
 	if random != 0 && version == utilimage.PDMSImage {
-		log.Logf("[GetTidbCluster] tidbcluster's pd mode is micro-service in this situation, version: %s", version)
+		log.Logf("[GetTidbCluster] tidbcluster's pd mode is micro-service in this situation, "+
+			"version: %s, tc name: %s, namespace: %s", version, name, ns)
 		// 50% random in pdms mode
 		tc = AddPDMSForTidbCluster(tc)
 	}
