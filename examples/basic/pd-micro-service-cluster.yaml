@@ -7,7 +7,10 @@ metadata:
   name: basic
   namespace: pingcap
 spec:
-  version: v7.1.1
+  startScriptVersion: v2
+  startScriptV2FeatureFlags:
+    - WaitForDnsNameIpMatch
+  version: v7.5.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
@@ -17,8 +20,8 @@ spec:
     image: alpine:3.16.0
   pd:
     # TODO: use a stable version
-    baseImage: pingcap/pd
-    version: nightly
+    baseImage: hub.pingcap.net/devbuild/pd
+    version: v8.0.0-3932
     maxFailoverCount: 0
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
@@ -29,12 +32,14 @@ spec:
     mode: "ms"
   pdms:
     - name: "tso"
-      baseImage: pingcap/pd
-      version: nightly
+      # TODO: use a stable version
+      baseImage: hub.pingcap.net/devbuild/pd
+      version: v8.0.0-3932
       replicas: 2
     - name: "scheduling"
-      baseImage: pingcap/pd
-      version: nightly
+      # TODO: use a stable version
+      baseImage: hub.pingcap.net/devbuild/pd
+      version: v8.0.0-3932
       replicas: 1
   tikv:
     baseImage: pingcap/tikv

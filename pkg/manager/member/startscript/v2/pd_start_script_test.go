@@ -734,8 +734,7 @@ func TestRenderPDMSStartScript(t *testing.T) {
 		{
 			name: "pdms basic",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
-
+				tc.Spec.ClusterDomain = "cluster-1.com"
 			},
 			expectScript: `#!/bin/sh
 
@@ -756,9 +755,41 @@ then
     tail -f /dev/null
 fi
 
-ARGS=" services tso --listen-addr=https://0.0.0.0:2379 \
---advertise-listen-addr=https://${PDMS_DOMAIN}:2379 \
---backend-endpoints=https://${PDMS_DOMAIN}:2380 \
+PD_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PD_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com
+
+elapseTime=0
+period=1
+threshold=30
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${threshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${PD_DOMAIN} no record return"
+    else
+        echo "domain resolve ${PD_DOMAIN} success"
+        echo "$digRes"
+        break
+    fi
+done
+
+ARGS=" services tso --listen-addr=http://0.0.0.0:2379 \
+--advertise-listen-addr=http://${PD_DOMAIN}:2379 \
+--backend-endpoints=http://${PD_DOMAIN}:2380 \
 --config=/etc/pd/pd.toml \
 "
 

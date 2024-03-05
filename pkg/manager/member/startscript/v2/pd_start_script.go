@@ -42,8 +42,8 @@ type PDStartScriptModel struct {
 
 // PDMSStartScriptModel contain fields for rendering PD Micro Service start script
 type PDMSStartScriptModel struct {
-	PDMSDomain string
-	PDMSName   string
+	PDDomain       string
+	PDStartTimeout int
 
 	ListenAddr          string
 	AdvertiseListenAddr string
@@ -123,25 +123,24 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 	m := &PDMSStartScriptModel{}
 	tcName := tc.Name
 	tcNS := tc.Namespace
-	peerServiceName := controller.PDMSMemberName(tcName, name)
+	peerServiceName := controller.PDMSPeerMemberName(tcName, name)
 
-	m.PDMSDomain = fmt.Sprintf("${PDMS_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
+	m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
-		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
+		m.PDDomain = m.PDDomain + "." + tc.Spec.ClusterDomain
 	}
-
-	m.PDMSName = "${PDMS_POD_NAME}"
-	if tc.AcrossK8s() || tc.Spec.ClusterDomain != "" {
-		m.PDMSName = "${PDMS_DOMAIN}"
-	}
+	m.PDStartTimeout = tc.PDStartTimeout()
 
 	m.ListenAddr = fmt.Sprintf("%s://0.0.0.0:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 
-	m.AdvertiseListenAddr = fmt.Sprintf("%s://${PDMS_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
+	m.AdvertiseListenAddr = fmt.Sprintf("%s://${PD_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 
 	m.DiscoveryAddr = fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS)
 
-	m.BackendEndpoints = fmt.Sprintf("%s://${PDMS_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
+	m.BackendEndpoints = fmt.Sprintf("%s://${PD_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
+
+	waitForDnsNameIpMatchOnStartup := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
 
 	msStartSubScript := ``
 	msStartScriptTpl := template.Must(
@@ -149,7 +148,9 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 			template.New("pdms-start-script").Parse(msStartSubScript),
 		).Parse(
 			componentCommonScript +
-				enableMicroServiceModeDynamic(name, pdmsStartScriptTplText)))
+				replacePdStartScriptCustomPorts(
+					replacePdStartScriptDnsAwaitPart(waitForDnsNameIpMatchOnStartup,
+						enableMicroServiceModeDynamic(name, pdmsStartScriptTplText)))))
 
 	return renderTemplateFunc(msStartScriptTpl, m)
 }
@@ -239,6 +240,9 @@ exec /pd-server ${ARGS}
 
 	// pdmsStartScriptTplText is the template of pd microservices start script.
 	pdmsStartScriptTplText = `
+PD_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN={{ .PDDomain }}` +
+		dnsAwaitPart + `
 ARGS="` + pdEnableMicroService + `--listen-addr={{ .ListenAddr }} \
 --advertise-listen-addr={{ .AdvertiseListenAddr }} \
 --backend-endpoints={{ .BackendEndpoints }} \
