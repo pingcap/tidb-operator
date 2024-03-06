@@ -91,7 +91,7 @@ while [ $# -gt 0 ]; do
             echo "also trying to verify the sst files in $1"
             if find "$1" -iname '??????.LOG' -print0  | xargs -0 -I% sh -c 'echo -n "%: " >&2 && /tikv-ctl ldb dump_wal --walfile=%' 2>&1 >/dev/null | grep "Corruption"; then
                 echo "There are some files corrupted!"
-                echo $bg_works | xargs kill
+                echo $bg_works | xargs kill || true
                 wait
                 exit 1
             fi
