@@ -333,7 +333,17 @@ func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.VolumeBackupSchedule
 		return nil, fmt.Errorf("get backup schedule %s/%s backup list failed, selector: %s, err: %v", ns, bsName, selector, err)
 	}
 
-	return backupsList, nil
+	// We can filter out backup immune to GC
+	var backupListCandidates []*v1alpha1.VolumeBackup
+
+	for _, backup := range backupsList {
+		if backup.GCImmune {
+			continue
+		}
+		backupListCandidates = append(backupListCandidates, backup)
+	}
+
+	return backupListCandidates, nil
 }
 
 func (bm *backupScheduleManager) backupGCByMaxBackups(vbs *v1alpha1.VolumeBackupSchedule) {
@@ -352,21 +362,23 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(vbs *v1alpha1.VolumeBackup
 	// Delete the oldest expired backup
 	if len(backupsList) > int(*vbs.Spec.MaxBackups) {
 		backup := backupsList[len(backupsList)-1]
+
 		if backup.DeletionTimestamp != nil {
 			klog.Infof("Deletion is ongoing for backup schedule %s/%s, backup %s", ns, bsName, backup.GetName())
 			return
-		} else {
-			if err = bm.deps.FedVolumeBackupControl.DeleteVolumeBackup(backup); err != nil {
-				klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
-				return
-			}
-			klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
-
-			if len(backupsList) == 1 {
-				// All backups have been deleted, so the last backup information in the backupSchedule should be reset
-				bm.resetLastBackup(vbs)
-			}
 		}
+
+		if err = bm.deps.FedVolumeBackupControl.DeleteVolumeBackup(backup); err != nil {
+			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+			return
+		}
+		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+
+		if len(backupsList) == 1 {
+			// All backups have been deleted, so the last backup information in the backupSchedule should be reset
+			bm.resetLastBackup(vbs)
+		}
+
 	}
 }
 

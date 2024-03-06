@@ -41,6 +41,11 @@ type VolumeBackup struct {
 
 	// +k8s:openapi-gen=false
 	Status VolumeBackupStatus `json:"status,omitempty"`
+
+	// GCImmune indicates whether this EBS volume snapshot backup is immune to GC
+	// +optional
+	// +kubebuilder:default=false
+	GCImmune bool `json:"gcImmune,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
