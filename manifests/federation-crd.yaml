@@ -44,6 +44,9 @@ spec:
         properties:
           apiVersion:
             type: string
+          gcImmune:
+            default: false
+            type: boolean
           kind:
             type: string
           metadata:

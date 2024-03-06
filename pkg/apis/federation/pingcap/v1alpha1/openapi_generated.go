@@ -120,6 +120,13 @@ func schema_apis_federation_pingcap_v1alpha1_VolumeBackup(ref common.ReferenceCa
 							Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1.VolumeBackupSpec"),
 						},
 					},
+					"gcImmune": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GCImmune indicates whether this EBS volume snapshot backup is immune to GC",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"spec"},
 			},
