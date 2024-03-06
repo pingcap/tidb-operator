@@ -74,7 +74,7 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	pdStartSubScript := ``
 	mode := ""
-	if tc.Spec.PD.Mode == "ms" {
+	if tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS != nil {
 		mode = "api"
 	}
 	pdStartScriptTpl := template.Must(

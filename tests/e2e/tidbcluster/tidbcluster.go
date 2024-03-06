@@ -25,6 +25,7 @@ import (
 	"github.com/onsi/gomega"
 	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/errors"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -138,7 +139,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 	// basic deploy, scale out, scale in, change configuration tests
 	ginkgo.Context("[TiDBCluster: Basic]", func() {
-		versions := []string{utilimage.TiDBLatest}
+		versions := []string{utilimage.TiDBLatest, utilimage.PDMSImage}
 		versions = append(versions, utilimage.TiDBPreviousVersions...)
 		for _, version := range versions {
 			version := version
@@ -3219,7 +3220,235 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		})
 	})
 
+	// basic deploy for pdms, scale out, scale in, change configuration tests
+	ginkgo.Context("[PDMSCluster: Basic]", func() {
+		versions := []string{utilimage.PDMSImage}
+		for _, version := range versions {
+			version := version
+			versionDashed := strings.ReplaceAll(version, ".", "-")
+			ginkgo.Context(fmt.Sprintf("[Version: %s]", version), func() {
+				ginkgo.It("should scale out tc successfully", func() {
+					ginkgo.By("Deploy a basic tc with pdms")
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
+					tc = fixture.AddPDMSForTidbCluster(tc)
+					tc.Spec.TiDB.Replicas = 1
+					tc.Spec.TiKV.SeparateRocksDBLog = pointer.BoolPtr(true)
+					tc.Spec.TiKV.SeparateRaftLog = pointer.BoolPtr(true)
+					tc.Spec.TiKV.LogTailer = &v1alpha1.LogTailerSpec{
+						ResourceRequirements: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("100m"),
+								corev1.ResourceMemory: resource.MustParse("100Mi"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("100m"),
+								corev1.ResourceMemory: resource.MustParse("100Mi"),
+							},
+						},
+					}
+					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 30*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+
+					ginkgo.By("scale out tidb, tikv, pd, pdms")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.TiDB.Replicas = 2
+						tc.Spec.TiKV.Replicas = 4
+						// this must be 5, or one pd pod will not be scheduled, reference: https://docs.pingcap.com/tidb-in-kubernetes/stable/tidb-scheduler#pd-component
+						tc.Spec.PD.Replicas = 5
+						for _, pdms := range tc.Spec.PDMS {
+							pdms.Replicas = 4
+						}
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to scale out TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+				})
+
+				ginkgo.It("should scale in tc successfully", func() {
+					ginkgo.By("Deploy a basic tc with pdms")
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
+					tc = fixture.AddPDMSForTidbCluster(tc)
+					tc.Spec.TiKV.Replicas = 4
+					tc.Spec.PD.Replicas = 5
+					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+
+					ginkgo.By("Scale in tidb, tikv, pd, pdms")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.TiDB.Replicas = 1
+						tc.Spec.TiKV.Replicas = 3
+						tc.Spec.PD.Replicas = 3
+						for _, pdms := range tc.Spec.PDMS {
+							pdms.Replicas = 2
+						}
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to scale in TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+				})
+
+				ginkgo.It("should change configurations successfully", func() {
+					ginkgo.By("Deploy a basic tc with pdms")
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
+					tc = fixture.AddPDMSForTidbCluster(tc)
+					tc.Spec.TiDB.Replicas = 1
+					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+
+					ginkgo.By("Change configuration")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
+						tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
+						tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
+						tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+
+					ginkgo.By("Check custom labels and annotations will not lost")
+					framework.ExpectNoError(checkCustomLabelAndAnn(tc, c, tc.Spec.Labels[fixture.ClusterCustomKey], time.Minute, 10*time.Second), "failed to check labels and annotations")
+
+					ginkgo.By("Change labels and annotations")
+					newValue := "new-value"
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.Labels[fixture.ClusterCustomKey] = newValue
+						tc.Spec.Annotations[fixture.ClusterCustomKey] = newValue
+						tc.Spec.PD.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Service.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Service.Annotations[fixture.ComponentCustomKey] = newValue
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to change configuration of TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+
+					ginkgo.By("Check custom labels and annotations changed")
+					framework.ExpectNoError(checkCustomLabelAndAnn(tc, c, newValue, 10*time.Minute, 10*time.Second), "failed to check labels and annotations")
+				})
+
+				// move pd original mode to pdms mode
+				ginkgo.It("should transfer pd mode successfully", func() {
+					ginkgo.By("Deploy a basic tc")
+					tc := fixture.GetTidbCluster(ns, fmt.Sprintf("basic-%s", versionDashed), version)
+					tc.Spec.PD.Mode = ""
+					tc.Spec.PDMS = nil
+					_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
+					framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 30*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+					err = crdUtil.CheckDisasterTolerance(tc)
+					framework.ExpectNoError(err, "failed to check disaster tolerance for TidbCluster: %q", tc.Name)
+
+					ginkgo.By("transfer to pdms")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc = fixture.AddPDMSForTidbCluster(tc)
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to change pd mode of TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+
+					ginkgo.By("transfer to original pd mode but not delete pdms")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.PD.Mode = ""
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to change pd mode of TidbCluster: %q", tc.Name)
+					// wait for pdms deleted
+					checkAllPDMSStatus(stsGetter, ns, tc.Name, 0)
+					ginkgo.By("check pdms deleted successfully")
+					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+
+					ginkgo.By("transfer to pdms")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc = fixture.AddPDMSForTidbCluster(tc)
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to change pd mode of TidbCluster: %q", tc.Name)
+					err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+
+					ginkgo.By("transfer to original pd mode and delete pdms")
+					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+						tc.Spec.PD.Mode = ""
+						tc.Spec.PDMS = nil
+						return nil
+					})
+					framework.ExpectNoError(err, "failed to change pd mode of TidbCluster: %q", tc.Name)
+					// wait for pdms deleted
+					checkAllPDMSStatus(stsGetter, ns, tc.Name, 0)
+					ginkgo.By("check pdms deleted successfully")
+					err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+					framework.ExpectNoError(err, "failed to wait for TidbCluster ready: %q", tc.Name)
+				})
+			})
+		}
+	})
 })
+
+// checkAllPDMSStatus check there are onlineNum online pdms instance running now.
+func checkAllPDMSStatus(stsGetter typedappsv1.StatefulSetsGetter, ns string, tcName string, onlineNum int32) error {
+	var checkErr error
+	err := wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+
+		var onlines int32
+		for _, component := range []string{"tso", "scheduling"} {
+			pdSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), controller.PDMSMemberName(tcName, "tso"), metav1.GetOptions{})
+			if err != nil && !errors.IsNotFound(err) {
+				return false, err
+			}
+
+			if err != nil {
+				setNotExist := errors.IsNotFound(err)
+				if !setNotExist && pdSts.Status.Replicas > 0 {
+					log.Logf("failed to check %d online pdms, onlines %d, component is %s", onlineNum, pdSts.Status.Replicas, component)
+					onlines++
+				}
+			} else if pdSts.Status.Replicas > 0 {
+				onlines++
+			}
+		}
+
+		if onlines == onlineNum {
+			return true, nil
+		}
+
+		checkErr = fmt.Errorf("failed to check %d online pdms", onlineNum)
+		return false, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = checkErr
+	}
+
+	return err
+}
 
 // checkPumpStatus check there are onlineNum online pump instance running now.
 func checkPumpStatus(pcli versioned.Interface, ns string, name string, onlineNum int32) error {
