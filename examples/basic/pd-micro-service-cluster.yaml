@@ -40,7 +40,7 @@ spec:
       replicas: 1
   tikv:
     baseImage: pingcap/tikv
-    version: v7.4.0
+    version: v7.5.0
     maxFailoverCount: 0
     # If only 1 TiKV is deployed, the TiKV region leader
     # cannot be transferred during upgrade, so we have
@@ -63,7 +63,7 @@ spec:
         max-open-files: 256
   tidb:
     baseImage: pingcap/tidb
-    version: v7.4.0
+    version: v7.5.0
     maxFailoverCount: 0
     replicas: 1
     service:

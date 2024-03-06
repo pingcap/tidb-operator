@@ -92,7 +92,7 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
 
 	mode := ""
-	if tc.Spec.PD.Mode == "ms" {
+	if tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS != nil {
 		mode = "api"
 		// default enbled the dns detection
 		waitForDnsNameIpMatchOnStartup = true
