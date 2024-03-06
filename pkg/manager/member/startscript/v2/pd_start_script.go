@@ -42,14 +42,12 @@ type PDStartScriptModel struct {
 
 // PDMSStartScriptModel contain fields for rendering PD Micro Service start script
 type PDMSStartScriptModel struct {
-	PDDomain       string
+	PDMSDomain     string
 	PDStartTimeout int
 
 	ListenAddr          string
 	AdvertiseListenAddr string
 	BackendEndpoints    string
-
-	DiscoveryAddr string
 }
 
 // RenderPDStartScript renders PD start script from TidbCluster
@@ -96,6 +94,8 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	mode := ""
 	if tc.Spec.PD.Mode == "ms" {
 		mode = "api"
+		// default enbled the dns detection
+		waitForDnsNameIpMatchOnStartup = true
 	}
 	pdStartScriptTpl := template.Must(
 		template.Must(
@@ -125,17 +125,15 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 	tcNS := tc.Namespace
 	peerServiceName := controller.PDMSPeerMemberName(tcName, name)
 
-	m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
+	m.PDMSDomain = fmt.Sprintf("${PD_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
-		m.PDDomain = m.PDDomain + "." + tc.Spec.ClusterDomain
+		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
 	}
 	m.PDStartTimeout = tc.PDStartTimeout()
 
 	m.ListenAddr = fmt.Sprintf("%s://0.0.0.0:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 
 	m.AdvertiseListenAddr = fmt.Sprintf("%s://${PD_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
-
-	m.DiscoveryAddr = fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS)
 
 	m.BackendEndpoints = fmt.Sprintf("%s://${PD_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
 
@@ -241,7 +239,7 @@ exec /pd-server ${ARGS}
 	// pdmsStartScriptTplText is the template of pd microservices start script.
 	pdmsStartScriptTplText = `
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN={{ .PDDomain }}` +
+PD_DOMAIN={{ .PDMSDomain }}` +
 		dnsAwaitPart + `
 ARGS="` + pdEnableMicroService + `--listen-addr={{ .ListenAddr }} \
 --advertise-listen-addr={{ .AdvertiseListenAddr }} \

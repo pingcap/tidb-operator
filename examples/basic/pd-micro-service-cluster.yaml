@@ -7,9 +7,6 @@ metadata:
   name: basic
   namespace: pingcap
 spec:
-  startScriptVersion: v2
-  startScriptV2FeatureFlags:
-    - WaitForDnsNameIpMatch
   version: v7.5.0
   timezone: UTC
   pvReclaimPolicy: Retain
