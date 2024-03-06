@@ -151,6 +151,7 @@ type StartScriptVersion string
 
 const (
 	StartScriptV1 StartScriptVersion = "v1"
+	// When PD enables microservice mode, we will use start script v2.
 	StartScriptV2 StartScriptVersion = "v2"
 )
 
