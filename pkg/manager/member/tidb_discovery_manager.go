@@ -169,10 +169,12 @@ func getTidbDiscoveryService(obj metav1.Object, deploy *appsv1.Deployment, prefe
 
 func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object) (*appsv1.Deployment, error) {
 	var (
-		resources corev1.ResourceRequirements
-		timezone  string
-		baseSpec  v1alpha1.ComponentAccessor
-		podSpec   corev1.PodSpec
+		resources     corev1.ResourceRequirements
+		timezone      string
+		baseSpec      v1alpha1.ComponentAccessor
+		podSpec       corev1.PodSpec
+		readinessProb *corev1.Probe
+		livenessProbe *corev1.Probe
 	)
 
 	switch cluster := obj.(type) {
@@ -181,11 +183,23 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		timezone = cluster.Timezone()
 		baseSpec = cluster.BaseDiscoverySpec()
 		podSpec = baseSpec.BuildPodSpec()
+		if cluster.Spec.Discovery.ComponentSpec != nil && cluster.Spec.Discovery.ComponentSpec.ReadinessProbe != nil {
+			readinessProb = buildDiscoveryProb(cluster.Spec.Discovery.ComponentSpec.ReadinessProbe)
+		}
+		if cluster.Spec.Discovery.LivenessProbe != nil {
+			livenessProbe = buildDiscoveryProb(cluster.Spec.Discovery.LivenessProbe)
+		}
 	case *v1alpha1.DMCluster:
 		resources = cluster.Spec.Discovery.ResourceRequirements
 		timezone = cluster.Timezone()
 		baseSpec = cluster.BaseDiscoverySpec()
 		podSpec = baseSpec.BuildPodSpec()
+		if cluster.Spec.Discovery.ComponentSpec != nil && cluster.Spec.Discovery.ComponentSpec.ReadinessProbe != nil {
+			readinessProb = buildDiscoveryProb(cluster.Spec.Discovery.ComponentSpec.ReadinessProbe)
+		}
+		if cluster.Spec.Discovery.LivenessProbe != nil {
+			livenessProbe = buildDiscoveryProb(cluster.Spec.Discovery.LivenessProbe)
+		}
 	default:
 		panic(fmt.Sprintf("unsupported type %T for discovery meta", obj))
 	}
@@ -213,7 +227,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 	envs = util.AppendEnv(envs, baseSpec.Env())
 	volMounts := []corev1.VolumeMount{}
 	volMounts = append(volMounts, baseSpec.AdditionalVolumeMounts()...)
-	podSpec.Containers = append(podSpec.Containers, corev1.Container{
+	discoveryContainer := corev1.Container{
 		Name:      "discovery",
 		Resources: controller.ContainerResource(resources),
 		Command: []string{
@@ -236,7 +250,15 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 				ContainerPort: 10262,
 			},
 		},
-	})
+	}
+	if readinessProb != nil {
+		discoveryContainer.ReadinessProbe = readinessProb
+	}
+	if livenessProbe != nil {
+		discoveryContainer.LivenessProbe = livenessProbe
+	}
+
+	podSpec.Containers = append(podSpec.Containers, discoveryContainer)
 
 	var err error
 	podSpec.Containers, err = MergePatchContainers(podSpec.Containers, baseSpec.AdditionalContainers())
@@ -297,6 +319,28 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 	d.Annotations[controller.LastAppliedPodTemplate] = string(b)
 
 	return d, nil
+}
+
+func buildDiscoveryProb(probSpec *v1alpha1.Probe) *corev1.Probe {
+	if probSpec == nil {
+		return nil
+	}
+
+	prob := &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{
+			// only TCP socket is supported for now
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(10261),
+			},
+		},
+	}
+	if probSpec.InitialDelaySeconds != nil {
+		prob.InitialDelaySeconds = *probSpec.InitialDelaySeconds
+	}
+	if probSpec.PeriodSeconds != nil {
+		prob.PeriodSeconds = *probSpec.PeriodSeconds
+	}
+	return prob
 }
 
 func getDiscoveryMeta(obj metav1.Object, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {
