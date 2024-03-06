@@ -55,6 +55,8 @@ const (
 	DMV2                          = TiDBLatest
 	TiDBNGMonitoringLatest        = TiDBLatest
 	HelperImage                   = "alpine:3.16.0"
+	// TODO: replace this after we have `8.0.0` release
+	PDMSImage = "v7.6.0"
 )
 
 func ListImages() []string {

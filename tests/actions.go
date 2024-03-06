@@ -683,6 +683,20 @@ func (oa *OperatorActions) memberCheckContextForTC(tc *v1alpha1.TidbCluster, com
 		expectedImage = tc.PDImage()
 		services = []string{controller.PDMemberName(name), controller.PDPeerMemberName(name)}
 		checkComponent = oa.isPDMembersReady
+	case v1alpha1.PDMSTSOMemberType, v1alpha1.PDMSSchedulingMemberType:
+		skip = true
+		if tc.Spec.PD != nil && tc.Spec.PD.Mode == "ms" {
+			curService := component.String()
+			for _, service := range tc.Spec.PDMS {
+				if curService == service.Name {
+					skip = false
+					break
+				}
+			}
+			expectedImage = tc.PDImage()
+			services = []string{controller.PDMSMemberName(name, curService), controller.PDMSPeerMemberName(name, curService)}
+			checkComponent = oa.isPDMSMembersReady
+		}
 	case v1alpha1.TiDBMemberType:
 		skip = tc.Spec.TiDB == nil
 		expectedImage = tc.TiDBImage()
@@ -873,6 +887,36 @@ func (oa *OperatorActions) isPDMembersReady(tc *v1alpha1.TidbCluster, sts *v1.St
 		if !member.Health {
 			return fmt.Errorf("pd member(%s/%s) is not health", member.ID, member.Name)
 		}
+	}
+
+	return nil
+}
+
+func (oa *OperatorActions) isPDMSMembersReady(tc *v1alpha1.TidbCluster, sts *v1.StatefulSet) error {
+	curService := controller.PDMSTrimName(sts.Name)
+	if tc.Status.PDMS[curService] == nil || tc.Status.PDMS[curService].StatefulSet == nil {
+		return fmt.Errorf("sts in tc status is nil, pdms curService is %s", curService)
+	}
+
+	var replicas int32
+	for _, component := range tc.Spec.PDMS {
+		if strings.Contains(component.Name, curService) {
+			replicas = component.Replicas
+			break
+		}
+	}
+
+	if *sts.Spec.Replicas != replicas {
+		return fmt.Errorf("sts.spec.Replicas(%d) != %d, pdms curService is %s\", curService)",
+			*sts.Spec.Replicas, replicas, curService)
+	}
+	if sts.Status.ReadyReplicas != replicas {
+		return fmt.Errorf("sts.status.ReadyReplicas(%d) != %d, pdms curService is %s\", curService)",
+			sts.Status.ReadyReplicas, tc.Spec.PD.Replicas, curService)
+	}
+	if sts.Status.ReadyReplicas != sts.Status.Replicas {
+		return fmt.Errorf("sts.status.ReadyReplicas(%d) != sts.status.Replicas(%d), pdms curService is %s\", curService)",
+			sts.Status.ReadyReplicas, sts.Status.Replicas, curService)
 	}
 
 	return nil
@@ -1320,6 +1364,8 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 
 		components := []v1alpha1.MemberType{
+			v1alpha1.PDMSTSOMemberType,
+			v1alpha1.PDMSSchedulingMemberType,
 			v1alpha1.PDMemberType,
 			v1alpha1.TiKVMemberType,
 			v1alpha1.TiDBMemberType,
