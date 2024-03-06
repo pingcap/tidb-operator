@@ -80,8 +80,9 @@ func (m *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	if tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS == nil {
-		return fmt.Errorf("tidbcluster: [%s/%s]'s enable micro service but pdMS spec is nil, please check `PDMS`", tc.GetNamespace(), tc.GetName())
+	if (tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS == nil) ||
+		(tc.Spec.PDMS != nil && tc.Spec.PD.Mode != "ms") {
+		klog.Infof("tidbcluster: [%s/%s]'s enable micro service failed, please check `PD.Mode` and `PDMS`", tc.GetNamespace(), tc.GetName())
 	}
 
 	// skip sync if pd is suspended
