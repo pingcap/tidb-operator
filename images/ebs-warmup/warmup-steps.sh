@@ -51,6 +51,7 @@ cleanup() {
 trap cleanup EXIT
 
 operation=none
+bg_works=""
 while [ $# -gt 0 ]; do
     case $1 in
         --help | -h) 
@@ -78,13 +79,22 @@ while [ $# -gt 0 ]; do
                             --numjobs=10 --offset=0% --offset_increment=10% --size=10% \
                             "--name=initialize-$device" \
                             --thread=1 --filename=/dev/"$device" &
+                        bg_works="$! $bg_works"
                     fi
                     ;;
                 fs) warmup_by_file "$1" &
+                    bg_works="$! $bg_works"
                     ;;
                 *) die "internal error: unsupported operation $1; forgot to call --block or --fs?"
                     ;;
             esac
+            echo "also trying to verify the sst files in $1"
+            if find "$1" -iname '??????.LOG' -print0  | xargs -0 -I% sh -c 'echo -n "%: " >&2 && /tikv-ctl ldb dump_wal --walfile=%' 2>&1 >/dev/null | grep "Corruption"; then
+                echo "There are some files corrupted!"
+                echo $bg_works | xargs kill
+                wait
+                exit 1
+            fi
             ;;
     esac
     shift
