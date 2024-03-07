@@ -2264,7 +2264,8 @@ StartScriptVersion
 </td>
 <td>
 <em>(Optional)</em>
-<p>StartScriptVersion is the version of start script</p>
+<p>StartScriptVersion is the version of start script
+When PD enables microservice mode, pd and pd microservice component will use start script v2.</p>
 <p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>
@@ -24498,7 +24499,8 @@ StartScriptVersion
 </td>
 <td>
 <em>(Optional)</em>
-<p>StartScriptVersion is the version of start script</p>
+<p>StartScriptVersion is the version of start script
+When PD enables microservice mode, pd and pd microservice component will use start script v2.</p>
 <p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>
