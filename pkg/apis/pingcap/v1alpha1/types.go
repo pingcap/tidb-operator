@@ -452,6 +452,13 @@ const (
 type DiscoverySpec struct {
 	*ComponentSpec              `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
+
+	// LivenessProbe describes actions that probe the discovery's liveness.
+	// the default behavior is like setting type as "tcp"
+	// NOTE: only used for TiDB Operator discovery now,
+	// for other components, the auto failover feature may be used instead.
+	// +optional
+	LivenessProbe *Probe `json:"livenessProbe,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1192,7 +1199,7 @@ type ComponentSpec struct {
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
 
-	// ReadinessProbe describes actions that probe the pd's readiness.
+	// ReadinessProbe describes actions that probe the components' readiness.
 	// the default behavior is like setting type as "tcp"
 	// +optional
 	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
@@ -2644,6 +2651,13 @@ type DMClusterList struct {
 type DMDiscoverySpec struct {
 	*ComponentSpec              `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
+
+	// LivenessProbe describes actions that probe the discovery's liveness.
+	// the default behavior is like setting type as "tcp"
+	// NOTE: only used for TiDB Operator discovery now,
+	// for other components, the auto failover feature may be used instead.
+	// +optional
+	LivenessProbe *Probe `json:"livenessProbe,omitempty"`
 
 	// (Deprecated) Address indicates the existed TiDB discovery address
 	// +k8s:openapi-gen=false
