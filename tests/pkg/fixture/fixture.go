@@ -798,10 +798,10 @@ func AddPDMSForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	if tc.Spec.PDMS != nil {
 		return tc
 	}
-	pdmsImage := "hub-new.pingcap.net/orchestration/pd"
-	version := "v8.0.0"
+	pdmsImage := "hub.pingcap.net/devbuild/pd"
+	version := "v8.0.0-3932"
 	// TODO: remove pd version when released pdms
-	tc.Spec.PD.BaseImage = "hub-new.pingcap.net/orchestration/pd"
+	tc.Spec.PD.BaseImage = "hub.pingcap.net/devbuild/pd"
 	tc.Spec.PD.Version = &version
 	tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
 		{
