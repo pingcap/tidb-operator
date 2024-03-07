@@ -777,8 +777,8 @@ then
     tail -f /dev/null
 fi
 
-PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
+PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
@@ -841,7 +841,7 @@ done
 
 ARGS=" services tso --listen-addr=http://0.0.0.0:2379 \
 --advertise-listen-addr=http://${PD_DOMAIN}:2379 \
---backend-endpoints=http://${PD_DOMAIN}:2380 \
+--backend-endpoints=http://start-script-test-pd:2379 \
 --config=/etc/pd/pd.toml \
 "
 
@@ -876,8 +876,8 @@ then
     tail -f /dev/null
 fi
 
-PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
+PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
@@ -940,7 +940,7 @@ done
 
 ARGS=" services tso --listen-addr=https://0.0.0.0:2379 \
 --advertise-listen-addr=https://${PD_DOMAIN}:2379 \
---backend-endpoints=https://${PD_DOMAIN}:2380 \
+--backend-endpoints=https://start-script-test-pd:2379 \
 --config=/etc/pd/pd.toml \
 "
 
@@ -975,8 +975,8 @@ then
     tail -f /dev/null
 fi
 
-PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
+PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
@@ -1039,7 +1039,7 @@ done
 
 ARGS=" services tso --listen-addr=http://0.0.0.0:2379 \
 --advertise-listen-addr=http://${PD_DOMAIN}:2379 \
---backend-endpoints=http://${PD_DOMAIN}:2380 \
+--backend-endpoints=http://start-script-test-pd:2379 \
 --config=/etc/pd/pd.toml \
 "
 
@@ -1074,8 +1074,8 @@ then
     tail -f /dev/null
 fi
 
-PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com
+PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
@@ -1138,7 +1138,7 @@ done
 
 ARGS=" services tso --listen-addr=http://0.0.0.0:2379 \
 --advertise-listen-addr=http://${PD_DOMAIN}:2379 \
---backend-endpoints=http://${PD_DOMAIN}:2380 \
+--backend-endpoints=http://start-script-test-pd:2379 \
 --config=/etc/pd/pd.toml \
 "
 
@@ -1174,8 +1174,8 @@ then
     tail -f /dev/null
 fi
 
-PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
+PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
@@ -1235,10 +1235,17 @@ while true; do
         fi
     fi
 done
+pd_url=http://start-script-test-pd:2379
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url=start-script-test-discovery.start-script-test-ns:10261
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+    echo "waiting for the verification of PD endpoints ..."
+    sleep $((RANDOM % 5))
+done
 
 ARGS=" services tso --listen-addr=http://0.0.0.0:2379 \
 --advertise-listen-addr=http://${PD_DOMAIN}:2379 \
---backend-endpoints=http://${PD_DOMAIN}:2380 \
+--backend-endpoints=${result} \
 --config=/etc/pd/pd.toml \
 "
 
@@ -1274,8 +1281,8 @@ then
     tail -f /dev/null
 fi
 
-PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com
+PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
@@ -1335,10 +1342,17 @@ while true; do
         fi
     fi
 done
+pd_url=http://start-script-test-pd:2379
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url=start-script-test-discovery.start-script-test-ns:10261
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+    echo "waiting for the verification of PD endpoints ..."
+    sleep $((RANDOM % 5))
+done
 
 ARGS=" services tso --listen-addr=http://0.0.0.0:2379 \
 --advertise-listen-addr=http://${PD_DOMAIN}:2379 \
---backend-endpoints=http://${PD_DOMAIN}:2380 \
+--backend-endpoints=${result} \
 --config=/etc/pd/pd.toml \
 "
 

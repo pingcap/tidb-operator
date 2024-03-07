@@ -42,12 +42,14 @@ type PDStartScriptModel struct {
 
 // PDMSStartScriptModel contain fields for rendering PD Micro Service start script
 type PDMSStartScriptModel struct {
-	PDMSDomain     string
 	PDStartTimeout int
+	PDAddresses    string
 
+	PDMSDomain          string
 	ListenAddr          string
 	AdvertiseListenAddr string
-	BackendEndpoints    string
+
+	AcrossK8s *AcrossK8sScriptModel
 }
 
 // RenderPDStartScript renders PD start script from TidbCluster
@@ -123,27 +125,46 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 	m := &PDMSStartScriptModel{}
 	tcName := tc.Name
 	tcNS := tc.Namespace
-	peerServiceName := controller.PDMSPeerMemberName(tcName, name)
 
-	m.PDMSDomain = fmt.Sprintf("${PD_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
+	peerServiceName := controller.PDMSPeerMemberName(tcName, name)
+	m.PDMSDomain = fmt.Sprintf("${PDMS_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
 		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
 	}
+
 	m.PDStartTimeout = tc.PDStartTimeout()
+
+	preferPDAddressesOverDiscovery := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
+	if preferPDAddressesOverDiscovery {
+		pdAddressesWithSchemeAndPort := addressesWithSchemeAndPort(tc.Spec.PDAddresses, "", v1alpha1.DefaultPDClientPort)
+		m.PDAddresses = strings.Join(pdAddressesWithSchemeAndPort, ",")
+	}
+	if len(m.PDAddresses) == 0 {
+		if tc.AcrossK8s() {
+			m.AcrossK8s = &AcrossK8sScriptModel{
+				PDAddr:        fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
+				DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+			}
+			m.PDAddresses = "${result}" // get pd addr in subscript
+		} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+			m.PDAddresses = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
+		} else {
+			m.PDAddresses = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort)
+		}
+	}
 
 	m.ListenAddr = fmt.Sprintf("%s://0.0.0.0:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
 
+	// Need to use `PD_DOMAIN` to reuse the same logic with PD in function `pdWaitForDnsIpMatchSubScript`.
 	m.AdvertiseListenAddr = fmt.Sprintf("%s://${PD_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
-
-	m.BackendEndpoints = fmt.Sprintf("%s://${PD_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDPeerPort)
 
 	waitForDnsNameIpMatchOnStartup := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
 
-	msStartSubScript := ``
 	msStartScriptTpl := template.Must(
 		template.Must(
-			template.New("pdms-start-script").Parse(msStartSubScript),
+			template.New("pdms-start-script").Parse(pdmsStartSubScript),
 		).Parse(
 			componentCommonScript +
 				replacePdStartScriptCustomPorts(
@@ -236,14 +257,29 @@ echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `
 
+	// pdmsStartSubScript contains optional subscripts used in start script.
+	pdmsStartSubScript = `
+{{ define "AcrossK8sSubscript" }}
+pd_url={{ .AcrossK8s.PDAddr }}
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url={{ .AcrossK8s.DiscoveryAddr }}
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+    echo "waiting for the verification of PD endpoints ..."
+    sleep $((RANDOM % 5))
+done
+{{- end }}
+`
+
 	// pdmsStartScriptTplText is the template of pd microservices start script.
 	pdmsStartScriptTplText = `
-PD_POD_NAME=${POD_NAME:-$HOSTNAME}
+PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN={{ .PDMSDomain }}` +
 		dnsAwaitPart + `
+{{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
+
 ARGS="` + pdEnableMicroService + `--listen-addr={{ .ListenAddr }} \
 --advertise-listen-addr={{ .AdvertiseListenAddr }} \
---backend-endpoints={{ .BackendEndpoints }} \
+--backend-endpoints={{ .PDAddresses }} \
 --config=/etc/pd/pd.toml \
 "
 

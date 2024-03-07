@@ -755,8 +755,8 @@ then
     tail -f /dev/null
 fi
 
-PD_POD_NAME=${POD_NAME:-$HOSTNAME}
-PD_DOMAIN=${PD_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com
+PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com
 
 elapseTime=0
 period=1
@@ -789,7 +789,7 @@ done
 
 ARGS=" services tso --listen-addr=http://0.0.0.0:2379 \
 --advertise-listen-addr=http://${PD_DOMAIN}:2379 \
---backend-endpoints=http://${PD_DOMAIN}:2380 \
+--backend-endpoints=http://start-script-test-pd:2379 \
 --config=/etc/pd/pd.toml \
 "
 

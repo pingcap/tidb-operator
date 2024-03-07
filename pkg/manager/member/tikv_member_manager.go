@@ -114,8 +114,7 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	// Check if all PD Micro Services are available
 	if tc.Spec.PDMS != nil && (tc.Spec.PD != nil && tc.Spec.PD.Mode == "ms") {
 		for _, pdms := range tc.Spec.PDMS {
-			_, err = controller.GetPDMSClient(m.deps.PDControl, tc, pdms.Name)
-			if err != nil {
+			if err = controller.GetPDMSClient(m.deps.PDControl, tc, pdms.Name); err != nil {
 				return controller.RequeueErrorf("PDMS component %s for TidbCluster: [%s/%s], "+
 					"waiting for PD micro service cluster running, error: %v", pdms.Name, ns, tcName, err)
 			}
