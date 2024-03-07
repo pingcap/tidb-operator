@@ -395,6 +395,7 @@ type TidbClusterSpec struct {
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
 	// StartScriptVersion is the version of start script
+	// When PD enables microservice mode, pd and pd microservice component will use start script v2.
 	//
 	// default to "v1"
 	// +optional

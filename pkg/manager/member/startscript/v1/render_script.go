@@ -73,50 +73,13 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	}
 
 	pdStartSubScript := ``
-	mode := ""
-	if tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS != nil {
-		mode = "api"
-	}
 	pdStartScriptTpl := template.Must(
 		template.Must(
 			template.New("pd-start-script").Parse(pdStartSubScript),
 		).Parse(
-			replacePDStartScriptCustomPorts(
-				enableMicroServiceModeDynamic(mode, pdStartScriptTplText))))
+			replacePDStartScriptCustomPorts(pdStartScriptTplText)))
 
 	return renderTemplateFunc(pdStartScriptTpl, model)
-}
-
-func RenderPDTSOStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	return renderPDMSStartScript(tc, "tso")
-}
-
-func RenderPDSchedulingStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	return renderPDMSStartScript(tc, "scheduling")
-}
-
-func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error) {
-	model := &PdMSStartScriptModel{
-		CommonModel: CommonModel{
-			AcrossK8s:     tc.AcrossK8s(),
-			ClusterDomain: tc.Spec.ClusterDomain,
-		},
-		Scheme: tc.Scheme(),
-	}
-
-	model.PDAddress = fmt.Sprintf("%s://%s-pd:%d", tc.Scheme(), tc.GetName(), v1alpha1.DefaultPDClientPort)
-	if tc.AcrossK8s() {
-		model.PDAddress = fmt.Sprintf("%s://%s-pd:%d", tc.Scheme(), tc.GetName(), v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		model.PDAddress = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
-	}
-
-	msStartSubScript := ``
-	msStartScriptTpl := template.Must(
-		template.Must(
-			template.New("pdms-start-script").Parse(msStartSubScript),
-		).Parse(enableMicroServiceModeDynamic(name, pdmsStartScriptTplText)))
-	return renderTemplateFunc(msStartScriptTpl, model)
 }
 
 func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
