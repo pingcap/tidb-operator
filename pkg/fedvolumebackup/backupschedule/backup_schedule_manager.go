@@ -337,7 +337,7 @@ func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.VolumeBackupSchedule
 	var backupListCandidates []*v1alpha1.VolumeBackup
 
 	for _, backup := range backupsList {
-		if backup.GCImmune {
+		if backup.SkipGC {
 			continue
 		}
 		backupListCandidates = append(backupListCandidates, backup)
