@@ -110,14 +110,14 @@ VolumeBackupStatus
 </tr>
 <tr>
 <td>
-<code>gcImmune</code></br>
+<code>skipGC</code></br>
 <em>
 bool
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>GCImmune indicates whether this EBS volume snapshot backup is immune to GC</p>
+<p>SkipGC indicates whether this EBS volume snapshot backup is immune to GC</p>
 </td>
 </tr>
 </tbody>
