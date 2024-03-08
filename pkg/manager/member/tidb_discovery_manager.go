@@ -327,7 +327,7 @@ func buildDiscoveryProb(probSpec *v1alpha1.Probe) *corev1.Probe {
 	}
 
 	prob := &corev1.Probe{
-		ProbeHandler: corev1.ProbeHandler{
+		Handler: corev1.Handler{
 			// only TCP socket is supported for now
 			TCPSocket: &corev1.TCPSocketAction{
 				Port: intstr.FromInt(10261),
