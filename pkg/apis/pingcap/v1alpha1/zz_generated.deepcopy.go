@@ -1352,6 +1352,11 @@ func (in *DMDiscoverySpec) DeepCopyInto(out *DMDiscoverySpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.LivenessProbe != nil {
+		in, out := &in.LivenessProbe, &out.LivenessProbe
+		*out = new(Probe)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -1584,6 +1589,11 @@ func (in *DiscoverySpec) DeepCopyInto(out *DiscoverySpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.LivenessProbe != nil {
+		in, out := &in.LivenessProbe, &out.LivenessProbe
+		*out = new(Probe)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

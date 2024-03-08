@@ -5674,7 +5674,7 @@ Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>ReadinessProbe describes actions that probe the pd&rsquo;s readiness.
+<p>ReadinessProbe describes actions that probe the components&rsquo; readiness.
 the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
@@ -6618,6 +6618,23 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
+<code>livenessProbe</code></br>
+<em>
+<a href="#probe">
+Probe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LivenessProbe describes actions that probe the discovery&rsquo;s liveness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;
+NOTE: only used for TiDB Operator discovery now,
+for other components, the auto failover feature may be used instead.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>address</code></br>
 <em>
 string
@@ -6954,6 +6971,23 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>livenessProbe</code></br>
+<em>
+<a href="#probe">
+Probe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LivenessProbe describes actions that probe the discovery&rsquo;s liveness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;
+NOTE: only used for TiDB Operator discovery now,
+for other components, the auto failover feature may be used instead.</p>
 </td>
 </tr>
 </tbody>
@@ -12404,7 +12438,9 @@ float64
 <h3 id="probe">Probe</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#componentspec">ComponentSpec</a>)
+<a href="#componentspec">ComponentSpec</a>, 
+<a href="#dmdiscoveryspec">DMDiscoverySpec</a>, 
+<a href="#discoveryspec">DiscoverySpec</a>)
 </p>
 <p>
 <p>Probe contains details of probing tidb.
