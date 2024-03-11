@@ -1279,9 +1279,9 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 			if condition.Type == batchv1.JobFailed {
 				err := fmt.Errorf("warmup job %s/%s failed", job.Namespace, job.Name)
 				rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
-					Type:   v1alpha1.RestoreFailed,
-					Status: corev1.ConditionTrue,
-					Reason: condition.Reason,
+					Type:    v1alpha1.RestoreFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  condition.Reason,
 					Message: err.Error(),
 				}, nil)
 				return err

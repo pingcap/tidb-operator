@@ -63,7 +63,7 @@ func (h *helper) createRestoreWarmupJobFailed(restore *v1alpha1.Restore) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "warm-up",
 			Namespace: restore.Namespace,
-			Labels: label.NewRestore().RestoreWarmUpJob().Restore(restore.Name),
+			Labels:    label.NewRestore().RestoreWarmUpJob().Restore(restore.Name),
 		},
 		Status: batchv1.JobStatus{
 			CompletionTime: &metav1.Time{},
@@ -750,13 +750,13 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 					},
 				},
 				Status: v1alpha1.RestoreStatus{
-					Conditions: []v1alpha1.RestoreCondition {
+					Conditions: []v1alpha1.RestoreCondition{
 						{
-							Type: v1alpha1.RestoreVolumeComplete,
+							Type:   v1alpha1.RestoreVolumeComplete,
 							Status: corev1.ConditionTrue,
 						},
 						{
-							Type: v1alpha1.RestoreWarmUpStarted,
+							Type:   v1alpha1.RestoreWarmUpStarted,
 							Status: corev1.ConditionTrue,
 						},
 					},
@@ -799,17 +799,17 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 					},
 				},
 				Status: v1alpha1.RestoreStatus{
-					Conditions: []v1alpha1.RestoreCondition {
+					Conditions: []v1alpha1.RestoreCondition{
 						{
-							Type: v1alpha1.RestoreVolumeComplete,
+							Type:   v1alpha1.RestoreVolumeComplete,
 							Status: corev1.ConditionTrue,
 						},
 						{
-							Type: v1alpha1.RestoreWarmUpStarted,
+							Type:   v1alpha1.RestoreWarmUpStarted,
 							Status: corev1.ConditionTrue,
 						},
 						{
-							Type: v1alpha1.RestoreTiKVComplete,
+							Type:   v1alpha1.RestoreTiKVComplete,
 							Status: corev1.ConditionTrue,
 						},
 					},
