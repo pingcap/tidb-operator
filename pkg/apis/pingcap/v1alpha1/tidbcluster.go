@@ -1093,6 +1093,21 @@ func (tidb *TiDBSpec) GetServicePort() int32 {
 	return port
 }
 
+func (tidb *TiDBSpec) GetScaleInParallelism() int {
+	if tidb.ScalePolicy.ScaleInParallelism == nil {
+		return 1
+	}
+	return int(*(tidb.ScalePolicy.ScaleInParallelism))
+}
+
+func (tidb *TiDBSpec) GetScaleOutParallelism() int {
+	if tidb.ScalePolicy.ScaleOutParallelism == nil {
+		return 1
+	}
+	return int(*(tidb.ScalePolicy.ScaleOutParallelism))
+}
+
+
 func (tikv *TiKVSpec) ShouldSeparateRocksDBLog() bool {
 	separateRocksDBLog := tikv.SeparateRocksDBLog
 	if separateRocksDBLog == nil {

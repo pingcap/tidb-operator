@@ -6172,6 +6172,7 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	in.ScalePolicy.DeepCopyInto(&out.ScalePolicy)
 	return
 }
 
