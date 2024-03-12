@@ -1107,7 +1107,6 @@ func (tidb *TiDBSpec) GetScaleOutParallelism() int {
 	return int(*(tidb.ScalePolicy.ScaleOutParallelism))
 }
 
-
 func (tikv *TiKVSpec) ShouldSeparateRocksDBLog() bool {
 	separateRocksDBLog := tikv.SeparateRocksDBLog
 	if separateRocksDBLog == nil {
