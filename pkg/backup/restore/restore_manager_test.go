@@ -823,7 +823,6 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:gosec
 	g.Expect(err).To(Succeed())
 
-	//generate the backup meta in local nfs, tiflash check need backupmeta to validation
 	err = os.WriteFile("/tmp/backupmeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:gosec
 	g.Expect(err).To(Succeed())
 	defer func() {
