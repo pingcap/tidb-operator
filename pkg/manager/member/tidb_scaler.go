@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"time"
 
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -100,6 +101,7 @@ func (s *tidbScaler) scaleOutOne(tc *v1alpha1.TidbCluster, ordinal int32) error 
 
 // ScaleIn scales in of the statefulset.
 func (s *tidbScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	scaleInTime := time.Now().Format(time.RFC3339)
 	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
 		klog.Errorf("tidbScaler.ScaleIn: failed to convert cluster %s/%s, scale in will do nothing", meta.GetNamespace(), meta.GetName())
@@ -118,7 +120,7 @@ func (s *tidbScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 		updateReplicasAndDeleteSlots bool
 	)
 	for _, ordinal := range ordinals {
-		err := s.scaleInOne(tc, ordinal)
+		err := s.scaleInOne(tc, ordinal, scaleInTime)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
@@ -135,7 +137,7 @@ func (s *tidbScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	return errorutils.NewAggregate(errs)
 }
 
-func (s *tidbScaler) scaleInOne(tc *v1alpha1.TidbCluster, ordinal int32) error {
+func (s *tidbScaler) scaleInOne(tc *v1alpha1.TidbCluster, ordinal int32, scaleInTime string) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -151,7 +153,7 @@ func (s *tidbScaler) scaleInOne(tc *v1alpha1.TidbCluster, ordinal int32) error {
 		return fmt.Errorf("tidbScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 	}
 	for _, pvc := range pvcs {
-		if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl); err != nil {
+		if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl, scaleInTime); err != nil {
 			return err
 		}
 	}

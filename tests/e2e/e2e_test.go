@@ -36,6 +36,7 @@ import (
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbdashboard"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidbngmonitoring"
+	_ "github.com/pingcap/tidb-operator/tests/e2e/tidb"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tikv"
 	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/config"
