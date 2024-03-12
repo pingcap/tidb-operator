@@ -818,8 +818,6 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 		},
 	}
 
-	// Verify invalid tc with mismatch tikv replicas
-	//generate the restore meta in local nfs, with 3 volumes for each tikv
 	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:gosec
 	g.Expect(err).To(Succeed())
 
