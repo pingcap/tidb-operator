@@ -48,6 +48,9 @@ spec:
             type: string
           metadata:
             type: object
+          skipGC:
+            default: false
+            type: boolean
           spec:
             properties:
               clusters:
