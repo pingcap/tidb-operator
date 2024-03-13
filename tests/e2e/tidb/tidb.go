@@ -446,6 +446,14 @@ var _ = ginkgo.Describe("[TiDB: Scale in simultaneously]", func() {
 				tc.Spec.PD.Replicas = 1
 				tc.Spec.TiDB.Replicas = 1
 				tc.Spec.TiDB.Replicas = tcase.originTiDBReplica
+				// add volumes so that we can check `label.AnnPVCScaleInTime` in PVC annotations
+				tc.Spec.TiDB.StorageVolumes = []v1alpha1.StorageVolume{
+					{
+						Name:        "log",
+						StorageSize: "1Gi",
+						MountPath:   "/var/log",
+					},
+				}
 				setDeleteSlots(tc, tcase.originDeleteSlots)
 				utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
