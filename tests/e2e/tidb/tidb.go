@@ -485,10 +485,12 @@ var _ = ginkgo.Describe("[TiDB: Scale in simultaneously]", func() {
 								deleteSlotSets.Insert(s)
 								var slots []int32
 								_ = json.Unmarshal([]byte(s), &slots)
-								deleteSlotsList = append(deleteSlotsList, slots)
+								if len(deleteSlotsList) == 0 || !reflect.DeepEqual(slots, deleteSlotsList[len(deleteSlotsList)-1]) {
+									deleteSlotsList = append(deleteSlotsList, slots)
+								}
 							}
 						}
-						time.Sleep(time.Second * 3)
+						time.Sleep(500 * time.Millisecond)
 					}
 				}()
 
