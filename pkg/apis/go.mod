@@ -40,7 +40,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
