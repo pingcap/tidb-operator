@@ -320,6 +320,7 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Pat
 func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	allErrs = append(allErrs, validateScalePolicy(&spec.ScalePolicy, fldPath.Child("scalePolicy"))...)
 	if spec.Service != nil {
 		allErrs = append(allErrs, validateService(&spec.Service.ServiceSpec, fldPath)...)
 	}
