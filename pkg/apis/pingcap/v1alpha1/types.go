@@ -1048,6 +1048,10 @@ type TiDBSpec struct {
 	// Only v6.5.1+ supports this feature.
 	// +optional
 	BootstrapSQLConfigMapName *string `json:"bootstrapSQLConfigMapName,omitempty"`
+
+	// ScalePolicy is the scale configuration for TiDB.
+	// +optional
+	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
 }
 
 type TiDBInitializer struct {

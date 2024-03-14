@@ -14998,6 +14998,7 @@ bool
 <h3 id="scalepolicy">ScalePolicy</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>)
 </p>
@@ -17753,6 +17754,20 @@ string
 which will only be executed when a TiDB cluster bootstrap on the first time.
 The field should be set ONLY when create a TC, since it only take effect on the first time bootstrap.
 Only v6.5.1+ supports this feature.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scalePolicy</code></br>
+<em>
+<a href="#scalepolicy">
+ScalePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScalePolicy is the scale configuration for TiDB.</p>
 </td>
 </tr>
 </tbody>
