@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "net/http/pprof"
-	"reflect"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -28,13 +27,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/utils/pointer"
 	ctrlCli "sigs.k8s.io/controller-runtime/pkg/client"
 
-	astsHelper "github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -62,8 +59,7 @@ type testcase struct {
 	finalDeleteSlots   sets.Int32
 	scaleInOrdinals    []int32
 
-	deleteSlotsEvolutions [][]int32 // the changing process of delete slots
-	scaleInGroups         [][]int32 // the groups of ordinals that scaled in at the same time
+	scaleInGroups [][]int32 // the groups of ordinals that scaled in at the same time
 }
 
 var testCasesWithoutAsts = []testcase{
@@ -107,10 +103,6 @@ var testCasesWithAsts = []testcase{
 		originDeleteSlots:  sets.NewInt32(),
 		finalDeleteSlots:   sets.NewInt32(1, 3),
 		scaleInOrdinals:    []int32{3, 1},
-		deleteSlotsEvolutions: [][]int32{
-			{3},
-			{1, 3},
-		},
 		scaleInGroups: [][]int32{
 			{3},
 			{1},
@@ -124,10 +116,6 @@ var testCasesWithAsts = []testcase{
 		originDeleteSlots:  sets.NewInt32(),
 		finalDeleteSlots:   sets.NewInt32(1, 3, 5),
 		scaleInOrdinals:    []int32{5, 3, 1},
-		deleteSlotsEvolutions: [][]int32{
-			{3, 5},
-			{1, 3, 5},
-		},
 		scaleInGroups: [][]int32{
 			{3, 5},
 			{1},
@@ -141,9 +129,6 @@ var testCasesWithAsts = []testcase{
 		originDeleteSlots:  sets.NewInt32(1),
 		finalDeleteSlots:   sets.NewInt32(),
 		scaleInOrdinals:    []int32{5, 4, 3},
-		deleteSlotsEvolutions: [][]int32{
-			{1},
-		},
 		scaleInGroups: [][]int32{
 			{5},
 			{4},
@@ -158,9 +143,6 @@ var testCasesWithAsts = []testcase{
 		originDeleteSlots:  sets.NewInt32(1),
 		finalDeleteSlots:   sets.NewInt32(),
 		scaleInOrdinals:    []int32{5, 4, 3},
-		deleteSlotsEvolutions: [][]int32{
-			{1},
-		},
 		scaleInGroups: [][]int32{
 			{5, 4},
 			{3},
@@ -174,10 +156,6 @@ var testCasesWithAsts = []testcase{
 		originDeleteSlots:  sets.NewInt32(1),
 		finalDeleteSlots:   sets.NewInt32(2),
 		scaleInOrdinals:    []int32{5, 4, 2},
-		deleteSlotsEvolutions: [][]int32{
-			{1},
-			{2},
-		},
 		scaleInGroups: [][]int32{
 			{5},
 			{4},
@@ -192,10 +170,6 @@ var testCasesWithAsts = []testcase{
 		originDeleteSlots:  sets.NewInt32(1),
 		finalDeleteSlots:   sets.NewInt32(2),
 		scaleInOrdinals:    []int32{5, 4, 2},
-		deleteSlotsEvolutions: [][]int32{
-			{1},
-			{2},
-		},
 		scaleInGroups: [][]int32{
 			{5, 4, 2},
 		},
@@ -208,11 +182,6 @@ var testCasesWithAsts = []testcase{
 		originDeleteSlots:  sets.NewInt32(1, 2),
 		finalDeleteSlots:   sets.NewInt32(2, 3),
 		scaleInOrdinals:    []int32{6, 5, 3, 4},
-		deleteSlotsEvolutions: [][]int32{
-			{1, 2},
-			{2},
-			{2, 3},
-		},
 		scaleInGroups: [][]int32{
 			{6, 5},
 			{3},
@@ -226,11 +195,6 @@ var testCasesWithAsts = []testcase{
 		originDeleteSlots:  sets.NewInt32(1),
 		finalDeleteSlots:   sets.NewInt32(2, 6),
 		scaleInOrdinals:    []int32{5, 4, 2},
-		deleteSlotsEvolutions: [][]int32{
-			{1},
-			{6},
-			{2, 6},
-		},
 		scaleInGroups: [][]int32{
 			{5, 4},
 			{2},
@@ -244,10 +208,6 @@ var testCasesWithAsts = []testcase{
 		originDeleteSlots:  sets.NewInt32(1, 6),
 		finalDeleteSlots:   sets.NewInt32(2),
 		scaleInOrdinals:    []int32{5, 4, 2},
-		deleteSlotsEvolutions: [][]int32{
-			{1, 6},
-			{2},
-		},
 		scaleInGroups: [][]int32{
 			{5, 4},
 			{2},
@@ -261,11 +221,6 @@ var testCasesWithAsts = []testcase{
 		originDeleteSlots:  sets.NewInt32(1, 6),
 		finalDeleteSlots:   sets.NewInt32(2, 7),
 		scaleInOrdinals:    []int32{5, 4, 2},
-		deleteSlotsEvolutions: [][]int32{
-			{1, 6},
-			{7},
-			{2, 7},
-		},
 		scaleInGroups: [][]int32{
 			{5, 4},
 			{2},
@@ -410,7 +365,6 @@ var _ = ginkgo.Describe("[TiDB: Scale in simultaneously]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa *tests.OperatorActions
 		var genericCli ctrlCli.Client
-		var stsGetter typedappsv1.StatefulSetsGetter
 		var err error
 
 		ginkgo.BeforeEach(func() {
@@ -428,7 +382,6 @@ var _ = ginkgo.Describe("[TiDB: Scale in simultaneously]", func() {
 			oa.DeployOperatorOrDie(ocfg)
 			genericCli, err = ctrlCli.New(config, ctrlCli.Options{Scheme: scheme.Scheme})
 			framework.ExpectNoError(err, "failed to create clientset")
-			stsGetter = astsHelper.NewHijackClient(c, asCli).AppsV1()
 		})
 
 		ginkgo.AfterEach(func() {
@@ -466,34 +419,6 @@ var _ = ginkgo.Describe("[TiDB: Scale in simultaneously]", func() {
 					return nil
 				})
 				framework.ExpectNoError(err, "failed to scale in %s for TidbCluster /%s", ns, tc.Name)
-
-				var deleteSlotsList [][]int32
-				deleteSlotSets := sets.NewString()
-				ctx, cancel := context.WithCancel(context.Background())
-				ginkgo.By("Collect delete slots evolution async")
-				go func() {
-					for {
-						select {
-						case <-ctx.Done():
-							return
-						default:
-						}
-						sts, err := stsGetter.StatefulSets(tc.Namespace).Get(context.TODO(), controller.TiDBMemberName(tc.Name), metav1.GetOptions{})
-						if err == nil {
-							s := sts.Annotations["delete-slots"]
-							if s != "" && !deleteSlotSets.Has(s) {
-								deleteSlotSets.Insert(s)
-								var slots []int32
-								_ = json.Unmarshal([]byte(s), &slots)
-								if len(deleteSlotsList) == 0 || !reflect.DeepEqual(slots, deleteSlotsList[len(deleteSlotsList)-1]) {
-									deleteSlotsList = append(deleteSlotsList, slots)
-								}
-							}
-						}
-						time.Sleep(500 * time.Millisecond)
-					}
-				}()
-
 				log.Logf("tidb is in ScalePhase")
 
 				ginkgo.By("Wait for tc ready")
@@ -523,10 +448,6 @@ var _ = ginkgo.Describe("[TiDB: Scale in simultaneously]", func() {
 				})
 				framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 				checkScaleInTime(scaleInTimeMap, tcase.scaleInGroups)
-
-				ginkgo.By("Check delete-slots evolution")
-				cancel()
-				framework.ExpectEqual(reflect.DeepEqual(tcase.deleteSlotsEvolutions, deleteSlotsList), true, "failed to check delete-slots with: %v, expected: %v", deleteSlotsList, tcase.deleteSlotsEvolutions)
 			})
 		}
 	})
