@@ -1159,7 +1159,7 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 		},
 		Spec: batchv1.JobSpec{
 			Template:     *warmUpPod,
-			BackoffLimit: pointer.Int32Ptr(4),
+			BackoffLimit: pointer.Int32Ptr(1),
 		},
 	}
 	return warmUpJob, nil
@@ -1253,7 +1253,7 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 		},
 		Spec: batchv1.JobSpec{
 			Template:     *warmUpPod,
-			BackoffLimit: pointer.Int32Ptr(4),
+			BackoffLimit: pointer.Int32Ptr(1),
 		},
 	}
 	return warmUpJob, nil
