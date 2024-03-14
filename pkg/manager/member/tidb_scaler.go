@@ -101,7 +101,7 @@ func (s *tidbScaler) scaleOutOne(tc *v1alpha1.TidbCluster, ordinal int32) error 
 
 // ScaleIn scales in of the statefulset.
 func (s *tidbScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	scaleInTime := time.Now().Format(time.RFC3339)
+	scaleInTime := time.Now().Format(time.RFC3339Nano)
 	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
 		klog.Errorf("tidbScaler.ScaleIn: failed to convert cluster %s/%s, scale in will do nothing", meta.GetNamespace(), meta.GetName())
