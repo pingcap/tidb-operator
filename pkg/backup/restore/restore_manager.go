@@ -1159,7 +1159,7 @@ func (rm *restoreManager) makeSyncWarmUpJob(r *v1alpha1.Restore, tc *v1alpha1.Ti
 		},
 		Spec: batchv1.JobSpec{
 			Template:     *warmUpPod,
-			BackoffLimit: pointer.Int32Ptr(4),
+			BackoffLimit: pointer.Int32Ptr(1),
 		},
 	}
 	return warmUpJob, nil
@@ -1253,7 +1253,7 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 		},
 		Spec: batchv1.JobSpec{
 			Template:     *warmUpPod,
-			BackoffLimit: pointer.Int32Ptr(4),
+			BackoffLimit: pointer.Int32Ptr(1),
 		},
 	}
 	return warmUpJob, nil
@@ -1276,7 +1276,16 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 	for _, job := range jobs {
 		jobFinished := false
 		for _, condition := range job.Status.Conditions {
-			if condition.Type == batchv1.JobFailed || condition.Type == batchv1.JobComplete {
+			if condition.Type == batchv1.JobFailed {
+				err := fmt.Errorf("warmup job %s/%s failed", job.Namespace, job.Name)
+				rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+					Type:    v1alpha1.RestoreFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  condition.Reason,
+					Message: err.Error(),
+				}, nil)
+				return err
+			} else if condition.Type == batchv1.JobComplete {
 				jobFinished = true
 			}
 		}
@@ -1284,7 +1293,7 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 			if isWarmUpAsync(r) {
 				return nil
 			}
-			return fmt.Errorf("wait warmup job %s/%s finished", job.Namespace, job.Name)
+			return fmt.Errorf("waiting for warmup job %s/%s to finish", job.Namespace, job.Name)
 		}
 	}
 
