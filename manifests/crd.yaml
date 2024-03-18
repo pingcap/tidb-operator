@@ -34522,6 +34522,35 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     type: string
+                  customizedReadinessProbe:
+                    properties:
+                      args:
+                        items:
+                          type: string
+                        type: array
+                      binaryName:
+                        type: string
+                      failureThreshold:
+                        format: int32
+                        type: integer
+                      image:
+                        type: string
+                      initialDelaySeconds:
+                        format: int32
+                        type: integer
+                      periodSeconds:
+                        format: int32
+                        type: integer
+                      successThreshold:
+                        format: int32
+                        type: integer
+                      timeoutSeconds:
+                        format: int32
+                        type: integer
+                    required:
+                    - binaryName
+                    - image
+                    type: object
                   dnsConfig:
                     properties:
                       nameservers:
