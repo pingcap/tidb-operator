@@ -77,8 +77,14 @@ func newHelper(t *testing.T, restoreName, restoreNamespace string) *helper {
 }
 
 func (h *helper) createVolumeRestore(ctx context.Context, warmupMode pingcapv1alpha1.RestoreWarmupMode) *v1alpha1.VolumeRestore {
+	return h.createVolumeRestoreWith(ctx, func(vr *v1alpha1.VolumeRestore) {
+		vr.Spec.Template.Warmup = warmupMode
+	})
+}
+
+func (h *helper) createVolumeRestoreWith(ctx context.Context, with func(*v1alpha1.VolumeRestore)) *v1alpha1.VolumeRestore {
 	volumeRestore := generateVolumeRestore(h.restoreName, h.restoreNamespace)
-	volumeRestore.Spec.Template.Warmup = warmupMode
+	with(volumeRestore)
 	volumeRestore, err := h.deps.Clientset.FederationV1alpha1().VolumeRestores(h.restoreNamespace).Create(ctx, volumeRestore, metav1.CreateOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
 	h.g.Expect(volumeRestore.Status.TimeStarted.Unix() < 0).To(gomega.BeTrue())
@@ -177,10 +183,20 @@ func (h *helper) assertRunRestoreFinish(ctx context.Context, volumeRestore *v1al
 
 func (h *helper) assertRestoreComplete(volumeRestore *v1alpha1.VolumeRestore) {
 	h.g.Expect(volumeRestore.Status.Phase).To(gomega.Equal(v1alpha1.VolumeRestoreComplete))
+	// Fast path: chec
+	if volumeRestore.Spec.Template.WarmupStrategy == pingcapv1alpha1.RestoreWarmupStrategyCheckOnly {
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(3),
+			"length should be 3, but we have %v", volumeRestore.Status.Steps)
+		h.g.Expect(volumeRestore.Status.TimeCompleted.Unix() > 0).To(gomega.BeTrue())
+		h.g.Expect(len(volumeRestore.Status.TimeTaken) > 0).To(gomega.BeTrue())
+		return
+	}
 	if volumeRestore.Spec.Template.Warmup == "" {
-		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(4))
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(4),
+			"length should be 4, but we have %v", volumeRestore.Status.Steps)
 	} else {
-		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(5))
+		h.g.Expect(len(volumeRestore.Status.Steps)).To(gomega.Equal(5),
+			"length should be 5, but we have %v", volumeRestore.Status.Steps)
 	}
 	h.g.Expect(volumeRestore.Status.CommitTs).To(gomega.Equal("121"))
 	h.g.Expect(volumeRestore.Status.TimeCompleted.Unix() > 0).To(gomega.BeTrue())
@@ -641,6 +657,46 @@ func TestVolumeRestore_RestoreFinishFailed(t *testing.T) {
 	err = h.rm.Sync(volumeRestore)
 	h.g.Expect(err).To(gomega.BeNil())
 	h.assertRestoreFailed(volumeRestore)
+}
+
+func TestVolumeRestore_WarmupCheckWALOnly(t *testing.T) {
+	restoreName := "restore-1"
+	restoreNamespace := "ns-1"
+	ctx := context.Background()
+	h := newHelper(t, restoreName, restoreNamespace)
+
+	volumeRestore := h.createVolumeRestoreWith(ctx, func(vr *v1alpha1.VolumeRestore) {
+		vr.Spec.Template.WarmupStrategy = pingcapv1alpha1.RestoreWarmupStrategyCheckOnly
+		vr.Spec.Template.Warmup = pingcapv1alpha1.RestoreWarmupModeSync
+	})
+
+	// run restore volume phase
+	err := h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunRestoreVolume(ctx, volumeRestore)
+
+	// wait restore volume phase
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+
+	// data plane volume complete, still need to wait tikv ready
+	h.setDataPlaneVolumeComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreVolumeComplete(volumeRestore)
+
+	// warmup start
+	h.setDataPlaneWarmUpStarted(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreWarmUpStarted(volumeRestore)
+
+	h.setDataPlaneWarmUpComplete(ctx)
+	h.setDataPlaneComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+
+	h.assertRestoreComplete(volumeRestore)
 }
 
 func generateVolumeRestore(restoreName, restoreNamespace string) *v1alpha1.VolumeRestore {
