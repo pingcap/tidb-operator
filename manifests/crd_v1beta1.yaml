@@ -17088,6 +17088,8 @@ spec:
               - host
               - secretName
               type: object
+            tolerateSingleTiKVOutageOutage:
+              type: boolean
             tolerations:
               items:
                 properties:
