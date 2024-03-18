@@ -151,7 +151,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 				}
 			}
 
-			if !tc.AllTiKVsAreAvailable() {
+			if !tc.AllTiKVsAreAvailable(restore.Spec.TolerateSingleTiKVOutage) {
 				return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 			} else {
 				return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
@@ -399,7 +399,8 @@ func (rm *restoreManager) checkTiFlashAndTiKVReplicasFromBackupMeta(r *v1alpha1.
 		metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas == 0 {
 		klog.Errorf("backup source tc has no tikv nodes")
 		return fmt.Errorf("backup source tc has no tivk nodes")
-	} else if tc.Spec.TiKV.Replicas != metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas {
+	} else if tc.Spec.TiKV.Replicas != metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas ||
+		(r.Spec.TolerateSingleTiKVOutage && metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas-1 == tc.Spec.TiKV.Replicas) {
 		klog.Errorf("mismatch tikv replicas, tc has %d, while backup has %d", tc.Spec.TiKV.Replicas, metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV)
 		return fmt.Errorf("tikv replica mismatch")
 	}

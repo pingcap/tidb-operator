@@ -971,8 +971,9 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 	return true
 }
 
-func (tc *TidbCluster) AllTiKVsAreAvailable() bool {
-	if len(tc.Status.TiKV.Stores) != int(tc.Spec.TiKV.Replicas) {
+func (tc *TidbCluster) AllTiKVsAreAvailable(tolerateSingleTiKVOutage bool) bool {
+	if (!tolerateSingleTiKVOutage && len(tc.Status.TiKV.Stores) != int(tc.Spec.TiKV.Replicas)) ||
+		(tolerateSingleTiKVOutage && int(tc.Spec.TiKV.Replicas-1) != len(tc.Status.TiKV.Stores)) {
 		return false
 	}
 
