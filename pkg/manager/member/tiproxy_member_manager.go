@@ -156,9 +156,9 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 	// TODO: this should only be set on `tlsCluster`. `tlsTiDB` check is for backward compatibility.
 	// and it should be removed in the future.
 	if tlsCluster || tlsTiDB {
-		p := tiproxyHTTPServerPath
-		if tlsTiDB {
-			p = tiproxyServerPath
+		p := tiproxyServerPath
+		if !tlsTiDB {
+			p = tiproxyHTTPServerPath
 		}
 		cfgWrapper.Set("security.server-http-tls.ca", path.Join(p, "ca.crt"))
 		cfgWrapper.Set("security.server-http-tls.key", path.Join(p, "tls.key"))
@@ -431,13 +431,13 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 		annMount,
 	}
 
-	if tc.IsTLSClusterEnabled() {
+	tlsCluster := tc.IsTLSClusterEnabled()
+	tlsTiDB := tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled()
+	if tlsCluster {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name:      util.ClusterClientVolName,
 			ReadOnly:  true,
 			MountPath: util.ClusterClientTLSPath,
-		}, corev1.VolumeMount{
-			Name: "tiproxy-tls", ReadOnly: true, MountPath: tiproxyHTTPServerPath,
 		})
 
 		vols = append(vols, corev1.Volume{
@@ -446,15 +446,9 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 					SecretName: util.ClusterClientTLSSecretName(tc.Name),
 				},
 			},
-		}, corev1.Volume{
-			Name: "tiproxy-tls", VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiProxyLabelVal),
-				},
-			},
 		})
 	}
-	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() {
+	if tlsTiDB {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-server-tls", ReadOnly: true, MountPath: tiproxyServerPath,
 		})
@@ -479,6 +473,19 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 				},
 			})
 		}
+	}
+	if tlsCluster && !tlsTiDB {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tiproxy-tls", ReadOnly: true, MountPath: tiproxyHTTPServerPath,
+		})
+
+		vols = append(vols, corev1.Volume{
+			Name: "tiproxy-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiProxyLabelVal),
+				},
+			},
+		})
 	}
 
 	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
