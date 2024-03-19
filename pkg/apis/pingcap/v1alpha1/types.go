@@ -2565,6 +2565,8 @@ const (
 	RestoreWarmupStrategyHybrid RestoreWarmupStrategy = "hybrid"
 	// RestoreWarmupStrategyFsr warms up data volume by enabling Fast Snapshot Restore, other (e.g. WAL or Raft) will be warmed up via fio.
 	RestoreWarmupStrategyFsr RestoreWarmupStrategy = "fsr"
+	// RestoreWarmupStrategyCheckOnly warm up none data volumes and check wal consistency
+	RestoreWarmupStrategyCheckOnly RestoreWarmupStrategy = "check-wal-only"
 )
 
 // RestoreStatus represents the current status of a tidb cluster restore.
