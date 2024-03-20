@@ -8369,6 +8369,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							},
 						},
 					},
+					"tolerateSingleTiKVOutageOutage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
