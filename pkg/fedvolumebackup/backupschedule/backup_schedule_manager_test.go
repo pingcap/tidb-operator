@@ -239,16 +239,14 @@ func TestCalculateExpiredBackups(t *testing.T) {
 
 	testCases := []*testCase{
 		// no backup should be deleted
-		/*
-			{
-				backups: []*v1alpha1.VolumeBackup{
-					fakeBackup(&last10Min),
-				},
-				reservedTime:              24 * time.Hour,
-				expectedDeleteBackupCount: 0,
+		{
+			backups: []*v1alpha1.VolumeBackup{
+				fakeBackup(&last10Min),
 			},
-		*/
-		// 2 backup should be deleted
+			reservedTime:              24 * time.Hour,
+			expectedDeleteBackupCount: 0,
+		},
+		// 3 backups should be deleted
 		{
 			backups: []*v1alpha1.VolumeBackup{
 				fakeBackup(&last3Day),
@@ -262,7 +260,7 @@ func TestCalculateExpiredBackups(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		deletedBackups, err := calculateExpiredBackups(tc.backups, tc.reservedTime)
+		deletedBackups, err := calculateExpiredBackups(sortSnapshotBackups(tc.backups), tc.reservedTime)
 		g.Expect(err).Should(BeNil())
 		g.Expect(len(deletedBackups)).Should(Equal(tc.expectedDeleteBackupCount))
 	}
@@ -395,6 +393,10 @@ func fakeBackup(ts *time.Time) *v1alpha1.VolumeBackup {
 		return backup
 	}
 	backup.CreationTimestamp = metav1.Time{Time: *ts}
+	backup.Status.Conditions = append(backup.Status.Conditions, v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupComplete,
+		Status: v1.ConditionTrue,
+	})
 	return backup
 }
 

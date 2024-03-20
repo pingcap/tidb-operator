@@ -15,6 +15,7 @@ package fixture
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/Masterminds/semver"
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +29,7 @@ import (
 	tcconfig "github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 )
 
 var (
@@ -99,7 +101,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	// workaround for https://docs.pingcap.com/tidb/stable/backup-and-restore-faq#why-does-br-report-new_collations_enabled_on_first_bootstrap-mismatch
 	tidbConfig.Set("new_collations_enabled_on_first_bootstrap", true)
 
-	return &v1alpha1.TidbCluster{
+	tc := &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
@@ -190,6 +192,16 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			},
 		},
 	}
+
+	random := rand.Intn(2)
+	if random != 0 && version == utilimage.PDMSImage {
+		log.Logf("[GetTidbCluster] tidbcluster's pd mode is micro-service in this situation, "+
+			"version: %s, tc name: %s, namespace: %s", version, name, ns)
+		// 50% random in pdms mode
+		tc = AddPDMSForTidbCluster(tc)
+	}
+
+	return tc
 }
 
 // GetDMCluster returns a DmCluster resource configured for testing.
@@ -773,5 +785,46 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 			"heartbeat-interval": 2,
 		}),
 	}
+	return tc
+}
+
+const (
+	tsoService        = "tso"
+	schedulingService = "scheduling"
+)
+
+func AddPDMSForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
+	tc.Spec.PD.Mode = "ms"
+	if tc.Spec.PDMS != nil {
+		return tc
+	}
+	pdmsImage := "hub.pingcap.net/devbuild/pd"
+	version := "v8.0.0-3932"
+	// TODO: remove pd version when released pdms
+	tc.Spec.PD.BaseImage = "hub.pingcap.net/devbuild/pd"
+	tc.Spec.PD.Version = &version
+	tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
+		{
+			Name: tsoService,
+			// TODO: replace pdms image when released pdms
+			BaseImage: &pdmsImage,
+			ComponentSpec: v1alpha1.ComponentSpec{
+				Version: &version,
+			},
+			Replicas:             2,
+			ResourceRequirements: WithStorage(BurstableSmall, "10Gi"),
+		},
+		{
+			Name: schedulingService,
+			// TODO: replace pdms image when released pdms
+			BaseImage: &pdmsImage,
+			ComponentSpec: v1alpha1.ComponentSpec{
+				Version: &version,
+			},
+			Replicas:             1,
+			ResourceRequirements: WithStorage(BurstableSmall, "10Gi"),
+		},
+	}
+
 	return tc
 }
