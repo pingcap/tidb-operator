@@ -2933,6 +2933,9 @@ spec:
                 - host
                 - secretName
                 type: object
+              tolerateSingleTiKVOutage:
+                default: false
+                type: boolean
               tolerations:
                 items:
                   properties:

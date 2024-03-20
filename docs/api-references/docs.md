@@ -1626,6 +1626,17 @@ string
 <p>Additional volume mounts of component pod.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tolerateSingleTiKVOutage</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -14755,6 +14766,17 @@ string
 <td>
 <em>(Optional)</em>
 <p>Additional volume mounts of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerateSingleTiKVOutage</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss</p>
 </td>
 </tr>
 </tbody>

@@ -151,7 +151,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 				}
 			}
 
-			if !tc.AllTiKVsAreAvailable() {
+			if !tc.AllTiKVsAreAvailable(restore.Spec.TolerateSingleTiKVOutage) {
 				return controller.RequeueErrorf("restore %s/%s: waiting for all TiKVs are available in tidbcluster %s/%s", ns, name, tc.Namespace, tc.Name)
 			} else {
 				return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{

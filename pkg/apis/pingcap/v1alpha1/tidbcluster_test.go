@@ -367,7 +367,7 @@ func TestAllTiKVsAreAvailable(t *testing.T) {
 
 		tc := newTidbCluster()
 		test.update(tc)
-		test.expectFn(g, tc.AllTiKVsAreAvailable())
+		test.expectFn(g, tc.AllTiKVsAreAvailable(false))
 	}
 	tests := []testcase{
 		{
