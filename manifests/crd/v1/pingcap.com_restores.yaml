@@ -2755,7 +2755,7 @@ spec:
                 - host
                 - secretName
                 type: object
-              tolerateSingleTiKVOutageOutage:
+              tolerateSingleTiKVOutage:
                 default: false
                 type: boolean
               tolerations:

@@ -2530,7 +2530,7 @@ type RestoreSpec struct {
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 	// TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss
 	// +kubebuilder:default=false
-	TolerateSingleTiKVOutage bool `json:"tolerateSingleTiKVOutageOutage,omitempty"`
+	TolerateSingleTiKVOutage bool `json:"tolerateSingleTiKVOutage,omitempty"`
 }
 
 // FederalVolumeRestorePhase represents a phase to execute in federal volume restore
