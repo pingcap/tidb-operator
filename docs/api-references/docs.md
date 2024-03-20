@@ -6017,6 +6017,120 @@ CrdKind
 </tr>
 </tbody>
 </table>
+<h3 id="customizedreadinessprobe">CustomizedReadinessProbe</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>binaryName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>args</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Args is the arguments of the probe binary.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initialDelaySeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Number of seconds after the container has started before liveness probes are initiated.
+Defaults to 10 seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeoutSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Number of seconds after which the probe times out.
+Defaults to 1 second. Minimum value is 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>periodSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>How often (in seconds) to perform the probe.
+Default to 3 seconds. Minimum value is 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>successThreshold</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Minimum consecutive successes for the probe to be considered successful after having failed.
+Defaults to 1. Minimum value is 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failureThreshold</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Minimum consecutive failures for the probe to be considered failed after having succeeded.
+Defaults to 3. Minimum value is 1.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="dmclustercondition">DMClusterCondition</h3>
 <p>
 (<em>Appears on:</em>
@@ -17768,6 +17882,23 @@ ScalePolicy
 <td>
 <em>(Optional)</em>
 <p>ScalePolicy is the scale configuration for TiDB.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>customizedReadinessProbe</code></br>
+<em>
+<a href="#customizedreadinessprobe">
+CustomizedReadinessProbe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CustomizedReadinessProbe is the customized readiness probe for TiDB.
+You can provide your own readiness probe for TiDB, and it will override the default readiness probe.
+The image will be an init container, and the tidb-server container will copy the probe binary from it, and execute it.
+The probe binary in the image should be placed under the root directory, i.e., <code>/your-probe</code>.</p>
 </td>
 </tr>
 </tbody>

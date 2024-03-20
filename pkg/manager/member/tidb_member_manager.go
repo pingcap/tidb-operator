@@ -76,6 +76,8 @@ const (
 
 	bootstrapSQLFilePath = "/etc/tidb-bootstrap"
 	bootstrapSQLFileName = "bootstrap.sql"
+
+	customizedReadinessProbePath = "/var/lib/customized-readiness-probe"
 )
 
 var (
@@ -1009,6 +1011,62 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 		if tc.Spec.TiDB.ReadinessProbe.PeriodSeconds != nil {
 			c.ReadinessProbe.PeriodSeconds = *tc.Spec.TiDB.ReadinessProbe.PeriodSeconds
+		}
+	}
+
+	// The customized readiness probe will override the above readiness probe settings.
+	if p := tc.Spec.TiDB.CustomizedReadinessProbe; p != nil {
+		// Create a shared volume that will be mounted by the init container and the tidb-server container for copying the binary.
+		vols = append(vols, corev1.Volume{
+			Name: p.BinaryName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		probeVolMount := corev1.VolumeMount{
+			Name:      p.BinaryName,
+			ReadOnly:  false,
+			MountPath: customizedReadinessProbePath,
+		}
+		c.VolumeMounts = append(c.VolumeMounts, probeVolMount)
+
+		// Create an init container that copies the binary to the shared volume.
+		initContainers = append(initContainers, corev1.Container{
+			Name:            p.BinaryName,
+			Image:           p.Image,
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Command:         []string{"/bin/sh", "-c"},
+			Args:            []string{fmt.Sprintf("cp /%s %s/%s; echo '%s copy finished'", p.BinaryName, customizedReadinessProbePath, p.BinaryName, p.BinaryName)},
+			VolumeMounts:    []corev1.VolumeMount{probeVolMount},
+		})
+
+		c.ReadinessProbe = &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				Exec: &corev1.ExecAction{
+					Command: append([]string{fmt.Sprintf("%s/%s", customizedReadinessProbePath, p.BinaryName)}, p.Args...),
+				},
+			},
+			InitialDelaySeconds: 10,
+			TimeoutSeconds:      1,
+			PeriodSeconds:       3,
+			SuccessThreshold:    1,
+			FailureThreshold:    3,
+		}
+
+		if p.InitialDelaySeconds != nil && *p.InitialDelaySeconds >= 0 {
+			c.ReadinessProbe.InitialDelaySeconds = *p.InitialDelaySeconds
+		}
+		if p.TimeoutSeconds != nil && *p.TimeoutSeconds >= 1 {
+			c.ReadinessProbe.TimeoutSeconds = *p.TimeoutSeconds
+		}
+		if p.PeriodSeconds != nil && *p.PeriodSeconds >= 1 {
+			c.ReadinessProbe.PeriodSeconds = *p.PeriodSeconds
+		}
+		if p.FailureThreshold != nil && *p.FailureThreshold >= 1 {
+			c.ReadinessProbe.FailureThreshold = *p.FailureThreshold
+		}
+		if p.SuccessThreshold != nil && *p.SuccessThreshold >= 1 {
+			c.ReadinessProbe.SuccessThreshold = *p.SuccessThreshold
 		}
 	}
 
