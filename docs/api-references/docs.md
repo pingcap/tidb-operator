@@ -1628,7 +1628,7 @@ string
 </tr>
 <tr>
 <td>
-<code>tolerateSingleTiKVOutageOutage</code></br>
+<code>tolerateSingleTiKVOutage</code></br>
 <em>
 bool
 </em>
@@ -14770,7 +14770,7 @@ string
 </tr>
 <tr>
 <td>
-<code>tolerateSingleTiKVOutageOutage</code></br>
+<code>tolerateSingleTiKVOutage</code></br>
 <em>
 bool
 </em>
