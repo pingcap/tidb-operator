@@ -227,6 +227,12 @@ func (e *EC2Session) AddTags(resourcesTags map[string]TagMap) error {
 		workerPool.ApplyOnErrorGroup(eg, func() error {
 			_, err := e.EC2.CreateTags(input)
 			if err != nil {
+				if aErr, ok := err.(awserr.Error); ok {
+					if aErr.Code() == "TagLimitExceeded" {
+						klog.Warningf("tag number exceeds AWS limitation for id=%s", id)
+						return nil
+					}
+				}
 				klog.Errorf("failed to create tags for resource id=%s, %v", id, err)
 				return err
 			}
