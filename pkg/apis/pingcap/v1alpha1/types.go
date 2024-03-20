@@ -1052,6 +1052,41 @@ type TiDBSpec struct {
 	// ScalePolicy is the scale configuration for TiDB.
 	// +optional
 	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
+
+	// CustomizedReadinessProbe is the customized readiness probe for TiDB.
+	// You can provide your own readiness probe for TiDB, and it will override the default readiness probe.
+	// The image will be an init container, and the tidb-server container will copy the probe binary from it, and execute it.
+	// The probe binary in the image should be placed under the root directory, i.e., `/your-probe`.
+	// +optional
+	CustomizedReadinessProbe *CustomizedReadinessProbe `json:"customizedReadinessProbe,omitempty"`
+}
+
+type CustomizedReadinessProbe struct {
+	Image      string `json:"image"`
+	BinaryName string `json:"binaryName"`
+	// Args is the arguments of the probe binary.
+	// +optional
+	Args []string `json:"args"`
+	// Number of seconds after the container has started before liveness probes are initiated.
+	// Defaults to 10 seconds.
+	// +optional
+	InitialDelaySeconds *int32 `json:"initialDelaySeconds,omitempty"`
+	// Number of seconds after which the probe times out.
+	// Defaults to 1 second. Minimum value is 1.
+	// +optional
+	TimeoutSeconds *int32 `json:"timeoutSeconds,omitempty"`
+	// How often (in seconds) to perform the probe.
+	// Default to 3 seconds. Minimum value is 1.
+	// +optional
+	PeriodSeconds *int32 `json:"periodSeconds,omitempty"`
+	// Minimum consecutive successes for the probe to be considered successful after having failed.
+	// Defaults to 1. Minimum value is 1.
+	// +optional
+	SuccessThreshold *int32 `json:"successThreshold,omitempty"`
+	// Minimum consecutive failures for the probe to be considered failed after having succeeded.
+	// Defaults to 3. Minimum value is 1.
+	// +optional
+	FailureThreshold *int32 `json:"failureThreshold,omitempty"`
 }
 
 type TiDBInitializer struct {
