@@ -83,8 +83,28 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
-	for i := len(podOrdinals) - 1; i >= 0; i-- {
-		ordinal := podOrdinals[i]
+
+	// Make owner to the last pod to upgrade
+	sortedOrdinals := make([]int32, 0, len(podOrdinals))
+	ownerPodOrdinal := int32(-1)
+	for _, ordinal := range podOrdinals {
+		podName := ticdcPodName(tcName, ordinal)
+		if !tc.Status.TiCDC.Captures[podName].IsOwner {
+			sortedOrdinals = append(sortedOrdinals, ordinal)
+		} else {
+			klog.Infof("ticdcUpgrade.Upgrade: %s is the owner of ticdc in cluster %s/%s", podName, tc.GetNamespace(), tc.GetName())
+			ownerPodOrdinal = ordinal
+		}
+	}
+	if ownerPodOrdinal != -1 {
+		sortedOrdinals[len(sortedOrdinals)] = sortedOrdinals[0]
+		sortedOrdinals[0] = ownerPodOrdinal
+	} else {
+		return fmt.Errorf("tidbcluster: [%s/%s]'s ticdc owner pod not found", ns, tcName)
+	}
+
+	for i := len(sortedOrdinals) - 1; i >= 0; i-- {
+		ordinal := sortedOrdinals[i]
 		podName := ticdcPodName(tcName, ordinal)
 		pod, err := u.deps.PodLister.Pods(ns).Get(podName)
 		if err != nil {
@@ -120,7 +140,7 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 			// If the current pod is the last one to upgrade, skip resign owner.
 			hasNext := i-1 >= 0
 			if hasNext {
-				nextOrd := podOrdinals[i-1]
+				nextOrd := sortedOrdinals[i-1]
 				nextPodName := ticdcPodName(tcName, nextOrd)
 				klog.Infof("ticdcUpgrade.Upgrade: try to graceful resign owner from the next ticdc pod %s in cluster %s/%s", nextPodName, tc.GetNamespace(), tc.GetName())
 				err = gracefulResignOwnerTiCDC(tc, u.deps.CDCControl, u.deps.PodControl, pod, nextPodName, nextOrd, "Upgrade")

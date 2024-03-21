@@ -117,6 +117,8 @@ func (s *ticdcScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newS
 	return nil
 }
 
+// gracefulResignOwnerTiCDC check if the TiCDC pod is the owner of the TiCDC cluster,
+// if so, it will resign the owner from the TiCDC pod.
 func gracefulResignOwnerTiCDC(
 	tc *v1alpha1.TidbCluster,
 	cdcCtl controller.TiCDCControlInterface,
