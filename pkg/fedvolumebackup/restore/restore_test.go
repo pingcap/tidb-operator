@@ -659,7 +659,22 @@ func TestVolumeRestore_RestoreFinishFailed(t *testing.T) {
 	h.assertRestoreFailed(volumeRestore)
 }
 
-func TestVolumeRestore_CheckWALFailed(t *testing.T) {
+func TestVolumeRestore_CheckWAL(t *testing.T) {
+	t.Run("failed_async", func(t *testing.T) {
+		testVolumeRestore_CheckWALFailed(t, true)
+	})
+	t.Run("failed_sync", func(t *testing.T) {
+		testVolumeRestore_CheckWALFailed(t, false)
+	})
+	t.Run("success_async", func(t *testing.T) {
+		testVolumeRestore_CheckWALOnly(t, true)
+	})
+	t.Run("success_sync", func(t *testing.T) {
+		testVolumeRestore_CheckWALOnly(t, false)
+	})
+}
+
+func testVolumeRestore_CheckWALFailed(t *testing.T, async bool) {
 	restoreName := "restore-1"
 	restoreNamespace := "ns-1"
 	ctx := context.Background()
@@ -668,6 +683,9 @@ func TestVolumeRestore_CheckWALFailed(t *testing.T) {
 	volumeRestore := h.createVolumeRestoreWith(ctx, func(vr *v1alpha1.VolumeRestore) {
 		vr.Spec.Template.WarmupStrategy = pingcapv1alpha1.RestoreWarmupStrategyCheckOnly
 		vr.Spec.Template.Warmup = pingcapv1alpha1.RestoreWarmupModeSync
+		if async {
+			vr.Spec.Template.Warmup = pingcapv1alpha1.RestoreWarmupModeASync
+		}
 	})
 
 	// run restore volume phase
@@ -691,7 +709,7 @@ func TestVolumeRestore_CheckWALFailed(t *testing.T) {
 	h.assertRestoreFailed(volumeRestore)
 }
 
-func TestVolumeRestore_WarmupCheckWALOnly(t *testing.T) {
+func testVolumeRestore_CheckWALOnly(t *testing.T, async bool) {
 	restoreName := "restore-1"
 	restoreNamespace := "ns-1"
 	ctx := context.Background()
@@ -700,6 +718,9 @@ func TestVolumeRestore_WarmupCheckWALOnly(t *testing.T) {
 	volumeRestore := h.createVolumeRestoreWith(ctx, func(vr *v1alpha1.VolumeRestore) {
 		vr.Spec.Template.WarmupStrategy = pingcapv1alpha1.RestoreWarmupStrategyCheckOnly
 		vr.Spec.Template.Warmup = pingcapv1alpha1.RestoreWarmupModeSync
+		if async {
+			vr.Spec.Template.Warmup = pingcapv1alpha1.RestoreWarmupModeASync
+		}
 	})
 
 	// run restore volume phase
