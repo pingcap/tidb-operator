@@ -659,6 +659,38 @@ func TestVolumeRestore_RestoreFinishFailed(t *testing.T) {
 	h.assertRestoreFailed(volumeRestore)
 }
 
+func TestVolumeRestore_CheckWALFailed(t *testing.T) {
+	restoreName := "restore-1"
+	restoreNamespace := "ns-1"
+	ctx := context.Background()
+	h := newHelper(t, restoreName, restoreNamespace)
+
+	volumeRestore := h.createVolumeRestoreWith(ctx, func(vr *v1alpha1.VolumeRestore) {
+		vr.Spec.Template.WarmupStrategy = pingcapv1alpha1.RestoreWarmupStrategyCheckOnly
+		vr.Spec.Template.Warmup = pingcapv1alpha1.RestoreWarmupModeSync
+	})
+
+	// run restore volume phase
+	err := h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunRestoreVolume(ctx, volumeRestore)
+
+	// wait restore volume phase
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+
+	// data plane volume complete, still need to wait tikv ready
+	h.setDataPlaneVolumeComplete(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.HaveOccurred())
+	h.assertRestoreVolumeComplete(volumeRestore)
+
+	h.setDataPlaneFailed(ctx)
+	err = h.rm.Sync(volumeRestore)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRestoreFailed(volumeRestore)
+}
+
 func TestVolumeRestore_WarmupCheckWALOnly(t *testing.T) {
 	restoreName := "restore-1"
 	restoreNamespace := "ns-1"
