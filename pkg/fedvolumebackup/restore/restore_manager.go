@@ -127,8 +127,20 @@ func (rm *restoreManager) syncRestore(volumeRestore *v1alpha1.VolumeRestore) err
 
 	rm.syncWarmUpStatus(volumeRestore, restoreMembers)
 
+	if brk := rm.maybeBreakForCheckWALOnly(volumeRestore, restoreMembers); brk {
+		// Check WAL finished. We have done everything.
+		return nil
+	}
+
 	if err := rm.waitRestoreTiKVComplete(volumeRestore, restoreMembers); err != nil {
 		return err
+	}
+
+	// When playing check wal, we should stop here.
+	if volumeRestore.Spec.Template.WarmupStrategy == pingcapv1alpha1.RestoreWarmupStrategyCheckOnly {
+		klog.Infof("VolumeRestore %s/%s check WAL complete", ns, name)
+		v1alpha1.FinishVolumeRestoreStep(&volumeRestore.Status, v1alpha1.VolumeRestoreStepRestartTiKV)
+		return nil
 	}
 
 	memberUpdated, err := rm.executeRestoreDataPhase(ctx, volumeRestore, restoreMembers)
@@ -269,6 +281,29 @@ func (rm *restoreManager) waitRestoreVolumeComplete(volumeRestore *v1alpha1.Volu
 	return nil
 }
 
+func (rm *restoreManager) maybeBreakForCheckWALOnly(volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) bool {
+	// check if restore members failed in data plane.
+	// that is nesseary because when a data panel failed, the warmup is also marked as finished.
+	// We directly return false here and deletgate the duty of uploading the error to `waitRestoreTiKVComplete`,
+	// for keeping a simpler interface.
+	for _, restoreMember := range restoreMembers {
+		if pingcapv1alpha1.IsRestoreInvalid(restoreMember.restore) {
+			return false
+		}
+		if pingcapv1alpha1.IsRestoreFailed(restoreMember.restore) {
+			return false
+		}
+	}
+
+	if v1alpha1.IsVolumeRestoreWarmUpComplete(volumeRestore) &&
+		volumeRestore.Spec.Template.WarmupStrategy == pingcapv1alpha1.RestoreWarmupStrategyCheckOnly {
+		// check wal complete, should we give it a special status?
+		rm.setVolumeRestoreComplete(&volumeRestore.Status)
+		return true
+	}
+	return false
+}
+
 func (rm *restoreManager) waitRestoreTiKVComplete(volumeRestore *v1alpha1.VolumeRestore, restoreMembers []*volumeRestoreMember) error {
 	// check if restore members failed in data plane
 	for _, restoreMember := range restoreMembers {
@@ -297,11 +332,11 @@ func (rm *restoreManager) waitRestoreTiKVComplete(volumeRestore *v1alpha1.Volume
 			return controller.IgnoreErrorf("restore member %s of cluster %s is not tikv complete", restoreMemberName, k8sClusterName)
 		}
 	}
+
 	// restore tikv complete
 	if !v1alpha1.IsVolumeRestoreTiKVComplete(volumeRestore) {
 		rm.setVolumeRestoreTiKVComplete(&volumeRestore.Status)
 	}
-
 	return nil
 }
 
