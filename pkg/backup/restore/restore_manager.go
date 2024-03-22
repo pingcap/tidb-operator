@@ -122,7 +122,6 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}, nil)
 			return err
 		}
-		// restore based on volume snapshot for cloud provider
 		reason, err := rm.volumeSnapshotRestore(restore, tc)
 		if err != nil {
 			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
@@ -144,6 +143,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 				}
 				if !v1alpha1.IsRestoreWarmUpComplete(restore) {
 					return rm.waitWarmUpJobsFinished(restore)
+				}
+				if restore.Spec.WarmupStrategy == v1alpha1.RestoreWarmupStrategyCheckOnly {
+					return rm.checkWALOnlyFinish(restore)
 				}
 			} else if isWarmUpAsync(restore) {
 				if !v1alpha1.IsRestoreWarmUpStarted(restore) {
@@ -488,7 +490,8 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 
 		if isWarmUpSync(r) {
 			if v1alpha1.IsRestoreWarmUpComplete(r) {
-				return rm.startTiKV(r, tc)
+
+				return rm.startTiKVIfNeeded(r, tc)
 			}
 			if v1alpha1.IsRestoreWarmUpStarted(r) {
 				return "", nil
@@ -511,14 +514,17 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		}
 		klog.Infof("Restore %s/%s prepare restore metadata finished", r.Namespace, r.Name)
 		if !isWarmUpSync(r) {
-			return rm.startTiKV(r, tc)
+			return rm.startTiKVIfNeeded(r, tc)
 		}
 	}
 
 	return "", nil
 }
 
-func (rm *restoreManager) startTiKV(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (reason string, err error) {
+func (rm *restoreManager) startTiKVIfNeeded(r *v1alpha1.Restore, tc *v1alpha1.TidbCluster) (reason string, err error) {
+	if r.Spec.WarmupStrategy == v1alpha1.RestoreWarmupStrategyCheckOnly {
+		return "", nil
+	}
 	restoreMark := fmt.Sprintf("%s/%s", r.Namespace, r.Name)
 	if len(tc.GetAnnotations()) == 0 {
 		tc.Annotations = make(map[string]string)
@@ -1048,9 +1054,9 @@ func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []c
 			} else {
 				res = append(res, "--block", p.MountPath)
 			}
-		case v1alpha1.RestoreWarmupStrategyFsr:
+		case v1alpha1.RestoreWarmupStrategyFsr, v1alpha1.RestoreWarmupStrategyCheckOnly:
 			if p.MountPath == constants.TiKVDataVolumeMountPath {
-				// data volume has been warmed up by enabling FSR
+				// data volume has been warmed up by enabling FSR or can be skipped
 				continue
 			} else {
 				res = append(res, "--block", p.MountPath)
@@ -1259,6 +1265,19 @@ func (rm *restoreManager) makeAsyncWarmUpJob(r *v1alpha1.Restore, tikvPod *corev
 	return warmUpJob, nil
 }
 
+func (rm *restoreManager) checkWALOnlyFinish(r *v1alpha1.Restore) error {
+	newStatus := &controller.RestoreUpdateStatus{
+		TimeCompleted: &metav1.Time{Time: time.Now()},
+	}
+	if err := rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+		Type:   v1alpha1.RestoreComplete,
+		Status: corev1.ConditionTrue,
+	}, newStatus); err != nil {
+		return fmt.Errorf("UpdateRestoreCompleteFailed for %s", err.Error())
+	}
+	return nil
+}
+
 func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 	if r.Spec.Warmup == "" {
 		return nil
@@ -1273,8 +1292,11 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 	if err != nil {
 		return err
 	}
+	if len(jobs) == 0 {
+		return fmt.Errorf("waiting for warmup job being created")
+	}
 	for _, job := range jobs {
-		jobFinished := false
+		finished := false
 		for _, condition := range job.Status.Conditions {
 			if condition.Type == batchv1.JobFailed {
 				err := fmt.Errorf("warmup job %s/%s failed", job.Namespace, job.Name)
@@ -1285,11 +1307,13 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 					Message: err.Error(),
 				}, nil)
 				return err
-			} else if condition.Type == batchv1.JobComplete {
-				jobFinished = true
+			}
+			if condition.Type == batchv1.JobComplete {
+				finished = true
+				continue
 			}
 		}
-		if !jobFinished {
+		if !finished {
 			if isWarmUpAsync(r) {
 				return nil
 			}
