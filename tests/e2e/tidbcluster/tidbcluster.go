@@ -3411,21 +3411,20 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 		}
 	})
 
-	ginkgo.Describe("[Feature]: customized readiness probe", func() {
-		ginkgo.It("deploy tidb cluster with customized readiness probe enabled", func() {
+	ginkgo.Describe("[Feature]: customized startup probe", func() {
+		ginkgo.It("deploy tidb cluster with customized startup probe enabled", func() {
 			ginkgo.By("Deploy initial tc")
-			tc := fixture.GetTidbCluster(ns, "enable-customized-readiness-probe", utilimage.TiDBLatest)
+			tc := fixture.GetTidbCluster(ns, "enable-customized-startup-probe", utilimage.TiDBLatest)
 			tc.Spec.PD.Replicas = 1
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
-			tc.Spec.TiDB.CustomizedReadinessProbe = &v1alpha1.CustomizedReadinessProbe{
+			tc.Spec.TiDB.CustomizedStartupProbe = &v1alpha1.CustomizedProbe{
 				Image:            "gcr.io/pingcap-public/tidbcloud/mysql-readiness-probe:latest",
 				BinaryName:       "mysql-readiness-probe",
 				Args:             []string{"--tlsEnabled=false"},
 				TimeoutSeconds:   pointer.Int32(2),
-				PeriodSeconds:    pointer.Int32(3),
-				SuccessThreshold: pointer.Int32(2),
-				FailureThreshold: pointer.Int32(2),
+				PeriodSeconds:    pointer.Int32(10),
+				FailureThreshold: pointer.Int32(30),
 			}
 
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})

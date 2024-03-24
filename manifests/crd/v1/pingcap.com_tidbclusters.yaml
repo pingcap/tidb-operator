@@ -15507,7 +15507,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     type: string
-                  customizedReadinessProbe:
+                  customizedStartupProbe:
                     properties:
                       args:
                         items:

@@ -1275,22 +1275,14 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{},
 					TiDB: &v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							ReadinessProbe: &v1alpha1.Probe{
-								Type:                pointer.String(v1alpha1.CommandProbeType),
-								InitialDelaySeconds: pointer.Int32(5),
-								PeriodSeconds:       pointer.Int32(5),
-							},
-						},
-						CustomizedReadinessProbe: &v1alpha1.CustomizedReadinessProbe{
-							Image:               "probe:latest",
-							BinaryName:          "probe",
-							Args:                []string{"--enabledTLS=false"},
-							InitialDelaySeconds: pointer.Int32(10),
-							PeriodSeconds:       pointer.Int32(3),
-							TimeoutSeconds:      pointer.Int32(2),
-							SuccessThreshold:    pointer.Int32(3),
-							FailureThreshold:    pointer.Int32(2),
+						CustomizedStartupProbe: &v1alpha1.CustomizedProbe{
+							Image:            "probe:latest",
+							BinaryName:       "probe",
+							Args:             []string{"--enabledTLS=false"},
+							PeriodSeconds:    pointer.Int32(15),
+							TimeoutSeconds:   pointer.Int32(2),
+							SuccessThreshold: pointer.Int32(3),
+							FailureThreshold: pointer.Int32(60),
 						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1303,18 +1295,17 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 					ProbeHandler: v1.ProbeHandler{
 						Exec: &v1.ExecAction{
 							Command: []string{
-								fmt.Sprintf("%s/%s", customizedReadinessProbePath, "probe"),
+								fmt.Sprintf("%s/%s", customizedStartupProbePath, "probe"),
 								"--enabledTLS=false",
 							},
 						},
 					},
-					InitialDelaySeconds: 10,
-					PeriodSeconds:       3,
-					TimeoutSeconds:      2,
-					SuccessThreshold:    3,
-					FailureThreshold:    2,
+					PeriodSeconds:    15,
+					TimeoutSeconds:   2,
+					SuccessThreshold: 1,
+					FailureThreshold: 60,
 				}
-				checkCustomizedProbeEnabled(g, sts.Spec.Template.Spec, probe)
+				checkCustomizedStartupProbeEnabled(g, sts.Spec.Template.Spec, probe)
 			},
 		},
 		// TODO add more tests
@@ -1329,7 +1320,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 	}
 }
 
-func checkCustomizedProbeEnabled(g *WithT, spec v1.PodSpec, expectedProbe *corev1.Probe) {
+func checkCustomizedStartupProbeEnabled(g *WithT, spec v1.PodSpec, expectedProbe *corev1.Probe) {
 	var hasInitContianer, hasTiDBContainer bool
 	for _, container := range spec.InitContainers {
 		if container.Name == "probe" {
@@ -1343,11 +1334,11 @@ func checkCustomizedProbeEnabled(g *WithT, spec v1.PodSpec, expectedProbe *corev
 		if container.Name == v1alpha1.TiDBMemberType.String() {
 			hasTiDBContainer = true
 
-			g.Expect(container.ReadinessProbe).Should(Equal(expectedProbe))
+			g.Expect(container.StartupProbe).Should(Equal(expectedProbe))
 			g.Expect(container.VolumeMounts).Should(ContainElement(corev1.VolumeMount{
 				Name:      "probe",
 				ReadOnly:  false,
-				MountPath: customizedReadinessProbePath,
+				MountPath: customizedStartupProbePath,
 			}))
 		}
 	}
@@ -1694,7 +1685,7 @@ func TestTiDBInitContainers(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
-						CustomizedReadinessProbe: &v1alpha1.CustomizedReadinessProbe{
+						CustomizedStartupProbe: &v1alpha1.CustomizedProbe{
 							Image:      "probe:latest",
 							BinaryName: "probe",
 						}},
@@ -1708,12 +1699,12 @@ func TestTiDBInitContainers(t *testing.T) {
 					Image:           "probe:latest",
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{fmt.Sprintf("cp /probe %s/probe; echo 'probe copy finished'", customizedReadinessProbePath)},
+					Args:            []string{fmt.Sprintf("cp /probe %s/probe; echo 'probe copy finished'", customizedStartupProbePath)},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "probe",
 							ReadOnly:  false,
-							MountPath: customizedReadinessProbePath,
+							MountPath: customizedStartupProbePath,
 						},
 					},
 				},
