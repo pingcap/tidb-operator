@@ -6028,7 +6028,7 @@ CrdKind
 </tr>
 </tbody>
 </table>
-<h3 id="customizedreadinessprobe">CustomizedReadinessProbe</h3>
+<h3 id="customizedprobe">CustomizedProbe</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbspec">TiDBSpec</a>)
@@ -6051,6 +6051,7 @@ string
 </em>
 </td>
 <td>
+<p>Image is the image of the probe binary.</p>
 </td>
 </tr>
 <tr>
@@ -6061,6 +6062,7 @@ string
 </em>
 </td>
 <td>
+<p>BinaryName is the name of the probe binary.</p>
 </td>
 </tr>
 <tr>
@@ -6084,8 +6086,7 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>Number of seconds after the container has started before liveness probes are initiated.
-Defaults to 10 seconds.</p>
+<p>Number of seconds after the container has started before liveness probes are initiated.</p>
 </td>
 </tr>
 <tr>
@@ -6111,7 +6112,7 @@ int32
 <td>
 <em>(Optional)</em>
 <p>How often (in seconds) to perform the probe.
-Default to 3 seconds. Minimum value is 1.</p>
+Default to 10 seconds. Minimum value is 1.</p>
 </td>
 </tr>
 <tr>
@@ -6124,7 +6125,7 @@ int32
 <td>
 <em>(Optional)</em>
 <p>Minimum consecutive successes for the probe to be considered successful after having failed.
-Defaults to 1. Minimum value is 1.</p>
+Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.</p>
 </td>
 </tr>
 <tr>
@@ -17908,17 +17909,17 @@ ScalePolicy
 </tr>
 <tr>
 <td>
-<code>customizedReadinessProbe</code></br>
+<code>customizedStartupProbe</code></br>
 <em>
-<a href="#customizedreadinessprobe">
-CustomizedReadinessProbe
+<a href="#customizedprobe">
+CustomizedProbe
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>CustomizedReadinessProbe is the customized readiness probe for TiDB.
-You can provide your own readiness probe for TiDB, and it will override the default readiness probe.
+<p>CustomizedStartupProbe is the customized startup probe for TiDB.
+You can provide your own startup probe for TiDB.
 The image will be an init container, and the tidb-server container will copy the probe binary from it, and execute it.
 The probe binary in the image should be placed under the root directory, i.e., <code>/your-probe</code>.</p>
 </td>

@@ -94,6 +94,7 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 		} else if framework.TestContext.Provider == "openshift" {
 			reservedNamespaces = append(reservedNamespaces, "openshift")
 		}
+		log.Logf("reserved namespaces: %v, provider: %s", reservedNamespaces, framework.TestContext.Provider)
 		deleted, err := framework.DeleteNamespaces(c, nil, reservedNamespaces)
 		if err != nil {
 			log.Failf("Error deleting orphaned namespaces: %v", err)

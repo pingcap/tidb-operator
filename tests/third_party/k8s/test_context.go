@@ -347,7 +347,7 @@ func RegisterClusterFlags(flags *flag.FlagSet) {
 	// NOTE: Node E2E tests have this flag defined as well, but true by default.
 	// If this becomes true as well, they should be refactored into RegisterCommonFlags.
 	flags.BoolVar(&TestContext.PrepullImages, "prepull-images", false, "If true, prepull images so image pull failures do not cause test failures.")
-	flags.StringVar(&TestContext.Provider, "provider", "", "The name of the Kubernetes provider (gce, gke, local, skeleton (the fallback if not set), etc.)")
+	flags.StringVar(&TestContext.Provider, "provider", "kind", "The name of the Kubernetes provider (gce, gke, local, skeleton (the fallback if not set), etc.)")
 	flags.StringVar(&TestContext.Tooling, "tooling", "", "The tooling in use (kops, gke, etc.)")
 	flags.StringVar(&TestContext.OutputDir, "e2e-output-dir", "/tmp", "Output directory for interesting/useful test data, like performance data, benchmarks, and other metrics.")
 	flags.StringVar(&TestContext.Prefix, "prefix", "e2e", "A prefix to be added to cloud resources created during testing.")
