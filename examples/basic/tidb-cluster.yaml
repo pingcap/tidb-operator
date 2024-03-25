@@ -52,7 +52,3 @@ spec:
     service:
       type: ClusterIP
     config: {}
-    storageVolumes:
-    - name: data
-      mountPath: /var/lib/tidb
-      storageSize: 1Gi
