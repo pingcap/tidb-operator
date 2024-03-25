@@ -6,7 +6,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v7.1.1
+  version: v8.0.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
@@ -52,3 +52,7 @@ spec:
     service:
       type: ClusterIP
     config: {}
+    storageVolumes:
+    - name: data
+      mountPath: /var/lib/tidb
+      storageSize: 1Gi
