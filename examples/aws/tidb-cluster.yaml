@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v8.0.0
+  version: v7.5.1
   timezone: UTC
   configUpdateStrategy: RollingUpdate
   pvReclaimPolicy: Retain
