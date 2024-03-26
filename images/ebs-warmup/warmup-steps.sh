@@ -94,7 +94,7 @@ while [ $# -gt 0 ]; do
                 echo $bg_works | xargs kill || true
                 wait || true
                 echo "HINT: All files in the dir, if the last one corrupted, you may ignore it:"
-                find . -name '??????.LOG' -print | sort
+                find . -iname '??????.LOG' -print | sort
                 exit 1
             fi
             ;;
