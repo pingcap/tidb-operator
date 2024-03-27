@@ -971,8 +971,9 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 	return true
 }
 
-func (tc *TidbCluster) AllTiKVsAreAvailable() bool {
-	if len(tc.Status.TiKV.Stores) != int(tc.Spec.TiKV.Replicas) {
+func (tc *TidbCluster) AllTiKVsAreAvailable(tolerateSingleTiKVOutage bool) bool {
+	if (!tolerateSingleTiKVOutage && len(tc.Status.TiKV.Stores) != int(tc.Spec.TiKV.Replicas)) ||
+		(tolerateSingleTiKVOutage && int(tc.Spec.TiKV.Replicas-1) != len(tc.Status.TiKV.Stores)) {
 		return false
 	}
 
@@ -1091,6 +1092,20 @@ func (tidb *TiDBSpec) GetServicePort() int32 {
 		port = *tidb.Service.Port
 	}
 	return port
+}
+
+func (tidb *TiDBSpec) GetScaleInParallelism() int {
+	if tidb.ScalePolicy.ScaleInParallelism == nil {
+		return 1
+	}
+	return int(*(tidb.ScalePolicy.ScaleInParallelism))
+}
+
+func (tidb *TiDBSpec) GetScaleOutParallelism() int {
+	if tidb.ScalePolicy.ScaleOutParallelism == nil {
+		return 1
+	}
+	return int(*(tidb.ScalePolicy.ScaleOutParallelism))
 }
 
 func (tikv *TiKVSpec) ShouldSeparateRocksDBLog() bool {

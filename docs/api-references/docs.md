@@ -1626,6 +1626,17 @@ string
 <p>Additional volume mounts of component pod.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tolerateSingleTiKVOutage</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2264,7 +2275,8 @@ StartScriptVersion
 </td>
 <td>
 <em>(Optional)</em>
-<p>StartScriptVersion is the version of start script</p>
+<p>StartScriptVersion is the version of start script
+When PD enables microservice mode, pd and pd microservice component will use start script v2.</p>
 <p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>
@@ -5689,7 +5701,7 @@ Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>ReadinessProbe describes actions that probe the pd&rsquo;s readiness.
+<p>ReadinessProbe describes actions that probe the components&rsquo; readiness.
 the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
@@ -6012,6 +6024,121 @@ CrdKind
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="customizedprobe">CustomizedProbe</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Image is the image of the probe binary.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>binaryName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BinaryName is the name of the probe binary.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>args</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Args is the arguments of the probe binary.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initialDelaySeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Number of seconds after the container has started before liveness probes are initiated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeoutSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Number of seconds after which the probe times out.
+Defaults to 1 second. Minimum value is 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>periodSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>How often (in seconds) to perform the probe.
+Default to 10 seconds. Minimum value is 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>successThreshold</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Minimum consecutive successes for the probe to be considered successful after having failed.
+Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failureThreshold</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Minimum consecutive failures for the probe to be considered failed after having succeeded.
+Defaults to 3. Minimum value is 1.</p>
 </td>
 </tr>
 </tbody>
@@ -6633,6 +6760,23 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
+<code>livenessProbe</code></br>
+<em>
+<a href="#probe">
+Probe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LivenessProbe describes actions that probe the discovery&rsquo;s liveness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;
+NOTE: only used for TiDB Operator discovery now,
+for other components, the auto failover feature may be used instead.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>address</code></br>
 <em>
 string
@@ -6969,6 +7113,23 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>livenessProbe</code></br>
+<em>
+<a href="#probe">
+Probe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LivenessProbe describes actions that probe the discovery&rsquo;s liveness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;
+NOTE: only used for TiDB Operator discovery now,
+for other components, the auto failover feature may be used instead.</p>
 </td>
 </tr>
 </tbody>
@@ -12754,7 +12915,9 @@ float64
 <h3 id="probe">Probe</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#componentspec">ComponentSpec</a>)
+<a href="#componentspec">ComponentSpec</a>, 
+<a href="#dmdiscoveryspec">DMDiscoverySpec</a>, 
+<a href="#discoveryspec">DiscoverySpec</a>)
 </p>
 <p>
 <p>Probe contains details of probing tidb.
@@ -14606,6 +14769,17 @@ string
 <p>Additional volume mounts of component pod.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tolerateSingleTiKVOutage</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="restorestatus">RestoreStatus</h3>
@@ -14961,6 +15135,7 @@ bool
 <h3 id="scalepolicy">ScalePolicy</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>)
 </p>
@@ -17716,6 +17891,37 @@ string
 which will only be executed when a TiDB cluster bootstrap on the first time.
 The field should be set ONLY when create a TC, since it only take effect on the first time bootstrap.
 Only v6.5.1+ supports this feature.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scalePolicy</code></br>
+<em>
+<a href="#scalepolicy">
+ScalePolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ScalePolicy is the scale configuration for TiDB.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>customizedStartupProbe</code></br>
+<em>
+<a href="#customizedprobe">
+CustomizedProbe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CustomizedStartupProbe is the customized startup probe for TiDB.
+You can provide your own startup probe for TiDB.
+The image will be an init container, and the tidb-server container will copy the probe binary from it, and execute it.
+The probe binary in the image should be placed under the root directory, i.e., <code>/your-probe</code>.</p>
 </td>
 </tr>
 </tbody>
@@ -24462,7 +24668,8 @@ StartScriptVersion
 </td>
 <td>
 <em>(Optional)</em>
-<p>StartScriptVersion is the version of start script</p>
+<p>StartScriptVersion is the version of start script
+When PD enables microservice mode, pd and pd microservice component will use start script v2.</p>
 <p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>

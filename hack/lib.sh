@@ -119,7 +119,10 @@ function hack::ensure_terraform() {
 
 function hack::verify_kubectl() {
     if test -x "$KUBECTL_BIN"; then
-        [[ "$($KUBECTL_BIN version --client --short | grep -o -E '[0-9]+\.[0-9]+\.[0-9]+')" == "$KUBECTL_VERSION" ]]
+        # Only check the major and minor version
+        local version=$($KUBECTL_BIN version --client | grep -o -E '[0-9]+\.[0-9]+')
+        local required_version=$(echo "$KUBECTL_VERSION" | grep -o -E '[0-9]+\.[0-9]+')
+        [[ "$version" == "$required_version" ]]
         return
     fi
     return 1

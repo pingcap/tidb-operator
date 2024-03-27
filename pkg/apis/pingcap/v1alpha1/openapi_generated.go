@@ -1887,7 +1887,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -2572,7 +2572,7 @@ func schema_pkg_apis_pingcap_v1alpha1_DMDiscoverySpec(ref common.ReferenceCallba
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -2626,6 +2626,12 @@ func schema_pkg_apis_pingcap_v1alpha1_DMDiscoverySpec(ref common.ReferenceCallba
 									},
 								},
 							},
+						},
+					},
+					"livenessProbe": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LivenessProbe describes actions that probe the discovery's liveness. the default behavior is like setting type as \"tcp\" NOTE: only used for TiDB Operator discovery now, for other components, the auto failover feature may be used instead.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
 				},
@@ -3000,7 +3006,7 @@ func schema_pkg_apis_pingcap_v1alpha1_DiscoverySpec(ref common.ReferenceCallback
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -3054,6 +3060,12 @@ func schema_pkg_apis_pingcap_v1alpha1_DiscoverySpec(ref common.ReferenceCallback
 									},
 								},
 							},
+						},
+					},
+					"livenessProbe": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LivenessProbe describes actions that probe the discovery's liveness. the default behavior is like setting type as \"tcp\" NOTE: only used for TiDB Operator discovery now, for other components, the auto failover feature may be used instead.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
 				},
@@ -4551,7 +4563,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -5079,7 +5091,7 @@ func schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref common.ReferenceCallb
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -5842,7 +5854,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -6734,7 +6746,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -7667,7 +7679,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -8355,6 +8367,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 									},
 								},
 							},
+						},
+					},
+					"tolerateSingleTiKVOutage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
@@ -9269,7 +9288,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -10181,7 +10200,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -10374,12 +10393,25 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"scalePolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScalePolicy is the scale configuration for TiDB.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ScalePolicy"),
+						},
+					},
+					"customizedStartupProbe": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CustomizedStartupProbe is the customized startup probe for TiDB. You can provide your own startup probe for TiDB. The image will be an init container, and the tidb-server container will copy the probe binary from it, and execute it. The probe binary in the image should be placed under the root directory, i.e., `/your-probe`.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomizedProbe"),
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBInitializer", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Lifecycle", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceClaim", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomizedProbe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ScalePolicy", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfigWraper", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBInitializer", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Lifecycle", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceClaim", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -10731,7 +10763,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -13131,7 +13163,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -13941,7 +13973,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -14817,7 +14849,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					},
 					"startScriptVersion": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StartScriptVersion is the version of start script\n\ndefault to \"v1\"",
+							Description: "StartScriptVersion is the version of start script When PD enables microservice mode, pd and pd microservice component will use start script v2.\n\ndefault to \"v1\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -15225,7 +15257,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbDashboardSpec(ref common.ReferenceCall
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -16485,7 +16517,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoringSpec(ref common.ReferenceC
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
@@ -17023,7 +17055,7 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 					},
 					"readinessProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReadinessProbe describes actions that probe the pd's readiness. the default behavior is like setting type as \"tcp\"",
+							Description: "ReadinessProbe describes actions that probe the components' readiness. the default behavior is like setting type as \"tcp\"",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe"),
 						},
 					},
