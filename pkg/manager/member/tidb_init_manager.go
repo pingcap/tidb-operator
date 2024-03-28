@@ -382,6 +382,7 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 			RestartPolicy: corev1.RestartPolicyNever,
 			Volumes:       vs,
 			Tolerations:   ti.Spec.Tolerations,
+			NodeSelector:  ti.Spec.NodeSelector,
 		},
 	}
 
