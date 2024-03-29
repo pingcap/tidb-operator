@@ -45,6 +45,8 @@ cleanup() {
     if [ ! -d "/tmp/pod" ]; then
         mkdir -p /tmp/pod
     fi
+    echo "Sleeping for 10 seconds before exit..."
+    sleep 10
     touch /tmp/pod/main-terminated
 }
 
