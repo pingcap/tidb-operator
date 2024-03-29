@@ -321,13 +321,13 @@ func (c *Controller) isFailureAlreadyRecorded(backup *v1alpha1.Backup) bool {
 	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
 		return false
 	}
-	// retrying
-	if isBackoffRetrying(backup) {
-		return true
-	}
 	// no record
 	if len(backup.Status.BackoffRetryStatus) == 0 {
 		return false
+	}
+	// retrying
+	if isBackoffRetrying(backup) {
+		return true
 	}
 	// latest failure is done, this failure should be a new one and no records
 	if isCurrentBackoffRetryDone(backup) {
