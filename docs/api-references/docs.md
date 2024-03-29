@@ -2659,6 +2659,18 @@ Optional: Defaults to nil</p>
 <p>Tolerations of the TiDB initializer Pod</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>nodeSelector</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Node selectors of TiDB initializer Pod</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -25001,6 +25013,18 @@ Optional: Defaults to nil</p>
 <td>
 <em>(Optional)</em>
 <p>Tolerations of the TiDB initializer Pod</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeSelector</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Node selectors of TiDB initializer Pod</p>
 </td>
 </tr>
 </tbody>
