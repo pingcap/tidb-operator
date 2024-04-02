@@ -110,7 +110,7 @@ const (
 	AnnTiflashMountCMInTiflashContainer = "tiflash.tidb.pingcap.com/mount-cm-in-tiflash-container"
 	// AnnoConfigMapNameForNewSTSPrefix indicates that the xxx_member_manager should use the annotation value as name of ConfigMap
 	// if the value is not empty when xxx_member_manager try to CREATE sts.
-	AnnoConfigMapNameForNewSTSPrefix = "tidb.pingcap.com/configmap-name-for-new-sts/"
+	AnnoConfigMapNameForNewSTSPrefix = "tidb.pingcap.com/configmap-name-for-new-sts-"
 
 	// AnnPVCScaleInTime is pvc scaled in time key used in PVC for e2e test only
 	AnnPVCScaleInTime = "tidb.pingcap.com/scale-in-time"

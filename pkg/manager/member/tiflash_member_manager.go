@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -251,9 +252,6 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 			klog.Infof("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
 			return nil
 		}
-		if _, err := mngerutils.KeepConfigMapNameUnchangedWhenCreateSTS(klog.V(4), m.deps.ConfigMapLister, tc, v1alpha1.TiFlashMemberType, cm); err != nil {
-			return err
-		}
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err
@@ -307,6 +305,11 @@ func (m *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiFlashMemberName(tc.Name))
 		})
+	} else {
+		inUseName, err = mngerutils.FindConfigMapNameFromTCAnno(context.Background(), m.deps.ConfigMapLister, tc, v1alpha1.TiFlashMemberType, newCm)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiFlashSpec().ConfigUpdateStrategy(), inUseName, newCm)

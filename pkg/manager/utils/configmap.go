@@ -14,6 +14,7 @@
 package utils
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -55,26 +56,26 @@ func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string
 	return ""
 }
 
-// KeepConfigMapNameUnchangedWhenCreateSTS is used to overwrite ConfigMap name to keep ConfigMap name remains unchanged
-// when create a new StatefulSet.
+// FindConfigMapNameFromTCAnno is used to find ConfigMap name from tc.annotations to keep ConfigMap name remains unchanged
+// when recreating a StatefulSet. And more, it will check ConfigMap data against the newCm to ensure no data change happen.
 // In some cases, we may need to delete and recreate STS for updating some immutable fields and are
 // expected to keep the name of ConfigMap unchanged to ensure no accidentally restart of pod.
 // For example: Updating storage size, iops or throughput of PVC using by TiKV. Now,
 // the annotation is set by pvc_resizer(not supported yet), pvc_modifier or pvc_replacer, See pkg/manager/utils/statefulset.go:DeleteStatefulSetWithOrphan.
-func KeepConfigMapNameUnchangedWhenCreateSTS(logger klog.Verbose, cmLister corelisters.ConfigMapLister, tc *v1alpha1.TidbCluster, componentType v1alpha1.MemberType, cm *corev1.ConfigMap) (overwritten bool, _ error) {
+func FindConfigMapNameFromTCAnno(ctx context.Context, cmLister corelisters.ConfigMapLister, tc *v1alpha1.TidbCluster, componentType v1alpha1.MemberType, newCm *corev1.ConfigMap) (cmName string, _ error) {
+	logger := klog.FromContext(ctx).WithValues("comp", componentType, "tc", fmt.Sprintf("%s/%s", tc.Namespace, tc.Name))
 	cmNameInAnno := tc.Annotations[label.AnnoKeyOfConfigMapNameForNewSTS(string(componentType))]
-	if cmNameInAnno == "" || cm.Name == cmNameInAnno {
-		return false, nil
+	if cmNameInAnno == "" || cmNameInAnno == newCm.Name {
+		return cmNameInAnno, nil
 	}
 
-	logger.Infof("another cm name found in AnnoConfigMapNameForNewSTSPrefix, use it. comp=%s, name=%s, nameInAnno=%s", componentType, cm.Name, cmNameInAnno)
+	logger.Info("another cm name found in AnnoConfigMapNameForNewSTSPrefix, use it.", "name", newCm.Name, "nameInAnno", cmNameInAnno)
 	cmInAnno, err := cmLister.ConfigMaps(tc.Namespace).Get(cmNameInAnno)
 	if err != nil {
-		return false, fmt.Errorf("failed to get configmap %s/%s: %w", tc.Namespace, cmNameInAnno, err)
+		return "", fmt.Errorf("failed to get configmap %s/%s: %w", tc.Namespace, cmNameInAnno, err)
 	}
-	if !equality.Semantic.DeepEqual(cmInAnno.Data, cm.Data) {
-		return false, fmt.Errorf("unexpected ConfigMap data change. comp=%s, name=%s, nameInAnno=%s", componentType, cm.Name, cmNameInAnno)
+	if !equality.Semantic.DeepEqual(cmInAnno.Data, newCm.Data) {
+		return "", fmt.Errorf("unexpected ConfigMap data change. comp=%s, name=%s, nameInAnno=%s", componentType, newCm.Name, cmNameInAnno)
 	}
-	cm.Name = cmNameInAnno
-	return true, nil
+	return cmNameInAnno, nil
 }

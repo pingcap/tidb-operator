@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -194,6 +195,11 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiProxyMemberName(tc.Name))
 		})
+	} else {
+		inUseName, err = mngerutils.FindConfigMapNameFromTCAnno(context.Background(), m.deps.ConfigMapLister, tc, v1alpha1.TiProxyMemberType, newCm)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	klog.V(4).Info("get tiproxy in use config map name: ", inUseName)
@@ -235,9 +241,6 @@ func (m *tiproxyMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	}
 
 	if stsNotExist {
-		if _, err := mngerutils.KeepConfigMapNameUnchangedWhenCreateSTS(klog.V(4), m.deps.ConfigMapLister, tc, v1alpha1.PDMemberType, cm); err != nil {
-			return err
-		}
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSts)
 		if err != nil {
 			return err
