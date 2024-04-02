@@ -37,7 +37,7 @@ import (
 type StatefulSetControlInterface interface {
 	CreateStatefulSet(runtime.Object, *apps.StatefulSet) error
 	UpdateStatefulSet(runtime.Object, *apps.StatefulSet) (*apps.StatefulSet, error)
-	DeleteStatefulSet(runtime.Object, *apps.StatefulSet) error
+	DeleteStatefulSet(runtime.Object, *apps.StatefulSet, metav1.DeleteOptions) error
 }
 
 type realStatefulSetControl struct {
@@ -112,7 +112,7 @@ func (c *realStatefulSetControl) UpdateStatefulSet(controller runtime.Object, se
 }
 
 // DeleteStatefulSet delete a StatefulSet in a TidbCluster.
-func (c *realStatefulSetControl) DeleteStatefulSet(controller runtime.Object, set *apps.StatefulSet) error {
+func (c *realStatefulSetControl) DeleteStatefulSet(controller runtime.Object, set *apps.StatefulSet, opts metav1.DeleteOptions) error {
 	controllerMo, ok := controller.(metav1.Object)
 	if !ok {
 		return fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
@@ -121,7 +121,7 @@ func (c *realStatefulSetControl) DeleteStatefulSet(controller runtime.Object, se
 	name := controllerMo.GetName()
 	namespace := controllerMo.GetNamespace()
 
-	err := c.kubeCli.AppsV1().StatefulSets(namespace).Delete(context.TODO(), set.Name, metav1.DeleteOptions{})
+	err := c.kubeCli.AppsV1().StatefulSets(namespace).Delete(context.TODO(), set.Name, opts)
 	c.recordStatefulSetEvent("delete", kind, name, controller, set, err)
 	return err
 }
@@ -229,7 +229,7 @@ func (c *FakeStatefulSetControl) UpdateStatefulSet(_ runtime.Object, set *apps.S
 }
 
 // DeleteStatefulSet deletes the statefulset of SetIndexer
-func (c *FakeStatefulSetControl) DeleteStatefulSet(_ runtime.Object, _ *apps.StatefulSet) error {
+func (c *FakeStatefulSetControl) DeleteStatefulSet(_ runtime.Object, _ *apps.StatefulSet, _ metav1.DeleteOptions) error {
 	return nil
 }
 

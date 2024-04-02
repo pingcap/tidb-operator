@@ -214,6 +214,9 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		return err
 	}
 	if setNotExist {
+		if _, err := mngerutils.KeepConfigMapNameUnchangedWhenCreateSTS(klog.V(4), m.deps.ConfigMapLister, tc, v1alpha1.PDMemberType, cm); err != nil {
+			return err
+		}
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
 			return err

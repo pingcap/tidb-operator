@@ -108,6 +108,9 @@ const (
 	// in tiflash container instead of init container for tiflash. With it annotated, the tiflash container will directly
 	// read config from files mounted by ConfigMap and that enables tiflash support hot-reload config.
 	AnnTiflashMountCMInTiflashContainer = "tiflash.tidb.pingcap.com/mount-cm-in-tiflash-container"
+	// AnnoConfigMapNameForNewSTS indicates that the xxx_member_manager should use the annotation value as name of ConfigMap
+	// if the value is not empty when xxx_member_manager try to CREATE sts.
+	AnnoConfigMapNameForNewSTS = "tidb.pingcap.com/configmap-name-for-new-sts"
 
 	// AnnPVCScaleInTime is pvc scaled in time key used in PVC for e2e test only
 	AnnPVCScaleInTime = "tidb.pingcap.com/scale-in-time"

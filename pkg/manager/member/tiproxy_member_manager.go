@@ -235,6 +235,9 @@ func (m *tiproxyMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	}
 
 	if stsNotExist {
+		if _, err := mngerutils.KeepConfigMapNameUnchangedWhenCreateSTS(klog.V(4), m.deps.ConfigMapLister, tc, v1alpha1.PDMemberType, cm); err != nil {
+			return err
+		}
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSts)
 		if err != nil {
 			return err

@@ -239,6 +239,9 @@ func (m *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		return err
 	}
 	if setNotExist {
+		if _, err := mngerutils.KeepConfigMapNameUnchangedWhenCreateSTS(klog.V(4), m.deps.ConfigMapLister, tc, v1alpha1.TiKVMemberType, cm); err != nil {
+			return err
+		}
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err

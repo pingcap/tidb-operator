@@ -272,6 +272,9 @@ func (m *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.TidbC
 	}
 
 	if setNotExist {
+		if _, err := mngerutils.KeepConfigMapNameUnchangedWhenCreateSTS(klog.V(4), m.deps.ConfigMapLister, tc, v1alpha1.TiDBMemberType, cm); err != nil {
+			return err
+		}
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
 			return err

@@ -210,7 +210,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	// if TiFlash is scale from 0 and with previous StatefulSet, we delete the previous StatefulSet first
 	// to avoid some fileds (e.g storage request) reused and cause unexpected behavior (e.g scale down).
 	if oldSetTmp != nil && *oldSetTmp.Spec.Replicas == 0 && oldSetTmp.Status.UpdatedReplicas == 0 && tc.Spec.TiFlash.Replicas > 0 {
-		if err := m.deps.StatefulSetControl.DeleteStatefulSet(tc, oldSetTmp); err != nil && !errors.IsNotFound(err) {
+		if err := m.deps.StatefulSetControl.DeleteStatefulSet(tc, oldSetTmp, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("syncStatefulSet: fail to delete sts %s for cluster %s/%s, error: %s", controller.TiFlashMemberName(tcName), ns, tcName, err)
 		}
 		return controller.RequeueErrorf("wait for previous sts %s for cluster %s/%s to be deleted", controller.TiFlashMemberName(tcName), ns, tcName)
@@ -250,6 +250,9 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		if !tc.PDIsAvailable() {
 			klog.Infof("TidbCluster: %s/%s, waiting for PD cluster running", ns, tcName)
 			return nil
+		}
+		if _, err := mngerutils.KeepConfigMapNameUnchangedWhenCreateSTS(klog.V(4), m.deps.ConfigMapLister, tc, v1alpha1.TiFlashMemberType, cm); err != nil {
+			return err
 		}
 		err = mngerutils.SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
