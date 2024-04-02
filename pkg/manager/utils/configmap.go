@@ -62,12 +62,12 @@ func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string
 // For example: Updating storage size, iops or throughput of PVC using by TiKV. Now,
 // the annotation is set by pvc_resizer(not supported yet), pvc_modifier or pvc_replacer, See pkg/manager/utils/statefulset.go:DeleteStatefulSetWithOrphan.
 func KeepConfigMapNameUnchangedWhenCreateSTS(logger klog.Verbose, cmLister corelisters.ConfigMapLister, tc *v1alpha1.TidbCluster, componentType v1alpha1.MemberType, cm *corev1.ConfigMap) (overwritten bool, _ error) {
-	cmNameInAnno := tc.ComponentSpec(componentType).Annotations()[label.AnnoConfigMapNameForNewSTS]
+	cmNameInAnno := tc.ComponentSpec(componentType).Annotations()[label.AnnoKeyOfConfigMapNameForNewSTS(string(componentType))]
 	if cmNameInAnno == "" || cm.Name == cmNameInAnno {
 		return false, nil
 	}
 
-	logger.Infof("another cm name found in AnnoConfigMapNameForNewSTS, use it. comp=%s, name=%s, nameInAnno=%s", componentType, cm.Name, cmNameInAnno)
+	logger.Infof("another cm name found in AnnoConfigMapNameForNewSTSPrefix, use it. comp=%s, name=%s, nameInAnno=%s", componentType, cm.Name, cmNameInAnno)
 	cmInAnno, err := cmLister.ConfigMaps(tc.Namespace).Get(cmNameInAnno)
 	if err != nil {
 		return false, fmt.Errorf("failed to get configmap %s/%s: %w", tc.Namespace, cmNameInAnno, err)

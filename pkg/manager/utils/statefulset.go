@@ -213,12 +213,12 @@ func DeleteStatefulSetWithOrphan(
 	tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) error {
 
 	// Store the name of currently using configmap into TC to make sure xxx_member_manager can use the same ConfigMap name
-	// when creating(restore) new StatefulSet.
+	// when creating(restore) new StatefulSet. See pkg/manager/utils/configmap.go:KeepConfigMapNameUnchangedWhenCreateSTS.
 	memberType := v1alpha1.MemberType(label.Label(sts.Labels).ComponentType())
 	inUseCMName := FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
 		return strings.HasPrefix(name, controller.MemberName(name, memberType))
 	})
-	tc.ComponentSpec(memberType).SetAnnotation(label.AnnoConfigMapNameForNewSTS, inUseCMName)
+	tc.ComponentSpec(memberType).SetAnnotation(label.AnnoKeyOfConfigMapNameForNewSTS(string(memberType)), inUseCMName)
 	if _, err := tcCtl.Update(tc); err != nil {
 		return fmt.Errorf("update tc to save name of currently using configmap: %w", err)
 	}
