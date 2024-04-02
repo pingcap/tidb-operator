@@ -60,7 +60,6 @@ type ComponentAccessor interface {
 	NodeSelector() map[string]string
 	Labels() map[string]string
 	Annotations() map[string]string
-	SetAnnotation(key, value string)
 	Tolerations() []corev1.Toleration
 	PodSecurityContext() *corev1.PodSecurityContext
 	SchedulerName() string
@@ -302,14 +301,6 @@ func (a *componentAccessorImpl) Annotations() map[string]string {
 		}
 	}
 	return anno
-}
-
-func (a *componentAccessorImpl) SetAnnotation(key, value string) {
-	if a.ComponentSpec.Annotations == nil {
-		a.ComponentSpec.Annotations = map[string]string{}
-	}
-
-	a.ComponentSpec.Annotations[key] = value
 }
 
 func (a *componentAccessorImpl) Tolerations() []corev1.Toleration {
