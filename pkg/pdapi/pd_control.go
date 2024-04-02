@@ -38,6 +38,7 @@ type Namespace string
 type Option func(c *clientConfig)
 
 // ClusterRef sets the cluster domain of TC, it is used when generating the client address from TC.
+// the cluster domain may be another K8s's cluster domain, or a local custom cluster domain.
 func ClusterRef(clusterDomain string) Option {
 	return func(c *clientConfig) {
 		c.clusterDomain = clusterDomain
@@ -302,7 +303,7 @@ func genEtcdClientKey(namespace Namespace, clusterName string, clusterDomain str
 func genClientUrl(namespace Namespace, clusterName, scheme, clusterDomain, serviceName string, headlessSvc bool) string {
 	svc := "pd"
 	if serviceName != "" && checkServiceName(serviceName) {
-		svc = fmt.Sprintf("pdms-%s", serviceName)
+		svc = serviceName
 	}
 	if headlessSvc {
 		svc = fmt.Sprintf("%s-peer", svc)

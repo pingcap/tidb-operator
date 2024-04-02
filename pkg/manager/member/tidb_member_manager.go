@@ -76,6 +76,8 @@ const (
 
 	bootstrapSQLFilePath = "/etc/tidb-bootstrap"
 	bootstrapSQLFileName = "bootstrap.sql"
+
+	customizedStartupProbePath = "/var/lib/customized-startup-probe"
 )
 
 var (
@@ -1009,6 +1011,53 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 		if tc.Spec.TiDB.ReadinessProbe.PeriodSeconds != nil {
 			c.ReadinessProbe.PeriodSeconds = *tc.Spec.TiDB.ReadinessProbe.PeriodSeconds
+		}
+	}
+
+	// The customized readiness probe will override the above readiness probe settings.
+	if p := tc.Spec.TiDB.CustomizedStartupProbe; p != nil {
+		// Create a shared volume that will be mounted by the init container and the tidb-server container for copying the binary.
+		vols = append(vols, corev1.Volume{
+			Name: p.BinaryName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		probeVolMount := corev1.VolumeMount{
+			Name:      p.BinaryName,
+			ReadOnly:  false,
+			MountPath: customizedStartupProbePath,
+		}
+		c.VolumeMounts = append(c.VolumeMounts, probeVolMount)
+
+		// Create an init container that copies the binary to the shared volume.
+		initContainers = append(initContainers, corev1.Container{
+			Name:            p.BinaryName,
+			Image:           p.Image,
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Command:         []string{"/bin/sh", "-c"},
+			Args:            []string{fmt.Sprintf("cp /%s %s/%s; echo '%s copy finished'", p.BinaryName, customizedStartupProbePath, p.BinaryName, p.BinaryName)},
+			VolumeMounts:    []corev1.VolumeMount{probeVolMount},
+		})
+
+		c.StartupProbe = &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				Exec: &corev1.ExecAction{
+					Command: append([]string{fmt.Sprintf("%s/%s", customizedStartupProbePath, p.BinaryName)}, p.Args...),
+				},
+			},
+			// Must be 1 for startup probe.
+			SuccessThreshold: 1,
+		}
+
+		if p.TimeoutSeconds != nil && *p.TimeoutSeconds >= 1 {
+			c.StartupProbe.TimeoutSeconds = *p.TimeoutSeconds
+		}
+		if p.PeriodSeconds != nil && *p.PeriodSeconds >= 1 {
+			c.StartupProbe.PeriodSeconds = *p.PeriodSeconds
+		}
+		if p.FailureThreshold != nil && *p.FailureThreshold >= 1 {
+			c.StartupProbe.FailureThreshold = *p.FailureThreshold
 		}
 	}
 

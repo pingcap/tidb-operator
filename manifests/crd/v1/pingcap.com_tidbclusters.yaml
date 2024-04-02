@@ -2904,6 +2904,22 @@ spec:
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
                     type: object
+                  livenessProbe:
+                    properties:
+                      initialDelaySeconds:
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      periodSeconds:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      type:
+                        enum:
+                        - tcp
+                        - command
+                        type: string
+                    type: object
                   nodeSelector:
                     additionalProperties:
                       type: string
@@ -15491,6 +15507,35 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
                     type: string
+                  customizedStartupProbe:
+                    properties:
+                      args:
+                        items:
+                          type: string
+                        type: array
+                      binaryName:
+                        type: string
+                      failureThreshold:
+                        format: int32
+                        type: integer
+                      image:
+                        type: string
+                      initialDelaySeconds:
+                        format: int32
+                        type: integer
+                      periodSeconds:
+                        format: int32
+                        type: integer
+                      successThreshold:
+                        format: int32
+                        type: integer
+                      timeoutSeconds:
+                        format: int32
+                        type: integer
+                    required:
+                    - binaryName
+                    - image
+                    type: object
                   dnsConfig:
                     properties:
                       nameservers:
@@ -16448,6 +16493,17 @@ spec:
                       - type: string
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
+                    type: object
+                  scalePolicy:
+                    properties:
+                      scaleInParallelism:
+                        default: 1
+                        format: int32
+                        type: integer
+                      scaleOutParallelism:
+                        default: 1
+                        format: int32
+                        type: integer
                     type: object
                   schedulerName:
                     type: string

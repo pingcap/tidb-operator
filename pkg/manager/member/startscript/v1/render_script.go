@@ -73,50 +73,13 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	}
 
 	pdStartSubScript := ``
-	mode := ""
-	if tc.Spec.PD.Mode == "ms" {
-		mode = "api"
-	}
 	pdStartScriptTpl := template.Must(
 		template.Must(
 			template.New("pd-start-script").Parse(pdStartSubScript),
 		).Parse(
-			replacePDStartScriptCustomPorts(
-				enableMicroServiceModeDynamic(mode, pdStartScriptTplText))))
+			replacePDStartScriptCustomPorts(pdStartScriptTplText)))
 
 	return renderTemplateFunc(pdStartScriptTpl, model)
-}
-
-func RenderPDTSOStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	return renderPDMSStartScript(tc, "tso")
-}
-
-func RenderPDSchedulingStartScript(tc *v1alpha1.TidbCluster) (string, error) {
-	return renderPDMSStartScript(tc, "scheduling")
-}
-
-func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error) {
-	model := &PdMSStartScriptModel{
-		CommonModel: CommonModel{
-			AcrossK8s:     tc.AcrossK8s(),
-			ClusterDomain: tc.Spec.ClusterDomain,
-		},
-		Scheme: tc.Scheme(),
-	}
-
-	model.PDAddress = fmt.Sprintf("%s://%s-pd:%d", tc.Scheme(), tc.GetName(), v1alpha1.DefaultPDClientPort)
-	if tc.AcrossK8s() {
-		model.PDAddress = fmt.Sprintf("%s://%s-pd:%d", tc.Scheme(), tc.GetName(), v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
-	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
-		model.PDAddress = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
-	}
-
-	msStartSubScript := ``
-	msStartScriptTpl := template.Must(
-		template.Must(
-			template.New("pdms-start-script").Parse(msStartSubScript),
-		).Parse(enableMicroServiceModeDynamic(name, pdmsStartScriptTplText)))
-	return renderTemplateFunc(msStartScriptTpl, model)
 }
 
 func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
@@ -233,7 +196,37 @@ done
 }
 
 func RenderTiFlashStartScript(tc *v1alpha1.TidbCluster) (string, error) {
+	if tc.Spec.TiFlash.DoesMountCMInTiflashContainer() {
+		return RenderTiFlashStartScriptWithStartArgs(tc)
+	}
 	return "/tiflash/tiflash server --config-file /data0/config.toml", nil
+}
+
+func RenderTiFlashStartScriptWithStartArgs(tc *v1alpha1.TidbCluster) (string, error) {
+	model := &TiflashStartScriptModel{
+		CommonModel: CommonModel{
+			AcrossK8s:     tc.AcrossK8s(),
+			ClusterDomain: tc.Spec.ClusterDomain,
+		},
+		AdvertiseAddr:             fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d", controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiFlashProxyPort),
+		EnableAdvertiseStatusAddr: false,
+	}
+	// only the tiflash learner supports dynamic configuration
+	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
+		model.AdvertiseStatusAddr = fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d", controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiFlashProxyStatusPort)
+		model.EnableAdvertiseStatusAddr = true
+	}
+
+	model.PDAddress = fmt.Sprintf("%s://${CLUSTER_NAME}-pd:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
+	if tc.AcrossK8s() {
+		model.PDAddress = fmt.Sprintf("%s://${CLUSTER_NAME}-pd:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort) // get pd addr from discovery in startup script
+	} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		model.PDAddress = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
+	}
+
+	model.Addr = fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d", controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiFlashFlashPort)
+
+	return renderTemplateFunc(tiflashStartScriptTpl, model)
 }
 
 func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {

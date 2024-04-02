@@ -79,8 +79,8 @@ func TestPDMSMemberManagerSyncCreate(t *testing.T) {
 		test.errExpectFn(g, err)
 		g.Expect(tc.Spec).To(Equal(oldSpec))
 
-		svc1, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, "tso"))
-		eps1, eperr := pmm.deps.EndpointLister.Endpoints(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		svc1, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, tsoService))
+		eps1, eperr := pmm.deps.EndpointLister.Endpoints(ns).Get(controller.PDMSMemberName(tcName, tsoService))
 		if test.pdSvcCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(svc1).NotTo(Equal(nil))
@@ -91,7 +91,7 @@ func TestPDMSMemberManagerSyncCreate(t *testing.T) {
 			expectErrIsNotFound(g, eperr)
 		}
 
-		tc1, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		tc1, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, tsoService))
 		if test.setCreated {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(tc1).NotTo(Equal(nil))
@@ -152,18 +152,18 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
 		pdClient.AddReaction(pdapi.GetPDMSMembersActionType, func(action *pdapi.Action) (interface{}, error) {
-			return []string{"tso"}, nil
+			return []string{tsoService}, nil
 		})
 
 		err := pmm.Sync(tc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, tsoService))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.deps.EndpointLister.Endpoints(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		_, err = pmm.deps.EndpointLister.Endpoints(ns).Get(controller.PDMSMemberName(tcName, tsoService))
 		g.Expect(err).NotTo(HaveOccurred())
 
-		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, tsoService))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		tc1 := tc.DeepCopy()
@@ -187,11 +187,11 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 		}
 
 		if test.expectPDServiceFn != nil {
-			svc, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+			svc, err := pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, tsoService))
 			test.expectPDServiceFn(g, svc, err)
 		}
 		if test.expectStatefulSetFn != nil {
-			set, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+			set, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, tsoService))
 			test.expectStatefulSetFn(g, set, err)
 		}
 		if test.expectTidbClusterFn != nil {
@@ -208,12 +208,12 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v7.3.0",
 						},
-						Name:     "tso",
+						Name:     tsoService,
 						Replicas: 5,
 					},
 				}
 				tc.Spec.Services = []v1alpha1.Service{
-					{Name: "tso", Type: string(corev1.ServiceTypeNodePort)},
+					{Name: tsoService, Type: string(corev1.ServiceTypeNodePort)},
 				}
 			},
 			errWhenUpdateStatefulSet:   false,
@@ -229,7 +229,7 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 				// g.Expect(int(*set.Spec.Replicas)).To(Equal(4))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PDMS["tso"].Phase).To(Equal(v1alpha1.ScalePhase))
+				g.Expect(tc.Status.PDMS[tsoService].Phase).To(Equal(v1alpha1.ScalePhase))
 			},
 		},
 		{
@@ -240,7 +240,7 @@ func TestPDMSMemberManagerSyncUpdate(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v7.3.0",
 						},
-						Name:     "tso",
+						Name:     tsoService,
 						Replicas: 5,
 					},
 				}
@@ -296,15 +296,15 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
 		pdClient.AddReaction(pdapi.GetPDMSMembersActionType, func(action *pdapi.Action) (interface{}, error) {
-			return []string{"tso"}, nil
+			return []string{tsoService}, nil
 		})
 
 		err := pmm.Sync(tc)
 		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
 
-		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMSMemberName(tcName, tsoService))
 		g.Expect(err).NotTo(HaveOccurred())
-		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, tsoService))
 		g.Expect(err).NotTo(HaveOccurred())
 
 		test.modify(tc)
@@ -316,7 +316,7 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 		}
 
 		if test.expectStatefulSetFn != nil {
-			set, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, "tso"))
+			set, err := pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, tsoService))
 			test.expectStatefulSetFn(g, set, err)
 			println("set.Spec.Template.Spec.Containers[0].Image", set.Spec.Template.Spec.Containers[0].Image)
 		}
@@ -334,7 +334,7 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pd-test-image",
 						},
-						Name:     "tso",
+						Name:     tsoService,
 						Replicas: 1,
 					},
 				}
@@ -346,7 +346,7 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 				g.Expect(*set.Spec.Replicas).To(Equal(int32(2)))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PDMS["tso"].Phase).To(Equal(v1alpha1.ScalePhase))
+				g.Expect(tc.Status.PDMS[tsoService].Phase).To(Equal(v1alpha1.ScalePhase))
 			},
 		},
 		{
@@ -356,7 +356,7 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 				tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
 					{
 						ComponentSpec: v1alpha1.ComponentSpec{},
-						Name:          "tso",
+						Name:          tsoService,
 						Replicas:      1,
 					},
 				}
@@ -368,7 +368,7 @@ func TestPDMSMemberManagerSyncPDMSSts(t *testing.T) {
 				g.Expect(*set.Spec.Replicas).To(Equal(int32(2)))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PDMS["tso"].Phase).To(Equal(v1alpha1.ScalePhase))
+				g.Expect(tc.Status.PDMS[tsoService].Phase).To(Equal(v1alpha1.ScalePhase))
 			},
 		},
 	}
@@ -401,7 +401,7 @@ func newTidbClusterForPDMS() *v1alpha1.TidbCluster {
 			},
 			PDMS: []*v1alpha1.PDMSSpec{
 				{
-					Name: "tso",
+					Name: tsoService,
 					ComponentSpec: v1alpha1.ComponentSpec{
 						Image: "pingcap/pd:v7.3.0",
 					},
@@ -428,13 +428,13 @@ func TestGetNewPDMSHeadlessServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-pdms-tso-peer",
+					Name:      "foo-tso-peer",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 						"app.kubernetes.io/used-by":    "peer",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -472,7 +472,7 @@ func TestGetNewPDMSHeadlessServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 					},
 					PublishNotReadyAddresses: true,
 				},
@@ -483,7 +483,7 @@ func TestGetNewPDMSHeadlessServiceForTidbCluster(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
-			svc := getNewPDMSHeadlessService(&tt.tc, "tso")
+			svc := getNewPDMSHeadlessService(&tt.tc, tsoService)
 			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
 				t.Errorf("unexpected Service (-want, +got): %s", diff)
 			}
@@ -534,7 +534,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v7.3.0",
 						},
-						Name: "tso"}},
+						Name: tsoService}},
 				},
 			},
 			testSts: testHostNetwork(t, false, ""),
@@ -557,7 +557,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					TiDB: &v1alpha1.TiDBSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							ComponentSpec: v1alpha1.ComponentSpec{
 								Image: "pingcap/pd:v7.3.0",
 								Env: []corev1.EnvVar{
@@ -593,15 +593,15 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 				},
 				{
 					Name:  "PEER_SERVICE_NAME",
-					Value: "tc-pdms-tso-peer",
+					Value: "tc-tso-peer",
 				},
 				{
 					Name:  "SERVICE_NAME",
-					Value: "tc-pdms-tso",
+					Value: "tc-tso",
 				},
 				{
 					Name:  "SET_NAME",
-					Value: "tc-pdms-tso",
+					Value: "tc-tso",
 				},
 				{
 					Name: "TZ",
@@ -612,7 +612,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 				},
 				{
 					Name:  "HEADLESS_SERVICE_NAME",
-					Value: "tc-pdms-tso-peer",
+					Value: "tc-tso-peer",
 				},
 				{
 					Name: "PDMS_SESSION_SECRET",
@@ -647,7 +647,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					TiDB: &v1alpha1.TiDBSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							ComponentSpec: v1alpha1.ComponentSpec{
 								Image:                "pingcap/pd:v7.3.0",
 								AdditionalContainers: []corev1.Container{customSideCarContainers[0]},
@@ -676,7 +676,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					TiKV: &v1alpha1.TiKVSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							ComponentSpec: v1alpha1.ComponentSpec{
 								Image: "pingcap/pd:v7.3.0",
 								PodSecurityContext: &corev1.PodSecurityContext{
@@ -749,7 +749,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					TiKV: &v1alpha1.TiKVSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							ComponentSpec: v1alpha1.ComponentSpec{
 								Image: "pingcap/pd:v7.3.0",
 								Annotations: map[string]string{
@@ -795,7 +795,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v7.3.0",
 						},
-						Name: "tso"}},
+						Name: tsoService}},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -822,7 +822,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					TiKV: &v1alpha1.TiKVSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							ComponentSpec: v1alpha1.ComponentSpec{
 								Image: "pingcap/pd:v7.3.0",
 								Annotations: map[string]string{
@@ -894,7 +894,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					TiKV: &v1alpha1.TiKVSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							ComponentSpec: v1alpha1.ComponentSpec{
 								Image: "pingcap/pd:v7.3.0",
 								Annotations: map[string]string{
@@ -966,7 +966,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 					TiKV: &v1alpha1.TiKVSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							ComponentSpec: v1alpha1.ComponentSpec{
 								Image: "pingcap/pd:v7.3.0",
 								Annotations: map[string]string{
@@ -1044,7 +1044,7 @@ func TestGetNewPDMSSetForTidbCluster(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v7.3.0",
 						},
-						Name: "tso"}},
+						Name: tsoService}},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -1092,18 +1092,18 @@ func TestGetPDMSConfigMap(t *testing.T) {
 					},
 					TiDB: &v1alpha1.TiDBSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
-					PDMS: []*v1alpha1.PDMSSpec{{Name: "tso"}},
+					PDMS: []*v1alpha1.PDMSSpec{{Name: tsoService}},
 				},
 			},
 			expected: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-pdms-tso",
+					Name:      "foo-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1144,7 +1144,7 @@ func TestGetPDMSConfigMap(t *testing.T) {
 					TiDB: &v1alpha1.TiDBSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							ComponentSpec: v1alpha1.ComponentSpec{
 								ConfigUpdateStrategy: &updateStrategy,
 							},
@@ -1164,13 +1164,13 @@ func TestGetPDMSConfigMap(t *testing.T) {
 			},
 			expected: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-pdms-tso",
+					Name:      "foo-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1217,18 +1217,18 @@ func TestGetPDMSConfigMap(t *testing.T) {
 					},
 					TiDB: &v1alpha1.TiDBSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
-					PDMS: []*v1alpha1.PDMSSpec{{Name: "tso"}},
+					PDMS: []*v1alpha1.PDMSSpec{{Name: tsoService}},
 				},
 			},
 			expected: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-pdms-tso",
+					Name:      "foo-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1274,7 +1274,7 @@ func TestGetPDMSConfigMap(t *testing.T) {
 					TiDB: &v1alpha1.TiDBSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							ComponentSpec: v1alpha1.ComponentSpec{
 								ConfigUpdateStrategy: &updateStrategy,
 							},
@@ -1294,13 +1294,13 @@ func TestGetPDMSConfigMap(t *testing.T) {
 			},
 			expected: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-pdms-tso",
+					Name:      "foo-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1372,7 +1372,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 
 				Spec: v1alpha1.TidbClusterSpec{
 					Services: []v1alpha1.Service{
-						{Name: "tso", Type: string(corev1.ServiceTypeClusterIP)},
+						{Name: tsoService, Type: string(corev1.ServiceTypeClusterIP)},
 					},
 
 					PD: &v1alpha1.PDSpec{
@@ -1387,18 +1387,18 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						},
 					},
 					TiKV: &v1alpha1.TiKVSpec{},
-					PDMS: []*v1alpha1.PDMSSpec{{Name: "tso"}},
+					PDMS: []*v1alpha1.PDMSSpec{{Name: tsoService}},
 				},
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-pdms-tso",
+					Name:      "foo-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1430,7 +1430,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 					},
 				},
 			},
@@ -1444,7 +1444,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Services: []v1alpha1.Service{
-						{Name: "tso", Type: string(corev1.ServiceTypeClusterIP)},
+						{Name: tsoService, Type: string(corev1.ServiceTypeClusterIP)},
 					},
 					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
@@ -1460,7 +1460,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 					TiKV: &v1alpha1.TiKVSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name:    "tso",
+							Name:    tsoService,
 							Service: &v1alpha1.ServiceSpec{ClusterIP: pointer.StringPtr("172.20.10.1")},
 						},
 					},
@@ -1468,13 +1468,13 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-pdms-tso",
+					Name:      "foo-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1507,7 +1507,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 					},
 				},
 			},
@@ -1521,7 +1521,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Services: []v1alpha1.Service{
-						{Name: "tso", Type: string(corev1.ServiceTypeLoadBalancer)},
+						{Name: tsoService, Type: string(corev1.ServiceTypeLoadBalancer)},
 					},
 					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
@@ -1537,7 +1537,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 					TiKV: &v1alpha1.TiKVSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name:    "tso",
+							Name:    tsoService,
 							Service: &v1alpha1.ServiceSpec{LoadBalancerIP: pointer.StringPtr("172.20.10.1")},
 						},
 					},
@@ -1545,13 +1545,13 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-pdms-tso",
+					Name:      "foo-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1584,7 +1584,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 					},
 				},
 			},
@@ -1598,7 +1598,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Services: []v1alpha1.Service{
-						{Name: "tso", Type: string(corev1.ServiceTypeLoadBalancer)},
+						{Name: tsoService, Type: string(corev1.ServiceTypeLoadBalancer)},
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -1614,7 +1614,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 					},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							Service: &v1alpha1.ServiceSpec{Type: corev1.ServiceTypeClusterIP,
 								ClusterIP: pointer.StringPtr("172.20.10.1")},
 						},
@@ -1623,13 +1623,13 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-pdms-tso",
+					Name:      "foo-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1662,7 +1662,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 					},
 				},
 			},
@@ -1676,7 +1676,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Services: []v1alpha1.Service{
-						{Name: "tso", Type: string(corev1.ServiceTypeLoadBalancer)},
+						{Name: tsoService, Type: string(corev1.ServiceTypeLoadBalancer)},
 					},
 					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
@@ -1692,7 +1692,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 					TiKV: &v1alpha1.TiKVSpec{},
 					PDMS: []*v1alpha1.PDMSSpec{
 						{
-							Name: "tso",
+							Name: tsoService,
 							Service: &v1alpha1.ServiceSpec{Type: corev1.ServiceTypeClusterIP,
 								ClusterIP: pointer.StringPtr("172.20.10.1"),
 								PortName:  pointer.StringPtr("http-tso"),
@@ -1703,13 +1703,13 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 			},
 			expected: corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-pdms-tso",
+					Name:      "foo-tso",
 					Namespace: "ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1742,7 +1742,7 @@ func TestGetNewPdMSServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
-						"app.kubernetes.io/component":  "pdms-tso",
+						"app.kubernetes.io/component":  "tso",
 					},
 				},
 			},

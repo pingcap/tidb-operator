@@ -71,9 +71,9 @@ const (
 	// PDMemberType is pd member type
 	PDMemberType MemberType = "pd"
 	// PDMSTSOMemberType is pd microservice tso member type
-	PDMSTSOMemberType MemberType = "pdms-tso"
+	PDMSTSOMemberType MemberType = "tso"
 	// PDMSSchedulingMemberType is pd microservice scheduling member type
-	PDMSSchedulingMemberType MemberType = "pdms-scheduling"
+	PDMSSchedulingMemberType MemberType = "scheduling"
 	// TiDBMemberType is tidb member type
 	TiDBMemberType MemberType = "tidb"
 	// TiKVMemberType is tikv member type
@@ -395,6 +395,7 @@ type TidbClusterSpec struct {
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
 	// StartScriptVersion is the version of start script
+	// When PD enables microservice mode, pd and pd microservice component will use start script v2.
 	//
 	// default to "v1"
 	// +optional
@@ -479,6 +480,13 @@ const (
 type DiscoverySpec struct {
 	*ComponentSpec              `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
+
+	// LivenessProbe describes actions that probe the discovery's liveness.
+	// the default behavior is like setting type as "tcp"
+	// NOTE: only used for TiDB Operator discovery now,
+	// for other components, the auto failover feature may be used instead.
+	// +optional
+	LivenessProbe *Probe `json:"livenessProbe,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1040,6 +1048,48 @@ type TiDBSpec struct {
 	// Only v6.5.1+ supports this feature.
 	// +optional
 	BootstrapSQLConfigMapName *string `json:"bootstrapSQLConfigMapName,omitempty"`
+
+	// ScalePolicy is the scale configuration for TiDB.
+	// +optional
+	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
+
+	// CustomizedStartupProbe is the customized startup probe for TiDB.
+	// You can provide your own startup probe for TiDB.
+	// The image will be an init container, and the tidb-server container will copy the probe binary from it, and execute it.
+	// The probe binary in the image should be placed under the root directory, i.e., `/your-probe`.
+	// +optional
+	CustomizedStartupProbe *CustomizedProbe `json:"customizedStartupProbe,omitempty"`
+}
+
+type CustomizedProbe struct {
+	// Image is the image of the probe binary.
+	// +required
+	Image string `json:"image"`
+	// BinaryName is the name of the probe binary.
+	// +required
+	BinaryName string `json:"binaryName"`
+	// Args is the arguments of the probe binary.
+	// +optional
+	Args []string `json:"args"`
+	// Number of seconds after the container has started before liveness probes are initiated.
+	// +optional
+	InitialDelaySeconds *int32 `json:"initialDelaySeconds,omitempty"`
+	// Number of seconds after which the probe times out.
+	// Defaults to 1 second. Minimum value is 1.
+	// +optional
+	TimeoutSeconds *int32 `json:"timeoutSeconds,omitempty"`
+	// How often (in seconds) to perform the probe.
+	// Default to 10 seconds. Minimum value is 1.
+	// +optional
+	PeriodSeconds *int32 `json:"periodSeconds,omitempty"`
+	// Minimum consecutive successes for the probe to be considered successful after having failed.
+	// Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.
+	// +optional
+	SuccessThreshold *int32 `json:"successThreshold,omitempty"`
+	// Minimum consecutive failures for the probe to be considered failed after having succeeded.
+	// Defaults to 3. Minimum value is 1.
+	// +optional
+	FailureThreshold *int32 `json:"failureThreshold,omitempty"`
 }
 
 type TiDBInitializer struct {
@@ -1294,7 +1344,7 @@ type ComponentSpec struct {
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
 
-	// ReadinessProbe describes actions that probe the pd's readiness.
+	// ReadinessProbe describes actions that probe the components' readiness.
 	// the default behavior is like setting type as "tcp"
 	// +optional
 	ReadinessProbe *Probe `json:"readinessProbe,omitempty"`
@@ -2641,6 +2691,9 @@ type RestoreSpec struct {
 	// Additional volume mounts of component pod.
 	// +optional
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
+	// TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss
+	// +kubebuilder:default=false
+	TolerateSingleTiKVOutage bool `json:"tolerateSingleTiKVOutage,omitempty"`
 }
 
 // FederalVolumeRestorePhase represents a phase to execute in federal volume restore
@@ -2675,6 +2728,8 @@ const (
 	RestoreWarmupStrategyHybrid RestoreWarmupStrategy = "hybrid"
 	// RestoreWarmupStrategyFsr warms up data volume by enabling Fast Snapshot Restore, other (e.g. WAL or Raft) will be warmed up via fio.
 	RestoreWarmupStrategyFsr RestoreWarmupStrategy = "fsr"
+	// RestoreWarmupStrategyCheckOnly warm up none data volumes and check wal consistency
+	RestoreWarmupStrategyCheckOnly RestoreWarmupStrategy = "check-wal-only"
 )
 
 // RestoreStatus represents the current status of a tidb cluster restore.
@@ -2764,6 +2819,13 @@ type DMClusterList struct {
 type DMDiscoverySpec struct {
 	*ComponentSpec              `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
+
+	// LivenessProbe describes actions that probe the discovery's liveness.
+	// the default behavior is like setting type as "tcp"
+	// NOTE: only used for TiDB Operator discovery now,
+	// for other components, the auto failover feature may be used instead.
+	// +optional
+	LivenessProbe *Probe `json:"livenessProbe,omitempty"`
 
 	// (Deprecated) Address indicates the existed TiDB discovery address
 	// +k8s:openapi-gen=false

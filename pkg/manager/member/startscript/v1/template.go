@@ -175,7 +175,7 @@ echo "nslookup domain ${domain} failed" >&2
 fi {{- else}}{{.CheckDomainScript}}{{end}}
 done
 
-ARGS="` + pdEnableMicroService + `--data-dir={{ .DataDir }} \
+ARGS="--data-dir={{ .DataDir }} \
 --name={{- if or .AcrossK8s .ClusterDomain }}${domain}{{- else }}${POD_NAME}{{- end }} \
 --peer-urls={{ .Scheme }}://0.0.0.0:2380 \
 --advertise-peer-urls={{ .Scheme }}://${domain}:2380 \
@@ -208,59 +208,6 @@ echo "/pd-server ${ARGS}"
 exec /pd-server ${ARGS}
 `
 
-// pdmsStartScriptTplText is the pd microservice start script.
-var pdmsStartScriptTplText = `#!/bin/sh
-
-# This script is used to start pdms containers in kubernetes cluster
-
-# Use DownwardAPIVolumeFiles to store informations of the cluster:
-# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
-#
-#   runmode="normal/debug"
-#
-
-set -uo pipefail
-
-ANNOTATIONS="/etc/podinfo/annotations"
-
-if [[ ! -f "${ANNOTATIONS}" ]]
-then
-    echo "${ANNOTATIONS} does't exist, exiting."
-    exit 1
-fi
-source ${ANNOTATIONS} 2>/dev/null
-
-runmode=${runmode:-normal}
-if [[ X${runmode} == Xdebug ]]
-then
-    echo "entering debug mode."
-    tail -f /dev/null
-fi
-
-# Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}
-pd_url="{{ .PDAddress }}"
-encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
-discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
-until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
-echo "waiting for discovery service to check PD start ..."
-sleep $((RANDOM % 5))
-done
-
-domain="${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}"
-ARGS="` + pdEnableMicroService + `--listen-addr={{ .Scheme }}://0.0.0.0:2379 \
---advertise-listen-addr={{ .Scheme }}://${domain}:2379 \
---backend-endpoints=${result} \
---config=/etc/pd/pd.toml \
-"
-
-echo "starting pd-server ..."
-sleep $((RANDOM % 10))
-echo "/pd-server ${ARGS}"
-exec /pd-server ${ARGS}
-exit 0
-`
-
 func replacePDStartScriptCustomPorts(startScript string) string {
 	// `DefaultPDClientPort`/`DefaultPDPeerPort` may be changed when building the binary
 	if v1alpha1.DefaultPDClientPort != 2379 {
@@ -271,19 +218,6 @@ func replacePDStartScriptCustomPorts(startScript string) string {
 	}
 	return startScript
 }
-
-func enableMicroServiceModeDynamic(ms string, startScript string) string {
-	if ms != "" {
-		return strings.ReplaceAll(startScript, pdEnableMicroService, fmt.Sprintf(" %s %s ", pdEnableMicroServiceSubScript, ms))
-	} else {
-		return strings.ReplaceAll(startScript, pdEnableMicroService, "")
-	}
-}
-
-const (
-	pdEnableMicroService          = "<<pd-enable-micro-service>>"
-	pdEnableMicroServiceSubScript = "services"
-)
 
 var checkDNSV1 string = `
 digRes=$(dig ${domain} A ${domain} AAAA +search +short)
@@ -310,14 +244,6 @@ type PDStartScriptModel struct {
 	DataDir           string
 	CheckDomainScript string
 	PDStartTimeout    int
-}
-
-// PdMSStartScriptModel contain fields for rendering PD Micro Service start script
-type PdMSStartScriptModel struct {
-	CommonModel
-
-	Scheme    string
-	PDAddress string
 }
 
 var tikvStartScriptTplText = `#!/bin/sh
@@ -741,4 +667,76 @@ type DMWorkerStartScriptModel struct {
 
 func RenderDMWorkerStartScript(model *DMWorkerStartScriptModel) (string, error) {
 	return renderTemplateFunc(dmWorkerStartScriptTpl, model)
+}
+
+var tiflashStartScriptTplText = `#!/bin/sh
+
+# This script is used to start tiflash containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_ADDRESS="{{ .PDAddress }}"{{ if .AcrossK8s }}
+pd_url="{{ .PDAddress }}"
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
+
+until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+echo "waiting for the verification of PD endpoints ..."
+sleep $((RANDOM % 5))
+done
+PD_ADDRESS=${result}
+{{ end }}
+
+ARGS="server --config-file /etc/tiflash/config_templ.toml \
+-- \
+--flash.proxy.advertise-addr={{ .AdvertiseAddr }} \{{if .EnableAdvertiseStatusAddr }}
+--flash.proxy.advertise-status-addr={{ .AdvertiseStatusAddr }} \{{end}}
+--flash.service_addr={{ .Addr }} \
+--raft.pd_addr=${PD_ADDRESS}
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tiflash-server ..."
+echo "/tiflash/tiflash ${ARGS}"
+exec /tiflash/tiflash ${ARGS}
+`
+
+var tiflashStartScriptTpl = template.Must(template.New("tiflash-start-script").Parse(tiflashStartScriptTplText))
+
+type TiflashStartScriptModel struct {
+	CommonModel
+
+	AdvertiseAddr             string
+	EnableAdvertiseStatusAddr bool
+	AdvertiseStatusAddr       string
+	Addr                      string
+	PDAddress                 string
 }

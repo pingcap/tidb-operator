@@ -59,15 +59,43 @@ func NewPDMSMemberManager(dependencies *controller.Dependencies, pdMSScaler Scal
 
 // Sync for all PD Micro Service components.
 func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
-	if tc.Spec.PDMS == nil {
+	// Need to start PD API
+	if tc.Spec.PDMS != nil && tc.Spec.PD == nil {
+		klog.Infof("PD Micro Service is enabled, but PD is not enabled, skip syncing PD Micro Service")
+		return nil
+	}
+	// remove all micro service components if PDMS is not enabled
+	// PDMS need to be enabled when PD.Mode is ms && PDMS is not nil
+	if tc.Spec.PDMS == nil || (tc.Spec.PD != nil && tc.Spec.PD.Mode != "ms") {
+		for _, comp := range tc.Status.PDMS {
+			ns := tc.GetNamespace()
+			tcName := tc.GetName()
+			curService := comp.Name
+
+			oldPDMSSetTmp, err := m.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMSMemberName(tcName, curService))
+			if err != nil {
+				if errors.IsNotFound(err) {
+					continue
+				}
+				return fmt.Errorf("syncPDMSStatefulSet: fail to get sts %s PDMS component %s for cluster [%s/%s], error: %s",
+					controller.PDMSMemberName(tcName, curService), curService, ns, tcName, err)
+			}
+
+			oldPDMSSet := oldPDMSSetTmp.DeepCopy()
+			newPDMSSet := oldPDMSSetTmp.DeepCopy()
+			if oldPDMSSet.Status.Replicas == 0 {
+				continue
+			}
+			tc.Status.PDMS[curService].Synced = true
+			*newPDMSSet.Spec.Replicas = 0
+			if err := m.scaler.Scale(tc, oldPDMSSet, newPDMSSet); err != nil {
+				return err
+			}
+			mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdatePDMSSTS", newPDMSSet, oldPDMSSet)
+		}
 		return nil
 	}
 
-	// Need to start PD API
-	if tc.Spec.PD == nil || tc.Spec.PD.Mode != "ms" {
-		klog.Infof("PD Micro Service is enabled, but PD is not enabled or not in `ms` mode, skip syncing PD Micro Service")
-		return nil
-	}
 	// init PD Micro Service status
 	if tc.Status.PDMS == nil {
 		tc.Status.PDMS = make(map[string]*v1alpha1.PDMSStatus)
@@ -698,14 +726,6 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 	}
 	// default in nil
 	if curSpec.StorageVolumes != nil {
-		storageRequest, err := controller.ParseStorageRequest(curSpec.Requests)
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse storage request for PD, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
-		}
-		dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.PDMSMemberType(curService)))
-		pdMSSet.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
-			util.VolumeClaimTemplate(storageRequest, dataVolumeName, tc.Spec.PD.StorageClassName),
-		}
 		pdMSSet.Spec.VolumeClaimTemplates = append(pdMSSet.Spec.VolumeClaimTemplates, additionalPVCs...)
 	}
 

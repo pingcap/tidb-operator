@@ -1265,6 +1265,49 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				g.Expect(sts.Spec.Template.Spec.Containers[1].ReadinessProbe.PeriodSeconds).To(Equal(int32(2)))
 			},
 		},
+		{
+			name: "Use customized readiness probe",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{
+						CustomizedStartupProbe: &v1alpha1.CustomizedProbe{
+							Image:            "probe:latest",
+							BinaryName:       "probe",
+							Args:             []string{"--enabledTLS=false"},
+							PeriodSeconds:    pointer.Int32(15),
+							TimeoutSeconds:   pointer.Int32(2),
+							SuccessThreshold: pointer.Int32(3),
+							FailureThreshold: pointer.Int32(60),
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+
+				probe := &corev1.Probe{
+					ProbeHandler: v1.ProbeHandler{
+						Exec: &v1.ExecAction{
+							Command: []string{
+								fmt.Sprintf("%s/%s", customizedStartupProbePath, "probe"),
+								"--enabledTLS=false",
+							},
+						},
+					},
+					PeriodSeconds:    15,
+					TimeoutSeconds:   2,
+					SuccessThreshold: 1,
+					FailureThreshold: 60,
+				}
+				checkCustomizedStartupProbeEnabled(g, sts.Spec.Template.Spec, probe)
+			},
+		},
 		// TODO add more tests
 	}
 
@@ -1275,6 +1318,38 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 			tt.testSts(sts)
 		})
 	}
+}
+
+func checkCustomizedStartupProbeEnabled(g *WithT, spec v1.PodSpec, expectedProbe *corev1.Probe) {
+	var hasInitContianer, hasTiDBContainer bool
+	for _, container := range spec.InitContainers {
+		if container.Name == "probe" {
+			hasInitContianer = true
+			g.Expect(container.Image).Should(Equal("probe:latest"))
+		}
+	}
+	g.Expect(hasInitContianer).To(BeTrue())
+
+	for _, container := range spec.Containers {
+		if container.Name == v1alpha1.TiDBMemberType.String() {
+			hasTiDBContainer = true
+
+			g.Expect(container.StartupProbe).Should(Equal(expectedProbe))
+			g.Expect(container.VolumeMounts).Should(ContainElement(corev1.VolumeMount{
+				Name:      "probe",
+				ReadOnly:  false,
+				MountPath: customizedStartupProbePath,
+			}))
+		}
+	}
+	g.Expect(hasTiDBContainer).To(BeTrue())
+
+	g.Expect(spec.Volumes).Should(ContainElement(corev1.Volume{
+		Name: "probe",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}))
 }
 
 func TestTiDBInitContainers(t *testing.T) {
@@ -1599,6 +1674,40 @@ func TestTiDBInitContainers(t *testing.T) {
 			expectedSecurity: &corev1.PodSecurityContext{
 				RunAsNonRoot: &asRoot,
 				Sysctls:      []corev1.Sysctl{},
+			},
+		},
+		{
+			name: "customize readiness probe with init container",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: &v1alpha1.TiDBSpec{
+						CustomizedStartupProbe: &v1alpha1.CustomizedProbe{
+							Image:      "probe:latest",
+							BinaryName: "probe",
+						}},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			expectedInit: []corev1.Container{
+				{
+					Name:            "probe",
+					Image:           "probe:latest",
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command:         []string{"/bin/sh", "-c"},
+					Args:            []string{fmt.Sprintf("cp /probe %s/probe; echo 'probe copy finished'", customizedStartupProbePath)},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "probe",
+							ReadOnly:  false,
+							MountPath: customizedStartupProbePath,
+						},
+					},
+				},
 			},
 		},
 	}

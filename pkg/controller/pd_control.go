@@ -27,12 +27,22 @@ func getPDClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.Tid
 			pdapi.UseHeadlessService(tc.Spec.AcrossK8s),
 		)
 	}
-	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+	// cluster domain may be empty
+	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
 }
 
 // getPDClientFromService gets the pd client from the TidbCluster
 func getPDMSClientFromService(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, serviceName string) pdapi.PDMSClient {
-	return pdControl.GetPDMSClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), serviceName, tc.IsTLSClusterEnabled())
+	if tc.Heterogeneous() && tc.WithoutLocalPD() {
+		return pdControl.GetPDMSClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, serviceName, tc.IsTLSClusterEnabled(),
+			pdapi.TLSCertFromTC(pdapi.Namespace(tc.GetNamespace()), tc.GetName()),
+			pdapi.ClusterRef(tc.Spec.Cluster.ClusterDomain),
+			pdapi.UseHeadlessService(tc.Spec.AcrossK8s),
+		)
+	}
+	// cluster domain may be empty
+	return pdControl.GetPDMSClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), serviceName,
+		tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
 }
 
 // GetPDClient tries to return an available PDClient
@@ -64,15 +74,26 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 }
 
 // GetPDMSClient tries to return an available PDMSClient
-func GetPDMSClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, serviceName string) (pdapi.PDMSClient, error) {
+func GetPDMSClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, serviceName string) error {
 	pdMSClient := getPDMSClientFromService(pdControl, tc, serviceName)
 
 	err := pdMSClient.GetHealth()
 	if err == nil {
-		return pdMSClient, nil
+		return nil
 	}
 
-	return nil, err
+	for _, service := range tc.Status.PDMS {
+		for _, pdMember := range service.Members {
+			pdPeerClient := pdControl.GetPDMSClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), serviceName,
+				tc.IsTLSClusterEnabled(), pdapi.SpecifyClient(pdMember, pdMember))
+			err = pdPeerClient.GetHealth()
+			if err == nil {
+				return nil
+			}
+		}
+	}
+
+	return err
 }
 
 // NewFakePDClient creates a fake pdclient that is set as the pd client
@@ -80,6 +101,9 @@ func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *
 	pdClient := pdapi.NewFakePDClient()
 	if tc.Spec.Cluster != nil {
 		pdControl.SetPDClientWithClusterDomain(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, pdClient)
+	}
+	if tc.Spec.ClusterDomain != "" {
+		pdControl.SetPDClientWithClusterDomain(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, pdClient)
 	}
 	pdControl.SetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), pdClient)
 

@@ -197,8 +197,8 @@ func validatePDAddresses(arrayOfAddresses []string, fldPath *field.Path) field.E
 		example := " PD address format example: http://{ADDRESS}:{PORT}"
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(idxPath, address, err.Error()+example))
-		} else if u.Scheme != "http" {
-			allErrs = append(allErrs, field.Invalid(idxPath, address, "Support 'http' scheme only."+example))
+		} else if u.Scheme != "http" && u.Scheme != "https" {
+			allErrs = append(allErrs, field.Invalid(idxPath, address, "Support 'http'/'https' scheme only."+example))
 		}
 	}
 	return allErrs
@@ -320,6 +320,7 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfigWraper, path *field.Pat
 func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	allErrs = append(allErrs, validateScalePolicy(&spec.ScalePolicy, fldPath.Child("scalePolicy"))...)
 	if spec.Service != nil {
 		allErrs = append(allErrs, validateService(&spec.Service.ServiceSpec, fldPath)...)
 	}

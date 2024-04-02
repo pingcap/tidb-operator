@@ -23,10 +23,12 @@ import (
 
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/stretchr/testify/require"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -50,6 +52,34 @@ func (h *helper) createRestore(restore *v1alpha1.Restore) {
 	g.Expect(err).Should(BeNil())
 	g.Eventually(func() error {
 		_, err := h.Deps.RestoreLister.Restores(restore.Namespace).Get(restore.Name)
+		return err
+	}, time.Second*10).Should(BeNil())
+}
+
+func (h *helper) createRestoreWarmupJobFailed(restore *v1alpha1.Restore) {
+	g := NewGomegaWithT(h.T)
+	deps := h.Deps
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "warm-up",
+			Namespace: restore.Namespace,
+			Labels:    label.NewRestore().RestoreWarmUpJob().Restore(restore.Name),
+		},
+		Status: batchv1.JobStatus{
+			CompletionTime: &metav1.Time{},
+			Conditions: []batchv1.JobCondition{
+				{
+					Type:   batchv1.JobFailed,
+					Status: corev1.ConditionTrue,
+				},
+			},
+		},
+	}
+	_, err := deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+
+	g.Eventually(func() error {
+		_, err := deps.JobLister.Jobs(job.GetNamespace()).Get(job.GetName())
 		return err
 	}, time.Second*10).Should(BeNil())
 }
@@ -672,6 +702,145 @@ func TestVolumeNumMismatchBRRestoreByEBS(t *testing.T) {
 		err := m.Sync(cases[0].restore)
 		g.Expect(err).Should(MatchError("additional volumes mismatched"))
 	})
+}
+
+func TestFailWarmupBRRestoreByEBS(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	cases := []struct {
+		name    string
+		restore *v1alpha1.Restore
+	}{
+		{
+			name: "restore-volume-warmup-sync",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1",
+					Namespace: "ns-1",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-1",
+						Cluster:          "cluster-1",
+					},
+					Warmup: v1alpha1.RestoreWarmupModeSync,
+					StorageProvider: v1alpha1.StorageProvider{
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{
+					Conditions: []v1alpha1.RestoreCondition{
+						{
+							Type:   v1alpha1.RestoreVolumeComplete,
+							Status: corev1.ConditionTrue,
+						},
+						{
+							Type:   v1alpha1.RestoreWarmUpStarted,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "restore-volume-warmup-async",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-2",
+					Namespace: "ns-2",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-2",
+						Cluster:          "cluster-2",
+					},
+					Warmup: v1alpha1.RestoreWarmupModeASync,
+					StorageProvider: v1alpha1.StorageProvider{
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{
+					Conditions: []v1alpha1.RestoreCondition{
+						{
+							Type:   v1alpha1.RestoreVolumeComplete,
+							Status: corev1.ConditionTrue,
+						},
+						{
+							Type:   v1alpha1.RestoreWarmUpStarted,
+							Status: corev1.ConditionTrue,
+						},
+						{
+							Type:   v1alpha1.RestoreTiKVComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := os.WriteFile("/tmp/restoremeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:gosec
+	g.Expect(err).To(Succeed())
+
+	err = os.WriteFile("/tmp/backupmeta", []byte(testutils.ConstructRestoreMetaStr()), 0644) //nolint:gosec
+	g.Expect(err).To(Succeed())
+	defer func() {
+		err = os.Remove("/tmp/restoremeta")
+		g.Expect(err).To(Succeed())
+
+		err = os.Remove("/tmp/backupmeta")
+		g.Expect(err).To(Succeed())
+	}()
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster, true, true)
+			helper.CreateRestore(tt.restore)
+			helper.createRestoreWarmupJobFailed(tt.restore)
+			m := NewRestoreManager(deps)
+			err := m.Sync(tt.restore)
+			g.Expect(err).Should(MatchError(fmt.Sprintf("warmup job %s/warm-up failed", tt.restore.Namespace)))
+		})
+	}
 }
 
 func TestGenerateWarmUpArgs(t *testing.T) {

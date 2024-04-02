@@ -103,6 +103,10 @@ type TidbInitializerSpec struct {
 	// Tolerations of the TiDB initializer Pod
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// Node selectors of TiDB initializer Pod
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 // +k8s:openapi-gen=true

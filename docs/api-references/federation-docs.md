@@ -108,6 +108,18 @@ VolumeBackupStatus
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>skipGC</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SkipGC indicates whether this EBS volume snapshot backup is immune to GC</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="volumebackupschedule">VolumeBackupSchedule</h3>
