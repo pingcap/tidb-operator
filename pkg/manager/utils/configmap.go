@@ -58,6 +58,7 @@ func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string
 
 // FindConfigMapNameFromTCAnno is used to find ConfigMap name from tc.annotations to keep ConfigMap name remains unchanged
 // when recreating a StatefulSet. And more, it will check ConfigMap data against the newCm to ensure no data change happen.
+//
 // In some cases, we may need to delete and recreate STS for updating some immutable fields and are
 // expected to keep the name of ConfigMap unchanged to ensure no accidentally restart of pod.
 // For example: Updating storage size, iops or throughput of PVC using by TiKV. Now,
@@ -69,7 +70,7 @@ func FindConfigMapNameFromTCAnno(ctx context.Context, cmLister corelisters.Confi
 		return cmNameInAnno, nil
 	}
 
-	logger.Info("another cm name found in AnnoConfigMapNameForNewSTSPrefix, use it.", "name", newCm.Name, "nameInAnno", cmNameInAnno)
+	logger.Info("another cm name found in AnnoConfigMapNameForNewSTSPrefix, use it as inuse name.", "name", newCm.Name, "nameInAnno", cmNameInAnno)
 	cmInAnno, err := cmLister.ConfigMaps(tc.Namespace).Get(cmNameInAnno)
 	if err != nil {
 		return "", fmt.Errorf("failed to get configmap %s/%s: %w", tc.Namespace, cmNameInAnno, err)

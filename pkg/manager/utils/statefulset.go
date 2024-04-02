@@ -218,6 +218,9 @@ func DeleteStatefulSetWithOrphan(
 	inUseCMName := FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
 		return strings.HasPrefix(name, controller.MemberName(tc.Name, memberType))
 	})
+	if tc.Annotations == nil {
+		tc.Annotations = map[string]string{}
+	}
 	tc.Annotations[label.AnnoKeyOfConfigMapNameForNewSTS(string(memberType))] = inUseCMName
 	logger := klog.FromContext(ctx).WithValues("comp", memberType, "tc", fmt.Sprintf("%s/%s", tc.Namespace, tc.Name))
 	logger.Info("store inuse configmap name in tc annotation", "name", inUseCMName)
