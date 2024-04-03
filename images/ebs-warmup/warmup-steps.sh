@@ -91,11 +91,11 @@ while [ $# -gt 0 ]; do
                     ;;
             esac
             echo "also trying to verify the sst files in $1"
-            if find "$1" -iname '??????.LOG' -print0  | xargs -0 -I% sh -c 'echo -n "%: " >&2; /tikv-ctl ldb dump_wal --walfile=%; echo >&2' 2>&1 >/dev/null | grep "Corruption"; then
+            if find "$1" -iname '[0-9]*.LOG' -size +0c -print0 | sort -z | head -z -n -1 | xargs -0 -I% sh -c 'echo -n "%: " >&2; /tikv-ctl ldb dump_wal --walfile=%; echo >&2' 2>&1 >/dev/null | grep "Corruption"; then
                 echo "There are some files corrupted!"
                 echo $bg_works | xargs kill || true
                 wait || true
-                echo "HINT: All files in the dir, if the last one corrupted, you may ignore it:"
+                echo "Current WALs:"
                 find . -iname '??????.LOG' -print | sort
                 exit 1
             fi
