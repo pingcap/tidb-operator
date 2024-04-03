@@ -108,9 +108,9 @@ const (
 	// in tiflash container instead of init container for tiflash. With it annotated, the tiflash container will directly
 	// read config from files mounted by ConfigMap and that enables tiflash support hot-reload config.
 	AnnTiflashMountCMInTiflashContainer = "tiflash.tidb.pingcap.com/mount-cm-in-tiflash-container"
-	// AnnoConfigMapNameForNewSTSPrefix indicates that the xxx_member_manager should use the annotation value as name of ConfigMap
-	// if the value is not empty when xxx_member_manager try to CREATE sts.
-	AnnoConfigMapNameForNewSTSPrefix = "tidb.pingcap.com/configmap-name-for-new-sts-"
+	// AnnoPrefixConfigMapNameBeforeDelete is the last used ConfigMap name before STS deleted. xxx_member_manager should use its
+	// annotation value as ConfigMap name if the value is not empty when it tries to CREATE or RESTORE sts.
+	AnnoPrefixConfigMapNameBeforeDelete = "tidb.pingcap.com/configmap-name-before-delete-"
 
 	// AnnPVCScaleInTime is pvc scaled in time key used in PVC for e2e test only
 	AnnPVCScaleInTime = "tidb.pingcap.com/scale-in-time"
@@ -596,5 +596,5 @@ func (l Label) IsTidbClusterPod() bool {
 }
 
 func AnnoKeyOfConfigMapNameForNewSTS(compType string) string {
-	return AnnoConfigMapNameForNewSTSPrefix + compType
+	return AnnoPrefixConfigMapNameBeforeDelete + compType
 }

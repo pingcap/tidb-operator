@@ -70,13 +70,15 @@ func FindConfigMapNameFromTCAnno(ctx context.Context, cmLister corelisters.Confi
 		return cmNameInAnno, nil
 	}
 
-	logger.Info("another cm name found in AnnoConfigMapNameForNewSTSPrefix, use it as inuse name.", "newCmName", newCm.Name, "nameInAnno", cmNameInAnno)
+	logger.Info("another cm name found in AnnoPrefixConfigMapNameBeforeDelete, try to use it as inuse name.", "cmName", newCm.Name, "nameInAnno", cmNameInAnno)
 	cmInAnno, err := cmLister.ConfigMaps(tc.Namespace).Get(cmNameInAnno)
 	if err != nil {
 		return "", fmt.Errorf("failed to get configmap %s/%s: %w", tc.Namespace, cmNameInAnno, err)
 	}
+	// In some cases, ConfigMap may be changed between deleting and creating STS. For example: suspend a cluster and then
+	// update its config. So just ignore the name in anno if ConfigMap data mismatches.
 	if !equality.Semantic.DeepEqual(cmInAnno.Data, newCm.Data) {
-		logger.Info("ConfigMap data changed, ignore the old name in Anno.", "newCmName", newCm.Name, "cmNameInAnno", cmNameInAnno)
+		logger.Info("ConfigMap data changed, ignore the old name in Anno.", "cmName", newCm.Name, "cmNameInAnno", cmNameInAnno)
 		return newCm.Name, nil
 	}
 	return cmNameInAnno, nil
