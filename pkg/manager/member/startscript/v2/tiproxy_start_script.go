@@ -31,7 +31,7 @@ func RenderTiProxyStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &TiProxyStartScriptModel{}
 	tcName := tc.Name
 	tcNS := tc.Namespace
-	peerServiceName := controller.TiDBPeerMemberName(tcName)
+	peerServiceName := controller.TiProxyPeerMemberName(tcName)
 	m.AdvertiseAddr = fmt.Sprintf("${TIPROXY_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
 		m.AdvertiseAddr = m.AdvertiseAddr + "." + tc.Spec.ClusterDomain
@@ -45,6 +45,7 @@ const (
 	tiproxyStartScript = `
 TIPROXY_POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--config=/etc/proxy/proxy.toml"
+echo {{ .AdvertiseAddr }}
 if [[ $(/bin/tiproxy --help) == *advertise-addr* ]]; then
   ARGS="${ARGS} --advertise-addr={{ .AdvertiseAddr }}"
 fi
