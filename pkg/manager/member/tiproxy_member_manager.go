@@ -107,7 +107,7 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 	PDAddr := fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Name), v1alpha1.DefaultPDClientPort)
 	// TODO: support it
 	if tc.AcrossK8s() {
-		return nil, fmt.Errorf("across k8s is not supported for")
+		return nil, fmt.Errorf("across k8s is not supported")
 	}
 	if tc.Heterogeneous() && tc.WithoutLocalPD() {
 		PDAddr = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
@@ -124,6 +124,9 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 	cfgWrapper.Set("proxy.pd-addrs", PDAddr)
 	if cfgWrapper.Get("proxy.require-backend-tls") == nil {
 		cfgWrapper.Set("proxy.require-backend-tls", false)
+	}
+	if cfgWrapper.Get("proxy.advertise-addr") == nil {
+		cfgWrapper.Set("proxy.advertise-addr", "TIPROXY_ADVERTISE_ADDR")
 	}
 
 	tlsCluster := tc.IsTLSClusterEnabled()

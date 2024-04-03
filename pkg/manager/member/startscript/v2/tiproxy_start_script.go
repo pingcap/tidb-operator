@@ -14,21 +14,40 @@
 package v2
 
 import (
+	"fmt"
 	"text/template"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 )
 
 // TiProxyStartScriptModel contain fields for rendering TiProxy start script
 type TiProxyStartScriptModel struct {
+	AdvertiseAddr string
 }
 
 // RenderTiProxyStartScript renders tiproxy start script for TidbCluster
 func RenderTiProxyStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &TiProxyStartScriptModel{}
-	return renderTemplateFunc(template.Must(template.New("tiproxy").Parse(componentCommonScript+`
+	tcName := tc.Name
+	tcNS := tc.Namespace
+	peerServiceName := controller.TiDBPeerMemberName(tcName)
+	m.AdvertiseAddr = fmt.Sprintf("${TIPROXY_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
+	if tc.Spec.ClusterDomain != "" {
+		m.AdvertiseAddr = m.AdvertiseAddr + "." + tc.Spec.ClusterDomain
+	}
+	return renderTemplateFunc(template.Must(template.New("tiproxy").Parse(componentCommonScript+tiproxyStartScript)), m)
+}
+
+// Old TiProxy versions don't support advertise-addr.
+// Passing unknown args will fail but passing unknown config won't fail.
+const (
+	tiproxyStartScript = `
+TIPROXY_POD_NAME=${POD_NAME:-$HOSTNAME}
+sed -i s/TIPROXY_ADVERTISE_ADDR/{{ .AdvertiseAddr }}/g /etc/proxy/config.toml
+
 ARGS="--config=/etc/proxy/proxy.toml"
 echo "starting: tiproxy ${ARGS}"
 exec /bin/tiproxy ${ARGS}
-`)), m)
-}
+`
+)
