@@ -40,13 +40,15 @@ func RenderTiProxyStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 }
 
 // Old TiProxy versions don't support advertise-addr.
-// Passing unknown args will fail but passing unknown config won't fail.
+// We can't add advertise-addr to the config file because the file is read-only.
 const (
 	tiproxyStartScript = `
 TIPROXY_POD_NAME=${POD_NAME:-$HOSTNAME}
-sed -i s/TIPROXY_ADVERTISE_ADDR/{{ .AdvertiseAddr }}/g /etc/proxy/proxy.toml
-
 ARGS="--config=/etc/proxy/proxy.toml"
+if [[ $(/bin/tiproxy --help) == *advertise-addr* ]]; then
+  ARGS="${ARGS} --advertise-addr={{ .AdvertiseAddr }}"
+fi
+
 echo "starting: tiproxy ${ARGS}"
 exec /bin/tiproxy ${ARGS}
 `

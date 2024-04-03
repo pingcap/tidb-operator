@@ -125,9 +125,6 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 	if cfgWrapper.Get("proxy.require-backend-tls") == nil {
 		cfgWrapper.Set("proxy.require-backend-tls", false)
 	}
-	if cfgWrapper.Get("proxy.advertise-addr") == nil {
-		cfgWrapper.Set("proxy.advertise-addr", "TIPROXY_ADVERTISE_ADDR")
-	}
 
 	tlsCluster := tc.IsTLSClusterEnabled()
 	tlsTiDB := tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled()
