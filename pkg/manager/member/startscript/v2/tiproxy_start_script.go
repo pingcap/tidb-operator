@@ -46,7 +46,7 @@ const (
 TIPROXY_POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--config=/etc/proxy/proxy.toml"
 echo {{ .AdvertiseAddr }}
-if [[ $(/bin/tiproxy --help) == *advertise-addr* ]]; then
+if [[ "$(/bin/tiproxy --help)" == *"advertise-addr"* ]]; then
   ARGS="${ARGS} --advertise-addr={{ .AdvertiseAddr }}"
 fi
 
