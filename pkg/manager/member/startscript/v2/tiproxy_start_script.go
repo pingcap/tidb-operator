@@ -44,7 +44,7 @@ func RenderTiProxyStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 const (
 	tiproxyStartScript = `
 TIPROXY_POD_NAME=${POD_NAME:-$HOSTNAME}
-sed -i s/TIPROXY_ADVERTISE_ADDR/{{ .AdvertiseAddr }}/g /etc/proxy/config.toml
+sed -i s/TIPROXY_ADVERTISE_ADDR/{{ .AdvertiseAddr }}/g /etc/proxy/proxy.toml
 
 ARGS="--config=/etc/proxy/proxy.toml"
 echo "starting: tiproxy ${ARGS}"
