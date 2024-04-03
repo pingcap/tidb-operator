@@ -20,6 +20,8 @@ cleanup() {
     if [ ! -d "/tmp/pod" ]; then
         mkdir -p /tmp/pod
     fi
+    echo "Sleeping for 10 seconds before exit..."
+    sleep 10
     touch /tmp/pod/main-terminated
 }
 
@@ -106,6 +108,8 @@ case "$1" in
     clean)
         shift 1
         echo "$BACKUP_BIN clean $@"
+        echo "Sleeping for 10 seconds before clean..."
+        sleep 10
         $EXEC_COMMAND $BACKUP_BIN clean "$@"
         ;;
     *)
