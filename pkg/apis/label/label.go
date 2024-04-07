@@ -104,6 +104,16 @@ const (
 	AnnTiCDCGracefulShutdownBeginTime = "tidb.pingcap.com/ticdc-graceful-shutdown-begin-time"
 	// AnnStsLastSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
 	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
+<<<<<<< HEAD
+=======
+	// AnnTiflashMountCMInTiflashContainer is tiflash pod annotation key to indicate whether directly mount ConfigMap
+	// in tiflash container instead of init container for tiflash. With it annotated, the tiflash container will directly
+	// read config from files mounted by ConfigMap and that enables tiflash support hot-reload config.
+	AnnTiflashMountCMInTiflashContainer = "tiflash.tidb.pingcap.com/mount-cm-in-tiflash-container"
+	// AnnoPrefixConfigMapNameBeforeDelete is the last used ConfigMap name before STS deleted. xxx_member_manager should use its
+	// annotation value as ConfigMap name if the value is not empty when it tries to CREATE or RESTORE sts.
+	AnnoPrefixConfigMapNameBeforeDelete = "tidb.pingcap.com/configmap-name-before-delete-"
+>>>>>>> b02b98ffd (Fix(volume): fix unexpected pod restart during resize storage size (#5602))
 
 	// AnnPVCScaleInTime is pvc scaled in time key used in PVC for e2e test only
 	AnnPVCScaleInTime = "tidb.pingcap.com/scale-in-time"
@@ -555,4 +565,8 @@ func (l Label) IsManagedByTiDBOperator() bool {
 // IsTidbClusterPod returns whether it is a TidbCluster-controlled pod
 func (l Label) IsTidbClusterPod() bool {
 	return l[NameLabelKey] == "tidb-cluster"
+}
+
+func AnnoKeyOfConfigMapNameForNewSTS(compType string) string {
+	return AnnoPrefixConfigMapNameBeforeDelete + compType
 }

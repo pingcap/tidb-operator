@@ -115,8 +115,7 @@ func (p *pvcModifier) tryToRecreateSTS(ctx *componentVolumeContext) error {
 		return fmt.Errorf("component sts %s/%s is upgrading", ctx.sts.Name, ctx.sts.Namespace)
 	}
 
-	orphan := metav1.DeletePropagationOrphan
-	if err := p.deps.KubeClientset.AppsV1().StatefulSets(ns).Delete(ctx, name, metav1.DeleteOptions{PropagationPolicy: &orphan}); err != nil {
+	if err := utils.DeleteStatefulSetWithOrphan(ctx, p.deps.StatefulSetControl, p.deps.TiDBClusterControl, ctx.tc, ctx.sts); err != nil {
 		return fmt.Errorf("delete sts %s/%s for component %s failed: %s", ns, name, ctx.ComponentID(), err)
 	}
 
