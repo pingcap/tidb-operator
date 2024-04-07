@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"reflect"
@@ -309,6 +310,11 @@ func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *app
 		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiKVMemberName(tc.Name))
 		})
+	} else {
+		inUseName, err = mngerutils.FindConfigMapNameFromTCAnno(context.Background(), m.deps.ConfigMapLister, tc, v1alpha1.TiKVMemberType, newCm)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiKVSpec().ConfigUpdateStrategy(), inUseName, newCm)
