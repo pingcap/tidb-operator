@@ -306,6 +306,9 @@ func TestPvcReplacerSync(t *testing.T) {
 		stop := make(chan struct{})
 		deps.KubeInformerFactory.Start(stop)
 		deps.KubeInformerFactory.WaitForCacheSync(stop)
+		// Because we are using statefulSetControl to delete StatefulSet and the fakeStatefulSetControl do nothing when calling DeleteStatefulSet.
+		// So we should give a REAL statefulSetControl to make sure the StatefulSet is really deleted to pass all tests.
+		deps.StatefulSetControl = controller.NewRealStatefuSetControl(deps.KubeClientset, deps.StatefulSetLister, deps.Recorder)
 		defer close(stop)
 		replacer := NewPVCReplacer(deps)
 		tc := makeTcAndK8Objects(deps, g, tt.sts, tt.pods)

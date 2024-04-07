@@ -554,6 +554,11 @@ func (m *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *app
 		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiDBMemberName(tc.Name))
 		})
+	} else {
+		inUseName, err = mngerutils.FindConfigMapNameFromTCAnno(context.Background(), m.deps.ConfigMapLister, tc, v1alpha1.TiDBMemberType, newCm)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	klog.V(3).Info("get tidb in use config map name: ", inUseName)

@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -210,7 +211,7 @@ func (m *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 	// if TiFlash is scale from 0 and with previous StatefulSet, we delete the previous StatefulSet first
 	// to avoid some fileds (e.g storage request) reused and cause unexpected behavior (e.g scale down).
 	if oldSetTmp != nil && *oldSetTmp.Spec.Replicas == 0 && oldSetTmp.Status.UpdatedReplicas == 0 && tc.Spec.TiFlash.Replicas > 0 {
-		if err := m.deps.StatefulSetControl.DeleteStatefulSet(tc, oldSetTmp); err != nil && !errors.IsNotFound(err) {
+		if err := m.deps.StatefulSetControl.DeleteStatefulSet(tc, oldSetTmp, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("syncStatefulSet: fail to delete sts %s for cluster %s/%s, error: %s", controller.TiFlashMemberName(tcName), ns, tcName, err)
 		}
 		return controller.RequeueErrorf("wait for previous sts %s for cluster %s/%s to be deleted", controller.TiFlashMemberName(tcName), ns, tcName)
@@ -304,6 +305,11 @@ func (m *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiFlashMemberName(tc.Name))
 		})
+	} else {
+		inUseName, err = mngerutils.FindConfigMapNameFromTCAnno(context.Background(), m.deps.ConfigMapLister, tc, v1alpha1.TiFlashMemberType, newCm)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiFlashSpec().ConfigUpdateStrategy(), inUseName, newCm)
