@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	appslisters "k8s.io/client-go/listers/apps/v1"
@@ -163,7 +164,7 @@ func TestStatefulSetControlDeleteStatefulSet(t *testing.T) {
 	fakeClient.AddReactor("delete", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
-	err := control.DeleteStatefulSet(tc, set)
+	err := control.DeleteStatefulSet(tc, set, metav1.DeleteOptions{})
 	g.Expect(err).To(Succeed())
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
@@ -180,7 +181,7 @@ func TestStatefulSetControlDeleteStatefulSetFailed(t *testing.T) {
 	fakeClient.AddReactor("delete", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
-	err := control.DeleteStatefulSet(tc, set)
+	err := control.DeleteStatefulSet(tc, set, metav1.DeleteOptions{})
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)

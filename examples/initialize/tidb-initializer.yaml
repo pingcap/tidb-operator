@@ -26,3 +26,5 @@ spec:
   #     key: dedicated
   #     operator: Equal
   #     value: tidb
+  # nodeSelector:
+  #   app.kubernetes.io/component: tidb
