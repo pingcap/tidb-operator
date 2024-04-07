@@ -165,38 +165,6 @@ func SetUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
 	klog.Infof("set %s/%s partition to %d", set.GetNamespace(), set.GetName(), upgradeOrdinal)
 }
-<<<<<<< HEAD
-=======
-
-// hackEphemeralVolumeMode appends exstings ephemeral volume mode to asts so that no unexpected rolling update will be triggered.
-// before https://github.com/pingcap/advanced-statefulset/pull/96, some asts may have volume mode in ephemeral volume,
-// but after that, no volume mode in ephemeral volume will be set by defaults,
-// so we need to append the volume mode to the new asts spec if it exists in old spec.
-func hackEphemeralVolumeMode(oldSts *apps.StatefulSet, newSts *apps.StatefulSet) {
-	if !features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		// only need this hack for AdvancedStatefulSet
-		return
-	}
-
-	volumeModels := make(map[string]corev1.PersistentVolumeMode)
-	for _, volume := range oldSts.Spec.Template.Spec.Volumes {
-		if volume.Ephemeral != nil && volume.Ephemeral.VolumeClaimTemplate != nil &&
-			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode != nil {
-			volumeModels[volume.Name] = *volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode
-		}
-	}
-	if len(volumeModels) == 0 {
-		return // no need to hack
-	}
-
-	for _, volume := range newSts.Spec.Template.Spec.Volumes {
-		if volumeMode, ok := volumeModels[volume.Name]; ok && volume.Ephemeral != nil && volume.Ephemeral.VolumeClaimTemplate != nil &&
-			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode == nil {
-			volume.Ephemeral.VolumeClaimTemplate.Spec.VolumeMode = &volumeMode
-			klog.Infof("hack volume mode %s for volume %s in sts %s/%s", volumeMode, volume.Name, newSts.Namespace, newSts.Name)
-		}
-	}
-}
 
 func DeleteStatefulSetWithOrphan(
 	ctx context.Context,
@@ -214,8 +182,7 @@ func DeleteStatefulSetWithOrphan(
 		tc.Annotations = map[string]string{}
 	}
 	tc.Annotations[label.AnnoKeyOfConfigMapNameForNewSTS(string(memberType))] = inUseCMName
-	logger := klog.FromContext(ctx).WithValues("comp", memberType, "tc", fmt.Sprintf("%s/%s", tc.Namespace, tc.Name))
-	logger.Info("store inuse configmap name in tc annotation", "name", inUseCMName)
+	klog.Infof("store inuse configmap name %s for component %s in tc %s/%s annotation", "name", inUseCMName, memberType, tc.Namespace, tc.Name)
 	if _, err := tcCtl.Update(tc); err != nil {
 		return fmt.Errorf("update tc to save name of currently using configmap: %w", err)
 	}
@@ -225,4 +192,3 @@ func DeleteStatefulSetWithOrphan(
 	err := setCtl.DeleteStatefulSet(tc, sts, metav1.DeleteOptions{PropagationPolicy: &orphan})
 	return err
 }
->>>>>>> b02b98ffd (Fix(volume): fix unexpected pod restart during resize storage size (#5602))
