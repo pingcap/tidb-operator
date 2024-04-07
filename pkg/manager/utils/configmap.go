@@ -64,13 +64,13 @@ func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string
 // For example: Updating storage size, iops or throughput of PVC using by TiKV. Now,
 // the annotation is set by pvc_resizer(not supported yet), pvc_modifier or pvc_replacer, See pkg/manager/utils/statefulset.go:DeleteStatefulSetWithOrphan.
 func FindConfigMapNameFromTCAnno(ctx context.Context, cmLister corelisters.ConfigMapLister, tc *v1alpha1.TidbCluster, componentType v1alpha1.MemberType, newCm *corev1.ConfigMap) (cmName string, _ error) {
-	logger := klog.FromContext(ctx).WithValues("comp", componentType, "tc", fmt.Sprintf("%s/%s", tc.Namespace, tc.Name))
 	cmNameInAnno := tc.Annotations[label.AnnoKeyOfConfigMapNameForNewSTS(string(componentType))]
 	if cmNameInAnno == "" || cmNameInAnno == newCm.Name {
 		return cmNameInAnno, nil
 	}
 
-	logger.Info("another cm name found in AnnoPrefixConfigMapNameBeforeDelete, try to use it as inuse name.", "cmName", newCm.Name, "nameInAnno", cmNameInAnno)
+	klog.Infof("another cm name %s found in AnnoPrefixConfigMapNameBeforeDelete rather than the new name %s for component %s, try to use it as inuse name.",
+		cmNameInAnno, newCm.Name, componentType)
 	cmInAnno, err := cmLister.ConfigMaps(tc.Namespace).Get(cmNameInAnno)
 	if err != nil {
 		return "", fmt.Errorf("failed to get configmap %s/%s: %w", tc.Namespace, cmNameInAnno, err)
@@ -78,7 +78,7 @@ func FindConfigMapNameFromTCAnno(ctx context.Context, cmLister corelisters.Confi
 	// In some cases, ConfigMap may be changed between deleting and creating STS. For example: suspend a cluster and then
 	// update its config. So just ignore the name in anno if ConfigMap data mismatches.
 	if !equality.Semantic.DeepEqual(cmInAnno.Data, newCm.Data) {
-		logger.Info("ConfigMap data changed, ignore the old name in Anno.", "cmName", newCm.Name, "cmNameInAnno", cmNameInAnno)
+		klog.Infof("ConfigMap data changed for component %s, ignore the old name %s in Anno, use the new name %s", componentType, cmNameInAnno, newCm.Name)
 		return newCm.Name, nil
 	}
 	return cmNameInAnno, nil
