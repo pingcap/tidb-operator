@@ -182,7 +182,7 @@ func DeleteStatefulSetWithOrphan(
 		tc.Annotations = map[string]string{}
 	}
 	tc.Annotations[label.AnnoKeyOfConfigMapNameForNewSTS(string(memberType))] = inUseCMName
-	klog.Infof("store inuse configmap name %s for component %s in tc %s/%s annotation", "name", inUseCMName, memberType, tc.Namespace, tc.Name)
+	klog.Infof("store inuse configmap name %s for component %s in tc %s/%s annotation", inUseCMName, memberType, tc.Namespace, tc.Name)
 	if _, err := tcCtl.Update(tc); err != nil {
 		return fmt.Errorf("update tc to save name of currently using configmap: %w", err)
 	}
