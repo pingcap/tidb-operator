@@ -422,7 +422,7 @@ func (u *tikvUpgrader) retryEvictLeaderIfNeeded(tc *v1alpha1.TidbCluster, storeI
 	}
 
 	// retry evict leader
-	klog.Infof("retryEvictLeaderIfNecessary: retry evict leader for store %d of %s/%s", storeID, tc.Namespace, pod.GetName())
+	klog.Infof("retryEvictLeaderIfNeeded: retry evict leader for store %d of %s/%s", storeID, tc.Namespace, pod.GetName())
 	// call `beginEvictLeader` to reset the `annoKeyEvictLeaderBeginTime` annotation
 	return u.beginEvictLeader(tc, storeID, pod)
 }
