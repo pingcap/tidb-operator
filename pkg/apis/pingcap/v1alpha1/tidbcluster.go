@@ -40,6 +40,7 @@ const (
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
 	defaultEvictLeaderTimeout            = 1500 * time.Minute
 	defaultWaitLeaderTransferBackTimeout = 400 * time.Second
+	RetryEvictLeaderInterval             = 10 * time.Minute
 	// defaultTiCDCGracefulShutdownTimeout is the timeout limit of graceful
 	// shutdown a TiCDC pod.
 	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
