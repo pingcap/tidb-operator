@@ -31,6 +31,7 @@ Supported flags:
     --block <files_to_be_warmed_up_by_fio>
     --fs <files_to_be_warmed_up_by_filesystem>
     --debug enable \`set -x\`
+    --exit-on-corruption
 EOF
 }
 
@@ -53,7 +54,16 @@ cleanup() {
 trap cleanup EXIT
 
 operation=none
+exit_on_corruption=false
 bg_works=""
+
+for arg in "$@"; do
+    case $arg in
+        --exit-on-corruption) exit_on_corruption=true
+            ;;
+    esac
+done
+
 while [ $# -gt 0 ]; do
     case $1 in
         --help | -h) 
@@ -90,14 +100,18 @@ while [ $# -gt 0 ]; do
                 *) die "internal error: unsupported operation $1; forgot to call --block or --fs?"
                     ;;
             esac
+
             echo "also trying to verify the sst files in $1"
             if find "$1" -iname '[0-9]*.LOG' -size +0c -print0 | sort -z | head -z -n -1 | xargs -0 -I% sh -c 'echo -n "%: " >&2; /tikv-ctl ldb dump_wal --walfile=%; echo >&2' 2>&1 >/dev/null | grep "Corruption"; then
                 echo "There are some files corrupted!"
-                echo $bg_works | xargs kill || true
-                wait || true
                 echo "Current WALs:"
                 find . -iname '??????.LOG' -print | sort
-                exit 1
+
+                if [ "$exit_on_corruption" = true ]; then
+                    echo $bg_works | xargs kill || true
+                    wait || true
+                    exit 1
+                fi
             fi
             ;;
     esac
