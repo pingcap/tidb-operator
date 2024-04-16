@@ -3051,6 +3051,15 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        maxSkew:
+                          default: 1
+                          format: int32
+                          type: integer
+                        minDomains:
+                          format: int32
+                          type: integer
+                        nodeAffinityPolicy:
+                          type: string
                         topologyKey:
                           type: string
                       required:
@@ -5775,6 +5784,15 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        maxSkew:
+                          default: 1
+                          format: int32
+                          type: integer
+                        minDomains:
+                          format: int32
+                          type: integer
+                        nodeAffinityPolicy:
+                          type: string
                         topologyKey:
                           type: string
                       required:
@@ -8447,6 +8465,15 @@ spec:
                             additionalProperties:
                               type: string
                             type: object
+                          maxSkew:
+                            default: 1
+                            format: int32
+                            type: integer
+                          minDomains:
+                            format: int32
+                            type: integer
+                          nodeAffinityPolicy:
+                            type: string
                           topologyKey:
                             type: string
                         required:
@@ -11123,6 +11150,15 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        maxSkew:
+                          default: 1
+                          format: int32
+                          type: integer
+                        minDomains:
+                          format: int32
+                          type: integer
+                        nodeAffinityPolicy:
+                          type: string
                         topologyKey:
                           type: string
                       required:
@@ -13782,6 +13818,15 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        maxSkew:
+                          default: 1
+                          format: int32
+                          type: integer
+                        minDomains:
+                          format: int32
+                          type: integer
+                        nodeAffinityPolicy:
+                          type: string
                         topologyKey:
                           type: string
                       required:
@@ -16671,6 +16716,15 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        maxSkew:
+                          default: 1
+                          format: int32
+                          type: integer
+                        minDomains:
+                          format: int32
+                          type: integer
+                        nodeAffinityPolicy:
+                          type: string
                         topologyKey:
                           type: string
                       required:
@@ -19400,6 +19454,15 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        maxSkew:
+                          default: 1
+                          format: int32
+                          type: integer
+                        minDomains:
+                          format: int32
+                          type: integer
+                        nodeAffinityPolicy:
+                          type: string
                         topologyKey:
                           type: string
                       required:
@@ -22094,6 +22157,15 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        maxSkew:
+                          default: 1
+                          format: int32
+                          type: integer
+                        minDomains:
+                          format: int32
+                          type: integer
+                        nodeAffinityPolicy:
+                          type: string
                         topologyKey:
                           type: string
                       required:
@@ -24720,6 +24792,15 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        maxSkew:
+                          default: 1
+                          format: int32
+                          type: integer
+                        minDomains:
+                          format: int32
+                          type: integer
+                        nodeAffinityPolicy:
+                          type: string
                         topologyKey:
                           type: string
                       required:
@@ -24762,6 +24843,15 @@ spec:
                       additionalProperties:
                         type: string
                       type: object
+                    maxSkew:
+                      default: 1
+                      format: int32
+                      type: integer
+                    minDomains:
+                      format: int32
+                      type: integer
+                    nodeAffinityPolicy:
+                      type: string
                     topologyKey:
                       type: string
                   required:
