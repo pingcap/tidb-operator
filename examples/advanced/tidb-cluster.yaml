@@ -840,9 +840,9 @@ spec:
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
   #   - topologyKey: topology.kubernetes.io/zone
-    #   maxSkew: 1
-    #   minDomains: 3
-    #   nodeAffinityPolicy: Honor
+  #     maxSkew: 1
+  #     minDomains: 3
+  #     nodeAffinityPolicy: Honor
 
   ## TiCDC is a tool for replicating the incremental data of TiDB
   ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-ticdc/
