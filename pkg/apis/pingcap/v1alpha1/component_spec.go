@@ -434,10 +434,16 @@ func (a *componentAccessorImpl) TopologySpreadConstraints() []corev1.TopologySpr
 	ptscs := make([]corev1.TopologySpreadConstraint, 0, len(tscs))
 	for _, tsc := range tscs {
 		ptsc := corev1.TopologySpreadConstraint{
-			MaxSkew:           1,
-			TopologyKey:       tsc.TopologyKey,
-			WhenUnsatisfiable: corev1.DoNotSchedule,
+			MaxSkew:            1,
+			TopologyKey:        tsc.TopologyKey,
+			WhenUnsatisfiable:  corev1.DoNotSchedule,
+			MinDomains:         tsc.MinDomains,
+			NodeAffinityPolicy: tsc.NodeAffinityPolicy,
 		}
+		if tsc.MaxSkew > 0 {
+			ptsc.MaxSkew = tsc.MaxSkew
+		}
+
 		componentLabelVal := getComponentLabelValue(a.component)
 		var l label.Label
 		switch a.kind {
