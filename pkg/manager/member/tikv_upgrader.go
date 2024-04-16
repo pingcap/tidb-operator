@@ -229,6 +229,15 @@ func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgrad
 			klog.Infof("%s: evict leader timeout with threshold %v, so ready to upgrade", logPrefix, evictLeaderTimeout)
 			return true, nil
 		}
+
+		// in some cases, even `evicting`` is true, the evict-leader-scheduler may still not be created or existing in PD.
+		// so we try to check and retry if the scheduler is not created yet.
+		if time.Now().After(evictLeaderBeginTime.Add(v1alpha1.RetryEvictLeaderInterval)) {
+			err := u.retryEvictLeaderIfNeeded(tc, storeID, upgradePod)
+			if err != nil {
+				return false, err
+			}
+		}
 	}
 
 	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name,
@@ -400,6 +409,22 @@ func (u *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, 
 	}
 
 	return nil
+}
+
+func (u *tikvUpgrader) retryEvictLeaderIfNeeded(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
+	schedulers, err := controller.GetPDClient(u.deps.PDControl, tc).GetEvictLeaderSchedulersForStores(storeID)
+	if err != nil {
+		return fmt.Errorf("get scheduler for store %d failed: %v", storeID, err)
+	}
+	if len(schedulers) > 0 && len(schedulers[storeID]) > 0 {
+		// scheduler already created, no need to retry
+		return nil
+	}
+
+	// retry evict leader
+	klog.Infof("retryEvictLeaderIfNeeded: retry evict leader for store %d of %s/%s", storeID, tc.Namespace, pod.GetName())
+	// call `beginEvictLeader` to reset the `annoKeyEvictLeaderBeginTime` annotation
+	return u.beginEvictLeader(tc, storeID, pod)
 }
 
 // endEvictLeaderForAllStore end evict leader for all stores of a tc

@@ -509,7 +509,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			framework.ExpectNoError(err, "deleting sts of tikv for %q", tcName1)
 
 			ginkgo.By("Waiting for tikv pod to be unavailable")
-			err = utiltc.WaitForTCCondition(cli, tc1.Namespace, tc1.Name, time.Minute*5, time.Second*10,
+			err = utiltc.WaitForTCCondition(cli, tc1.Namespace, tc1.Name, time.Minute*5, time.Second,
 				func(tc *v1alpha1.TidbCluster) (bool, error) {
 					down := true
 					for _, store := range tc.Status.TiKV.Stores {
