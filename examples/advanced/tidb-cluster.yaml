@@ -167,6 +167,9 @@ spec:
   ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   # topologySpreadConstraints:
   # - topologyKey: topology.kubernetes.io/zone
+  #   maxSkew: 1
+  #   minDomains: 3
+  #   nodeAffinityPolicy: Honor
 
   ###########################
   # TiDB Cluster Components #
@@ -352,6 +355,9 @@ spec:
     ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
     # topologySpreadConstraints:
     # - topologyKey: topology.kubernetes.io/zone
+    #   maxSkew: 1
+    #   minDomains: 3
+    #   nodeAffinityPolicy: Honor
 
   tidb:
     ############################
@@ -573,6 +579,9 @@ spec:
     ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
     # topologySpreadConstraints:
     # - topologyKey: topology.kubernetes.io/zone
+    #   maxSkew: 1
+    #   minDomains: 3
+    #   nodeAffinityPolicy: Honor
 
   tikv:
     ############################
@@ -786,6 +795,9 @@ spec:
     ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
     # topologySpreadConstraints:
     # - topologyKey: topology.kubernetes.io/zone
+    #   maxSkew: 1
+    #   minDomains: 3
+    #   nodeAffinityPolicy: Honor
 
   ## Deploy TiDB Binlog of a TiDB cluster
   ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
@@ -828,6 +840,9 @@ spec:
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
   #   - topologyKey: topology.kubernetes.io/zone
+  #     maxSkew: 1
+  #     minDomains: 3
+  #     nodeAffinityPolicy: Honor
 
   ## TiCDC is a tool for replicating the incremental data of TiDB
   ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-ticdc/
@@ -871,6 +886,9 @@ spec:
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
   #   - topologyKey: topology.kubernetes.io/zone
+  #     maxSkew: 1
+  #     minDomains: 3
+  #     nodeAffinityPolicy: Honor
 
   ## TiFlash is the columnar storage extension of TiKV
   ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-tiflash/
@@ -957,3 +975,6 @@ spec:
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
   #   - topologyKey: topology.kubernetes.io/zone
+  #     maxSkew: 1
+  #     minDomains: 3
+  #     nodeAffinityPolicy: Honor
