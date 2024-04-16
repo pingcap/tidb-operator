@@ -1298,7 +1298,7 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 	for _, job := range jobs {
 		finished := false
 		for _, condition := range job.Status.Conditions {
-			if condition.Type == batchv1.JobFailed {
+			if condition.Type == batchv1.JobFailed && r.Spec.WarmupStrategy == v1alpha1.RestoreWarmupStrategyCheckOnly {
 				err := fmt.Errorf("warmup job %s/%s failed", job.Namespace, job.Name)
 				rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
 					Type:    v1alpha1.RestoreFailed,
@@ -1308,7 +1308,8 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 				}, nil)
 				return err
 			}
-			if condition.Type == batchv1.JobComplete {
+
+			if condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed {
 				finished = true
 				continue
 			}
