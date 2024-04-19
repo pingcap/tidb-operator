@@ -88,7 +88,7 @@ exec /tidb-server ${ARGS}
 		{
 			name: "with extra arguments",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.TiDB.Arguments = []string{"--log-file", "/log/tidb.log"}
+				tc.Spec.TiDB.Arguments = []string{"--tidb_service_scope", "background"}
 			},
 			result: `#!/bin/sh
 
@@ -137,8 +137,8 @@ then
 fi
 
 echo "start tidb-server ..."
-echo "/tidb-server ${ARGS} --log-file /log/tidb.log"
-exec /tidb-server ${ARGS} --log-file /log/tidb.log
+echo "/tidb-server ${ARGS} --tidb_service_scope background"
+exec /tidb-server ${ARGS} --tidb_service_scope background
 `,
 		},
 		{
