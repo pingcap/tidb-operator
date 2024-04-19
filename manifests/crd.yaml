@@ -34583,6 +34583,10 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  arguments:
+                    items:
+                      type: string
+                    type: array
                   baseImage:
                     default: pingcap/tidb
                     type: string

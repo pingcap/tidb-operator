@@ -17936,6 +17936,18 @@ The image will be an init container, and the tidb-server container will copy the
 The probe binary in the image should be placed under the root directory, i.e., <code>/your-probe</code>.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>arguments</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Arguments is the extra command line arguments for TiDB server.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbstatus">TiDBStatus</h3>
