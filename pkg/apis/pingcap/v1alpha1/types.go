@@ -1059,6 +1059,10 @@ type TiDBSpec struct {
 	// The probe binary in the image should be placed under the root directory, i.e., `/your-probe`.
 	// +optional
 	CustomizedStartupProbe *CustomizedProbe `json:"customizedStartupProbe,omitempty"`
+
+	// Arguments is the extra command line arguments for TiDB server.
+	// +optional
+	Arguments []string `json:"arguments,omitempty"`
 }
 
 type CustomizedProbe struct {
