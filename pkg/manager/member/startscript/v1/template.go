@@ -37,7 +37,7 @@ func (c CommonModel) FormatClusterDomain() string {
 // TODO(aylei): it is hard to maintain script in go literal, we should figure out a better solution
 // tidbStartScriptTpl is the template string of tidb start script
 // Note: changing this will cause a rolling-update of tidb-servers
-var tidbStartScriptTpl = template.Must(template.New("tidb-start-script").Parse(`#!/bin/sh
+var tidbStartScriptTplText = `#!/bin/sh
 
 # This script is used to start tidb containers in kubernetes cluster
 
@@ -103,7 +103,15 @@ ARGS="${ARGS}  --plugin-dir  {{ .PluginDirectory  }} --plugin-load {{ .PluginLis
 echo "start tidb-server ..."
 echo "/tidb-server ${ARGS}"
 exec /tidb-server ${ARGS}
-`))
+`
+
+func appendTiDBStartScriptWithArgs(startScript string, args []string) string {
+	if len(args) == 0 {
+		return startScript
+	}
+	return strings.ReplaceAll(startScript, "/tidb-server ${ARGS}",
+		fmt.Sprintf("/tidb-server ${ARGS} %s", strings.Join(args, " ")))
+}
 
 type TidbStartScriptModel struct {
 	CommonModel

@@ -100,6 +100,8 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		model.Path = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
+	var tidbStartScriptTpl = template.Must(template.New("tidb-start-script").Parse(
+		appendTiDBStartScriptWithArgs(tidbStartScriptTplText, tc.Spec.TiDB.Arguments)))
 	return renderTemplateFunc(tidbStartScriptTpl, model)
 }
 
