@@ -6224,6 +6224,11 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(CustomizedProbe)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Arguments != nil {
+		in, out := &in.Arguments, &out.Arguments
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
