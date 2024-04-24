@@ -15,6 +15,7 @@ package backupschedule
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/labels"
 	"path"
 	"sort"
 	"time"
@@ -194,11 +195,16 @@ func (bm *backupScheduleManager) canPerformNextBackup(vbs *v1alpha1.VolumeBackup
 	ns := vbs.GetNamespace()
 	bsName := vbs.GetName()
 
+<<<<<<< HEAD
 	vbss, err := bm.deps.VolumeBackupScheduleLister.VolumeBackupSchedules(ns).List(nil)
+=======
+	vbss, err := bm.deps.VolumeBackupScheduleLister.VolumeBackupSchedules(ns).List(labels.Everything())
+>>>>>>> 2fc5598f4 (backup: support multiple multiple schedules)
 	if err != nil {
 		return fmt.Errorf("backup schedule %s/%s, list backup schedules failed, err: %v", ns, bsName, err)
 	}
 
+<<<<<<< HEAD
 	for _, vbsMember := range vbss {
 		backup, err := bm.deps.VolumeBackupLister.VolumeBackups(ns).Get(vbsMember.Status.LastBackup)
 		if err != nil {
@@ -215,6 +221,40 @@ func (bm *backupScheduleManager) canPerformNextBackup(vbs *v1alpha1.VolumeBackup
 		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, vbsMember.Status.LastBackup)
 	}
 
+=======
+	if len(vbs.Spec.BackupTemplate.Clusters) == 0 {
+		return fmt.Errorf("invalid backup schedule %s/%s, no tc cluser specified", ns, bsName)
+	}
+
+	for _, vbsMember := range vbss {
+		needCheck := false
+		// only check the backup schedule that operates against the same tc cluster
+		for _, cluster := range vbsMember.Spec.BackupTemplate.Clusters {
+			if cluster.TCName == vbs.Spec.BackupTemplate.Clusters[0].TCName {
+				needCheck = true
+				break
+			}
+		}
+
+		if needCheck {
+			// The check is not safe in fact since we don't have strict serialization
+			backup, err := bm.deps.VolumeBackupLister.VolumeBackups(ns).Get(vbsMember.Status.LastBackup)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					continue
+				}
+				return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, vbs.Status.LastBackup, err)
+			}
+
+			if v1alpha1.IsVolumeBackupComplete(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
+				continue
+			}
+			// skip this sync round of the backup schedule and waiting the last backup.
+			return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, vbsMember.Status.LastBackup)
+		}
+	}
+
+>>>>>>> 2fc5598f4 (backup: support multiple multiple schedules)
 	return nil
 }
 

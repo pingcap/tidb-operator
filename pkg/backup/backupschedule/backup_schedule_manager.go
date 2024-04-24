@@ -15,6 +15,7 @@ package backupschedule
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/labels"
 	"path"
 	"sort"
 	"strings"
@@ -115,12 +116,20 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
+<<<<<<< HEAD
 	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(nil)
+=======
+	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(labels.Everything())
+>>>>>>> 2fc5598f4 (backup: support multiple multiple schedules)
 	if err != nil {
 		return fmt.Errorf("backup schedule %s/%s, list backup schedules failed, err: %v", ns, bsName, err)
 	}
 
 	for _, bsMember := range bss {
+<<<<<<< HEAD
+=======
+		// The check is not safe in fact since we don't have strict serialization
+>>>>>>> 2fc5598f4 (backup: support multiple multiple schedules)
 		backup, err := bm.deps.BackupLister.Backups(ns).Get(bsMember.Status.LastBackup)
 		if err != nil {
 			if errors.IsNotFound(err) {
