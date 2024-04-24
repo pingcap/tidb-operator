@@ -2396,6 +2396,8 @@ const (
 	// RestoreVolumeComplete means the Restore has successfully executed part-1 and the
 	// backup volumes have been rebuilded from the corresponding snapshot
 	RestoreVolumeComplete RestoreConditionType = "VolumeComplete"
+	// CleanVolumeComplete means volumes are cleaned successfully if restore volume failed
+	CleanVolumeComplete RestoreConditionType = "CleanVolumeComplete"
 	// RestoreWarmUpStarted means the Restore has successfully started warm up pods to
 	// initialize volumes restored from snapshots
 	RestoreWarmUpStarted RestoreConditionType = "WarmUpStarted"

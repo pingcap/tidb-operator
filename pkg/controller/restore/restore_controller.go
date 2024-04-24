@@ -170,6 +170,12 @@ func (c *Controller) updateRestore(cur interface{}) {
 		return
 	}
 
+	if v1alpha1.IsRestoreVolumeFailed(newRestore) && !v1alpha1.IsCleanVolumeComplete(newRestore) {
+		// restore volume failed, need to clean created volumes
+		c.enqueueRestore(newRestore)
+		return
+	}
+
 	if v1alpha1.IsRestoreFailed(newRestore) {
 		klog.V(4).Infof("restore %s/%s is Failed, skipping.", ns, name)
 		return
