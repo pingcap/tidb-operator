@@ -76,6 +76,9 @@ while [ $# -gt 0 ]; do
             ;;
         --debug) set -x
             ;;
+        --exit-on-corruption)
+            # already parsed above, skip handling here
+            ;;
         -*)
             die "unsupported flag $1"
             ;;
