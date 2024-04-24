@@ -48,3 +48,7 @@ func (s *NoneSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
 	// TODO implement it if support to restore snapshots to another az on GCP
 	return nil
 }
+
+func (s *NoneSnapshotter) CleanVolumes(r *v1alpha1.Restore, csb *CloudSnapBackup) error {
+	return nil
+}
