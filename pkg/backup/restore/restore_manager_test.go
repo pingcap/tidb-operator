@@ -941,7 +941,7 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 		g.Expect(err).To(Succeed())
 	}()
 
-	for _, tt := range error_cases {
+	for _, tt := range errorCases {
 		t.Run(tt.name, func(t *testing.T) {
 			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster, true, true)
 			helper.CreateRestore(tt.restore)
@@ -952,7 +952,7 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 		})
 	}
 
-	for _, tt := range success_cases {
+	for _, tt := range successCases {
 		t.Run(tt.name, func(t *testing.T) {
 			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster, true, true)
 			helper.CreateRestore(tt.restore)
