@@ -137,7 +137,7 @@ func IsRestoreVolumeFailed(restore *Restore) bool {
 		!IsRestoreVolumeComplete(restore)
 }
 
-// IsCleanVolumeComplete returns true if a Restore for volume is Failed
+// IsCleanVolumeComplete returns true if restored volumes are cleaned
 func IsCleanVolumeComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, CleanVolumeComplete)
 	return condition != nil && condition.Status == corev1.ConditionTrue
