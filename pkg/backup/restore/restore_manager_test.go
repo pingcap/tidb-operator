@@ -710,7 +710,7 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 	defer helper.Close()
 	deps := helper.Deps
 
-	error_cases := []struct {
+	errorCases := []struct {
 		name    string
 		restore *v1alpha1.Restore
 	}{
