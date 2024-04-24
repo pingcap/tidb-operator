@@ -820,7 +820,7 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 		},
 	}
 
-	success_cases := []struct {
+	successCases := []struct {
 		name    string
 		restore *v1alpha1.Restore
 	}{
