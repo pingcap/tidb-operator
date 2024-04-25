@@ -997,6 +997,11 @@ func TestGenerateWarmUpArgs(t *testing.T) {
 			expected: []string{"--fs", constants.TiKVDataVolumeMountPath, "--block", "/logs"},
 		},
 		{
+			name:     "check-wal-only",
+			strategy: v1alpha1.RestoreWarmupStrategyCheckOnly,
+			expected: []string{"--exit-on-corruption", "--block", "/logs"},
+		},
+		{
 			name:     "unknown strategy",
 			strategy: "unknown",
 			errMsg:   `unknown warmup strategy "unknown"`,

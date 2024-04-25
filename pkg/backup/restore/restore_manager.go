@@ -1044,6 +1044,10 @@ func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alph
 
 func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []corev1.VolumeMount) ([]string, error) {
 	res := make([]string, 0, len(mountPoints))
+	if strategy == v1alpha1.RestoreWarmupStrategyCheckOnly {
+		res = append(res, "--exit-on-corruption")
+	}
+
 	for _, p := range mountPoints {
 		switch strategy {
 		case v1alpha1.RestoreWarmupStrategyFio:
@@ -1054,7 +1058,14 @@ func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []c
 			} else {
 				res = append(res, "--block", p.MountPath)
 			}
-		case v1alpha1.RestoreWarmupStrategyFsr, v1alpha1.RestoreWarmupStrategyCheckOnly:
+		case v1alpha1.RestoreWarmupStrategyFsr:
+			if p.MountPath == constants.TiKVDataVolumeMountPath {
+				// data volume has been warmed up by enabling FSR or can be skipped
+				continue
+			} else {
+				res = append(res, "--block", p.MountPath)
+			}
+		case v1alpha1.RestoreWarmupStrategyCheckOnly:
 			if p.MountPath == constants.TiKVDataVolumeMountPath {
 				// data volume has been warmed up by enabling FSR or can be skipped
 				continue
