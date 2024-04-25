@@ -710,12 +710,12 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 	defer helper.Close()
 	deps := helper.Deps
 
-	cases := []struct {
+	errorCases := []struct {
 		name    string
 		restore *v1alpha1.Restore
 	}{
 		{
-			name: "restore-volume-warmup-sync",
+			name: "restore-volume-warmup-check-sync",
 			restore: &v1alpha1.Restore{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-1",
@@ -727,6 +727,116 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 					BR: &v1alpha1.BRConfig{
 						ClusterNamespace: "ns-1",
 						Cluster:          "cluster-1",
+					},
+					Warmup:         v1alpha1.RestoreWarmupModeSync,
+					WarmupStrategy: v1alpha1.RestoreWarmupStrategyCheckOnly,
+					StorageProvider: v1alpha1.StorageProvider{
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{
+					Conditions: []v1alpha1.RestoreCondition{
+						{
+							Type:   v1alpha1.RestoreVolumeComplete,
+							Status: corev1.ConditionTrue,
+						},
+						{
+							Type:   v1alpha1.RestoreWarmUpStarted,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "restore-volume-warmup-check-async",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-2",
+					Namespace: "ns-2",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-2",
+						Cluster:          "cluster-2",
+					},
+					Warmup:         v1alpha1.RestoreWarmupModeASync,
+					WarmupStrategy: v1alpha1.RestoreWarmupStrategyCheckOnly,
+					StorageProvider: v1alpha1.StorageProvider{
+						Local: &v1alpha1.LocalStorageProvider{
+							//	Prefix: "prefix",
+							Volume: corev1.Volume{
+								Name: "nfs",
+								VolumeSource: corev1.VolumeSource{
+									NFS: &corev1.NFSVolumeSource{
+										Server:   "fake-server",
+										Path:     "/tmp",
+										ReadOnly: true,
+									},
+								},
+							},
+							VolumeMount: corev1.VolumeMount{
+								Name:      "nfs",
+								MountPath: "/tmp",
+							},
+						},
+					},
+				},
+				Status: v1alpha1.RestoreStatus{
+					Conditions: []v1alpha1.RestoreCondition{
+						{
+							Type:   v1alpha1.RestoreVolumeComplete,
+							Status: corev1.ConditionTrue,
+						},
+						{
+							Type:   v1alpha1.RestoreWarmUpStarted,
+							Status: corev1.ConditionTrue,
+						},
+						{
+							Type:   v1alpha1.RestoreTiKVComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	successCases := []struct {
+		name    string
+		restore *v1alpha1.Restore
+	}{
+		{
+			name: "restore-volume-warmup-no-check-sync",
+			restore: &v1alpha1.Restore{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-3",
+					Namespace: "ns-3",
+				},
+				Spec: v1alpha1.RestoreSpec{
+					Type: v1alpha1.BackupTypeFull,
+					Mode: v1alpha1.RestoreModeVolumeSnapshot,
+					BR: &v1alpha1.BRConfig{
+						ClusterNamespace: "ns-3",
+						Cluster:          "cluster-3",
 					},
 					Warmup: v1alpha1.RestoreWarmupModeSync,
 					StorageProvider: v1alpha1.StorageProvider{
@@ -764,18 +874,18 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 			},
 		},
 		{
-			name: "restore-volume-warmup-async",
+			name: "restore-volume-warmup-no-check-async",
 			restore: &v1alpha1.Restore{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-2",
-					Namespace: "ns-2",
+					Name:      "test-4",
+					Namespace: "ns-4",
 				},
 				Spec: v1alpha1.RestoreSpec{
 					Type: v1alpha1.BackupTypeFull,
 					Mode: v1alpha1.RestoreModeVolumeSnapshot,
 					BR: &v1alpha1.BRConfig{
-						ClusterNamespace: "ns-2",
-						Cluster:          "cluster-2",
+						ClusterNamespace: "ns-4",
+						Cluster:          "cluster-4",
 					},
 					Warmup: v1alpha1.RestoreWarmupModeASync,
 					StorageProvider: v1alpha1.StorageProvider{
@@ -831,7 +941,7 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 		g.Expect(err).To(Succeed())
 	}()
 
-	for _, tt := range cases {
+	for _, tt := range errorCases {
 		t.Run(tt.name, func(t *testing.T) {
 			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster, true, true)
 			helper.CreateRestore(tt.restore)
@@ -839,6 +949,17 @@ func TestFailWarmupBRRestoreByEBS(t *testing.T) {
 			m := NewRestoreManager(deps)
 			err := m.Sync(tt.restore)
 			g.Expect(err).Should(MatchError(fmt.Sprintf("warmup job %s/warm-up failed", tt.restore.Namespace)))
+		})
+	}
+
+	for _, tt := range successCases {
+		t.Run(tt.name, func(t *testing.T) {
+			helper.CreateTC(tt.restore.Spec.BR.ClusterNamespace, tt.restore.Spec.BR.Cluster, true, true)
+			helper.CreateRestore(tt.restore)
+			helper.createRestoreWarmupJobFailed(tt.restore)
+			m := NewRestoreManager(deps)
+			err := m.Sync(tt.restore)
+			g.Expect(err).Should(BeNil())
 		})
 	}
 }
