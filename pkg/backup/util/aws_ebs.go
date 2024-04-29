@@ -246,9 +246,7 @@ func (e *EC2Session) ListValidVolumes(volumeIDs []string) ([]*ec2.Volume, error)
 	for {
 		volumesOutput, err := e.EC2.DescribeVolumes(&ec2.DescribeVolumesInput{
 			VolumeIds: volumeIDPtrs,
-			// MaxResults is up to 500
-			MaxResults: aws.Int64(int64(len(volumeIDPtrs))),
-			NextToken:  nextToken,
+			NextToken: nextToken,
 		})
 		if err != nil {
 			return nil, errors.Annotate(err, "describe volumes error")
