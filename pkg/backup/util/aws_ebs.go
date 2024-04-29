@@ -245,7 +245,12 @@ func (e *EC2Session) ListValidVolumes(volumeIDs []string) ([]*ec2.Volume, error)
 	var nextToken *string
 	for {
 		volumesOutput, err := e.EC2.DescribeVolumes(&ec2.DescribeVolumesInput{
-			VolumeIds: volumeIDPtrs,
+			Filters: []*ec2.Filter{
+				{
+					Name:   aws.String("volume-id"),
+					Values: volumeIDPtrs,
+				},
+			},
 			NextToken: nextToken,
 		})
 		if err != nil {
