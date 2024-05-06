@@ -181,6 +181,10 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		}
 	}
 
+	if v1alpha1.IsRestoreFailed(restore) {
+		return nil
+	}
+
 	restoreJobName := restore.GetRestoreJobName()
 	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
 	if err == nil {
@@ -515,6 +519,30 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		klog.Infof("Restore %s/%s prepare restore metadata finished", r.Namespace, r.Name)
 		if !isWarmUpSync(r) {
 			return rm.startTiKVIfNeeded(r, tc)
+		}
+	}
+
+	if v1alpha1.IsRestoreVolumeFailed(r) && !v1alpha1.IsCleanVolumeComplete(r) {
+		klog.Infof("%s/%s restore volume failed, start to clean volumes", ns, name)
+
+		csb, reason, err := rm.readRestoreMetaFromExternalStorage(r)
+		if err != nil {
+			return reason, err
+		}
+		s, reason, err := snapshotter.NewSnapshotterForRestore(r.Spec.Mode, rm.deps)
+		if err != nil {
+			return reason, err
+		}
+		if err := s.CleanVolumes(r, csb); err != nil {
+			return "CleanVolumeFailed", err
+		}
+		klog.Infof("%s/%s clean volumes successfully", ns, name)
+
+		if err := rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.CleanVolumeComplete,
+			Status: corev1.ConditionTrue,
+		}, nil); err != nil {
+			return "UpdateCleanVolumeCompleteFailed", err
 		}
 	}
 
