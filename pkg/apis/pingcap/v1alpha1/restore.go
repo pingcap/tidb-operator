@@ -130,6 +130,19 @@ func IsRestoreVolumeComplete(restore *Restore) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// IsRestoreVolumeFailed returns true if a Restore for volume is Failed
+func IsRestoreVolumeFailed(restore *Restore) bool {
+	return restore.Spec.Mode == RestoreModeVolumeSnapshot &&
+		IsRestoreFailed(restore) &&
+		!IsRestoreVolumeComplete(restore)
+}
+
+// IsCleanVolumeComplete returns true if restored volumes are cleaned
+func IsCleanVolumeComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, CleanVolumeComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsRestoreWarmUpStarted returns true if all the warmup jobs has successfully started
 func IsRestoreWarmUpStarted(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreWarmUpStarted)

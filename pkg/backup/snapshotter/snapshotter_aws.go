@@ -150,3 +150,19 @@ func (s *AWSSnapshotter) ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.Pe
 		}
 	}
 }
+
+func (s *AWSSnapshotter) CleanVolumes(r *v1alpha1.Restore, csb *CloudSnapBackup) error {
+	if !v1alpha1.IsRestoreVolumeFailed(r) {
+		return errors.New("can't clean volumes if not restore volume failed")
+	}
+
+	volumeIDs := s.getRestoreVolumeIDs(csb)
+	ec2Session, err := util.NewEC2Session(util.CloudAPIConcurrency)
+	if err != nil {
+		return fmt.Errorf("new ec2 session error: %w", err)
+	}
+	if err := ec2Session.DeleteVolumes(volumeIDs); err != nil {
+		return fmt.Errorf("delete volumes error: %w", err)
+	}
+	return nil
+}
