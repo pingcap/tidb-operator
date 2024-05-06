@@ -59,6 +59,8 @@ type Snapshotter interface {
 
 	// AddVolumeTags add operator related tags to volumes
 	AddVolumeTags(pvs []*corev1.PersistentVolume) error
+
+	CleanVolumes(r *v1alpha1.Restore, csb *CloudSnapBackup) error
 }
 
 type BaseSnapshotter struct {
@@ -181,6 +183,18 @@ func (s *BaseSnapshotter) prepareRestoreMetadata(r *v1alpha1.Restore, csb *Cloud
 	}
 
 	return "", nil
+}
+
+func (s *BaseSnapshotter) getRestoreVolumeIDs(csb *CloudSnapBackup) []string {
+	volumeIDs := make([]string, 0)
+	for _, store := range csb.TiKV.Stores {
+		for _, volume := range store.Volumes {
+			if volume.RestoreVolumeID != "" {
+				volumeIDs = append(volumeIDs, volume.RestoreVolumeID)
+			}
+		}
+	}
+	return volumeIDs
 }
 
 func checkCloudSnapBackup(b *CloudSnapBackup) (string, error) {
