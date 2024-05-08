@@ -8,7 +8,7 @@ metadata:
     # iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
 spec:
   #maxBackups: 5
-  # pause: true
+  #pause: true
   maxReservedTime: "3h"
   schedule: "*/2 * * * *"
   backupTemplate:
