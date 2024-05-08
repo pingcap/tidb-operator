@@ -801,14 +801,14 @@ func AddPDMSForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	pdmsImage := "pingcap/pd"
 	tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
 		{
-			Name: tsoService,
-			BaseImage: &pdmsImage,
+			Name:                 tsoService,
+			BaseImage:            &pdmsImage,
 			Replicas:             2,
 			ResourceRequirements: WithStorage(BurstableSmall, "10Gi"),
 		},
 		{
-			Name: schedulingService,
-			BaseImage: &pdmsImage,
+			Name:                 schedulingService,
+			BaseImage:            &pdmsImage,
 			Replicas:             1,
 			ResourceRequirements: WithStorage(BurstableSmall, "10Gi"),
 		},
