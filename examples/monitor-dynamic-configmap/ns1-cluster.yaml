@@ -6,7 +6,7 @@ kind: TidbCluster
 metadata:
   name: ns1
 spec:
-  version: v7.5.1
+  version: v8.1.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
