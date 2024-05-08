@@ -8,7 +8,7 @@ metadata:
 spec:
   version: v8.1.0
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
   configUpdateStrategy: RollingUpdate
   discovery: {}

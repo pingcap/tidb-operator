@@ -3,7 +3,7 @@ apiVersion: pingcap.com/v1alpha1
 kind: Backup
 metadata:
   name: demo1-backup-s3
-  # namespace: test1
+  namespace: test1
   # annotations:
     # iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
 spec:
@@ -18,7 +18,7 @@ spec:
   #   requests:
   #     memory: 300Mi
   br:
-    cluster: basic
+    cluster: myCluster
     # clusterNamespce: <backup-namespace>
     # logLevel: info
     # statusAddr: <status-addr>
@@ -27,15 +27,15 @@ spec:
     # timeAgo: <time>
     # checksum: true
     # sendCredToTikv: true
-  # from:
-  #   host: 172.30.6.56
-  #   secretName: mySecret
+  from:
+    host: 172.30.6.56
+    secretName: mySecret
     # port: 4000
     # user: root
     # tlsClientSecretName: <backup-tls-secretname>
   s3:
-    provider: aws
-    endpoint: https://s3.zhangxc.com/
-    secretName: s3-secret
-    bucket: transfer
-    prefix: basic-backup
+    provider: ceph
+    endpoint: http://10.233.57.220
+    secretName: ceph-secret
+    bucket: backup
+    prefix: test1-demo1
