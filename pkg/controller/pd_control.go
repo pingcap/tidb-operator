@@ -74,26 +74,29 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 }
 
 // GetPDMSClient tries to return an available PDMSClient
-func GetPDMSClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, serviceName string) error {
+func GetPDMSClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, serviceName string) pdapi.PDMSClient {
 	pdMSClient := getPDMSClientFromService(pdControl, tc, serviceName)
 
 	err := pdMSClient.GetHealth()
 	if err == nil {
-		return nil
+		return pdMSClient
 	}
 
 	for _, service := range tc.Status.PDMS {
+		if service.Name != serviceName {
+			continue
+		}
 		for _, pdMember := range service.Members {
-			pdPeerClient := pdControl.GetPDMSClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), serviceName,
+			pdMSPeerClient := pdControl.GetPDMSClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), serviceName,
 				tc.IsTLSClusterEnabled(), pdapi.SpecifyClient(pdMember, pdMember))
-			err = pdPeerClient.GetHealth()
+			err = pdMSPeerClient.GetHealth()
 			if err == nil {
-				return nil
+				return pdMSPeerClient
 			}
 		}
 	}
 
-	return err
+	return nil
 }
 
 // NewFakePDClient creates a fake pdclient that is set as the pd client

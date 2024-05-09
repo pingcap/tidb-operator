@@ -16,6 +16,7 @@ package pdapi
 import (
 	"crypto/tls"
 	"fmt"
+	"k8s.io/klog/v2"
 	"net/http"
 	"time"
 
@@ -58,6 +59,7 @@ func NewPDMSClient(serviceName, url string, timeout time.Duration, tlsConfig *tl
 func (c *pdMSClient) GetHealth() error {
 	// only support TSO service
 	if c.serviceName != TSOServiceName {
+		klog.Errorf("only support TSO service, but got %s", c.serviceName)
 		return nil
 	}
 	apiURL := fmt.Sprintf("%s/%s/%s", c.url, c.serviceName, pdMSHealthPrefix)
