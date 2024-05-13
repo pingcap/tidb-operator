@@ -612,7 +612,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for dm-master, dmcluster %s/%s, error: %v", dc.Namespace, dc.Name, err)
 	}
-	storageRequest := corev1.ResourceRequirements{
+	storageRequest := corev1.VolumeResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceStorage: rs,
 		},

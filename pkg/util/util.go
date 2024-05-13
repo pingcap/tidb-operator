@@ -354,7 +354,7 @@ func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, d
 				klog.Errorf("Cannot parse storage size %v in StorageVolumes of %v, storageVolume Name %s, error: %v", storageVolume.StorageSize, memberType, storageVolume.Name, err)
 				continue
 			}
-			storageRequest := corev1.ResourceRequirements{
+			storageRequest := corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: quantity,
 				},
@@ -377,7 +377,7 @@ func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, d
 	return volMounts, volumeClaims
 }
 
-func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {
+func VolumeClaimTemplate(r corev1.VolumeResourceRequirements, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {
 	return corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: metaName},
 		Spec: corev1.PersistentVolumeClaimSpec{

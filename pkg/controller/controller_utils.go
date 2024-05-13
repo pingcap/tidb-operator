@@ -463,15 +463,15 @@ func AnnAdditionalProm(name string, port int32) map[string]string {
 	}
 }
 
-func ParseStorageRequest(req corev1.ResourceList) (corev1.ResourceRequirements, error) {
+func ParseStorageRequest(req corev1.ResourceList) (corev1.VolumeResourceRequirements, error) {
 	if req == nil {
-		return corev1.ResourceRequirements{}, nil
+		return corev1.VolumeResourceRequirements{}, nil
 	}
 	q, ok := req[corev1.ResourceStorage]
 	if !ok {
-		return corev1.ResourceRequirements{}, fmt.Errorf("storage request is not set")
+		return corev1.VolumeResourceRequirements{}, fmt.Errorf("storage request is not set")
 	}
-	return corev1.ResourceRequirements{
+	return corev1.VolumeResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceStorage: q,
 		},
