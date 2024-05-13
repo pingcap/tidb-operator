@@ -178,7 +178,7 @@ func NewPortForwarderForConfig(config *rest.Config) (PortForwarder, error) {
 		return nil, err
 	}
 	dc := memory.NewMemCacheClient(client.Discovery())
-	mapper := restmapper.NewShortcutExpander(restmapper.NewDeferredDiscoveryRESTMapper(dc), dc)
+	mapper := restmapper.NewShortcutExpander(restmapper.NewDeferredDiscoveryRESTMapper(dc), dc, nil)
 
 	df, err := NewDialerFunc(config)
 	if err != nil {
