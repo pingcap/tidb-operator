@@ -284,7 +284,7 @@ function hack::ensure_golangci_lint() {
 
 function hack::ensure_controller_gen() {
     echo "Installing controller_gen..."
-    GOBIN=$OUTPUT_BIN go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.2
+    GOBIN=$OUTPUT_BIN go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0
 }
 
 function hack::ensure_goimports() {
