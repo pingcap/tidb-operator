@@ -89,7 +89,7 @@ func (c *defaultBackupControl) updateBackup(volumeBackup *v1alpha1.VolumeBackup)
 		klog.Warningf("VolumeBackup %s/%s sync error: %s", ns, name, err.Error())
 	}
 
-	c.addZeroToBackupStatusMetric(volumeBackup)
+	c.initBackupStatusMetrics(volumeBackup)
 	if !apiequality.Semantic.DeepEqual(oldBackup.Status, volumeBackup.Status) {
 		klog.Infof("VolumeBackup %/%s update status from %s to %s",
 			ns, name, oldBackup.Status.Phase, volumeBackup.Status.Phase)
@@ -132,14 +132,14 @@ func (c *defaultBackupControl) updateVolumeBackupMetrics(volumeBackup *v1alpha1.
 }
 
 // add zero to the backup status counters; this sets the backup counter metric to zero when the federated manager restarts.
-func (c *defaultBackupControl) addZeroToBackupStatusMetric(volumeBackup *v1alpha1.VolumeBackup) {
+func (c *defaultBackupControl) initBackupStatusMetrics(volumeBackup *v1alpha1.VolumeBackup) {
 	ns := volumeBackup.Namespace
 	tcName := volumeBackup.GetCombinedTCName()
-	metrics.FedVolumeBackupStatusCounterVec.WithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupRunning)).Add(0)
-	metrics.FedVolumeBackupStatusCounterVec.WithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupSnapshotsCreated)).Add(0)
-	metrics.FedVolumeBackupStatusCounterVec.WithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupComplete)).Add(0)
-	metrics.FedVolumeBackupStatusCounterVec.WithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupFailed)).Add(0)
-	metrics.FedVolumeBackupStatusCounterVec.WithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupCleaned)).Add(0)
+	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupRunning))
+	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupSnapshotsCreated))
+	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupComplete))
+	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupFailed))
+	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupCleaned))
 }
 
 func (c *defaultBackupControl) updateVolumeBackupCleanupMetrics(volumeBackup *v1alpha1.VolumeBackup) {
