@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/model/relabel"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -518,7 +518,7 @@ type RelabelConfig struct {
 	// Replacement is the regex replacement pattern to be used.
 	Replacement string `json:"replacement,omitempty"`
 	// Action is the action to be performed for the relabeling.
-	Action config.RelabelAction `json:"action,omitempty"`
+	Action relabel.Action `json:"action,omitempty"`
 }
 
 // QueueConfig allows the tuning of remote_write queue_config parameters. This object

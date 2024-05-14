@@ -14057,7 +14057,7 @@ string
 <td>
 <code>action</code></br>
 <em>
-github.com/prometheus/prometheus/config.RelabelAction
+github.com/prometheus/prometheus/model/relabel.Action
 </em>
 </td>
 <td>
