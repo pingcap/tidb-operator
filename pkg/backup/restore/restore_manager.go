@@ -181,6 +181,10 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		}
 	}
 
+	if v1alpha1.IsRestoreFailed(restore) {
+		return nil
+	}
+
 	restoreJobName := restore.GetRestoreJobName()
 	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
 	if err == nil {
@@ -515,6 +519,30 @@ func (rm *restoreManager) volumeSnapshotRestore(r *v1alpha1.Restore, tc *v1alpha
 		klog.Infof("Restore %s/%s prepare restore metadata finished", r.Namespace, r.Name)
 		if !isWarmUpSync(r) {
 			return rm.startTiKVIfNeeded(r, tc)
+		}
+	}
+
+	if v1alpha1.IsRestoreVolumeFailed(r) && !v1alpha1.IsCleanVolumeComplete(r) {
+		klog.Infof("%s/%s restore volume failed, start to clean volumes", ns, name)
+
+		csb, reason, err := rm.readRestoreMetaFromExternalStorage(r)
+		if err != nil {
+			return reason, err
+		}
+		s, reason, err := snapshotter.NewSnapshotterForRestore(r.Spec.Mode, rm.deps)
+		if err != nil {
+			return reason, err
+		}
+		if err := s.CleanVolumes(r, csb); err != nil {
+			return "CleanVolumeFailed", err
+		}
+		klog.Infof("%s/%s clean volumes successfully", ns, name)
+
+		if err := rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.CleanVolumeComplete,
+			Status: corev1.ConditionTrue,
+		}, nil); err != nil {
+			return "UpdateCleanVolumeCompleteFailed", err
 		}
 	}
 
@@ -1044,6 +1072,10 @@ func (rm *restoreManager) warmUpTiKVVolumesAsync(r *v1alpha1.Restore, tc *v1alph
 
 func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []corev1.VolumeMount) ([]string, error) {
 	res := make([]string, 0, len(mountPoints))
+	if strategy == v1alpha1.RestoreWarmupStrategyCheckOnly {
+		res = append(res, "--exit-on-corruption")
+	}
+
 	for _, p := range mountPoints {
 		switch strategy {
 		case v1alpha1.RestoreWarmupStrategyFio:
@@ -1054,7 +1086,14 @@ func generateWarmUpArgs(strategy v1alpha1.RestoreWarmupStrategy, mountPoints []c
 			} else {
 				res = append(res, "--block", p.MountPath)
 			}
-		case v1alpha1.RestoreWarmupStrategyFsr, v1alpha1.RestoreWarmupStrategyCheckOnly:
+		case v1alpha1.RestoreWarmupStrategyFsr:
+			if p.MountPath == constants.TiKVDataVolumeMountPath {
+				// data volume has been warmed up by enabling FSR or can be skipped
+				continue
+			} else {
+				res = append(res, "--block", p.MountPath)
+			}
+		case v1alpha1.RestoreWarmupStrategyCheckOnly:
 			if p.MountPath == constants.TiKVDataVolumeMountPath {
 				// data volume has been warmed up by enabling FSR or can be skipped
 				continue
@@ -1298,7 +1337,7 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 	for _, job := range jobs {
 		finished := false
 		for _, condition := range job.Status.Conditions {
-			if condition.Type == batchv1.JobFailed {
+			if condition.Type == batchv1.JobFailed && r.Spec.WarmupStrategy == v1alpha1.RestoreWarmupStrategyCheckOnly {
 				err := fmt.Errorf("warmup job %s/%s failed", job.Namespace, job.Name)
 				rm.statusUpdater.Update(r, &v1alpha1.RestoreCondition{
 					Type:    v1alpha1.RestoreFailed,
@@ -1308,7 +1347,8 @@ func (rm *restoreManager) waitWarmUpJobsFinished(r *v1alpha1.Restore) error {
 				}, nil)
 				return err
 			}
-			if condition.Type == batchv1.JobComplete {
+
+			if condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed {
 				finished = true
 				continue
 			}

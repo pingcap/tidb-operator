@@ -16,6 +16,7 @@ package util
 import (
 	"context"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -164,7 +165,7 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string, deleteRatio fl
 			if err != nil {
 				if aErr, ok := err.(awserr.Error); ok {
 					if aErr.Code() == "InvalidSnapshot.NotFound" {
-						klog.Warningf("snapshot %s not found", snapID, err.Error())
+						klog.Warningf("snapshot %s not found, aws err: %s", snapID, err.Error())
 						return nil
 					}
 				}
@@ -202,6 +203,68 @@ func (e *EC2Session) DeleteSnapshots(snapIDMap map[string]string, deleteRatio fl
 	}
 
 	return nil
+}
+
+func (e *EC2Session) DeleteVolumes(volumeIDs []string) error {
+	volumes, err := e.ListValidVolumes(volumeIDs)
+	if err != nil {
+		return errors.Annotate(err, "list volumes error")
+	}
+
+	eg, _ := errgroup.WithContext(context.Background())
+	workerPool := NewWorkerPool(e.concurrency, "delete volumes")
+	for _, volume := range volumes {
+		volumeID := *volume.VolumeId
+		workerPool.ApplyOnErrorGroup(eg, func() error {
+			if _, err := e.EC2.DeleteVolume(&ec2.DeleteVolumeInput{VolumeId: aws.String(volumeID)}); err != nil {
+				if errors.IsNotFound(err) || strings.Contains(err.Error(), "NotFound") {
+					klog.Warningf(
+						"volume %s is not found, aws err: %s, skip deleting it", volumeID, err.Error())
+					return nil
+				}
+				return errors.Annotatef(err, "delete volume %s error", volumeID)
+			}
+			klog.Infof("volume %s is deleted", volumeID)
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *EC2Session) ListValidVolumes(volumeIDs []string) ([]*ec2.Volume, error) {
+	volumeIDPtrs := make([]*string, len(volumeIDs))
+	for i, volumeID := range volumeIDs {
+		volumeIDPtrs[i] = aws.String(volumeID)
+	}
+
+	volumes := make([]*ec2.Volume, 0, len(volumeIDs))
+	var nextToken *string
+	for {
+		volumesOutput, err := e.EC2.DescribeVolumes(&ec2.DescribeVolumesInput{
+			Filters: []*ec2.Filter{
+				{
+					Name:   aws.String("volume-id"),
+					Values: volumeIDPtrs,
+				},
+			},
+			NextToken: nextToken,
+		})
+		if err != nil {
+			return nil, errors.Annotate(err, "describe volumes error")
+		}
+
+		volumes = append(volumes, volumesOutput.Volumes...)
+		if volumesOutput.NextToken == nil {
+			break
+		}
+
+		nextToken = volumesOutput.NextToken
+	}
+	return volumes, nil
 }
 
 func (e *EC2Session) AddTags(resourcesTags map[string]TagMap) error {
