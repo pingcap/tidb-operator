@@ -632,11 +632,11 @@ func (m *tiproxyMemberManager) statefulSetIsUpgradingFn(podLister corelisters.Po
 	return false, nil
 }
 
-const tiproxySupportLabelsMinVersin = "1.1.0"
+const tiproxySupportLabelsMinVersion = "1.1.0"
 
 func (m *tiproxyMemberManager) setLabelsForTiProxy(tc *v1alpha1.TidbCluster) (int, error) {
 	tiproxyVersion := tc.TiProxyVersion()
-	isOlder, err := cmpver.Compare(tiproxyVersion, cmpver.Less, tiproxySupportLabelsMinVersin)
+	isOlder, err := cmpver.Compare(tiproxyVersion, cmpver.Less, tiproxySupportLabelsMinVersion)
 	// meet a custom build of tiproxy without version in tag, directly return as if it was old tiproxy that doesn't support set labels
 	if err != nil {
 		klog.Warningf("parse tiproxy version '%s' failed, skip setting labels for TiProxy of TiDB cluster %s/%s. err: %v", tiproxyVersion, tc.Namespace, tc.Name, err)

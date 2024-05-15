@@ -16,6 +16,7 @@ package controller
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 
@@ -39,6 +40,7 @@ var _ TiProxyControlInterface = &defaultTiProxyControl{}
 // defaultTiProxyControl is default implementation of TiProxyControlInterface.
 type defaultTiProxyControl struct {
 	secretLister corelisterv1.SecretLister
+	testURL      string
 }
 
 // NewDefaultTiProxyControl returns a defaultTiProxyControl instance
@@ -75,6 +77,10 @@ func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) 
 }
 
 func (c *defaultTiProxyControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32) string {
+	if len(c.testURL) > 0 {
+		return c.testURL
+	}
+
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	if tc.Heterogeneous() && tc.Spec.TiProxy == nil {
@@ -103,6 +109,40 @@ func (c *defaultTiProxyControl) SetLabels(tc *v1alpha1.TidbCluster, ordinal int3
 		return fmt.Errorf("encode labels to toml failed, error: %v", err)
 	}
 
-	_, err := c.getCli(tc, ordinal)(&buffer, "config set")
+	_, err := c.getCli(tc, ordinal)(&buffer, "config", "set")
 	return err
+}
+
+type FakeTiProxyControl struct {
+	healthInfo     map[string]string
+	setLabelsError error
+}
+
+// NewFakeTiProxyControl returns a FakeTiProxyControl instance
+func NewFakeTiProxyControl(secretLister corelisterv1.SecretLister) *FakeTiProxyControl {
+	return &FakeTiProxyControl{}
+}
+
+// SetHealth sets health info for FakeTiProxyControl
+func (c *FakeTiProxyControl) SetHealth(healthInfo map[string]string) {
+	c.healthInfo = healthInfo
+}
+
+func (c *FakeTiProxyControl) SetLabelsErr(err error) {
+	c.setLabelsError = err
+}
+
+func (c *FakeTiProxyControl) IsHealth(tc *v1alpha1.TidbCluster, ordinal int32) (*bytes.Buffer, error) {
+	podName := fmt.Sprintf("%s-%d", TiProxyMemberName(tc.GetName()), ordinal)
+	if c.healthInfo == nil {
+		return nil, errors.New("health info not set")
+	}
+	if health, ok := c.healthInfo[podName]; ok {
+		return bytes.NewBuffer([]byte(health)), nil
+	}
+	return nil, errors.New("health info not set")
+}
+
+func (c *FakeTiProxyControl) SetLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {
+	return c.setLabelsError
 }

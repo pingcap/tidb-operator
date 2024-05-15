@@ -103,3 +103,15 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	}
 	return nil
 }
+
+type fakeTiProxyUpgrader struct{}
+
+// NewFakeTiProxyUpgrader returns a fake tiproxy upgrader
+func NewFakeTiProxyUpgrader() Upgrader {
+	return &fakeTiProxyUpgrader{}
+}
+
+func (u *fakeTiProxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+	tc.Status.TiProxy.Phase = v1alpha1.UpgradePhase
+	return nil
+}
