@@ -91,7 +91,7 @@ func (c *defaultBackupControl) updateBackup(volumeBackup *v1alpha1.VolumeBackup)
 
 	c.initBackupStatusMetrics(volumeBackup)
 	if !apiequality.Semantic.DeepEqual(oldBackup.Status, volumeBackup.Status) {
-		klog.Infof("VolumeBackup %/%s update status from %s to %s",
+		klog.Infof("VolumeBackup %s/%s update status from %s to %s",
 			ns, name, oldBackup.Status.Phase, volumeBackup.Status.Phase)
 		if sErr := c.backupManager.UpdateStatus(volumeBackup, &volumeBackup.Status); sErr != nil {
 			klog.Warningf("VolumeBackup %s/%s update status error: %s", ns, name, sErr.Error())
