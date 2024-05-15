@@ -111,6 +111,7 @@ const (
 	// AnnoPrefixConfigMapNameBeforeDelete is the last used ConfigMap name before STS deleted. xxx_member_manager should use its
 	// annotation value as ConfigMap name if the value is not empty when it tries to CREATE or RESTORE sts.
 	AnnoPrefixConfigMapNameBeforeDelete = "tidb.pingcap.com/configmap-name-before-delete-"
+	AnnoOwnerGeneration                 = "tidb.pingcap.com/owner-generation"
 
 	// AnnPVCScaleInTime is pvc scaled in time key used in PVC for e2e test only
 	AnnPVCScaleInTime = "tidb.pingcap.com/scale-in-time"
