@@ -253,6 +253,10 @@ func (m *tiproxyMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	if _, err := m.setLabelsForTiProxy(tc); err != nil {
+		return err
+	}
+
 	// Scaling takes precedence over upgrading because:
 	// - if a pod fails in the upgrading, users may want to delete it or add
 	//   new replicas
@@ -633,9 +637,9 @@ const tiproxySupportLabelsMinVersin = "1.1.0"
 func (m *tiproxyMemberManager) setLabelsForTiProxy(tc *v1alpha1.TidbCluster) (int, error) {
 	tiproxyVersion := tc.TiProxyVersion()
 	isOlder, err := cmpver.Compare(tiproxyVersion, cmpver.Less, tiproxySupportLabelsMinVersin)
-	// meet a custom build of tidb without version in tag, directly return as if it was old tidb that doesn't support set labels
+	// meet a custom build of tiproxy without version in tag, directly return as if it was old tiproxy that doesn't support set labels
 	if err != nil {
-		klog.Warningf("parse tiproxy verson '%s' failed, skip setting labels for TiProxy of TiDB cluster %s/%s. err: %v", tiproxyVersion, tc.Namespace, tc.Name, err)
+		klog.Warningf("parse tiproxy version '%s' failed, skip setting labels for TiProxy of TiDB cluster %s/%s. err: %v", tiproxyVersion, tc.Namespace, tc.Name, err)
 		return 0, nil
 	}
 	// meet an old verion tiproxy, directly return because tiproxy doesn't have configs for labels
@@ -643,7 +647,7 @@ func (m *tiproxyMemberManager) setLabelsForTiProxy(tc *v1alpha1.TidbCluster) (in
 		return 0, nil
 	}
 	if m.deps.NodeLister == nil || m.deps.PodLister == nil {
-		klog.V(4).Infof("Node lister or pod listener is unavailable, skip setting labels for TiProxy TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
+		klog.V(4).Infof("Node lister or pod listener is unavailable, skip setting labels for TiProxy of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
 		return 0, nil
 	}
 
