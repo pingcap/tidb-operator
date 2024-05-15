@@ -65,6 +65,11 @@ var (
 	// NOTE: this should be 8300 in TiCDC itself, but we have used 8301 in TiDB Operator at the beginning
 	DefaultTiCDCPort = int32(8301)
 	customPortTiCDC  = "8301"
+
+	DefaultTiProxyServerPort = int32(6000)
+	customPortTiProxyServer  = "6000"
+	DefaultTiProxyStatusPort = int32(3080)
+	customPortTiProxyStatus  = "3080"
 )
 
 func init() {
@@ -151,6 +156,18 @@ func init() {
 
 	if port, err := strconv.ParseUint(customPortTiCDC, 10, 32); err == nil {
 		DefaultTiCDCPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortTiProxyServer, 10, 32); err == nil {
+		DefaultTiProxyServerPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortTiProxyStatus, 10, 32); err == nil {
+		DefaultTiProxyStatusPort = int32(port)
 	} else {
 		panic(err)
 	}

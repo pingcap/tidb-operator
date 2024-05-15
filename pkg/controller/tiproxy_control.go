@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tiproxy/lib/cli"
 	"github.com/spf13/cobra"
@@ -29,6 +30,8 @@ import (
 type TiProxyControlInterface interface {
 	// IsHealth check if node is healthy.
 	IsHealth(tc *v1alpha1.TidbCluster, ordinal int32) (*bytes.Buffer, error)
+	// SetLabels sets labels for a tiproxy pod
+	SetLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error
 }
 
 var _ TiProxyControlInterface = &defaultTiProxyControl{}
@@ -45,21 +48,14 @@ func NewDefaultTiProxyControl(secretLister corelisterv1.SecretLister) *defaultTi
 
 func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) func(io.Reader, ...string) (*bytes.Buffer, error) {
 	return func(in io.Reader, s ...string) (*bytes.Buffer, error) {
-		name := tc.GetName()
-		ns := tc.GetNamespace()
-		if tc.Heterogeneous() && tc.Spec.TiProxy == nil {
-			name = tc.Spec.Cluster.Name
-			ns = tc.Spec.Cluster.Namespace
-		}
-
 		args := append([]string{},
 			"--log_level",
 			"error",
 			"--curls",
-			fmt.Sprintf("%s.%s:3080", TiProxyPeerMemberName(name), ns),
+			c.getBaseURL(tc, ordinal),
 		)
-		var cmd *cobra.Command
 
+		var cmd *cobra.Command
 		if !tc.IsTLSClusterEnabled() {
 			cmd = cli.GetRootCmd(nil)
 		} else {
@@ -78,6 +74,35 @@ func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) 
 	}
 }
 
+func (c *defaultTiProxyControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32) string {
+	tcName := tc.GetName()
+	ns := tc.GetNamespace()
+	if tc.Heterogeneous() && tc.Spec.TiProxy == nil {
+		tcName = tc.Spec.Cluster.Name
+		ns = tc.Spec.Cluster.Namespace
+	}
+	memberName := TiProxyMemberName(tcName)
+	hostName := fmt.Sprintf("%s-%d", memberName, ordinal)
+	if tc.Spec.ClusterDomain != "" {
+		return fmt.Sprintf("%s.%s.%s.svc.%s:%d", hostName, memberName, ns, tc.Spec.ClusterDomain, v1alpha1.DefaultTiProxyStatusPort)
+	}
+	return fmt.Sprintf("%s.%s.%s:%d", hostName, memberName, ns, v1alpha1.DefaultTiProxyStatusPort)
+}
+
 func (c *defaultTiProxyControl) IsHealth(tc *v1alpha1.TidbCluster, ordinal int32) (*bytes.Buffer, error) {
 	return c.getCli(tc, ordinal)(nil, "health")
+}
+
+func (c *defaultTiProxyControl) SetLabels(tc *v1alpha1.TidbCluster, ordinal int32, labels map[string]string) error {
+	type labelConfig struct {
+		Labels map[string]string `toml:"labels"`
+	}
+	cfg := labelConfig{Labels: labels}
+	var buffer bytes.Buffer
+	if err := toml.NewEncoder(&buffer).Encode(cfg); err != nil {
+		return fmt.Errorf("encode labels to toml failed, error: %v", err)
+	}
+
+	_, err := c.getCli(tc, ordinal)(&buffer, "config set")
+	return err
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -625,6 +626,88 @@ func (m *tiproxyMemberManager) statefulSetIsUpgradingFn(podLister corelisters.Po
 	}
 
 	return false, nil
+}
+
+const tiproxySupportLabelsMinVersin = "1.1.0"
+
+func (m *tiproxyMemberManager) setLabelsForTiProxy(tc *v1alpha1.TidbCluster) (int, error) {
+	tiproxyVersion := tc.TiProxyVersion()
+	isOlder, err := cmpver.Compare(tiproxyVersion, cmpver.Less, tiproxySupportLabelsMinVersin)
+	// meet a custom build of tidb without version in tag, directly return as if it was old tidb that doesn't support set labels
+	if err != nil {
+		klog.Warningf("parse tiproxy verson '%s' failed, skip setting labels for TiProxy of TiDB cluster %s/%s. err: %v", tiproxyVersion, tc.Namespace, tc.Name, err)
+		return 0, nil
+	}
+	// meet an old verion tiproxy, directly return because tiproxy doesn't have configs for labels
+	if isOlder {
+		return 0, nil
+	}
+	if m.deps.NodeLister == nil || m.deps.PodLister == nil {
+		klog.V(4).Infof("Node lister or pod listener is unavailable, skip setting labels for TiProxy TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
+		return 0, nil
+	}
+
+	ns := tc.GetNamespace()
+	// for unit test
+	setCount := 0
+
+	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		return setCount, err
+	}
+
+	var zoneLabel string
+outer:
+	for _, label := range topologyZoneLabels {
+		for _, l := range config.Replication.LocationLabels {
+			if l == label {
+				zoneLabel = l
+				break outer
+			}
+		}
+	}
+
+	if zoneLabel == "" {
+		klog.V(4).Infof("zone labels not found in pd location-labels %v, skip set labels", config.Replication.LocationLabels)
+		return 0, nil
+	}
+
+	for name, proxy := range tc.Status.TiProxy.Members {
+		if !proxy.Health {
+			continue
+		}
+		ordinal, err := parserOrdinal(name)
+		if err != nil {
+			return setCount, err
+		}
+
+		pod, err := m.deps.PodLister.Pods(ns).Get(name)
+		if err != nil || pod == nil {
+			klog.Warningf("failed to get pod %s for cluster %s/%s, error: %+v", name, ns, tc.GetName(), err)
+			continue
+		}
+		if len(pod.Spec.NodeName) == 0 {
+			klog.V(4).Infof("node name of pod %s in cluster %s/%s is empty", name, ns, tc.GetName())
+			continue
+		}
+		labels, err := getNodeLabels(m.deps.NodeLister, pod.Spec.NodeName, config.Replication.LocationLabels)
+		if err != nil || len(labels) == 0 {
+			klog.Warningf("node: [%s] has no node labels %v, skipping set labels for Pod: [%s/%s]", pod.Spec.NodeName, config.Replication.LocationLabels, ns, name)
+			continue
+		}
+		// add the special `zone` label because tiproxy depends on this label for az-aware routing.
+		labels[tidbDCLabel] = labels[zoneLabel]
+
+		if err := m.deps.ProxyControl.SetLabels(tc, ordinal, labels); err != nil {
+			klog.Warningf("cluster %s/%s set server labels for pod %s failed, error: %v", ns, tc.GetName(), name, err)
+			continue
+		}
+
+		setCount++
+	}
+
+	return setCount, nil
 }
 
 type FakeTiProxyMemberManager struct {
