@@ -406,7 +406,8 @@ func (rm *restoreManager) checkTiFlashAndTiKVReplicasFromBackupMeta(r *v1alpha1.
 		klog.Errorf("backup source tc has no tikv nodes")
 		return fmt.Errorf("backup source tc has no tivk nodes")
 	} else if tc.Spec.TiKV.Replicas != metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas {
-		klog.Errorf("mismatch tikv replicas, tc has %d, while backup has %d", tc.Spec.TiKV.Replicas, metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV)
+		klog.Errorf("mismatch tikv replicas, tc has %d, while backup has %d", tc.Spec.TiKV.Replicas,
+			metaInfo.KubernetesMeta.TiDBCluster.Spec.TiKV.Replicas)
 		return fmt.Errorf("tikv replica mismatch")
 	}
 
