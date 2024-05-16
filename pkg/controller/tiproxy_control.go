@@ -89,10 +89,11 @@ func (c *defaultTiProxyControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int
 	}
 	memberName := TiProxyMemberName(tcName)
 	hostName := fmt.Sprintf("%s-%d", memberName, ordinal)
+	peerName := TiProxyPeerMemberName(tcName)
 	if tc.Spec.ClusterDomain != "" {
-		return fmt.Sprintf("%s.%s.%s.svc.%s:%d", hostName, memberName, ns, tc.Spec.ClusterDomain, v1alpha1.DefaultTiProxyStatusPort)
+		return fmt.Sprintf("%s.%s.%s.svc.%s:%d", hostName, peerName, ns, tc.Spec.ClusterDomain, v1alpha1.DefaultTiProxyStatusPort)
 	}
-	return fmt.Sprintf("%s.%s.%s:%d", hostName, memberName, ns, v1alpha1.DefaultTiProxyStatusPort)
+	return fmt.Sprintf("%s.%s.%s:%d", hostName, peerName, ns, v1alpha1.DefaultTiProxyStatusPort)
 }
 
 func (c *defaultTiProxyControl) IsHealth(tc *v1alpha1.TidbCluster, ordinal int32) (*bytes.Buffer, error) {
