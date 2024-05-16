@@ -10,6 +10,7 @@ require (
 	cloud.google.com/go/storage v1.30.1
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.2
+	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/semver v1.4.2
 	github.com/agiledragon/gomonkey/v2 v2.7.0
 	github.com/aws/aws-sdk-go v1.48.14
@@ -86,7 +87,6 @@ require (
 	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
 	github.com/Azure/go-autorest/logger v0.2.0 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
-	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df // indirect
