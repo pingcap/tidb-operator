@@ -21,8 +21,6 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestSetTiProxyLabels(t *testing.T) {
@@ -63,9 +61,7 @@ func TestSetTiProxyLabels(t *testing.T) {
 		})
 		defer svc.Close()
 
-		fakeClient := &fake.Clientset{}
-		informer := kubeinformers.NewSharedInformerFactory(fakeClient, 0)
-		control := NewDefaultTiProxyControl(informer.Core().V1().Secrets().Lister())
+		control := NewDefaultTiProxyControl()
 		url := svc.URL
 		if idx := strings.Index(url, "://"); idx >= 0 {
 			url = url[idx+3:]

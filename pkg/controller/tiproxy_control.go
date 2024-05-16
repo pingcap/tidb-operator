@@ -24,7 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tiproxy/lib/cli"
 	"github.com/spf13/cobra"
-	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
 // TiProxyControlInterface is the interface that knows how to control tiproxy clusters
@@ -39,13 +38,12 @@ var _ TiProxyControlInterface = &defaultTiProxyControl{}
 
 // defaultTiProxyControl is default implementation of TiProxyControlInterface.
 type defaultTiProxyControl struct {
-	secretLister corelisterv1.SecretLister
-	testURL      string
+	testURL string
 }
 
 // NewDefaultTiProxyControl returns a defaultTiProxyControl instance
-func NewDefaultTiProxyControl(secretLister corelisterv1.SecretLister) *defaultTiProxyControl {
-	return &defaultTiProxyControl{secretLister: secretLister}
+func NewDefaultTiProxyControl() *defaultTiProxyControl {
+	return &defaultTiProxyControl{}
 }
 
 func (c *defaultTiProxyControl) getCli(tc *v1alpha1.TidbCluster, ordinal int32) func(io.Reader, ...string) (*bytes.Buffer, error) {
@@ -120,7 +118,7 @@ type FakeTiProxyControl struct {
 }
 
 // NewFakeTiProxyControl returns a FakeTiProxyControl instance
-func NewFakeTiProxyControl(secretLister corelisterv1.SecretLister) *FakeTiProxyControl {
+func NewFakeTiProxyControl() *FakeTiProxyControl {
 	return &FakeTiProxyControl{}
 }
 
