@@ -996,6 +996,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				},
 				Replicas: 3,
 			},
+			TiProxy: &v1alpha1.TiProxySpec{},
 		},
 	}
 }
