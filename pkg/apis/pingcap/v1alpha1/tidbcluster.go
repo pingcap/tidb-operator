@@ -292,6 +292,23 @@ func (tc *TidbCluster) TiProxyImage() string {
 	return image
 }
 
+// TiProxyVersion returns the image version used by TiProxy.
+//
+// If TiProxy isn't specified, return empty string.
+func (tc *TidbCluster) TiProxyVersion() string {
+	if tc.Spec.TiProxy == nil {
+		return ""
+	}
+
+	image := tc.TiProxyImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return "latest"
+}
+
 // TiCDCVersion returns the image version used by TiCDC.
 //
 // If TiCDC isn't specified, return empty string.
