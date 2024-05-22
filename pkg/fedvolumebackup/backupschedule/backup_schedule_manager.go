@@ -194,13 +194,6 @@ func (bm *backupScheduleManager) canPerformNextBackup(vbs *v1alpha1.VolumeBackup
 	ns := vbs.GetNamespace()
 	bsName := vbs.GetName()
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-	vbss, err := bm.deps.VolumeBackupScheduleLister.VolumeBackupSchedules(ns).List(nil)
-=======
-	vbss, err := bm.deps.VolumeBackupScheduleLister.VolumeBackupSchedules(ns).List(labels.Everything())
->>>>>>> 2fc5598f4 (backup: support multiple multiple schedules)
-=======
 	// If this backup schedule has specified label of backup schedule group, then we need to check the last backup of the group.
 	// Otherwise, check its own last backup.
 	bsGroupName := vbs.GetLabels()[label.BackupScheduleGroupLabelKey]
@@ -224,37 +217,12 @@ func (bm *backupScheduleManager) canPerformNextBackup(vbs *v1alpha1.VolumeBackup
 	// Check the last backup of the group
 	backupScheduleGroupLabels := label.NewBackupScheduleGroup(bsGroupName)
 	selector, err := backupScheduleGroupLabels.Selector()
->>>>>>> aeeaf1be6 (backup: use label to identify the backup schedule group)
 	if err != nil {
 		return fmt.Errorf("generate backup schedule group %s label selector failed, err: %v", bsGroupName, err)
 	}
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-	for _, vbsMember := range vbss {
-		backup, err := bm.deps.VolumeBackupLister.VolumeBackups(ns).Get(vbsMember.Status.LastBackup)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				continue
-			}
-			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, vbs.Status.LastBackup, err)
-		}
-
-		if v1alpha1.IsVolumeBackupComplete(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
-			continue
-		}
-		// skip this sync round of the backup schedule and waiting the last backup.
-		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, vbsMember.Status.LastBackup)
-	}
-
-=======
-	if len(vbs.Spec.BackupTemplate.Clusters) == 0 {
-		return fmt.Errorf("invalid backup schedule %s/%s, no tc cluser specified", ns, bsName)
-=======
 	vbss, err := bm.deps.VolumeBackupScheduleLister.VolumeBackupSchedules(ns).List(selector)
 	if err != nil {
 		return fmt.Errorf("backup schedule %s/%s, list backup schedules failed, err: %v", ns, bsName, err)
->>>>>>> aeeaf1be6 (backup: use label to identify the backup schedule group)
 	}
 
 	for _, vbsMember := range vbss {
@@ -274,7 +242,6 @@ func (bm *backupScheduleManager) canPerformNextBackup(vbs *v1alpha1.VolumeBackup
 		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, vbsMember.Status.LastBackup)
 	}
 
->>>>>>> 2fc5598f4 (backup: support multiple multiple schedules)
 	return nil
 }
 

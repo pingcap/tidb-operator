@@ -115,13 +115,6 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(nil)
-=======
-	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(labels.Everything())
->>>>>>> 2fc5598f4 (backup: support multiple multiple schedules)
-=======
 	// If this backup schedule has specified label of backup schedule group, then we need to check the last backup of the group.
 	// Otherwise, check its own last backup.
 	bsGroupName := bs.GetLabels()[label.BackupScheduleGroupLabelKey]
@@ -150,16 +143,12 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 	}
 
 	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(selector)
->>>>>>> aeeaf1be6 (backup: use label to identify the backup schedule group)
 	if err != nil {
 		return fmt.Errorf("backup schedule %s/%s, list backup schedules failed, err: %v", ns, bsName, err)
 	}
 
 	for _, bsMember := range bss {
-<<<<<<< HEAD
-=======
 		// The check is not safe in fact since we don't have strict serialization
->>>>>>> 2fc5598f4 (backup: support multiple multiple schedules)
 		backup, err := bm.deps.BackupLister.Backups(ns).Get(bsMember.Status.LastBackup)
 		if err != nil {
 			if errors.IsNotFound(err) {
