@@ -15,7 +15,6 @@ package backupschedule
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/labels"
 	"path"
 	"sort"
 	"strings"
@@ -117,10 +116,41 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 	bsName := bs.GetName()
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(nil)
 =======
 	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(labels.Everything())
 >>>>>>> 2fc5598f4 (backup: support multiple multiple schedules)
+=======
+	// If this backup schedule has specified label of backup schedule group, then we need to check the last backup of the group.
+	// Otherwise, check its own last backup.
+	bsGroupName := bs.GetLabels()[label.BackupScheduleGroupLabelKey]
+
+	if bsGroupName == "" {
+		backup, err := bm.deps.BackupLister.Backups(ns).Get(bs.Status.LastBackup)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
+		}
+
+		if v1alpha1.IsBackupComplete(backup) || (v1alpha1.IsBackupScheduled(backup) && v1alpha1.IsBackupFailed(backup)) {
+			return nil
+		}
+		// skip this sync round of the backup schedule and waiting the last backup.
+		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
+	}
+
+	// Check the last backup of the group
+	backupScheduleGroupLabels := label.NewBackupScheduleGroup(bsGroupName)
+	selector, err := backupScheduleGroupLabels.Selector()
+	if err != nil {
+		return fmt.Errorf("generate backup schedule group %s label selector failed, err: %v", bsGroupName, err)
+	}
+
+	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(selector)
+>>>>>>> aeeaf1be6 (backup: use label to identify the backup schedule group)
 	if err != nil {
 		return fmt.Errorf("backup schedule %s/%s, list backup schedules failed, err: %v", ns, bsName, err)
 	}

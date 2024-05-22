@@ -53,6 +53,9 @@ const (
 	// BackupScheduleLabelKey is backup schedule key
 	BackupScheduleLabelKey string = "tidb.pingcap.com/backup-schedule"
 
+	// BackupScheduleGroupLabelKey is backup schedule group key
+	BackupScheduleGroupLabelKey string = "tidb.pingcap.com/backup-schedule-group"
+
 	// BackupLabelKey is backup key
 	BackupLabelKey string = "tidb.pingcap.com/backup"
 
@@ -258,7 +261,7 @@ func NewRestore() Label {
 	}
 }
 
-// NewBackupSchedule initialize a new Label for backups of bakcup schedule
+// NewBackupSchedule initialize a new Label for backups of backup schedule
 func NewBackupSchedule() Label {
 	return Label{
 		NameLabelKey:      BackupScheduleJobLabelVal,
@@ -292,6 +295,12 @@ func NewGroup() Label {
 	return Label{
 		NameLabelKey:      "tidb-cluster-group",
 		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
+func NewBackupScheduleGroup(val string) Label {
+	return Label{
+		BackupScheduleGroupLabelKey: val,
 	}
 }
 
