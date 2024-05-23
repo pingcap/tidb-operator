@@ -48,6 +48,8 @@ func TestManager(t *testing.T) {
 
 	// test pause
 	bs.Spec.Pause = true
+	helper.createBackupSchedule(bs)
+
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeAssignableToTypeOf(&controller.IgnoreError{}))
 	g.Expect(err.Error()).Should(MatchRegexp(".*has been paused.*"))
@@ -131,6 +133,153 @@ func TestManager(t *testing.T) {
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
 	helper.checkBacklist(bs.Namespace, 8)
+}
+
+func TestMultiSchedules(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.close()
+	deps := helper.deps
+	m := NewBackupScheduleManager(deps).(*backupScheduleManager)
+	var err error
+	bs1 := &v1alpha1.VolumeBackupSchedule{}
+	bs1.Namespace = "ns"
+	bs1.Name = "bsname1"
+	bs1.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
+	bs1.Spec.BackupTemplate.Template.S3 = &pingcapv1alpha1.S3StorageProvider{}
+	bs1.Status.LastBackup = "bs1_backupname"
+
+	bk1 := &v1alpha1.VolumeBackup{}
+	bk1.Namespace = bs1.Namespace
+	bk1.Name = bs1.Status.LastBackup
+	bk1.Status.Conditions = append(bk1.Status.Conditions, v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupComplete,
+		Status: v1.ConditionTrue,
+	})
+	helper.createBackup(bk1)
+	helper.createBackupSchedule(bs1)
+
+	err = m.canPerformNextBackup(bs1)
+	g.Expect(err).Should(BeNil())
+
+	// create another schedule, without the special label
+	bs2 := &v1alpha1.VolumeBackupSchedule{}
+	bs2.Namespace = "ns"
+	bs2.Name = "bsname2"
+	bs2.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
+	bs2.Spec.BackupTemplate.Template.S3 = &pingcapv1alpha1.S3StorageProvider{}
+	bs2.Status.LastBackup = "bs2_backupname"
+
+	// test backup complete
+	bk2 := &v1alpha1.VolumeBackup{}
+	bk2.Namespace = bs2.Namespace
+	bk2.Name = bs2.Status.LastBackup
+	bk2.Status.Conditions = append(bk2.Status.Conditions, v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupComplete,
+		Status: v1.ConditionTrue,
+	})
+	helper.createBackup(bk2)
+	helper.createBackupSchedule(bs2)
+	err = m.canPerformNextBackup(bs2)
+	g.Expect(err).Should(BeNil())
+	helper.deleteBackup(bk1)
+	helper.deleteBackup(bk2)
+	helper.deleteBackupSchedule(bs1)
+	helper.deleteBackupSchedule(bs2)
+
+	// make 2 schedules in the same group, but neither has active backup
+	bs11 := &v1alpha1.VolumeBackupSchedule{}
+	bs11.Namespace = "ns"
+	bs11.Name = "bsname11"
+	bs11.Labels = label.NewBackupScheduleGroup("group1")
+	bs11.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
+	bs11.Spec.BackupTemplate.Template.S3 = &pingcapv1alpha1.S3StorageProvider{}
+	bs11.Status.LastBackup = "bs11_backupname"
+
+	bk11 := &v1alpha1.VolumeBackup{}
+	bk11.Namespace = bs11.Namespace
+	bk11.Name = bs11.Status.LastBackup
+	bk11.Status.Conditions = append(bk11.Status.Conditions, v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupComplete,
+		Status: v1.ConditionTrue,
+	})
+	helper.createBackup(bk11)
+	helper.createBackupSchedule(bs11)
+	err = m.canPerformNextBackup(bs11)
+	g.Expect(err).Should(BeNil())
+
+	// create another schedule
+	bs12 := &v1alpha1.VolumeBackupSchedule{}
+	bs12.Namespace = "ns"
+	bs12.Name = "bsname12"
+	bs12.Labels = label.NewBackupScheduleGroup("group1")
+	bs12.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
+	bs12.Spec.BackupTemplate.Template.S3 = &pingcapv1alpha1.S3StorageProvider{}
+	bs12.Status.LastBackup = "bs12_backupname"
+
+	// test backup complete
+	bk12 := &v1alpha1.VolumeBackup{}
+	bk12.Namespace = bs12.Namespace
+	bk12.Name = bs12.Status.LastBackup
+	bk12.Status.Conditions = append(bk12.Status.Conditions, v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupComplete,
+		Status: v1.ConditionTrue,
+	})
+	helper.createBackup(bk12)
+	helper.createBackupSchedule(bs12)
+	err = m.canPerformNextBackup(bs12)
+	g.Expect(err).Should(BeNil())
+	helper.deleteBackup(bk11)
+	helper.deleteBackup(bk12)
+	helper.deleteBackupSchedule(bs11)
+	helper.deleteBackupSchedule(bs12)
+
+	// make 2 schedules in the same group, has conflicting backup
+	bs21 := &v1alpha1.VolumeBackupSchedule{}
+	bs21.Namespace = "ns"
+	bs21.Name = "bsname21"
+	bs21.Labels = label.NewBackupScheduleGroup("group2")
+	bs21.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
+	bs21.Spec.BackupTemplate.Template.S3 = &pingcapv1alpha1.S3StorageProvider{}
+	bs21.Status.LastBackup = "bs21_backupname"
+
+	bk21 := &v1alpha1.VolumeBackup{}
+	bk21.Namespace = bs21.Namespace
+	bk21.Name = bs21.Status.LastBackup
+	bk21.Status.Conditions = append(bk21.Status.Conditions, v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupRunning,
+		Status: v1.ConditionTrue,
+	})
+	helper.createBackup(bk21)
+	helper.createBackupSchedule(bs21)
+	err = m.canPerformNextBackup(bs21)
+	g.Expect(err.Error()).Should(MatchRegexp("backup schedule ns/bsname21, the last backup bs21_backupname is still running"))
+
+	// create another schedule
+	bs22 := &v1alpha1.VolumeBackupSchedule{}
+	bs22.Namespace = "ns"
+	bs22.Name = "bsname22"
+	bs22.Labels = label.NewBackupScheduleGroup("group2")
+	bs22.Spec.BackupTemplate.Template.BR = &v1alpha1.BRConfig{}
+	bs22.Spec.BackupTemplate.Template.S3 = &pingcapv1alpha1.S3StorageProvider{}
+	bs22.Status.LastBackup = "bs22_backupname"
+
+	// test backup complete
+	bk22 := &v1alpha1.VolumeBackup{}
+	bk22.Namespace = bs22.Namespace
+	bk22.Name = bs22.Status.LastBackup
+	bk22.Status.Conditions = append(bk22.Status.Conditions, v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupComplete,
+		Status: v1.ConditionTrue,
+	})
+	helper.createBackup(bk22)
+	helper.createBackupSchedule(bs22)
+	err = m.canPerformNextBackup(bs22)
+	g.Expect(err.Error()).Should(MatchRegexp("backup schedule ns/bsname22, the last backup bs21_backupname is still running"))
+	helper.deleteBackup(bk21)
+	helper.deleteBackup(bk22)
+	helper.deleteBackupSchedule(bs21)
+	helper.deleteBackupSchedule(bs22)
 }
 
 func TestGetLastScheduledTime(t *testing.T) {
@@ -361,6 +510,30 @@ func (h *helper) deleteBackup(bk *v1alpha1.VolumeBackup) {
 	g.Expect(err).Should(BeNil())
 	g.Eventually(func() error {
 		_, err := deps.VolumeBackupLister.VolumeBackups(bk.Namespace).Get(bk.Name)
+		return err
+	}, time.Second*10).ShouldNot(BeNil())
+}
+
+func (h *helper) createBackupSchedule(bks *v1alpha1.VolumeBackupSchedule) {
+	t := h.t
+	deps := h.deps
+	g := NewGomegaWithT(t)
+	_, err := deps.Clientset.FederationV1alpha1().VolumeBackupSchedules(bks.Namespace).Create(context.TODO(), bks, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+	g.Eventually(func() error {
+		_, err := deps.VolumeBackupScheduleLister.VolumeBackupSchedules(bks.Namespace).Get(bks.Name)
+		return err
+	}, time.Second*10).Should(BeNil())
+}
+
+func (h *helper) deleteBackupSchedule(bks *v1alpha1.VolumeBackupSchedule) {
+	t := h.t
+	deps := h.deps
+	g := NewGomegaWithT(t)
+	err := deps.Clientset.FederationV1alpha1().VolumeBackupSchedules(bks.Namespace).Delete(context.TODO(), bks.Name, metav1.DeleteOptions{})
+	g.Expect(err).Should(BeNil())
+	g.Eventually(func() error {
+		_, err := deps.VolumeBackupScheduleLister.VolumeBackupSchedules(bks.Namespace).Get(bks.Name)
 		return err
 	}, time.Second*10).ShouldNot(BeNil())
 }

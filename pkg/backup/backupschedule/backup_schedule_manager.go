@@ -115,20 +115,56 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
-	backup, err := bm.deps.BackupLister.Backups(ns).Get(bs.Status.LastBackup)
-	if err != nil {
-		if errors.IsNotFound(err) {
+	// If this backup schedule has specified label of backup schedule group, then we need to check the last backup of the group.
+	// Otherwise, check its own last backup.
+	bsGroupName := bs.GetLabels()[label.BackupScheduleGroupLabelKey]
+
+	if bsGroupName == "" {
+		backup, err := bm.deps.BackupLister.Backups(ns).Get(bs.Status.LastBackup)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
+		}
+
+		if v1alpha1.IsBackupComplete(backup) || (v1alpha1.IsBackupScheduled(backup) && v1alpha1.IsBackupFailed(backup)) {
 			return nil
 		}
-		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
+		// skip this sync round of the backup schedule and waiting the last backup.
+		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
 	}
 
-	if v1alpha1.IsBackupComplete(backup) || (v1alpha1.IsBackupScheduled(backup) && v1alpha1.IsBackupFailed(backup)) {
-		return nil
+	// Check the last backup of the group
+	backupScheduleGroupLabels := label.NewBackupScheduleGroup(bsGroupName)
+	selector, err := backupScheduleGroupLabels.Selector()
+	if err != nil {
+		return fmt.Errorf("generate backup schedule group %s label selector failed, err: %v", bsGroupName, err)
 	}
-	// If the last backup is in a failed state, but it is not scheduled yet,
-	// skip this sync round of the backup schedule and waiting the last backup.
-	return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
+
+	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(selector)
+	if err != nil {
+		return fmt.Errorf("backup schedule %s/%s, list backup schedules failed, err: %v", ns, bsName, err)
+	}
+
+	for _, bsMember := range bss {
+		// The check is not safe in fact since we don't have strict serialization
+		backup, err := bm.deps.BackupLister.Backups(ns).Get(bsMember.Status.LastBackup)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
+			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bsMember.Status.LastBackup, err)
+		}
+
+		if v1alpha1.IsBackupComplete(backup) || (v1alpha1.IsBackupScheduled(backup) && v1alpha1.IsBackupFailed(backup)) {
+			continue
+		}
+		// skip this sync round of the backup schedule and waiting the last backup.
+		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bsMember.Status.LastBackup)
+	}
+
+	return nil
 }
 
 func (bm *backupScheduleManager) performLogBackupIfNeeded(bs *v1alpha1.BackupSchedule) error {
