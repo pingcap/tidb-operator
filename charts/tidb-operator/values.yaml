@@ -12,29 +12,27 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.6.0-beta.1
+operatorImage: pingcap/tidb-operator:v1.6.0
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.6.0-beta.1
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.6.0
 
 #
 # Enable or disable tidb-operator features:
-#
-#   StableScheduling (default: true)
-#     Enable stable scheduling of tidb servers.
 #
 #   AdvancedStatefulSet (default: false)
 #     If enabled, tidb-operator will use AdvancedStatefulSet to manage pods
 #     instead of Kubernetes StatefulSet.
 #     It's ok to turn it on if this feature is not enabled. However it's not ok
 #     to turn it off when the tidb-operator already uses AdvancedStatefulSet to
-#     manage pods. This is in alpha phase.
+#     manage pods. This is in GA phase.
+#     Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/advanced-statefulset
 #
 #   VolumeModifying (default false)
 #     If enabled, tidb-operator support to increase the size or performance of volumes
-#     for specific volume provisioner.
+#     for specific volume provisioner. This is in GA phase for AWS EBS.
 #
 #   VolumeReplacing (default false)
 #     If enabled, tidb-operator support generic volume changes (size, storageclass & number of volumes)
@@ -42,12 +40,11 @@ tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.6.0-beta.1
 #     pd, tikv, tidb supported. If enabled, takes precedence over volume resizing & modifying.
 #     This works by deleting pod+volumes one at a time (similar to scale-in), and recreating it.
 #     For PD & TiKV this will first create one new spare replica to take the load before deleting existing ones
-#     Safely deleting a volume and replacing them can take a long time (Especially TiKV to move regions)
+#     Safely deleting a volume and replacing them can take a long time (Especially TiKV to move regions).
+#     This is in Alpha phase.
 #
 features: []
 # - AdvancedStatefulSet=false
-# - StableScheduling=true
-# - AutoScaling=false
 # - VolumeModifying=false
 # - VolumeReplacing=false
 
