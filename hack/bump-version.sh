@@ -27,7 +27,7 @@ OPERATOR_NEW="v1.6.0"
 TIDB_OLD="v7.5.1"
 TIDB_NEW="v8.1.0"
 DM_OLD="v7.5.1"
-DM_NEW="v8.0.0"
+DM_NEW="v8.1.0"
 
 find ./deploy -name "*\.tf"| xargs $SED_BIN -i "s/$OPERATOR_OLD/$OPERATOR_NEW/g"
 find ./charts -name "*\.yaml"| xargs $SED_BIN -i "s/$OPERATOR_OLD/$OPERATOR_NEW/g"
