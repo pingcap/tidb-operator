@@ -7,7 +7,7 @@ metadata:
   name: ns2
   namespace: ns2
 spec:
-  version: v7.5.1
+  version: v8.1.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
