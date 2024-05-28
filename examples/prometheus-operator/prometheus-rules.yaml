@@ -114,7 +114,7 @@ spec:
           value: '{{ $value }}'
   - name: pd.rules
     rules:
-      - alert: PD_cluster_offline_tikv_nums
+      - alert: PD_cluster_down_tikv_nums
         expr: sum ( pd_cluster_status{type="store_down_count"} ) > 0
         for: 1m
         labels:
@@ -124,7 +124,7 @@ spec:
         annotations:
           description: 'cluster: basic, instance: {{ $labels.instance }}, values:{{
           $value }}'
-          summary: PD_cluster_offline_tikv_nums
+          summary: PD_cluster_down_tikv_nums
           value: '{{ $value }}'
       - alert: PD_etcd_write_disk_latency
         expr: histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket[1m]))
