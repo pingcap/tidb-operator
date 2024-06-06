@@ -469,7 +469,7 @@ func TestValidateBackup(t *testing.T) {
 	backup := new(v1alpha1.Backup)
 	match := func(sub string) {
 		t.Helper()
-		err := ValidateBackup(backup, "tikv:v4.0.8", false)
+		err := ValidateBackup(backup, "tikv:v4.0.8", nil)
 		if sub == "" {
 			g.Expect(err).Should(BeNil())
 		} else {
