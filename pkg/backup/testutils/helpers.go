@@ -180,6 +180,52 @@ func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s, recoverMode 
 	g.Expect(err).Should(BeNil())
 }
 
+// CreateTCWithNoTiKV creates a TidbCluster with name `clusterName` in ns `namespace` with no TiKV nodes
+func (h *Helper) CreateTCWithNoTiKV(namespace, clusterName string, acrossK8s, recoverMode bool) {
+	h.T.Helper()
+	g := NewGomegaWithT(h.T)
+	var err error
+
+	tc := &v1alpha1.TidbCluster{
+		Spec: v1alpha1.TidbClusterSpec{
+			AcrossK8s:    acrossK8s,
+			RecoveryMode: recoverMode,
+			TLSCluster:   &v1alpha1.TLSCluster{Enabled: true},
+			TiKV: &v1alpha1.TiKVSpec{
+				BaseImage: "pingcap/tikv",
+				Replicas:  3,
+				StorageVolumes: []v1alpha1.StorageVolume{
+					{MountPath: "/var/lib/raft", Name: "raft", StorageSize: "50Gi"},
+					{MountPath: "/var/lib/wal", Name: "wal", StorageSize: "50Gi"},
+				},
+			},
+			TiDB: &v1alpha1.TiDBSpec{
+				TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
+			},
+			PD: &v1alpha1.PDSpec{
+				Replicas: 1,
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			PD: v1alpha1.PDStatus{
+				Members: map[string]v1alpha1.PDMember{
+					"pd-0": {Name: "pd-0", Health: true},
+				},
+			},
+		},
+	}
+	tc.Namespace = namespace
+	tc.Name = clusterName
+	_, err = h.Deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+	// make sure can read tc from lister
+	g.Eventually(func() error {
+		_, err := h.Deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(tc.Name)
+		return err
+	}, time.Second*10).Should(BeNil())
+	g.Expect(err).Should(BeNil())
+}
+
 func (h *Helper) CreateRestore(restore *v1alpha1.Restore) {
 	h.T.Helper()
 	g := NewGomegaWithT(h.T)
