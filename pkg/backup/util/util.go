@@ -468,7 +468,7 @@ func validateAccessConfig(config *v1alpha1.TiDBAccessConfig) string {
 }
 
 // ValidateBackup validates backup sepc
-func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, acrossK8s bool) error {
+func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, tc *v1alpha1.TidbCluster) error {
 	ns := backup.Namespace
 	name := backup.Name
 
@@ -542,8 +542,12 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, acrossK8s bool) e
 		// validate volume snapshot backup
 		if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 			// only support across k8s now. TODO compatible for single k8s
-			if !acrossK8s {
+			if tc == nil || !tc.AcrossK8s() {
 				return errors.New("only support volume snapshot backup across k8s clusters")
+			}
+
+			if len(tc.Status.TiKV.Stores) == 0 || tc.Spec.TiKV.Replicas == 0 {
+				return errors.New("not support backup TiDB cluster with no tikv replica")
 			}
 		}
 
