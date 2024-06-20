@@ -295,6 +295,11 @@ type TidbClusterSpec struct {
 	// +optional
 	EnablePVReclaim *bool `json:"enablePVReclaim,omitempty"`
 
+	// Whether enable PVC replace to recreate the PVC with different specs
+	// Optional: Defaults to false
+	// +optional
+	EnablePVCReplace *bool `json:"enablePVCReplace,omitempty"`
+
 	// Whether enable the TLS connection between TiDB server components
 	// Optional: Defaults to nil
 	// +optional
