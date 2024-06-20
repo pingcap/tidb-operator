@@ -1984,6 +1984,19 @@ Optional: Defaults to false</p>
 </tr>
 <tr>
 <td>
+<code>enablePVCReplace</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC replace to recreate the PVC with different specs
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tlsCluster</code></br>
 <em>
 <a href="#tlscluster">
@@ -24398,6 +24411,19 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVCReplace</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC replace to recreate the PVC with different specs
 Optional: Defaults to false</p>
 </td>
 </tr>
