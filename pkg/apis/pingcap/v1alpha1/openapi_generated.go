@@ -13789,6 +13789,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"enablePVCReplace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether enable PVC replace to recreate the PVC with different specs Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"tlsCluster": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether enable the TLS connection between TiDB server components Optional: Defaults to nil",

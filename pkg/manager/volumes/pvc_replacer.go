@@ -73,6 +73,11 @@ func (p *pvcReplacer) getVolReplaceStatusForComponent(tc *v1alpha1.TidbCluster, 
 }
 
 func (p *pvcReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
+	if !tc.IsPVCReplaceEnabled() {
+		// skip if PVC replace is not enabled for tc
+		return nil
+	}
+
 	components := tc.AllComponentStatus()
 	errs := []error{}
 
@@ -96,6 +101,11 @@ func (p *pvcReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
 }
 
 func (p *pvcReplacer) Sync(tc *v1alpha1.TidbCluster) error {
+	if !tc.IsPVCReplaceEnabled() {
+		// skip if PVC replace is not enabled for tc
+		return nil
+	}
+
 	components := tc.AllComponentStatus()
 	errs := []error{}
 
