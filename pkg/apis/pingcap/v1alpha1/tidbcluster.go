@@ -630,7 +630,7 @@ func (tc *TidbCluster) PDStsDesiredReplicas() int32 {
 	}
 	var spareReplaceReplicas int32 = 0
 	if tc.Status.PD.VolReplaceInProgress {
-		spareReplaceReplicas = 1
+		spareReplaceReplicas = *tc.Spec.PD.SpareVolReplaceReplicas
 	}
 	return tc.Spec.PD.Replicas + tc.GetPDDeletedFailureReplicas() + spareReplaceReplicas
 }
@@ -708,7 +708,7 @@ func (tc *TidbCluster) TiKVStsDesiredReplicas() int32 {
 	}
 	var spareReplaceReplicas int32 = 0
 	if tc.Status.TiKV.VolReplaceInProgress {
-		spareReplaceReplicas = 1
+		spareReplaceReplicas = *tc.Spec.TiKV.SpareVolReplaceReplicas
 	}
 	return tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores)) + spareReplaceReplicas
 }

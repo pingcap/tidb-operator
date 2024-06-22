@@ -6914,6 +6914,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"spareVolReplaceReplicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The default number of spare replicas to scale up when using VolumeReplace feature. In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid zone skew after volume replace (total replicas always whole multiples of zones). Optional: Defaults to 1",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
@@ -13399,6 +13406,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Description: "ScalePolicy is the scale configuration for TiKV",
 							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ScalePolicy"),
+						},
+					},
+					"spareVolReplaceReplicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The default number of spare replicas to scale up when using VolumeReplace feature. In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid zone skew after volume replace (total replicas always whole multiples of zones). Optional: Defaults to 1",
+							Type:        []string{"integer"},
+							Format:      "int32",
 						},
 					},
 				},
