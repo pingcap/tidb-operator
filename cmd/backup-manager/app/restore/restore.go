@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -93,11 +94,17 @@ func (ro *Options) restoreData(
 		// init pitr restore args
 		args = append(args, fmt.Sprintf("--restored-ts=%s", ro.PitrRestoredTs))
 
-		if fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage"); err != nil {
-			return err
+		esp := v1alpha1.StorageProvider{}
+		if !reflect.DeepEqual(restore.Spec.PitrFullBackupStorageProvider, esp) {
+			if fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage"); err != nil {
+				return err
+			} else {
+				args = append(args, fullBackupArgs...)
+			}
+		} else if restore.Spec.LogRestoreStartTs == "" {
+			return fmt.Errorf("error: Either pitrFullBackupStorageProvider or logRestoreStartTs option needs to be passed in pitr mode")
 		} else {
-			// parse full backup path
-			args = append(args, fullBackupArgs...)
+			args = append(args, fmt.Sprintf("--start-ts=%s", restore.Spec.LogRestoreStartTs))
 		}
 		restoreType = "point"
 	case string(v1alpha1.RestoreModeVolumeSnapshot):
