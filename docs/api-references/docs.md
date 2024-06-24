@@ -1336,6 +1336,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
@@ -1405,6 +1406,7 @@ StorageProvider
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
@@ -14491,6 +14493,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
 </td>
 </tr>
@@ -14560,6 +14563,7 @@ StorageProvider
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
