@@ -1337,7 +1337,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+<p>LogRestoreStartTs is the start timestamp which log restore from.</p>
 </td>
 </tr>
 <tr>
@@ -14028,7 +14028,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+<p>LogRestoreStartTs is the start timestamp which log restore from.</p>
 </td>
 </tr>
 <tr>
