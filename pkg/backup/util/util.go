@@ -600,6 +600,18 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string, acrossK8s bool
 			return fmt.Errorf("DB should be configured for BR with restore type %s in spec of %s/%s", restore.Spec.Type, ns, name)
 		}
 
+		if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
+			_, err := GetStoragePath(restore.Spec.PitrFullBackupStorageProvider)
+			// err is nil when there is a valid storage provider
+			if err == nil && restore.Spec.LogRestoreStartTs != "" {
+				return fmt.Errorf("pitrFullBackupStorageProvider and logRestoreStartTs option can not co-exists in pitr mode")
+			}
+
+			if err != nil && restore.Spec.LogRestoreStartTs == "" {
+				return fmt.Errorf("either pitrFullBackupStorageProvider or logRestoreStartTs option needs to be passed in pitr mode")
+			}
+		}
+
 		if restore.Spec.Type == v1alpha1.BackupTypeTable && restore.Spec.BR.Table == "" {
 			return fmt.Errorf("table should be configured for BR with restore type table in spec of %s/%s", ns, name)
 		}
