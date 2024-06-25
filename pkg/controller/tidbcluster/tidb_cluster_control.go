@@ -178,7 +178,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) && tc.IsPVCReplaceEnabled() {
+	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) || tc.IsPVCReplaceEnabled() {
 		if err := c.pvcReplacer.UpdateStatus(tc); err != nil {
 			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_replacer_updatestatus").Inc()
 			return err
@@ -293,7 +293,7 @@ func (c *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) 
 	}
 
 	// Replace volumes if necessary. Note: if enabled, takes precedence over pvcModifier.
-	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) && tc.IsPVCReplaceEnabled() {
+	if features.DefaultFeatureGate.Enabled(features.VolumeReplacing) || tc.IsPVCReplaceEnabled() {
 		if err := c.pvcReplacer.Sync(tc); err != nil {
 			metrics.ClusterUpdateErrors.WithLabelValues(ns, tcName, "pvc_replacer_sync").Inc()
 			return err
