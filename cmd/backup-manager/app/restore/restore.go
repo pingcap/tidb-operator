@@ -95,7 +95,6 @@ func (ro *Options) restoreData(
 
 		fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage")
 		if err != nil {
-			klog.Errorf("error: %+v", err)
 			if restore.Spec.LogRestoreStartTs == "" {
 				return fmt.Errorf("error: Either pitrFullBackupStorageProvider or logRestoreStartTs option needs to be passed in pitr mode")
 			}
