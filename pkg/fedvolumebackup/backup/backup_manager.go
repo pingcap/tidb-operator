@@ -304,6 +304,7 @@ func (bm *backupManager) executeVolumeBackup(ctx context.Context, volumeBackup *
 		newMemberCreatedOrUpdated = true
 		klog.Infof("VolumeBackup %s/%s create backup member %s to execute volume backup to cluster %s", volumeBackup.Namespace, volumeBackup.Name, backupMember.Name, k8sClusterName)
 		v1alpha1.UpdateVolumeBackupMemberStatus(&volumeBackup.Status, memberCluster.K8sClusterName, backupMember)
+		time.Sleep(time.Second * 30)
 	}
 	return
 }
