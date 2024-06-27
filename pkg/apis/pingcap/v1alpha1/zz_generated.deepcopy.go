@@ -9182,6 +9182,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnablePVCReplace != nil {
+		in, out := &in.EnablePVCReplace, &out.EnablePVCReplace
+		*out = new(bool)
+		**out = **in
+	}
 	if in.TLSCluster != nil {
 		in, out := &in.TLSCluster, &out.TLSCluster
 		*out = new(TLSCluster)
