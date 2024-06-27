@@ -295,6 +295,11 @@ type TidbClusterSpec struct {
 	// +optional
 	EnablePVReclaim *bool `json:"enablePVReclaim,omitempty"`
 
+	// Whether enable PVC replace to recreate the PVC with different specs
+	// Optional: Defaults to false
+	// +optional
+	EnablePVCReplace *bool `json:"enablePVCReplace,omitempty"`
+
 	// Whether enable the TLS connection between TiDB server components
 	// Optional: Defaults to nil
 	// +optional
@@ -2645,7 +2650,8 @@ type RestoreSpec struct {
 	Mode RestoreMode `json:"restoreMode,omitempty"`
 	// PitrRestoredTs is the pitr restored ts.
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
-	// LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.
+	// LogRestoreStartTs is the start timestamp which log restore from.
+	// +optional
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
 	// FederalVolumeRestorePhase indicates which phase to execute in federal volume restore
 	// +optional
@@ -2661,6 +2667,7 @@ type RestoreSpec struct {
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.
+	// +optional
 	PitrFullBackupStorageProvider StorageProvider `json:"pitrFullBackupStorageProvider,omitempty"`
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.

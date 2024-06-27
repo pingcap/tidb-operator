@@ -1336,7 +1336,8 @@ string
 </em>
 </td>
 <td>
-<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+<em>(Optional)</em>
+<p>LogRestoreStartTs is the start timestamp which log restore from.</p>
 </td>
 </tr>
 <tr>
@@ -1405,6 +1406,7 @@ StorageProvider
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
@@ -1977,6 +1979,19 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVCReplace</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC replace to recreate the PVC with different specs
 Optional: Defaults to false</p>
 </td>
 </tr>
@@ -14506,7 +14521,8 @@ string
 </em>
 </td>
 <td>
-<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+<em>(Optional)</em>
+<p>LogRestoreStartTs is the start timestamp which log restore from.</p>
 </td>
 </tr>
 <tr>
@@ -14575,6 +14591,7 @@ StorageProvider
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
@@ -24424,6 +24441,19 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVCReplace</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC replace to recreate the PVC with different specs
 Optional: Defaults to false</p>
 </td>
 </tr>

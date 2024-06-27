@@ -8171,7 +8171,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"logRestoreStartTs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.",
+							Description: "LogRestoreStartTs is the start timestamp which log restore from.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -14679,6 +14679,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					"enablePVReclaim": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether enable PVC reclaim for orphan PVC left by statefulset scale-in Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"enablePVCReplace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether enable PVC replace to recreate the PVC with different specs Optional: Defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

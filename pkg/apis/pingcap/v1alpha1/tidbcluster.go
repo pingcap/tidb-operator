@@ -37,6 +37,7 @@ const (
 	defaultSeparateRocksDBLog = false
 	defaultSeparateRaftLog    = false
 	defaultEnablePVReclaim    = false
+	defaultEnablePVCReplace   = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
 	defaultEvictLeaderTimeout            = 1500 * time.Minute
 	defaultWaitLeaderTransferBackTimeout = 400 * time.Second
@@ -1059,6 +1060,14 @@ func (tc *TidbCluster) IsPVReclaimEnabled() bool {
 	enabled := tc.Spec.EnablePVReclaim
 	if enabled == nil {
 		return defaultEnablePVReclaim
+	}
+	return *enabled
+}
+
+func (tc *TidbCluster) IsPVCReplaceEnabled() bool {
+	enabled := tc.Spec.EnablePVCReplace
+	if enabled == nil {
+		return defaultEnablePVCReplace
 	}
 	return *enabled
 }
