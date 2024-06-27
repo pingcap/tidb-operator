@@ -388,6 +388,14 @@ func generateTiDBDashboardMeta(td *v1alpha1.TidbDashboard, name string) (metav1.
 	return objMeta, ls
 }
 
+func getOrDefault(value *string, defaultValue string) string {
+	if value == nil || *value == "" {
+		return defaultValue
+	} else {
+		return *value
+	}
+}
+
 func generateTiDBDashboardService(td *v1alpha1.TidbDashboard) *corev1.Service {
 	meta, labels := generateTiDBDashboardMeta(td, ServiceName(td.Name))
 
@@ -400,7 +408,7 @@ func generateTiDBDashboardService(td *v1alpha1.TidbDashboard) *corev1.Service {
 			Type: td.Spec.Service.Type,
 			Ports: []corev1.ServicePort{
 				{
-					Name:       "tidb-dashboard",
+					Name:       getOrDefault(td.Spec.Service.PortName, "tidb-dashboard"),
 					Port:       port,
 					TargetPort: intstr.FromInt(port),
 					Protocol:   corev1.ProtocolTCP,
