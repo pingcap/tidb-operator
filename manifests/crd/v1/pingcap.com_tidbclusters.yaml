@@ -3096,6 +3096,8 @@ spec:
                 type: string
               enableDynamicConfiguration:
                 type: boolean
+              enablePVCReplace:
+                type: boolean
               enablePVReclaim:
                 type: boolean
               helper:
