@@ -543,6 +543,89 @@ type PDSpec struct {
 	// Timeout threshold when pd get started
 	// +kubebuilder:default=30
 	StartTimeout int `json:"startTimeout,omitempty"`
+<<<<<<< HEAD
+=======
+
+	// Mode is the mode of PD cluster
+	// +optional
+	// +kubebuilder:validation:Enum:="";"ms"
+	Mode string `json:"mode,omitempty"`
+
+	// The default number of spare replicas to scale up when using VolumeReplace feature.
+	// In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+	// zone skew after volume replace (total replicas always whole multiples of zones).
+	// Optional: Defaults to 1
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	SpareVolReplaceReplicas *int32 `json:"spareVolReplaceReplicas,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// PDMSSpec contains details of PD Micro Service
+type PDMSSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Name of the PD Micro Service
+	// +kubebuilder:validation:Enum:="tso";"scheduling"
+	Name string `json:"name"`
+
+	// Specify a Service Account for pd ms
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/pd
+	// +optional
+	BaseImage *string `json:"baseImage"`
+
+	// Service defines a Kubernetes service of PD Micro Service cluster.
+	// Optional: Defaults to `.spec.services` in favor of backward compatibility
+	// +optional
+	Service *ServiceSpec `json:"service,omitempty"`
+
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
+	// Config is the Configuration of pd Micro Service servers
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Config *PDConfigWraper `json:"config,omitempty"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// which used by Dashboard.
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
+
+	// Start up script version
+	// +optional
+	// +kubebuilder:validation:Enum:="";"v1"
+	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
+
+	// The storageClassName of the persistent volume for PD Micro Service log storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// StorageVolumes configure additional storage for PD Micro Service pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// Timeout threshold when pd get started
+	// +kubebuilder:default=30
+	StartTimeout int `json:"startTimeout,omitempty"`
+>>>>>>> 32166b6d9 (Add support to customize spare replicas during VolumeReplace (#5666))
 }
 
 // TiKVSpec contains details of TiKV members
@@ -658,6 +741,14 @@ type TiKVSpec struct {
 	// ScalePolicy is the scale configuration for TiKV
 	// +optional
 	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
+
+	// The default number of spare replicas to scale up when using VolumeReplace feature.
+	// In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+	// zone skew after volume replace (total replicas always whole multiples of zones).
+	// Optional: Defaults to 1
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	SpareVolReplaceReplicas *int32 `json:"spareVolReplaceReplicas,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
