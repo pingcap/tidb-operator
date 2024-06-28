@@ -11865,6 +11865,21 @@ int
 <p>Timeout threshold when pd get started</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>spareVolReplaceReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The default number of spare replicas to scale up when using VolumeReplace feature.
+In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+zone skew after volume replace (total replicas always whole multiples of zones).
+Optional: Defaults to 1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -22138,6 +22153,21 @@ ScalePolicy
 <td>
 <em>(Optional)</em>
 <p>ScalePolicy is the scale configuration for TiKV</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>spareVolReplaceReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The default number of spare replicas to scale up when using VolumeReplace feature.
+In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+zone skew after volume replace (total replicas always whole multiples of zones).
+Optional: Defaults to 1</p>
 </td>
 </tr>
 </tbody>

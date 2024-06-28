@@ -543,6 +543,14 @@ type PDSpec struct {
 	// Timeout threshold when pd get started
 	// +kubebuilder:default=30
 	StartTimeout int `json:"startTimeout,omitempty"`
+
+	// The default number of spare replicas to scale up when using VolumeReplace feature.
+	// In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+	// zone skew after volume replace (total replicas always whole multiples of zones).
+	// Optional: Defaults to 1
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	SpareVolReplaceReplicas *int32 `json:"spareVolReplaceReplicas,omitempty"`
 }
 
 // TiKVSpec contains details of TiKV members
@@ -658,6 +666,14 @@ type TiKVSpec struct {
 	// ScalePolicy is the scale configuration for TiKV
 	// +optional
 	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
+
+	// The default number of spare replicas to scale up when using VolumeReplace feature.
+	// In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+	// zone skew after volume replace (total replicas always whole multiples of zones).
+	// Optional: Defaults to 1
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	SpareVolReplaceReplicas *int32 `json:"spareVolReplaceReplicas,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members

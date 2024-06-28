@@ -5077,6 +5077,10 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
+                spareVolReplaceReplicas:
+                  format: int32
+                  minimum: 0
+                  type: integer
                 startTimeout:
                   type: integer
                 startUpScriptVersion:
@@ -17258,6 +17262,10 @@ spec:
                   type: boolean
                 serviceAccount:
                   type: string
+                spareVolReplaceReplicas:
+                  format: int32
+                  minimum: 0
+                  type: integer
                 statefulSetUpdateStrategy:
                   type: string
                 storageClassName:
