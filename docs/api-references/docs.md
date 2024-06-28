@@ -11865,20 +11865,6 @@ int
 <p>Timeout threshold when pd get started</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-<tr>
-<td>
-<code>mode</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Mode is the mode of PD cluster</p>
-</td>
-</tr>
 <tr>
 <td>
 <code>spareVolReplaceReplicas</code></br>
@@ -11894,7 +11880,6 @@ zone skew after volume replace (total replicas always whole multiples of zones).
 Optional: Defaults to 1</p>
 </td>
 </tr>
->>>>>>> 32166b6d9 (Add support to customize spare replicas during VolumeReplace (#5666))
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>

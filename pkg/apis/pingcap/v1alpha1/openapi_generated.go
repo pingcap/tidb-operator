@@ -6252,15 +6252,6 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "int32",
 						},
 					},
-<<<<<<< HEAD
-=======
-					"mode": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Mode is the mode of PD cluster",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"spareVolReplaceReplicas": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The default number of spare replicas to scale up when using VolumeReplace feature. In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid zone skew after volume replace (total replicas always whole multiples of zones). Optional: Defaults to 1",
@@ -6268,7 +6259,6 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "int32",
 						},
 					},
->>>>>>> 32166b6d9 (Add support to customize spare replicas during VolumeReplace (#5666))
 				},
 				Required: []string{"replicas"},
 			},
