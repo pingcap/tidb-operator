@@ -413,7 +413,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 			modify: func(tc *v1alpha1.TidbCluster) {
 				// Random test change to affect pod spec template.
 				tc.Spec.TiKV.ServiceAccount = "test_new_account"
-				tc.Spec.TiKV.SpareVolReplaceReplicas = pointer.Int32(1)
+				tc.Spec.TiKV.SpareVolReplaceReplicas = pointer.Int32Ptr(1)
 				tc.Status.TiKV.VolReplaceInProgress = true
 			},
 			pdStores:                     &pdapi.StoresInfo{Count: 0, Stores: []*pdapi.StoreInfo{}},
@@ -2151,7 +2151,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
 						Replicas:                3,
-						SpareVolReplaceReplicas: pointer.Int32(1),
+						SpareVolReplaceReplicas: pointer.Int32Ptr(1),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiDB: &v1alpha1.TiDBSpec{},
