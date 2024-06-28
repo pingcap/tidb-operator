@@ -576,6 +576,14 @@ type PDSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum:="";"ms"
 	Mode string `json:"mode,omitempty"`
+
+	// The default number of spare replicas to scale up when using VolumeReplace feature.
+	// In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+	// zone skew after volume replace (total replicas always whole multiples of zones).
+	// Optional: Defaults to 1
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	SpareVolReplaceReplicas *int32 `json:"spareVolReplaceReplicas,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -758,6 +766,14 @@ type TiKVSpec struct {
 	// ScalePolicy is the scale configuration for TiKV
 	// +optional
 	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
+
+	// The default number of spare replicas to scale up when using VolumeReplace feature.
+	// In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+	// zone skew after volume replace (total replicas always whole multiples of zones).
+	// Optional: Defaults to 1
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	SpareVolReplaceReplicas *int32 `json:"spareVolReplaceReplicas,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members

@@ -115,6 +115,9 @@ func setTikvSpecDefault(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.TiKV.MaxFailoverCount == nil {
 		tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
+	if tc.Spec.TiKV.SpareVolReplaceReplicas == nil {
+		tc.Spec.TiKV.SpareVolReplaceReplicas = pointer.Int32Ptr(1)
+	}
 }
 
 func setPdSpecDefault(tc *v1alpha1.TidbCluster) {
@@ -125,6 +128,9 @@ func setPdSpecDefault(tc *v1alpha1.TidbCluster) {
 	}
 	if tc.Spec.PD.MaxFailoverCount == nil {
 		tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(3)
+	}
+	if tc.Spec.PD.SpareVolReplaceReplicas == nil {
+		tc.Spec.PD.SpareVolReplaceReplicas = pointer.Int32Ptr(1)
 	}
 }
 

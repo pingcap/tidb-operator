@@ -3976,6 +3976,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.SpareVolReplaceReplicas != nil {
+		in, out := &in.SpareVolReplaceReplicas, &out.SpareVolReplaceReplicas
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 
@@ -8346,6 +8351,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		copy(*out, *in)
 	}
 	in.ScalePolicy.DeepCopyInto(&out.ScalePolicy)
+	if in.SpareVolReplaceReplicas != nil {
+		in, out := &in.SpareVolReplaceReplicas, &out.SpareVolReplaceReplicas
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 
