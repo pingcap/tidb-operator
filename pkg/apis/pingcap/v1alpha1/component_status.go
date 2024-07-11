@@ -403,7 +403,7 @@ func (s *TiFlashStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
 }
 func (s *TiFlashStatus) GetVolReplaceInProgress() bool {
-	return false
+	return s.VolReplaceInProgress
 }
 func (s *TiFlashStatus) SetSynced(synced bool) {
 	s.Synced = synced
