@@ -409,7 +409,7 @@ func TestGenerateTiDBDashboardService(t *testing.T) {
 			},
 		},
 		{
-			name:      "override port",
+			name: "override port",
 			setInputs: func(td *v1alpha1.TidbDashboard) {
 				port := "foobar"
 				td.Spec.Service.PortName = &port
