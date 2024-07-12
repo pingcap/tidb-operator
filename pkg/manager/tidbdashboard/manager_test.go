@@ -408,6 +408,18 @@ func TestGenerateTiDBDashboardService(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "override port",
+			setInputs: func(td *v1alpha1.TidbDashboard) {
+				port := "foobar"
+				td.Spec.Service.PortName = &port
+			},
+			expectFn: func(td *v1alpha1.TidbDashboard, svc *corev1.Service) {
+				if diff := cmp.Diff(&svc.Spec.Ports[0].Name, td.Spec.Service.PortName); diff != "" {
+					t.Errorf("unexpected port name (-want, +got): %s", diff)
+				}
+			},
+		},
 	}
 
 	for _, testcase := range cases {
