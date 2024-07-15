@@ -463,3 +463,37 @@ func TestVolumeBackupInitFailed(t *testing.T) {
 	g.Expect(err).Should(BeNil())
 	g.Expect(backup.Status.Phase).Should(Equal(v1alpha1.VolumeBackupInitializeFailed))
 }
+
+func TestVolumeBackupAgainstInvalidTC(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+	var err error
+
+	bm := NewBackupManager(deps).(*backupManager)
+	backup := genVolumeBackup()
+	_, err = deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(context.TODO(), backup, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+	helper.CreateTC(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster, false, false)
+
+	err = bm.syncBackupJob(backup)
+	g.Expect(err.Error()).Should(MatchRegexp("only support volume snapshot backup across k8s clusters"))
+}
+
+func TestVolumeBackupAgainstTCWithNoTiKV(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+	var err error
+
+	bm := NewBackupManager(deps).(*backupManager)
+	backup := genVolumeBackup()
+	_, err = deps.Clientset.PingcapV1alpha1().Backups(backup.Namespace).Create(context.TODO(), backup, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+	helper.CreateTCWithNoTiKV(backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster, true, false)
+
+	err = bm.syncBackupJob(backup)
+	g.Expect(err.Error()).Should(MatchRegexp("not support backup TiDB cluster with no tikv replica"))
+}

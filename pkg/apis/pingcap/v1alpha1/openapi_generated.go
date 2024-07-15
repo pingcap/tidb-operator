@@ -6914,6 +6914,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"spareVolReplaceReplicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The default number of spare replicas to scale up when using VolumeReplace feature. In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid zone skew after volume replace (total replicas always whole multiples of zones). Optional: Defaults to 1",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
@@ -8164,7 +8171,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"logRestoreStartTs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.",
+							Description: "LogRestoreStartTs is the start timestamp which log restore from.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -13401,6 +13408,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ScalePolicy"),
 						},
 					},
+					"spareVolReplaceReplicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The default number of spare replicas to scale up when using VolumeReplace feature. In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid zone skew after volume replace (total replicas always whole multiples of zones). Optional: Defaults to 1",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
@@ -14665,6 +14679,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					"enablePVReclaim": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether enable PVC reclaim for orphan PVC left by statefulset scale-in Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"enablePVCReplace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether enable PVC replace to recreate the PVC with different specs Optional: Defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

@@ -1336,7 +1336,8 @@ string
 </em>
 </td>
 <td>
-<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+<em>(Optional)</em>
+<p>LogRestoreStartTs is the start timestamp which log restore from.</p>
 </td>
 </tr>
 <tr>
@@ -1405,6 +1406,7 @@ StorageProvider
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
@@ -1977,6 +1979,19 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVCReplace</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC replace to recreate the PVC with different specs
 Optional: Defaults to false</p>
 </td>
 </tr>
@@ -12316,6 +12331,21 @@ string
 <p>Mode is the mode of PD cluster</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>spareVolReplaceReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The default number of spare replicas to scale up when using VolumeReplace feature.
+In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+zone skew after volume replace (total replicas always whole multiples of zones).
+Optional: Defaults to 1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -14491,7 +14521,8 @@ string
 </em>
 </td>
 <td>
-<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+<em>(Optional)</em>
+<p>LogRestoreStartTs is the start timestamp which log restore from.</p>
 </td>
 </tr>
 <tr>
@@ -14560,6 +14591,7 @@ StorageProvider
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
@@ -22636,6 +22668,21 @@ ScalePolicy
 <p>ScalePolicy is the scale configuration for TiKV</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>spareVolReplaceReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The default number of spare replicas to scale up when using VolumeReplace feature.
+In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+zone skew after volume replace (total replicas always whole multiples of zones).
+Optional: Defaults to 1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>
@@ -24394,6 +24441,19 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVCReplace</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC replace to recreate the PVC with different specs
 Optional: Defaults to false</p>
 </td>
 </tr>

@@ -468,7 +468,7 @@ func validateAccessConfig(config *v1alpha1.TiDBAccessConfig) string {
 }
 
 // ValidateBackup validates backup sepc
-func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, acrossK8s bool) error {
+func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, tc *v1alpha1.TidbCluster) error {
 	ns := backup.Namespace
 	name := backup.Name
 
@@ -542,8 +542,12 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, acrossK8s bool) e
 		// validate volume snapshot backup
 		if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 			// only support across k8s now. TODO compatible for single k8s
-			if !acrossK8s {
+			if tc == nil || !tc.AcrossK8s() {
 				return errors.New("only support volume snapshot backup across k8s clusters")
+			}
+
+			if len(tc.Status.TiKV.Stores) == 0 || tc.Spec.TiKV.Replicas == 0 {
+				return errors.New("not support backup TiDB cluster with no tikv replica")
 			}
 		}
 
@@ -594,6 +598,18 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string, acrossK8s bool
 
 		if (restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && restore.Spec.BR.DB == "" {
 			return fmt.Errorf("DB should be configured for BR with restore type %s in spec of %s/%s", restore.Spec.Type, ns, name)
+		}
+
+		if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
+			_, err := GetStoragePath(restore.Spec.PitrFullBackupStorageProvider)
+			// err is nil when there is a valid storage provider
+			if err == nil && restore.Spec.LogRestoreStartTs != "" {
+				return fmt.Errorf("pitrFullBackupStorageProvider and logRestoreStartTs option can not co-exists in pitr mode")
+			}
+
+			if err != nil && restore.Spec.LogRestoreStartTs == "" {
+				return fmt.Errorf("either pitrFullBackupStorageProvider or logRestoreStartTs option needs to be passed in pitr mode")
+			}
 		}
 
 		if restore.Spec.Type == v1alpha1.BackupTypeTable && restore.Spec.BR.Table == "" {
