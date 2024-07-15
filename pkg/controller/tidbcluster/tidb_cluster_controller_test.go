@@ -305,7 +305,7 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 			TiFlash: &v1alpha1.TiFlashSpec{
 				Replicas: 1,
 				ComponentSpec: v1alpha1.ComponentSpec{
-					Image: "tikv-test-image",
+					Image: "tiflash-test-image",
 				},
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
