@@ -35,7 +35,7 @@ jobs:
       uses: actions/setup-go@v3
       with:
         go-version-file: go/src/github.com/${{ github.repository }}/go.mod
-        go-version: 1.2ll5
+        go-version: 1.22.5
     - name: Set vars
       run: |
         echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_ENV
